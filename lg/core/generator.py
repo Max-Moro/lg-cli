@@ -5,7 +5,8 @@ from typing import List, Set
 
 from ..utils import iter_files, read_file_text, build_pathspec
 from ..adapters import get_adapter_for_path
-from lg.config import Config
+from ..config.model import Config
+from ..filters.engine import FilterEngine
 
 def _collect_changed_files(root: Path) -> Set[str]:
     """Вернуть posix-пути изменённых/staged/untracked файлов относительно root."""
@@ -25,14 +26,16 @@ def generate_listing(*, root: Path, cfg: Config, mode: str = "all") -> None:
     # 1. подготовка
     # → если каких-то полей нет в cfg, берём безопасные дефолты
     exts = {e.lower() for e in cfg.extensions}
-    spec = build_pathspec(root, cfg.exclude)
+    spec_git = build_pathspec(root)  # только .gitignore
+
+    engine = FilterEngine(cfg.filters)
     changed = _collect_changed_files(root) if mode == "changes" else None
 
     tool_dir = Path(__file__).resolve().parent.parent  # …/lg/
 
     # 2. обход проекта
     output: List[str] = []
-    for fp in iter_files(root, exts, spec):
+    for fp in iter_files(root, exts, spec_git):
         # пропускаем self-код
         if tool_dir in fp.resolve().parents:
             continue
@@ -41,11 +44,14 @@ def generate_listing(*, root: Path, cfg: Config, mode: str = "all") -> None:
         if changed is not None and rel_posix not in changed:
             continue
 
+        if not engine.includes(rel_posix):
+            continue
+
         text = read_file_text(fp)
         adapter = get_adapter_for_path(fp)
 
         # секция языка, если она есть
-        lang_cfg = getattr(cfg, adapter.name, None)     # может быть None для неописанных языков
+        lang_cfg = getattr(cfg, adapter.name, None)
 
         if adapter.name != "base":
             if adapter.should_skip(fp, text, lang_cfg):

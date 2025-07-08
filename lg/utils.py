@@ -6,6 +6,8 @@ import os
 from pathlib import Path
 from typing import Iterable, List
 
+import pathspec
+
 
 # ---------------------------------------------------------------------------
 # I/O
@@ -21,7 +23,7 @@ def read_file_text(path: Path) -> str:
 # .gitignore + собственные шаблоны  → PathSpec
 # ---------------------------------------------------------------------------
 
-def build_pathspec(root: Path, extra_patterns: list[str] | None = None):
+def build_pathspec(root: Path):
     """
     Собираем PathSpec из .gitignore + доп-шаблонов.
     Если пакет *pathspec* не установлен, вернём None (вызов должен это учесть).
@@ -35,14 +37,6 @@ def build_pathspec(root: Path, extra_patterns: list[str] | None = None):
             if ln and not ln.startswith("#"):
                 patterns.append(ln)
 
-    if extra_patterns:
-        patterns.extend(extra_patterns)
-
-    try:
-        import pathspec  # type: ignore
-    except ImportError:
-        return None
-
     return pathspec.PathSpec.from_lines(
         pathspec.patterns.GitWildMatchPattern,
         patterns,
@@ -53,7 +47,7 @@ def build_pathspec(root: Path, extra_patterns: list[str] | None = None):
 # Рекурсивный обход исходников
 # ---------------------------------------------------------------------------
 
-def iter_files(root: Path, extensions: set[str], spec=None) -> Iterable[Path]:
+def iter_files(root: Path, extensions: set[str], spec_git=None) -> Iterable[Path]:
     """
     Итератор всех файлов *root* с требуемыми расширениями.
     • пропускает .git
@@ -72,8 +66,9 @@ def iter_files(root: Path, extensions: set[str], spec=None) -> Iterable[Path]:
             if p.suffix.lower() not in extensions:
                 continue
 
+            # .gitignore
             rel_posix = p.relative_to(root).as_posix()
-            if spec and spec.match_file(rel_posix):
+            if spec_git and spec_git.match_file(rel_posix):
                 continue
 
             yield p
