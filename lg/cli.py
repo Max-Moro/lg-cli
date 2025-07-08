@@ -31,6 +31,10 @@ def _build_parser() -> argparse.ArgumentParser:
         "-v", "--verbose", action="count", default=0,
         help="Increase log verbosity."
     )
+    p.add_argument(
+        "--list-included", action="store_true",
+        help="Print only relative paths that pass filters (debug aid)."
+    )
     return p
 
 def main() -> None:                       # entry-point from pyproject
@@ -50,6 +54,7 @@ def main() -> None:                       # entry-point from pyproject
         root=root,
         cfg=cfg,
         mode=ns.mode,
+        list_only=ns.list_included,
     )
 
 if __name__ == "__main__":

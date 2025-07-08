@@ -22,7 +22,9 @@ def _collect_changed_files(root: Path) -> Set[str]:
     files.update(_git(["ls-files", "--others", "--exclude-standard"]))
     return {Path(p).as_posix() for p in files if p}
 
-def generate_listing(*, root: Path, cfg: Config, mode: str = "all") -> None:
+def generate_listing(
+    *, root: Path, cfg: Config, mode: str = "all", list_only: bool = False
+) -> None:
     # 1. подготовка
     # → если каких-то полей нет в cfg, берём безопасные дефолты
     exts = {e.lower() for e in cfg.extensions}
@@ -35,6 +37,7 @@ def generate_listing(*, root: Path, cfg: Config, mode: str = "all") -> None:
 
     # 2. обход проекта
     output: List[str] = []
+    listed_paths: List[str] = []
     for fp in iter_files(root, exts, spec_git):
         # пропускаем self-код
         if tool_dir in fp.resolve().parents:
@@ -45,6 +48,11 @@ def generate_listing(*, root: Path, cfg: Config, mode: str = "all") -> None:
             continue
 
         if not engine.includes(rel_posix):
+            continue
+
+        # Если нужен лишь список — откладываем путь и продолжаем.
+        if list_only:
+            listed_paths.append(rel_posix)
             continue
 
         text = read_file_text(fp)
@@ -67,4 +75,7 @@ def generate_listing(*, root: Path, cfg: Config, mode: str = "all") -> None:
 
     # 3. печать
     import sys
-    sys.stdout.write("".join(output))
+    if list_only:
+        sys.stdout.write("\n".join(sorted(listed_paths)) + ("\n" if listed_paths else ""))
+    else:
+        sys.stdout.write("".join(output))
