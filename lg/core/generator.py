@@ -3,8 +3,8 @@ import subprocess
 from pathlib import Path
 from typing import Dict, List, Set
 
-from lg.utils import iter_files, read_file_text, build_pathspec
-from lg.filters import should_skip_file
+from ..utils import iter_files, read_file_text, build_pathspec
+from ..adapters import get_adapter_for_path
 
 def _collect_changed_files(root: Path) -> Set[str]:
     """Вернуть posix-пути изменённых/staged/untracked файлов относительно root."""
@@ -41,8 +41,19 @@ def generate_listing(*, root: Path, cfg: Dict, mode: str = "all") -> None:
             continue
 
         text = read_file_text(fp)
-        if should_skip_file(fp.name, text, cfg):
-            continue
+        adapter = get_adapter_for_path(fp)
+
+        # секция языка, если она есть
+        lang_cfg = cfg.get(adapter.name, {})
+
+        if adapter.name != "base":
+            # ⇒ язык определён; глобальные правила игнорируем
+            if adapter.should_skip(fp, text, lang_cfg):
+                continue
+        else:
+            # нет адаптера → используется только глобальный skip_empty
+            if cfg.get("skip_empty") and not text.strip():
+                continue
 
         output.append(f"# —— FILE: {rel_posix} ——\n")
         output.append(text)

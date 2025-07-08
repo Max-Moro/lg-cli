@@ -45,7 +45,6 @@ lg/               <— это репозиторий инструмента (м�
 │   ├─ cli.py       ← точка входа (`listing-generator`)
 │   ├─ config.py
 │   ├─ utils.py
-│   ├─ filters.py
 │   ├─ core/
 │   │   └─ generator.py
 │   └─ adapters/
@@ -129,15 +128,23 @@ ln -s ~/dev/lg lg
 ```jsonc
 {
   "schema_version": 1,
-  "extensions": [".py"],
-  "exclude": [
-    ".idea/",
-    "__pycache__/",
-    "**/__pycache__/**"
-  ],
+
+  // Глобальные правила (работают только если язык не распознан)
   "skip_empty": true,
-  "skip_trivial_inits": true,
-  "trivial_init_max_noncomment": 1
+
+  // Пусть проект содержит Python и Java
+  "extensions": [".py", ".java"],
+
+  "python": {
+    "skip_empty": true,
+    "skip_trivial_inits": true,
+    "trivial_init_max_noncomment": 1
+  },
+
+  "java": {
+    "skip_empty": false,
+    "skip_trivial_spring_annots": true
+  }
 }
 ```
 
