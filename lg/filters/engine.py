@@ -14,11 +14,17 @@ class _CompiledNode:
 
     def __init__(self, src: FilterNode):
         self.mode = src.mode
+        # Приводим все маски к lowercase, чтобы матчинг был нечувствителен к регистру
+        allow_patterns = [pat.lower() for pat in src.allow]
+        block_patterns = [pat.lower() for pat in src.block]
+
         self.allow_ps = (
-            pathspec.PathSpec.from_lines("gitwildmatch", src.allow) if src.allow else None
+            pathspec.PathSpec.from_lines("gitwildmatch", allow_patterns)
+            if allow_patterns else None
         )
         self.block_ps = (
-            pathspec.PathSpec.from_lines("gitwildmatch", src.block) if src.block else None
+            pathspec.PathSpec.from_lines("gitwildmatch", block_patterns)
+            if block_patterns else None
         )
         self.children: Dict[str, "_CompiledNode"] = {
             name.lower(): _CompiledNode(child) for name, child in src.children.items()
