@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "listing-generator"
-version = "0.1.0"
+version = "0.3.0"
 description = "Plain-text source listing generator for AI context"
 authors = [{ name = "Your Team", email = "dev@example.com" }]
 readme = "README.md"
