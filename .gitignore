@@ -1,0 +1,20 @@
+# Byte-code / cache
+__pycache__/
+*.py[cod]
+*.pyo
+
+# Virtual envs
+.venv/
+env/
+venv/
+
+# IDE / Editor
+.idea/
+.vscode/
+
+# Build artefacts
+dist/
+build/
+
+# Docs
+site/
