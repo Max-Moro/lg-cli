@@ -1,10 +1,10 @@
 from __future__ import annotations
-import json
+from ruamel.yaml import YAML
 from pathlib import Path
 from typing import Any, Dict
 
-SCHEMA_VERSION = 1
-DEFAULT_CFG_FILE = "listing_config.json"
+SCHEMA_VERSION = 2
+DEFAULT_CFG_FILE = "listing_config.yaml"
 
 # --------------------------------------------------------------------------- #
 # ДЕФОЛТЫ ТОЛЬКО ДЛЯ ГЛОБАЛЬНОГО УРОВНЯ
@@ -22,6 +22,10 @@ _DEFAULT_CFG: Dict[str, Any] = {
     "skip_empty": True,
 }
 
+# --------------------------------------------------------------------------- #
+# YAML loader
+# --------------------------------------------------------------------------- #
+_yaml = YAML(typ="safe")
 
 # --------------------------------------------------------------------------- #
 # HELPERS
@@ -49,7 +53,7 @@ def load_config(path: Path) -> Dict[str, Any]:
         return _DEFAULT_CFG.copy()
 
     with path.open(encoding="utf-8") as f:
-        raw: Dict[str, Any] = json.load(f)
+        raw: Dict[str, Any] = _yaml.load(f) or {}
 
     if raw.get("schema_version", SCHEMA_VERSION) != SCHEMA_VERSION:
         raise RuntimeError(
