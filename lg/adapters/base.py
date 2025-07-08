@@ -14,9 +14,11 @@ class BaseAdapter:
     name: str = "base"
     #: Набор поддерживаемых расширений
     extensions: Set[str] = set()
+    #: Dataclass-конфиг, который loader передаёт адаптеру
+    config_cls: Type | None = None
 
     # --- переопределяемая логика -------------------------------------------
-    def should_skip(self, path: Path, text: str, cfg: Dict) -> bool:
+    def should_skip(self, path: Path, text: str, cfg) -> bool:           # cfg → dataclass
         """True → файл исключается (языковые эвристики)."""
         return False
 

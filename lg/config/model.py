@@ -19,5 +19,9 @@ class Config:
     schema_version: int = SCHEMA_VERSION
     extensions: List[str] = field(default_factory=lambda: [".py"])
     # «filters» пока заглушка, заполним во время Вехи 2
-    filters: Dict[str, Any] = field(default_factory=dict)
+    filters: Dict[str, Any] = field(default_factory=dict)   # под Веху 2
+    # временно оставляем «старый» exclude, чтобы генератор
+    # по-прежнему пользовался .gitignore-подобной логикой
+    exclude: List[str] = field(default_factory=list)        # deprecated
+    skip_empty: bool = True                                 # глобальное правило
     python: LangPython = field(default_factory=LangPython)

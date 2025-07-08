@@ -1,10 +1,11 @@
 from __future__ import annotations
 import subprocess
 from pathlib import Path
-from typing import Dict, List, Set
+from typing import List, Set
 
 from ..utils import iter_files, read_file_text, build_pathspec
 from ..adapters import get_adapter_for_path
+from lg.config import Config
 
 def _collect_changed_files(root: Path) -> Set[str]:
     """Вернуть posix-пути изменённых/staged/untracked файлов относительно root."""
@@ -20,11 +21,11 @@ def _collect_changed_files(root: Path) -> Set[str]:
     files.update(_git(["ls-files", "--others", "--exclude-standard"]))
     return {Path(p).as_posix() for p in files if p}
 
-def generate_listing(*, root: Path, cfg: Dict, mode: str = "all") -> None:
+def generate_listing(*, root: Path, cfg: Config, mode: str = "all") -> None:
     # 1. подготовка
     # → если каких-то полей нет в cfg, берём безопасные дефолты
-    exts = {e.lower() for e in cfg.get("extensions", [".py"])}
-    spec = build_pathspec(root, cfg.get("exclude", []))
+    exts = {e.lower() for e in cfg.extensions}
+    spec = build_pathspec(root, cfg.exclude)
     changed = _collect_changed_files(root) if mode == "changes" else None
 
     tool_dir = Path(__file__).resolve().parent.parent  # …/lg/
@@ -44,15 +45,14 @@ def generate_listing(*, root: Path, cfg: Dict, mode: str = "all") -> None:
         adapter = get_adapter_for_path(fp)
 
         # секция языка, если она есть
-        lang_cfg = cfg.get(adapter.name, {})
+        lang_cfg = getattr(cfg, adapter.name, None)     # может быть None для неописанных языков
 
         if adapter.name != "base":
-            # ⇒ язык определён; глобальные правила игнорируем
             if adapter.should_skip(fp, text, lang_cfg):
                 continue
         else:
-            # нет адаптера → используется только глобальный skip_empty
-            if cfg.get("skip_empty") and not text.strip():
+            # «базовый» адаптер → смотрим глобальный флаг
+            if cfg.skip_empty and not text.strip():
                 continue
 
         output.append(f"# —— FILE: {rel_posix} ——\n")

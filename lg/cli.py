@@ -7,6 +7,7 @@ from pathlib import Path
 from lg.core.generator import generate_listing
 from lg.config import load_config, DEFAULT_CFG_FILE
 
+DEFAULT_CFG_FILE = "listing_config.yaml"
 _LOG = logging.getLogger("lg")
 
 def _build_parser() -> argparse.ArgumentParser:
