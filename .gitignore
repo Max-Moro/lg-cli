@@ -8,6 +8,10 @@ __pycache__/
 env/
 venv/
 
+# Pyproject
+.eggs/
+*.egg-info/
+
 # IDE / Editor
 .idea/
 .vscode/
