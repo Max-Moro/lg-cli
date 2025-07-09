@@ -1,43 +1,50 @@
 from __future__ import annotations
 
 import sys
-from io import StringIO
 from pathlib import Path
 from string import Template as _BaseTemplate
+from io import StringIO
 
-from lg.config import list_sections, load_config
+from lg.config import DEFAULT_CONFIG_DIR
 from lg.core.generator import generate_listing
 
 
 class ContextTemplate(_BaseTemplate):
     """
-    Расширяем стандартный Template, чтобы в именах плейсхолдеров разрешались
-    буквы, цифры, подчёркивания и дефисы (например: core-model-src).
+    Расширяем стандартный Template, чтобы в именах плейсхолдеров
+    разрешались буквы, цифры, подчёркивания и дефисы (например: core-model-src).
     """
     idpattern = r'[A-Za-z0-9_-]+'
 
-def generate_context(context_name: str, list_only: bool = False) -> None:
-    """
-    Составляет и выводит на stdout итоговый промт, подставляя
-    в шаблон lg-cfg/contexts/{context_name}.tmpl.md листинги (или списки путей)
-    из lg-cfg/config.yaml.
-    """
-    cwd = Path.cwd()
-    cfg_dir = cwd / "lg-cfg"
-    cfg_path = cfg_dir / "config.yaml"
-    tmpl_path = cfg_dir / "contexts" / f"{context_name}.tmpl.md"
 
-    # Проверяем наличие конфигурации и шаблона
-    if not cfg_path.is_file():
-        raise RuntimeError(f"Config file not found: {cfg_path}")
+def generate_context(
+    context_name: str,
+    configs: dict[str, object],
+    list_only: bool = False,
+) -> None:
+    """
+    Собирает и выводит готовый промт по шаблону contexts/{context_name}.tmpl.md,
+    подставляя в каждый плейсхолдер ${section} результат работы generate_listing:
+
+      - context_name: имя файла шаблона без расширения
+      - configs: маппинг section → Config (загруженный в CLI)
+      - list_only: если True, передаём в генератор mode=all, list_only=True
+
+    Ошибки:
+      - если шаблон не найден — RuntimeError
+      - если в шаблоне есть плейсхолдер без соответствующей секции в configs — RuntimeError
+    """
+    # Папка с шаблонами: <cwd>/lg-cfg/contexts/
+    root = Path.cwd()
+    tmpl_path = root / DEFAULT_CONFIG_DIR / "contexts" / f"{context_name}.tmpl.md"
     if not tmpl_path.is_file():
         raise RuntimeError(f"Template not found: {tmpl_path}")
 
-    # Загружаем шаблон
+    # Читаем шаблон и создаём ContextTemplate
     text = tmpl_path.read_text(encoding="utf-8")
     template = ContextTemplate(text)
 
-    # Находим все плейсхолдеры ${…}: и named, и braced
+    # Собираем все плейсхолдеры ${...}: и named, и braced
     placeholders: set[str] = set()
     for esc, name, braced, invalid in template.pattern.findall(text):
         if name:
@@ -45,29 +52,25 @@ def generate_context(context_name: str, list_only: bool = False) -> None:
         elif braced:
             placeholders.add(braced)
 
-    # Доступные секции из конфига
-    available = list_sections(cfg_path)
-
-    # Для каждой секции генерируем листинг
+    # Для каждого плейсхолдера подготавливаем листинг
     mapping: dict[str, str] = {}
     for section in placeholders:
-        if section not in available:
+        if section not in configs:
+            available = ", ".join(sorted(configs.keys()))
             raise RuntimeError(
-                f"Section '{section}' not found in config. "
-                f"Available: {', '.join(available)}"
+                f"Section '{section}' not in configs mapping "
+                f"(available: {available})"
             )
 
-        # Загружаем dataclass-конфиг для этой секции
-        cfg = load_config(cfg_path, section)
+        cfg = configs[section]
 
-        # Перехватываем вывод generate_listing в буфер
+        # Захватываем вывод generate_listing в буфер
         buf = StringIO()
         stdout_orig = sys.stdout
         sys.stdout = buf
         try:
-            # всегда режим all; list_only управляется флагом
             generate_listing(
-                root=cwd,
+                root=root,
                 cfg=cfg,
                 mode="all",
                 list_only=list_only,
@@ -78,10 +81,8 @@ def generate_context(context_name: str, list_only: bool = False) -> None:
         content = buf.getvalue().strip()
         if not content:
             content = "*(файлы отсутствуют)*"
-
         mapping[section] = content
 
-    # Подставляем и выводим результат
-    # .substitute выбросит KeyError, если в шаблоне есть лишние ${…}
+    # Подставляем готовые блоки в шаблон; KeyError при лишних ${}
     result = template.substitute(mapping)
-    print(result)
+    sys.stdout.write(result)

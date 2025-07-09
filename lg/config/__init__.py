@@ -10,10 +10,16 @@ from ruamel.yaml import YAML
 from lg.filters.model import FilterNode
 from .model import Config, LangPython, SCHEMA_VERSION
 
-__all__ = ["Config", "LangPython", "SCHEMA_VERSION", "load_config", "list_sections", "DEFAULT_CFG_FILE",
-           "DEFAULT_SECTION_NAME"]
+__all__ = [
+    "Config", "LangPython", "SCHEMA_VERSION",
+    "load_config", "list_sections",
+    "DEFAULT_CONFIG_DIR", "DEFAULT_CONFIG_FILE", "DEFAULT_SECTION_NAME",
+]
 
-DEFAULT_CFG_FILE = "listing_config.yaml"
+#: Directory under project root containing the YAML config and contexts/
+DEFAULT_CONFIG_DIR = "lg-cfg"
+#: Name of the main YAML config file inside lg-cfg/
+DEFAULT_CONFIG_FILE = "config.yaml"
 DEFAULT_SECTION_NAME = "all"
 _yaml = YAML(typ="safe")
 

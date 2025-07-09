@@ -9,49 +9,69 @@ import lg.cli as cli_mod
 def isolate_env(monkeypatch, tmp_path):
     # Переносим cwd в tmp_path
     monkeypatch.chdir(tmp_path)
-    # Подготовим структуру lg-cfg
-    cfg_dir = tmp_path / 'lg-cfg'
-    (cfg_dir / 'contexts').mkdir(parents=True)
-    # простой config.yaml
-    (cfg_dir / 'config.yaml').write_text('schema_version: 4\nsec: {}')
-    # шаблон
-    (cfg_dir / 'contexts' / 'ctx.tmpl.md').write_text('Hello ${sec}')
-    # Подменяем load_config и generate_listing
+
+    # Готовим структуру lg-cfg/
+    cfg_dir = tmp_path / "lg-cfg"
+    (cfg_dir / "contexts").mkdir(parents=True)
+
+    # Простейший config.yaml с одной секцией 'sec'
+    (cfg_dir / "config.yaml").write_text(
+        "schema_version: 4\nsec: {}\n"
+    )
+
+    # Шаблон contexts/ctx.tmpl.md
+    (cfg_dir / "contexts" / "ctx.tmpl.md").write_text(
+        "Hello ${sec}"
+    )
+
+    # Подменяем generate_listing внутри lg.context на stub,
+    # чтобы generate_context печатал «OK» вместо реальных листингов.
     import lg.context as ctx_mod
-    monkeypatch.setattr(ctx_mod, 'generate_listing', lambda **kw: sys.stdout.write('OK'))
-    def fake_load_config(path, section):
-        class C: pass
-        c = C()
-        c.section_name = section
-        return c
-    monkeypatch.setattr(ctx_mod, 'load_config', fake_load_config)
+    monkeypatch.setattr(
+        ctx_mod,
+        "generate_listing",
+        lambda **kw: sys.stdout.write("OK"),
+    )
+
     return tmp_path
 
+
 def run_cli(args):
+    """
+    Вызывает cli_mod.main() с заданными args.
+    Возвращает код выхода: 0 при нормальном возврате main(),
+    или se.code при SystemExit.
+    """
     orig_argv = sys.argv[:]
-    sys.argv = ['listing-generator'] + args
+    sys.argv = ["listing-generator"] + args
     try:
-        with pytest.raises(SystemExit) as se:
+        try:
             cli_mod.main()
+            return 0
+        except SystemExit as se:
+            # Если код не указан, считаем его 1
+            return se.code if se.code is not None else 1
     finally:
         sys.argv = orig_argv
-    return se.value.code
 
-def test_cli_context_prints(monkeypatch, capsys):
-    code = run_cli(['--context', 'ctx'])
-    # код 0, и в stdout «OK»
-    out = capsys.readouterr().out
+
+def test_cli_context_prints(capsys):
+    code = run_cli(["--context", "ctx"])
+    # При успешном выполнении код 0, в stdout — «OK»
     assert code == 0
-    assert 'OK' in out
-
-def test_cli_context_list_included(monkeypatch, capsys):
-    # флаг --list-included должен тоже пройти и дать «OK»
-    code = run_cli(['--context', 'ctx', '--list-included'])
     out = capsys.readouterr().out
-    assert code == 0
-    assert 'OK' in out
+    assert "OK" in out
 
-def test_cli_missing_section(monkeypatch):
-    # вызываем несуществующий контекст ctx2 → код != 0
-    code = run_cli(['--context', 'ctx2'])
+
+def test_cli_context_list_included(capsys):
+    # Флаг --list-included тоже прокидывается и не ломает
+    code = run_cli(["--context", "ctx", "--list-included"])
+    assert code == 0
+    out = capsys.readouterr().out
+    assert "OK" in out
+
+
+def test_cli_missing_context_returns_error():
+    # Шаблон ctx2 не существует → sys.exit(1)
+    code = run_cli(["--context", "ctx2"])
     assert code != 0

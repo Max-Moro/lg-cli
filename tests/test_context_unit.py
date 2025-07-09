@@ -1,120 +1,89 @@
+import os
 import sys
+from pathlib import Path
 
 import pytest
 
 from lg.context import ContextTemplate, generate_context
 
 
-class Dummy:
-    """Заглушка вместо real generate_listing, возвращает простой маркер."""
-    @staticmethod
-    def fake_generate(root, cfg, mode, list_only=False):
-        # возвращает разные строки для разных секций
-        sec = cfg
-        name = getattr(cfg, 'section_name', 'unknown')
-        if name == 'empty':
-            return ''
-        return f'CONTENT_OF_{name}'
-
-
 @pytest.fixture(autouse=True)
-def patch_generator(monkeypatch):
-    # Подменяем реальный generate_listing: он печатает в stdout,
-    # а мы просто возвращаем строку из fake_generate.
+def patch_generate(monkeypatch):
+    """
+    Заменяем реальный generate_listing, чтобы выводить:
+      - для секции с section_name != 'empty': LISTING[<section_name>]
+      - для 'empty' — ничего (эмулируем пустой листинг)
+    """
     import lg.context as ctx_mod
 
-    def fake_generate_context_output(root, cfg, mode, list_only=False):
-        # эмулируем вывод в stdout, но вернув строку сразу
-        sec = cfg
-        # ожидаем, что в cfg есть атрибут section_name
-        text = f'LISTING[{sec.section_name}]'
-        sys.stdout.write(text)
+    def fake_generate_listing(root, cfg, mode, list_only=False):
+        name = getattr(cfg, "section_name", None)
+        if name and name != "empty":
+            sys.stdout.write(f"LISTING[{name}]")
+        # для 'empty' — ничего
 
-    monkeypatch.setattr(ctx_mod, 'generate_listing', fake_generate_context_output)
-    yield
+    monkeypatch.setattr(ctx_mod, "generate_listing", fake_generate_listing)
 
 
-def write_cfg(tmp_path, sections):
-    """Собирает lg-cfg/config.yaml из словаря секций→None."""
-    cfg_dir = tmp_path / 'lg-cfg'
-    # гарантируем, что contexts директория есть (не падаем, если уже создана)
-    (cfg_dir / 'contexts').mkdir(parents=True, exist_ok=True)
-    cfg_file = cfg_dir / 'config.yaml'
-    # простейший yaml с двумя секциями, без реальных фильтров
-    lines = ['schema_version: 4']
-    for name in sections:
-        lines.append(f'{name}: {{}}')
-    cfg_file.write_text('\n'.join(lines))
-    return cfg_dir
+def write_template(tmp_path: Path, context_name: str, content: str):
+    """
+    Создаёт файл шаблона:
+      <tmp_path>/lg-cfg/contexts/{context_name}.tmpl.md
+    """
+    tmpl_dir = tmp_path / "lg-cfg" / "contexts"
+    tmpl_dir.mkdir(parents=True, exist_ok=True)
+    tmpl_file = tmpl_dir / f"{context_name}.tmpl.md"
+    tmpl_file.write_text(content, encoding="utf-8")
 
 
-def write_template(cfg_dir, name, content):
-    tmpl = cfg_dir / 'contexts' / f'{name}.tmpl.md'
-    tmpl.write_text(content)
+class DummyCfg:
+    def __init__(self, section_name: str):
+        self.section_name = section_name
 
 
 def test_context_template_allows_hyphens():
-    t = ContextTemplate('Hello ${foo-bar} and ${baz_123}')
-    # должно найти оба плейсхолдера
-    subs = {'foo-bar': 'X', 'baz_123': 'Y'}
-    assert t.substitute(subs) == 'Hello X and Y'
+    t = ContextTemplate("Hello ${foo-bar} and ${baz_123}")
+    result = t.substitute({"foo-bar": "X", "baz_123": "Y"})
+    assert result == "Hello X and Y"
 
 
-def test_generate_context_success(tmp_path, monkeypatch, capsys):
-    # создаём конфиг с двумя секциями
-    cfg_dir = write_cfg(tmp_path, ['docs', 'empty'])
-    # шаблон со вставками обеих
-    write_template(cfg_dir, 'ctx', 'D: ${docs}\nE: ${empty}')
+def test_generate_context_success(tmp_path: Path, capsys):
+    # Подготавливаем шаблон с двумя плейсхолдерами
+    write_template(tmp_path, "ctx", "A: ${docs}\nB: ${empty}")
 
-    # chdir в tmp_path
-    monkeypatch.chdir(tmp_path)
-    # подменяем load_config, чтобы cfg.section_name был доступен
-    import lg.context as ctx_mod
-    def fake_load_config(path, section):
-        class Cfg: pass
-        cfg = Cfg()
-        cfg.section_name = section
-        return cfg
-    monkeypatch.setattr(ctx_mod, 'load_config', fake_load_config)
+    # Переходим в tmp_path
+    os.chdir(tmp_path)
 
-    # вызываем
-    generate_context('ctx')
+    # Готовим маппинг configs
+    configs = {
+        "docs": DummyCfg("docs"),
+        "empty": DummyCfg("empty"),
+    }
+
+    # Вызываем
+    generate_context("ctx", configs)
+
     out = capsys.readouterr().out
-    # из fake_generate_context_output для docs и empty
-    assert 'LISTING[docs]' in out
-    assert 'LISTING[empty]' in out
+    # Для docs будет LISTING[docs], для empty — пусто → заменяется на *(файлы отсутствуют)*
+    assert "A: LISTING[docs]" in out
+    assert "B: *(файлы отсутствуют)*" in out
 
 
-@pytest.mark.parametrize('missing', ['config', 'template'])
-def test_missing_files_raise(tmp_path, monkeypatch, missing):
-    """
-    Если нет config.yaml или нет шаблона, generate_context должен упасть.
-    """
-    cfg_dir = tmp_path / 'lg-cfg'
-    # уверены, что папка contexts существует (чтобы не смешивать ошибки)
-    (cfg_dir / 'contexts').mkdir(parents=True, exist_ok=True)
-
-    if missing == 'config':
-        # пропускаем создание config.yaml => должно упасть на его отсутствие
-        pass
-    else:
-        # создаём config.yaml, но НЕ создаём шаблон => должно упасть на отсутствие шаблона
-        write_cfg(tmp_path, ['docs'])
-
-    monkeypatch.chdir(tmp_path)
-    with pytest.raises(RuntimeError):
-        generate_context('ctx')
-
-
-def test_unknown_section_raises(tmp_path, monkeypatch):
-    # есть только секция docs
-    cfg_dir = write_cfg(tmp_path, ['docs'])
-    # шаблон с незнакомым
-    write_template(cfg_dir, 'ctx', 'X: ${unknown}')
-    monkeypatch.chdir(tmp_path)
-    # подмена list_sections, load_config
-    import lg.context as ctx_mod
-    monkeypatch.setattr(ctx_mod, 'list_sections', lambda path: ['docs'])
+def test_missing_template_raises(tmp_path: Path):
+    # Не создаём файл шаблона
+    os.chdir(tmp_path)
     with pytest.raises(RuntimeError) as ei:
-        generate_context('ctx')
-    assert "Section 'unknown' not found" in str(ei.value)
+        generate_context("ctx", {})
+    assert "Template not found" in str(ei.value)
+
+
+def test_unknown_section_raises(tmp_path: Path):
+    # Шаблон с плейсхолдером ${unknown}
+    write_template(tmp_path, "ctx", "X: ${unknown}")
+    os.chdir(tmp_path)
+
+    configs = {"docs": DummyCfg("docs")}
+    with pytest.raises(RuntimeError) as ei:
+        generate_context("ctx", configs)
+    msg = str(ei.value)
+    assert "Section 'unknown' not in configs mapping" in msg
