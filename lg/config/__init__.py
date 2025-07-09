@@ -3,41 +3,71 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Any, Dict
+from typing import Any, Dict, List
 
 from ruamel.yaml import YAML
 
 from .model import Config, LangPython, SCHEMA_VERSION
 from lg.filters.model import FilterNode
 
-__all__ = ["Config", "LangPython", "SCHEMA_VERSION", "load_config", "DEFAULT_CFG_FILE"]
+__all__ = ["Config", "LangPython", "SCHEMA_VERSION", "load_config", "list_sections", "DEFAULT_CFG_FILE",
+           "DEFAULT_SECTION_NAME"]
 
 DEFAULT_CFG_FILE = "listing_config.yaml"
+DEFAULT_SECTION_NAME = "all"
 _yaml = YAML(typ="safe")
 
 
 # --------------------------------------------------------------------------- #
 # PUBLIC LOADER
 # --------------------------------------------------------------------------- #
-def load_config(path: Path) -> Config:
+def list_sections(path: Path) -> List[str]:
     """
-    Загрузить `listing_config.yaml` и вернуть строго типизированный `Config`.
-    Если файл отсутствует — вернуть объект с дефолтами.
+    Вернуть список имён секций в мультисекционном конфиге.
     """
     if not path.exists():
-        return Config()
+        raise RuntimeError(f"Config file {path} not found")
+    with path.open(encoding="utf-8") as f:
+        raw_all: Dict[str, Any] = _yaml.load(f) or {}
+    schema = raw_all.get("schema_version")
+    if schema != SCHEMA_VERSION:
+        raise RuntimeError(
+            f"Unsupported config schema {schema} (tool expects {SCHEMA_VERSION})"
+        )
+    # все ключи, кроме schema_version
+    return [name for name in raw_all.keys() if name != "schema_version"]
+
+
+def load_config(path: Path, section: str) -> Config:
+    """
+    Загрузить `section` из мультисекционного YAML и вернуть строго типизированный `Config`.
+    При отсутствии файла или секции — бросить понятный RuntimeError.
+    """
+    if not path.exists():
+        raise RuntimeError(f"Config file {path} not found")
 
     with path.open(encoding="utf-8") as f:
-        raw: Dict[str, Any] = _yaml.load(f) or {}
+        raw_all: Dict[str, Any] = _yaml.load(f) or {}
 
-    if raw.get("schema_version", SCHEMA_VERSION) != SCHEMA_VERSION:
+    schema = raw_all.get("schema_version")
+    if schema != SCHEMA_VERSION:
         raise RuntimeError(
-            f"Unsupported config schema {raw.get('schema_version')} "
-            f"(tool expects {SCHEMA_VERSION})"
+            f"Unsupported config schema {schema} (tool expects {SCHEMA_VERSION})"
         )
 
+    if section not in raw_all:
+        available = list_sections(path)
+        raise RuntimeError(
+            f"Section '{section}' not found in config. "
+            f"Available sections: {', '.join(available)}"
+        )
+
+    raw: Dict[str, Any] = raw_all.get(section) or {}
+
+    # --- адаптер Python (при отсутствии – будут дефолты из LangPython) ---
     py_cfg = LangPython(**raw.get("python", {}))
 
+    # --- дерево фильтров ---
     filters_raw = raw.get("filters", {"mode": "block"})
 
     def _build_node(obj: Dict[str, Any], path: str = "") -> FilterNode:
@@ -51,20 +81,22 @@ def load_config(path: Path) -> Config:
         )
         if node.empty_allow_warning():
             import logging
-
             logging.warning(
                 "Filter at '%s' has mode=allow but empty allow-list → everything denied",
                 path or "/",
             )
 
         for child_name, child_obj in obj.get("children", {}).items():
-            node.children[child_name] = _build_node(child_obj, f"{path}/{child_name}")
-
+            node.children[child_name] = _build_node(
+                child_obj, f"{path}/{child_name}"
+            )
         return node
+
+    cfg_filters = _build_node(filters_raw)
 
     return Config(
         extensions=raw.get("extensions", [".py"]),
-        filters=_build_node(filters_raw),
+        filters=cfg_filters,
         skip_empty=raw.get("skip_empty", True),
         python=py_cfg,
     )

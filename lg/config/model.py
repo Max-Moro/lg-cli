@@ -3,7 +3,7 @@ from dataclasses import dataclass, field
 from typing import List
 
 from lg.filters.model import FilterNode
-SCHEMA_VERSION: int = 3
+SCHEMA_VERSION: int = 4
 
 
 # ----------- секции адаптеров (пример: Python) ------------------ #

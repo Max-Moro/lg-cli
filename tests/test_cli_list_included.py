@@ -1,21 +1,24 @@
-# tests/test_cli_list_included.py
 from pathlib import Path
 from io import StringIO
 import sys
 from dataclasses import asdict
 
 from lg.cli import main as cli_main
-from lg.config import Config
+from lg.config import Config, SCHEMA_VERSION, DEFAULT_SECTION_NAME
 from lg.filters.model import FilterNode
 
 
 def _run_cli(tmp_path: Path, cfg: Config, *cli_args: str) -> str:
-    # Записываем сериализованный dataclass в YAML
+    # Записываем мультисекционный конфиг с единственной секцией DEFAULT_SECTION_NAME
     cfg_path = tmp_path / "listing_config.yaml"
     from ruamel.yaml import YAML
 
+    sections = {
+        "schema_version": SCHEMA_VERSION,
+        DEFAULT_SECTION_NAME: asdict(cfg),
+    }
     with cfg_path.open("w", encoding="utf-8") as f:
-        YAML().dump(asdict(cfg), f)
+        YAML().dump(sections, f)
 
     # Подменяем argv и собираем вывод
     argv_orig = sys.argv
