@@ -20,6 +20,6 @@ class Config:
     )
     exclude: List[str] = field(default_factory=list)        # deprecated
     skip_empty: bool = True                                 # глобальное правило
-    code_fence: bool = False                                # оборачивать файлы в ```{lang}
+    code_fence: bool = True                                 # оборачивать файлы в ```{lang}
     python: LangPython = field(default_factory=LangPython)
     markdown: LangMarkdown = field(default_factory=LangMarkdown)

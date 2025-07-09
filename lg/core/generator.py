@@ -1,12 +1,16 @@
 from __future__ import annotations
+
 import subprocess
+import sys
 from pathlib import Path
 from typing import List, Set
 
-from ..utils import iter_files, read_file_text, build_pathspec
 from ..adapters import get_adapter_for_path
 from ..config.model import Config
 from ..filters.engine import FilterEngine
+from ..lang import get_language_for_file
+from ..utils import iter_files, read_file_text, build_pathspec
+
 
 def _collect_changed_files(root: Path) -> Set[str]:
     """Вернуть posix-пути изменённых/staged/untracked файлов относительно root."""
@@ -35,8 +39,8 @@ def generate_listing(
 
     tool_dir = Path(__file__).resolve().parent.parent  # …/lg/
 
-    # 2. обход проекта
-    output: List[str] = []
+    # 2. обход проекта: собираем данные или пути
+    entries: List[tuple[Path, str, object, str]] = []
     listed_paths: List[str] = []
     for fp in iter_files(root, exts, spec_git):
         # пропускаем self-код
@@ -55,6 +59,7 @@ def generate_listing(
             listed_paths.append(rel_posix)
             continue
 
+        # полный текст и адаптер для этого файла
         text = read_file_text(fp)
         adapter = get_adapter_for_path(fp)
 
@@ -69,13 +74,44 @@ def generate_listing(
             if cfg.skip_empty and not text.strip():
                 continue
 
-        output.append(f"# —— FILE: {rel_posix} ——\n")
-        output.append(text)
-        output.append("\n\n")
+        # накапливаем запись для генерации
+        entries.append((fp, rel_posix, adapter, text))
 
-    # 3. печать
-    import sys
+    # 3. режим «--list-included»: выводим только пути и выходим
     if list_only:
-        sys.stdout.write("\n".join(sorted(listed_paths)) + ("\n" if listed_paths else ""))
+        listing = "\n".join(sorted(listed_paths))
+        if listed_paths:
+            listing += "\n"
+        sys.stdout.write(listing)
+        return
+
+    # 4. генерация вывода: fenced или простая склейка
+    if cfg.code_fence:
+        out_lines: List[str] = []
+        prev_lang: str | None = None
+        for fp, rel_posix, adapter, text in entries:
+            # определяем язык fenced-блока
+            lang = get_language_for_file(fp)
+            # при смене языка закрываем предыдущий fenced-блок
+            if lang != prev_lang:
+                if prev_lang is not None:
+                    out_lines.append("```\n\n")
+                # открываем новый fenced-блок (без указания напр. "```" если lang=="")
+                out_lines.append(f"```{lang}\n")
+                prev_lang = lang
+            # вставляем маркер файла и содержимое
+            out_lines.append(f"# —— FILE: {rel_posix} ——\n")
+            out_lines.append(text)
+            out_lines.append("\n\n")
+        # закрываем последний fenced-блок
+        if prev_lang is not None:
+            out_lines.append("```\n")
+        sys.stdout.write("".join(out_lines))
     else:
-        sys.stdout.write("".join(output))
+        # старое поведение: простая последовательная склейка
+        out_lines: List[str] = []
+        for fp, rel_posix, adapter, text in entries:
+            out_lines.append(f"# —— FILE: {rel_posix} ——\\n")
+            out_lines.append(text)
+            out_lines.append("\\n\\n")
+        sys.stdout.write("".join(out_lines))
