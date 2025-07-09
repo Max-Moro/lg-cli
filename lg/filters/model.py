@@ -21,7 +21,33 @@ class FilterNode:
     block: List[str] = field(default_factory=list)
     children: Dict[str, "FilterNode"] = field(default_factory=dict)
 
-    # ------------------ вспомогательные методы ------------------ #
     def empty_allow_warning(self) -> bool:
         """True, если mode == 'allow' и список allow пуст — повод предупредить."""
         return self.mode == "allow" and not self.allow
+
+    @classmethod
+    def from_dict(cls, obj: dict[str, any], path: str = "") -> FilterNode:
+        """
+        Построить FilterNode рекурсивно из словаря из конфига.
+        path — внутренний путь для ошибок/ворнингов.
+        """
+        if "mode" not in obj:
+            raise RuntimeError(f"Missing 'mode' in filters at '{path or '/'}'")
+
+        node = cls(
+            mode=obj["mode"],
+            allow=obj.get("allow", []),
+            block=obj.get("block", []),
+        )
+        if node.empty_allow_warning():
+            import logging
+            logging.warning(
+                "Filter at '%s' has mode=allow but empty allow-list → everything denied",
+                path or "/",
+            )
+
+        for child_name, child_obj in obj.get("children", {}).items():
+            node.children[child_name] = cls.from_dict(
+                child_obj, f"{path}/{child_name}"
+            )
+        return node

@@ -7,8 +7,8 @@ from typing import Any, Dict, List
 
 from ruamel.yaml import YAML
 
-from .model import Config, LangPython, SCHEMA_VERSION
 from lg.filters.model import FilterNode
+from .model import Config, LangPython, SCHEMA_VERSION
 
 __all__ = ["Config", "LangPython", "SCHEMA_VERSION", "load_config", "list_sections", "DEFAULT_CFG_FILE",
            "DEFAULT_SECTION_NAME"]
@@ -68,31 +68,7 @@ def load_config(path: Path, section: str) -> Config:
     py_cfg = LangPython(**raw.get("python", {}))
 
     # --- дерево фильтров ---
-    filters_raw = raw.get("filters", {"mode": "block"})
-
-    def _build_node(obj: Dict[str, Any], path: str = "") -> FilterNode:
-        if "mode" not in obj:
-            raise RuntimeError(f"Missing 'mode' in filters at '{path or '/'}'")
-
-        node = FilterNode(
-            mode=obj["mode"],
-            allow=obj.get("allow", []),
-            block=obj.get("block", []),
-        )
-        if node.empty_allow_warning():
-            import logging
-            logging.warning(
-                "Filter at '%s' has mode=allow but empty allow-list → everything denied",
-                path or "/",
-            )
-
-        for child_name, child_obj in obj.get("children", {}).items():
-            node.children[child_name] = _build_node(
-                child_obj, f"{path}/{child_name}"
-            )
-        return node
-
-    cfg_filters = _build_node(filters_raw)
+    cfg_filters = FilterNode.from_dict(raw.get("filters", {"mode": "block"}))
 
     return Config(
         extensions=raw.get("extensions", [".py"]),
