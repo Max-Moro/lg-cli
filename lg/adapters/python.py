@@ -1,9 +1,16 @@
 from __future__ import annotations
 
+from dataclasses import dataclass
 from pathlib import Path
 
 from lg.adapters.base import BaseAdapter
-from lg.config import LangPython
+
+@dataclass
+class LangPython:
+    skip_empty: bool = True
+    skip_trivial_inits: bool = True
+    trivial_init_max_noncomment: int = 1
+
 
 @BaseAdapter.register
 class PythonAdapter(BaseAdapter):

@@ -10,6 +10,7 @@ from pathlib import Path
 
 import pytest
 
+from lg.adapters.markdown import LangMarkdown
 from lg.config import Config, SCHEMA_VERSION, load_config, DEFAULT_SECTION_NAME
 
 
@@ -46,3 +47,24 @@ schema_version: 999
 
     # Сообщение должно ясно указывать на проблему
     assert "Unsupported config schema" in str(exc.value)
+
+
+def test_load_markdown_and_code_fence(tmp_path: Path) -> None:
+    """Поля code_fence и markdown.max_heading_level загружаются из YAML."""
+    cfg_path = tmp_path / "listing_config.yaml"
+    cfg_yaml = f"""
+schema_version: {SCHEMA_VERSION}
+all:
+  extensions: [".md"]
+  code_fence: true
+  markdown:
+    max_heading_level: 3
+"""
+    cfg_path.write_text(cfg_yaml)
+
+    cfg = load_config(cfg_path, DEFAULT_SECTION_NAME)
+    # глобальный флаг
+    assert cfg.code_fence is True
+    # конфиг Markdown
+    assert isinstance(cfg.markdown, LangMarkdown)
+    assert cfg.markdown.max_heading_level == 3

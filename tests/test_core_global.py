@@ -3,7 +3,8 @@ from io import StringIO, TextIOWrapper
 import sys
 
 from lg.core.generator import generate_listing
-from lg.config import Config, LangPython
+from lg.config import Config
+from lg.adapters.python import LangPython
 
 
 def _run(root: Path, cfg: Config) -> str:

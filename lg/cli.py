@@ -54,6 +54,17 @@ def _build_parser() -> argparse.ArgumentParser:
         action="count", default=0,
         help="Increase log verbosity (repeatable)",
     )
+    p.add_argument(
+        "--code-fence",
+        action="store_true",
+        help="Wrap each file listing in fenced markdown block (```lang)",
+    )
+    p.add_argument(
+        "--max-heading-level",
+        type=int,
+        default=None,
+        help="Max heading level for Markdown normalization (overrides config)",
+    )
     return p
 
 
@@ -114,6 +125,13 @@ def main() -> None:
     except Exception as e:
         print(f"Error: {e}", file=sys.stderr)
         sys.exit(1)
+
+    # Применяем CLI-overrides
+    # код-фенсинг
+    cfg.code_fence = ns.code_fence
+    # max_heading_level (только если явно задан)
+    if ns.max_heading_level is not None:
+        cfg.markdown.max_heading_level = ns.max_heading_level
 
     generate_listing(
         root=root,

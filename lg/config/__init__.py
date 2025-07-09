@@ -8,10 +8,12 @@ from typing import Any, Dict, List
 from ruamel.yaml import YAML
 
 from lg.filters.model import FilterNode
-from .model import Config, LangPython, SCHEMA_VERSION
+from .model import Config, SCHEMA_VERSION
+from ..adapters.markdown import LangMarkdown
+from ..adapters.python import LangPython
 
 __all__ = [
-    "Config", "LangPython", "SCHEMA_VERSION",
+    "Config", "SCHEMA_VERSION",
     "load_config", "list_sections",
     "DEFAULT_CONFIG_DIR", "DEFAULT_CONFIG_FILE", "DEFAULT_SECTION_NAME",
 ]
@@ -73,6 +75,12 @@ def load_config(path: Path, section: str) -> Config:
     # --- адаптер Python (при отсутствии – будут дефолты из LangPython) ---
     py_cfg = LangPython(**raw.get("python", {}))
 
+    # --- адаптер Markdown (при отсутствии – def max_heading_level=None) ---
+    md_cfg = LangMarkdown(**raw.get("markdown", {}))
+
+    # --- глобальная опция code_fence для всех файлов ---
+    code_fence = bool(raw.get("code_fence", False))
+
     # --- дерево фильтров ---
     cfg_filters = FilterNode.from_dict(raw.get("filters", {"mode": "block"}))
 
@@ -80,5 +88,7 @@ def load_config(path: Path, section: str) -> Config:
         extensions=raw.get("extensions", [".py"]),
         filters=cfg_filters,
         skip_empty=raw.get("skip_empty", True),
+        code_fence=code_fence,
         python=py_cfg,
+        markdown=md_cfg,
     )
