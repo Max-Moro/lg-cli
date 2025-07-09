@@ -29,6 +29,11 @@ def _build_parser() -> argparse.ArgumentParser:
         help="List available sections in the config and exit"
     )
     p.add_argument(
+        "--context",
+        metavar="NAME",
+        help="Generate a prompt from template lg-cfg/contexts/NAME.tmpl.md"
+    )
+    p.add_argument(
         "--mode", choices=("all", "changes"), default="all",
         help="all = entire project; changes = only modified git files"
     )
@@ -50,9 +55,23 @@ def main() -> None:                       # entry-point from pyproject
     parser = _build_parser()
     ns = parser.parse_args()
 
-    # Опция --list-sections
+    # Опция --context: запускаем шаблонную генерацию вместо обычного листинга
     root = Path(ns.root).resolve()
     cfg_path = root / ns.config
+    if ns.context:
+        # при контексте прокидываем флаг list_included для отладки
+        from lg.context import generate_context
+        try:
+            generate_context(
+                context_name=ns.context,
+                list_only=ns.list_included,
+            )
+        except Exception as e:
+            print(f"Error: {e}", file=sys.stderr)
+            sys.exit(1)
+        sys.exit(0)
+
+    # Опция --list-sections
     if ns.list_sections:
         try:
             sections = list_sections(cfg_path)
