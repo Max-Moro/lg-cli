@@ -7,7 +7,7 @@ from ..adapters.markdown import LangMarkdown
 from ..adapters.python import LangPython
 from ..filters.model import FilterNode
 
-SCHEMA_VERSION: int = 4
+SCHEMA_VERSION: int = 5
 
 
 # ------------------------ корневой конфиг ----------------------- #

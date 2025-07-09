@@ -4,6 +4,7 @@ import subprocess
 import sys
 from pathlib import Path
 from typing import List, Set
+from itertools import groupby
 
 from ..adapters import get_adapter_for_path
 from ..config.model import Config
@@ -74,8 +75,6 @@ def generate_listing(
             if cfg.skip_empty and not text.strip():
                 continue
 
-        text = adapter.process(text, lang_cfg)
-
         # накапливаем запись для генерации
         entries.append((fp, rel_posix, adapter, text))
 
@@ -88,32 +87,37 @@ def generate_listing(
         return
 
     # 4. генерация вывода: fenced или простая склейка
+    out_lines: List[str] = []
+
     if cfg.code_fence:
-        out_lines: List[str] = []
-        prev_lang: str | None = None
+        # разбиваем подряд по языку fenced-блока
+        for lang, group_iter in groupby(entries, key=lambda e: get_language_for_file(e[0])):
+            group = list(group_iter)
+            group_size = len(group)
+            # открываем fenced-блок
+            out_lines.append(f"```{lang}\n")
+
+            for fp, rel_posix, adapter, text in group:
+                # универсальный вызов адаптера
+                adapter_cfg = getattr(cfg, adapter.name, None)
+                text = adapter.process(text, adapter_cfg, group_size, True)
+
+                out_lines.append(f"# —— FILE: {rel_posix} ——\n")
+                out_lines.append(text)
+                out_lines.append("\n\n")
+
+            # закрываем fenced-блок
+            out_lines.append("```\n")
+    else:
+        # единый «смешанный» листинг без fenced-блоков
+        group_size = len(entries)
         for fp, rel_posix, adapter, text in entries:
-            # определяем язык fenced-блока
-            lang = get_language_for_file(fp)
-            # при смене языка закрываем предыдущий fenced-блок
-            if lang != prev_lang:
-                if prev_lang is not None:
-                    out_lines.append("```\n\n")
-                # открываем новый fenced-блок (без указания напр. "```" если lang=="")
-                out_lines.append(f"```{lang}\n")
-                prev_lang = lang
-            # вставляем маркер файла и содержимое
+            # универсальный вызов адаптера
+            adapter_cfg = getattr(cfg, adapter.name, None)
+            text = adapter.process(text, adapter_cfg, group_size, False)
+
             out_lines.append(f"# —— FILE: {rel_posix} ——\n")
             out_lines.append(text)
             out_lines.append("\n\n")
-        # закрываем последний fenced-блок
-        if prev_lang is not None:
-            out_lines.append("```\n")
-        sys.stdout.write("".join(out_lines))
-    else:
-        # старое поведение: простая последовательная склейка
-        out_lines: List[str] = []
-        for fp, rel_posix, adapter, text in entries:
-            out_lines.append(f"# —— FILE: {rel_posix} ——\\n")
-            out_lines.append(text)
-            out_lines.append("\\n\\n")
-        sys.stdout.write("".join(out_lines))
+
+    sys.stdout.write("".join(out_lines))

@@ -9,5 +9,5 @@ def test_parser_code_fence_and_max_heading_level():
 def test_parser_defaults():
     parser = _build_parser()
     args = parser.parse_args([])
-    assert args.code_fence is False
+    assert args.code_fence is True
     assert args.max_heading_level is None

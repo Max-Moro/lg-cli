@@ -3,6 +3,7 @@ import sys
 import pytest
 
 import lg.cli as cli_mod
+from lg.config import SCHEMA_VERSION
 
 
 @pytest.fixture(autouse=True)
@@ -16,7 +17,7 @@ def isolate_env(monkeypatch, tmp_path):
 
     # Простейший config.yaml с одной секцией 'sec'
     (cfg_dir / "config.yaml").write_text(
-        "schema_version: 4\nsec: {}\n"
+        f"schema_version: {SCHEMA_VERSION}\nsec: {{}}\n"
     )
 
     # Шаблон contexts/ctx.tmpl.md

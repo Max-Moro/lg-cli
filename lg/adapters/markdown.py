@@ -25,11 +25,12 @@ class MarkdownAdapter(BaseAdapter):
     extensions = {".md"}
     config_cls = LangMarkdown
 
-    def process(self, text: str, cfg: LangMarkdown) -> str:
+    def process(self, text: str, cfg: LangMarkdown, group_size: int, fence_enabled: bool) -> str:
         """
         Нормализует уровни заголовков:
-          1) Если первая строка — top-level "# ...", удаляем её.
-          2) Сдвигаем все заголовки так, чтобы min_level == cfg.max_heading_level.
+          1) Если group_size == 1 и первая строка — "# ...", удаляем её.
+          2) Если cfg.max_heading_level задан, сдвигаем все заголовки так, чтобы
+             минимальный уровень стал равен max_heading_level.
         """
         import re
 
@@ -37,8 +38,8 @@ class MarkdownAdapter(BaseAdapter):
             return text
 
         lines = text.splitlines()
-        # Шаг 1: убрать top-level header, если есть
-        if lines and re.match(r"^#\s", lines[0]):
+        # Шаг 1: если группа из одного файла — убрать top-level "# "
+        if group_size == 1 and lines and re.match(r"^#\s", lines[0]):
             lines = lines[1:]
 
         # Собираем все уровни заголовков

@@ -79,7 +79,7 @@ def load_config(path: Path, section: str) -> Config:
     md_cfg = LangMarkdown(**raw.get("markdown", {}))
 
     # --- глобальная опция code_fence для всех файлов ---
-    code_fence = bool(raw.get("code_fence", False))
+    code_fence = bool(raw.get("code_fence", True))
 
     # --- дерево фильтров ---
     cfg_filters = FilterNode.from_dict(raw.get("filters", {"mode": "block"}))

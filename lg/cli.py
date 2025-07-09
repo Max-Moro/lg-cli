@@ -57,6 +57,7 @@ def _build_parser() -> argparse.ArgumentParser:
     p.add_argument(
         "--code-fence",
         action="store_true",
+        default=True,
         help="Wrap each file listing in fenced markdown block (```lang)",
     )
     p.add_argument(

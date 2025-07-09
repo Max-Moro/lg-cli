@@ -225,7 +225,7 @@ all:
    
    markdown:
      # нормализовать заголовки не выше H3
-     max_heading_level: 3          
+     max_heading_level: 3
    
    # --- Система фильтрации (Allow/Block-Tree) ---
    filters:
