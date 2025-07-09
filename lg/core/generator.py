@@ -74,6 +74,8 @@ def generate_listing(
             if cfg.skip_empty and not text.strip():
                 continue
 
+        text = adapter.process(text, lang_cfg)
+
         # накапливаем запись для генерации
         entries.append((fp, rel_posix, adapter, text))
 

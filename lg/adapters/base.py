@@ -22,6 +22,10 @@ class BaseAdapter:
         """True → файл исключается (языковые эвристики)."""
         return False
 
+    def process(self, text: str, cfg) -> str:
+        """По умолчанию ничего не меняем в содержимом."""
+        return text
+
     # --- регистрация --------------------------------------------------------
     @classmethod
     def register(cls, adapter_cls: Type["BaseAdapter"]):
