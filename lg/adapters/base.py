@@ -22,14 +22,14 @@ class BaseAdapter:
         """True → файл исключается (языковые эвристики)."""
         return False
 
-    def process(self, text: str, cfg, group_size: int, fence_enabled: bool) -> str:
+    def process(self, text: str, cfg, group_size: int, mixed: bool) -> str:
         """
         Точка расширения для адаптеров: обрабатывает тело файла перед вставкой.
         По умолчанию ничего не меняем.
         :param text: исходный текст
         :param cfg: соответствующий dataclass-конфиг (или None)
         :param group_size: сколько файлов в этой языковой группе
-        :param fence_enabled: включён ли fenced режим целиком
+        :param mixed: смешивается ли листинг с другими типами языков
         """
         return text
 

@@ -1,7 +1,7 @@
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass
-from pathlib import Path
 
 from lg.adapters.base import BaseAdapter
 
@@ -25,16 +25,15 @@ class MarkdownAdapter(BaseAdapter):
     extensions = {".md"}
     config_cls = LangMarkdown
 
-    def process(self, text: str, cfg: LangMarkdown, group_size: int, fence_enabled: bool) -> str:
+    def process(self, text: str, cfg: LangMarkdown, group_size: int, mixed: bool) -> str:
         """
         Нормализует уровни заголовков:
           1) Если group_size == 1 и первая строка — "# ...", удаляем её.
           2) Если cfg.max_heading_level задан, сдвигаем все заголовки так, чтобы
              минимальный уровень стал равен max_heading_level.
         """
-        import re
 
-        if cfg.max_heading_level is None:
+        if mixed or cfg.max_heading_level is None:
             return text
 
         lines = text.splitlines()

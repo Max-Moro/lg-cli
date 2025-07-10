@@ -18,9 +18,10 @@ LANG_MAPPING: Final[dict[str, str]] = {
     ".sh": "bash",
     ".bash": "bash",
     ".zsh": "bash",
-    ".md": "",            # без метки
+    ".md": "",
     ".markdown": "",
-    ".json": "",
+    ".txt": "",
+    ".json": "json",
     ".yml": "yaml",
     ".yaml": "yaml",
     ".ini": "",
@@ -38,7 +39,6 @@ LANG_MAPPING: Final[dict[str, str]] = {
     ".sql": "sql",
 
     # Специальные имена
-    "requirements.txt": "bash",
     "pyproject.toml": "toml",
     "Pipfile": "",
     "pom.xml": "xml",

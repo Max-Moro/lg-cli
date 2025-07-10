@@ -2,11 +2,12 @@ from __future__ import annotations
 
 import subprocess
 import sys
-from pathlib import Path
-from typing import List, Set
 from itertools import groupby
+from pathlib import Path
+from typing import List, Set, cast
 
 from ..adapters import get_adapter_for_path
+from ..adapters.base import BaseAdapter
 from ..config.model import Config
 from ..filters.engine import FilterEngine
 from ..lang import get_language_for_file
@@ -87,9 +88,18 @@ def generate_listing(
         return
 
     # 4. генерация вывода: fenced или простая склейка
+
+    # собираем базовые флаги: чисто Markdown? какие языки?
+    md_only = all(adapter.name == "markdown" for _, _, adapter, _ in entries)
+    # fenced работает только если code_fence=True и не чисто MD
+    use_fence = cfg.code_fence and not md_only
+    # mixed = True, если в секции несколько языков и без fenced
+    langs = { get_language_for_file(fp) for fp, *_ in entries }
+    mixed = not use_fence and len(langs) > 1
+
     out_lines: List[str] = []
 
-    if cfg.code_fence:
+    if use_fence:
         # разбиваем подряд по языку fenced-блока
         for lang, group_iter in groupby(entries, key=lambda e: get_language_for_file(e[0])):
             group = list(group_iter)
@@ -98,25 +108,34 @@ def generate_listing(
             out_lines.append(f"```{lang}\n")
 
             for fp, rel_posix, adapter, text in group:
+                adapter = cast(BaseAdapter, adapter)
                 # универсальный вызов адаптера
                 adapter_cfg = getattr(cfg, adapter.name, None)
-                text = adapter.process(text, adapter_cfg, group_size, True)
+                text = adapter.process(text, adapter_cfg, group_size, False)
+                # убираем дублированные переносы в конце — оставляем ровно один
+                text = text.rstrip("\n") + "\n"
 
-                out_lines.append(f"# —— FILE: {rel_posix} ——\n")
+                # разделитель НЕ рисуем для Markdown в fenced-блоке
+                if not (adapter.name == "markdown"):
+                    out_lines.append(f"# —— FILE: {rel_posix} ——\n")
                 out_lines.append(text)
                 out_lines.append("\n\n")
 
             # закрываем fenced-блок
-            out_lines.append("```\n")
+            out_lines.append("```\n\n")
     else:
         # единый «смешанный» листинг без fenced-блоков
         group_size = len(entries)
         for fp, rel_posix, adapter, text in entries:
-            # универсальный вызов адаптера
             adapter_cfg = getattr(cfg, adapter.name, None)
-            text = adapter.process(text, adapter_cfg, group_size, False)
+            # mixed=True если несколько языков и без fenced
+            text = adapter.process(text, adapter_cfg, group_size, mixed)
+            # убираем дублированные переносы в конце — оставляем ровно один
+            text = text.rstrip("\n") + "\n"
 
-            out_lines.append(f"# —— FILE: {rel_posix} ——\n")
+            # разделитель рисуем только если не чисто MD и не Markdown
+            if not (md_only or adapter.name == "markdown"):
+                out_lines.append(f"# —— FILE: {rel_posix} ——\n")
             out_lines.append(text)
             out_lines.append("\n\n")
 
