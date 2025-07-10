@@ -33,6 +33,7 @@ class MarkdownAdapter(BaseAdapter):
              минимальный уровень стал равен max_heading_level.
         """
 
+        # нормализуем, если не mixed и задан max_heading_level
         if mixed or cfg.max_heading_level is None:
             return text
 
@@ -41,18 +42,36 @@ class MarkdownAdapter(BaseAdapter):
         if group_size == 1 and lines and re.match(r"^#\s", lines[0]):
             lines = lines[1:]
 
-        # Собираем все уровни заголовков
-        levels = [len(m.group(1)) for line in lines if (m := re.match(r"^(#+)\s", line))]
+        # Собираем уровни заголовков вне fenced-блоков
+        levels: list[int] = []
+        in_fence = False
+        for line in lines:
+            if re.match(r"^```", line):
+                in_fence = not in_fence
+                continue
+            if in_fence:
+                continue
+            if (m := re.match(r"^(#+)\s", line)):
+                levels.append(len(m.group(1)))
         if not levels:
+            # нет заголовков для нормализации; возвращаем исходный текст
             return "\n".join(lines)
 
         min_lvl = min(levels)
         shift = cfg.max_heading_level - min_lvl
 
+        # Применяем сдвиг только вне fenced-блоков
         out: list[str] = []
+        in_fence = False
         for line in lines:
-            m = re.match(r"^(#+)\s", line)
-            if m:
+            if re.match(r"^```", line):
+                in_fence = not in_fence
+                out.append(line)
+                continue
+            if in_fence:
+                out.append(line)
+                continue
+            if (m := re.match(r"^(#+)\s", line)):
                 hashes = "#" * (len(m.group(1)) + shift)
                 rest = line[m.end():]
                 out.append(f"{hashes} {rest}")
