@@ -4,10 +4,9 @@ import subprocess
 import sys
 from itertools import groupby
 from pathlib import Path
-from typing import List, Set, cast
+from typing import List, Set
 
 from ..adapters import get_adapter_for_path
-from ..adapters.base import BaseAdapter
 from ..config.model import Config
 from ..filters.engine import FilterEngine
 from ..lang import get_language_for_file
@@ -107,28 +106,28 @@ def generate_listing(
             # открываем fenced-блок
             out_lines.append(f"```{lang}\n")
 
-            for fp, rel_posix, adapter, text in group:
-                adapter = cast(BaseAdapter, adapter)
+            for idx, (fp, rel_posix, adapter, text) in enumerate(group):
                 # универсальный вызов адаптера
                 adapter_cfg = getattr(cfg, adapter.name, None)
                 text = adapter.process(text, adapter_cfg, group_size, False)
-                # убираем дублированные переносы в конце — оставляем ровно один
+                # убираем дублированные переносы в конце — оставляем один
                 text = text.rstrip("\n") + "\n"
-
                 # разделитель НЕ рисуем для Markdown в fenced-блоке
-                if not (adapter.name == "markdown"):
+                if adapter.name != "markdown":
                     out_lines.append(f"# —— FILE: {rel_posix} ——\n")
                 out_lines.append(text)
-                out_lines.append("\n\n")
+                # добавляем разделитель только между файлами, но не после последнего
+                if idx < group_size - 1:
+                    out_lines.append("\n\n")
 
             # закрываем fenced-блок
             out_lines.append("```\n\n")
     else:
         # единый «смешанный» листинг без fenced-блоков
         group_size = len(entries)
-        for fp, rel_posix, adapter, text in entries:
+        for idx, (fp, rel_posix, adapter, text) in enumerate(entries):
+            # универсальный вызов адаптера
             adapter_cfg = getattr(cfg, adapter.name, None)
-            # mixed=True если несколько языков и без fenced
             text = adapter.process(text, adapter_cfg, group_size, mixed)
             # убираем дублированные переносы в конце — оставляем ровно один
             text = text.rstrip("\n") + "\n"
@@ -137,6 +136,8 @@ def generate_listing(
             if not (md_only or adapter.name == "markdown"):
                 out_lines.append(f"# —— FILE: {rel_posix} ——\n")
             out_lines.append(text)
-            out_lines.append("\n\n")
+            # добавляем разделитель только между файлами, но не после последнего
+            if idx < group_size - 1:
+                out_lines.append("\n\n")
 
     sys.stdout.write("".join(out_lines))
