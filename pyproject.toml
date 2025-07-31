@@ -12,6 +12,7 @@ requires-python = ">=3.8"
 dependencies = [
     "ruamel.yaml>=0.18",
     "pathspec>=0.12",
+    "tiktoken>=0.6",
 ]
 
 [project.scripts]

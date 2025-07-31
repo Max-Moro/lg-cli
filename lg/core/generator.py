@@ -28,8 +28,13 @@ def _collect_changed_files(root: Path) -> Set[str]:
     return {Path(p).as_posix() for p in files if p}
 
 def generate_listing(
-    *, root: Path, cfg: Config, mode: str = "all", list_only: bool = False
-) -> None:
+    *,
+    root: Path,
+    cfg: Config,
+    mode: str = "all",
+    list_only: bool = False,
+    _return_stats: bool = False,            # ← внутр. флаг для stats-режима
+):
     # 1. подготовка
     # → если каких-то полей нет в cfg, берём безопасные дефолты
     exts = {e.lower() for e in cfg.extensions}
@@ -55,9 +60,13 @@ def generate_listing(
         if not engine.includes(rel_posix):
             continue
 
-        # Если нужен лишь список — откладываем путь и продолжаем.
         if list_only:
-            listed_paths.append(rel_posix)
+            if _return_stats:
+                size_bytes = fp.stat().st_size
+                # token counting переедет в stats.collect() — здесь немедленно не нужно
+                listed_paths.append((fp, rel_posix, size_bytes))
+            else:
+                listed_paths.append(rel_posix)
             continue
 
         # полный текст и адаптер для этого файла
@@ -78,13 +87,17 @@ def generate_listing(
         # накапливаем запись для генерации
         entries.append((fp, rel_posix, adapter, text))
 
-    # 3. режим «--list-included»: выводим только пути и выходим
+    # 3. режим «--list-included»: выводим статистику или просто пути
     if list_only:
-        listing = "\n".join(sorted(listed_paths))
-        if listed_paths:
-            listing += "\n"
-        sys.stdout.write(listing)
-        return
+        if _return_stats:
+            # stats-режим: возвращаем собранные данные о файлах
+            return listed_paths          # list[(Path, rel_path, size_bytes)]
+        else:
+            listing = "\n".join(sorted(listed_paths))
+            if listed_paths:
+                listing += "\n"
+            sys.stdout.write(listing)
+            return
 
     # 4. генерация вывода: fenced или простая склейка
 

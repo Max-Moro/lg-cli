@@ -81,7 +81,7 @@ git submodule update --remote lg
 
 > Работает только если вся команда использует совместимую ОС; симлинки в Windows требуют режим *Developer Mode* или админ‑права.
 
-**Windows (PowerShell ≥ 5):**
+**Windows (PowerShell ≥ 5):**
 
 ```powershell
 New-Item -ItemType SymbolicLink -Path lg -Target C:\path\to\lg

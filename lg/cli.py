@@ -4,15 +4,16 @@ import argparse
 import logging
 from pathlib import Path
 
-from lg.config import (
+from .config import (
     load_config,
     list_sections,
     DEFAULT_CONFIG_DIR,
     DEFAULT_CONFIG_FILE,
     DEFAULT_SECTION_NAME,
 )
-from lg.core.generator import generate_listing
-from lg.context import generate_context
+from .core.generator import generate_listing
+from .context import generate_context
+from .stats import collect_stats_and_print
 
 
 def _build_parser() -> argparse.ArgumentParser:
@@ -65,6 +66,22 @@ def _build_parser() -> argparse.ArgumentParser:
         type=int,
         default=None,
         help="Max heading level for Markdown normalization (overrides config)",
+    )
+    p.add_argument(
+        "--stats",
+        action="store_true",
+        help="Print size/token analytics instead of plain paths (use with --list-included)",
+    )
+    p.add_argument(
+        "--sort",
+        choices=("path", "size", "share"),
+        default="path",
+        help="Sorting column for --stats (default: path)",
+    )
+    p.add_argument(
+        "--model",
+        default="o3",
+        help="Target LLM context window for --stats (default: o3)",
     )
     return p
 
@@ -120,7 +137,7 @@ def main() -> None:
             sys.exit(1)
         return
 
-    # 5. Обычный режим листинга одной секции
+    # 5. Обычный режим листинга / list-included / stats
     try:
         cfg = load_config(cfg_path, ns.section)
     except Exception as e:
@@ -134,12 +151,21 @@ def main() -> None:
     if ns.max_heading_level is not None:
         cfg.markdown.max_heading_level = ns.max_heading_level
 
-    generate_listing(
-        root=root,
-        cfg=cfg,
-        mode=ns.mode,
-        list_only=ns.list_included,
-    )
+    if ns.list_included and ns.stats:
+        collect_stats_and_print(
+            root=root,
+            cfg=cfg,
+            mode=ns.mode,
+            sort_key=ns.sort,
+            model_name=ns.model,
+        )
+    else:
+        generate_listing(
+            root=root,
+            cfg=cfg,
+            mode=ns.mode,
+            list_only=ns.list_included,
+        )
 
 
 if __name__ == "__main__":
