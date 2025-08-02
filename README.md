@@ -50,7 +50,7 @@ my-project/
 ├─ lg-cfg/                 # вся конфигурация для lg
 │   ├─ config.yaml         # мультисекционный YAML-конфиг
 │   └─ contexts/           # папка с Markdown-шаблонами промтов
-│       └─ <имя>.tmpl.md   # шаблон для контекстного промта
+│       └─ <имя>.tpl.md   # шаблон для контекстного промта
 └─ …                       # остальная структура вашего проекта
 
 ````
@@ -164,7 +164,7 @@ options:
     * --model NAME              Целевая LLM-модель для расчёта доли окна контекста (default: o3)
   --list-sections           Вывести список доступных секций
   --list-sections           Вывести список доступных секций
-  --context NAME            Сгенерировать промт по шаблону NAME.tmpl.md
+  --context NAME            Сгенерировать промт по шаблону NAME.tpl.md
   --code-fence              Оборачивать каждый файл в fenced-блок (\`\`\`lang) (override config.code\_fence)
   --max-heading-level N     Максимальный уровень заголовков для нормализации Markdown (override config.markdown.max\_heading\_level)
   -v, --verbose             Увеличить подробность логов (можно -vv)

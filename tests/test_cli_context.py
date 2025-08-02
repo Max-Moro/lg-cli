@@ -20,8 +20,8 @@ def isolate_env(monkeypatch, tmp_path):
         f"schema_version: {SCHEMA_VERSION}\nsec: {{}}\n"
     )
 
-    # Шаблон contexts/ctx.tmpl.md
-    (cfg_dir / "contexts" / "ctx.tmpl.md").write_text(
+    # Шаблон contexts/ctx.tpl.md
+    (cfg_dir / "contexts" / "ctx.tpl.md").write_text(
         "Hello ${sec}"
     )
 

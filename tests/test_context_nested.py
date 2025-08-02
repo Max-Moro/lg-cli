@@ -11,7 +11,7 @@ class DummyCfg:
 
 
 def _write(ctx_dir: Path, rel: str, body: str):
-    p = ctx_dir / f"{rel}.tmpl.md"
+    p = ctx_dir / f"{rel}.tpl.md"
     p.parent.mkdir(parents=True, exist_ok=True)
     p.write_text(body, encoding="utf-8")
 

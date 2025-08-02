@@ -28,12 +28,12 @@ def patch_generate(monkeypatch):
 def write_template(tmp_path: Path, context_name: str, content: str):
     """
     Создаёт файл шаблона:
-      <tmp_path>/lg-cfg/contexts/{context_name}.tmpl.md
+      <tmp_path>/lg-cfg/contexts/{context_name}.tpl.md
     """
-    tmpl_dir = tmp_path / "lg-cfg" / "contexts"
-    tmpl_dir.mkdir(parents=True, exist_ok=True)
-    tmpl_file = tmpl_dir / f"{context_name}.tmpl.md"
-    tmpl_file.write_text(content, encoding="utf-8")
+    tpl_dir = tmp_path / "lg-cfg" / "contexts"
+    tpl_dir.mkdir(parents=True, exist_ok=True)
+    tpl_file = tpl_dir / f"{context_name}.tpl.md"
+    tpl_file.write_text(content, encoding="utf-8")
 
 
 class DummyCfg:

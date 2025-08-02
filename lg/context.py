@@ -41,8 +41,8 @@ def generate_context(
 # --------------------------------------------------------------------------- #
 
 def _template_path(root: Path, name: str) -> Path:
-    """`docs/arch` → <root>/lg-cfg/contexts/docs/arch.tmpl.md"""
-    return root / DEFAULT_CONFIG_DIR / "contexts" / f"{name}.tmpl.md"
+    """`docs/arch` → <root>/lg-cfg/contexts/docs/arch.tpl.md"""
+    return root / DEFAULT_CONFIG_DIR / "contexts" / f"{name}.tpl.md"
 
 
 def _collect_placeholders(template: ContextTemplate) -> Set[str]:
@@ -69,13 +69,13 @@ def _render_template(
         cycle = " → ".join(stack + [context_name])
         raise RuntimeError(f"Template cycle detected: {cycle}")
 
-    tmpl_path = _template_path(root, context_name)
-    if not tmpl_path.is_file():
-        raise RuntimeError(f"Template not found: {tmpl_path}")
+    tpl_path = _template_path(root, context_name)
+    if not tpl_path.is_file():
+        raise RuntimeError(f"Template not found: {tpl_path}")
 
     stack.append(context_name)
 
-    text = tmpl_path.read_text(encoding="utf-8")
+    text = tpl_path.read_text(encoding="utf-8")
     tpl = ContextTemplate(text)
 
     mapping: Dict[str, str] = {}
