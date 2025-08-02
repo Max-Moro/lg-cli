@@ -36,8 +36,11 @@ def _build_parser() -> argparse.ArgumentParser:
     )
     p.add_argument(
         "--context",
-        metavar="NAME",
-        help="Generate a prompt from template lg-cfg/contexts/NAME.tmpl.md",
+        metavar="PATH",
+        help=(
+            "Generate a prompt from template lg-cfg/contexts/PATH.tmpl.md. "
+            "PATH may include sub-directories, use forward slashes."
+        ),
     )
     p.add_argument(
         "--mode",
