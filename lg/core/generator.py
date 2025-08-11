@@ -7,6 +7,7 @@ from pathlib import Path
 from typing import List, Set
 
 from ..adapters import get_adapter_for_path
+from ..config import DEFAULT_CONFIG_DIR
 from ..config.model import Config
 from ..filters.engine import FilterEngine
 from ..lang import get_language_for_file
@@ -45,6 +46,8 @@ def generate_listing(
 
     # Путь до установленного пакета инструмента (…/lg/)
     tool_dir = Path(__file__).resolve().parent.parent
+    # Папка с конфигом инструмента внутри текущего проекта, которую всегда исключаем из листинга
+    cfg_dir = (root / DEFAULT_CONFIG_DIR).resolve()
 
     # Определяем, хотим ли мы исключать собственный код инструмента.
     # По умолчанию – да (режим сабмодуля/симлинка), но если конфиг ЯВНО
@@ -71,6 +74,13 @@ def generate_listing(
     entries: List[tuple[Path, str, object, str]] = []
     listed_paths: List[str] = []
     for fp in iter_files(root, exts, spec_git):
+        # Никогда не включаем служебную директорию lg-cfg/ в листинг
+        try:
+            fp.resolve().relative_to(cfg_dir)
+            continue  # файл лежит внутри lg-cfg/ → пропускаем безусловно
+        except ValueError:
+            pass
+
         # Пропускаем self-код инструмента только если это не было явно разрешено конфигом
         if skip_self_code and (tool_dir in fp.resolve().parents):
             continue
