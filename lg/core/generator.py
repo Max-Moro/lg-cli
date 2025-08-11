@@ -43,14 +43,36 @@ def generate_listing(
     engine = FilterEngine(cfg.filters)
     changed = _collect_changed_files(root) if mode == "changes" else None
 
-    tool_dir = Path(__file__).resolve().parent.parent  # …/lg/
+    # Путь до установленного пакета инструмента (…/lg/)
+    tool_dir = Path(__file__).resolve().parent.parent
+
+    # Определяем, хотим ли мы исключать собственный код инструмента.
+    # По умолчанию – да (режим сабмодуля/симлинка), но если конфиг ЯВНО
+    # разрешает папку самого инструмента (например, allow: "/lg/"),
+    # то выключаем авто-игнор.
+    skip_self_code = True
+    try:
+        # Если пакет лежит внутри текущего проекта, получаем его относительный путь
+        rel_tool = tool_dir.resolve().relative_to(root.resolve()).as_posix()
+        # Явное разрешение: достаточно, чтобы фильтры включали любой реальный файл из пакета.
+        # Проверяем типичные имена, присутствующие в проекте.
+        if (
+            engine.includes(f"{rel_tool}/cli.py")
+            or engine.includes(f"{rel_tool}/__init__.py")
+        ):
+            skip_self_code = False
+    except ValueError:
+        # Пакет установлен вне root (site-packages и т. п.) — дополнительной фильтрации не требуется.
+        # Оставляем skip_self_code=True, но условие ниже всё равно не сработает,
+        # так как tool_dir не является родителем ни одного файла в проекте.
+        pass
 
     # 2. обход проекта: собираем данные или пути
     entries: List[tuple[Path, str, object, str]] = []
     listed_paths: List[str] = []
     for fp in iter_files(root, exts, spec_git):
-        # пропускаем self-код
-        if tool_dir in fp.resolve().parents:
+        # Пропускаем self-код инструмента только если это не было явно разрешено конфигом
+        if skip_self_code and (tool_dir in fp.resolve().parents):
             continue
 
         rel_posix = fp.relative_to(root).as_posix()

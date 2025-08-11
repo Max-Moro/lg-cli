@@ -1,0 +1,15 @@
+schema_version: 5
+docs-intro:
+  extensions: [".md"]
+  filters:
+    mode: allow
+    allow:
+      - "/README.md"
+
+common-src:
+  extensions: [".py", ".toml"]
+  filters:
+    mode: allow
+    allow:
+      - "/lg/"
+      - "/pyproject.toml"
