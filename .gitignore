@@ -22,3 +22,6 @@ build/
 
 # Docs
 site/
+
+# AI Chat
+.ai_chat
