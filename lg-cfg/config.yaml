@@ -11,5 +11,8 @@ common-src:
   filters:
     mode: allow
     allow:
-      - "/lg/"
       - "/pyproject.toml"
+      - "/lg/"
+      - "/tests/test_adapters_registry.py"
+      - "/tests/test_filters_engine.py"
+      - "/tests/test_adapter_python.py"
