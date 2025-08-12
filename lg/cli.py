@@ -1,5 +1,6 @@
 from __future__ import annotations
 import sys
+import os
 import argparse
 import logging
 from pathlib import Path
@@ -14,6 +15,25 @@ from .config import (
 from .core.generator import generate_listing
 from .context import generate_context
 from .stats import collect_stats_and_print
+
+
+def _ensure_utf8_stdout_stderr() -> None:
+    """
+    На Windows консоль часто в cp1251 → любые юникод-символы (✓, эм-деши, «рамки»)
+    могут привести к UnicodeEncodeError при sys.stdout.write(...).
+    Если пользователь НЕ задал PYTHONIOENCODING/PYTHONUTF8, мягко переключаем stdout/stderr на UTF-8.
+    """
+    if os.environ.get("PYTHONIOENCODING") or os.environ.get("PYTHONUTF8"):
+        return
+    for stream_name in ("stdout", "stderr"):
+        s = getattr(sys, stream_name, None)
+        try:
+            # Python 3.7+: доступен reconfigure()
+            if hasattr(s, "reconfigure"):
+                s.reconfigure(encoding="utf-8", errors="replace")
+        except Exception:
+            # Не критично: в худшем случае остаётся системная кодировка.
+            pass
 
 
 def _build_parser() -> argparse.ArgumentParser:
@@ -172,4 +192,5 @@ def main() -> None:
 
 
 if __name__ == "__main__":
+    _ensure_utf8_stdout_stderr()
     main()
