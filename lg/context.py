@@ -44,6 +44,21 @@ def _template_path(root: Path, name: str) -> Path:
     """`docs/arch` → <root>/lg-cfg/contexts/docs/arch.tpl.md"""
     return root / DEFAULT_CONFIG_DIR / "contexts" / f"{name}.tpl.md"
 
+def list_context_names(root: Path) -> List[str]:
+    """
+    Рекурсивно найти все шаблоны *.tpl.md внутри lg-cfg/contexts/
+    и вернуть их имена в виде относительных путей без суффикса (e.g. 'docs/arch').
+    """
+    base = root / DEFAULT_CONFIG_DIR / "contexts"
+    if not base.is_dir():
+        return []
+    names: List[str] = []
+    for p in base.rglob("*.tpl.md"):
+        rel = p.relative_to(base).as_posix()
+        if rel.endswith(".tpl.md"):
+            names.append(rel[:-7])  # срезаем '.tpl.md'
+    names.sort()
+    return names
 
 def _collect_placeholders(template: ContextTemplate) -> Set[str]:
     """Возвращает идентификаторы из шаблона (named + braced)."""

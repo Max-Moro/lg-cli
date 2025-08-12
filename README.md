@@ -152,7 +152,7 @@ usage: listing-generator [-h] [-s SECTION] [--mode {all,changes}]
                          [--list-included] [--list-sections]
                          [--context NAME] [--code-fence] [--max-heading-level N]
                          [--stats] [--sort {path,size,share}] [--model NAME]
-                         [-v]
+                         [-v] [--json]
 
 options:
   -h, --help                Show this help message and exit.
@@ -168,6 +168,7 @@ options:
   --code-fence              Оборачивать каждый файл в fenced-блок (\`\`\`lang) (override config.code\_fence)
   --max-heading-level N     Максимальный уровень заголовков для нормализации Markdown (override config.markdown.max\_heading\_level)
   -v, --verbose             Увеличить подробность логов (можно -vv)
+  --json                    Ответ в формате JSON (нужен для интеграции с другими инструментами)
 ```
 
 ---

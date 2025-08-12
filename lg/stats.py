@@ -6,8 +6,8 @@ from typing import List, Callable
 
 import tiktoken
 
-from .core.generator import generate_listing
 from .config.model import Config
+from .core.generator import generate_listing
 
 # --------------------------------------------------------------------------- #
 # 1. предустановленные модели и их окна
@@ -47,18 +47,16 @@ def _hr_size(n: int) -> str:
     return f"{n:.1f} GiB"
 
 # --------------------------------------------------------------------------- #
-# 4. public API
+# 4. public API (JSON-friendly)
 # --------------------------------------------------------------------------- #
 
-
-def collect_stats_and_print(
+def collect_stats(
     *,
     root: Path,
     cfg: Config,
     mode: str,
-    sort_key: str,
     model_name: str,
-):
+) -> dict:
     # 4.1. проверяем модель
     if model_name not in MODEL_CTX:
         raise RuntimeError(
@@ -85,13 +83,54 @@ def collect_stats_and_print(
                 tokens += len(enc.encode(chunk.decode("utf-8", errors="ignore")))
         stats.append(FileStat(rel_posix, size_bytes, tokens))
 
-    if not stats:
+    total_tokens = sum(s.tokens for s in stats)
+    result = {
+        "model": model_name,
+        "ctxLimit": ctx_limit,
+        "total": {
+            "sizeBytes": sum(s.size for s in stats),
+            "tokens": total_tokens,
+            "ctxShare": (total_tokens / ctx_limit * 100) if ctx_limit else 0.0,
+        },
+        "files": [
+            {
+                "path": s.path,
+                "sizeBytes": s.size,
+                "tokens": s.tokens,
+                "promptShare": (s.tokens / total_tokens * 100) if total_tokens else 0.0,
+                "ctxShare": (s.tokens / ctx_limit * 100) if ctx_limit else 0.0,
+            }
+            for s in stats
+        ],
+    }
+    return result
+
+
+def collect_stats_and_print(
+    *,
+    root: Path,
+    cfg: Config,
+    mode: str,
+    sort_key: str,
+    model_name: str,
+):
+    data = collect_stats(root=root, cfg=cfg, mode=mode, model_name=model_name)
+    stats_items = data["files"]
+    if not stats_items:
         print("(no files)")
         return
 
-    total_tokens = sum(s.tokens for s in stats)
-
     # 4.3. сортировка
+    # восстановим FileStat список для сортировки печати
+    stats: List[FileStat] = [
+        FileStat(
+            path=it["path"],
+            size=it["sizeBytes"],
+            tokens=it["tokens"],
+        )
+        for it in stats_items
+    ]
+    total_tokens = sum(s.tokens for s in stats)
     KEY: dict[str, Callable[[FileStat], object]] = {
         "path":  lambda s: s.path,
         "size":  lambda s: (-s.size, s.path),
@@ -110,7 +149,8 @@ def collect_stats_and_print(
     print("─" * 40, "─" * 9, "─" * 9, "─" * 8, "─" * 6, sep="")
 
     for s in stats:
-        share_prompt = s.tokens / total_tokens * 100
+        share_prompt = s.tokens / total_tokens * 100 if total_tokens else 0.0
+        ctx_limit = data["ctxLimit"] or 1
         share_ctx = s.tokens / ctx_limit * 100
         overflow = "‼" if share_ctx > 100 else ""
         print(
@@ -124,8 +164,8 @@ def collect_stats_and_print(
     print("─" * 40, "─" * 9, "─" * 9, "─" * 8, "─" * 6, sep="")
     print(
         "TOTAL".ljust(40),
-        _hr_size(sum(s.size for s in stats)).rjust(9),
-        f"{total_tokens}".rjust(9),
+        _hr_size(data["total"]["sizeBytes"]).rjust(9),
+        f"{data['total']['tokens']}".rjust(9),
         "100 %".rjust(8),
-        f"{total_tokens / ctx_limit * 100:5.1f}%".rjust(6),
+        f"{data['total']['ctxShare']:5.1f}%".rjust(6),
     )
