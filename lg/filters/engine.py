@@ -10,13 +10,16 @@ from .model import FilterNode
 
 class _CompiledNode:
     """Внутреннее представление узла с готовыми PathSpec-ами."""
-    __slots__ = ("mode", "allow_ps", "block_ps", "children")
+    __slots__ = ("mode", "allow_ps", "block_ps", "children", "allow_raw", "block_raw")
 
     def __init__(self, src: FilterNode):
         self.mode = src.mode
         # Приводим все маски к lowercase, чтобы матчинг был нечувствителен к регистру
         allow_patterns = [pat.lower() for pat in src.allow]
         block_patterns = [pat.lower() for pat in src.block]
+        # Храним «сырые» списки для эвристик прунинга директорий
+        self.allow_raw = allow_patterns
+        self.block_raw = block_patterns
 
         self.allow_ps = (
             pathspec.PathSpec.from_lines("gitwildmatch", allow_patterns)
@@ -137,12 +140,26 @@ class FilterEngine:
                 # Пустой allow в allow-узле → внутри ничего не разрешено
                 if not nd.allow_ps:
                     return False
-                # Любое совпадение текущего каталога или его "внутренностей" с allow —
-                # признак того, что внутри может быть что-то разрешённое.
-                if (
+                # 2.1 Быстрая эвристика по «сырым» паттернам:
+                #     - basename-паттерн без '/' (напр. "*.md") → может матчиться в любом каталоге
+                #     - паттерн, начинающийся с этого каталога (c/без ведущего '/'): "/dir/..." или "dir/..."
+                #     - паттерн с "**" — потенциально матчится в глубине
+                sub_no_slash = sub.lstrip("/")
+                for pat in nd.allow_raw:
+                    if "**" in pat:
+                        decision = True
+                        break
+                    if "/" not in pat:
+                        decision = True
+                        break
+                    if pat.startswith(sub_no_slash + "/") or pat.startswith("/" + sub_no_slash + "/"):
+                        decision = True
+                        break
+                # 2.2 Консервативная проверка через PathSpec
+                if decision or (
                     nd.allow_ps.match_file(sub) or
                     nd.allow_ps.match_file(sub + "/") or
-                    nd.allow_ps.match_file(sub + "/x")  # грубая эвристика "что-то внутри"
+                    nd.allow_ps.match_file(sub + "/x")
                 ):
                     decision = True
                 else:
