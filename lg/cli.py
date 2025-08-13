@@ -19,7 +19,12 @@ from .config import (
 from .context import generate_context
 from .context import list_context_names, collect_sections_for_context
 from .core.generator import generate_listing
-from .stats import collect_stats_and_print, collect_stats, collect_context_stats
+from .stats import (
+    collect_stats_and_print,
+    collect_stats,
+    collect_context_stats,
+    context_stats_and_print,
+)
 
 PROTOCOL_VERSION = 1
 
@@ -269,49 +274,12 @@ def main() -> None:
                 )
                 print(json.dumps(data, ensure_ascii=False))
             else:
-                # human-friendly таблица общая — используем ту же печать, но по объединенному JSON
-                data = collect_context_stats(
+                context_stats_and_print(
                     root=root,
                     configs=configs_all,
                     context_sections=used,
                     model_name=ns.model,
-                )
-                # быстрый вывод ASCII-таблицы, аналог collect_stats_and_print
-                from .stats import FileStat, _hr_size  # type: ignore
-                stats = [FileStat(f["path"], f["sizeBytes"], f["tokens"]) for f in data["files"]]
-                if not stats:
-                    print("(no files)")
-                    return
-                # sort по path (как дефолт)
-                stats.sort(key=lambda s: s.path)
-                total_tokens = sum(s.tokens for s in stats)
-                print(
-                    "PATH".ljust(40),
-                    "SIZE".rjust(9),
-                    "TOKENS".rjust(9),
-                    "PROMPT%".rjust(8),
-                    "CTX%".rjust(6),
-                )
-                print("─" * 40, "─" * 9, "─" * 9, "─" * 8, "─" * 6, sep="")
-                for s in stats:
-                    share_prompt = s.tokens / total_tokens * 100 if total_tokens else 0.0
-                    ctx_limit = data["ctxLimit"] or 1
-                    share_ctx = s.tokens / ctx_limit * 100
-                    overflow = "‼" if share_ctx > 100 else ""
-                    print(
-                        s.path.ljust(40)[:40],
-                        _hr_size(s.size).rjust(9),
-                        f"{s.tokens}".rjust(9),
-                        f"{share_prompt:6.1f}%".rjust(8),
-                        f"{share_ctx:5.1f}%{overflow}".rjust(6 + len(overflow)),
-                    )
-                print("─" * 40, "─" * 9, "─" * 9, "─" * 8, "─" * 6, sep="")
-                print(
-                    "TOTAL".ljust(40),
-                    _hr_size(data["total"]["sizeBytes"]).rjust(9),
-                    f"{data['total']['tokens']}".rjust(9),
-                    "100 %".rjust(8),
-                    f"{data['total']['ctxShare']:5.1f}%".rjust(6),
+                    sort_key=getattr(ns, "sort", "path"),
                 )
         except Exception as e:
             print(f"Error: {e}", file=sys.stderr)

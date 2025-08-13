@@ -177,6 +177,9 @@ def collect_context_stats(
     }
     return result
 
+# --------------------------------------------------------------------------- #
+# 5. human-friendly print
+# --------------------------------------------------------------------------- #
 def collect_stats_and_print(
     *,
     root: Path,
@@ -232,6 +235,70 @@ def collect_stats_and_print(
             f"{share_ctx:5.1f}%{overflow}".rjust(6 + len(overflow)),
         )
 
+    print("─" * 40, "─" * 9, "─" * 9, "─" * 8, "─" * 6, sep="")
+    print(
+        "TOTAL".ljust(40),
+        _hr_size(data["total"]["sizeBytes"]).rjust(9),
+        f"{data['total']['tokens']}".rjust(9),
+        "100 %".rjust(8),
+        f"{data['total']['ctxShare']:5.1f}%".rjust(6),
+    )
+
+def context_stats_and_print(
+    *,
+    root: Path,
+    configs: Dict[str, Config],
+    context_sections: Set[str],
+    model_name: str,
+    sort_key: str = "path",   # "path" | "size" | "share"
+):
+    data = collect_context_stats(
+        root=root,
+        configs=configs,
+        context_sections=context_sections,
+        model_name=model_name,
+    )
+    stats_items = data["files"]
+    if not stats_items:
+        print("(no files)")
+        return
+
+    stats: List[FileStat] = [
+        FileStat(
+            path=it["path"],
+            size=it["sizeBytes"],
+            tokens=it["tokens"],
+        )
+        for it in stats_items
+    ]
+    total_tokens = sum(s.tokens for s in stats)
+    KEY: dict[str, Callable[[FileStat], object]] = {
+        "path":  lambda s: s.path,
+        "size":  lambda s: (-s.size, s.path),
+        "share": lambda s: (-s.tokens, s.path),
+    }
+    stats.sort(key=KEY.get(sort_key, KEY["path"]))
+
+    print(
+        "PATH".ljust(40),
+        "SIZE".rjust(9),
+        "TOKENS".rjust(9),
+        "PROMPT%".rjust(8),
+        "CTX%".rjust(6),
+    )
+    print("─" * 40, "─" * 9, "─" * 9, "─" * 8, "─" * 6, sep="")
+    for s in stats:
+        share_prompt = s.tokens / total_tokens * 100 if total_tokens else 0.0
+        ctx_limit = data["ctxLimit"] or 1
+        share_ctx = s.tokens / ctx_limit * 100
+        overflow = "‼" if share_ctx > 100 else ""
+        print(
+            s.path.ljust(40)[:40],
+            _hr_size(s.size).rjust(9),
+            f"{s.tokens}".rjust(9),
+            f"{share_prompt:6.1f}%".rjust(8),
+            f"{share_ctx:5.1f}%{overflow}".rjust(6 + len(overflow)),
+        )
     print("─" * 40, "─" * 9, "─" * 9, "─" * 8, "─" * 6, sep="")
     print(
         "TOTAL".ljust(40),
