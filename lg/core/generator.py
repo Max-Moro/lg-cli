@@ -192,3 +192,108 @@ def generate_listing(
                 out_lines.append("\n\n")
 
     sys.stdout.write("".join(out_lines))
+
+# --------------------------------------------------------------------------- #
+# Helper для статистики: собрать «обработанные адаптерами» тексты
+# (с корректным group_size/mixed как в реальном рендере)
+# --------------------------------------------------------------------------- #
+def _build_processed_blobs_for_stats(
+    *,
+    root: Path,
+    cfg: Config,
+    mode: str = "all",
+):
+    """
+    Вернёт список кортежей (rel_path, raw_size_bytes, processed_text),
+    где processed_text — результат adapter.process(..., group_size, mixed)
+    в точности с теми же параметрами группировки, что и при реальном рендере.
+    """
+    from itertools import groupby
+
+    # 1) подготовка и фильтры — те же, что в generate_listing
+    exts = {e.lower() for e in cfg.extensions}
+    spec_git = build_pathspec(root)
+    engine = FilterEngine(cfg.filters)
+    changed = _collect_changed_files(root) if mode == "changes" else None
+
+    tool_dir = Path(__file__).resolve().parent.parent  # .../lg/
+    cfg_dir = (root / DEFAULT_CONFIG_DIR).resolve()
+
+    skip_self_code = True
+    try:
+        rel_tool = tool_dir.resolve().relative_to(root.resolve()).as_posix()
+        if (
+            engine.includes(f"{rel_tool}/cli.py")
+            or engine.includes(f"{rel_tool}/__init__.py")
+        ):
+            skip_self_code = False
+    except ValueError:
+        pass
+
+    def _pruner(rel_dir: str) -> bool:
+        try:
+            (root / rel_dir).resolve().relative_to(cfg_dir)
+            return False
+        except ValueError:
+            pass
+        return engine.may_descend(rel_dir)
+
+    entries: List[tuple[Path, str, object, str]] = []
+    for fp in iter_files(root, exts, spec_git, dir_pruner=_pruner):
+        if skip_self_code and (tool_dir in fp.resolve().parents):
+            continue
+        rel_posix = fp.relative_to(root).as_posix()
+        if changed is not None and rel_posix not in changed:
+            continue
+        if not engine.includes(rel_posix):
+            continue
+
+        text = read_file_text(fp)
+        adapter = get_adapter_for_path(fp)
+        # языковой конфиг
+        lang_cfg = getattr(cfg, adapter.name, None)
+
+        # фильтрация пустых/тривиальных — идентично generate_listing
+        if adapter.name != "markdown" and adapter.name != "base":
+            # обычные адаптеры могут что-то пропускать сами
+            if adapter.should_skip(fp, text, lang_cfg):
+                continue
+        elif adapter.name == "base":
+            if cfg.skip_empty and not text.strip():
+                continue
+        else:
+            # markdown: проверка пустоты делается уже после process; оставляем как есть
+            pass
+
+        entries.append((fp, rel_posix, adapter, text))
+
+    if not entries:
+        return []
+
+    # 2) Параметры группировки как в generate_listing
+    md_only = all(adapter.name == "markdown" for _, _, adapter, _ in entries)
+    use_fence = cfg.code_fence and not md_only
+    langs = {get_language_for_file(fp) for fp, *_ in entries}
+    mixed = (not use_fence) and (len(langs) > 1)
+
+    blobs: List[tuple[str, int, str]] = []
+
+    if use_fence:
+        # группируем подряд по языку (ровно как в generate_listing)
+        for _lang, group_iter in groupby(entries, key=lambda e: get_language_for_file(e[0])):
+            group = list(group_iter)
+            group_size = len(group)
+            for (fp, rel_posix, adapter, text) in group:
+                adapter_cfg = getattr(cfg, adapter.name, None)
+                processed = adapter.process(text, adapter_cfg, group_size, False)
+                processed = processed.rstrip("\n") + "\n"
+                blobs.append((rel_posix, fp.stat().st_size, processed))
+    else:
+        group_size = len(entries)
+        for (fp, rel_posix, adapter, text) in entries:
+            adapter_cfg = getattr(cfg, adapter.name, None)
+            processed = adapter.process(text, adapter_cfg, group_size, mixed)
+            processed = processed.rstrip("\n") + "\n"
+            blobs.append((rel_posix, fp.stat().st_size, processed))
+
+    return blobs

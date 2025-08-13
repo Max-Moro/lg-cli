@@ -108,11 +108,23 @@ def _build_parser() -> argparse.ArgumentParser:
         action="count", default=0,
         help="Increase log verbosity (repeatable)",
     )
-    p.add_argument(
+    # ── Управление code fence: по умолчанию берём из конфига.
+    #    Явно включить → --code-fence, явно выключить → --no-code-fence
+    grp_cf = p.add_mutually_exclusive_group()
+    grp_cf.add_argument(
         "--code-fence",
-        action="store_true",
-        default=True,
-        help="Wrap each file listing in fenced markdown block (```lang)",
+        dest="code_fence",
+        action="store_const",
+        const=True,
+        default=None,
+        help="Force wrapping each file into fenced markdown block (```lang).",
+    )
+    grp_cf.add_argument(
+        "--no-code-fence",
+        dest="code_fence",
+        action="store_const",
+        const=False,
+        help="Disable fenced code blocks regardless of config.yaml.",
     )
     p.add_argument(
         "--max-heading-level",
@@ -124,6 +136,12 @@ def _build_parser() -> argparse.ArgumentParser:
         "--stats",
         action="store_true",
         help="Print size/token analytics instead of plain paths (use with --list-included)",
+    )
+    p.add_argument(
+        "--stats-mode",
+        choices=("raw", "processed", "rendered"),
+        default="processed",
+        help="Which text to count tokens for: raw file, post-adapter, or fully rendered listing.",
     )
     p.add_argument(
         "--sort",
@@ -322,8 +340,9 @@ def main() -> None:
         sys.exit(4)
 
     # Применяем CLI-overrides
-    # код-фенсинг
-    cfg.code_fence = ns.code_fence
+    # code_fence: переопределяем только если флаг явно задан
+    if ns.code_fence is not None:
+        cfg.code_fence = bool(ns.code_fence)
     # max_heading_level (только если явно задан)
     if ns.max_heading_level is not None:
         cfg.markdown.max_heading_level = ns.max_heading_level
@@ -335,6 +354,7 @@ def main() -> None:
                 cfg=cfg,
                 mode=ns.mode,
                 model_name=ns.model,
+                stats_mode=getattr(ns, "stats_mode", "processed")
             )
             print(json.dumps(data, ensure_ascii=False))
         else:
@@ -344,6 +364,7 @@ def main() -> None:
                 mode=ns.mode,
                 sort_key=ns.sort,
                 model_name=ns.model,
+                stats_mode=getattr(ns, "stats_mode", "processed"),
             )
     else:
         if ns.list_included and ns.json:

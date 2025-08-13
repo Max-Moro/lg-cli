@@ -127,19 +127,29 @@ def collect_stats(
     cfg: Config,
     mode: str,
     model_name: str,
+    stats_mode: str = "processed",    # "raw" | "processed" | "rendered"
 ) -> dict:
     # проверяем модель и получаем encoder
     _, ctx_limit, enc = _ensure_model(model_name)
 
     # собираем FileStat при помощи generate_listing(list_only)
-    collected = generate_listing(
-        root=root,
-        cfg=cfg,
-        mode=mode,
-        list_only=True,
-        _return_stats=True,      # внутренний флаг
-    )
-    stats: List[FileStat] = _build_file_stats(collected, enc)
+    if stats_mode == "raw":
+        collected = generate_listing(
+            root=root,
+            cfg=cfg,
+            mode=mode,
+            list_only=True,
+            _return_stats=True,
+        )
+        stats: List[FileStat] = _build_file_stats(collected, enc)
+    else:
+        # processed/rendered: считаем по тексту ПОСЛЕ адаптеров
+        from .core.generator import _build_processed_blobs_for_stats  # новый helper (см. Шаг 1)
+        blobs = _build_processed_blobs_for_stats(root=root, cfg=cfg, mode=mode)
+        stats = []
+        for rel, size_raw, text_proc in blobs:
+            tokens = len(enc.encode(text_proc))
+            stats.append(FileStat(rel, size_raw, tokens))
 
     total_tokens = sum(s.tokens for s in stats)
     result = {
@@ -161,6 +171,20 @@ def collect_stats(
             for s in stats
         ],
     }
+    if stats_mode == "rendered":
+        # посчитать токены полного рендера и добавить overhead
+        import sys
+        from io import StringIO
+        buf, old = StringIO(), sys.stdout
+        sys.stdout = buf
+        try:
+            from .core.generator import generate_listing as _gen
+            _gen(root=root, cfg=cfg, mode=mode, list_only=False)
+        finally:
+            sys.stdout = old
+        rendered_tokens = len(enc.encode(buf.getvalue()))
+        result["total"]["renderedTokens"] = rendered_tokens
+        result["total"]["renderedOverheadTokens"] = max(0, rendered_tokens - total_tokens)
     return result
 
 def _dedup_files(collected_lists: List[List[Tuple[Path, str, int]]]) -> List[Tuple[Path, str, int]]:
@@ -233,8 +257,9 @@ def collect_stats_and_print(
     mode: str,
     sort_key: str,
     model_name: str,
+    stats_mode: str = "processed",
 ):
-    data = collect_stats(root=root, cfg=cfg, mode=mode, model_name=model_name)
+    data = collect_stats(root=root, cfg=cfg, mode=mode, model_name=model_name, stats_mode=stats_mode)
     stats: List[FileStat] = [
         FileStat(path=it["path"], size=it["sizeBytes"], tokens=it["tokens"])
         for it in data["files"]
