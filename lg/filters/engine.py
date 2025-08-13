@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from pathlib import PurePosixPath
-from typing import Dict
+from typing import Dict, List, Tuple
 
 import pathspec  # Git-wildmatch backend
 
@@ -44,6 +44,31 @@ class FilterEngine:
         self._root = _CompiledNode(root)
 
     # ------------------------------------------------------------ #
+    # INNER HELPERS
+    # ------------------------------------------------------------ #
+    def _nodes_chain(self, path: str) -> List[Tuple[_CompiledNode, str]]:
+        """
+        Построить цепочку (узел, subpath) от корня до «самого глубокого»
+        узла, соответствующего подпапкам пути.
+        Используется и в includes(), и в may_descend().
+        Семантика идентична прежней: проходим по parts[:-1].
+        """
+        norm = path.lower().strip("/")
+        parts = PurePosixPath(norm).parts
+
+        node = self._root
+        nodes_to_check: List[Tuple[_CompiledNode, str]] = [(node, norm or "")]
+
+        for idx, part in enumerate(parts[:-1]):  # последняя часть — файл или текущая папка
+            nxt = node.children.get(part)
+            if nxt is None:
+                break
+            node = nxt
+            subpath = "/".join(parts[idx + 1 :]) or "."
+            nodes_to_check.append((node, subpath))
+        return nodes_to_check
+
+    # ------------------------------------------------------------ #
     def includes(self, rel_path: str) -> bool:
         """
         Вернёт True, если путь разрешён.
@@ -61,20 +86,9 @@ class FilterEngine:
            deepest.mode == 'block'  → True  (default-allow)
            deepest.mode == 'allow'  → False (default-deny)
         """
-        path = rel_path.lower()
-        parts = PurePosixPath(path).parts
-
-        node = self._root
-        nodes_to_check: list[tuple[_CompiledNode, str]] = [(node, path)]
-
-        # Спускаемся к потомкам, если описаны
-        for idx, part in enumerate(parts[:-1]):  # последняя часть — имя файла
-            nxt = node.children.get(part)
-            if nxt is None:
-                break
-            node = nxt
-            subpath = "/".join(parts[idx + 1 :]) or "."  # относительный в подузле
-            nodes_to_check.append((node, subpath))
+        nodes_to_check = self._nodes_chain(rel_path)
+        # deepest node — последний кортеж
+        node = nodes_to_check[-1][0]
 
         decision: bool | None = None  # None → ещё не определились
 
@@ -113,22 +127,13 @@ class FilterEngine:
         Семантика консервативная (False → точно бесполезно; True → возможно полезно).
         """
         # Нормализуем и гарантируем вид "dir" без ведущего слеша
-        path = rel_dir.strip("/").lower()
-        if path == "":
+        norm = rel_dir.strip("/").lower()
+        if norm == "":
             return True  # корень всегда пригоден
 
-        parts = PurePosixPath(path).parts
-
-        node = self._root
-        nodes_to_check: list[tuple[_CompiledNode, str]] = [(node, path)]
-        # Спускаемся по дереву правил, как в includes(), но до директории
-        for idx, part in enumerate(parts[:-1]):  # последняя часть — текущая папка
-            nxt = node.children.get(part)
-            if nxt is None:
-                break
-            node = nxt
-            subpath = "/".join(parts[idx + 1 :]) or "."
-            nodes_to_check.append((node, subpath))
+        nodes_to_check = self._nodes_chain(norm)
+        # deepest node нужен для fallback-логики в конце
+        node = nodes_to_check[-1][0]
 
         decision: bool | None = None
         for nd, sub in nodes_to_check:

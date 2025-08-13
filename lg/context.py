@@ -18,6 +18,16 @@ class ContextTemplate(_BaseTemplate):
     """
     idpattern = r'[A-Za-z0-9_:/-]+'
 
+def _load_template(root: Path, name: str) -> tuple[Path, ContextTemplate]:
+    """
+    Общая загрузка шаблона: проверка существования файла и парсинг в ContextTemplate.
+    """
+    tpl_path = _template_path(root, name)
+    if not tpl_path.is_file():
+        raise RuntimeError(f"Template not found: {tpl_path}")
+    text = tpl_path.read_text(encoding="utf-8")
+    return tpl_path, ContextTemplate(text)
+
 def collect_sections_for_context(
     context_name: str,
     *,
@@ -34,13 +44,8 @@ def collect_sections_for_context(
         cycle = " → ".join(stack + [context_name])
         raise RuntimeError(f"Template cycle detected: {cycle}")
 
-    tpl_path = _template_path(root, context_name)
-    if not tpl_path.is_file():
-        raise RuntimeError(f"Template not found: {tpl_path}")
-
+    tpl_path, tpl = _load_template(root, context_name)
     stack.append(context_name)
-    text = tpl_path.read_text(encoding="utf-8")
-    tpl = ContextTemplate(text)
 
     used: Set[str] = set()
     for placeholder in _collect_placeholders(tpl):
@@ -123,14 +128,8 @@ def _render_template(
         cycle = " → ".join(stack + [context_name])
         raise RuntimeError(f"Template cycle detected: {cycle}")
 
-    tpl_path = _template_path(root, context_name)
-    if not tpl_path.is_file():
-        raise RuntimeError(f"Template not found: {tpl_path}")
-
+    tpl_path, tpl = _load_template(root, context_name)
     stack.append(context_name)
-
-    text = tpl_path.read_text(encoding="utf-8")
-    tpl = ContextTemplate(text)
 
     mapping: Dict[str, str] = {}
     for placeholder in _collect_placeholders(tpl):
