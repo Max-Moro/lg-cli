@@ -143,6 +143,22 @@ def _build_parser() -> argparse.ArgumentParser:
     )
     return p
 
+def _load_all_configs(cfg_path: Path) -> dict[str, Config]:
+    """
+    Утилита для веток --context/--context-stats: единоразово читаем все секции.
+    """
+    sections = list_sections(cfg_path)
+    return {sec: load_config(cfg_path, sec) for sec in sections}
+
+def _print_simple_list(items: list[str], as_json: bool, key: str) -> None:
+    """
+    Унифицированный вывод однотипных списков (--list-sections, --list-contexts).
+    """
+    if as_json:
+        print(json.dumps({key: items}, ensure_ascii=False))
+    else:
+        for it in items:
+            print(it)
 
 def _run_doctor(root: Path, cfg_path: Path, as_json: bool) -> None:
     checks = []
@@ -229,11 +245,7 @@ def main() -> None:
     if ns.context:
         # Загружаем все секции один раз
         try:
-            sections = list_sections(cfg_path)
-            configs: dict[str, Config] = {
-                sec: load_config(cfg_path, sec)
-                for sec in sections
-            }
+            configs: dict[str, Config] = _load_all_configs(cfg_path)
         except Exception as e:
             print(f"Error loading config: {e}", file=sys.stderr)
             sys.exit(2)
@@ -253,11 +265,7 @@ def main() -> None:
     if ns.context_stats:
         # Поднимаем все секции один раз
         try:
-            sections = list_sections(cfg_path)
-            configs_all: dict[str, Config] = {
-                sec: load_config(cfg_path, sec)
-                for sec in sections
-            }
+            configs_all: dict[str, Config] = _load_all_configs(cfg_path)
         except Exception as e:
             print(f"Error loading config: {e}", file=sys.stderr)
             sys.exit(2)
@@ -290,11 +298,7 @@ def main() -> None:
     if ns.list_sections:
         try:
             secs = list_sections(cfg_path)
-            if ns.json:
-                print(json.dumps({"sections": secs}, ensure_ascii=False))
-            else:
-                for sec in secs:
-                    print(sec)
+            _print_simple_list(secs, ns.json, "sections")
         except Exception as e:
             print(f"Error: {e}", file=sys.stderr)
             sys.exit(4)
@@ -304,11 +308,7 @@ def main() -> None:
     if ns.list_contexts:
         try:
             ctxs = list_context_names(root)
-            if ns.json:
-                print(json.dumps({"contexts": ctxs}, ensure_ascii=False))
-            else:
-                for name in ctxs:
-                    print(name)
+            _print_simple_list(ctxs, ns.json, "contexts")
         except Exception as e:
             print(f"Error: {e}", file=sys.stderr)
             sys.exit(4)

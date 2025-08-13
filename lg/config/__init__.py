@@ -27,21 +27,31 @@ _yaml = YAML(typ="safe")
 
 
 # --------------------------------------------------------------------------- #
+# INTERNALS
+# --------------------------------------------------------------------------- #
+def _load_yaml_checked(path: Path) -> Dict[str, Any]:
+    """
+    Единая загрузка YAML с проверкой наличия файла и версии схемы.
+    """
+    if not path.exists():
+        raise RuntimeError(f"Config file {path} not found")
+    with path.open(encoding="utf-8") as f:
+        raw: Dict[str, Any] = _yaml.load(f) or {}
+    schema = raw.get("schema_version")
+    if schema != SCHEMA_VERSION:
+        raise RuntimeError(
+            f"Unsupported config schema {schema} (tool expects {SCHEMA_VERSION})"
+        )
+    return raw
+
+# --------------------------------------------------------------------------- #
 # PUBLIC LOADER
 # --------------------------------------------------------------------------- #
 def list_sections(path: Path) -> List[str]:
     """
     Вернуть список имён секций в мультисекционном конфиге.
     """
-    if not path.exists():
-        raise RuntimeError(f"Config file {path} not found")
-    with path.open(encoding="utf-8") as f:
-        raw_all: Dict[str, Any] = _yaml.load(f) or {}
-    schema = raw_all.get("schema_version")
-    if schema != SCHEMA_VERSION:
-        raise RuntimeError(
-            f"Unsupported config schema {schema} (tool expects {SCHEMA_VERSION})"
-        )
+    raw_all = _load_yaml_checked(path)
     # все ключи, кроме schema_version
     return [name for name in raw_all.keys() if name != "schema_version"]
 
@@ -51,17 +61,7 @@ def load_config(path: Path, section: str) -> Config:
     Загрузить `section` из мультисекционного YAML и вернуть строго типизированный `Config`.
     При отсутствии файла или секции — бросить понятный RuntimeError.
     """
-    if not path.exists():
-        raise RuntimeError(f"Config file {path} not found")
-
-    with path.open(encoding="utf-8") as f:
-        raw_all: Dict[str, Any] = _yaml.load(f) or {}
-
-    schema = raw_all.get("schema_version")
-    if schema != SCHEMA_VERSION:
-        raise RuntimeError(
-            f"Unsupported config schema {schema} (tool expects {SCHEMA_VERSION})"
-        )
+    raw_all = _load_yaml_checked(path)
 
     if section not in raw_all:
         available = list_sections(path)
