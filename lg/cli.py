@@ -131,6 +131,64 @@ def _build_parser() -> argparse.ArgumentParser:
     return p
 
 
+def _run_doctor(root: Path, cfg_path: Path, as_json: bool) -> None:
+    checks = []
+    def add(name: str, ok: bool, details: str = ""):
+        checks.append({"name": name, "ok": bool(ok), "details": details})
+
+    # version/protocol
+    try:
+        ver = metadata.version("listing-generator")
+    except Exception:
+        ver = "(unknown)"
+    add("cli.version", True, ver)
+    add("cli.protocol", True, str(PROTOCOL_VERSION))
+
+    # config presence & schema/sections
+    if cfg_path.is_file():
+        add("config.exists", True, str(cfg_path))
+        try:
+            secs = list_sections(cfg_path)
+            add("config.schema", True, f"ok; sections={len(secs)}")
+        except Exception as e:
+            add("config.schema", False, str(e))
+    else:
+        add("config.exists", False, f"not found: {cfg_path}")
+
+    # contexts dir
+    ctx_dir = root / DEFAULT_CONFIG_DIR / "contexts"
+    if ctx_dir.is_dir():
+        cnt = len(list(ctx_dir.rglob("*.tpl.md")))
+        add("contexts.exists", True, f"{cnt} template(s)")
+    else:
+        add("contexts.exists", False, f"no dir: {ctx_dir}")
+
+    # git presence (optional)
+    add("git.available", shutil.which("git") is not None, shutil.which("git") or "")
+
+    # tiktoken presence (optional, for stats)
+    try:
+        import tiktoken  # noqa: F401
+        add("tiktoken.available", True)
+    except Exception as e:
+        add("tiktoken.available", False, str(e))
+
+    report = {
+        "protocol": PROTOCOL_VERSION,
+        "version": ver,
+        "root": str(root),
+        "checks": checks,
+    }
+    if as_json:
+        print(json.dumps(report, ensure_ascii=False, indent=2))
+    else:
+        print(f"Listing Generator v{ver} (protocol {PROTOCOL_VERSION})")
+        for c in checks:
+            mark = "✔" if c["ok"] else "✖"
+            extra = f" — {c['details']}" if c.get("details") else ""
+            print(f"{mark} {c['name']}{extra}")
+
+
 def main() -> None:
     ns = _build_parser().parse_args()
 
@@ -261,62 +319,3 @@ def main() -> None:
 if __name__ == "__main__":
     _ensure_utf8_stdout_stderr()
     main()
-
-# --------------------------- helpers: doctor --------------------------- #
-
-def _run_doctor(root: Path, cfg_path: Path, as_json: bool) -> None:
-    checks = []
-    def add(name: str, ok: bool, details: str = ""):
-        checks.append({"name": name, "ok": bool(ok), "details": details})
-
-    # version/protocol
-    try:
-        ver = metadata.version("listing-generator")
-    except Exception:
-        ver = "(unknown)"
-    add("cli.version", True, ver)
-    add("cli.protocol", True, str(PROTOCOL_VERSION))
-
-    # config presence & schema/sections
-    if cfg_path.is_file():
-        add("config.exists", True, str(cfg_path))
-        try:
-            secs = list_sections(cfg_path)
-            add("config.schema", True, f"ok; sections={len(secs)}")
-        except Exception as e:
-            add("config.schema", False, str(e))
-    else:
-        add("config.exists", False, f"not found: {cfg_path}")
-
-    # contexts dir
-    ctx_dir = root / DEFAULT_CONFIG_DIR / "contexts"
-    if ctx_dir.is_dir():
-        cnt = len(list(ctx_dir.rglob("*.tpl.md")))
-        add("contexts.exists", True, f"{cnt} template(s)")
-    else:
-        add("contexts.exists", False, f"no dir: {ctx_dir}")
-
-    # git presence (optional)
-    add("git.available", shutil.which("git") is not None, shutil.which("git") or "")
-
-    # tiktoken presence (optional, for stats)
-    try:
-        import tiktoken  # noqa: F401
-        add("tiktoken.available", True)
-    except Exception as e:
-        add("tiktoken.available", False, str(e))
-
-    report = {
-        "protocol": PROTOCOL_VERSION,
-        "version": ver,
-        "root": str(root),
-        "checks": checks,
-    }
-    if as_json:
-        print(json.dumps(report, ensure_ascii=False, indent=2))
-    else:
-        print(f"Listing Generator v{ver} (protocol {PROTOCOL_VERSION})")
-        for c in checks:
-            mark = "✔" if c["ok"] else "✖"
-            extra = f" — {c['details']}" if c.get("details") else ""
-            print(f"{mark} {c['name']}{extra}")
