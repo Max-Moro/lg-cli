@@ -45,11 +45,18 @@ class FilterEngine:
         """
         Вернёт True, если путь разрешён.
 
-        Алгоритм:
-        1. Идём сверху вниз по каталожным сегментам, накапливая «самый глубокий» узел.
-        2. На каждом уровне: сначала применяем block, потом allow.
-        3. Если ни одно правило не сработало — решение принимает `mode`
-           самого глубокого узла.
+        Алгоритм (исправленный для вложенных `mode: allow`):
+        1) Идём сверху вниз по каталожным сегментам, накапливая «самый глубокий» узел,
+           для каждого узла вычисляем подстроку пути, относительную этому узлу.
+        2) На каждом уровне:
+           • Сначала проверяем `block`: совпало → немедленно False.
+           • Если `mode == 'allow'`: ДОЛЖНО совпасть с локальным allow, иначе немедленно False.
+             (т. е. `allow` действует как жёсткий фильтр для поддерева.)
+           • Если `mode == 'block'` и `allow` совпал → запоминаем True, но продолжаем проход
+             вниз — дочерний `block` всё ещё может запретить.
+        3) Если до конца не принято решение — возвращаем fallback:
+           deepest.mode == 'block'  → True  (default-allow)
+           deepest.mode == 'allow'  → False (default-deny)
         """
         path = rel_path.lower()
         parts = PurePosixPath(path).parts
@@ -69,12 +76,26 @@ class FilterEngine:
         decision: bool | None = None  # None → ещё не определились
 
         for nd, sub in nodes_to_check:
+            # 1) block всегда сильнее — немедленный отказ
             if nd.block_ps and nd.block_ps.match_file(sub):
-                decision = False
-                # block финальный, можно прервать, но обязательно пройти allow выше
-            if decision is not False and nd.allow_ps and nd.allow_ps.match_file(sub):
+                return False
+
+            # 2) Жёсткая семантика для mode=allow:
+            #    Всё, что не попало под allow текущего узла, отбрасываем сразу.
+            if nd.mode == "allow":
+                # Пустой allow_ps (или None) в режиме allow означает "ничего не разрешено".
+                if not nd.allow_ps or not nd.allow_ps.match_file(sub):
+                    return False
+                # Попали под локальный allow → пока разрешаем и идём дальше (дочерние узлы могут сузить правила)
+                decision = True
+                continue
+
+            # 3) mode=block: default-allow, но локальный allow может включать
+            if nd.allow_ps and nd.allow_ps.match_file(sub):
                 decision = True
 
+        # Если на пути не встретился ни один явный запрет/разрешение,
+        # решение принимает самый глубокий узел.
         if decision is not None:
             return decision
 
