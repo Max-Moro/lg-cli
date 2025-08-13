@@ -18,6 +18,45 @@ class ContextTemplate(_BaseTemplate):
     """
     idpattern = r'[A-Za-z0-9_:/-]+'
 
+def collect_sections_for_context(
+    context_name: str,
+    *,
+    root: Path,
+    configs: Dict[str, object],
+    stack: List[str] | None = None,
+) -> Set[str]:
+    """
+    Рекурсивно собрать имена секций (ключи в configs), которые используются в шаблоне
+    context_name и во всех включенных через ${tpl:...} подшаблонах.
+    """
+    stack = stack or []
+    if context_name in stack:
+        cycle = " → ".join(stack + [context_name])
+        raise RuntimeError(f"Template cycle detected: {cycle}")
+
+    tpl_path = _template_path(root, context_name)
+    if not tpl_path.is_file():
+        raise RuntimeError(f"Template not found: {tpl_path}")
+
+    stack.append(context_name)
+    text = tpl_path.read_text(encoding="utf-8")
+    tpl = ContextTemplate(text)
+
+    used: Set[str] = set()
+    for placeholder in _collect_placeholders(tpl):
+        if placeholder.startswith("tpl:"):
+            child = placeholder[4:]
+            used |= collect_sections_for_context(child, root=root, configs=configs, stack=stack)
+        else:
+            if placeholder not in configs:
+                available = ", ".join(sorted(configs.keys()))
+                raise RuntimeError(
+                    f"Section '{placeholder}' not in configs mapping "
+                    f"(available: {available})"
+                )
+            used.add(placeholder)
+    stack.pop()
+    return used
 
 def generate_context(
     context_name: str,

@@ -151,7 +151,7 @@ listing-generator --section <имя_секции> \
 usage: listing-generator [-h] [-s SECTION] [--mode {all,changes}]
                          [--list-included] [--list-sections]
                          [--context NAME] [--code-fence] [--max-heading-level N]
-                         [--stats] [--sort {path,size,share}] [--model NAME]
+                         [--stats] [--context-stats] [--sort {path,size,share}] [--model NAME]
                          [-v] [--json]
 
 options:
@@ -163,8 +163,8 @@ options:
     * --sort {path,size,share}  Критерий сортировки таблицы (default: path)
     * --model NAME              Целевая LLM-модель для расчёта доли окна контекста (default: o3)
   --list-sections           Вывести список доступных секций
-  --list-sections           Вывести список доступных секций
   --context NAME            Сгенерировать промт по шаблону NAME.tpl.md
+  --context-stats NAME      Аналогично команде --stats, только для всего контекста
   --code-fence              Оборачивать каждый файл в fenced-блок (\`\`\`lang) (override config.code\_fence)
   --max-heading-level N     Максимальный уровень заголовков для нормализации Markdown (override config.markdown.max\_heading\_level)
   -v, --verbose             Увеличить подробность логов (можно -vv)

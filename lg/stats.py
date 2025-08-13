@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from pathlib import Path
-from typing import List, Callable
+from typing import List, Callable, Dict, Set, Tuple
 
 import tiktoken
 
@@ -105,6 +105,77 @@ def collect_stats(
     }
     return result
 
+def _dedup_files(collected_lists: List[List[Tuple[Path, str, int]]]) -> List[Tuple[Path, str, int]]:
+    """
+    Принять несколько списков (fp, rel_posix, size) и вернуть объединение без дубликатов
+    по абсолютному пути файла.
+    """
+    seen: Set[Path] = set()
+    out: List[Tuple[Path, str, int]] = []
+    for lst in collected_lists:
+        for fp, rel, size in lst:
+            if fp in seen:
+                continue
+            seen.add(fp)
+            out.append((fp, rel, size))
+    return out
+
+def collect_context_stats(
+    *,
+    root: Path,
+    configs: Dict[str, Config],
+    context_sections: Set[str],
+    model_name: str,
+) -> dict:
+    """Агрегированная статистика по множеству секций (для контекста)."""
+    if model_name not in MODEL_CTX:
+        raise RuntimeError(
+            f"Unknown model '{model_name}'. "
+            f"Known models: {', '.join(MODEL_CTX)}"
+        )
+    ctx_limit = MODEL_CTX[model_name]
+    enc = tiktoken.encoding_for_model(model_name if model_name != "o3" else "gpt-4o")
+
+    collected_lists: List[List[Tuple[Path, str, int]]] = []
+    for sec in sorted(context_sections):
+        cfg = configs[sec]
+        lst = generate_listing(
+            root=root, cfg=cfg, mode="all", list_only=True, _return_stats=True
+        )
+        collected_lists.append(lst)
+
+    files = _dedup_files(collected_lists)
+
+    # Подсчет токенов по уникальным файлам
+    items: List[FileStat] = []
+    for fp, rel_posix, size_bytes in files:
+        tokens = 0
+        with fp.open("rb") as fh:
+            for chunk in iter(lambda: fh.read(8192), b""):
+                tokens += len(enc.encode(chunk.decode("utf-8", errors="ignore")))
+        items.append(FileStat(rel_posix, size_bytes, tokens))
+
+    total_tokens = sum(s.tokens for s in items)
+    result = {
+        "model": model_name,
+        "ctxLimit": ctx_limit,
+        "total": {
+            "sizeBytes": sum(s.size for s in items),
+            "tokens": total_tokens,
+            "ctxShare": (total_tokens / ctx_limit * 100) if ctx_limit else 0.0,
+        },
+        "files": [
+            {
+                "path": s.path,
+                "sizeBytes": s.size,
+                "tokens": s.tokens,
+                "promptShare": (s.tokens / total_tokens * 100) if total_tokens else 0.0,
+                "ctxShare": (s.tokens / ctx_limit * 100) if ctx_limit else 0.0,
+            }
+            for s in items
+        ],
+    }
+    return result
 
 def collect_stats_and_print(
     *,

@@ -14,12 +14,12 @@ from .config import (
     list_sections,
     DEFAULT_CONFIG_DIR,
     DEFAULT_CONFIG_FILE,
-    DEFAULT_SECTION_NAME,
+    DEFAULT_SECTION_NAME, Config,
 )
 from .context import generate_context
-from .context import list_context_names
+from .context import list_context_names, collect_sections_for_context
 from .core.generator import generate_listing
-from .stats import collect_stats_and_print, collect_stats
+from .stats import collect_stats_and_print, collect_stats, collect_context_stats
 
 PROTOCOL_VERSION = 1
 
@@ -77,6 +77,14 @@ def _build_parser() -> argparse.ArgumentParser:
         help=(
             "Generate a prompt from template lg-cfg/contexts/PATH.tpl.md. "
             "PATH may include sub-directories, use forward slashes."
+        ),
+    )
+    p.add_argument(
+        "--context-stats",
+        metavar="PATH",
+        help=(
+            "Compute aggregated stats for a context template (sum over all used sections, with file dedup). "
+            "PATH is template name relative to lg-cfg/contexts/ (without .tpl.md)."
         ),
     )
     p.add_argument(
@@ -212,12 +220,12 @@ def main() -> None:
         print(f"Error: Config file not found: {cfg_path}", file=sys.stderr)
         sys.exit(2)
 
-    # 3. Режим шаблонов
+    # 3. Режим шаблонов (рендер или агрегированные stats)
     if ns.context:
         # Загружаем все секции один раз
         try:
             sections = list_sections(cfg_path)
-            configs: dict[str, object] = {
+            configs: dict[str, Config] = {
                 sec: load_config(cfg_path, sec)
                 for sec in sections
             }
@@ -232,6 +240,79 @@ def main() -> None:
                 configs=configs,
                 list_only=ns.list_included,
             )
+        except Exception as e:
+            print(f"Error: {e}", file=sys.stderr)
+            sys.exit(5)
+        return
+
+    if ns.context_stats:
+        # Поднимаем все секции один раз
+        try:
+            sections = list_sections(cfg_path)
+            configs_all: dict[str, Config] = {
+                sec: load_config(cfg_path, sec)
+                for sec in sections
+            }
+        except Exception as e:
+            print(f"Error loading config: {e}", file=sys.stderr)
+            sys.exit(2)
+        try:
+            used = collect_sections_for_context(
+                ns.context_stats, root=root, configs=configs_all
+            )
+            if ns.json:
+                data = collect_context_stats(
+                    root=root,
+                    configs=configs_all,
+                    context_sections=used,
+                    model_name=ns.model,
+                )
+                print(json.dumps(data, ensure_ascii=False))
+            else:
+                # human-friendly таблица общая — используем ту же печать, но по объединенному JSON
+                data = collect_context_stats(
+                    root=root,
+                    configs=configs_all,
+                    context_sections=used,
+                    model_name=ns.model,
+                )
+                # быстрый вывод ASCII-таблицы, аналог collect_stats_and_print
+                from .stats import FileStat, _hr_size  # type: ignore
+                stats = [FileStat(f["path"], f["sizeBytes"], f["tokens"]) for f in data["files"]]
+                if not stats:
+                    print("(no files)")
+                    return
+                # sort по path (как дефолт)
+                stats.sort(key=lambda s: s.path)
+                total_tokens = sum(s.tokens for s in stats)
+                print(
+                    "PATH".ljust(40),
+                    "SIZE".rjust(9),
+                    "TOKENS".rjust(9),
+                    "PROMPT%".rjust(8),
+                    "CTX%".rjust(6),
+                )
+                print("─" * 40, "─" * 9, "─" * 9, "─" * 8, "─" * 6, sep="")
+                for s in stats:
+                    share_prompt = s.tokens / total_tokens * 100 if total_tokens else 0.0
+                    ctx_limit = data["ctxLimit"] or 1
+                    share_ctx = s.tokens / ctx_limit * 100
+                    overflow = "‼" if share_ctx > 100 else ""
+                    print(
+                        s.path.ljust(40)[:40],
+                        _hr_size(s.size).rjust(9),
+                        f"{s.tokens}".rjust(9),
+                        f"{share_prompt:6.1f}%".rjust(8),
+                        f"{share_ctx:5.1f}%{overflow}".rjust(6 + len(overflow)),
+                    )
+                print("─" * 40, "─" * 9, "─" * 9, "─" * 8, "─" * 6, sep="")
+                print(
+                    "TOTAL".ljust(40),
+                    _hr_size(data["total"]["sizeBytes"]).rjust(9),
+                    f"{data['total']['tokens']}".rjust(9),
+                    "100 %".rjust(8),
+                    f"{data['total']['ctxShare']:5.1f}%".rjust(6),
+                )
         except Exception as e:
             print(f"Error: {e}", file=sys.stderr)
             sys.exit(5)
