@@ -14,5 +14,11 @@ common-src:
       - "/pyproject.toml"
       - "/lg/"
       - "/tests/test_adapters_registry.py"
-      - "/tests/test_filters_engine.py"
       - "/tests/test_adapter_python.py"
+
+tests-src:
+  extensions: [".py"]
+  filters:
+    mode: allow
+    allow:
+      - "/tests/"
