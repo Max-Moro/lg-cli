@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import os
 from pathlib import Path
-from typing import Iterable, List
+from typing import Callable, Iterable, List
 
 import pathspec
 
@@ -47,11 +47,18 @@ def build_pathspec(root: Path):
 # Рекурсивный обход исходников
 # ---------------------------------------------------------------------------
 
-def iter_files(root: Path, extensions: set[str], spec_git=None) -> Iterable[Path]:
+def iter_files(
+    root: Path,
+    extensions: set[str],
+    spec_git=None,
+    *,
+    dir_pruner: Callable[[str], bool] | None = None,
+) -> Iterable[Path]:
     """
     Итератор всех файлов *root* с требуемыми расширениями.
     • пропускает .git
     • исключает пути, подходящие под PathSpec (если передан)
+    • при наличии dir_pruner — ранне отсекание неподходящих директорий
     """
     root = root.resolve()
 
@@ -59,6 +66,19 @@ def iter_files(root: Path, extensions: set[str], spec_git=None) -> Iterable[Path
         # Не заходим в .git
         if ".git" in dirnames:
             dirnames.remove(".git")
+
+        # Раннее отсечение директорий (in-place модификация dirnames)
+        if dir_pruner:
+            keep: list[str] = []
+            for d in dirnames:
+                rel_dir = Path(dirpath, d).resolve().relative_to(root).as_posix()
+                # .gitignore может скрыть целое поддерево (обрабатываем как "не спускаться")
+                if spec_git and spec_git.match_file(rel_dir + "/"):
+                    continue
+                if dir_pruner(rel_dir):
+                    keep.append(d)
+            # перезаписываем dirnames — os.walk учтёт это и не зайдёт в выкинутые папки
+            dirnames[:] = keep
 
         for fn in filenames:
             p = Path(dirpath, fn)

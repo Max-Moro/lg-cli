@@ -101,3 +101,65 @@ class FilterEngine:
 
         # --- fallback по mode самого глубокого узла ----------------- #
         return node.mode == "block"  # default-allow если mode == block
+
+    # ------------------------------------------------------------ #
+    def may_descend(self, rel_dir: str) -> bool:
+        """
+        Быстрый ответ на вопрос: есть ли смысл спускаться в поддерево `rel_dir/`?
+        Используется для раннего отсечения директорий при обходе ФС.
+        Семантика консервативная (False → точно бесполезно; True → возможно полезно).
+        """
+        # Нормализуем и гарантируем вид "dir" без ведущего слеша
+        path = rel_dir.strip("/").lower()
+        if path == "":
+            return True  # корень всегда пригоден
+
+        parts = PurePosixPath(path).parts
+
+        node = self._root
+        nodes_to_check: list[tuple[_CompiledNode, str]] = [(node, path)]
+        # Спускаемся по дереву правил, как в includes(), но до директории
+        for idx, part in enumerate(parts[:-1]):  # последняя часть — текущая папка
+            nxt = node.children.get(part)
+            if nxt is None:
+                break
+            node = nxt
+            subpath = "/".join(parts[idx + 1 :]) or "."
+            nodes_to_check.append((node, subpath))
+
+        decision: bool | None = None
+        for nd, sub in nodes_to_check:
+            # Блокирующее правило на поддереве — спуск бесполезен
+            if nd.block_ps and (nd.block_ps.match_file(sub) or nd.block_ps.match_file(sub + "/")):
+                return False
+
+            if nd.mode == "allow":
+                # Пустой allow в allow-узле → внутри ничего не разрешено
+                if not nd.allow_ps:
+                    return False
+                # Любое совпадение текущего каталога или его "внутренностей" с allow —
+                # признак того, что внутри может быть что-то разрешённое.
+                if (
+                    nd.allow_ps.match_file(sub) or
+                    nd.allow_ps.match_file(sub + "/") or
+                    nd.allow_ps.match_file(sub + "/x")  # грубая эвристика "что-то внутри"
+                ):
+                    decision = True
+                else:
+                    # В строгом allow-режиме отсутствие совпадений на уровне узла
+                    # означает, что ниже спускаться смысла нет.
+                    return False
+            else:
+                # mode=block: default-allow — спуск потенциально полезен, но
+                # локальный allow ещё больше подтверждает это.
+                if nd.allow_ps and (
+                    nd.allow_ps.match_file(sub) or
+                    nd.allow_ps.match_file(sub + "/") or
+                    nd.allow_ps.match_file(sub + "/x")
+                ):
+                    decision = True
+
+        if decision is not None:
+            return decision
+        # Фоллбек: в block-узле (default-allow) можно спускаться, в allow — нельзя
+        return node.mode == "block"

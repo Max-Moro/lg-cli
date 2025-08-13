@@ -73,14 +73,20 @@ def generate_listing(
     # 2. обход проекта: собираем данные или пути
     entries: List[tuple[Path, str, object, str]] = []
     listed_paths: List[str] = []
-    for fp in iter_files(root, exts, spec_git):
-        # Никогда не включаем служебную директорию lg-cfg/ в листинг
+
+    # Готовим пронер для раннего отсечения директорий.
+    # Консервативно используем его всегда, он особенно эффективен при mode: allow.
+    def _pruner(rel_dir: str) -> bool:
+        # Никогда не спускаемся внутрь служебной директории lg-cfg/
         try:
-            fp.resolve().relative_to(cfg_dir)
-            continue  # файл лежит внутри lg-cfg/ → пропускаем безусловно
+            (root / rel_dir).resolve().relative_to(cfg_dir)
+            return False
         except ValueError:
             pass
+        # Пропускаем директорию, если фильтры говорят, что дальше смысла нет
+        return engine.may_descend(rel_dir)
 
+    for fp in iter_files(root, exts, spec_git, dir_pruner=_pruner):
         # Пропускаем self-код инструмента только если это не было явно разрешено конфигом
         if skip_self_code and (tool_dir in fp.resolve().parents):
             continue
