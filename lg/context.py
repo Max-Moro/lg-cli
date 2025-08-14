@@ -68,6 +68,38 @@ def collect_sections_for_context(
     stack.pop()
     return used
 
+def collect_sections_with_counts(
+    context_name: str,
+    *,
+    root: Path,
+    configs: Dict[str, object],
+    stack: List[str] | None = None,
+) -> Dict[str, int]:
+    """
+    Возвращает МНОЖЕСТВЕННОСТИ использования секций в шаблоне
+    (учитывает рекурсивные `${tpl:...}`-включения).
+    """
+    stack = stack or []
+    if context_name in stack:
+        cycle = " → ".join(stack + [context_name])
+        raise RuntimeError(f"Template cycle detected: {cycle}")
+
+    tpl_path, tpl = _load_template(root, context_name)
+    stack.append(context_name)
+
+    counts: Dict[str, int] = {}
+    for placeholder in _collect_placeholders(tpl):
+        if placeholder.startswith("tpl:"):
+            child = placeholder[4:]
+            child_counts = collect_sections_with_counts(child, root=root, configs=configs, stack=stack)
+            for k, v in child_counts.items():
+                counts[k] = counts.get(k, 0) + int(v)
+        else:
+            _ensure_section_exists(placeholder, configs)
+            counts[placeholder] = counts.get(placeholder, 0) + 1
+    stack.pop()
+    return counts
+
 def generate_context(
     context_name: str,
     configs: Dict[str, object],

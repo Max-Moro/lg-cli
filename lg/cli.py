@@ -17,7 +17,7 @@ from .config import (
     DEFAULT_SECTION_NAME, Config,
 )
 from .context import generate_context
-from .context import list_context_names, collect_sections_for_context
+from .context import list_context_names
 from .core.cache import Cache
 from .core.generator import generate_listing
 from .stats import collect_stats
@@ -291,31 +291,38 @@ def main() -> None:
         return
 
     if ns.context_stats:
-        # Поднимаем все секции один раз
+        # Поднимаем все секции и считаем контекст с учётом кратности
         try:
             configs_all: dict[str, Config] = _load_all_configs(cfg_path)
         except Exception as e:
             print(f"Error loading config: {e}", file=sys.stderr)
             sys.exit(2)
         try:
-            context_sections = sorted(collect_sections_for_context(
-                ns.context_stats, root=root, configs=configs_all
-            ))
+            # Для v3 статистики нужна кратность секций
+            from .context import collect_sections_with_counts
+            counts = collect_sections_with_counts(ns.context_stats, root=root, configs=configs_all)
+            if not counts:
+                print(f"Error: context template '{ns.context_stats}' has no sections", file=sys.stderr)
+                sys.exit(5)
             if ns.json:
-                cfgs = [configs_all[s] for s in context_sections]
+                cfgs = [configs_all[s] for s in sorted(counts.keys())]
                 data = collect_stats(
                     scope="context",
                     root=root,
                     cfgs=cfgs,
-                    mode="all",
+                    mode=ns.mode,                      # уважаем --mode
                     model_name=ns.model,
                     stats_mode=ns.stats_mode,
                     cache=cache,
-                    context_sections=context_sections,
+                    context_sections=list(counts.keys()),
+                    context_name=ns.context_stats,
+                    context_section_counts=counts,
+                    configs_map=configs_all,
                 )
                 print(json.dumps(data, ensure_ascii=False))
             else:
-                assert "Unsupported"
+                print("Error: --context-stats currently supports only --json output.", file=sys.stderr)
+                sys.exit(4)
         except Exception as e:
             print(f"Error: {e}", file=sys.stderr)
             sys.exit(5)
@@ -370,7 +377,8 @@ def main() -> None:
             )
             print(json.dumps(data, ensure_ascii=False))
         else:
-            assert "Unsupported"
+            print("Error: --stats currently supports only --json output.", file=sys.stderr)
+            sys.exit(4)
     else:
         if ns.list_included and ns.json:
             # JSON для --list-included: пути + размеры (без токенов)
