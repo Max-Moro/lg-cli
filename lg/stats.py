@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from pathlib import Path
-from typing import List, Callable, Dict, Set, Tuple
+from typing import List, Dict, Set, Tuple, Iterable, Optional
 
 import tiktoken
 
@@ -12,7 +12,7 @@ from .core.generator import generate_listing
 from .core.plan import collect_processed_blobs
 
 # --------------------------------------------------------------------------- #
-# 1. предустановленные модели и их окна
+# предустановленные модели и их окна
 # --------------------------------------------------------------------------- #
 
 MODEL_CTX = {
@@ -26,9 +26,8 @@ MODEL_CTX = {
 DEFAULT_MODEL = "o3"
 
 # --------------------------------------------------------------------------- #
-# 2. dataclass для статистики
+# dataclass для статистики
 # --------------------------------------------------------------------------- #
-
 
 @dataclass
 class FileStat:
@@ -37,15 +36,8 @@ class FileStat:
     tokens: int
 
 # --------------------------------------------------------------------------- #
-# 3. helpers (DRY)
+# Helpers
 # --------------------------------------------------------------------------- #
-
-def _hr_size(n: int) -> str:
-    for unit in ["bytes", "KiB", "MiB", "GiB"]:
-        if n < 1024 or unit == "GiB":
-            return f"{n:.1f} {unit}" if unit != "bytes" else f"{n} {unit}"
-        n /= 1024
-    return f"{n:.1f} GiB"
 
 def _ensure_model(model_name: str) -> Tuple[str, int, "tiktoken.Encoding"]:
     """
@@ -78,118 +70,6 @@ def _build_file_stats(
         stats.append(FileStat(rel_posix, size_bytes, tokens))
     return stats
 
-def _sort_stats(stats: List[FileStat], sort_key: str) -> None:
-    KEY: dict[str, Callable[[FileStat], object]] = {
-        "path":  lambda s: s.path,
-        "size":  lambda s: (-s.size, s.path),
-        "share": lambda s: (-s.tokens, s.path),
-    }
-    stats.sort(key=KEY.get(sort_key, KEY["path"]))
-
-def _print_ascii_table(stats: List[FileStat], ctx_limit: int) -> None:
-    if not stats:
-        print("(no files)")
-        return
-    total_tokens = sum(s.tokens for s in stats)
-    print(
-        "PATH".ljust(40),
-        "SIZE".rjust(9),
-        "TOKENS".rjust(9),
-        "PROMPT%".rjust(8),
-        "CTX%".rjust(6),
-    )
-    print("─" * 40, "─" * 9, "─" * 9, "─" * 8, "─" * 6, sep="")
-    for s in stats:
-        share_prompt = s.tokens / total_tokens * 100 if total_tokens else 0.0
-        share_ctx = s.tokens / (ctx_limit or 1) * 100
-        overflow = "‼" if share_ctx > 100 else ""
-        print(
-            s.path.ljust(40)[:40],
-            _hr_size(s.size).rjust(9),
-            f"{s.tokens}".rjust(9),
-            f"{share_prompt:6.1f}%".rjust(8),
-            f"{share_ctx:5.1f}%{overflow}".rjust(6 + len(overflow)),
-        )
-    print("─" * 40, "─" * 9, "─" * 9, "─" * 8, "─" * 6, sep="")
-    print(
-        "TOTAL".ljust(40),
-        _hr_size(sum(s.size for s in stats)).rjust(9),
-        f"{sum(s.tokens for s in stats)}".rjust(9),
-        "100 %".rjust(8),
-        f"{(sum(s.tokens for s in stats) / (ctx_limit or 1) * 100):5.1f}%".rjust(6),
-    )
-
-# --------------------------------------------------------------------------- #
-# 4. public API (JSON-friendly)
-# --------------------------------------------------------------------------- #
-
-def collect_stats(
-    *,
-    root: Path,
-    cfg: Config,
-    mode: str,
-    model_name: str,
-    stats_mode: str = "processed",    # "raw" | "processed" | "rendered"
-    cache: Cache | None = None,
-) -> dict:
-    # проверяем модель и получаем encoder
-    _, ctx_limit, enc = _ensure_model(model_name)
-
-    # собираем FileStat при помощи generate_listing(list_only)
-    if stats_mode == "raw":
-        collected = generate_listing(
-            root=root,
-            cfg=cfg,
-            mode=mode,
-            list_only=True,
-            _return_stats=True,
-            cache=cache
-        )
-        stats: List[FileStat] = _build_file_stats(collected, enc)
-    else:
-        # processed/rendered: считаем по тексту ПОСЛЕ адаптеров, используя общий планировщик
-        blobs = collect_processed_blobs(root=root, cfg=cfg, mode=mode, cache=cache)
-        stats = []
-        for rel, size_raw, text_proc in blobs:
-            tokens = len(enc.encode(text_proc))
-            stats.append(FileStat(rel, size_raw, tokens))
-
-    total_tokens = sum(s.tokens for s in stats)
-    result = {
-        "model": model_name,
-        "ctxLimit": ctx_limit,
-        "total": {
-            "sizeBytes": sum(s.size for s in stats),
-            "tokens": total_tokens,
-            "ctxShare": (total_tokens / ctx_limit * 100) if ctx_limit else 0.0,
-        },
-        "files": [
-            {
-                "path": s.path,
-                "sizeBytes": s.size,
-                "tokens": s.tokens,
-                "promptShare": (s.tokens / total_tokens * 100) if total_tokens else 0.0,
-                "ctxShare": (s.tokens / ctx_limit * 100) if ctx_limit else 0.0,
-            }
-            for s in stats
-        ],
-    }
-    if stats_mode == "rendered":
-        # посчитать токены полного рендера и добавить overhead
-        import sys
-        from io import StringIO
-        buf, old = StringIO(), sys.stdout
-        sys.stdout = buf
-        try:
-            from .core.generator import generate_listing as _gen
-            _gen(root=root, cfg=cfg, mode=mode, list_only=False)
-        finally:
-            sys.stdout = old
-        rendered_tokens = len(enc.encode(buf.getvalue()))
-        result["total"]["renderedTokens"] = rendered_tokens
-        result["total"]["renderedOverheadTokens"] = max(0, rendered_tokens - total_tokens)
-    return result
-
 def _dedup_files(collected_lists: List[List[Tuple[Path, str, int]]]) -> List[Tuple[Path, str, int]]:
     """
     Принять несколько списков (fp, rel_posix, size) и вернуть объединение без дубликатов
@@ -205,101 +85,138 @@ def _dedup_files(collected_lists: List[List[Tuple[Path, str, int]]]) -> List[Tup
             out.append((fp, rel, size))
     return out
 
-def collect_context_stats(
+
+# --------------------------------------------------------------------------- #
+# Public API
+# --------------------------------------------------------------------------- #
+
+def collect_stats(
     *,
+    scope: str,  # "section" | "context"
     root: Path,
-    configs: Dict[str, Config],
-    context_sections: Set[str],
+    cfgs: List[Config],
+    mode: str,
     model_name: str,
+    stats_mode: str,
     cache: Cache,
+    context_sections: Optional[Iterable[str]],
 ) -> dict:
-    """Агрегированная статистика по множеству секций (для контекста)."""
-    _, ctx_limit, enc = _ensure_model(model_name)
+    # собираем entries из всех секций и дедупим по абсолютному пути
+    # затем считаем по processed-блобам (с кэшем)
+    name, ctx_limit, enc = _ensure_model(model_name)
 
-    collected_lists: List[List[Tuple[Path, str, int]]] = []
-    for sec in sorted(context_sections):
-        cfg = configs[sec]
-        lst = generate_listing(
-            root=root,
-            cfg=cfg,
-            mode="all",
-            list_only=True,
-            _return_stats=True,
-            cache=cache
-        )
-        collected_lists.append(lst)
+    # собираем post-adapter blobs секционно и объединяем
+    blobs_all: List[Tuple[str, int, str, Dict, str]] = []
+    raw_lists: List[List[Tuple[Path, str, int]]] = []
 
-    files = _dedup_files(collected_lists)
+    for cfg in cfgs:
+        if stats_mode == "raw":
+            raw = generate_listing(root=root, cfg=cfg, mode=mode, list_only=True, _return_stats=True)
+            raw_lists.append(raw)
+        else:
+            blobs = collect_processed_blobs(root=root, cfg=cfg, mode=mode, cache=cache)
+            blobs_all.extend(blobs)
 
-    # Подсчет токенов по уникальным файлам
-    items: List[FileStat] = _build_file_stats(files, enc)
+    files_rows: List[dict] = []
+    meta_summary: Dict[str, int] = {}
+    total_raw_tokens = 0
+    total_proc_tokens = 0
+    total_size = 0
 
-    total_tokens = sum(s.tokens for s in items)
-    result = {
-        "model": model_name,
-        "ctxLimit": ctx_limit,
-        "total": {
-            "sizeBytes": sum(s.size for s in items),
-            "tokens": total_tokens,
-            "ctxShare": (total_tokens / ctx_limit * 100) if ctx_limit else 0.0,
-        },
-        "files": [
-            {
+    if stats_mode == "raw":
+        files = _dedup_files(raw_lists)
+        stats_raw = _build_file_stats(files, enc)
+        for s in stats_raw:
+            total_size += s.size
+            total_raw_tokens += s.tokens
+            files_rows.append({
                 "path": s.path,
                 "sizeBytes": s.size,
-                "tokens": s.tokens,
-                "promptShare": (s.tokens / total_tokens * 100) if total_tokens else 0.0,
-                "ctxShare": (s.tokens / ctx_limit * 100) if ctx_limit else 0.0,
-            }
-            for s in items
-        ],
+                "tokensRaw": s.tokens,
+                "tokensProcessed": s.tokens,
+                "savedTokens": 0,
+                "savedPct": 0.0,
+                "promptShare": 0.0,  # заполним после вычисления total_proc_tokens
+                "ctxShare": 0.0,
+                "meta": {},
+            })
+        total_proc_tokens = total_raw_tokens
+    else:
+        # дедуп по абсолютному пути; оставляем первый встретившийся запись
+        deduped: Dict[Path, Tuple[str, int, str, Dict, str]] = {}
+        for rel, size_raw, text_proc, meta, text_raw in blobs_all:
+            # тут нет абсолютного пути; восстановим его через rel из entries заново — надёжнее: используем rel как ключ
+            # (абсолютные пути между секциями одинаковые в пределах одного root)
+            # создаём ключ по rel, так как collect_processed_blobs уже работает от общего root
+            key = Path(rel)
+            if key in deduped:
+                continue
+            deduped[key] = (rel, size_raw, text_proc, meta, text_raw)
+        for (rel, size_raw, text_proc, meta, text_raw) in deduped.values():
+            t_proc = len(enc.encode(text_proc))
+            t_raw = len(enc.encode(text_raw or ""))
+            total_proc_tokens += t_proc
+            total_raw_tokens += t_raw
+            total_size += size_raw
+            files_rows.append({
+                "path": rel,
+                "sizeBytes": size_raw,
+                "tokensRaw": t_raw,
+                "tokensProcessed": t_proc,
+                "savedTokens": max(0, t_raw - t_proc),
+                "savedPct": (1 - t_proc / t_raw) * 100 if t_raw else 0.0,
+                "promptShare": 0.0,  # заполним ниже
+                "ctxShare": 0.0,
+                "meta": meta or {},
+            })
+            for k, v in (meta or {}).items():
+                try:
+                    meta_summary[k] = meta_summary.get(k, 0) + (int(v) if isinstance(v, bool) else v)
+                except Exception:
+                    pass
+
+    # теперь можем заполнить shares
+    for row in files_rows:
+        tp = row["tokensProcessed"]
+        row["promptShare"] = (tp / total_proc_tokens * 100) if total_proc_tokens else 0.0
+        row["ctxShare"] = (tp / ctx_limit * 100) if ctx_limit else 0.0
+
+    result = {
+        "formatVersion": 2,
+        "scope": scope,
+        "statsMode": stats_mode,
+        "model": name,
+        "ctxLimit": ctx_limit,
+        "total": {
+            "sizeBytes": total_size,
+            "tokensProcessed": total_proc_tokens,
+            "tokensRaw": total_raw_tokens,
+            "savedTokens": max(0, total_raw_tokens - total_proc_tokens),
+            "savedPct": (1 - total_proc_tokens / total_raw_tokens) * 100 if total_raw_tokens else 0.0,
+            "ctxShare": (total_proc_tokens / ctx_limit * 100) if ctx_limit else 0.0,
+            "metaSummary": meta_summary if stats_mode != "raw" else {},
+        },
+        "files": files_rows,
     }
+
+    if scope == "context" and context_sections is not None:
+        result["context"] = {"sectionsUsed": list(context_sections)}
+
+    if stats_mode == "rendered":
+        # рендерим суммарный листинг для одной секции или для каждой секции подряд (без шаблона),
+        # т.к. renderedTokens — это «что реально выведем через generate_listing» для данных cfg(s).
+        import sys
+        from io import StringIO
+        buf, old = StringIO(), sys.stdout
+        sys.stdout = buf
+        try:
+            from .core.generator import generate_listing as _gen
+            for _cfg in cfgs:
+                _gen(root=root, cfg=_cfg, mode=mode, list_only=False)
+        finally:
+            sys.stdout = old
+        rendered_tokens = len(enc.encode(buf.getvalue()))
+        result["total"]["renderedTokens"] = rendered_tokens
+        result["total"]["renderedOverheadTokens"] = max(0, rendered_tokens - total_proc_tokens)
+
     return result
-
-# --------------------------------------------------------------------------- #
-# 5. human-friendly print
-# --------------------------------------------------------------------------- #
-def collect_stats_and_print(
-    *,
-    root: Path,
-    cfg: Config,
-    mode: str,
-    sort_key: str,
-    model_name: str,
-    stats_mode: str = "processed",
-    cache: Cache,
-):
-    data = collect_stats(
-        root=root, cfg=cfg, mode=mode,
-        model_name=model_name, stats_mode=stats_mode,
-        cache=cache
-    )
-    stats: List[FileStat] = [
-        FileStat(path=it["path"], size=it["sizeBytes"], tokens=it["tokens"])
-        for it in data["files"]
-    ]
-    _sort_stats(stats, sort_key)
-    _print_ascii_table(stats, data["ctxLimit"])
-
-def context_stats_and_print(
-    *,
-    root: Path,
-    configs: Dict[str, Config],
-    context_sections: Set[str],
-    model_name: str,
-    sort_key: str = "path",   # "path" | "size" | "share"
-    cache: Cache,
-):
-    data = collect_context_stats(
-        root=root,
-        configs=configs,
-        context_sections=context_sections,
-        model_name=model_name,
-        cache=cache
-    )
-    stats: List[FileStat] = [
-        FileStat(path=it["path"], size=it["sizeBytes"], tokens=it["tokens"])
-        for it in data["files"]
-    ]
-    _sort_stats(stats, sort_key)
-    _print_ascii_table(stats, data["ctxLimit"])

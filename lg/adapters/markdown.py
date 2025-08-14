@@ -79,3 +79,29 @@ class MarkdownAdapter(BaseAdapter):
                 out.append(line)
 
         return "\n".join(out)
+
+    # Расширенная версия: собираем простые метрики по экономии
+    def process_ex(self, text: str, cfg: LangMarkdown, group_size: int, mixed: bool):
+        meta = {"removed_h1": 0, "shifted": False}
+        if mixed or cfg.max_heading_level is None:
+            return self.process(text, cfg, group_size, mixed), meta
+        lines = text.splitlines()
+        # было ли H1 первой строкой
+        import re
+        if group_size == 1 and lines and re.match(r"^#\s", lines[0]):
+            meta["removed_h1"] = 1
+        # был ли сдвиг уровней
+        in_fence = False
+        levels = []
+        for line in lines:
+            if re.match(r"^```", line):
+                in_fence = not in_fence
+                continue
+            if in_fence:
+                continue
+            if (m := re.match(r"^(#+)\s", line)):
+                levels.append(len(m.group(1)))
+        if levels:
+            min_lvl = min(levels)
+            meta["shifted"] = (cfg.max_heading_level - min_lvl) != 0 or (group_size == 1 and meta["removed_h1"] == 1)
+        return self.process(text, cfg, group_size, mixed), meta

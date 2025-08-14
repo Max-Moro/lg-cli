@@ -33,6 +33,15 @@ class BaseAdapter:
         """
         return text
 
+    # --- новый расширенный API с метаданными (назад-совместимый) ---
+    def process_ex(self, text: str, cfg, group_size: int, mixed: bool) -> tuple[str, dict]:
+        """
+        Возвращает (content, meta), где meta — произвольный словарь
+        (например: {"removed_comments": 120, "kept_signatures": 34}).
+        Базовая реализация оборачивает существующий process().
+        """
+        return self.process(text, cfg, group_size, mixed), {}
+
     # --- регистрация --------------------------------------------------------
     @classmethod
     def register(cls, adapter_cls: Type["BaseAdapter"]):

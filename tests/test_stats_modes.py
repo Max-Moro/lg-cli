@@ -1,10 +1,10 @@
-import os
 from pathlib import Path
 
-from lg.stats import collect_stats
-from lg.config import Config
-from lg.filters.model import FilterNode
 from lg.adapters.markdown import LangMarkdown
+from lg.config import Config
+from lg.core.cache import Cache
+from lg.filters.model import FilterNode
+from lg.stats import collect_stats
 
 
 def _write(tmp: Path, name: str, text: str) -> Path:
@@ -29,8 +29,9 @@ def test_stats_processed_reduces_markdown_tokens(tmp_path: Path):
         code_fence=True,   # не важно: md-only → fence не применится
     )
 
-    raw = collect_stats(root=tmp_path, cfg=cfg, mode="all", model_name="o3", stats_mode="raw")
-    processed = collect_stats(root=tmp_path, cfg=cfg, mode="all", model_name="o3", stats_mode="processed")
+    cache = Cache(tmp_path)
+    raw = collect_stats(scope="section", root=tmp_path, cfgs=[cfg], mode="all", model_name="o3", stats_mode="raw", cache=cache, context_sections=None)
+    processed = collect_stats(scope="section", root=tmp_path, cfgs=[cfg], mode="all", model_name="o3", stats_mode="processed", cache=cache, context_sections=None)
 
     assert raw["total"]["tokens"] > 0
     assert processed["total"]["tokens"] > 0
@@ -53,8 +54,9 @@ def test_stats_rendered_adds_overhead_with_fence(tmp_path: Path):
         code_fence=True,
     )
 
-    processed = collect_stats(root=tmp_path, cfg=cfg, mode="all", model_name="o3", stats_mode="processed")
-    rendered = collect_stats(root=tmp_path, cfg=cfg, mode="all", model_name="o3", stats_mode="rendered")
+    cache = Cache(tmp_path)
+    processed = collect_stats(scope="section", root=tmp_path, cfgs=[cfg], mode="all", model_name="o3", stats_mode="processed", cache=cache, context_sections=None)
+    rendered = collect_stats(scope="section", root=tmp_path, cfgs=[cfg], mode="all", model_name="o3", stats_mode="rendered", cache=cache, context_sections=None)
 
     # rendered содержит дополнительные символы/токены
     assert "renderedTokens" in rendered["total"]

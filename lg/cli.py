@@ -20,12 +20,7 @@ from .context import generate_context
 from .context import list_context_names, collect_sections_for_context
 from .core.cache import Cache
 from .core.generator import generate_listing
-from .stats import (
-    collect_stats_and_print,
-    collect_stats,
-    collect_context_stats,
-    context_stats_and_print,
-)
+from .stats import collect_stats
 
 PROTOCOL_VERSION = 1
 
@@ -303,27 +298,24 @@ def main() -> None:
             print(f"Error loading config: {e}", file=sys.stderr)
             sys.exit(2)
         try:
-            used = collect_sections_for_context(
+            context_sections = sorted(collect_sections_for_context(
                 ns.context_stats, root=root, configs=configs_all
-            )
+            ))
             if ns.json:
-                data = collect_context_stats(
+                cfgs = [configs_all[s] for s in context_sections]
+                data = collect_stats(
+                    scope="context",
                     root=root,
-                    configs=configs_all,
-                    context_sections=used,
+                    cfgs=cfgs,
+                    mode="all",
                     model_name=ns.model,
-                    cache=cache
+                    stats_mode=ns.stats_mode,
+                    cache=cache,
+                    context_sections=context_sections,
                 )
                 print(json.dumps(data, ensure_ascii=False))
             else:
-                context_stats_and_print(
-                    root=root,
-                    configs=configs_all,
-                    context_sections=used,
-                    model_name=ns.model,
-                    sort_key=getattr(ns, "sort", "path"),
-                    cache=cache
-                )
+                assert "Unsupported"
         except Exception as e:
             print(f"Error: {e}", file=sys.stderr)
             sys.exit(5)
@@ -367,24 +359,18 @@ def main() -> None:
     if ns.list_included and ns.stats:
         if ns.json:
             data = collect_stats(
+                scope="section",
                 root=root,
-                cfg=cfg,
+                cfgs=[cfg],
                 mode=ns.mode,
                 model_name=ns.model,
-                stats_mode=getattr(ns, "stats_mode", "processed"),
-                cache=cache
+                stats_mode=ns.stats_mode,
+                cache=cache,
+                context_sections=None,
             )
             print(json.dumps(data, ensure_ascii=False))
         else:
-            collect_stats_and_print(
-                root=root,
-                cfg=cfg,
-                mode=ns.mode,
-                sort_key=ns.sort,
-                model_name=ns.model,
-                stats_mode=getattr(ns, "stats_mode", "processed"),
-                cache=cache
-            )
+            assert "Unsupported"
     else:
         if ns.list_included and ns.json:
             # JSON для --list-included: пути + размеры (без токенов)

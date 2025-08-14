@@ -3,7 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from itertools import groupby
 from pathlib import Path
-from typing import List, Optional
+from typing import List, Optional, Dict
 
 from .cache import Cache
 from ..adapters import get_adapter_for_path
@@ -146,7 +146,7 @@ def collect_processed_blobs(
     cfg: Config,
     mode: str = "all",
     cache: Optional[Cache] = None,
-) -> List[tuple[str, int, str]]:
+) -> List[tuple[str, int, str, Dict, str]]:
     """
     (rel_path, size_raw_bytes, processed_text) — тексты ПОСЛЕ адаптеров
     с корректным group_size/mixed согласно плану.
@@ -157,7 +157,7 @@ def collect_processed_blobs(
 
     plan = build_plan(entries, cfg)
     cache = cache or Cache(root)
-    result: List[tuple[str, int, str]] = []
+    result: List[tuple[str, int, str, Dict, str]] = []
 
     for group in plan.groups:
         group_size = len(group.entries)
@@ -175,11 +175,23 @@ def collect_processed_blobs(
             cached = cache.get_processed(key_hash, key_path)
             if cached and "processed_text" in cached:
                 processed = cached["processed_text"]
+                meta = cached.get("meta", {})
             else:
-                processed = e.adapter.process(e.text, cfg_lang, group_size, group.mixed)
-                cache.put_processed(key_hash, key_path, processed_text=processed)
+                processed, meta = e.adapter.process_ex(e.text, cfg_lang, group_size, group.mixed)
+                # сохраняем meta вместе с текстом (на будущее — для breakdown)
+                try:
+                    cache.put_processed(key_hash, key_path, processed_text=processed)
+                    # дополнительно дописываем meta (без падений при ошибках)
+                    with key_path.open("r+", encoding="utf-8") as f:
+                        import json
+                        data = json.load(f)
+                        data["meta"] = meta
+                        f.seek(0); f.truncate(0); json.dump(data, f, ensure_ascii=False)
+                except Exception:
+                    pass
 
             processed = processed.rstrip("\n") + "\n"
-            result.append((e.rel_path, e.fp.stat().st_size, processed))
+            # также возвращаем сырой текст e.text (нужен для raw-токенов)
+            result.append((e.rel_path, e.fp.stat().st_size, processed, meta, e.text))
 
     return result
