@@ -162,36 +162,45 @@ def collect_processed_blobs(
     for group in plan.groups:
         group_size = len(group.entries)
         for e in group.entries:
-            cfg_lang = getattr(cfg, e.adapter.name, None)
-
-            # --- кэшируем post-adapter результат ---
-            key_hash, key_path = cache.build_key(
-                abs_path=e.fp,
-                adapter_name=e.adapter.name,
-                adapter_cfg=cfg_lang,
-                group_size=group_size,
-                mixed=group.mixed,
-            )
-            cached = cache.get_processed(key_hash, key_path)
-            if cached and "processed_text" in cached:
-                processed = cached["processed_text"]
-                meta = cached.get("meta", {})
-            else:
-                processed, meta = e.adapter.process_ex(e.text, cfg_lang, group_size, group.mixed)
-                # сохраняем meta вместе с текстом (на будущее — для breakdown)
-                try:
-                    cache.put_processed(key_hash, key_path, processed_text=processed)
-                    # дополнительно дописываем meta (без падений при ошибках)
-                    with key_path.open("r+", encoding="utf-8") as f:
-                        import json
-                        data = json.load(f)
-                        data["meta"] = meta
-                        f.seek(0); f.truncate(0); json.dump(data, f, ensure_ascii=False)
-                except Exception:
-                    pass
-
-            processed = processed.rstrip("\n") + "\n"
+            processed, meta = _process_with_cache(e, cfg, group_size, group.mixed, cache)
             # также возвращаем сырой текст e.text (нужен для raw-токенов)
             result.append((e.rel_path, e.fp.stat().st_size, processed, meta, e.text))
 
     return result
+
+# --------------------------------------------------------------------------- #
+# Shared helper for processing entries with cache
+# --------------------------------------------------------------------------- #
+def _process_with_cache(e: FileEntry, cfg: Config, group_size: int, mixed: bool, cache: Cache) -> tuple[str, dict]:
+    """
+    Apply adapter.process_ex() to a file entry with caching and return (processed_text, meta).
+    Ensures trailing newline is present.
+    """
+    cfg_lang = getattr(cfg, e.adapter.name, None)
+    key_hash, key_path = cache.build_key(
+        abs_path=e.fp,
+        adapter_name=e.adapter.name,
+        adapter_cfg=cfg_lang,
+        group_size=group_size,
+        mixed=mixed,
+    )
+    cached = cache.get_processed(key_hash, key_path)
+    if cached and "processed_text" in cached:
+        processed = cached["processed_text"]
+        meta = cached.get("meta", {})
+    else:
+        processed, meta = e.adapter.process_ex(e.text, cfg_lang, group_size, mixed)
+        try:
+            cache.put_processed(key_hash, key_path, processed_text=processed)
+            # дополнительно дописываем meta (без падений при ошибках)
+            with key_path.open("r+", encoding="utf-8") as f:
+                import json
+                data = json.load(f)
+                data["meta"] = meta
+                f.seek(0)
+                f.truncate(0)
+                json.dump(data, f, ensure_ascii=False)
+        except Exception:
+            pass
+    processed = processed.rstrip("\n") + "\n"
+    return processed, meta

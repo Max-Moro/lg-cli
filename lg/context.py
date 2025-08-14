@@ -29,6 +29,15 @@ def _load_template(root: Path, name: str) -> tuple[Path, ContextTemplate]:
     text = tpl_path.read_text(encoding="utf-8")
     return tpl_path, ContextTemplate(text)
 
+def _ensure_section_exists(section: str, configs: Dict[str, object]) -> None:
+    """Raise a RuntimeError if section is not present in configs mapping."""
+    if section not in configs:
+        available = ", ".join(sorted(configs.keys()))
+        raise RuntimeError(
+            f"Section '{section}' not in configs mapping "
+            f"(available: {available})"
+        )
+
 def collect_sections_for_context(
     context_name: str,
     *,
@@ -54,12 +63,7 @@ def collect_sections_for_context(
             child = placeholder[4:]
             used |= collect_sections_for_context(child, root=root, configs=configs, stack=stack)
         else:
-            if placeholder not in configs:
-                available = ", ".join(sorted(configs.keys()))
-                raise RuntimeError(
-                    f"Section '{placeholder}' not in configs mapping "
-                    f"(available: {available})"
-                )
+            _ensure_section_exists(placeholder, configs)
             used.add(placeholder)
     stack.pop()
     return used
@@ -151,12 +155,7 @@ def _render_template(
             continue
 
         # 3. секция из config.yaml
-        if placeholder not in configs:
-            available = ", ".join(sorted(configs.keys()))
-            raise RuntimeError(
-                f"Section '{placeholder}' not in configs mapping "
-                f"(available: {available})"
-            )
+        _ensure_section_exists(placeholder, configs)
 
         cfg = configs[placeholder]
         buf = StringIO()
