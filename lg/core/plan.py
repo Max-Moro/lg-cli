@@ -3,8 +3,9 @@ from __future__ import annotations
 from dataclasses import dataclass
 from itertools import groupby
 from pathlib import Path
-from typing import List
+from typing import List, Optional
 
+from .cache import Cache
 from ..adapters import get_adapter_for_path
 from ..config import DEFAULT_CONFIG_DIR
 from ..config.model import Config
@@ -140,7 +141,11 @@ def build_plan(entries: List[FileEntry], cfg: Config) -> Plan:
 
 # --------------------- Utility for stats --------------------- #
 def collect_processed_blobs(
-    *, root: Path, cfg: Config, mode: str = "all"
+    *,
+    root: Path,
+    cfg: Config,
+    mode: str = "all",
+    cache: Optional[Cache] = None,
 ) -> List[tuple[str, int, str]]:
     """
     (rel_path, size_raw_bytes, processed_text) — тексты ПОСЛЕ адаптеров
@@ -152,12 +157,28 @@ def collect_processed_blobs(
 
     plan = build_plan(entries, cfg)
     result: List[tuple[str, int, str]] = []
+    cache = cache or Cache(root)
 
     for group in plan.groups:
         group_size = len(group.entries)
         for e in group.entries:
             cfg_lang = getattr(cfg, e.adapter.name, None)
-            processed = e.adapter.process(e.text, cfg_lang, group_size, group.mixed)
+
+            # --- кэшируем post-adapter результат ---
+            key_hash, key_path = cache.build_key(
+                abs_path=e.fp,
+                adapter_name=e.adapter.name,
+                adapter_cfg=cfg_lang,
+                group_size=group_size,
+                mixed=group.mixed,
+            )
+            cached = cache.get_processed(key_hash, key_path)
+            if cached and "processed_text" in cached:
+                processed = cached["processed_text"]
+            else:
+                processed = e.adapter.process(e.text, cfg_lang, group_size, group.mixed)
+                cache.put_processed(key_hash, key_path, processed_text=processed)
+
             processed = processed.rstrip("\n") + "\n"
             result.append((e.rel_path, e.fp.stat().st_size, processed))
 

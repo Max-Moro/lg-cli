@@ -18,6 +18,7 @@ from .config import (
 )
 from .context import generate_context
 from .context import list_context_names, collect_sections_for_context
+from .core.cache import Cache
 from .core.generator import generate_listing
 from .stats import (
     collect_stats_and_print,
@@ -159,6 +160,17 @@ def _build_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="Machine-readable JSON output for list/sections/contexts/stats/doctor",
     )
+    # Кэш
+    p.add_argument(
+        "--no-cache",
+        action="store_true",
+        help="Disable on-disk cache for this run (or set LG_CACHE=0).",
+    )
+    p.add_argument(
+        "--fresh",
+        action="store_true",
+        help="Ignore existing cache entries and recompute (then overwrite cache).",
+    )
     return p
 
 def _load_all_configs(cfg_path: Path) -> dict[str, Config]:
@@ -259,6 +271,8 @@ def main() -> None:
         print(f"Error: Config file not found: {cfg_path}", file=sys.stderr)
         sys.exit(2)
 
+    cache = Cache(root, enabled=None if not ns.no_cache else False, fresh=bool(ns.fresh))
+
     # 3. Режим шаблонов (рендер или агрегированные stats)
     if ns.context:
         # Загружаем все секции один раз
@@ -274,6 +288,7 @@ def main() -> None:
                 context_name=ns.context,
                 configs=configs,
                 list_only=ns.list_included,
+                cache=cache,
             )
         except Exception as e:
             print(f"Error: {e}", file=sys.stderr)
@@ -297,6 +312,7 @@ def main() -> None:
                     configs=configs_all,
                     context_sections=used,
                     model_name=ns.model,
+                    cache=cache
                 )
                 print(json.dumps(data, ensure_ascii=False))
             else:
@@ -306,6 +322,7 @@ def main() -> None:
                     context_sections=used,
                     model_name=ns.model,
                     sort_key=getattr(ns, "sort", "path"),
+                    cache=cache
                 )
         except Exception as e:
             print(f"Error: {e}", file=sys.stderr)
@@ -354,7 +371,8 @@ def main() -> None:
                 cfg=cfg,
                 mode=ns.mode,
                 model_name=ns.model,
-                stats_mode=getattr(ns, "stats_mode", "processed")
+                stats_mode=getattr(ns, "stats_mode", "processed"),
+                cache=cache
             )
             print(json.dumps(data, ensure_ascii=False))
         else:
@@ -365,12 +383,18 @@ def main() -> None:
                 sort_key=ns.sort,
                 model_name=ns.model,
                 stats_mode=getattr(ns, "stats_mode", "processed"),
+                cache=cache
             )
     else:
         if ns.list_included and ns.json:
             # JSON для --list-included: пути + размеры (без токенов)
             collected = generate_listing(
-                root=root, cfg=cfg, mode=ns.mode, list_only=True, _return_stats=True
+                root=root,
+                cfg=cfg,
+                mode=ns.mode,
+                list_only=True,
+                _return_stats=True,
+               cache=cache,
             )
             out = [
                 {"path": rel, "sizeBytes": size}
@@ -383,6 +407,7 @@ def main() -> None:
                 cfg=cfg,
                 mode=ns.mode,
                 list_only=ns.list_included,
+                cache=cache,
             )
 
 

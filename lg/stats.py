@@ -7,6 +7,7 @@ from typing import List, Callable, Dict, Set, Tuple
 import tiktoken
 
 from .config.model import Config
+from .core.cache import Cache
 from .core.generator import generate_listing
 from .core.plan import collect_processed_blobs
 
@@ -129,6 +130,7 @@ def collect_stats(
     mode: str,
     model_name: str,
     stats_mode: str = "processed",    # "raw" | "processed" | "rendered"
+    cache: Cache | None = None,
 ) -> dict:
     # проверяем модель и получаем encoder
     _, ctx_limit, enc = _ensure_model(model_name)
@@ -141,11 +143,12 @@ def collect_stats(
             mode=mode,
             list_only=True,
             _return_stats=True,
+            cache=cache
         )
         stats: List[FileStat] = _build_file_stats(collected, enc)
     else:
         # processed/rendered: считаем по тексту ПОСЛЕ адаптеров, используя общий планировщик
-        blobs = collect_processed_blobs(root=root, cfg=cfg, mode=mode)
+        blobs = collect_processed_blobs(root=root, cfg=cfg, mode=mode, cache=cache)
         stats = []
         for rel, size_raw, text_proc in blobs:
             tokens = len(enc.encode(text_proc))
@@ -208,6 +211,7 @@ def collect_context_stats(
     configs: Dict[str, Config],
     context_sections: Set[str],
     model_name: str,
+    cache: Cache | None = None,
 ) -> dict:
     """Агрегированная статистика по множеству секций (для контекста)."""
     _, ctx_limit, enc = _ensure_model(model_name)
@@ -216,7 +220,12 @@ def collect_context_stats(
     for sec in sorted(context_sections):
         cfg = configs[sec]
         lst = generate_listing(
-            root=root, cfg=cfg, mode="all", list_only=True, _return_stats=True
+            root=root,
+            cfg=cfg,
+            mode="all",
+            list_only=True,
+            _return_stats=True,
+            cache=cache
         )
         collected_lists.append(lst)
 
@@ -258,8 +267,13 @@ def collect_stats_and_print(
     sort_key: str,
     model_name: str,
     stats_mode: str = "processed",
+    cache: Cache | None = None,
 ):
-    data = collect_stats(root=root, cfg=cfg, mode=mode, model_name=model_name, stats_mode=stats_mode)
+    data = collect_stats(
+        root=root, cfg=cfg, mode=mode,
+        model_name=model_name, stats_mode=stats_mode,
+        cache=cache
+    )
     stats: List[FileStat] = [
         FileStat(path=it["path"], size=it["sizeBytes"], tokens=it["tokens"])
         for it in data["files"]
@@ -274,12 +288,14 @@ def context_stats_and_print(
     context_sections: Set[str],
     model_name: str,
     sort_key: str = "path",   # "path" | "size" | "share"
+    cache: Cache | None = None,
 ):
     data = collect_context_stats(
         root=root,
         configs=configs,
         context_sections=context_sections,
         model_name=model_name,
+        cache=cache
     )
     stats: List[FileStat] = [
         FileStat(path=it["path"], size=it["sizeBytes"], tokens=it["tokens"])
