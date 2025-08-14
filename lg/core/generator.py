@@ -46,7 +46,7 @@ def generate_listing(
             out_lines.append(f"```{grp.lang}\n")
             for idx, e in enumerate(grp.entries):
                 from .plan import _process_with_cache
-                text, _ = _process_with_cache(e, cfg, group_size, False, cache)
+                text, _, _, _ = _process_with_cache(e, cfg, group_size, False, cache)
                 if e.adapter.name != "markdown":
                     out_lines.append(f"# —— FILE: {e.rel_path} ——\n")
                 out_lines.append(text)

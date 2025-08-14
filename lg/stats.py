@@ -66,15 +66,37 @@ def _count_tokens_for_file(fp: Path, enc: "tiktoken.Encoding") -> int:
             tokens += len(enc.encode(chunk.decode("utf-8", errors="ignore")))
     return tokens
 
-def _build_file_stats(
-    collected: List[Tuple[Path, str, int]],
+def _count_tokens_cached_for_file(
+    fp: Path,
     enc: "tiktoken.Encoding",
-) -> List[FileStat]:
-    stats: List[FileStat] = []
-    for fp, rel_posix, size_bytes in collected:
-        tokens = _count_tokens_for_file(fp, enc)
-        stats.append(FileStat(rel_posix, size_bytes, tokens))
-    return stats
+    cache: Cache,
+    model_name: str,
+    mode: str,  # "raw" | "processed"
+    *,
+    adapter_name: str,
+    cfg_fingerprint: object | None = None,
+    group_size: int = 1,
+    mixed: bool = False,
+) -> int:
+    """
+    Универсальный подсчёт токенов с кэшем: строит ключ и сохраняет значение.
+    Используется для "raw" (adapter_name='raw', cfg=None) и как fallback для processed,
+    когда в кэше ещё нет токенов.
+    """
+    key_hash, key_path = cache.build_key(
+        abs_path=fp,
+        adapter_name=adapter_name,
+        adapter_cfg=cfg_fingerprint,
+        group_size=group_size,
+        mixed=mixed,
+    )
+    cached = cache.get_tokens(key_hash, key_path, model=model_name, mode=mode)
+    if isinstance(cached, int):
+        return cached
+    # считаем и записываем
+    val = _count_tokens_for_file(fp, enc)
+    cache.update_tokens(key_hash, key_path, model=model_name, mode=mode, value=val)
+    return val
 
 def _dedup_files(collected_lists: List[List[Tuple[Path, str, int]]]) -> List[Tuple[Path, str, int]]:
     """
@@ -114,7 +136,7 @@ def collect_stats(
     name, ctx_limit, enc, encoder_name = _ensure_model(model_name)
 
     # собираем post-adapter blobs секционно и объединяем
-    blobs_all: List[Tuple[str, int, str, Dict, str]] = []
+    blobs_all: List[Tuple[Path, str, int, str, Dict, str, str, Path]] = []
     raw_lists: List[List[Tuple[Path, str, int]]] = []
 
     # Помощник для умножения на кратность секций (context scope)
@@ -148,7 +170,14 @@ def collect_stats(
 
     if stats_mode == "raw":
         files = _dedup_files(raw_lists)
-        stats_raw = _build_file_stats(files, enc)
+        # raw: считаем токены с кэшем (adapter_name='raw')
+        stats_raw: List[FileStat] = []
+        for fp, rel_posix, size_bytes in files:
+            tok = _count_tokens_cached_for_file(
+                fp, enc, cache, model_name, "raw",
+                adapter_name="raw", cfg_fingerprint=None, group_size=1, mixed=False
+            )
+            stats_raw.append(FileStat(rel_posix, size_bytes, tok))
         for s in stats_raw:
             total_size += s.size
             mult = 1
@@ -172,15 +201,15 @@ def collect_stats(
         total_proc_tokens = total_raw_tokens
     else:
         # дедуп по абсолютному пути; оставляем первый встретившийся запись
-        deduped: Dict[Path, Tuple[str, int, str, Dict, str]] = {}
-        for rel, size_raw, text_proc, meta, text_raw in blobs_all:
+        deduped: Dict[Path, Tuple[Path, str, int, str, Dict, str, str, Path]] = {}
+        for abs_fp, rel, size_raw, text_proc, meta, text_raw, key_hash, key_path in blobs_all:
             # тут нет абсолютного пути; восстановим его через rel из entries заново — надёжнее: используем rel как ключ
             # (абсолютные пути между секциями одинаковые в пределах одного root)
             # создаём ключ по rel, так как collect_processed_blobs уже работает от общего root
             key = Path(rel)
             if key in deduped:
                 continue
-            deduped[key] = (rel, size_raw, text_proc, meta, text_raw)
+            deduped[key] = (abs_fp, rel, size_raw, text_proc, meta, text_raw, key_hash, key_path)
 
         # Определяем множители кратности для CONTEXT (по относительному пути файла).
         # Для SECTION все множители = 1.
@@ -198,12 +227,23 @@ def collect_stats(
                 if not sec_cfg:
                     continue
                 sec_blobs = collect_processed_blobs(root=root, cfg=sec_cfg, mode=mode, cache=cache)
-                for (rel_s, _sz, _tp, _m, _tr) in sec_blobs:
+                # tuple: (abs_fp, rel_path, size_raw, processed_text, meta, text_raw, key_hash, key_path)
+                for (_abs_fp, rel_s, _sz, _tp, _m, _tr, _kh, _kp) in sec_blobs:
                     mult_by_rel[rel_s] = mult_by_rel.get(rel_s, 0) + int(cnt)
 
-        for (rel, size_raw, text_proc, meta, text_raw) in deduped.values():
-            t_proc_one = len(enc.encode(text_proc))
-            t_raw_one = len(enc.encode(text_raw or ""))
+        for (abs_fp, rel, size_raw, text_proc, meta, text_raw, key_hash, key_path) in deduped.values():
+            # processed: попробуем взять из кэша токены processed; при отсутствии — посчитаем по text_proc и запишем
+            cached_proc = cache.get_tokens(key_hash, key_path, model=model_name, mode="processed")
+            if isinstance(cached_proc, int):
+                t_proc_one = cached_proc
+            else:
+                t_proc_one = len(enc.encode(text_proc))
+                cache.update_tokens(key_hash, key_path, model=model_name, mode="processed", value=t_proc_one)
+            # raw: считаем по абс.файлу с отдельным ключом 'raw'
+            t_raw_one = _count_tokens_cached_for_file(
+                abs_fp, enc, cache, model_name, "raw",
+                adapter_name="raw", cfg_fingerprint=None, group_size=1, mixed=False
+            )
             mult = default_mult
             if scope == "context" and mult_by_rel:
                 mult = max(1, mult_by_rel.get(rel, 1))

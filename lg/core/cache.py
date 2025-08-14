@@ -128,9 +128,10 @@ class Cache:
             path.parent.mkdir(parents=True, exist_ok=True)
             now = datetime.utcnow().isoformat() + "Z"
             data = {
-                "v": 1,
+                "v": 2,
                 "processed_text": processed_text,
-                "tokens": {},           # зарезервировано для будущей пер-модели
+                "tokens": {},           # { model: { statsMode: int } }
+                "meta": {},
                 "created_at": now,
                 "updated_at": now,
             }
@@ -140,4 +141,54 @@ class Cache:
             tmp.replace(path)
         except Exception:
             # кэш — best effort
+            pass
+
+    # --------- токены: чтение/обновление --------- #
+    def get_tokens(self, key_hash: str, path: Path, *, model: str, mode: str) -> int | None:
+        """
+        Вернуть сохранённое значение токенов для (model, mode) или None.
+        mode ∈ {"raw","processed","rendered"} — в этой итерации используем raw/processed.
+        """
+        if not self.enabled or self.fresh:
+            return None
+        try:
+            with path.open("r", encoding="utf-8") as f:
+                data = json.load(f)
+            tokens = data.get("tokens") or {}
+            per_model = tokens.get(model) or {}
+            val = per_model.get(mode)
+            if isinstance(val, int):
+                return val
+            return None
+        except Exception:
+            return None
+
+    def update_tokens(self, key_hash: str, path: Path, *, model: str, mode: str, value: int) -> None:
+        """
+        Обновить/записать значение токенов для (model, mode).
+        Если файла нет — создадим минимальную заготовку.
+        """
+        if not self.enabled:
+            return
+        try:
+            path.parent.mkdir(parents=True, exist_ok=True)
+            now = datetime.utcnow().isoformat() + "Z"
+            data = {}
+            if path.exists():
+                try:
+                    with path.open("r", encoding="utf-8") as f:
+                        data = json.load(f) or {}
+                except Exception:
+                    data = {}
+            if "v" not in data:
+                data.update({"v": 2, "processed_text": "", "tokens": {}, "meta": {}, "created_at": now})
+            tokens = data.setdefault("tokens", {})
+            per_model = tokens.setdefault(model, {})
+            per_model[mode] = int(value)
+            data["updated_at"] = now
+            tmp = path.with_suffix(".tmp")
+            with tmp.open("w", encoding="utf-8") as f:
+                json.dump(data, f, ensure_ascii=False)
+            tmp.replace(path)
+        except Exception:
             pass
