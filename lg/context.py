@@ -78,7 +78,7 @@ def generate_context(
         configs=configs,
         list_only=list_only,
         stack=[],
-        cache=cache or Cache(root),
+        cache=cache,
     )
     sys.stdout.write(rendered)
 
@@ -125,7 +125,7 @@ def _render_template(
     configs: Dict[str, object],
     list_only: bool,
     stack: List[str],
-    cache: Cache,
+    cache: Cache | None = None,
 ) -> str:
     # 1. цикл?
     if context_name in stack:

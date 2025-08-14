@@ -156,8 +156,8 @@ def collect_processed_blobs(
         return []
 
     plan = build_plan(entries, cfg)
-    result: List[tuple[str, int, str]] = []
     cache = cache or Cache(root)
+    result: List[tuple[str, int, str]] = []
 
     for group in plan.groups:
         group_size = len(group.entries)

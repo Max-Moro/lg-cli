@@ -211,7 +211,7 @@ def collect_context_stats(
     configs: Dict[str, Config],
     context_sections: Set[str],
     model_name: str,
-    cache: Cache | None = None,
+    cache: Cache,
 ) -> dict:
     """Агрегированная статистика по множеству секций (для контекста)."""
     _, ctx_limit, enc = _ensure_model(model_name)
@@ -267,7 +267,7 @@ def collect_stats_and_print(
     sort_key: str,
     model_name: str,
     stats_mode: str = "processed",
-    cache: Cache | None = None,
+    cache: Cache,
 ):
     data = collect_stats(
         root=root, cfg=cfg, mode=mode,
@@ -288,7 +288,7 @@ def context_stats_and_print(
     context_sections: Set[str],
     model_name: str,
     sort_key: str = "path",   # "path" | "size" | "share"
-    cache: Cache | None = None,
+    cache: Cache,
 ):
     data = collect_context_stats(
         root=root,

@@ -1,4 +1,5 @@
-import os, sys
+import os
+import sys
 from pathlib import Path
 
 import pytest
@@ -28,7 +29,7 @@ def test_nested_context_ok(tmp_path: Path, capsys, monkeypatch):
     monkeypatch.setattr(
         ctx_mod,
         "generate_listing",
-        lambda root, cfg, mode, list_only=False: sys.stdout.write(f"LISTING[{cfg.section_name}]"),
+        lambda root, cfg, mode, list_only=False, cache=None: sys.stdout.write(f"LISTING[{cfg.section_name}]"),
     )
 
     # 3) конфиги

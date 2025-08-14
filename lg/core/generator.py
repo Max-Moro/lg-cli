@@ -16,7 +16,7 @@ def generate_listing(
     mode: str = "all",
     list_only: bool = False,
     _return_stats: bool = False,            # ← внутр. флаг для stats-режима
-    cache: Cache | None = None,             # ← новый опциональный кэш
+    cache: Cache | None = None,
 ):
     # 1) общий сбор файлов
     file_entries = collect_entries(root=root, cfg=cfg, mode=mode)

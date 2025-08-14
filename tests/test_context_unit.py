@@ -16,7 +16,7 @@ def patch_generate(monkeypatch):
     """
     import lg.context as ctx_mod
 
-    def fake_generate_listing(root, cfg, mode, list_only=False):
+    def fake_generate_listing(root, cfg, mode, list_only=False, cache=None):
         name = getattr(cfg, "section_name", None)
         if name and name != "empty":
             sys.stdout.write(f"LISTING[{name}]")
