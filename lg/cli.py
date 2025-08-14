@@ -297,33 +297,35 @@ def main() -> None:
         except Exception as e:
             print(f"Error loading config: {e}", file=sys.stderr)
             sys.exit(2)
-
-        # Для v3 статистики нужна кратность секций
-        from .context import collect_sections_with_counts
-        counts = collect_sections_with_counts(ns.context_stats, root=root, configs=configs_all)
-        if not counts:
-            print(f"Error: context template '{ns.context_stats}' has no sections", file=sys.stderr)
+        try:
+            # Для v3 статистики нужна кратность секций
+            from .context import collect_sections_with_counts
+            counts = collect_sections_with_counts(ns.context_stats, root=root, configs=configs_all)
+            if not counts:
+                print(f"Error: context template '{ns.context_stats}' has no sections", file=sys.stderr)
+                sys.exit(5)
+            if ns.json:
+                cfgs = [configs_all[s] for s in sorted(counts.keys())]
+                data = collect_stats(
+                    scope="context",
+                    root=root,
+                    cfgs=cfgs,
+                    mode=ns.mode,                      # уважаем --mode
+                    model_name=ns.model,
+                    stats_mode=ns.stats_mode,
+                    cache=cache,
+                    context_sections=list(counts.keys()),
+                    context_name=ns.context_stats,
+                    context_section_counts=counts,
+                    configs_map=configs_all,
+                )
+                print(json.dumps(data, ensure_ascii=False))
+            else:
+                print("Error: --context-stats currently supports only --json output.", file=sys.stderr)
+                sys.exit(4)
+        except Exception as e:
+            print(f"Error: {e}", file=sys.stderr)
             sys.exit(5)
-        if ns.json:
-            cfgs = [configs_all[s] for s in sorted(counts.keys())]
-            data = collect_stats(
-                scope="context",
-                root=root,
-                cfgs=cfgs,
-                mode=ns.mode,                      # уважаем --mode
-                model_name=ns.model,
-                stats_mode=ns.stats_mode,
-                cache=cache,
-                context_sections=list(counts.keys()),
-                context_name=ns.context_stats,
-                context_section_counts=counts,
-                configs_map=configs_all,
-            )
-            print(json.dumps(data, ensure_ascii=False))
-        else:
-            print("Error: --context-stats currently supports only --json output.", file=sys.stderr)
-            sys.exit(4)
-
         return
 
     # 4. Режим списка секций

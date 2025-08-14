@@ -3,7 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from itertools import groupby
 from pathlib import Path
-from typing import List, Optional, Dict, Tuple
+from typing import List, Optional
 
 from .cache import Cache
 from ..adapters import get_adapter_for_path
@@ -11,6 +11,7 @@ from ..config import DEFAULT_CONFIG_DIR
 from ..config.model import Config
 from ..filters.engine import FilterEngine
 from ..lang import get_language_for_file
+from ..types import ProcessedResult, ProcessedBlob
 from ..utils import iter_files, read_file_text, build_pathspec
 
 
@@ -146,7 +147,7 @@ def collect_processed_blobs(
     cfg: Config,
     mode: str = "all",
     cache: Optional[Cache] = None,
-) -> List[tuple[Path, str, int, str, Dict, str, str, Path]]:
+) -> List[ProcessedBlob]:
     """
     (rel_path, size_raw_bytes, processed_text) — тексты ПОСЛЕ адаптеров
     с корректным group_size/mixed согласно плану.
@@ -157,25 +158,33 @@ def collect_processed_blobs(
 
     plan = build_plan(entries, cfg)
     cache = cache or Cache(root)
-    result: List[tuple[Path, str, int, str, Dict, str, str, Path]] = []
+    result: List[ProcessedBlob] = []
 
     for group in plan.groups:
         group_size = len(group.entries)
         for e in group.entries:
-            processed, meta, key_hash, key_path = _process_with_cache(e, cfg, group_size, group.mixed, cache)
-            # также возвращаем сырой текст e.text (нужен для raw-токенов)
-            result.append((e.fp, e.rel_path, e.fp.stat().st_size, processed, meta, e.text, key_hash, key_path))
+            pr: ProcessedResult = _process_with_cache(e, cfg, group_size, group.mixed, cache)
+            result.append(
+                ProcessedBlob(
+                    abs_path=e.fp,
+                    rel_path=e.rel_path,
+                    size_bytes=e.fp.stat().st_size,
+                    processed_text=pr.processed_text,
+                    meta=pr.meta,
+                    raw_text=e.text,
+                    key_hash=pr.key_hash,
+                    key_path=pr.key_path,
+                )
+            )
 
     return result
 
 # --------------------------------------------------------------------------- #
 # Shared helper for processing entries with cache
 # --------------------------------------------------------------------------- #
-def _process_with_cache(e: FileEntry, cfg: Config, group_size: int, mixed: bool, cache: Cache) -> tuple[str, dict, str, Path]:
-    """
-    Apply adapter.process_ex() to a file entry with caching and return (processed_text, meta).
-    Ensures trailing newline is present.
-    """
+def _process_with_cache(e: FileEntry, cfg: Config, group_size: int, mixed: bool, cache: Cache) -> ProcessedResult:
+    """Обработать файл через адаптер с кэшем. Возвращает ProcessedResult.
+    Гарантирует финальный перевод строки."""
     cfg_lang = getattr(cfg, e.adapter.name, None)
     key_hash, key_path = cache.build_key(
         abs_path=e.fp,
@@ -203,4 +212,9 @@ def _process_with_cache(e: FileEntry, cfg: Config, group_size: int, mixed: bool,
         except Exception:
             pass
     processed = processed.rstrip("\n") + "\n"
-    return processed, meta, key_hash, key_path
+    return ProcessedResult(
+        processed_text=processed,
+        meta=meta,
+        key_hash=key_hash,
+        key_path=key_path,
+    )

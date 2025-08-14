@@ -11,6 +11,7 @@ from .context import generate_context, collect_sections_with_counts
 from .core.cache import Cache
 from .core.generator import generate_listing
 from .core.plan import collect_processed_blobs
+from .types import ProcessedBlob
 
 # --------------------------------------------------------------------------- #
 # предустановленные модели и их окна
@@ -136,7 +137,7 @@ def collect_stats(
     name, ctx_limit, enc, encoder_name = _ensure_model(model_name)
 
     # собираем post-adapter blobs секционно и объединяем
-    blobs_all: List[Tuple[Path, str, int, str, Dict, str, str, Path]] = []
+    blobs_all: List[ProcessedBlob] = []
     raw_lists: List[List[Tuple[Path, str, int]]] = []
 
     # Помощник для умножения на кратность секций (context scope)
@@ -201,23 +202,14 @@ def collect_stats(
         total_proc_tokens = total_raw_tokens
     else:
         # дедуп по абсолютному пути; оставляем первый встретившийся запись
-        deduped: Dict[Path, Tuple[Path, str, int, str, Dict, str, str, Path]] = {}
-        for abs_fp, rel, size_raw, text_proc, meta, text_raw, key_hash, key_path in blobs_all:
-            # тут нет абсолютного пути; восстановим его через rel из entries заново — надёжнее: используем rel как ключ
-            # (абсолютные пути между секциями одинаковые в пределах одного root)
-            # создаём ключ по rel, так как collect_processed_blobs уже работает от общего root
-            key = Path(rel)
-            if key in deduped:
+        deduped: Dict[str, ProcessedBlob] = {}
+        for b in blobs_all:
+            # во избежание дубликатов используем относительный путь как ключ в пределах одного root
+            if b.rel_path in deduped:
                 continue
-            deduped[key] = (abs_fp, rel, size_raw, text_proc, meta, text_raw, key_hash, key_path)
+            deduped[b.rel_path] = b
 
         # Определяем множители кратности для CONTEXT (по относительному пути файла).
-        # Для SECTION все множители = 1.
-        # При scope=context нет прямого соответствия "файл→секция". Для честной кратности
-        # суммируем вклад файла умноженный на Σ(counts по секциям, где этот rel встретился).
-        # Для этого прогоняем сбор blobs по секциям отдельно: но у нас уже смешанный dedup.
-        # Упрощение: считаем множитель = Σ(counts) по всем секциям (т.к. rel уникален по root).
-        # Это корректно, если один и тот же файл включён несколькими секциями (типичный случай).
         default_mult = 1
         mult_by_rel: Dict[str, int] = {}
         if scope == "context" and context_section_counts and configs_map:
@@ -227,41 +219,40 @@ def collect_stats(
                 if not sec_cfg:
                     continue
                 sec_blobs = collect_processed_blobs(root=root, cfg=sec_cfg, mode=mode, cache=cache)
-                # tuple: (abs_fp, rel_path, size_raw, processed_text, meta, text_raw, key_hash, key_path)
-                for (_abs_fp, rel_s, _sz, _tp, _m, _tr, _kh, _kp) in sec_blobs:
-                    mult_by_rel[rel_s] = mult_by_rel.get(rel_s, 0) + int(cnt)
+                for b in sec_blobs:
+                    mult_by_rel[b.rel_path] = mult_by_rel.get(b.rel_path, 0) + int(cnt)
 
-        for (abs_fp, rel, size_raw, text_proc, meta, text_raw, key_hash, key_path) in deduped.values():
+        for b in deduped.values():
             # processed: попробуем взять из кэша токены processed; при отсутствии — посчитаем по text_proc и запишем
-            cached_proc = cache.get_tokens(key_hash, key_path, model=model_name, mode="processed")
+            cached_proc = cache.get_tokens(b.key_hash, b.key_path, model=model_name, mode="processed")
             if isinstance(cached_proc, int):
                 t_proc_one = cached_proc
             else:
-                t_proc_one = len(enc.encode(text_proc))
-                cache.update_tokens(key_hash, key_path, model=model_name, mode="processed", value=t_proc_one)
+                t_proc_one = len(enc.encode(b.processed_text))
+                cache.update_tokens(b.key_hash, b.key_path, model=model_name, mode="processed", value=t_proc_one)
             # raw: считаем по абс.файлу с отдельным ключом 'raw'
             t_raw_one = _count_tokens_cached_for_file(
-                abs_fp, enc, cache, model_name, "raw",
+                b.abs_path, enc, cache, model_name, "raw",
                 adapter_name="raw", cfg_fingerprint=None, group_size=1, mixed=False
             )
             mult = default_mult
             if scope == "context" and mult_by_rel:
-                mult = max(1, mult_by_rel.get(rel, 1))
+                mult = max(1, mult_by_rel.get(b.rel_path, 1))
             total_proc_tokens += t_proc_one * mult
             total_raw_tokens += t_raw_one * mult
-            total_size += size_raw * 1  # sizeBytes считаем без кратности (физический размер)
+            total_size += b.size_bytes * 1  # sizeBytes считаем без кратности (физический размер)
             files_rows.append({
-                "path": rel,
-                "sizeBytes": size_raw,
+                "path": b.rel_path,
+                "sizeBytes": b.size_bytes,
                 "tokensRaw": t_raw_one * mult,
                 "tokensProcessed": t_proc_one * mult,
                 "savedTokens": max(0, (t_raw_one - t_proc_one) * mult),
                 "savedPct": (1 - t_proc_one / t_raw_one) * 100 if t_raw_one else 0.0,
                 "promptShare": 0.0,  # заполним ниже
                 "ctxShare": 0.0,
-                "meta": meta or {},
+                "meta": b.meta or {},
             })
-            for k, v in (meta or {}).items():
+            for k, v in (b.meta or {}).items():
                 try:
                     vv = int(v) if isinstance(v, bool) else v
                     if isinstance(vv, (int, float)):
