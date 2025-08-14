@@ -33,10 +33,10 @@ def test_stats_processed_reduces_markdown_tokens(tmp_path: Path):
     raw = collect_stats(scope="section", root=tmp_path, cfgs=[cfg], mode="all", model_name="o3", stats_mode="raw", cache=cache, context_sections=None)
     processed = collect_stats(scope="section", root=tmp_path, cfgs=[cfg], mode="all", model_name="o3", stats_mode="processed", cache=cache, context_sections=None)
 
-    assert raw["total"]["tokens"] > 0
-    assert processed["total"]["tokens"] > 0
+    assert raw["total"]["tokensProcessed"] > 0
+    assert processed["total"]["tokensProcessed"] > 0
     # processed должен быть строже (H1 удалён)
-    assert processed["total"]["tokens"] < raw["total"]["tokens"]
+    assert processed["total"]["tokensProcessed"] < raw["total"]["tokensProcessed"]
 
 
 def test_stats_rendered_adds_overhead_with_fence(tmp_path: Path):
@@ -61,5 +61,5 @@ def test_stats_rendered_adds_overhead_with_fence(tmp_path: Path):
     # rendered содержит дополнительные символы/токены
     assert "renderedTokens" in rendered["total"]
     assert "renderedOverheadTokens" in rendered["total"]
-    assert rendered["total"]["renderedTokens"] >= processed["total"]["tokens"]
+    assert rendered["total"]["renderedTokens"] >= processed["total"]["tokensProcessed"]
     assert rendered["total"]["renderedOverheadTokens"] > 0
