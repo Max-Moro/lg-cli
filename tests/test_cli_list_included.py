@@ -56,7 +56,8 @@ def test_list_included_outputs_correct_paths(tmp_path: Path):
     (tmp_path / "ignore.log").write_text("")
     secure = tmp_path / "secure"
     secure.mkdir()
-    (secure / "ok.py").write_text("")
+    (secure / "__init__.py").write_text("")
+    (secure / "inner_keep.py").write_text("print('ok_inner')")
     (secure / "nope.md").write_text("")
 
     cfg = Config(
@@ -74,4 +75,4 @@ def test_list_included_outputs_correct_paths(tmp_path: Path):
 
     out = _run_cli(tmp_path, cfg)
     paths = set(out.strip().splitlines())
-    assert paths == {"keep.py", "secure/ok.py"}
+    assert paths == {"keep.py", "secure/inner_keep.py"}

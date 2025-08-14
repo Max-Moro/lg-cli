@@ -8,6 +8,7 @@ import tiktoken
 
 from .config.model import Config
 from .core.generator import generate_listing
+from .core.plan import collect_processed_blobs
 
 # --------------------------------------------------------------------------- #
 # 1. предустановленные модели и их окна
@@ -143,9 +144,8 @@ def collect_stats(
         )
         stats: List[FileStat] = _build_file_stats(collected, enc)
     else:
-        # processed/rendered: считаем по тексту ПОСЛЕ адаптеров
-        from .core.generator import _build_processed_blobs_for_stats  # новый helper (см. Шаг 1)
-        blobs = _build_processed_blobs_for_stats(root=root, cfg=cfg, mode=mode)
+        # processed/rendered: считаем по тексту ПОСЛЕ адаптеров, используя общий планировщик
+        blobs = collect_processed_blobs(root=root, cfg=cfg, mode=mode)
         stats = []
         for rel, size_raw, text_proc in blobs:
             tokens = len(enc.encode(text_proc))

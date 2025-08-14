@@ -22,3 +22,8 @@ tests-src:
     mode: allow
     allow:
       - "/tests/"
+    block:
+      - "tests/test_cli_context.py"
+      - "tests/test_context_nested.py"
+      - "tests/test_context_unit.py"
+      - "tests/test_config_loader.py"
