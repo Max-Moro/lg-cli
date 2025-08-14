@@ -13,8 +13,8 @@ common-src:
     allow:
       - "/pyproject.toml"
       - "/lg/"
-      - "/tests/test_adapters_registry.py"
-      - "/tests/test_adapter_python.py"
+      - "/tests/test_cli_code_fence.py"
+      - "/tests/test_stats_modes.py"
 
 tests-src:
   extensions: [".py"]

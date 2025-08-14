@@ -159,9 +159,11 @@ options:
   -s, --section SECTION     Имя секции в lg-cfg/config.yaml (default: all)
   --mode {all,changes}      all = весь проект; changes = только изменённые
   --list-included           Только пути файлов, прошедших фильтрацию
-    * --stats                   Показать таблицу с размерами, токенами и сводной статистикой
-    * --sort {path,size,share}  Критерий сортировки таблицы (default: path)
-    * --model NAME              Целевая LLM-модель для расчёта доли окна контекста (default: o3)
+    * --stats                                Показать таблицу с размерами, токенами и сводной статистикой
+    * --stats-mode {raw,processed,rendered}  Для какого текста следует подсчитывать токены:
+     raw = сырое содержимое файлов; processed = содержиме, обработанное адаптерами языков; rendered = итоговый рендеринг листинга.
+    * --sort {path,size,share}               Критерий сортировки таблицы (default: path)
+    * --model NAME                           Целевая LLM-модель для расчёта доли окна контекста (default: o3)
   --list-sections           Вывести список доступных секций
   --context NAME            Сгенерировать промт по шаблону NAME.tpl.md
   --context-stats NAME      Аналогично команде --stats, только для всего контекста
