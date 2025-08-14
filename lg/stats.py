@@ -363,5 +363,6 @@ def collect_stats(
             result["context"]["finalRenderedTokens"] = final_rendered_tokens
             result["context"]["templateOnlyTokens"] = template_only
             result["context"]["templateOverheadPct"] = (template_only / final_rendered_tokens * 100.0) if final_rendered_tokens else 0.0
+            result["context"]["finalCtxShare"] = (final_rendered_tokens / ctx_limit * 100.0) if ctx_limit else 0.0
 
     return result
