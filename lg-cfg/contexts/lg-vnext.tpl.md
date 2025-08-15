@@ -7,6 +7,7 @@
 > ✔ **PR-4: Planner**
 > ✔ **PR-5: Adapters Engine + Cache(processed/raw)**
 > ✔ **PR-6: Renderer**
+> ✔ **PR-7: Stats / RunResult / rendered tokens**
 
 Вот текущий код, разработанный в рамках работы над "LG vNext". Примечания:
 - тесты пропущены для экономии токенов, но можно попросить, если они нужны для разработки;

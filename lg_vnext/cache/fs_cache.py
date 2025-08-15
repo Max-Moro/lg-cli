@@ -240,3 +240,16 @@ class Cache:
             self._atom_write(key_path, data)
         except Exception:
             pass
+
+    # --------------------------- PUBLIC: key→path helpers --------------------------- #
+    def path_for(self, bucket: str, key: str) -> Path:
+        return self._bucket_path(bucket, key)
+
+    def path_for_processed_key(self, key: str) -> Path:
+        return self._bucket_path("processed", key)
+
+    def path_for_raw_tokens_key(self, key: str) -> Path:
+        return self._bucket_path("raw_tokens", key)
+
+    def path_for_rendered_key(self, key: str) -> Path:
+        return self._bucket_path("rendered", key)

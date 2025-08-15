@@ -4,10 +4,9 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import List
 
-
 # IR / API
 from .types import (
-    RunOptions, Diagnostics, SectionUsage, ContextSpec, Manifest, Plan,
+    RunOptions, Diagnostics, ContextSpec, Manifest, Plan,
     ProcessedBlob, RenderedDocument, FileRow, Totals, ContextBlock
 )
 # pydantic JSON контракт
@@ -19,14 +18,13 @@ from .api_schema import (
     RunResult as RunResultM,
 )
 
-# Слои пайплайна (некоторые пока заглушки; реализация будет по PR-плану)
 from .config.load import load_config_v6, ConfigV6
 from .context.resolver import resolve_context
 from .manifest.builder import build_manifest
 from .plan.planner import build_plan
 from .adapters import process_groups
 from .render.renderer import render_document
-# from .stats.tokenizer import compute_stats
+from .stats.tokenizer import compute_stats
 from .cache.fs_cache import Cache
 from .vcs.git import GitVcs
 from .vcs import NullVcs
@@ -41,14 +39,8 @@ class RunContext:
     tool_version: str = "0.0.0"
     protocol: int = 1
 
-# --------------------------- Orchestration --------------------------- #
 
 def run_report(name_or_sec: str, options: RunOptions) -> RunResultM:
-    """
-    Главная точка входа для JSON-отчёта.
-    Пока реализована как «скелет»: создаёт пустые структуры и возвращает RunResult,
-    чтобы CLI мог работать на ранних PR-ах.
-    """
     ctx = _bootstrap_run_context(options)
     spec: ContextSpec = resolve_context(name_or_sec, ctx)
     manifest: Manifest = build_manifest(
@@ -62,17 +54,13 @@ def run_report(name_or_sec: str, options: RunOptions) -> RunResultM:
     blobs: List[ProcessedBlob] = process_groups(plan, ctx)
     rendered: RenderedDocument = render_document(plan, blobs)
 
-    # files_rows, totals, ctx_block = compute_stats(blobs, rendered, spec, ctx)
-    files_rows: List[FileRow] = []
-    totals: Totals = Totals(
-        sizeBytes=0, tokensProcessed=0, tokensRaw=0,
-        savedTokens=0, savedPct=0.0, ctxShare=0.0,
-        renderedTokens=0, renderedOverheadTokens=0, metaSummary={}
-    )
-    ctx_block: ContextBlock = ContextBlock(
-        templateName=_ctx_display_name(spec),
-        sectionsUsed=spec.sections.by_name,
-        finalRenderedTokens=0, templateOnlyTokens=0, templateOverheadPct=0.0, finalCtxShare=0.0
+    files_rows, totals, ctx_block, enc_name, ctx_limit = compute_stats(
+        blobs=blobs,
+        rendered=rendered,
+        spec=spec,
+        manifest=manifest,
+        model_name=options.model,
+        cache=ctx.cache,
     )
 
     diag = Diagnostics(
@@ -86,8 +74,8 @@ def run_report(name_or_sec: str, options: RunOptions) -> RunResultM:
         formatVersion=4,
         scope="context",
         model=options.model,
-        encoder="cl100k_base",
-        ctxLimit=32000,
+        encoder=enc_name,
+        ctxLimit=ctx_limit,
         total=TotalM(**totals.__dict__),
         files=[FileM(**r.__dict__) for r in files_rows],
         context=ContextM(
@@ -107,8 +95,8 @@ def run_report(name_or_sec: str, options: RunOptions) -> RunResultM:
         )
     )
 
+
 def run_render(name_or_sec: str, options: RunOptions) -> RenderedDocument:
-    # Пока минимум: построим план — пригодится для следующих PR-ов
     ctx = _bootstrap_run_context(options)
     spec = resolve_context(name_or_sec, ctx)
     manifest = build_manifest(
@@ -122,19 +110,16 @@ def run_render(name_or_sec: str, options: RunOptions) -> RenderedDocument:
     blobs = process_groups(plan, ctx)
     return render_document(plan, blobs)
 
-# --------------------------- Internals (stubs) --------------------------- #
+
+# --------------------------- Internals --------------------------- #
 
 def _bootstrap_run_context(options: RunOptions) -> RunContext:
     root = Path.cwd()
     cfg = load_config_v6(root)
-    # выбираем VCS: если это git-репозиторий — GitVcs, иначе NullVcs
     vcs = GitVcs() if (root / ".git").is_dir() else NullVcs()
     cache = Cache(root, tool_version="0.0.0")
-    return RunContext(root=root, config=cff(cfg), options=options, tool_version="0.0.0", protocol=1, vcs=vcs, cache=cache)
+    return RunContext(root=root, config=_cfg_finalize(cfg), options=options, tool_version="0.0.0", protocol=1, vcs=vcs, cache=cache)
 
-def cff(cfg: ConfigV6) -> ConfigV6:
-    # маленькая прослойка для единообразия (hook для будущей нормализации, пока no-op)
+def _cfg_finalize(cfg: ConfigV6) -> ConfigV6:
+    # hook на будущее (нормализация/добавление дефолтов)
     return cfg
-
-def _ctx_display_name(spec: ContextSpec) -> str:
-    return f"{'sec' if spec.kind=='section' else 'ctx'}:{spec.name}"
