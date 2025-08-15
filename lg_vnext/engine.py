@@ -19,8 +19,8 @@ from .api_schema import (
 )
 
 # Слои пайплайна (пока заглушки; реализация будет по PR-плану)
-# from .config.load import load_config_v6
-# from .context.resolver import resolve_context
+from .config.load import load_config_v6, ConfigV6
+from .context.resolver import resolve_context
 # from .manifest.builder import build_manifest
 # from .plan.planner import build_plan
 # from .adapters import process_groups
@@ -31,7 +31,7 @@ from .api_schema import (
 @dataclass(frozen=True)
 class RunContext:
     root: Path
-    # config: ConfigV6     # будет добавлено в PR-1
+    config: ConfigV6
     options: RunOptions
     # vcs: VcsProvider     # PR-3
     # cache: Cache         # PR-5
@@ -48,9 +48,8 @@ def run_report(name_or_sec: str, options: RunOptions) -> RunResultM:
     """
     ctx = _bootstrap_run_context(options)
 
-    # Заглушки стадий (будут заменены по итерациям)
-    # spec: ContextSpec = resolve_context(name_or_sec, ctx)
-    spec: ContextSpec = _stub_context_spec(name_or_sec)
+    # 1) Контекст (реальный резолвер)
+    spec: ContextSpec = resolve_context(name_or_sec, ctx)
 
     # manifest: Manifest = build_manifest(spec, ctx)
     manifest: Manifest = Manifest(files=[])
@@ -125,23 +124,13 @@ def run_render(name_or_sec: str, options: RunOptions) -> RenderedDocument:
 # --------------------------- Internals (stubs) --------------------------- #
 
 def _bootstrap_run_context(options: RunOptions) -> RunContext:
-    return RunContext(root=Path.cwd(), options=options, tool_version="0.0.0", protocol=1)
+    root = Path.cwd()
+    cfg = load_config_v6(root)
+    return RunContext(root=root, config=cff(cfg), options=options, tool_version="0.0.0", protocol=1)
 
-def _stub_context_spec(name_or_sec: str) -> ContextSpec:
-    """
-    Временная заглушка ContextSpec: секция по умолчанию all или явное имя.
-    """
-    kind = "context"
-    name = name_or_sec
-    if name_or_sec.startswith("sec:"):
-        kind, name = "section", name_or_sec[4:]
-    elif name_or_sec.startswith("ctx:"):
-        kind, name = "context", name_or_sec[4:]
-
-    return ContextSpec(
-        kind=kind, name=name, template_ast=None,
-        sections=SectionUsage(by_name={name if kind == "section" else "all": 1})
-    )
+def cff(cfg: ConfigV6) -> ConfigV6:
+    # маленькая прослойка для единообразия (hook для будущей нормализации, пока no-op)
+    return cfg
 
 def _ctx_display_name(spec: ContextSpec) -> str:
     return f"{'sec' if spec.kind=='section' else 'ctx'}:{spec.name}"
