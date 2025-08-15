@@ -4,6 +4,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import List
 
+
 # IR / API
 from .types import (
     RunOptions, Diagnostics, SectionUsage, ContextSpec, Manifest, Plan,
@@ -18,11 +19,11 @@ from .api_schema import (
     RunResult as RunResultM,
 )
 
-# Слои пайплайна (пока заглушки; реализация будет по PR-плану)
+# Слои пайплайна (некоторые пока заглушки; реализация будет по PR-плану)
 from .config.load import load_config_v6, ConfigV6
 from .context.resolver import resolve_context
 from .manifest.builder import build_manifest
-# from .plan.planner import build_plan
+from .plan.planner import build_plan
 # from .adapters import process_groups
 # from .render.renderer import render_document
 # from .stats.tokenizer import compute_stats
@@ -62,8 +63,8 @@ def run_report(name_or_sec: str, options: RunOptions) -> RunResultM:
         vcs=ctx.vcs,
     )
 
-    # plan: Plan = build_plan(manifest, ctx)
-    plan: Plan = Plan(md_only=True, use_fence=False, groups=[])
+    # Группировка и построение плана
+    plan: Plan = build_plan(manifest, ctx)
 
     # blobs: List[ProcessedBlob] = process_groups(plan, ctx)
     blobs: List[ProcessedBlob] = []
@@ -117,16 +118,20 @@ def run_report(name_or_sec: str, options: RunOptions) -> RunResultM:
     )
 
 def run_render(name_or_sec: str, options: RunOptions) -> RenderedDocument:
-    """
-    Рендер текстового документа.
-    Пока — заглушка, возвращает пустой RenderedDocument.
-    """
-    # ctx = _bootstrap_run_context(options)
-    # spec = resolve_context(name_or_sec, ctx)
-    # manifest = build_manifest(spec, ctx)
-    # plan = build_plan(manifest, ctx)
+    # Пока минимум: построим план — пригодится для следующих PR-ов
+    ctx = _bootstrap_run_context(options)
+    spec = resolve_context(name_or_sec, ctx)
+    manifest = build_manifest(
+        root=ctx.root,
+        spec=spec,
+        sections_cfg=ctx.config.sections,
+        mode=ctx.options.mode,
+        vcs=ctx.vcs,
+    )
+    plan = build_plan(manifest, ctx)
     # blobs = process_groups(plan, ctx)
     # rendered = render_document(plan, blobs, ctx)
+    # До PR-6 возвращаем пустой документ:
     return RenderedDocument(text="", blocks=[])
 
 # --------------------------- Internals (stubs) --------------------------- #
