@@ -1,0 +1,94 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.org/lg_vnext/run_result.schema.json",
+  "title": "RunResult",
+  "type": "object",
+  "required": ["formatVersion","scope","model","encoder","ctxLimit","total","files","context","rendered_text","diagnostics"],
+  "properties": {
+    "formatVersion": { "type": "integer", "const": 4 },
+    "scope": { "type": "string", "const": "context" },
+    "model": { "type": "string" },
+    "encoder": { "type": "string" },
+    "ctxLimit": { "type": "integer", "minimum": 1 },
+    "total": {
+      "type": "object",
+      "required": ["sizeBytes","tokensProcessed","tokensRaw","savedTokens","savedPct","ctxShare","metaSummary"],
+      "properties": {
+        "sizeBytes": { "type": "integer", "minimum": 0 },
+        "tokensProcessed": { "type": "integer", "minimum": 0 },
+        "tokensRaw": { "type": "integer", "minimum": 0 },
+        "savedTokens": { "type": "integer", "minimum": 0 },
+        "savedPct": { "type": "number" },
+        "ctxShare": { "type": "number" },
+        "renderedTokens": { "type": "integer", "minimum": 0 },
+        "renderedOverheadTokens": { "type": "integer", "minimum": 0 },
+        "metaSummary": {
+          "type": "object",
+          "additionalProperties": { "type": "integer" }
+        }
+      },
+      "additionalProperties": false
+    },
+    "files": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["path","sizeBytes","tokensRaw","tokensProcessed","savedTokens","savedPct","promptShare","ctxShare","meta"],
+        "properties": {
+          "path": { "type": "string" },
+          "sizeBytes": { "type": "integer", "minimum": 0 },
+          "tokensRaw": { "type": "integer", "minimum": 0 },
+          "tokensProcessed": { "type": "integer", "minimum": 0 },
+          "savedTokens": { "type": "integer", "minimum": 0 },
+          "savedPct": { "type": "number" },
+          "promptShare": { "type": "number" },
+          "ctxShare": { "type": "number" },
+          "meta": {
+            "type": "object",
+            "additionalProperties": {
+              "oneOf": [
+                { "type": "string" },
+                { "type": "integer" },
+                { "type": "number" },
+                { "type": "boolean" }
+              ]
+            }
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    "context": {
+      "type": "object",
+      "required": ["templateName","sectionsUsed"],
+      "properties": {
+        "templateName": { "type": "string" },
+        "sectionsUsed": {
+          "type": "object",
+          "additionalProperties": { "type": "integer", "minimum": 1 }
+        },
+        "finalRenderedTokens": { "type": "integer", "minimum": 0 },
+        "templateOnlyTokens": { "type": "integer", "minimum": 0 },
+        "templateOverheadPct": { "type": "number" },
+        "finalCtxShare": { "type": "number" }
+      },
+      "additionalProperties": false
+    },
+    "rendered_text": { "type": "string" },
+    "diagnostics": {
+      "type": "object",
+      "required": ["protocol","tool_version","root","warnings"],
+      "properties": {
+        "protocol": { "type": "integer", "minimum": 1 },
+        "tool_version": { "type": "string" },
+        "root": { "type": "string" },
+        "warnings": {
+          "type": "array",
+          "items": { "type": "string" }
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}
