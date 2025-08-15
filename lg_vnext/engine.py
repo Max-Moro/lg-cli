@@ -25,7 +25,7 @@ from .context.resolver import resolve_context
 from .manifest.builder import build_manifest
 from .plan.planner import build_plan
 from .adapters import process_groups
-# from .render.renderer import render_document
+from .render.renderer import render_document
 # from .stats.tokenizer import compute_stats
 from .cache.fs_cache import Cache
 from .vcs.git import GitVcs
@@ -60,9 +60,7 @@ def run_report(name_or_sec: str, options: RunOptions) -> RunResultM:
     )
     plan: Plan = build_plan(manifest, ctx)
     blobs: List[ProcessedBlob] = process_groups(plan, ctx)
-
-    # rendered: RenderedDocument = render_document(plan, blobs, ctx)
-    rendered: RenderedDocument = RenderedDocument(text="", blocks=[])
+    rendered: RenderedDocument = render_document(plan, blobs)
 
     # files_rows, totals, ctx_block = compute_stats(blobs, rendered, spec, ctx)
     files_rows: List[FileRow] = []
@@ -122,9 +120,7 @@ def run_render(name_or_sec: str, options: RunOptions) -> RenderedDocument:
     )
     plan = build_plan(manifest, ctx)
     blobs = process_groups(plan, ctx)
-    # rendered = render_document(plan, blobs, ctx)
-    # До PR-6 возвращаем пустой документ:
-    return RenderedDocument(text="", blocks=[])
+    return render_document(plan, blobs)
 
 # --------------------------- Internals (stubs) --------------------------- #
 
