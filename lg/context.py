@@ -45,10 +45,7 @@ def collect_sections_for_context(
     configs: Dict[str, object],
     stack: List[str] | None = None,
 ) -> Set[str]:
-    """
-    Рекурсивно собрать имена секций (ключи в configs), которые используются в шаблоне
-    context_name и во всех включенных через ${tpl:...} подшаблонах.
-    """
+    """Собрать имена секций, используемых в шаблоне и его вложениях (${tpl:...})."""
     stack = stack or []
     if context_name in stack:
         cycle = " → ".join(stack + [context_name])
@@ -75,10 +72,7 @@ def collect_sections_with_counts(
     configs: Dict[str, object],
     stack: List[str] | None = None,
 ) -> Dict[str, int]:
-    """
-    Возвращает МНОЖЕСТВЕННОСТИ использования секций в шаблоне
-    (учитывает рекурсивные `${tpl:...}`-включения).
-    """
+    """Вернуть кратности использования секций в шаблоне (учитывает `${tpl:...}`)."""
     stack = stack or []
     if context_name in stack:
         cycle = " → ".join(stack + [context_name])

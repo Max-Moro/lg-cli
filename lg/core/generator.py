@@ -20,7 +20,6 @@ def generate_listing(
 ):
     # 1) общий сбор файлов
     file_entries = collect_entries(root=root, cfg=cfg, mode=mode)
-    listed_paths: List[str] = []
 
     # режим простого списка (путей или данных для stats)
     if list_only:

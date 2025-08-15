@@ -2,16 +2,16 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from pathlib import Path
-from typing import List, Dict, Set, Tuple, Iterable, Optional
+from typing import List, Dict, Set, Tuple, Iterable, Optional, TypedDict
 
 import tiktoken
 
 from .config.model import Config
 from .context import generate_context, collect_sections_with_counts
+from .context_index import compute_context_rel_multiplicity
 from .core.cache import Cache
 from .core.generator import generate_listing
-from .core.plan import collect_processed_blobs
-from .types import ProcessedBlob
+from .core.plan import ProcessedBlob, collect_processed_blobs
 
 # --------------------------------------------------------------------------- #
 # предустановленные модели и их окна
@@ -36,6 +36,52 @@ class FileStat:
     path: str
     size: int       # bytes
     tokens: int
+
+class StatsFileRow(TypedDict):
+    path: str
+    sizeBytes: int
+    tokensRaw: int
+    tokensProcessed: int
+    savedTokens: int
+    savedPct: float
+    promptShare: float
+    ctxShare: float
+    meta: Dict
+
+
+class StatsTotal(TypedDict):
+    sizeBytes: int
+    tokensProcessed: int
+    tokensRaw: int
+    savedTokens: int
+    savedPct: float
+    ctxShare: float
+    # опциональные поля для stats_mode=rendered
+    renderedTokens: int
+    renderedOverheadTokens: int
+    metaSummary: Dict[str, int]
+
+
+class StatsContextBlock(TypedDict, total=False):
+    templateName: str
+    sectionsUsed: Dict[str, int]
+    # rendered-specific агрегаты
+    finalRenderedTokens: int
+    templateOnlyTokens: int
+    templateOverheadPct: float
+    finalCtxShare: float
+
+
+class StatsResult(TypedDict, total=False):
+    formatVersion: int
+    scope: str                 # "section" | "context"
+    statsMode: str             # "raw" | "processed" | "rendered"
+    model: str
+    encoder: str
+    ctxLimit: int
+    total: StatsTotal
+    files: List[StatsFileRow]
+    context: StatsContextBlock
 
 # --------------------------------------------------------------------------- #
 # Helpers
@@ -132,7 +178,7 @@ def collect_stats(
     context_name: Optional[str] = None,
     context_section_counts: Optional[Dict[str, int]] = None,
     configs_map: Optional[Dict[str, Config]] = None,
-) -> dict:
+) -> StatsResult:
     # собираем entries/blobs, затем считаем
     name, ctx_limit, enc, encoder_name = _ensure_model(model_name)
 
@@ -163,7 +209,7 @@ def collect_stats(
             blobs = collect_processed_blobs(root=root, cfg=cfg, mode=mode, cache=cache)
             blobs_all.extend(blobs)
 
-    files_rows: List[dict] = []
+    files_rows: List[StatsFileRow] = []
     meta_summary: Dict[str, int] = {}
     total_raw_tokens = 0
     total_proc_tokens = 0
@@ -213,14 +259,13 @@ def collect_stats(
         default_mult = 1
         mult_by_rel: Dict[str, int] = {}
         if scope == "context" and context_section_counts and configs_map:
-            # Построим обратный индекс rel→сумма кратностей секций, которые этот rel содержат.
-            for sec_name, cnt in context_section_counts.items():
-                sec_cfg = configs_map.get(sec_name)
-                if not sec_cfg:
-                    continue
-                sec_blobs = collect_processed_blobs(root=root, cfg=sec_cfg, mode=mode, cache=cache)
-                for b in sec_blobs:
-                    mult_by_rel[b.rel_path] = mult_by_rel.get(b.rel_path, 0) + int(cnt)
+            mult_by_rel = compute_context_rel_multiplicity(
+                root=root,
+                configs_map=configs_map,
+                context_section_counts=context_section_counts,
+                mode=mode,
+                cache=cache,
+            )
 
         for b in deduped.values():
             # processed: попробуем взять из кэша токены processed; при отсутствии — посчитаем по text_proc и запишем
@@ -266,7 +311,7 @@ def collect_stats(
         row["promptShare"] = (tp / total_proc_tokens * 100) if total_proc_tokens else 0.0
         row["ctxShare"] = (tp / ctx_limit * 100) if ctx_limit else 0.0
 
-    result = {
+    result: StatsResult = {
         "formatVersion": 3,
         "scope": scope,
         "statsMode": stats_mode,
