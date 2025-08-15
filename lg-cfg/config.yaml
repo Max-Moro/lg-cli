@@ -27,3 +27,10 @@ tests-src:
       - "tests/test_context_nested.py"
       - "tests/test_context_unit.py"
       - "tests/test_config_loader.py"
+
+lg-vnext-src:
+  extensions: [".py"]
+  filters:
+    mode: allow
+    allow:
+      - "/lg_vnext/"
