@@ -24,10 +24,10 @@ from .config.load import load_config_v6, ConfigV6
 from .context.resolver import resolve_context
 from .manifest.builder import build_manifest
 from .plan.planner import build_plan
-# from .adapters import process_groups
+from .adapters import process_groups
 # from .render.renderer import render_document
 # from .stats.tokenizer import compute_stats
-# from .cache.fs_cache import Cache
+from .cache.fs_cache import Cache
 from .vcs.git import GitVcs
 from .vcs import NullVcs
 
@@ -37,7 +37,7 @@ class RunContext:
     config: ConfigV6
     options: RunOptions
     vcs: object            # VcsProvider (GitVcs | NullVcs)
-    # cache: Cache         # PR-5
+    cache: Cache
     tool_version: str = "0.0.0"
     protocol: int = 1
 
@@ -50,11 +50,7 @@ def run_report(name_or_sec: str, options: RunOptions) -> RunResultM:
     чтобы CLI мог работать на ранних PR-ах.
     """
     ctx = _bootstrap_run_context(options)
-
-    # 1) Контекст (реальный резолвер)
     spec: ContextSpec = resolve_context(name_or_sec, ctx)
-
-    # 2) Manifest (реально строим)
     manifest: Manifest = build_manifest(
         root=ctx.root,
         spec=spec,
@@ -62,12 +58,8 @@ def run_report(name_or_sec: str, options: RunOptions) -> RunResultM:
         mode=ctx.options.mode,
         vcs=ctx.vcs,
     )
-
-    # Группировка и построение плана
     plan: Plan = build_plan(manifest, ctx)
-
-    # blobs: List[ProcessedBlob] = process_groups(plan, ctx)
-    blobs: List[ProcessedBlob] = []
+    blobs: List[ProcessedBlob] = process_groups(plan, ctx)
 
     # rendered: RenderedDocument = render_document(plan, blobs, ctx)
     rendered: RenderedDocument = RenderedDocument(text="", blocks=[])
@@ -129,7 +121,7 @@ def run_render(name_or_sec: str, options: RunOptions) -> RenderedDocument:
         vcs=ctx.vcs,
     )
     plan = build_plan(manifest, ctx)
-    # blobs = process_groups(plan, ctx)
+    blobs = process_groups(plan, ctx)
     # rendered = render_document(plan, blobs, ctx)
     # До PR-6 возвращаем пустой документ:
     return RenderedDocument(text="", blocks=[])
@@ -141,7 +133,8 @@ def _bootstrap_run_context(options: RunOptions) -> RunContext:
     cfg = load_config_v6(root)
     # выбираем VCS: если это git-репозиторий — GitVcs, иначе NullVcs
     vcs = GitVcs() if (root / ".git").is_dir() else NullVcs()
-    return RunContext(root=root, config=cff(cfg), options=options, tool_version="0.0.0", protocol=1, vcs=vcs)
+    cache = Cache(root, tool_version="0.0.0")
+    return RunContext(root=root, config=cff(cfg), options=options, tool_version="0.0.0", protocol=1, vcs=vcs, cache=cache)
 
 def cff(cfg: ConfigV6) -> ConfigV6:
     # маленькая прослойка для единообразия (hook для будущей нормализации, пока no-op)

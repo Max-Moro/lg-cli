@@ -5,7 +5,7 @@ from typing import Dict, List
 
 from ruamel.yaml import YAML
 
-from .model import ConfigV6, SectionCfg, MarkdownCfg, PythonCfg, SCHEMA_VERSION
+from .model import ConfigV6, SectionCfg, SCHEMA_VERSION
 from lg_vnext.io.model import FilterNode
 
 _yaml = YAML(typ="safe")
@@ -33,20 +33,23 @@ def load_config_v6(root: Path) -> ConfigV6:
             raise RuntimeError(f"Section '{name}' must be a mapping")
         # Разбираем минимальные поля для этого шага
         exts = list(map(str, node.get("extensions", [".py"])))
-        md = node.get("markdown", {}) or {}
-        py = node.get("python", {}) or {}
-        code_fence = bool(node.get("code_fence", True))
+
+        # --- адаптер Python (при отсутствии – будут дефолты из LangPython) ---
+        from ..adapters.python import PythonCfg
+        py_cfg = PythonCfg(**node.get("python", {}))
+
+        # --- адаптер Markdown (при отсутствии – def max_heading_level=None) ---
+        from ..adapters.markdown import MarkdownCfg
+        md_cfg = MarkdownCfg(**node.get("markdown", {}))
+
         filters = FilterNode.from_dict(node.get("filters", {"mode": "block"}))
         sections[name] = SectionCfg(
             extensions=exts,
-            markdown=MarkdownCfg(max_heading_level=md.get("max_heading_level")),
-            python=PythonCfg(
-                skip_empty=bool(py.get("skip_empty", True)),
-                skip_trivial_inits=bool(py.get("skip_trivial_inits", True)),
-                trivial_init_max_noncomment=int(py.get("trivial_init_max_noncomment", 1)),
-            ),
-            code_fence=code_fence,
             filters=filters,
+            code_fence=bool(node.get("code_fence", True)),
+            skip_empty=bool(node.get("skip_empty", True)),
+            markdown=md_cfg,
+            python=py_cfg,
         )
 
     return ConfigV6(schema_version=SCHEMA_VERSION, sections=sections)

@@ -1,16 +1,18 @@
-import pytest
-from lg_vnext.engine import RunContext
-from lg_vnext.types import RunOptions
-from lg_vnext.config.load import load_config_v6
-from lg_vnext.context.resolver import resolve_context, list_contexts
 from pathlib import Path
 
+import pytest
+
+from lg_vnext.cache.fs_cache import Cache
+from lg_vnext.config.load import load_config_v6
+from lg_vnext.context.resolver import resolve_context, list_contexts
+from lg_vnext.engine import RunContext
+from lg_vnext.types import RunOptions
 from lg_vnext.vcs import NullVcs
 
 
 def _ctx(root: Path):
     return RunContext(root=root, config=load_config_v6(root), options=RunOptions(), tool_version="0.0.0", protocol=1,
-                      vcs=NullVcs())
+                      vcs=NullVcs(), cache=Cache(root, tool_version="0.0.0"))
 
 def test_list_contexts(tmpproj: Path):
     assert list_contexts(tmpproj) == ["a", "b"]

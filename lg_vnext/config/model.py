@@ -1,21 +1,13 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Dict, List, Optional
+from typing import Dict, List
 
 from lg_vnext.io.model import FilterNode
+from ..adapters.markdown import MarkdownCfg
+from ..adapters.python import PythonCfg
 
 SCHEMA_VERSION = 6
-
-@dataclass
-class MarkdownCfg:
-    max_heading_level: Optional[int] = None
-
-@dataclass
-class PythonCfg:
-    skip_empty: bool = True
-    skip_trivial_inits: bool = True
-    trivial_init_max_noncomment: int = 1
 
 @dataclass
 class SectionCfg:
