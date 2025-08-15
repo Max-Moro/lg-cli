@@ -1,15 +1,11 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from importlib import metadata
 from pathlib import Path
-from typing import List
+from typing import Tuple
 
-# IR / API
-from .types import (
-    RunOptions, Diagnostics, ContextSpec, Manifest, Plan,
-    ProcessedBlob, RenderedDocument, FileRow, Totals, ContextBlock
-)
-# pydantic JSON контракт
+from .adapters.engine import process_groups
 from .api_schema import (
     Total as TotalM,
     File as FileM,
@@ -17,42 +13,105 @@ from .api_schema import (
     Diagnostics as DiagnosticsM,
     RunResult as RunResultM,
 )
-
-from .config.load import load_config_v6, ConfigV6
-from .context.resolver import resolve_context
+from .cache.fs_cache import Cache
+from .config.load import load_config_v6
+from .config.model import ConfigV6
+from .context import resolve_context
 from .manifest.builder import build_manifest
-from .plan.planner import build_plan
-from .adapters import process_groups
+from .plan import build_plan
 from .render.renderer import render_document
 from .stats.tokenizer import compute_stats
-from .cache.fs_cache import Cache
+from .types import RunOptions, RenderedDocument, ContextSpec, Manifest, ProcessedBlob
+from .vcs import VcsProvider, NullVcs
 from .vcs.git import GitVcs
-from .vcs import NullVcs
+
+
+# ----------------------------- RunContext ----------------------------- #
 
 @dataclass(frozen=True)
 class RunContext:
     root: Path
     config: ConfigV6
     options: RunOptions
-    vcs: object            # VcsProvider (GitVcs | NullVcs)
     cache: Cache
-    tool_version: str = "0.0.0"
-    protocol: int = 1
+    vcs: VcsProvider
 
 
-def run_report(name_or_sec: str, options: RunOptions) -> RunResultM:
-    ctx = _bootstrap_run_context(options)
-    spec: ContextSpec = resolve_context(name_or_sec, ctx)
-    manifest: Manifest = build_manifest(
-        root=ctx.root,
+# ----------------------------- helpers ----------------------------- #
+
+def _tool_version() -> str:
+    """
+    Пытаемся аккуратно достать версию инструмента.
+    Падает в "0.0.0" при любых проблемах/локальном запуске.
+    """
+    for dist in ("listing-generator", "lg-vnext", "lg_vnext"):
+        try:
+            return metadata.version(dist)
+        except Exception:
+            continue
+    return "0.0.0"
+
+
+def _build_run_ctx(options: RunOptions) -> RunContext:
+    root = Path.cwd().resolve()
+    cfg = load_config_v6(root)
+    tool_ver = _tool_version()
+    cache = Cache(root, enabled=None, fresh=False, tool_version=tool_ver)
+    vcs = GitVcs() if (root / ".git").is_dir() else NullVcs()
+    return RunContext(root=root, config=cfg, options=options, cache=cache, vcs=vcs)
+
+
+def _pipeline_common(target: str, run_ctx: RunContext) -> Tuple[RenderedDocument, ContextSpec, Manifest, list[ProcessedBlob]]:
+    """
+    Общая часть пайплайна для render/report:
+      resolve → manifest → plan → process → render
+    Возвращает: (rendered_document, spec, manifest)
+    """
+    # 1) resolve context/spec
+    spec = resolve_context(target, run_ctx)
+
+    # 2) build manifest (учитывает .gitignore, фильтры и режим changes)
+    sections_cfg = run_ctx.config.sections  # type: ignore[attr-defined]
+    manifest = build_manifest(
+        root=run_ctx.root,
         spec=spec,
-        sections_cfg=ctx.config.sections,
-        mode=ctx.options.mode,
-        vcs=ctx.vcs,
+        sections_cfg=sections_cfg,
+        mode=run_ctx.options.mode,
+        vcs=run_ctx.vcs,
     )
-    plan: Plan = build_plan(manifest, ctx)
-    blobs: List[ProcessedBlob] = process_groups(plan, ctx)
-    rendered: RenderedDocument = render_document(plan, blobs)
+
+    # 3) plan (code_fence semantics + группировка по языкам)
+    plan = build_plan(manifest, run_ctx)
+
+    # 4) adapters engine (process + cache)
+    blobs = process_groups(plan, run_ctx)
+
+    # 5) render
+    rendered = render_document(plan, blobs)
+
+    return rendered, spec, manifest, blobs
+
+
+# ----------------------------- public API ----------------------------- #
+
+def run_render(target: str, options: RunOptions) -> RenderedDocument:
+    """
+    Полный рендер текста без вычисления JSON-отчёта.
+    """
+    run_ctx = _build_run_ctx(options)
+    rendered, _, _, _ = _pipeline_common(target, run_ctx)
+    return rendered
+
+
+def run_report(target: str, options: RunOptions) -> RunResultM:
+    """
+    Главный вход для IDE/CLI:
+      • выполняет полный пайплайн
+      • считает статистику (raw/processed/rendered)
+      • возвращает pydantic-модель RunResult (formatVersion=4)
+    """
+    run_ctx = _build_run_ctx(options)
+    rendered, spec, manifest, blobs = _pipeline_common(target, run_ctx)
 
     files_rows, totals, ctx_block, enc_name, ctx_limit = compute_stats(
         blobs=blobs,
@@ -60,66 +119,70 @@ def run_report(name_or_sec: str, options: RunOptions) -> RunResultM:
         spec=spec,
         manifest=manifest,
         model_name=options.model,
-        cache=ctx.cache,
+        cache=run_ctx.cache,
     )
 
-    diag = Diagnostics(
-        protocol=ctx.protocol,
-        tool_version=ctx.tool_version,
-        root=ctx.root,
+    # Сборка Diagnostics
+    diagnostics = DiagnosticsM(
+        protocol=1,
+        tool_version=_tool_version(),
+        root=str(run_ctx.root),
         warnings=[],
     )
 
-    return RunResultM(
+    # Мэппинг Totals
+    total_m = TotalM(
+        sizeBytes=totals.sizeBytes,
+        tokensProcessed=totals.tokensProcessed,
+        tokensRaw=totals.tokensRaw,
+        savedTokens=totals.savedTokens,
+        savedPct=totals.savedPct,
+        ctxShare=totals.ctxShare,
+        renderedTokens=totals.renderedTokens,
+        renderedOverheadTokens=totals.renderedOverheadTokens,
+        metaSummary=dict(totals.metaSummary or {}),
+    )
+
+    # Мэппинг файлов
+    files_m = [
+        FileM(
+            path=row.path,
+            sizeBytes=row.sizeBytes,
+            tokensRaw=row.tokensRaw,
+            tokensProcessed=row.tokensProcessed,
+            savedTokens=row.savedTokens,
+            savedPct=row.savedPct,
+            promptShare=row.promptShare,
+            ctxShare=row.ctxShare,
+            meta=dict(row.meta or {}),
+        )
+        for row in files_rows
+    ]
+
+    # Контекстный блок
+    context_m = ContextM(
+        templateName=ctx_block.templateName,
+        sectionsUsed=dict(ctx_block.sectionsUsed),
+        finalRenderedTokens=ctx_block.finalRenderedTokens,
+        templateOnlyTokens=ctx_block.templateOnlyTokens,
+        templateOverheadPct=ctx_block.templateOverheadPct,
+        finalCtxShare=ctx_block.finalCtxShare,
+    )
+
+    # Финальная модель
+    result = RunResultM(
         formatVersion=4,
         scope="context",
         model=options.model,
         encoder=enc_name,
         ctxLimit=ctx_limit,
-        total=TotalM(**totals.__dict__),
-        files=[FileM(**r.__dict__) for r in files_rows],
-        context=ContextM(
-            templateName=ctx_block.templateName,
-            sectionsUsed=ctx_block.sectionsUsed,
-            finalRenderedTokens=ctx_block.finalRenderedTokens,
-            templateOnlyTokens=ctx_block.templateOnlyTokens,
-            templateOverheadPct=ctx_block.templateOverheadPct,
-            finalCtxShare=ctx_block.finalCtxShare,
-        ),
+        total=total_m,
+        files=files_m,
+        context=context_m,
         rendered_text=rendered.text,
-        diagnostics=DiagnosticsM(
-            protocol=diag.protocol,
-            tool_version=diag.tool_version,
-            root=str(diag.root),
-            warnings=diag.warnings,
-        )
+        diagnostics=diagnostics,
     )
+    return result
 
 
-def run_render(name_or_sec: str, options: RunOptions) -> RenderedDocument:
-    ctx = _bootstrap_run_context(options)
-    spec = resolve_context(name_or_sec, ctx)
-    manifest = build_manifest(
-        root=ctx.root,
-        spec=spec,
-        sections_cfg=ctx.config.sections,
-        mode=ctx.options.mode,
-        vcs=ctx.vcs,
-    )
-    plan = build_plan(manifest, ctx)
-    blobs = process_groups(plan, ctx)
-    return render_document(plan, blobs)
-
-
-# --------------------------- Internals --------------------------- #
-
-def _bootstrap_run_context(options: RunOptions) -> RunContext:
-    root = Path.cwd()
-    cfg = load_config_v6(root)
-    vcs = GitVcs() if (root / ".git").is_dir() else NullVcs()
-    cache = Cache(root, tool_version="0.0.0")
-    return RunContext(root=root, config=_cfg_finalize(cfg), options=options, tool_version="0.0.0", protocol=1, vcs=vcs, cache=cache)
-
-def _cfg_finalize(cfg: ConfigV6) -> ConfigV6:
-    # hook на будущее (нормализация/добавление дефолтов)
-    return cfg
+__all__ = ["run_render", "run_report", "RunContext"]
