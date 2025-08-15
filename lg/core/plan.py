@@ -57,7 +57,7 @@ class ProcessedBlob:
     abs_path: Path          # абсолютный путь к файлу на диске
     rel_path: str           # относительный путь (POSIX) от корня проекта
     size_bytes: int         # размер сырых байт файла
-    processed_text: str     # результат adapter.process_ex / кэша
+    processed_text: str     # результат adapter.process / кэша
     meta: Dict              # метаданные адаптера
     raw_text: str           # исходный текст файла (для raw-подсчёта токенов)
     key_hash: str           # хэш ключа кэша processed
@@ -223,7 +223,7 @@ def _process_with_cache(e: FileEntry, cfg: Config, group_size: int, mixed: bool,
         processed = cached["processed_text"]
         meta = cached.get("meta", {})
     else:
-        processed, meta = e.adapter.process_ex(e.text, cfg_lang, group_size, mixed)
+        processed, meta = e.adapter.process(e.text, cfg_lang, group_size, mixed)
         try:
             cache.put_processed(key_hash, key_path, processed_text=processed)
             # дополнительно дописываем meta (без падений при ошибках)

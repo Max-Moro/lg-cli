@@ -58,23 +58,9 @@ def generate_listing(
         if grp:
             group_size = len(grp.entries)
             for idx, e in enumerate(grp.entries):
-                cfg_lang = getattr(cfg, e.adapter.name, None)
-
-                key_hash, key_path = cache.build_key(
-                    abs_path=e.fp,
-                    adapter_name=e.adapter.name,
-                    adapter_cfg=cfg_lang,
-                    group_size=group_size,
-                    mixed=grp.mixed,
-                )
-                cached = cache.get_processed(key_hash, key_path)
-                if cached and "processed_text" in cached:
-                    text = cached["processed_text"]
-                else:
-                    text = e.adapter.process(e.text, cfg_lang, group_size, grp.mixed)
-                    cache.put_processed(key_hash, key_path, processed_text=text)
-
-                text = text.rstrip("\n") + "\n"
+                from .plan import _process_with_cache
+                pr = _process_with_cache(e, cfg, group_size, grp.mixed, cache)
+                text = pr.processed_text
                 if not (plan.md_only or e.adapter.name == "markdown"):
                     out_lines.append(f"# —— FILE: {e.rel_path} ——\n")
                 out_lines.append(text)

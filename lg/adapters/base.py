@@ -1,6 +1,7 @@
 from __future__ import annotations
+
 from pathlib import Path
-from typing import Dict, Set, Type
+from typing import Set, Type
 
 __all__ = ["BaseAdapter", "get_adapter_for_path"]
 
@@ -22,25 +23,14 @@ class BaseAdapter:
         """True → файл исключается (языковые эвристики)."""
         return False
 
-    def process(self, text: str, cfg, group_size: int, mixed: bool) -> str:
-        """
-        Точка расширения для адаптеров: обрабатывает тело файла перед вставкой.
-        По умолчанию ничего не меняем.
-        :param text: исходный текст
-        :param cfg: соответствующий dataclass-конфиг (или None)
-        :param group_size: сколько файлов в этой языковой группе
-        :param mixed: смешивается ли листинг с другими типами языков
-        """
-        return text
-
-    # --- новый расширенный API с метаданными (назад-совместимый) ---
-    def process_ex(self, text: str, cfg, group_size: int, mixed: bool) -> tuple[str, dict]:
+    # --- единый API с метаданными ---
+    def process(self, text: str, cfg, group_size: int, mixed: bool) -> tuple[str, dict]:
         """
         Возвращает (content, meta), где meta — произвольный словарь
         (например: {"removed_comments": 120, "kept_signatures": 34}).
-        Базовая реализация оборачивает существующий process().
+        Базовая реализация — идентичность текста без метаданных.
         """
-        return self.process(text, cfg, group_size, mixed), {}
+        return text, {}
 
     # --- регистрация --------------------------------------------------------
     @classmethod
