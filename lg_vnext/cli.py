@@ -70,7 +70,7 @@ def main(argv: list[str] | None = None) -> int:
     if ns.cmd == "report":
         # Всегда pydantic-модель с .model_dump_json()
         result = run_report(ns.target, _opts(ns))
-        sys.stdout.write(result.model_dump_json(ensure_ascii=False))  # type: ignore[attr-defined]
+        sys.stdout.write(jdumps(result.model_dump(mode="json")))
         return 0
 
     if ns.cmd == "render":
