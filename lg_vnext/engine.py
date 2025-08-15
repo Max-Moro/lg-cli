@@ -21,19 +21,21 @@ from .api_schema import (
 # Слои пайплайна (пока заглушки; реализация будет по PR-плану)
 from .config.load import load_config_v6, ConfigV6
 from .context.resolver import resolve_context
-# from .manifest.builder import build_manifest
+from .manifest.builder import build_manifest
 # from .plan.planner import build_plan
 # from .adapters import process_groups
 # from .render.renderer import render_document
 # from .stats.tokenizer import compute_stats
 # from .cache.fs_cache import Cache
+from .vcs.git import GitVcs
+from .vcs import NullVcs
 
 @dataclass(frozen=True)
 class RunContext:
     root: Path
     config: ConfigV6
     options: RunOptions
-    # vcs: VcsProvider     # PR-3
+    vcs: object            # VcsProvider (GitVcs | NullVcs)
     # cache: Cache         # PR-5
     tool_version: str = "0.0.0"
     protocol: int = 1
@@ -51,8 +53,14 @@ def run_report(name_or_sec: str, options: RunOptions) -> RunResultM:
     # 1) Контекст (реальный резолвер)
     spec: ContextSpec = resolve_context(name_or_sec, ctx)
 
-    # manifest: Manifest = build_manifest(spec, ctx)
-    manifest: Manifest = Manifest(files=[])
+    # 2) Manifest (реально строим)
+    manifest: Manifest = build_manifest(
+        root=ctx.root,
+        spec=spec,
+        sections_cfg=ctx.config.sections,
+        mode=ctx.options.mode,
+        vcs=ctx.vcs,
+    )
 
     # plan: Plan = build_plan(manifest, ctx)
     plan: Plan = Plan(md_only=True, use_fence=False, groups=[])
@@ -126,7 +134,9 @@ def run_render(name_or_sec: str, options: RunOptions) -> RenderedDocument:
 def _bootstrap_run_context(options: RunOptions) -> RunContext:
     root = Path.cwd()
     cfg = load_config_v6(root)
-    return RunContext(root=root, config=cff(cfg), options=options, tool_version="0.0.0", protocol=1)
+    # выбираем VCS: если это git-репозиторий — GitVcs, иначе NullVcs
+    vcs = GitVcs() if (root / ".git").is_dir() else NullVcs()
+    return RunContext(root=root, config=cff(cfg), options=options, tool_version="0.0.0", protocol=1, vcs=vcs)
 
 def cff(cfg: ConfigV6) -> ConfigV6:
     # маленькая прослойка для единообразия (hook для будущей нормализации, пока no-op)

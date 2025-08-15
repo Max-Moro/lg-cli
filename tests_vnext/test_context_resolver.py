@@ -5,8 +5,12 @@ from lg_vnext.config.load import load_config_v6
 from lg_vnext.context.resolver import resolve_context, list_contexts
 from pathlib import Path
 
+from lg_vnext.vcs import NullVcs
+
+
 def _ctx(root: Path):
-    return RunContext(root=root, config=load_config_v6(root), options=RunOptions(), tool_version="0.0.0", protocol=1)
+    return RunContext(root=root, config=load_config_v6(root), options=RunOptions(), tool_version="0.0.0", protocol=1,
+                      vcs=NullVcs())
 
 def test_list_contexts(tmpproj: Path):
     assert list_contexts(tmpproj) == ["a", "b"]

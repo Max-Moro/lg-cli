@@ -3,6 +3,8 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Dict, List, Optional
 
+from lg_vnext.io.model import FilterNode
+
 SCHEMA_VERSION = 6
 
 @dataclass
@@ -17,8 +19,10 @@ class PythonCfg:
 
 @dataclass
 class SectionCfg:
-    # Минимальный набор для этого шага. Далее добавим filters и прочее.
     extensions: List[str] = field(default_factory=lambda: [".py"])
+    filters: FilterNode = field(
+        default_factory=lambda: FilterNode(mode="block")  # default-allow
+    )
     skip_empty: bool = True                                 # глобальное правило
     code_fence: bool = True                                 # оборачивать файлы в ```{lang}
 

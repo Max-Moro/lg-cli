@@ -6,6 +6,7 @@ from typing import Dict, List
 from ruamel.yaml import YAML
 
 from .model import ConfigV6, SectionCfg, MarkdownCfg, PythonCfg, SCHEMA_VERSION
+from lg_vnext.io.model import FilterNode
 
 _yaml = YAML(typ="safe")
 _CFG_DIR = "lg-cfg"
@@ -35,6 +36,7 @@ def load_config_v6(root: Path) -> ConfigV6:
         md = node.get("markdown", {}) or {}
         py = node.get("python", {}) or {}
         code_fence = bool(node.get("code_fence", True))
+        filters = FilterNode.from_dict(node.get("filters", {"mode": "block"}))
         sections[name] = SectionCfg(
             extensions=exts,
             markdown=MarkdownCfg(max_heading_level=md.get("max_heading_level")),
@@ -44,6 +46,7 @@ def load_config_v6(root: Path) -> ConfigV6:
                 trivial_init_max_noncomment=int(py.get("trivial_init_max_noncomment", 1)),
             ),
             code_fence=code_fence,
+            filters=filters,
         )
 
     return ConfigV6(schema_version=SCHEMA_VERSION, sections=sections)
