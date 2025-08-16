@@ -3,7 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from pathlib import Path
 
-from lg.adapters.base import BaseAdapter
+from .base import BaseAdapter
 
 @dataclass
 class PythonCfg:

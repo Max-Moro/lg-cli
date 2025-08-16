@@ -3,7 +3,7 @@ from __future__ import annotations
 import re
 from dataclasses import dataclass
 
-from lg.adapters.base import BaseAdapter
+from .base import BaseAdapter
 
 
 @dataclass
