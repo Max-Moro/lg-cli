@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from lg_vnext.config.model import ConfigV6, SectionCfg, FilterNode
+from lg_vnext.config.model import Config, SectionCfg, FilterNode
 from lg_vnext.manifest.builder import build_manifest
 from lg_vnext.types import ContextSpec, SectionUsage
 from lg_vnext.vcs import NullVcs
@@ -28,7 +28,7 @@ def test_manifest_all_mode_with_gitignore_and_filters(tmp_path: Path):
         code_fence=True,
         filters=FilterNode(mode="allow", allow=["/src/**"])
     )
-    cfg = ConfigV6(sections={"all": sec})
+    cfg = Config(sections={"all": sec})
 
     spec = ContextSpec(kind="section", name="all", sections=SectionUsage(by_name={"all": 1}))
 
@@ -45,7 +45,7 @@ def test_manifest_changes_mode(tmp_path: Path, monkeypatch):
     _write(tmp_path, "src/untouched.py")
     sec = SectionCfg(extensions=[".py"], code_fence=True, filters=FilterNode(mode="block"))
 
-    cfg = ConfigV6(sections={"all": sec})
+    cfg = Config(sections={"all": sec})
     spec = ContextSpec(kind="section", name="all", sections=SectionUsage(by_name={"all": 1}))
 
     # фейковый VCS, помечаем только один файл как изменённый

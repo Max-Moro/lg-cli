@@ -5,7 +5,7 @@ from typing import Dict, List
 
 from ruamel.yaml import YAML
 
-from .model import ConfigV6, SectionCfg, SCHEMA_VERSION
+from .model import Config, SectionCfg, SCHEMA_VERSION
 from lg_vnext.io.model import FilterNode
 
 _yaml = YAML(typ="safe")
@@ -15,7 +15,7 @@ _CFG_FILE = "config.yaml"
 def _cfg_path(root: Path) -> Path:
     return (root / _CFG_DIR / _CFG_FILE).resolve()
 
-def load_config_v6(root: Path) -> ConfigV6:
+def load_config(root: Path) -> Config:
     path = _cfg_path(root)
     if not path.is_file():
         raise RuntimeError(f"Config file not found: {path}")
@@ -52,8 +52,8 @@ def load_config_v6(root: Path) -> ConfigV6:
             python=py_cfg,
         )
 
-    return ConfigV6(schema_version=SCHEMA_VERSION, sections=sections)
+    return Config(schema_version=SCHEMA_VERSION, sections=sections)
 
 def list_sections(root: Path) -> List[str]:
-    cfg = load_config_v6(root)
+    cfg = load_config(root)
     return sorted(cfg.sections.keys())

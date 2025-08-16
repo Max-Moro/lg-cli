@@ -5,7 +5,7 @@ from pathlib import Path
 from typing import Dict, List, Set, Tuple
 
 from ..types import ContextSpec, SectionUsage
-from ..config.load import ConfigV6
+from ..config.load import Config
 
 # --------------------------- Helpers --------------------------- #
 
@@ -103,7 +103,7 @@ def resolve_context(name_or_sec: str, run_ctx) -> ContextSpec:
       - <name>     → сначала ctx:<name>, иначе sec:<name>
     """
     root = run_ctx.root
-    cfg: ConfigV6 = run_ctx.config
+    cfg: Config = run_ctx.config
     # нормализуем префиксы
     kind = "auto"
     name = name_or_sec.strip()

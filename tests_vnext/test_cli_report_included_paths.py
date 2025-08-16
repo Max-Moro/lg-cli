@@ -17,7 +17,7 @@ def test_cli_report_included_paths_vnext(tmp_path, monkeypatch):
     (tmp_path / "secure/inner_keep.py").write_text("print('ok_inner')", encoding="utf-8")
     (tmp_path / "secure/nope.md").write_text("", encoding="utf-8")
 
-    # config v6: одна секция all, только .py, fencing включён,
+    # config: одна секция all, только .py, fencing включён,
     # блокируем *.log, а в secure/ разрешаем только *.py
     (tmp_path / "lg-cfg").mkdir()
     (tmp_path / "lg-cfg/config.yaml").write_text(textwrap.dedent("""

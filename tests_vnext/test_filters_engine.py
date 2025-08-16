@@ -88,7 +88,7 @@ def test_render_with_allow_specific_file(tmp_path: Path, monkeypatch):
     (tmp_path / "other").mkdir()
     (tmp_path / "other" / "note.md").write_text("noise", encoding="utf-8")
 
-    # ── конфиг v6: одна секция all
+    # ── конфиг: одна секция all
     (tmp_path / "lg-cfg").mkdir()
     (tmp_path / "lg-cfg" / "config.yaml").write_text(
         "schema_version: 6\n"

@@ -15,7 +15,7 @@ def write(p: Path, text: str) -> Path:
 def tmpproj(tmp_path: Path):
     """Минимальный проект с lg-cfg/config.yaml и папкой contexts/."""
     root = tmp_path
-    # config v6 с двумя секциями
+    # config с двумя секциями
     write(
         root / "lg-cfg" / "config.yaml",
         textwrap.dedent("""

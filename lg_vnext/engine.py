@@ -13,7 +13,7 @@ from .api_schema import (
     RunResult as RunResultM,
 )
 from .cache.fs_cache import Cache
-from .config import load_config_v6, ConfigV6
+from .config import load_config, Config
 from .context import resolve_context, compose_context
 from .manifest.builder import build_manifest
 from .plan import build_plan
@@ -29,7 +29,7 @@ from .vcs.git import GitVcs
 @dataclass(frozen=True)
 class RunContext:
     root: Path
-    config: ConfigV6
+    config: Config
     options: RunOptions
     cache: Cache
     vcs: VcsProvider
@@ -52,7 +52,7 @@ def tool_version() -> str:
 
 def _build_run_ctx(options: RunOptions) -> RunContext:
     root = Path.cwd().resolve()
-    cfg = load_config_v6(root)
+    cfg = load_config(root)
     tool_ver = tool_version()
     cache = Cache(root, enabled=None, fresh=False, tool_version=tool_ver)
     vcs = GitVcs() if (root / ".git").is_dir() else NullVcs()

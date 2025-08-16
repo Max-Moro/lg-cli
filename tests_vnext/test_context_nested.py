@@ -1,7 +1,7 @@
 from pathlib import Path
 import pytest
 
-from lg_vnext.config import load_config_v6
+from lg_vnext.config import load_config
 from lg_vnext.cache.fs_cache import Cache
 from lg_vnext.context.resolver import resolve_context
 from lg_vnext.context.composer import compose_context
@@ -17,14 +17,14 @@ def _write_ctx(root: Path, rel: str, body: str):
 def _mk_ctx(root: Path) -> RunContext:
     return RunContext(
         root=root.resolve(),
-        config=load_config_v6(root),
+        config=load_config(root),
         options=RunOptions(),
         cache=Cache(root, tool_version="0.0.0"),
         vcs=NullVcs(),
     )
 
 def test_context_nested_ok_vnext(tmp_path: Path, monkeypatch):
-    # Минимальный конфиг v6 с секцией "sec"
+    # Минимальный конфиг с секцией "sec"
     (tmp_path / "lg-cfg").mkdir(parents=True, exist_ok=True)
     (tmp_path / "lg-cfg" / "config.yaml").write_text(
         "schema_version: 6\nsec:\n  extensions: ['.md']\n  code_fence: false\n",
@@ -66,7 +66,7 @@ def test_context_cycle_detection_vnext(tmp_path: Path):
 
     run_ctx = RunContext(
         root=tmp_path.resolve(),
-        config=load_config_v6(tmp_path),
+        config=load_config(tmp_path),
         options=RunOptions(),
         cache=Cache(tmp_path, tool_version="0.0.0"),
         vcs=NullVcs(),

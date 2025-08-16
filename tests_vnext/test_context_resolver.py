@@ -3,7 +3,7 @@ from pathlib import Path
 import pytest
 
 from lg_vnext.cache.fs_cache import Cache
-from lg_vnext.config import load_config_v6
+from lg_vnext.config import load_config
 from lg_vnext.context.resolver import resolve_context, list_contexts
 from lg_vnext.engine import RunContext
 from lg_vnext.types import RunOptions
@@ -11,7 +11,7 @@ from lg_vnext.vcs import NullVcs
 
 
 def _ctx(root: Path):
-    return RunContext(root=root, config=load_config_v6(root), options=RunOptions(),
+    return RunContext(root=root, config=load_config(root), options=RunOptions(),
                       cache=Cache(root, tool_version="0.0.0"), vcs=NullVcs())
 
 def test_list_contexts(tmpproj: Path):

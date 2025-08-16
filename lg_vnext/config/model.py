@@ -22,6 +22,6 @@ class SectionCfg:
     python: PythonCfg = field(default_factory=PythonCfg)
 
 @dataclass
-class ConfigV6:
+class Config:
     schema_version: int = SCHEMA_VERSION
     sections: Dict[str, SectionCfg] = field(default_factory=dict)

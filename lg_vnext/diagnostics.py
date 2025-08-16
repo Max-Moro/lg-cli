@@ -5,7 +5,7 @@ import sys
 from pathlib import Path
 
 from .cache.fs_cache import Cache
-from .config import load_config_v6, SCHEMA_VERSION
+from .config import load_config, SCHEMA_VERSION
 from .context import list_contexts
 from .diag_report_schema import DiagReport, DiagConfig, DiagCache, DiagCheck, DiagEnv
 from .engine import tool_version
@@ -32,7 +32,7 @@ def run_diag(*, rebuild_cache: bool = False) -> DiagReport:
     sections: list[str] = []
     if cfg_block.exists:
         try:
-            cfg = load_config_v6(root)
+            cfg = load_config(root)
             cfg_block.schema_version = cfg.schema_version
             sections = sorted(cfg.sections.keys())
             cfg_block.sections = sections
