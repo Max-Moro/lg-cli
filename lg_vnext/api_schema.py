@@ -50,16 +50,6 @@ class Context(BaseModel):
     finalCtxShare: Optional[float] = None
 
 
-class Diagnostics(BaseModel):
-    model_config = ConfigDict(
-        extra='forbid',
-    )
-    protocol: conint(ge=1)
-    tool_version: str
-    root: str
-    warnings: list[str]
-
-
 class RunResult(BaseModel):
     model_config = ConfigDict(
         extra='forbid',
@@ -73,4 +63,3 @@ class RunResult(BaseModel):
     files: list[File]
     context: Context
     rendered_text: str
-    diagnostics: Diagnostics

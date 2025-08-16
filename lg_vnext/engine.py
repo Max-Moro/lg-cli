@@ -10,7 +10,6 @@ from .api_schema import (
     Total as TotalM,
     File as FileM,
     Context as ContextM,
-    Diagnostics as DiagnosticsM,
     RunResult as RunResultM,
 )
 from .cache.fs_cache import Cache
@@ -38,7 +37,7 @@ class RunContext:
 
 # ----------------------------- helpers ----------------------------- #
 
-def _tool_version() -> str:
+def tool_version() -> str:
     """
     Пытаемся аккуратно достать версию инструмента.
     Падает в "0.0.0" при любых проблемах/локальном запуске.
@@ -54,7 +53,7 @@ def _tool_version() -> str:
 def _build_run_ctx(options: RunOptions) -> RunContext:
     root = Path.cwd().resolve()
     cfg = load_config_v6(root)
-    tool_ver = _tool_version()
+    tool_ver = tool_version()
     cache = Cache(root, enabled=None, fresh=False, tool_version=tool_ver)
     vcs = GitVcs() if (root / ".git").is_dir() else NullVcs()
     return RunContext(root=root, config=cfg, options=options, cache=cache, vcs=vcs)
@@ -125,14 +124,6 @@ def run_report(target: str, options: RunOptions) -> RunResultM:
         cache=run_ctx.cache,
     )
 
-    # Сборка Diagnostics
-    diagnostics = DiagnosticsM(
-        protocol=1,
-        tool_version=_tool_version(),
-        root=str(run_ctx.root),
-        warnings=[],
-    )
-
     # Мэппинг Totals
     total_m = TotalM(
         sizeBytes=totals.sizeBytes,
@@ -183,9 +174,8 @@ def run_report(target: str, options: RunOptions) -> RunResultM:
         files=files_m,
         context=context_m,
         rendered_text=composed.text,
-        diagnostics=diagnostics,
     )
     return result
 
 
-__all__ = ["run_render", "run_report", "RunContext"]
+__all__ = ["run_render", "run_report", "tool_version", "RunContext"]

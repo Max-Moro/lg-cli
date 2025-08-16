@@ -3,7 +3,8 @@ from __future__ import annotations
 import hashlib
 import json
 import os
-from dataclasses import asdict, is_dataclass
+import shutil
+from dataclasses import asdict, is_dataclass, dataclass
 from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, Optional
@@ -28,6 +29,15 @@ def _fingerprint_cfg(cfg_obj: Any) -> Any:
     except Exception:
         pass
     return cfg_obj
+
+@dataclass(frozen=True)
+class CacheSnapshot:
+    enabled: bool
+    path: Path
+    exists: bool
+    size_bytes: int
+    entries: int
+
 
 class Cache:
     """
@@ -256,3 +266,44 @@ class Cache:
 
     def path_for_rendered_key(self, key: str) -> Path:
         return self._bucket_path("rendered", key)
+
+    # --------------------------- MAINTENANCE --------------------------- #
+    def purge_all(self) -> bool:
+        """Полная очистка содержимого кэша vNext (.lg-cache/vnext)."""
+        try:
+            if self.dir.exists():
+                shutil.rmtree(self.dir, ignore_errors=True)
+            self.dir.mkdir(parents=True, exist_ok=True)
+            return True
+        except Exception:
+            return False
+
+    def snapshot(self) -> CacheSnapshot:
+        """Собрать best-effort снимок состояния кэша."""
+        size = 0
+        entries = 0
+        try:
+            if self.dir.exists():
+                for p in self.dir.rglob("*"):
+                    try:
+                        if p.is_file():
+                            entries += 1
+                            size += p.stat().st_size
+                    except Exception:
+                        # best-effort — пропускаем проблемные файлы
+                        pass
+        except Exception:
+            # оставляем size=0, entries=0
+            pass
+        return CacheSnapshot(
+            enabled=bool(self.enabled),
+            path=self.dir,
+            exists=self.dir.exists(),
+            size_bytes=size,
+            entries=entries,
+        )
+
+    def rebuild(self) -> CacheSnapshot:
+        """Очистить и вернуть новый снимок."""
+        self.purge_all()
+        return self.snapshot()

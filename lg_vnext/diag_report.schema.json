@@ -1,0 +1,86 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.org/lg_vnext/diag_report.schema.json",
+  "title": "DiagReport",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "protocol",
+    "tool_version",
+    "root",
+    "config",
+    "contexts",
+    "cache",
+    "checks",
+    "env"
+  ],
+  "properties": {
+    "protocol": { "type": "integer", "minimum": 1 },
+    "tool_version": { "type": "string" },
+    "root": { "type": "string" },
+    "config": { "$ref": "#/$defs/DiagConfig" },
+    "contexts": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "cache": { "$ref": "#/$defs/DiagCache" },
+    "checks": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/DiagCheck" }
+    },
+    "env": { "$ref": "#/$defs/DiagEnv" }
+  },
+  "$defs": {
+    "DiagCheck": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "ok"],
+      "properties": {
+        "name": { "type": "string" },
+        "ok": { "type": "boolean" },
+        "details": { "type": ["string", "null"] }
+      }
+    },
+    "DiagCache": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["enabled", "path", "exists", "sizeBytes", "entries", "rebuilt"],
+      "properties": {
+        "enabled": { "type": "boolean" },
+        "path": { "type": "string" },
+        "exists": { "type": "boolean" },
+        "sizeBytes": { "type": "integer", "minimum": 0 },
+        "entries": { "type": "integer", "minimum": 0 },
+        "rebuilt": { "type": "boolean" },
+        "error": { "type": ["string", "null"] }
+      }
+    },
+    "DiagConfig": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["exists", "path"],
+      "properties": {
+        "exists": { "type": "boolean" },
+        "path": { "type": "string" },
+        "schema_version": { "type": ["integer", "null"], "minimum": 0 },
+        "expected_schema": { "type": ["integer", "null"], "minimum": 0 },
+        "sections": {
+          "type": "array",
+          "items": { "type": "string" },
+          "default": []
+        },
+        "error": { "type": ["string", "null"] }
+      }
+    },
+    "DiagEnv": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["python", "platform", "cwd"],
+      "properties": {
+        "python": { "type": "string" },
+        "platform": { "type": "string" },
+        "cwd": { "type": "string" }
+      }
+    }
+  }
+}

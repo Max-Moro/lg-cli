@@ -1,0 +1,127 @@
+from __future__ import annotations
+
+import platform
+import sys
+from pathlib import Path
+
+from .cache.fs_cache import Cache
+from .config import load_config_v6, SCHEMA_VERSION
+from .context import list_contexts
+from .diag_report_schema import DiagReport, DiagConfig, DiagCache, DiagCheck, DiagEnv
+from .engine import tool_version
+
+
+def run_diag(*, rebuild_cache: bool = False) -> DiagReport:
+    """
+    Формирует JSON-отчёт диагностики. Никогда не кидает наружу исключения —
+    все ошибки превращаются в «ok=False/details» или «error: str».
+    """
+    root = Path.cwd().resolve()
+    tool_ver = tool_version()
+
+    # --- ENV / platform ---
+    env = DiagEnv(
+        python=f"{sys.version_info.major}.{sys.version_info.minor}.{sys.version_info.micro}",
+        platform=f"{platform.system()} {platform.release()} ({platform.machine()})",
+        cwd=str(root),
+    )
+
+    # --- Config ---
+    cfg_path = (root / "lg-cfg" / "config.yaml").resolve()
+    cfg_block = DiagConfig(exists=cfg_path.is_file(), path=str(cfg_path), expected_schema=SCHEMA_VERSION)
+    sections: list[str] = []
+    if cfg_block.exists:
+        try:
+            cfg = load_config_v6(root)
+            cfg_block.schema_version = cfg.schema_version
+            sections = sorted(cfg.sections.keys())
+            cfg_block.sections = sections
+        except Exception as e:
+            cfg_block.error = str(e)
+
+    # Contexts list
+    try:
+        ctxs = list_contexts(root)
+    except Exception:
+        ctxs = []
+
+    # Cache block via introspection
+    cache = Cache(root, enabled=None, fresh=False, tool_version=tool_ver)
+    try:
+        snap = cache.rebuild() if rebuild_cache else cache.snapshot()
+        cache_block = DiagCache(
+            enabled=snap.enabled,
+            path=str(snap.path),
+            exists=snap.exists,
+            sizeBytes=snap.size_bytes,
+            entries=snap.entries,
+            rebuilt=bool(rebuild_cache),
+        )
+    except Exception as e:
+        # даже если snapshot упал — выдаём минимально осмысленный блок
+        cache_block = DiagCache(
+            enabled=bool(cache.enabled),
+            path=str(cache.dir),
+            exists=cache.dir.exists(),
+            sizeBytes=0,
+            entries=0,
+            rebuilt=False,
+            error=str(e),
+        )
+
+    # --- Checks (best-effort) ---
+    checks: list[DiagCheck] = []
+
+    # Git
+    try:
+        import shutil as _sh
+        git_path = _sh.which("git")
+        checks.append(DiagCheck(name="git.available", ok=bool(git_path), details=str(git_path or "")))
+    except Exception as e:
+        checks.append(DiagCheck(name="git.available", ok=False, details=str(e)))
+
+    # tiktoken
+    try:
+        import tiktoken as _tk  # noqa: F401
+        checks.append(DiagCheck(name="tiktoken.available", ok=True))
+    except Exception as e:
+        checks.append(DiagCheck(name="tiktoken.available", ok=False, details=str(e)))
+
+    # Contexts dir
+    ctx_dir = (root / "lg-cfg" / "contexts")
+    if ctx_dir.is_dir():
+        try:
+            n = len(list(ctx_dir.rglob("*.tpl.md")))
+        except Exception:
+            n = 0
+        checks.append(DiagCheck(name="contexts.exists", ok=True, details=f"{n} template(s)"))
+    else:
+        checks.append(DiagCheck(name="contexts.exists", ok=False, details=str(ctx_dir)))
+
+    # Config presence/schema quick hint (if not already error)
+    if not cfg_block.exists:
+        checks.append(DiagCheck(name="config.exists", ok=False, details=str(cfg_path)))
+    else:
+        if cfg_block.error:
+            checks.append(DiagCheck(name="config.schema", ok=False, details=cfg_block.error))
+        else:
+            ok = (cfg_block.schema_version == SCHEMA_VERSION)
+            details = f"schema={cfg_block.schema_version}, expected={SCHEMA_VERSION}; sections={len(sections)}"
+            checks.append(DiagCheck(name="config.schema", ok=ok, details=details))
+
+    # Cache health
+    checks.append(DiagCheck(name="cache.enabled", ok=cache_block.enabled, details=cache_block.path))
+    checks.append(DiagCheck(name="cache.size", ok=True, details=f"{cache_block.sizeBytes} bytes, {cache_block.entries} entries"))
+
+    # Build report
+    report = DiagReport(
+        protocol=1,
+        tool_version=tool_ver,
+        root=str(root),
+        config=cfg_block,
+        contexts=ctxs,
+        cache=cache_block,
+        checks=checks,
+        env=env,
+    )
+    return report

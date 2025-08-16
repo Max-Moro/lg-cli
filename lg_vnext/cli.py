@@ -4,11 +4,12 @@ import argparse
 import sys
 from pathlib import Path
 
-from .types import RunOptions
-from .engine import run_report, run_render
+from .config import list_sections
 from .context.resolver import list_contexts
-from .config import list_sections, load_config_v6
+from .diagnostics import run_diag
+from .engine import run_report, run_render
 from .jsonic import dumps as jdumps
+from .types import RunOptions
 
 
 def _build_parser() -> argparse.ArgumentParser:
@@ -51,7 +52,12 @@ def _build_parser() -> argparse.ArgumentParser:
     sp_list = sub.add_parser("list", help="Списки сущностей (JSON)")
     sp_list.add_argument("what", choices=["contexts", "sections"], help="что вывести")
 
-    sub.add_parser("diag", help="Диагностика окружения и конфига (JSON)")
+    sp_diag = sub.add_parser("diag", help="Диагностика окружения и конфига (JSON)")
+    sp_diag.add_argument(
+        "--rebuild-cache",
+        action="store_true",
+        help="очистить и заново инициализировать кэш (.lg-cache/vnext) перед диагностикой",
+    )
 
     return p
 
@@ -68,14 +74,12 @@ def main(argv: list[str] | None = None) -> int:
     ns = _build_parser().parse_args(argv)
 
     if ns.cmd == "report":
-        # Всегда pydantic-модель с .model_dump_json()
         result = run_report(ns.target, _opts(ns))
         sys.stdout.write(jdumps(result.model_dump(mode="json")))
         return 0
 
     if ns.cmd == "render":
         doc = run_render(ns.target, _opts(ns))
-        # Единственное место, где заботимся о переводе строки
         text = doc.text
         if not text.endswith("\n"):
             text += "\n"
@@ -92,26 +96,8 @@ def main(argv: list[str] | None = None) -> int:
         return 0
 
     if ns.cmd == "diag":
-        root = Path.cwd()
-        try:
-            cfg = load_config_v6(root)
-            payload = {
-                "protocol": 1,
-                "root": str(root),
-                "config": {
-                    "schema_version": cfg.schema_version,
-                    "sections": sorted(cfg.sections.keys()),
-                },
-                "contexts": list_contexts(root),
-            }
-        except Exception as e:
-            payload = {
-                "protocol": 1,
-                "root": str(root),
-                "config_error": str(e),
-                "contexts": list_contexts(root),
-            }
-        sys.stdout.write(jdumps(payload))
+        report = run_diag(rebuild_cache=bool(getattr(ns, "rebuild_cache", False)))
+        sys.stdout.write(jdumps(report.model_dump(mode="json")))
         return 0
 
     return 2
