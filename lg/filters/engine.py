@@ -51,7 +51,6 @@ class FilterEngine:
         Построить цепочку (узел, subpath) от корня до «самого глубокого»
         узла, соответствующего подпапкам пути.
         Используется и в includes(), и в may_descend().
-        Семантика идентична прежней: проходим по parts[:-1].
         """
         norm = path.lower().strip("/")
         parts = PurePosixPath(norm).parts

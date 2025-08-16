@@ -51,7 +51,7 @@ def build_manifest(
 
         # Простой pruner по дереву фильтров
         def _pruner(rel_dir: str) -> bool:
-            # не спускаемся в служебную папку конфигурации (как в v1),
+            # не спускаемся в служебную папку конфигурации,
             # если только её явно не разрешили фильтрами.
             if rel_dir == "lg-cfg" or rel_dir.startswith("lg-cfg/"):
                 return False
