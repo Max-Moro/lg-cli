@@ -5,7 +5,7 @@ from importlib import metadata
 from pathlib import Path
 from typing import Tuple
 
-from .adapters.engine import process_groups
+from .adapters import process_groups
 from .api_schema import (
     Total as TotalM,
     File as FileM,
@@ -15,10 +15,10 @@ from .api_schema import (
 from .cache.fs_cache import Cache
 from .config import load_config, Config
 from .context import resolve_context, compose_context
-from .manifest.builder import build_manifest
+from .manifest import build_manifest
 from .plan import build_plan
 from .render import render_by_section
-from .stats.tokenizer import compute_stats
+from .stats import compute_stats
 from .types import RunOptions, RenderedDocument, ContextSpec, Manifest, ProcessedBlob, Plan
 from .vcs import VcsProvider, NullVcs
 from .vcs.git import GitVcs

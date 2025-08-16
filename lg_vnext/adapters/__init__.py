@@ -2,7 +2,7 @@ from __future__ import annotations
 from importlib import import_module
 from pkgutil import iter_modules
 
-from .engine import process_groups  # публичный API
+from .engine import process_groups
 from .base import get_adapter_for_path
 
 __all__ = ["process_groups", "get_adapter_for_path"]
