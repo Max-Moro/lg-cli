@@ -123,14 +123,16 @@ class Cache:
         *,
         context_name: str,
         sections_used: Dict[str, int],
-        options_fp: Dict[str, Any],  # {mode, code_fence, model, markdown.max_heading_level, ...}
+        options_fp: Dict[str, Any],  # {mode, code_fence, model, variant, ...}
         processed_keys: Dict[str, str],  # rel_path -> processed_key_sha1 (для инвалидации)
+        templates: Optional[Dict[str, str]] = None,  # {tpl_name: sha1(text)}
     ) -> tuple[str, Path]:
         """
         Ключ rendered-документа. Включает:
           - имя контекста, кратности секций
-          - опции рендера (в т.ч. markdown.max_heading_level, code_fence)
-          - список файлов и их processed-ключи
+          - опции рендера (code_fence, модель, variant="final"/"sections-only")
+          - список файлов и их processed-ключи (чтобы реагировать на изменения адаптеров/конфига)
+          - хэши исходных текстов шаблонов
           - версию инструмента
         """
         payload = {
@@ -140,6 +142,7 @@ class Cache:
             "sections": dict(sorted(sections_used.items())),
             "options": options_fp,
             "processed": dict(sorted(processed_keys.items())),  # стабилизируем порядок
+            "templates": dict(sorted((templates or {}).items())),
             "tool": self.tool_version,
         }
         h = _sha1_json(payload)
