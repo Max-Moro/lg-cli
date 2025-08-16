@@ -43,16 +43,3 @@ lg-vnext-src:
       - "lg_vnext/adapters/markdown.py"
       - "lg_vnext/adapters/python.py"
 
-lg-vnext-tests-src:
-  extensions: [".py"]
-  filters:
-    mode: allow
-    allow:
-      - "/tests_vnext/conftest.py"
-      - "/tests_vnext/test_cache_fs.py"
-      - "/tests_vnext/test_cli_minimum.py"
-      - "/tests_vnext/test_config_v6.py"
-      - "/tests_vnext/test_context_resolver.py"
-      - "/tests_vnext/test_manifest_builder_basic.py"
-      - "/tests_vnext/test_adapter_python.py"
-
