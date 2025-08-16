@@ -7,18 +7,16 @@ from typing import Dict, List, Literal, Optional
 LangName = str  # "python" | "markdown" | "" ...
 ModelName = str  # "o3", "gpt-4o", ...
 
+# ----- Config Model Early -----
+# Политика пустых файлов
+EmptyPolicy = Literal["inherit", "include", "exclude"]
+
+# -----------------------------
 @dataclass(frozen=True)
 class RunOptions:
     mode: Literal["all", "changes"] = "all"
     model: ModelName = "o3"
     code_fence: bool = True  # override config if needed
-
-@dataclass(frozen=True)
-class Diagnostics:
-    protocol: int
-    tool_version: str
-    root: Path
-    warnings: List[str] = field(default_factory=list)
 
 @dataclass(frozen=True)
 class SectionUsage:

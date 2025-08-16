@@ -14,8 +14,7 @@ from .api_schema import (
     RunResult as RunResultM,
 )
 from .cache.fs_cache import Cache
-from .config.load import load_config_v6
-from .config.model import ConfigV6
+from .config import load_config_v6, ConfigV6
 from .context import resolve_context, compose_context
 from .manifest.builder import build_manifest
 from .plan import build_plan

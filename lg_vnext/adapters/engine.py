@@ -28,10 +28,8 @@ def process_groups(plan: Plan, run_ctx) -> List[ProcessedBlob]:
 
             raw_text = read_text(fp)
 
-            # эвристика пропуска на уровне адаптера
+            # Эвристики пропуска на уровне адаптера (пустые уже отфильтрованы в Manifest)
             if adapter.name != "base" and adapter.should_skip(fp, raw_text, lang_cfg):
-                continue
-            if adapter.name == "base" and sec_cfg and sec_cfg.skip_empty and not raw_text.strip():
                 continue
 
             # ключи кэша

@@ -4,10 +4,12 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from .base import BaseAdapter
+from ..types import EmptyPolicy
+
 
 @dataclass
 class PythonCfg:
-    skip_empty: bool = True
+    empty_policy: EmptyPolicy = "inherit"
     skip_trivial_inits: bool = True
     trivial_init_max_noncomment: int = 1
 
@@ -20,11 +22,7 @@ class PythonAdapter(BaseAdapter):
 
     # --------------------------------------------------------------------- #
     def should_skip(self, path: Path, text: str, cfg: PythonCfg) -> bool:  # type: ignore[override]
-        # 1) полностью пустой файл
-        if cfg.skip_empty and not text.strip():
-            return True
-
-        # 2) тривиальный __init__.py
+        # тривиальный __init__.py
         if cfg.skip_trivial_inits and path.name == "__init__.py":
             significant = [
                 ln.strip()

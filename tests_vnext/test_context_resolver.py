@@ -3,7 +3,7 @@ from pathlib import Path
 import pytest
 
 from lg_vnext.cache.fs_cache import Cache
-from lg_vnext.config.load import load_config_v6
+from lg_vnext.config import load_config_v6
 from lg_vnext.context.resolver import resolve_context, list_contexts
 from lg_vnext.engine import RunContext
 from lg_vnext.types import RunOptions

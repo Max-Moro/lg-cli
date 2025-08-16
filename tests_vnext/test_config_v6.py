@@ -2,8 +2,7 @@ from pathlib import Path
 import textwrap
 import pytest
 
-from lg_vnext.config.load import load_config_v6, list_sections
-from lg_vnext.config.model import SCHEMA_VERSION
+from lg_vnext.config import load_config_v6, list_sections, SCHEMA_VERSION
 
 
 # ========= Тесты, использующие фикстуру tmpproj (см. tests_vnext/conftest.py) =========
@@ -31,30 +30,6 @@ def test_list_sections(tmpproj: Path):
 
 
 # ========= Тесты, создающие собственный конфиг на лету =========
-
-def test_load_valid_yaml_overrides(tmp_path: Path) -> None:
-    """
-    Конфиг v6 парсится без ошибок, значения секций переопределяют дефолты.
-    Проверяем extensions и python.skip_empty.
-    """
-    p = tmp_path / "lg-cfg" / "config.yaml"
-    p.parent.mkdir(parents=True, exist_ok=True)
-    p.write_text(
-        textwrap.dedent(f"""
-        schema_version: {SCHEMA_VERSION}
-        all:
-          extensions: [".py", ".md"]
-          python:
-            skip_empty: false
-        """).strip() + "\n",
-        encoding="utf-8",
-    )
-
-    cfg = load_config_v6(tmp_path)
-    sec = cfg.sections["all"]
-    assert ".md" in sec.extensions
-    assert sec.python.skip_empty is False
-
 
 def test_schema_version_mismatch_v6(tmp_path: Path) -> None:
     """Некорректная версия схемы даёт читаемую RuntimeError."""

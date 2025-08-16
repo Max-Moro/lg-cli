@@ -1,13 +1,14 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import List, Set
+from typing import List, Set, cast
 
-from ..types import Manifest, FileRef, ContextSpec
-from ..lang import get_language_for_file
-from ..io.fs import build_gitignore_spec, iter_files
+from ..adapters import get_adapter_for_path
+from ..config import SectionCfg, EmptyPolicy
 from ..io.filters import FilterEngine
-from ..config.model import SectionCfg
+from ..io.fs import build_gitignore_spec, iter_files
+from ..lang import get_language_for_file
+from ..types import Manifest, FileRef, ContextSpec
 from ..vcs import VcsProvider, NullVcs
 
 
@@ -69,13 +70,25 @@ def build_manifest(
             if not engine.includes(rel_posix):
                 continue
 
-            # фильтруем пустые файлы грубо (глобальная эвристика секции)
-            if cfg.skip_empty:
-                try:
-                    if fp.stat().st_size == 0:
-                        continue
-                except Exception:
-                    pass
+            # ----- Политика пустых файлов: секционная + адаптерная -----
+            try:
+                size0 = (fp.stat().st_size == 0)
+            except Exception:
+                size0 = False
+            if size0:
+                # Определяем адаптер и его политику
+                adapter = get_adapter_for_path(fp)
+                # По умолчанию наследуем секционное правило
+                effective_exclude_empty = bool(cfg.skip_empty)
+                sec_adapter_cfg = getattr(cfg, getattr(adapter, "name", ""), None)
+                empty_policy = cast(EmptyPolicy, getattr(sec_adapter_cfg, "empty_policy", "inherit") if sec_adapter_cfg else "inherit")
+                if empty_policy == "include":
+                    effective_exclude_empty = False
+                elif empty_policy == "exclude":
+                    effective_exclude_empty = True
+                # Применяем решение
+                if effective_exclude_empty:
+                    continue
 
             lang = get_language_for_file(fp)
             files_out.append(

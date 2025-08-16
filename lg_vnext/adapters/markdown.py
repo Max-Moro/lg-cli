@@ -4,6 +4,7 @@ import re
 from dataclasses import dataclass
 
 from .base import BaseAdapter
+from ..types import EmptyPolicy
 
 
 @dataclass
@@ -12,6 +13,7 @@ class MarkdownCfg:
     Конфиг для MarkdownAdapter: максимальный уровень заголовков.
     Если None — нормализация заголовков отключена.
     """
+    empty_policy: EmptyPolicy = "inherit"
     max_heading_level: int | None = None
 
 

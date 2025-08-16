@@ -7,7 +7,7 @@ from pathlib import Path
 from .types import RunOptions
 from .engine import run_report, run_render
 from .context.resolver import list_contexts
-from .config.load import list_sections, load_config_v6
+from .config import list_sections, load_config_v6
 from .jsonic import dumps as jdumps
 
 
