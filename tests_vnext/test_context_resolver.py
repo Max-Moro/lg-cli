@@ -22,13 +22,11 @@ def test_resolve_ctx_explicit(tmpproj: Path):
     assert spec.kind == "context"
     assert spec.name == "a"
     assert spec.sections.by_name == {"docs": 1}
-    assert spec.template_ast and spec.template_ast.name == "a"
 
 def test_resolve_section_explicit(tmpproj: Path):
     spec = resolve_context("sec:all", _ctx(tmpproj))
     assert spec.kind == "section"
     assert spec.sections.by_name == {"all": 1}
-    assert spec.template_ast is None
 
 def test_resolve_auto_ctx_then_sec(tmpproj: Path):
     # "a" существует как контекст

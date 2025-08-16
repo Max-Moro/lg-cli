@@ -4,7 +4,7 @@ import re
 from pathlib import Path
 from typing import Dict, List, Set, Tuple
 
-from ..types import ContextSpec, ContextTemplateNode, SectionUsage
+from ..types import ContextSpec, SectionUsage
 from ..config.load import ConfigV6
 
 # --------------------------- Helpers --------------------------- #
@@ -93,27 +93,6 @@ def _collect_sections_counts_for_context(
     stack.pop()
     return counts
 
-def _build_template_ast(
-    *,
-    root: Path,
-    context_name: str,
-    stack: List[str] | None = None,
-) -> ContextTemplateNode:
-    stack = stack or []
-    if context_name in stack:
-        cycle = " → ".join(stack + [context_name])
-        raise RuntimeError(f"Template cycle detected: {cycle}")
-    p, text = _load_template(root, context_name)
-    stack.append(context_name)
-    placeholders = list(sorted(_Template.placeholders(text)))
-    children: List[ContextTemplateNode] = []
-    for ph in placeholders:
-        if ph.startswith("tpl:"):
-            child = ph[4:]
-            children.append(_build_template_ast(root=root, context_name=child, stack=stack))
-    stack.pop()
-    return ContextTemplateNode(name=context_name, placeholders=placeholders, children=children)
-
 # --------------------------- Public API --------------------------- #
 
 def resolve_context(name_or_sec: str, run_ctx) -> ContextSpec:
@@ -138,11 +117,9 @@ def resolve_context(name_or_sec: str, run_ctx) -> ContextSpec:
         tp = _template_path(root, name)
         if tp.is_file():
             sections = _collect_sections_counts_for_context(root=root, context_name=name)
-            ast = _build_template_ast(root=root, context_name=name)
             return ContextSpec(
                 kind="context",
                 name=name,
-                template_ast=ast,
                 sections=SectionUsage(by_name=sections or {}),
             )
         if kind == "context":
@@ -154,6 +131,5 @@ def resolve_context(name_or_sec: str, run_ctx) -> ContextSpec:
     return ContextSpec(
         kind="section",
         name=name,
-        template_ast=None,
         sections=SectionUsage(by_name={name: 1}),
     )

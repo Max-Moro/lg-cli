@@ -30,7 +30,7 @@ def test_manifest_all_mode_with_gitignore_and_filters(tmp_path: Path):
     )
     cfg = ConfigV6(sections={"all": sec})
 
-    spec = ContextSpec(kind="section", name="all", template_ast=None, sections=SectionUsage(by_name={"all": 1}))
+    spec = ContextSpec(kind="section", name="all", sections=SectionUsage(by_name={"all": 1}))
 
     mf = build_manifest(root=tmp_path, spec=spec, sections_cfg=cfg.sections, mode="all", vcs=NullVcs())
     paths = [fr.rel_path for fr in mf.files]
@@ -46,7 +46,7 @@ def test_manifest_changes_mode(tmp_path: Path, monkeypatch):
     sec = SectionCfg(extensions=[".py"], code_fence=True, filters=FilterNode(mode="block"))
 
     cfg = ConfigV6(sections={"all": sec})
-    spec = ContextSpec(kind="section", name="all", template_ast=None, sections=SectionUsage(by_name={"all": 1}))
+    spec = ContextSpec(kind="section", name="all", sections=SectionUsage(by_name={"all": 1}))
 
     # фейковый VCS, помечаем только один файл как изменённый
     class FakeVcs:

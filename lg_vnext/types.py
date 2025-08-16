@@ -22,21 +22,13 @@ class RunOptions:
 class SectionUsage:
     by_name: Dict[str, int]  # {"core-model-src": 1, "docs": 2}
 
-# -------- Context AST --------
-@dataclass(frozen=True)
-class ContextTemplateNode:
-    # raw template text is *not* stored here; only structure
-    name: str                     # "docs/arch" (без .tpl.md)
-    placeholders: List[str]       # ["tpl:...","core-model-src", ...]
-    children: List["ContextTemplateNode"]
-
+# -------- Context --------
 @dataclass(frozen=True)
 class ContextSpec:
     # унифицированный источник правды для пайплайна
     # либо ctx:<name>, либо sec:<name> (виртуальный контекст)
     kind: Literal["context", "section"]
     name: str                     # "docs/arch" или "all"
-    template_ast: Optional[ContextTemplateNode]
     sections: SectionUsage        # итоговый usage с кратностями
 
 # -------- Manifest / Files --------
