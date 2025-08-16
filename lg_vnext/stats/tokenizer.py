@@ -157,9 +157,7 @@ def compute_stats(
     # Ключ rendered кэша зависит от имени контекста, кратностей, опций, processed-ключей и хэшей шаблонов.
     processed_keys = {rel: b.cache_key_processed for rel, b in dedup.items()}
     options_fp = {
-        "mode": "all",        # статистика от рендера не зависит от VCS-режима; документ уже собран
         "code_fence": bool(code_fence),
-        "model": enc_info.model,
     }
 
     # Финальный документ (с клеем)
