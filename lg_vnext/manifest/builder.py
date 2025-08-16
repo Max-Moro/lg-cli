@@ -97,7 +97,6 @@ def build_manifest(
                     rel_path=rel_posix,
                     section=sec_name,
                     multiplicity=int(mult),
-                    adapter_name="base",    # окончательный адаптер подставится на стадии adapters.engine
                     language_hint=lang,
                 )
             )

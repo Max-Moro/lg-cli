@@ -46,7 +46,6 @@ class FileRef:
     rel_path: str                 # POSIX
     section: str                  # секция, где был обнаружен файл
     multiplicity: int             # кратность из ContextSpec.sections
-    adapter_name: str             # "python", "markdown", "base"
     language_hint: LangName       # для fenced-блоков
 
 @dataclass(frozen=True)
