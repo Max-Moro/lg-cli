@@ -6,7 +6,7 @@ from typing import Dict, List
 from ruamel.yaml import YAML
 
 from .model import Config, SectionCfg, SCHEMA_VERSION
-from lg_vnext.io.model import FilterNode
+from lg.io.model import FilterNode
 
 _yaml = YAML(typ="safe")
 _CFG_DIR = "lg-cfg"

@@ -1,8 +1,8 @@
 import textwrap
 from pathlib import Path
 
-from lg_vnext.engine import run_render
-from lg_vnext.types import RunOptions
+from lg.engine import run_render
+from lg.types import RunOptions
 
 
 def _write(p: Path, text: str = "") -> Path:

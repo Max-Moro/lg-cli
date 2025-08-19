@@ -1,8 +1,8 @@
 from pathlib import Path
 
-from lg_vnext.cache.fs_cache import Cache
-from lg_vnext.engine import run_report
-from lg_vnext.types import RunOptions
+from lg.cache.fs_cache import Cache
+from lg.engine import run_report
+from lg.types import RunOptions
 from .conftest import run_cli, jload
 
 

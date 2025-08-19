@@ -3,9 +3,9 @@ from typing import List
 from pathlib import Path
 
 from .base import get_adapter_for_path
-from lg_vnext.types import Plan, ProcessedBlob
-from lg_vnext.io.fs import read_text
-from lg_vnext.cache.fs_cache import Cache
+from lg.types import Plan, ProcessedBlob
+from lg.io.fs import read_text
+from lg.cache.fs_cache import Cache
 
 def process_groups(plan: Plan, run_ctx) -> List[ProcessedBlob]:
     """

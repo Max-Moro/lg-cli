@@ -2,10 +2,10 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from lg_vnext.config.model import Config, SectionCfg, FilterNode
-from lg_vnext.manifest.builder import build_manifest
-from lg_vnext.types import ContextSpec, SectionUsage
-from lg_vnext.vcs import NullVcs
+from lg.config.model import Config, SectionCfg, FilterNode
+from lg.manifest.builder import build_manifest
+from lg.types import ContextSpec, SectionUsage
+from lg.vcs import NullVcs
 
 
 def _write(tmp: Path, rel: str, text: str = "x") -> Path:

@@ -1,5 +1,5 @@
 from pathlib import Path
-from lg_vnext.cache.fs_cache import Cache
+from lg.cache.fs_cache import Cache
 
 def test_cache_processed_and_tokens(tmp_path: Path):
     cache = Cache(tmp_path, enabled=True, tool_version="T")

@@ -1,7 +1,7 @@
 import re
 import pytest
 
-from lg_vnext.adapters.markdown import MarkdownAdapter, MarkdownCfg
+from lg.adapters.markdown import MarkdownAdapter, MarkdownCfg
 
 adapter = MarkdownAdapter()
 

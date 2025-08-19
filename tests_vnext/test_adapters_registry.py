@@ -1,6 +1,6 @@
 from pathlib import Path
 
-from lg_vnext.adapters.base import _ADAPTERS_BY_NAME, get_adapter_for_path
+from lg.adapters.base import _ADAPTERS_BY_NAME, get_adapter_for_path
 
 def test_base_adapter_registered_vnext():
     assert "base" in _ADAPTERS_BY_NAME

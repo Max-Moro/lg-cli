@@ -4,8 +4,8 @@ from pathlib import Path
 import textwrap
 import pytest
 
-from lg_vnext.engine import run_report
-from lg_vnext.types import RunOptions
+from lg.engine import run_report
+from lg.types import RunOptions
 
 
 # --------------------------- helpers --------------------------- #

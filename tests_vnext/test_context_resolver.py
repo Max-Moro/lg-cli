@@ -2,12 +2,12 @@ from pathlib import Path
 
 import pytest
 
-from lg_vnext.cache.fs_cache import Cache
-from lg_vnext.config import load_config
-from lg_vnext.context.resolver import resolve_context, list_contexts
-from lg_vnext.engine import RunContext
-from lg_vnext.types import RunOptions
-from lg_vnext.vcs import NullVcs
+from lg.cache.fs_cache import Cache
+from lg.config import load_config
+from lg.context.resolver import resolve_context, list_contexts
+from lg.engine import RunContext
+from lg.types import RunOptions
+from lg.vcs import NullVcs
 
 
 def _ctx(root: Path):

@@ -1,8 +1,8 @@
 from pathlib import Path
-from lg_vnext.io.filters import FilterEngine
-from lg_vnext.io.model import FilterNode
-from lg_vnext.engine import run_render
-from lg_vnext.types import RunOptions
+from lg.io.filters import FilterEngine
+from lg.io.model import FilterNode
+from lg.engine import run_render
+from lg.types import RunOptions
 
 def _engine():
     # корень default-allow, но блочим *.log

@@ -1,7 +1,7 @@
 from pathlib import Path
 
-from lg_vnext.engine import run_report
-from lg_vnext.types import RunOptions
+from lg.engine import run_report
+from lg.types import RunOptions
 
 
 def test_processed_cache_skips_adapter_on_second_run(tmpproj: Path, monkeypatch):
@@ -13,7 +13,7 @@ def test_processed_cache_skips_adapter_on_second_run(tmpproj: Path, monkeypatch)
     # счётчик вызовов process у PythonAdapter
     calls = {"process": 0}
 
-    import lg_vnext.adapters.python as py_ad
+    import lg.adapters.python as py_ad
     orig_process = py_ad.PythonAdapter.process
 
     def wrapped_process(self, text, cfg, group_size, mixed):
@@ -38,7 +38,7 @@ def test_token_counts_cached_between_runs(tmpproj: Path, monkeypatch):
     (tmpproj / "x.md").write_text("# T\nbody\n", encoding="utf-8")
 
     # подменяем _enc_for_model, чтобы считать вызовы encode()
-    import lg_vnext.stats.tokenizer as tok
+    import lg.stats.tokenizer as tok
 
     class FakeEnc:
         def __init__(self, counter):
@@ -69,7 +69,7 @@ def test_rendered_tokens_cached(tmpproj: Path, monkeypatch):
     # контекст a: "Intro\n\n${docs}\n"
     (tmpproj / "README.md").write_text("# A\nZ\n", encoding="utf-8")
 
-    import lg_vnext.stats.tokenizer as tok
+    import lg.stats.tokenizer as tok
 
     class FakeEnc:
         def __init__(self, counter):

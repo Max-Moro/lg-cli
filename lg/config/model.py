@@ -3,7 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Dict, List
 
-from lg_vnext.io.model import FilterNode
+from lg.io.model import FilterNode
 from ..adapters.markdown import MarkdownCfg
 from ..adapters.python import PythonCfg
 

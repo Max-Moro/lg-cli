@@ -1,8 +1,8 @@
 from pathlib import Path
 import textwrap
 
-from lg_vnext.engine import run_render
-from lg_vnext.types import RunOptions
+from lg.engine import run_render
+from lg.types import RunOptions
 
 
 def _rewrite_all_section_exts(root: Path, exts: list[str]) -> None:

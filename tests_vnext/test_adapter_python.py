@@ -1,6 +1,6 @@
 from pathlib import Path
-from lg_vnext.engine import run_render
-from lg_vnext.types import RunOptions
+from lg.engine import run_render
+from lg.types import RunOptions
 
 def test_trivial_init_skipped_vnext(tmpproj: Path, monkeypatch):
     monkeypatch.chdir(tmpproj)

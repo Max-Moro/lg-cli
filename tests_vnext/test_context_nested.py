@@ -1,13 +1,13 @@
 from pathlib import Path
 import pytest
 
-from lg_vnext.config import load_config
-from lg_vnext.cache.fs_cache import Cache
-from lg_vnext.context.resolver import resolve_context
-from lg_vnext.context.composer import compose_context
-from lg_vnext.types import RunOptions
-from lg_vnext.engine import RunContext
-from lg_vnext.vcs import NullVcs
+from lg.config import load_config
+from lg.cache.fs_cache import Cache
+from lg.context.resolver import resolve_context
+from lg.context.composer import compose_context
+from lg.types import RunOptions
+from lg.engine import RunContext
+from lg.vcs import NullVcs
 
 def _write_ctx(root: Path, rel: str, body: str):
     p = root / "lg-cfg" / "contexts" / f"{rel}.tpl.md"

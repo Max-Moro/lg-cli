@@ -2,7 +2,7 @@ from pathlib import Path
 import textwrap
 import pytest
 
-from lg_vnext.config import load_config, list_sections, SCHEMA_VERSION
+from lg.config import load_config, list_sections, SCHEMA_VERSION
 
 
 # ========= Тесты, использующие фикстуру tmpproj (см. tests_vnext/conftest.py) =========
