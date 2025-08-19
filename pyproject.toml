@@ -17,24 +17,10 @@ dependencies = [
 ]
 
 [project.scripts]
-listing-generator = "lg_vnext.cli:main"
-listing-generator-legacy = "lg.cli:main"
+listing-generator = "lg.cli:main"
 
 [project.optional-dependencies]
 dev = [
     "pytest>=8.0",
     "datamodel-code-generator>=0.25",
 ]
-
-# ——— Setuptools configuration ———
-[tool.setuptools]
-include-package-data = true
-
-[tool.setuptools.packages.find]
-# Явно указываем, что собирать оба пакета из текущего корня
-where = ["."]
-include = ["lg", "lg.*", "lg_vnext", "lg_vnext.*"]
-
-[tool.setuptools.package-data]
-# Вкладываем JSON-схему в дистрибутив пакета vNext
-lg_vnext = ["run_result.schema.json"]

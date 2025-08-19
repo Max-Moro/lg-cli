@@ -16,9 +16,9 @@ fi
 
 # Генерация моделей из схемы
 "$VENV_PY" -m datamodel_code_generator \
-  --input lg_vnext/run_result.schema.json \
+  --input lg/run_result.schema.json \
   --input-file-type jsonschema \
-  --output lg_vnext/api_schema.py \
+  --output lg/api_schema.py \
   --target-python-version 3.11 \
   --use-standard-collections \
   --use-schema-description \
@@ -29,4 +29,4 @@ fi
   --use-field-description \
   --strict-nullable
 
-echo "✅ Модели сгенерированы в lg_vnext/api_schema.py"
+echo "✅ Модели сгенерированы в lg/api_schema.py"

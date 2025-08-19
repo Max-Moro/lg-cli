@@ -15,7 +15,7 @@ from .types import RunOptions
 def _build_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(
         prog="lg",
-        description="Listing Generator vNext (context-first pipeline)",
+        description="Listing Generator (context-first pipeline)",
         add_help=True,
     )
     sub = p.add_subparsers(dest="cmd", required=True)
@@ -56,7 +56,7 @@ def _build_parser() -> argparse.ArgumentParser:
     sp_diag.add_argument(
         "--rebuild-cache",
         action="store_true",
-        help="очистить и заново инициализировать кэш (.lg-cache/vnext) перед диагностикой",
+        help="очистить и заново инициализировать кэш (.lg-cache) перед диагностикой",
     )
 
     return p

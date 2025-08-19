@@ -40,7 +40,7 @@ def tmpproj(tmp_path: Path):
 def run_cli(root: Path, *args: str) -> subprocess.CompletedProcess:
     env = os.environ.copy()
     return subprocess.run(
-        [sys.executable, "-m", "lg_vnext.cli", *args],
+        [sys.executable, "-m", "lg.cli", *args],
         cwd=root, env=env, capture_output=True, text=True, encoding="utf-8"
     )
 

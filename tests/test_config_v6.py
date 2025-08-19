@@ -5,7 +5,7 @@ import pytest
 from lg.config import load_config, list_sections, SCHEMA_VERSION
 
 
-# ========= Тесты, использующие фикстуру tmpproj (см. tests_vnext/conftest.py) =========
+# ========= Тесты, использующие фикстуру tmpproj (см. tests/conftest.py) =========
 
 def test_load_config_ok(tmpproj: Path):
     """

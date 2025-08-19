@@ -1,4 +1,4 @@
-# Listing Generator (LG vNext)
+# Listing Generator
 
 Инструмент для сборки «плотных» контекстов из исходников: обходит проект, фильтрует и нормализует файлы, а затем собирает из них один аккуратный Markdown-документ — идеально подходящий для ChatGPT/Copilot/Gemini/Claude и других LLM-ассистентов.
 
@@ -76,20 +76,20 @@ ln -s ~/dev/lg lg
 
 ```bash
 # 1) Без установки — модуль напрямую
-python -m lg_vnext.cli render sec:core > prompt.md
+python -m lg.cli render sec:core > prompt.md
 
 # 2) Установка в editable-режиме (если у вас есть setup.cfg/pyproject)
 pip install -e ./lg
 lg render sec:core > prompt.md      # если настроен console_script "lg"
 ```
 
-> Если команды `lg` нет, используйте всегда `python -m lg_vnext.cli ...`.
+> Если команды `lg` нет, используйте всегда `python -m lg.cli ...`.
 
 Проверка окружения и кэша:
 
 ```bash
-python -m lg_vnext.cli diag
-python -m lg_vnext.cli diag --rebuild-cache
+python -m lg.cli diag
+python -m lg.cli diag --rebuild-cache
 ```
 
 ---
@@ -180,7 +180,7 @@ core-model-roadmap:
 
 * **Python**: можно пропускать «тривиальные» `__init__.py` (только `pass`/`...` или пусто).
 * **Markdown**: снятие верхнего H1 (если файл один в группе) + ограничение уровня заголовков (`max_heading_level`) вне fenced-блоков.
-* Для каждого файла LG определяет «язык для fenced-кода» (см. сопоставления в `lg_vnext/lang.py`).
+* Для каждого файла LG определяет «язык для fenced-кода» (см. сопоставления в `lg/lang.py`).
 
 ### Шаблоны контекстов (`lg-cfg/contexts/**.tpl.md`)
 
@@ -277,7 +277,7 @@ lg list sections
 
 ## Кэш и производительность
 
-LG использует файловый кэш `.lg-cache/vnext`:
+LG использует файловый кэш `.lg-cache`:
 
 * **Processed-кэш** — результат работы адаптеров + их метаданные.
 * **Raw/Processed tokens** — сохранённые подсчёты токенов (по модели/режиму).

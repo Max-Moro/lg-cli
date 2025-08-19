@@ -48,7 +48,7 @@ def _mkproj_py_only(root: Path, *, code_fence: bool = True) -> None:
 
 def test_md_with_h1_processed_saves_tokens_and_meta(tmp_path: Path, monkeypatch):
     """
-    vNext-порт старого теста: для Markdown адаптер удаляет одиночный H1 при group_size=1
+    Для Markdown адаптер удаляет одиночный H1 при group_size=1
     и заданном max_heading_level → processed < raw.
     """
     _mkproj_md_only(tmp_path, code_fence=True, max_h=2)
@@ -106,7 +106,7 @@ def test_non_md_with_fence_adds_overhead(tmp_path: Path, monkeypatch):
 
 def test_non_md_no_fence_but_markers_overhead(tmp_path: Path, monkeypatch):
     """
-    vNext-особенность: даже при code_fence=False для «кодового»/смешанного содержимого
+    Даже при code_fence=False для «кодового»/смешанного содержимого
     мы печатаем маркеры '# —— FILE: … ——', поэтому оверхед всё равно > 0.
     """
     _mkproj_py_only(tmp_path, code_fence=False)

@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://example.org/lg_vnext/diag_report.schema.json",
+  "$id": "https://example.org/lg/diag_report.schema.json",
   "title": "DiagReport",
   "type": "object",
   "additionalProperties": false,

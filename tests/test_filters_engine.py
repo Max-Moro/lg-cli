@@ -36,9 +36,9 @@ def test_nested_allow_subtree_only_whitelist():
     """
     root = FilterNode(
         mode="allow",
-        allow=["vscode-lg/"],  # разрешаем только поддерево vscode-lg/
+        allow=["vscode-ext/"],  # разрешаем только поддерево vscode-ext/
         children={
-            "vscode-lg": FilterNode(
+            "vscode-ext": FilterNode(
                 mode="allow",
                 allow=[
                     "src/**",
@@ -51,40 +51,40 @@ def test_nested_allow_subtree_only_whitelist():
     eng = FilterEngine(root)
 
     # ✅ разрешённые пути
-    assert eng.includes("vscode-lg/src/extension.ts")
-    assert eng.includes("vscode-lg/src/client/start.ts")
-    assert eng.includes("vscode-lg/package.json")
-    assert eng.includes("vscode-lg/tsconfig.json")
+    assert eng.includes("vscode-ext/src/extension.ts")
+    assert eng.includes("vscode-ext/src/client/start.ts")
+    assert eng.includes("vscode-ext/package.json")
+    assert eng.includes("vscode-ext/tsconfig.json")
 
     # ❌ не перечисленное в дочернем allow — запрещено
-    assert not eng.includes("vscode-lg/node_modules/lodash/index.js")
-    assert not eng.includes("vscode-lg/README.md")
-    assert not eng.includes("vscode-lg/yarn.lock")
+    assert not eng.includes("vscode-ext/node_modules/lodash/index.js")
+    assert not eng.includes("vscode-ext/README.md")
+    assert not eng.includes("vscode-ext/yarn.lock")
 
     # ❌ за пределами корневого allow — запрещено
     assert not eng.includes("somewhere_else/file.ts")
 
 def test_may_descend_allow_specific_file():
     """
-    Регресс: если в allow указан конкретный файл (/lg/README.md),
-    прунер обязан разрешить спуск в каталог 'lg'.
+    Регресс: если в allow указан конкретный файл (/core/README.md),
+    прунер обязан разрешить спуск в каталог 'core'.
     """
     root = FilterNode(
         mode="allow",
-        allow=["/lg/README.md"],
+        allow=["/core/README.md"],
     )
     eng = FilterEngine(root)
-    assert eng.may_descend("lg") is True
+    assert eng.may_descend("core") is True
     assert eng.may_descend("docs") is False
 
 def test_render_with_allow_specific_file(tmp_path: Path, monkeypatch):
     """
-    Сквозной тест: при секции mode:allow + allow:/lg/README.md
+    Сквозной тест: при секции mode:allow + allow:/core/README.md
     файл попадает в рендер секции, «шум» — нет.
     """
     # ── файловая структура
-    (tmp_path / "lg").mkdir()
-    (tmp_path / "lg" / "README.md").write_text("# Hello from LG README\nBody\n", encoding="utf-8")
+    (tmp_path / "core").mkdir()
+    (tmp_path / "core" / "README.md").write_text("# Hello from Core README\nBody\n", encoding="utf-8")
     (tmp_path / "other").mkdir()
     (tmp_path / "other" / "note.md").write_text("noise", encoding="utf-8")
 
@@ -97,16 +97,16 @@ def test_render_with_allow_specific_file(tmp_path: Path, monkeypatch):
         "  code_fence: false\n"        # md-only → без fenced/маркеров
         "  filters:\n"
         "    mode: allow\n"
-        "    allow: ['/lg/README.md']\n",
+        "    allow: ['/core/README.md']\n",
         encoding="utf-8"
     )
 
-    # ── запуск пайплайна vNext (виртуальный контекст секции)
+    # ── запуск пайплайна (виртуальный контекст секции)
     monkeypatch.chdir(tmp_path)
     doc = run_render("sec:all", RunOptions(code_fence=False))
     out = doc.text
 
     # В чистом MD режиме путь файла не печатается — проверяем содержимое
-    assert "Hello from LG README" in out
+    assert "Hello from Core README" in out
     assert "Body" in out
     assert "noise" not in out

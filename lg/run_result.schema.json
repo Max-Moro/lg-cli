@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://example.org/lg_vnext/run_result.schema.json",
+  "$id": "https://example.org/lg/run_result.schema.json",
   "title": "RunResult",
   "type": "object",
   "required": ["formatVersion","scope","model","encoder","ctxLimit","total","files","context"],

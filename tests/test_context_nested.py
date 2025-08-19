@@ -23,7 +23,7 @@ def _mk_ctx(root: Path) -> RunContext:
         vcs=NullVcs(),
     )
 
-def test_context_nested_ok_vnext(tmp_path: Path, monkeypatch):
+def test_context_nested_ok(tmp_path: Path, monkeypatch):
     # Минимальный конфиг с секцией "sec"
     (tmp_path / "lg-cfg").mkdir(parents=True, exist_ok=True)
     (tmp_path / "lg-cfg" / "config.yaml").write_text(
@@ -53,7 +53,7 @@ def test_context_nested_ok_vnext(tmp_path: Path, monkeypatch):
     assert "MIDDLE" in out
     assert "LEAF LISTING[sec]" in out  # секция вставилась на место плейсхолдера
 
-def test_context_cycle_detection_vnext(tmp_path: Path):
+def test_context_cycle_detection(tmp_path: Path):
     # Конфиг (любая секция, чтобы загрузка прошла)
     (tmp_path / "lg-cfg").mkdir(parents=True, exist_ok=True)
     (tmp_path / "lg-cfg" / "config.yaml").write_text(

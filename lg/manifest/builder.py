@@ -14,10 +14,10 @@ from ..vcs import VcsProvider, NullVcs
 
 def _auto_skip_self(root: Path, rel_posix: str) -> bool:
     """
-    По умолчанию не включаем код самого инструмента (lg_vnext/**) в листинги
+    По умолчанию не включаем код самого инструмента (lg/**) в листинги
     — если этого явно не разрешили фильтры. Это убирает «эхо» при разработке.
     """
-    return rel_posix.startswith("lg_vnext/")
+    return rel_posix.startswith("lg/")
 
 
 def build_manifest(
@@ -60,7 +60,7 @@ def build_manifest(
         for fp in iter_files(root, extensions=exts, spec_git=spec_git, dir_pruner=_pruner):
             rel_posix = fp.resolve().relative_to(root.resolve()).as_posix()
 
-            if _auto_skip_self(root, rel_posix) and not engine.includes("lg_vnext/cli.py"):
+            if _auto_skip_self(root, rel_posix) and not engine.includes("lg/cli.py"):
                 # авто-фильтр кода инструмента, если не разрешили явно
                 continue
 

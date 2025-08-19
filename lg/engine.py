@@ -42,7 +42,7 @@ def tool_version() -> str:
     Пытаемся аккуратно достать версию инструмента.
     Падает в "0.0.0" при любых проблемах/локальном запуске.
     """
-    for dist in ("listing-generator", "lg-vnext", "lg_vnext"):
+    for dist in ("listing-generator", "lg"):
         try:
             return metadata.version(dist)
         except Exception:

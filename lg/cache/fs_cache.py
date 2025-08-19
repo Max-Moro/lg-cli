@@ -9,7 +9,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, Optional
 
-CACHE_VERSION = 1  # vNext cache format
+CACHE_VERSION = 1
 
 def _sha1_json(payload: dict) -> str:
     return hashlib.sha1(json.dumps(payload, ensure_ascii=False, sort_keys=True).encode("utf-8")).hexdigest()
@@ -41,7 +41,7 @@ class CacheSnapshot:
 
 class Cache:
     """
-    Единый файловый кэш для vNext:
+    Единый файловый кэш для:
       • processed-тексты (по ключу processed)
       • токены raw/processed (by model+mode)
       • rendered-токены (на итоговый документ)
@@ -59,7 +59,7 @@ class Cache:
             self.enabled = True
         self.fresh = bool(fresh)
         self.tool_version = tool_version
-        self.dir = (root / ".lg-cache" / "vnext")
+        self.dir = (root / ".lg-cache")
         if self.enabled:
             try:
                 _ensure_dir(self.dir)
@@ -269,7 +269,7 @@ class Cache:
 
     # --------------------------- MAINTENANCE --------------------------- #
     def purge_all(self) -> bool:
-        """Полная очистка содержимого кэша vNext (.lg-cache/vnext)."""
+        """Полная очистка содержимого кэша (.lg-cache)."""
         try:
             if self.dir.exists():
                 shutil.rmtree(self.dir, ignore_errors=True)
