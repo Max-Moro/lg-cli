@@ -34,11 +34,3 @@ lg-vnext-src:
     mode: allow
     allow:
       - "/lg_vnext/"
-    block:
-      - "lg_vnext/lang.py"
-      - "lg_vnext/io/filters.py"
-      - "lg_vnext/io/model.py"
-      - "lg_vnext/adapters/__init__.py"
-      - "lg_vnext/adapters/base.py"
-      - "lg_vnext/adapters/markdown.py"
-      - "lg_vnext/adapters/python.py"
