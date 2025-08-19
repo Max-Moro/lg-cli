@@ -13,8 +13,9 @@ common-src:
     allow:
       - "/pyproject.toml"
       - "/lg/"
-      - "/tests/test_cli_code_fence.py"
-      - "/tests/test_stats_modes.py"
+      - "/tests/test_adapters_registry.py"
+      - "/tests/test_cli_minimum.py"
+      - "/tests/conftest.py"
 
 tests-src:
   extensions: [".py"]
@@ -22,8 +23,3 @@ tests-src:
     mode: allow
     allow:
       - "/tests/"
-    block:
-      - "tests/test_cli_context.py"
-      - "tests/test_context_nested.py"
-      - "tests/test_context_unit.py"
-      - "tests/test_config_loader.py"
