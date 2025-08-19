@@ -172,8 +172,7 @@ def run_report(target: str, options: RunOptions) -> RunResultM:
         ctxLimit=ctx_limit,
         total=total_m,
         files=files_m,
-        context=context_m,
-        rendered_text=composed.text,
+        context=context_m
     )
     return result
 

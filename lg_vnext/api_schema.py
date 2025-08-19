@@ -62,4 +62,3 @@ class RunResult(BaseModel):
     total: Total
     files: list[File]
     context: Context
-    rendered_text: str

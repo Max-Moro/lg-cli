@@ -43,7 +43,7 @@ def _build_parser() -> argparse.ArgumentParser:
             help="override конфигурации: отключить code fence",
         )
 
-    sp_report = sub.add_parser("report", help="JSON-отчёт: статистика + rendered_text")
+    sp_report = sub.add_parser("report", help="JSON-отчёт: статистика")
     add_common(sp_report)
 
     sp_render = sub.add_parser("render", help="Только финальный текст (не JSON)")

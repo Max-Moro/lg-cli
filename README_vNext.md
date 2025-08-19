@@ -226,7 +226,7 @@ lg <command> <target> [--mode all|changes] [<additional_flags>]
 Команды:
 
 * `render` — вывести **только финальный текст** (Markdown).
-* `report` — **JSON-отчёт** (формат v4): статистика, файлы, контекстный блок, финальный `rendered_text`.
+* `report` — **JSON-отчёт** (формат v4): статистика, файлы, контекстный блок.
 * `list contexts|sections` — перечисление доступных сущностей (JSON).
 * `diag` — диагностика окружения/кэша/конфига (JSON), есть `--rebuild-cache`.
 

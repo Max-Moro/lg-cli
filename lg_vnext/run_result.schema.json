@@ -3,7 +3,7 @@
   "$id": "https://example.org/lg_vnext/run_result.schema.json",
   "title": "RunResult",
   "type": "object",
-  "required": ["formatVersion","scope","model","encoder","ctxLimit","total","files","context","rendered_text"],
+  "required": ["formatVersion","scope","model","encoder","ctxLimit","total","files","context"],
   "properties": {
     "formatVersion": { "type": "integer", "const": 4 },
     "scope": { "type": "string", "const": "context" },
@@ -73,8 +73,7 @@
         "finalCtxShare": { "type": "number" }
       },
       "additionalProperties": false
-    },
-    "rendered_text": { "type": "string" }
+    }
   },
   "additionalProperties": false
 }
