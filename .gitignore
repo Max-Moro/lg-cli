@@ -25,6 +25,3 @@ site/
 
 # AI Chat
 .ai-chat/
-
-# Listing Generator
-.lg-cache/
