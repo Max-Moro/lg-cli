@@ -4,12 +4,10 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from .base import BaseAdapter
-from ..config import EmptyPolicy
 
 
 @dataclass
 class PythonCfg:
-    empty_policy: EmptyPolicy = "inherit"
     skip_trivial_inits: bool = True
     trivial_init_max_noncomment: int = 1
 

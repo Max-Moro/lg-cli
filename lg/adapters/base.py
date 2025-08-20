@@ -47,7 +47,11 @@ class BaseAdapter(Generic[C]):
             inst._cfg = None
         else:
             # Ожидаем, что cfg_type — dataclass/pydantic-модель с **kwargs
-            inst._cfg = cfg_type(**(raw_cfg or {}))
+            # Явно исключаем служебный ключ секции 'empty_policy' — он управляет
+            # политикой пустых файлов на уровне манифеста, но не должен попадать в языковые адаптеры.
+            cfg_kwargs = dict(raw_cfg or {})
+            cfg_kwargs.pop("empty_policy", None)
+            inst._cfg = cfg_type(**cfg_kwargs)
         return inst
 
     # Типобезопасный доступ к конфигу для наследников, у которых config_cls задан.
