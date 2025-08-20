@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from pathlib import Path
 from typing import Generic, Optional, Set, Type, TypeVar, get_args, get_origin
-from lg.conf import build_typed
+from lg.config import load_typed
 
 __all__ = ["BaseAdapter"]
 
@@ -47,11 +47,10 @@ class BaseAdapter(Generic[C]):
         if cfg_type is None:
             inst._cfg = None
         else:
-            # Строго приводим конфиг к типу (поддержка вложенных dataclass/pydantic)
-            # Исключаем служебный ключ 'empty_policy' (секционная политика пустых файлов).
-            cfg_map = dict(raw_cfg or {})
-            cfg_map.pop("empty_policy", None)
-            inst._cfg = build_typed(cfg_type, cfg_map)
+            # Типобезопасная рекурсивная загрузка вложенных структур конфига
+            cfg_kwargs = dict(raw_cfg or {})
+            cfg_kwargs.pop("empty_policy", None)  # служебное — наружу
+            inst._cfg = load_typed(cfg_type, cfg_kwargs, path=f"${cls.__name__}.cfg")
         return inst
 
     # Типобезопасный доступ к конфигу для наследников, у которых config_cls задан.
