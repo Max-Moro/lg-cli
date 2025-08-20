@@ -5,7 +5,7 @@ from typing import Dict, List, Literal
 
 from lg.io.model import FilterNode
 
-SCHEMA_VERSION = 7
+SCHEMA_VERSION = 6
 
 @dataclass
 class TargetRule:

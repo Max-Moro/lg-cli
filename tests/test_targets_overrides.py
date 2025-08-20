@@ -1,9 +1,16 @@
-from .conftest import run_cli, jload
+from pathlib import Path
+from .conftest import run_cli, jload, write
 
 
-def test_per_file_adapter_overrides_propagate(tmpproj):
+def test_per_file_adapter_overrides_propagate(tmpproj: Path, monkeypatch):
     """Проверяем, что targets применяются и ключи оверрайдов попадают в meta."""
-    cp = run_cli(tmpproj, "report", "sec:all")
+    monkeypatch.chdir(tmpproj)
+
+    # Подготовим файлы под таргеты секции:
+    write(Path("pkg/mod.py"), "def foo():\n    pass\n")
+    write(Path("docs/note.md"), "# T\n\nChangelog: ...\n\nBody.\n")
+
+    cp = run_cli(Path("."), "report", "sec:all")
     assert cp.returncode == 0, cp.stderr
     data = jload(cp.stdout)
     files = {f["path"]: f for f in data["files"]}

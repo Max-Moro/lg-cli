@@ -21,7 +21,7 @@ def tmpproj(tmp_path: Path):
     write(
         root / "lg-cfg" / "config.yaml",
         textwrap.dedent("""
-        schema_version: 7
+        schema_version: 6
         all:
           extensions: [".md", ".py"]
           code_fence: true
@@ -42,14 +42,9 @@ def tmpproj(tmp_path: Path):
                 drop_paragraphs: ["^Changelog:"]
         """).strip() + "\n",
     )
-
     # контексты
     write(root / "lg-cfg" / "contexts" / "a.tpl.md", "Intro\n\n${docs}\n")
     write(root / "lg-cfg" / "contexts" / "b.tpl.md", "X ${tpl:a} Y ${all}\n")
-
-    # файлы для матчинга targets
-    write(root / "pkg" / "mod.py", "def foo():\n    pass\n")
-    write(root / "docs" / "note.md", "# T\n\nChangelog: ...\n\nBody.\n")
     return root
 
 def run_cli(root: Path, *args: str) -> subprocess.CompletedProcess:

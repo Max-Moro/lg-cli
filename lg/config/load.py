@@ -81,6 +81,7 @@ def load_config(root: Path) -> Config:
             code_fence=bool(node.get("code_fence", True)),
             skip_empty=bool(node.get("skip_empty", True)),
             adapters=adapters_cfg,
+            targets=targets,
         )
 
     return Config(schema_version=SCHEMA_VERSION, sections=sections)
