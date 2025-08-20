@@ -6,7 +6,7 @@ from typing import List
 from lg.cache.fs_cache import Cache
 from lg.io.fs import read_text
 from lg.types import Plan, ProcessedBlob
-from .base import get_adapter_for_path
+from .registry import get_adapter_for_path
 
 
 def process_groups(plan: Plan, run_ctx) -> List[ProcessedBlob]:
@@ -18,16 +18,23 @@ def process_groups(plan: Plan, run_ctx) -> List[ProcessedBlob]:
     """
     cache: Cache = run_ctx.cache
     out: List[ProcessedBlob] = []
+    # Кэш «связанных» (bound) адаптеров по (adapter_name, cfg_dict_immutable)
+    bound_cache: dict[tuple[str, tuple[tuple[str, object], ...]], object] = {}
 
     for grp in plan.groups:
         group_size = len(grp.entries)
         for e in grp.entries:
             fp: Path = e.abs_path
-            adapter_proto = get_adapter_for_path(fp)
-            # сырой конфиг адаптера из секции и биндинг к экземпляру
+            adapter_cls = get_adapter_for_path(fp)  # ← КЛАСС адаптера (лениво)
+            # сырой конфиг адаптера из секции и биндинг к экземпляру (лениво + кэш)
             sec_cfg = run_ctx.config.sections[e.section]
-            raw_cfg: dict | None = sec_cfg.adapters.get(adapter_proto.name)
-            adapter = adapter_proto.bind(raw_cfg)
+            raw_cfg: dict | None = sec_cfg.adapters.get(adapter_cls.name)
+            cfg_key = tuple(sorted((raw_cfg or {}).items()))
+            bkey = (adapter_cls.name, cfg_key)
+            adapter = bound_cache.get(bkey)
+            if adapter is None:
+                adapter = adapter_cls().bind(raw_cfg)
+                bound_cache[bkey] = adapter  # type: ignore[assignment]
 
             raw_text = read_text(fp)
 

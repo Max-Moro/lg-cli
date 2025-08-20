@@ -65,9 +65,9 @@ def build_manifest(
                 size0 = False
             if size0:
                 # Определяем адаптер и его политику
-                adapter = get_adapter_for_path(fp)
+                adapter_cls = get_adapter_for_path(fp)
                 effective_exclude_empty = bool(cfg.skip_empty)
-                raw_cfg: dict | None = cfg.adapters.get(adapter.name)
+                raw_cfg: dict | None = cfg.adapters.get(adapter_cls.name)
                 empty_policy: EmptyPolicy = "inherit"
                 if raw_cfg is not None and "empty_policy" in raw_cfg:
                     empty_policy = cast(EmptyPolicy, raw_cfg["empty_policy"])

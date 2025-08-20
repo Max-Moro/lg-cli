@@ -1,13 +1,15 @@
 from __future__ import annotations
-from importlib import import_module
-from pkgutil import iter_modules
 
+# Публичный API пакета adapters:
+#  • process_groups — движок обработки
+#  • get_adapter_for_path — ленивое получение класса адаптера по пути
 from .engine import process_groups
-from .base import get_adapter_for_path
+from .registry import get_adapter_for_path, register_lazy
 
-__all__ = ["process_groups", "get_adapter_for_path"]
+__all__ = ["process_groups", "get_adapter_for_path", "register_lazy"]
 
-# Импортируем все файлы-адаптеры, кроме base.py
-for _, mod_name, _ in iter_modules(__path__):
-    if mod_name not in {"base", "__init__"}:
-        import_module(f"{__name__}.{mod_name}")
+# ---- Лёгкая (ленивая) регистрация встроенных адаптеров --------------------
+# Никаких импортов тяжёлых модулей здесь нет — только строки module:class.
+# Модуль адаптера будет импортирован ровно в момент первого запроса по расширению.
+register_lazy(module=".python", class_name="PythonAdapter", extensions=[".py"])
+register_lazy(module=".markdown", class_name="MarkdownAdapter", extensions=[".md", ".markdown"])
