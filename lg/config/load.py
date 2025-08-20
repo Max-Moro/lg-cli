@@ -5,8 +5,8 @@ from typing import Dict, List
 
 from ruamel.yaml import YAML
 
-from .model import Config, SectionCfg, SCHEMA_VERSION
 from lg.io.model import FilterNode
+from .model import Config, SectionCfg, SCHEMA_VERSION
 
 _yaml = YAML(typ="safe")
 _CFG_DIR = "lg-cfg"
@@ -34,22 +34,25 @@ def load_config(root: Path) -> Config:
         # Разбираем минимальные поля для этого шага
         exts = list(map(str, node.get("extensions", [".py"])))
 
-        # --- адаптер Python (при отсутствии – будут дефолты из LangPython) ---
-        from ..adapters.python import PythonCfg
-        py_cfg = PythonCfg(**node.get("python", {}))
-
-        # --- адаптер Markdown (при отсутствии – def max_heading_level=None) ---
-        from ..adapters.markdown import MarkdownCfg
-        md_cfg = MarkdownCfg(**node.get("markdown", {}))
-
+        # Собираем фильтры
         filters = FilterNode.from_dict(node.get("filters", {"mode": "block"}))
+
+        # Извлекаем «служебные» ключи секции и считаем остальные — конфигами адаптеров.
+        service_keys = {"extensions", "filters", "skip_empty", "code_fence"}
+        adapters_cfg: Dict[str, dict] = {}
+        for k, v in node.items():
+            if k in service_keys or k == "schema_version":
+                continue
+            if not isinstance(v, dict):
+                raise RuntimeError(f"Adapter config for '{k}' in section '{name}' must be a mapping")
+            adapters_cfg[str(k)] = dict(v)
+
         sections[name] = SectionCfg(
             extensions=exts,
             filters=filters,
             code_fence=bool(node.get("code_fence", True)),
             skip_empty=bool(node.get("skip_empty", True)),
-            markdown=md_cfg,
-            python=py_cfg,
+            adapters=adapters_cfg,
         )
 
     return Config(schema_version=SCHEMA_VERSION, sections=sections)

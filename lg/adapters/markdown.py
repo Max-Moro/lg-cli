@@ -4,7 +4,7 @@ import re
 from dataclasses import dataclass
 
 from .base import BaseAdapter
-from ..types import EmptyPolicy
+from ..config import EmptyPolicy
 
 
 @dataclass

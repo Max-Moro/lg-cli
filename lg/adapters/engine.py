@@ -1,11 +1,13 @@
 from __future__ import annotations
-from typing import List
-from pathlib import Path
 
-from .base import get_adapter_for_path
-from lg.types import Plan, ProcessedBlob
-from lg.io.fs import read_text
+from pathlib import Path
+from typing import List
+
 from lg.cache.fs_cache import Cache
+from lg.io.fs import read_text
+from lg.types import Plan, ProcessedBlob
+from .base import get_adapter_for_path
+
 
 def process_groups(plan: Plan, run_ctx) -> List[ProcessedBlob]:
     """
@@ -22,9 +24,10 @@ def process_groups(plan: Plan, run_ctx) -> List[ProcessedBlob]:
         for e in grp.entries:
             fp: Path = e.abs_path
             adapter = get_adapter_for_path(fp)
-            # получаем конфиг для адаптера из секции
-            sec_cfg = run_ctx.config.sections.get(e.section)
-            lang_cfg = getattr(sec_cfg, adapter.name, None)
+            # берём сырой конфиг адаптера из секции и лениво строим типизированный cfg
+            sec_cfg = run_ctx.config.sections[e.section]
+            raw_cfg: dict | None = sec_cfg.adapters.get(adapter.name)
+            lang_cfg = adapter.make_config(raw_cfg)
 
             raw_text = read_text(fp)
 

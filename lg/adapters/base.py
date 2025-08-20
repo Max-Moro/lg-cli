@@ -18,6 +18,16 @@ class BaseAdapter:
     #: Dataclass-конфиг, который loader передаёт адаптеру
     config_cls: Type | None = None
 
+    # --- ленивое построение конфигурации адаптера --------------------------
+    def make_config(self, raw: dict | None):
+        """
+        Сконструировать dataclass-конфиг адаптера из сырого dict.
+        Вызывается только при фактическом использовании адаптера.
+        """
+        if self.config_cls is None:
+            return None
+        return self.config_cls(**(raw or {}))
+
     # --- переопределяемая логика -------------------------------------------
     def should_skip(self, path: Path, text: str, cfg) -> bool:           # cfg → dataclass
         """True → файл исключается (языковые эвристики)."""

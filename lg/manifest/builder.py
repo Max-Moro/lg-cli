@@ -66,15 +66,17 @@ def build_manifest(
             if size0:
                 # Определяем адаптер и его политику
                 adapter = get_adapter_for_path(fp)
-                # По умолчанию наследуем секционное правило
                 effective_exclude_empty = bool(cfg.skip_empty)
-                sec_adapter_cfg = getattr(cfg, getattr(adapter, "name", ""), None)
-                empty_policy = cast(EmptyPolicy, getattr(sec_adapter_cfg, "empty_policy", "inherit") if sec_adapter_cfg else "inherit")
+                raw_cfg: dict | None = cfg.adapters.get(adapter.name)
+                empty_policy: EmptyPolicy = "inherit"
+                if raw_cfg is not None and "empty_policy" in raw_cfg:
+                    empty_policy = cast(EmptyPolicy, raw_cfg["empty_policy"])
+
                 if empty_policy == "include":
                     effective_exclude_empty = False
                 elif empty_policy == "exclude":
                     effective_exclude_empty = True
-                # Применяем решение
+
                 if effective_exclude_empty:
                     continue
 

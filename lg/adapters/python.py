@@ -4,7 +4,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from .base import BaseAdapter
-from ..types import EmptyPolicy
+from ..config import EmptyPolicy
 
 
 @dataclass

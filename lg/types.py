@@ -7,9 +7,6 @@ from typing import Dict, List, Literal, Optional
 LangName = str  # "python" | "markdown" | "" ...
 ModelName = str  # "o3", "gpt-4o", ...
 
-# ----- Config Model Early -----
-# Политика пустых файлов
-EmptyPolicy = Literal["inherit", "include", "exclude"]
 
 # -----------------------------
 @dataclass(frozen=True)
