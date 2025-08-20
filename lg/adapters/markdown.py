@@ -17,14 +17,13 @@ class MarkdownCfg:
     max_heading_level: int | None = None
 
 
-class MarkdownAdapter(BaseAdapter):
+class MarkdownAdapter(BaseAdapter[MarkdownCfg]):
     """
     Адаптер для Markdown (.md) файлов.
     Реализует нормализацию заголовков.
     """
     name = "markdown"
     extensions = {".md"}
-    config_cls = MarkdownCfg
 
     def process(self, text: str, group_size: int, mixed: bool):
         """
@@ -37,12 +36,11 @@ class MarkdownAdapter(BaseAdapter):
           • shifted: bool
         """
         meta = {"removed_h1": 0, "shifted": False}
-        cfg: MarkdownCfg = self._cfg
         # Ничего не делаем, если смешанный листинг или нормализация отключена
-        if mixed or (cfg and cfg.max_heading_level is None):
+        if mixed or self.cfg.max_heading_level is None:
             return text, meta
 
-        max_lvl = int(cfg.max_heading_level) if cfg else None
+        max_lvl = self.cfg.max_heading_level
         lines = text.splitlines()
 
         # 1) Удаляем верхний H1 только если файл одиночный в группе

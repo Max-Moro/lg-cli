@@ -1,35 +1,65 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Set, Type
+from typing import Generic, Optional, Set, Type, TypeVar, get_args, get_origin
 
 __all__ = ["BaseAdapter"]
 
+C = TypeVar("C")  # тип конфигурации конкретного адаптера
+A = TypeVar("A", bound="BaseAdapter[Any]")
 
-class BaseAdapter:
+
+class BaseAdapter(Generic[C]):
     """Базовый класс адаптера языка."""
     #: Имя языка (python, java, …); для Base – 'base'
     name: str = "base"
     #: Набор поддерживаемых расширений
     extensions: Set[str] = set()
-    #: Dataclass-конфиг, который loader передаёт адаптеру
-    config_cls: Type | None = None
+    #: Храним связанный конфиг (может быть None для «безконфиговых» адаптеров)
+    _cfg: Optional[C]
 
-    # --- конфигурирование адаптера (инкапсуляция состояния) ---------------
+    # --- Generic-интроспекция параметра C -----
     @classmethod
-    def bind(cls, raw_cfg: dict | None) -> "BaseAdapter":
+    def _resolve_cfg_type(cls) -> Type[C] | None:
+        """
+        Пытается извлечь конкретный тип C из объявления наследника BaseAdapter[C].
+        Возвращает None, если адаптер не параметризован конфигом.
+        """
+        # Проходим по MRO и смотрим __orig_bases__ у каждого класса
+        for kls in cls.__mro__:
+            for base in getattr(kls, "__orig_bases__", ()) or ():
+                if get_origin(base) is BaseAdapter:
+                    args = get_args(base) or ()
+                    if args:
+                        return args[0]
+        return None
+
+    # --- Конфигурирование адаптера -------------
+    @classmethod
+    def bind(cls: Type[A], raw_cfg: dict | None) -> A:
         """
         Фабрика «связанного» адаптера: создаёт инстанс и применяет cfg.
         Внешний код не видит тип конфигурации — полная инкапсуляция.
         """
         inst = cls()
-        if cls.config_cls is None:
+        cfg_type = cls._resolve_cfg_type()
+        if cfg_type is None:
             inst._cfg = None
         else:
-            inst._cfg = cls.config_cls(**(raw_cfg or {}))
+            # Ожидаем, что cfg_type — dataclass/pydantic-модель с **kwargs
+            inst._cfg = cfg_type(**(raw_cfg or {}))
         return inst
 
-    # --- переопределяемая логика -------------------------------------------
+    # Типобезопасный доступ к конфигу для наследников, у которых config_cls задан.
+    # Для таких адаптеров self.cfg всегда C (а не Optional[C]).
+    @property
+    def cfg(self) -> C:
+        if getattr(self, "_cfg", None) is None:
+            # Для «безконфигового» адаптера или если bind() не вызывался.
+            raise AttributeError(f"{self.__class__.__name__} has no bound config")
+        return self._cfg
+
+    # --- переопределяемая логика ------------------
     def should_skip(self, path: Path, text: str) -> bool:
         """True → файл исключается (языковые эвристики)."""
         return False
