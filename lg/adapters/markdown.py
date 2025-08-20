@@ -17,7 +17,6 @@ class MarkdownCfg:
     max_heading_level: int | None = None
 
 
-@BaseAdapter.register
 class MarkdownAdapter(BaseAdapter):
     """
     Адаптер для Markdown (.md) файлов.

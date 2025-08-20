@@ -15,10 +15,6 @@ class BaseAdapter:
     #: Dataclass-конфиг, который loader передаёт адаптеру
     config_cls: Type | None = None
 
-    # --- внутреннее состояние (сконфигурированный адаптер) -----------------
-    def __init__(self):
-        self._cfg = None  # тип зависит от конкретного адаптера
-
     # --- конфигурирование адаптера (инкапсуляция состояния) ---------------
     @classmethod
     def bind(cls, raw_cfg: dict | None) -> "BaseAdapter":
@@ -46,18 +42,3 @@ class BaseAdapter:
         Базовая реализация — идентичность текста без метаданных.
         """
         return text, {}
-
-    # --- регистрация --------------------------------------------------------
-    @classmethod
-    def register(cls, adapter_cls: Type["BaseAdapter"]):
-        """
-        Использовать как декоратор:
-
-            @BaseAdapter.register
-            class PythonAdapter(BaseAdapter): ...
-        """
-        # Регистрируем КЛАСС (не экземпляр) в центральном реестре.
-        # Импорт здесь локальный, чтобы избежать циклических импортов.
-        from .registry import register_class
-        register_class(adapter_cls)
-        return adapter_cls

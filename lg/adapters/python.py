@@ -14,7 +14,6 @@ class PythonCfg:
     trivial_init_max_noncomment: int = 1
 
 
-@BaseAdapter.register
 class PythonAdapter(BaseAdapter):
     name = "python"
     extensions = {".py"}
