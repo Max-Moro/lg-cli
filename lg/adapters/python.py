@@ -10,6 +10,8 @@ from .base import BaseAdapter
 class PythonCfg:
     skip_trivial_inits: bool = True
     trivial_init_max_noncomment: int = 1
+    strip_function_bodies: bool = False
+    keep_docstrings: bool = True
 
 
 class PythonAdapter(BaseAdapter[PythonCfg]):

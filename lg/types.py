@@ -36,6 +36,8 @@ class FileRef:
     section: str                  # секция, где был обнаружен файл
     multiplicity: int             # кратность из ContextSpec.sections
     language_hint: LangName       # для fenced-блоков
+    # локальные оверрайды конфигов адаптеров (имя_адаптера → raw dict)
+    adapter_overrides: Dict[str, Dict] = field(default_factory=dict)
 
 @dataclass(frozen=True)
 class Manifest:

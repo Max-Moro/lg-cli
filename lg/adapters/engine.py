@@ -28,7 +28,15 @@ def process_groups(plan: Plan, run_ctx) -> List[ProcessedBlob]:
             adapter_cls = get_adapter_for_path(fp)  # ← КЛАСС адаптера (лениво)
             # сырой конфиг адаптера из секции и биндинг к экземпляру (лениво + кэш)
             sec_cfg = run_ctx.config.sections[e.section]
-            raw_cfg: dict | None = sec_cfg.adapters.get(adapter_cls.name)
+            # секционный конфиг
+            sec_raw_cfg: dict | None = sec_cfg.adapters.get(adapter_cls.name)
+            # адресные оверрайды по пути
+            override_cfg: dict | None = (e.adapter_overrides or {}).get(adapter_cls.name)
+            # объединяем (секционный + оверрайды), локальные ключи перезаписывают секционные
+            raw_cfg: dict | None = None
+            if sec_raw_cfg or override_cfg:
+                raw_cfg = dict(sec_raw_cfg or {})
+                raw_cfg.update(dict(override_cfg or {}))
             cfg_key = tuple(sorted((raw_cfg or {}).items()))
             bkey = (adapter_cls.name, cfg_key)
             adapter = bound_cache.get(bkey)
@@ -59,6 +67,15 @@ def process_groups(plan: Plan, run_ctx) -> List[ProcessedBlob]:
                 meta = cached.get("meta", {}) or {}
             else:
                 processed_text, meta = adapter.process(raw_text, group_size, bool(grp.mixed))
+                # добавим диагностическую «крошку» про использованные ключи конфигурации
+                if raw_cfg:
+                    try:
+                        keys = sorted(raw_cfg.keys())
+                        # не зашумляем, если ключей 1-2 — но это всё равно полезно при отладке
+                        meta = dict(meta or {})
+                        meta["_adapter_cfg_keys"] = ",".join(keys)
+                    except Exception:
+                        pass
                 cache.put_processed(p_proc, processed_text=processed_text, meta=meta)
 
             out.append(ProcessedBlob(

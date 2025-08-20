@@ -1,10 +1,12 @@
-import os
-from pathlib import Path
-import textwrap
 import json
+import os
 import subprocess
 import sys
+import textwrap
+from pathlib import Path
+
 import pytest
+
 
 def write(p: Path, text: str) -> Path:
     p.parent.mkdir(parents=True, exist_ok=True)
@@ -19,22 +21,35 @@ def tmpproj(tmp_path: Path):
     write(
         root / "lg-cfg" / "config.yaml",
         textwrap.dedent("""
-        schema_version: 6
+        schema_version: 7
         all:
           extensions: [".md", ".py"]
           code_fence: true
           markdown:
             max_heading_level: 2
+          targets:
+            - match: "/pkg/**.py"
+              python:
+                strip_function_bodies: true
         docs:
           extensions: [".md"]
           code_fence: false
           markdown:
             max_heading_level: 3
+          targets:
+            - match: ["/docs/**.md"]
+              markdown:
+                drop_paragraphs: ["^Changelog:"]
         """).strip() + "\n",
     )
+
     # контексты
     write(root / "lg-cfg" / "contexts" / "a.tpl.md", "Intro\n\n${docs}\n")
     write(root / "lg-cfg" / "contexts" / "b.tpl.md", "X ${tpl:a} Y ${all}\n")
+
+    # файлы для матчинга targets
+    write(root / "pkg" / "mod.py", "def foo():\n    pass\n")
+    write(root / "docs" / "note.md", "# T\n\nChangelog: ...\n\nBody.\n")
     return root
 
 def run_cli(root: Path, *args: str) -> subprocess.CompletedProcess:

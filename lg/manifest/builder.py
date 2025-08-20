@@ -1,7 +1,8 @@
 from __future__ import annotations
 
+import fnmatch
 from pathlib import Path
-from typing import List, Set, cast
+from typing import List, Set, cast, Dict, Tuple
 
 from ..adapters import get_adapter_for_path
 from ..config import SectionCfg, EmptyPolicy
@@ -49,6 +50,14 @@ def build_manifest(
                 return False
             return engine.may_descend(rel_dir)
 
+        # Предподготовка: список таргетов и их "вес" специфичности
+        # Простейшая метрика специфичности: сумма длин строчек без '*' и '?'.
+        # Чем больше — тем специфичнее.
+        target_specs: List[Tuple[int, int, List[str], Dict[str, dict]]] = []
+        for idx, tr in enumerate(cfg.targets):
+            pat_clean_len = sum(len(p.replace("*", "").replace("?", "")) for p in tr.match)
+            target_specs.append((pat_clean_len, idx, tr.match, tr.adapter_cfgs))
+
         for fp in iter_files(root, extensions=exts, spec_git=spec_git, dir_pruner=_pruner):
             rel_posix = fp.resolve().relative_to(root.resolve()).as_posix()
 
@@ -81,6 +90,28 @@ def build_manifest(
                     continue
 
             lang = get_language_for_file(fp)
+
+            # --- Определяем адресные оверрайды конфигов адаптеров для данного пути ---
+            overrides: Dict[str, dict] = {}
+            # Сортируем по специфичности, затем по порядковому номеру: менее специфичные применяются первыми,
+            # более специфичные — позже и перезаписывают ключи.
+            for _spec_len, _idx, patterns, acfgs in sorted(target_specs, key=lambda x: (x[0], x[1])):
+                matched = False
+                for pat in patterns:
+                    # Конфиг использует абсолютный стиль "/path/**". Нормализуем к относительному.
+                    pat_rel = pat.lstrip("/")
+                    if fnmatch.fnmatch(rel_posix, pat_rel):
+                        matched = True
+                        break
+                if not matched:
+                    continue
+                # Применяем shallow-merge по именам адаптеров
+                for adapter_name, patch_cfg in acfgs.items():
+                    base = overrides.get(adapter_name, {})
+                    merged = dict(base)
+                    merged.update(patch_cfg or {})
+                    overrides[adapter_name] = merged
+
             files_out.append(
                 FileRef(
                     abs_path=fp,
@@ -88,6 +119,7 @@ def build_manifest(
                     section=sec_name,
                     multiplicity=int(mult),
                     language_hint=lang,
+                    adapter_overrides=overrides,
                 )
             )
 

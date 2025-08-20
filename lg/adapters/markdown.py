@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import re
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 from .base import BaseAdapter
 
@@ -10,9 +10,13 @@ from .base import BaseAdapter
 class MarkdownCfg:
     """
     Конфиг для MarkdownAdapter: максимальный уровень заголовков.
-    Если None — нормализация заголовков отключена.
     """
+
+    # Максимальный уровень заголовков. Если None — нормализация заголовков отключена.
     max_heading_level: int | None = None
+
+    # Перечень regexp-ов, по которым можно будет выкидывать параграфы (пер-файл через targets)
+    drop_paragraphs: list[str] = field(default_factory=list)
 
 
 class MarkdownAdapter(BaseAdapter[MarkdownCfg]):
