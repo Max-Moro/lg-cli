@@ -38,8 +38,6 @@ def tmpproj(tmp_path: Path):
             max_heading_level: 3
           targets:
             - match: ["/docs/**.md"]
-              markdown:
-                drop_paragraphs: ["^Changelog:"]
         """).strip() + "\n",
     )
     # контексты
