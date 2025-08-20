@@ -20,16 +20,17 @@ class BaseAdapter:
         self._cfg = None  # тип зависит от конкретного адаптера
 
     # --- конфигурирование адаптера (инкапсуляция состояния) ---------------
-    def bind(self, raw_cfg: dict | None) -> "BaseAdapter":
+    @classmethod
+    def bind(cls, raw_cfg: dict | None) -> "BaseAdapter":
         """
-        Возвращает новый экземпляр адаптера с установленной конфигурацией.
+        Фабрика «связанного» адаптера: создаёт инстанс и применяет cfg.
         Внешний код не видит тип конфигурации — полная инкапсуляция.
         """
-        inst = self.__class__()  # новый экземпляр того же класса
-        if self.config_cls is None:
+        inst = cls()
+        if cls.config_cls is None:
             inst._cfg = None
         else:
-            inst._cfg = self.config_cls(**(raw_cfg or {}))
+            inst._cfg = cls.config_cls(**(raw_cfg or {}))
         return inst
 
     # --- переопределяемая логика -------------------------------------------

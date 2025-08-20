@@ -33,8 +33,8 @@ def process_groups(plan: Plan, run_ctx) -> List[ProcessedBlob]:
             bkey = (adapter_cls.name, cfg_key)
             adapter = bound_cache.get(bkey)
             if adapter is None:
-                adapter = adapter_cls().bind(raw_cfg)
-                bound_cache[bkey] = adapter  # type: ignore[assignment]
+                adapter = adapter_cls.bind(raw_cfg)
+                bound_cache[bkey] = adapter
 
             raw_text = read_text(fp)
 
