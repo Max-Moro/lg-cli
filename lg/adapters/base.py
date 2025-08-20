@@ -18,23 +18,30 @@ class BaseAdapter:
     #: Dataclass-конфиг, который loader передаёт адаптеру
     config_cls: Type | None = None
 
-    # --- ленивое построение конфигурации адаптера --------------------------
-    def make_config(self, raw: dict | None):
+    # --- внутреннее состояние (сконфигурированный адаптер) -----------------
+    def __init__(self):
+        self._cfg = None  # тип зависит от конкретного адаптера
+
+    # --- конфигурирование адаптера (инкапсуляция состояния) ---------------
+    def bind(self, raw_cfg: dict | None) -> "BaseAdapter":
         """
-        Сконструировать dataclass-конфиг адаптера из сырого dict.
-        Вызывается только при фактическом использовании адаптера.
+        Возвращает новый экземпляр адаптера с установленной конфигурацией.
+        Внешний код не видит тип конфигурации — полная инкапсуляция.
         """
+        inst = self.__class__()  # новый экземпляр того же класса
         if self.config_cls is None:
-            return None
-        return self.config_cls(**(raw or {}))
+            inst._cfg = None
+        else:
+            inst._cfg = self.config_cls(**(raw_cfg or {}))
+        return inst
 
     # --- переопределяемая логика -------------------------------------------
-    def should_skip(self, path: Path, text: str, cfg) -> bool:           # cfg → dataclass
+    def should_skip(self, path: Path, text: str) -> bool:
         """True → файл исключается (языковые эвристики)."""
         return False
 
     # --- единый API с метаданными ---
-    def process(self, text: str, cfg, group_size: int, mixed: bool) -> tuple[str, dict]:
+    def process(self, text: str, group_size: int, mixed: bool) -> tuple[str, dict]:
         """
         Возвращает (content, meta), где meta — произвольный словарь
         (например: {"removed_comments": 120, "kept_signatures": 34}).

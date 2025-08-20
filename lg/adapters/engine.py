@@ -23,23 +23,23 @@ def process_groups(plan: Plan, run_ctx) -> List[ProcessedBlob]:
         group_size = len(grp.entries)
         for e in grp.entries:
             fp: Path = e.abs_path
-            adapter = get_adapter_for_path(fp)
-            # берём сырой конфиг адаптера из секции и лениво строим типизированный cfg
+            adapter_proto = get_adapter_for_path(fp)
+            # сырой конфиг адаптера из секции и биндинг к экземпляру
             sec_cfg = run_ctx.config.sections[e.section]
-            raw_cfg: dict | None = sec_cfg.adapters.get(adapter.name)
-            lang_cfg = adapter.make_config(raw_cfg)
+            raw_cfg: dict | None = sec_cfg.adapters.get(adapter_proto.name)
+            adapter = adapter_proto.bind(raw_cfg)
 
             raw_text = read_text(fp)
 
             # Эвристики пропуска на уровне адаптера (пустые уже отфильтрованы в Manifest)
-            if adapter.name != "base" and adapter.should_skip(fp, raw_text, lang_cfg):
+            if adapter.name != "base" and adapter.should_skip(fp, raw_text):
                 continue
 
             # ключи кэша
             k_proc, p_proc = cache.build_processed_key(
                 abs_path=fp,
                 adapter_name=adapter.name,
-                adapter_cfg=lang_cfg,
+                adapter_cfg=raw_cfg,
                 group_size=group_size,
                 mixed=bool(grp.mixed),
             )
@@ -51,7 +51,7 @@ def process_groups(plan: Plan, run_ctx) -> List[ProcessedBlob]:
                 processed_text = cached["processed_text"]
                 meta = cached.get("meta", {}) or {}
             else:
-                processed_text, meta = adapter.process(raw_text, lang_cfg, group_size, bool(grp.mixed))
+                processed_text, meta = adapter.process(raw_text, group_size, bool(grp.mixed))
                 cache.put_processed(p_proc, processed_text=processed_text, meta=meta)
 
             out.append(ProcessedBlob(

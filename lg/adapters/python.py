@@ -21,9 +21,10 @@ class PythonAdapter(BaseAdapter):
     config_cls = PythonCfg
 
     # --------------------------------------------------------------------- #
-    def should_skip(self, path: Path, text: str, cfg: PythonCfg) -> bool:  # type: ignore[override]
+    def should_skip(self, path: Path, text: str) -> bool:  # type: ignore[override]
         # тривиальный __init__.py
-        if cfg.skip_trivial_inits and path.name == "__init__.py":
+        cfg: PythonCfg = self._cfg
+        if cfg and cfg.skip_trivial_inits and path.name == "__init__.py":
             significant = [
                 ln.strip()
                 for ln in text.splitlines()

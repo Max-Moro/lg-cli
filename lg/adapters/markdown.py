@@ -27,7 +27,7 @@ class MarkdownAdapter(BaseAdapter):
     extensions = {".md"}
     config_cls = MarkdownCfg
 
-    def process(self, text: str, cfg: MarkdownCfg, group_size: int, mixed: bool):
+    def process(self, text: str, group_size: int, mixed: bool):
         """
         Нормализация:
           • Если group_size == 1 и первая строка — '# ...' → убрать этот H1.
@@ -38,6 +38,7 @@ class MarkdownAdapter(BaseAdapter):
           • shifted: bool
         """
         meta = {"removed_h1": 0, "shifted": False}
+        cfg: MarkdownCfg = self._cfg
         # Ничего не делаем, если смешанный листинг или нормализация отключена
         if mixed or (cfg and cfg.max_heading_level is None):
             return text, meta
