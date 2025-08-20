@@ -45,6 +45,7 @@ tags:
 
 """
     doc = parse_markdown(text)
-    assert doc.frontmatter_range == (0, 6)  # 0..5 — frontmatter, end_excl=6
+    # Парсер возвращает ПОЛНЫЙ диапазон front matter (включая обе полосы и хвостовые пустые строки)
+    assert doc.frontmatter_range == (0, 9)
     # Проверим, что H1 всё равно парсится
     assert [(h.level, h.title) for h in doc.headings] == [(1, "H1")]

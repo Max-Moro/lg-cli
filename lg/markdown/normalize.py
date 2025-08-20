@@ -31,7 +31,7 @@ def normalize_markdown(text: str, *, max_heading_level: int | None, group_size: 
       • Сдвиг уровней заголовков вне fenced-блоков так,
         чтобы минимальный уровень стал равен max_heading_level.
     """
-    meta = {"removed_h1": 0, "shifted": False}
+    meta = {"md.removed_h1": 0, "md.shifted": False}
 
     lines = text.splitlines()
     # если смешанный листинг или нормализация отключена — ничего не меняем (сохраняем текст как есть)
@@ -41,7 +41,7 @@ def normalize_markdown(text: str, *, max_heading_level: int | None, group_size: 
     # 1) снять единственный верхний H1 (только когда нормализация активна)
     lines, removed_h1 = _strip_single_h1_if_needed(lines, group_size)
     if removed_h1:
-        meta["removed_h1"] = 1
+        meta["md.removed_h1"] = 1
 
     max_lvl = int(max_heading_level)
 
@@ -66,7 +66,7 @@ def normalize_markdown(text: str, *, max_heading_level: int | None, group_size: 
         return ("\n".join(lines), meta)
 
     shift = max_lvl - min_lvl
-    meta["shifted"] = bool(shift or removed_h1)
+    meta["md.shifted"] = bool(shift or removed_h1)
     if shift == 0:
         return ("\n".join(lines), meta)
 

@@ -22,8 +22,8 @@ def process_markdown(text: str, cfg: MarkdownCfg, *, group_size: int, mixed: boo
     drop_cfg: MarkdownDropCfg | None = cfg.drop
 
     meta: dict = {
-        "removed_h1": 0,
-        "shifted": False,
+        "md.removed_h1": 0,
+        "md.shifted": False,
         "md.placeholders": 0,
         "md.removed.frontmatter": False,
         "md.removed.sections": 0,
@@ -40,7 +40,7 @@ def process_markdown(text: str, cfg: MarkdownCfg, *, group_size: int, mixed: boo
             doc,
             section_rules=drop_cfg.sections,
             marker_rules=drop_cfg.markers,
-            drop_frontmatter=bool(drop_cfg.frontmatter),
+            drop_frontmatter=drop_cfg.frontmatter,
         )
         # счётчики из интервалов
         if intervals:

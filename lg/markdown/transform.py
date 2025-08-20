@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import List, Tuple
+from typing import List
 
 from .model import PlaceholderPolicy
 from .placeholders import render_placeholder

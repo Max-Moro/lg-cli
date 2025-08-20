@@ -63,7 +63,7 @@ def test_md_with_h1_processed_saves_tokens_and_meta(tmp_path: Path, monkeypatch)
     assert total.savedTokens == total.tokensRaw - total.tokensProcessed
     assert total.savedPct > 0.0
     # Адаптер пишет метрику removed_h1 → аккумулируется в metaSummary
-    assert report.total.metaSummary.get("removed_h1", 0) >= 1
+    assert report.total.metaSummary.get("md.removed_h1", 0) >= 1
 
 
 def test_md_without_h1_no_overhead(tmp_path: Path, monkeypatch):

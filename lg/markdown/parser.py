@@ -53,13 +53,13 @@ def _in_any_range(i: int, ranges: List[Tuple[int, int]]) -> bool:
 def _scan_frontmatter(lines: List[str], fenced: List[Tuple[int, int]]) -> Optional[Tuple[int, int]]:
     """
     YAML front matter — только если начинается с первой строки и не внутри fenced.
-    Ищем последовательность:
+    Ищем:
       ---...\n   (3+ дефисов, допускается отступ до 3 пробелов)
       ...\n
       ---...\n   (закрывающая полоса из дефисов)
-    Возвращаем (start=0, end_excl), где end_excl указывает на строку ПОСЛЕ
-    последней непустой строки содержимого (закрывающая полоса и хвостовые
-    пустые строки перед ней не входят).
+    Удаляем БЛОК ПОЛНОСТЬЮ (включая обе полосы) и дополнительно
+    проглатываем последующие пустые строки после закрывающей полосы.
+    Возвращаем (start=0, end_excl) — индекс первой строки ПОСЛЕ всего блока.
     """
     if not lines:
         return None
@@ -68,18 +68,17 @@ def _scan_frontmatter(lines: List[str], fenced: List[Tuple[int, int]]) -> Option
     # Найдём закрывающую '---' далее, не попав в fenced
     i = 1
     n = len(lines)
-    last_nonempty: int | None = None
     while i < n:
         if _in_any_range(i, fenced):
             # если внезапно fenced начался раньше закрытия — прекращаем (невалидный фронтматтер)
             return None
         if _FRONTMATTER_LINE.match(lines[i]):
-            # закрывающая полоса; end_excl = 1 + индекс последней НЕ пустой строки до неё
-            end_excl = (last_nonempty + 1) if last_nonempty is not None else i
+            # включаем закрывающую полосу
+            end_excl = i + 1
+            # проглатываем последующие пустые строки
+            while end_excl < n and not lines[end_excl].strip():
+                end_excl += 1
             return (0, end_excl)
-        # учитываем последнюю непустую строку payload'а
-        if lines[i].strip():
-            last_nonempty = i
         i += 1
     return None
 
