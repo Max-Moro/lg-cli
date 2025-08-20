@@ -1,20 +1,60 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import List, Optional, Tuple
+from typing import List, Optional, Tuple, Literal
 
 
 @dataclass
 class MarkdownCfg:
     """
-    Конфиг Markdown-адаптера (итерация 0–1).
-    Пока только нормализация заголовков и фронтматтеровый флаг-заглушка (не используется).
-    В следующих итерациях сюда добавим drop/sections/markers/placeholder.
+    Конфиг Markdown-адаптера.
     """
     max_heading_level: int | None = None
-    # зарезервировано на будущее (drop/… добавим позже)
-    frontmatter: bool | None = None
+    # блок drop: секции/маркеры/frontmatter/политика плейсхолдеров
+    drop: MarkdownDropCfg | None = None
 
+MatchKind = Literal["text", "slug", "regex"]
+
+@dataclass
+class SectionMatch:
+    kind: MatchKind                       # "text" | "slug" | "regex"
+    pattern: str
+    flags: Optional[str] = None           # для regex: напр. "i", "ms"
+
+@dataclass
+class SectionRule:
+    # Один из вариантов должен быть задан: match или path
+    match: Optional[SectionMatch] = None
+    path: Optional[List[str]] = None      # путь предков по точным названиям
+    # Ограничители уровней
+    level_exact: Optional[int] = None
+    level_at_most: Optional[int] = None
+    level_at_least: Optional[int] = None
+    # Мета
+    reason: Optional[str] = None
+    placeholder: Optional[str] = None     # локальный шаблон плейсхолдера
+
+@dataclass
+class MarkerRule:
+    start: str
+    end: str
+    include_markers: bool = True
+    reason: Optional[str] = None
+    placeholder: Optional[str] = None
+
+@dataclass
+class PlaceholderPolicy:
+    mode: Literal["none", "summary"] = "summary"
+    template: Optional[str] = "> *(Опущено: {title}; −{lines} строк)*"
+
+@dataclass
+class MarkdownDropCfg:
+    sections: List[SectionRule] = field(default_factory=list)
+    markers: List[MarkerRule] = field(default_factory=list)
+    frontmatter: bool = False
+    placeholder: PlaceholderPolicy = field(default_factory=PlaceholderPolicy)
+
+# ---------- Markdown Pipeline Intermediate Representation ----------
 
 @dataclass
 class HeadingNode:
