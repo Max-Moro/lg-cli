@@ -1,13 +1,29 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import List
+from typing import List, Any, Tuple
 
 from lg.cache.fs_cache import Cache
 from lg.io.fs import read_text
 from lg.types import Plan, ProcessedBlob
 from .registry import get_adapter_for_path
 
+
+def _freeze_cfg(obj: Any) -> Any:
+    """
+    Делает объект хэшируемым и детерминированным:
+      - dict -> tuple(sorted((key, freeze(value))...))
+      - list/tuple -> tuple(freeze(x) for x in obj)
+      - set -> tuple(sorted(freeze(x) for x in obj))
+      - прочие примитивы оставляем как есть
+    """
+    if isinstance(obj, dict):
+        return tuple((k, _freeze_cfg(v)) for k, v in sorted(obj.items(), key=lambda kv: kv[0]))
+    if isinstance(obj, (list, tuple)):
+        return tuple(_freeze_cfg(x) for x in obj)
+    if isinstance(obj, set):
+        return tuple(sorted(_freeze_cfg(x) for x in obj))
+    return obj
 
 def process_groups(plan: Plan, run_ctx) -> List[ProcessedBlob]:
     """
@@ -37,7 +53,7 @@ def process_groups(plan: Plan, run_ctx) -> List[ProcessedBlob]:
             if sec_raw_cfg or override_cfg:
                 raw_cfg = dict(sec_raw_cfg or {})
                 raw_cfg.update(dict(override_cfg or {}))
-            cfg_key = tuple(sorted((raw_cfg or {}).items()))
+            cfg_key = _freeze_cfg(raw_cfg or {})
             bkey = (adapter_cls.name, cfg_key)
             adapter = bound_cache.get(bkey)
             if adapter is None:
