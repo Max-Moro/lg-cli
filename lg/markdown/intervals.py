@@ -1,10 +1,9 @@
 from __future__ import annotations
 
-from typing import List, Optional, Tuple
+from typing import List, Tuple
 
 from .model import SectionRule, MarkerRule, ParsedDoc
 from .selectors import select_section_intervals, select_marker_intervals
-
 
 Interval = Tuple[int, int, dict]  # (start, end_excl, payload_meta)
 

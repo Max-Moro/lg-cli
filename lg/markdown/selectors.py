@@ -1,11 +1,10 @@
 from __future__ import annotations
 
 import re
-from typing import Callable, Iterable, List, Optional
+from typing import Callable, List, Optional
 
 from .model import (
-    SectionMatch, SectionRule, MarkerRule, PlaceholderPolicy,
-    MarkdownDropCfg, MarkdownCfg, HeadingNode, ParsedDoc
+    SectionMatch, SectionRule, MarkerRule, HeadingNode, ParsedDoc
 )
 from .slug import slugify_github
 
@@ -124,10 +123,16 @@ def select_marker_intervals(lines: List[str], markers: List[MarkerRule]) -> List
     """
     out: list[tuple[int, int, MarkerRule]] = []
     n = len(lines)
+    def _normalize_ws(s: str) -> str:
+        # Схлопываем внутренние последовательности пробелов + обрезаем края.
+        # Это покрывает случаи вроде "<!-- a   -->" vs "<!-- a -->" и отступы.
+        return " ".join(s.strip().split())
+
     def _find_line(target: str, start_idx: int) -> int:
-        """Ищем строку сначала по точному равенству, затем по .strip()."""
+        """Ищем строку: exact → strip → normalized whitespace."""
         t_exact = target
         t_stripped = target.strip()
+        t_norm = _normalize_ws(target)
         # точное совпадение
         for j in range(start_idx, n):
             if lines[j] == t_exact:
@@ -135,6 +140,10 @@ def select_marker_intervals(lines: List[str], markers: List[MarkerRule]) -> List
         # сравнение по .strip()
         for j in range(start_idx, n):
             if lines[j].strip() == t_stripped:
+                return j
+        # сравнение по нормализованным пробелам
+        for j in range(start_idx, n):
+            if _normalize_ws(lines[j]) == t_norm:
                 return j
         return -1
 

@@ -1,5 +1,7 @@
 from __future__ import annotations
+
 import re
+
 import unicodedata
 
 _slug_ws = re.compile(r"\s+")

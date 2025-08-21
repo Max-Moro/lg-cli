@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import re
 from typing import List
 
 from .model import PlaceholderPolicy
@@ -73,4 +74,7 @@ def apply_intervals_with_placeholders(lines: List[str], intervals: List[tuple[in
         for ln in lines[cur:]:
             _append_line(out_lines, ln)
 
-    return ("\n".join(out_lines), {"md.placeholders": placeholders})
+    # Сборка и финальная нормализация: не допускаем 3+ подряд пустых строк.
+    text = "\n".join(out_lines)
+    text = re.sub(r"\n{3,}", "\n\n", text)
+    return (text, {"md.placeholders": placeholders})
