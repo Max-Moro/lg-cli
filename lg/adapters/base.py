@@ -1,8 +1,7 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Generic, Optional, Set, Type, TypeVar, get_args, get_origin
-from lg.config import load_typed
+from typing import Any, Generic, Optional, Set, Type, TypeVar, get_args, get_origin
 
 __all__ = ["BaseAdapter"]
 
@@ -43,15 +42,43 @@ class BaseAdapter(Generic[C]):
         Внешний код не видит тип конфигурации — полная инкапсуляция.
         """
         inst = cls()
+        inst._cfg = cls.load_cfg(raw_cfg)
+        return inst
+
+    @classmethod
+    def load_cfg(cls, raw_cfg: dict | None) -> C:
+        """
+        Универсальный загрузчик конфигурации для адаптера.
+        Поведение по умолчанию:
+          • Если у типа конфигурации есть статический метод `from_dict(dict)`,
+            используем его (поддержка вложенных структур).
+          • Иначе пытаемся вызвать конструктор как **kwargs.
+        Адаптеры могут переопределить этот метод при необходимости.
+        """
         cfg_type = cls._resolve_cfg_type()
         if cfg_type is None:
-            inst._cfg = None
-        else:
-            # Типобезопасная рекурсивная загрузка вложенных структур конфига
-            cfg_kwargs = dict(raw_cfg or {})
-            cfg_kwargs.pop("empty_policy", None)  # служебное — наружу
-            inst._cfg = load_typed(cfg_type, cfg_kwargs, path=f"${cls.__name__}.cfg")
-        return inst
+            # У адаптера нет параметризованной конфигурации.
+            return None
+
+        # Удаляем служебный ключ секции 'empty_policy' (не относится к языковым адаптерам)
+        cfg_input: dict[str, Any] = dict(raw_cfg or {})
+        cfg_input.pop("empty_policy", None)
+
+        # Есть статический конструктор from_dict?
+        from_dict = getattr(cfg_type, "from_dict", None)
+        if callable(from_dict):
+            return from_dict(cfg_input)
+
+        # Падаем обратно на прямую инициализацию через **kwargs.
+        try:
+            return cfg_type(**cfg_input)
+        except TypeError as e:
+            # Подсказываем разработчику адаптера/конфига, что стоит реализовать from_dict()
+            raise TypeError(
+                f"{cls.__name__}: cannot construct {cfg_type.__name__} from raw config keys "
+                f"{sorted(cfg_input.keys())}; consider implementing {cfg_type.__name__}.from_dict(). "
+                f"Original error: {e}"
+            ) from e
 
     # Типобезопасный доступ к конфигу для наследников, у которых config_cls задан.
     # Для таких адаптеров self.cfg всегда C (а не Optional[C]).

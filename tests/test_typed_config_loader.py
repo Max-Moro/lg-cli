@@ -3,6 +3,7 @@ import pytest
 from lg.adapters.markdown import MarkdownAdapter
 from lg.markdown.model import MarkdownCfg
 
+
 def test_markdown_cfg_nested_drop_is_parsed():
     raw = {
         "max_heading_level": 2,
@@ -48,5 +49,5 @@ def test_unknown_extra_key_raises():
             ]
         }
     }
-    with pytest.raises(Exception):
+    with pytest.raises(ValueError):
         MarkdownAdapter().bind(bad)  # type: ignore
