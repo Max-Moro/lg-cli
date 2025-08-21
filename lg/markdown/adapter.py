@@ -53,9 +53,12 @@ def process_markdown(text: str, cfg: MarkdownCfg, *, group_size: int, mixed: boo
                     meta["md.removed.sections"] = int(meta["md.removed.sections"]) + 1
                 elif k == "marker":
                     meta["md.removed.markers"] = int(meta["md.removed.markers"]) + 1
-        ph_policy: PlaceholderPolicy = drop_cfg.placeholder
-        current_text, ph_meta = apply_intervals_with_placeholders(doc.lines, intervals, ph_policy)
-        meta.update(ph_meta)
+            ph_policy: PlaceholderPolicy = drop_cfg.placeholder
+            current_text, ph_meta = apply_intervals_with_placeholders(doc.lines, intervals, ph_policy)
+            meta.update(ph_meta)
+        else:
+            # нет интервалов — не перепаковываем через split/join: сохраняем исходный текст как есть
+            current_text = text
 
     # 3) normalize (после вырезаний)
     norm_text, norm_meta = normalize_markdown(

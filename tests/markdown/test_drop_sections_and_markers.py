@@ -168,3 +168,20 @@ ok
     assert "noise" not in out
     assert int(meta.get("md.placeholders", 0)) == 1
     assert "ok" in out
+
+def test_default_lg_omit_markers_work_without_drop():
+    text = """\
+# T
+
+<!-- lg:omit:start -->
+noise
+<!-- lg:omit:end -->
+
+ok
+"""
+    # Конфиг без drop: {}
+    cfg = {"max_heading_level": None}
+    out, meta = MarkdownAdapter().bind(cfg).process(text, group_size=1, mixed=False)  # type: ignore
+    assert "noise" not in out
+    assert "lg:omit" not in out
+    assert "ok" in out
