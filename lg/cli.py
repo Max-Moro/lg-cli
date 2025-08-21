@@ -80,10 +80,7 @@ def main(argv: list[str] | None = None) -> int:
 
     if ns.cmd == "render":
         doc = run_render(ns.target, _opts(ns))
-        text = doc.text
-        if not text.endswith("\n"):
-            text += "\n"
-        sys.stdout.write(text)
+        sys.stdout.write(doc.text)
         return 0
 
     if ns.cmd == "list":

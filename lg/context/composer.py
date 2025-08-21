@@ -81,9 +81,4 @@ def compose_context(root: Path, spec: ContextSpec, rendered_by_section: Dict[str
     templates_hashes: Dict[str, str] = {}
     final_text, sections_only = _expand(spec.name, templates_hashes)
 
-    # Нормализуем завершающий перевод строки
-    def _norm(s: str) -> str:
-        s = s.rstrip()
-        return (s + "\n") if s else ""
-
-    return ComposedDocument(text=_norm(final_text), sections_only_text=_norm(sections_only), templates_hashes=templates_hashes)
+    return ComposedDocument(text=final_text, sections_only_text=sections_only, templates_hashes=templates_hashes)
