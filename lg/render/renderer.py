@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from typing import Dict, List
 
+from ..paths import render_file_marker
 from ..types import SectionPlan, ProcessedBlob, RenderBlock, RenderedDocument
 
 
@@ -38,8 +39,9 @@ def render_document(sec_plan: SectionPlan, blobs: List[ProcessedBlob]) -> Render
                     # файл отфильтрован адаптером/пропал — пропускаем
                     continue
                 file_paths.append(e.rel_path)
-                # в fenced-блоках всегда печатаем маркер файла для читабельности
-                block_lines.append(f"# —— FILE: {e.rel_path} ——\n")
+                # в fenced-блоках всегда печатаем маркер файла
+                label = sec_plan.labels.get(e.rel_path, e.rel_path)
+                block_lines.append(render_file_marker(label))
                 block_lines.append(b.processed_text.rstrip("\n"))
                 if idx < len(grp.entries) - 1:
                     block_lines.append("\n\n")
@@ -73,7 +75,8 @@ def render_document(sec_plan: SectionPlan, blobs: List[ProcessedBlob]) -> Render
                 if not b:
                     continue
                 file_paths.append(e.rel_path)
-                block_lines.append(f"# —— FILE: {e.rel_path} ——\n")
+                label = sec_plan.labels.get(e.rel_path, e.rel_path)
+                block_lines.append(render_file_marker(label))
                 block_lines.append(b.processed_text.rstrip("\n"))
                 if idx < len(all_entries) - 1:
                     block_lines.append("\n\n")

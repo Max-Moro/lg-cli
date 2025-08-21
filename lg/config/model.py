@@ -4,6 +4,7 @@ from dataclasses import dataclass, field
 from typing import Dict, List, Literal
 
 from lg.io.model import FilterNode
+from ..paths import PathLabelMode
 
 SCHEMA_VERSION = 6
 
@@ -26,6 +27,7 @@ class SectionCfg:
     )
     skip_empty: bool = True                  # глобальное правило
     code_fence: bool = True                  # оборачивать файлы в ```{lang}
+    path_labels: PathLabelMode = "auto"      # Как печатать файл-маркеры в секции
 
     # Ленивые конфиги адаптеров: имя_адаптера → сырой dict из YAML
     adapters: Dict[str, dict] = field(default_factory=dict)

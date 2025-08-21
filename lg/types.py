@@ -57,6 +57,8 @@ class SectionPlan:
     groups: list[Group]
     md_only: bool
     use_fence: bool
+    # Карта «rel_path → печатаемая метка» для маркеров FILE в этой секции
+    labels: Dict[str, str] = field(default_factory=dict)
 
 @dataclass(frozen=True)
 class ContextPlan:

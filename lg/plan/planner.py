@@ -3,6 +3,7 @@ from __future__ import annotations
 from typing import List, Tuple, Dict
 
 from ..config import SectionCfg
+from ..paths import build_labels
 from ..types import Manifest, Group, LangName, SectionPlan, ContextPlan
 
 
@@ -57,7 +58,14 @@ def _build_section_plan(
         mixed = len(set(langs)) > 1
         groups.append(Group(lang="", entries=list(entries), mixed=mixed))
 
-    return SectionPlan(section=sec_name, md_only=md_only, use_fence=use_fence, groups=groups)
+    # Вычисление меток (файловых разделителей)
+    rels_in_order: List[str] = []
+    for g in groups:
+        for e in g.entries:
+            rels_in_order.append(e.rel_path)
+    labels_map = build_labels(rels_in_order, mode=sec_cfg.path_labels)
+
+    return SectionPlan(section=sec_name, md_only=md_only, use_fence=use_fence, groups=groups, labels=labels_map)
 
 
 def build_plan(manifest: Manifest, run_ctx) -> ContextPlan:

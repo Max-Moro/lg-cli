@@ -38,7 +38,7 @@ def load_config(root: Path) -> Config:
         filters = FilterNode.from_dict(node.get("filters", {"mode": "block"}))
 
         # Извлекаем «служебные» ключи секции и считаем остальные — конфигами адаптеров.
-        service_keys = {"extensions", "filters", "skip_empty", "code_fence", "targets"}
+        service_keys = {"extensions", "filters", "skip_empty", "code_fence", "targets", "path_labels"}
         adapters_cfg: Dict[str, dict] = {}
         for k, v in node.items():
             if k in service_keys or k == "schema_version":
@@ -75,11 +75,16 @@ def load_config(root: Path) -> Config:
                 adapter_cfgs[str(ak)] = dict(av)
             targets.append(TargetRule(match=match_list, adapter_cfgs=adapter_cfgs))
 
+        path_labels = str(node.get("path_labels", "auto")).strip().lower()
+        if path_labels not in ("auto", "relative", "basename", "off"):
+            raise RuntimeError(f"Section '{name}': invalid path_labels='{path_labels}' (allowed: auto|relative|basename|off)")
+
         sections[name] = SectionCfg(
             extensions=exts,
             filters=filters,
             code_fence=bool(node.get("code_fence", True)),
             skip_empty=bool(node.get("skip_empty", True)),
+            path_labels=path_labels,
             adapters=adapters_cfg,
             targets=targets,
         )
