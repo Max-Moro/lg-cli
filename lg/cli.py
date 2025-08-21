@@ -50,7 +50,7 @@ def _build_parser() -> argparse.ArgumentParser:
     add_common(sp_render)
 
     sp_list = sub.add_parser("list", help="Списки сущностей (JSON)")
-    sp_list.add_argument("what", choices=["contexts", "sections"], help="что вывести")
+    sp_list.add_argument("what", choices=["contexts", "sections", "models"], help="что вывести")
 
     sp_diag = sub.add_parser("diag", help="Диагностика окружения и конфига (JSON)")
     sp_diag.add_argument(
@@ -87,8 +87,11 @@ def main(argv: list[str] | None = None) -> int:
         root = Path.cwd()
         if ns.what == "contexts":
             data = {"contexts": list_contexts(root)}
-        else:
+        elif ns.what == "sections":
             data = {"sections": list_sections(root)}
+        elif ns.what == "models":
+            from .stats.tokenizer import _MODEL_CTX
+            data = {"models": sorted(_MODEL_CTX.keys())}
         sys.stdout.write(jdumps(data))
         return 0
 
