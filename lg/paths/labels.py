@@ -98,6 +98,10 @@ def build_labels(rel_paths: Iterable[str], *, mode: PathLabelMode) -> Dict[str, 
     if not rel_list:
         return {}
 
+    # В auto для одиночного файла метку не укорачиваем — сохраняем полный относительный путь.
+    if mode == "auto" and len(rel_list) == 1:
+        return {rel_list[0]: rel_list[0]}
+
     if mode in ("relative", "off"):
         # Тривиально — метка равна исходному относительному пути
         return {p: p for p in rel_list}
@@ -108,7 +112,8 @@ def build_labels(rel_paths: Iterable[str], *, mode: PathLabelMode) -> Dict[str, 
         labels = _minimal_unique_suffixes(parts_all)
         return {p: lbl for p, lbl in zip(rel_list, labels)}
 
-    # mode == "auto": снимаем общий префикс директорий, затем уникализируем суффиксом
+    # mode == "auto": СТРОГО снимаем общий префикс директорий у всех,
+    # не делая индивидуальных укорочений. Это сохраняет адресуемость для diff.
     pref = _common_dir_prefix(parts_all)
     if pref:
         cut_len = len(pref)
@@ -116,8 +121,9 @@ def build_labels(rel_paths: Iterable[str], *, mode: PathLabelMode) -> Dict[str, 
     else:
         stripped = parts_all
 
-    labels = _minimal_unique_suffixes(stripped)
-    return {p: lbl for p, lbl in zip(rel_list, labels)}
+    # В auto используем ПОЛНЫЙ остаток пути (единый для всех) → стабильные и полные метки.
+    labels_full = [_join(parts) for parts in stripped]
+    return {p: lbl for p, lbl in zip(rel_list, labels_full)}
 
 def render_file_marker(label: str) -> str:
     """

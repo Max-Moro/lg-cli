@@ -84,3 +84,32 @@ def test_labels_basename_mode_uniquify(tmpproj: Path):
     assert "# —— FILE: b/engine.py ——" in out
     # одиночный файл печатается basename'ом
     assert "# —— FILE: x.py ——" in out
+
+def test_labels_auto_single_file_keeps_full_relative(tmpproj: Path):
+    """
+    В режиме auto, если файл один — метка остаётся полным относительным путём (без среза префикса).
+    """
+    root = tmpproj
+    cfg = (root / "lg-cfg" / "config.yaml").read_text(encoding="utf-8")
+    cfg += textwrap.dedent(
+        """
+
+        single:
+          extensions: [".py"]
+          filters:
+            mode: allow
+            allow:
+              - "/only/"
+          path_labels: auto
+        """
+    )
+    (root / "lg-cfg" / "config.yaml").write_text(cfg, encoding="utf-8")
+
+    (root / "only").mkdir(parents=True, exist_ok=True)
+    _write(root / "only" / "one.py", "print('one')\n")
+
+    cp = run_cli(root, "render", "sec:single")
+    assert cp.returncode == 0, cp.stderr
+    out = cp.stdout
+    # Полный относительный путь должен сохраниться
+    assert "# —— FILE: only/one.py ——" in out
