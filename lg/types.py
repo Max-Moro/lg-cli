@@ -50,11 +50,17 @@ class Group:
     entries: List[FileRef]
     mixed: bool
 
+# -------- Section-scoped planning --------
 @dataclass(frozen=True)
-class Plan:
+class SectionPlan:
+    section: str
+    groups: list[Group]
     md_only: bool
     use_fence: bool
-    groups: List[Group]           # стабильный порядок
+
+@dataclass(frozen=True)
+class ContextPlan:
+    sections: List[SectionPlan]
 
 # -------- Processed blobs --------
 @dataclass(frozen=True)

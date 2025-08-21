@@ -2,10 +2,10 @@ from __future__ import annotations
 
 from typing import Dict, List
 
-from ..types import Plan, ProcessedBlob, RenderBlock, RenderedDocument
+from ..types import SectionPlan, ProcessedBlob, RenderBlock, RenderedDocument
 
 
-def render_document(plan: Plan, blobs: List[ProcessedBlob]) -> RenderedDocument:
+def render_document(sec_plan: SectionPlan, blobs: List[ProcessedBlob]) -> RenderedDocument:
     """
     Генерирует финальный текст и блоки.
     Правила:
@@ -22,11 +22,11 @@ def render_document(plan: Plan, blobs: List[ProcessedBlob]) -> RenderedDocument:
     out_lines: List[str] = []
     blocks: List[RenderBlock] = []
 
-    if not plan.groups:
+    if not sec_plan.groups:
         return RenderedDocument(text="", blocks=[])
 
-    if plan.use_fence:
-        for grp in plan.groups:
+    if sec_plan.use_fence:
+        for grp in sec_plan.groups:
             # открываем fenced-блок
             lang = grp.lang or ""
             block_lines: List[str] = [f"```{lang}\n"]
@@ -53,20 +53,20 @@ def render_document(plan: Plan, blobs: List[ProcessedBlob]) -> RenderedDocument:
         # один «линейный» документ
         block_lines: List[str] = []
         file_paths: List[str] = []
-        if plan.md_only:
+        if sec_plan.md_only:
             # чистый MD/Plain: без маркеров
-            for idx, e in enumerate(plan.groups[0].entries if plan.groups else []):
+            for idx, e in enumerate(sec_plan.groups[0].entries if sec_plan.groups else []):
                 b = blob_by_rel.get(e.rel_path)
                 if not b:
                     continue
                 file_paths.append(e.rel_path)
                 block_lines.append(b.processed_text.rstrip("\n"))
-                if idx < len(plan.groups[0].entries) - 1:
+                if idx < len(sec_plan.groups[0].entries) - 1:
                     block_lines.append("\n\n")
         else:
             # смешанное/кодовое содержимое: печатаем маркер перед каждым файлом
             all_entries = []
-            for grp in plan.groups:
+            for grp in sec_plan.groups:
                 all_entries.extend(grp.entries)
             for idx, e in enumerate(all_entries):
                 b = blob_by_rel.get(e.rel_path)

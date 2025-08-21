@@ -19,7 +19,7 @@ from .manifest import build_manifest
 from .plan import build_plan
 from .render import render_by_section
 from .stats import compute_stats
-from .types import RunOptions, RenderedDocument, ContextSpec, Manifest, ProcessedBlob, Plan
+from .types import RunOptions, RenderedDocument, ContextSpec, Manifest, ProcessedBlob, ContextPlan
 from .vcs import VcsProvider, NullVcs
 from .vcs.git import GitVcs
 
@@ -59,7 +59,7 @@ def _build_run_ctx(options: RunOptions) -> RunContext:
     return RunContext(root=root, config=cfg, options=options, cache=cache, vcs=vcs)
 
 
-def _pipeline_common(target: str, run_ctx: RunContext) -> Tuple[ContextSpec, Manifest, Plan, list[ProcessedBlob]]:
+def _pipeline_common(target: str, run_ctx: RunContext) -> Tuple[ContextSpec, Manifest, ContextPlan, list[ProcessedBlob]]:
     """
     Общая часть пайплайна для render/report:
       resolve → manifest → plan → process
@@ -94,7 +94,7 @@ def run_render(target: str, options: RunOptions) -> RenderedDocument:
     """
     run_ctx = _build_run_ctx(options)
     spec, manifest, plan, blobs = _pipeline_common(target, run_ctx)
-    rendered_by_sec = render_by_section(run_ctx, manifest, blobs)
+    rendered_by_sec = render_by_section(plan, blobs)
     composed = compose_context(run_ctx.root, spec, rendered_by_sec)
     # Возвращаем итоговый текст; blocks здесь опускаем (они не отражают клей)
     return RenderedDocument(text=composed.text, blocks=[])
@@ -109,7 +109,7 @@ def run_report(target: str, options: RunOptions) -> RunResultM:
     """
     run_ctx = _build_run_ctx(options)
     spec, manifest, plan, blobs = _pipeline_common(target, run_ctx)
-    rendered_by_sec = render_by_section(run_ctx, manifest, blobs)
+    rendered_by_sec = render_by_section(plan, blobs)
     composed = compose_context(run_ctx.root, spec, rendered_by_sec)
 
     files_rows, totals, ctx_block, enc_name, ctx_limit = compute_stats(
