@@ -5,7 +5,15 @@ from typing import Optional
 from .model import PlaceholderPolicy
 
 
-def render_placeholder(lines_removed: int, bytes_removed: int, *, title: Optional[str], policy: PlaceholderPolicy, override_template: str | None) -> str:
+def render_placeholder(
+    lines_removed: int,
+    bytes_removed: int,
+    *,
+    title: Optional[str],
+    level: Optional[int],
+    policy: PlaceholderPolicy,
+    override_template: str | None,
+) -> str:
     """
     Возвращает одну строку плейсхолдера (без завершающего \n).
     """
@@ -18,6 +26,7 @@ def render_placeholder(lines_removed: int, bytes_removed: int, *, title: Optiona
         s = s.replace("{title}", title or "раздел")
         s = s.replace("{lines}", str(lines_removed))
         s = s.replace("{bytes}", str(bytes_removed))
+        s = s.replace("{level}", "" if level is None else str(level))
         return s
 
     return _fmt(template)

@@ -52,6 +52,7 @@ def apply_intervals_with_placeholders(lines: List[str], intervals: List[tuple[in
         ph = render_placeholder(
             removed_lines, removed_bytes,
             title=meta.get("title") if isinstance(meta, dict) else None,
+            level=meta.get("level") if isinstance(meta, dict) else None,
             policy=policy,
             override_template=meta.get("placeholder") if isinstance(meta, dict) else None,
         )

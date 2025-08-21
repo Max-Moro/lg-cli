@@ -143,3 +143,28 @@ tail
     assert "lg:omit" not in out
     assert "tail" in out
     assert int(meta.get("md.placeholders", 0)) == 1
+
+def test_marker_match_mixed_spaces_tabs():
+    text = """\
+# T
+\t<!-- mark:start -->
+noise
+    <!-- mark:end -->
+ok
+"""
+    cfg = {
+        "drop": {
+            "sections": [],
+            "markers": [
+                {"start": "<!-- mark:start -->", "end": "<!-- mark:end -->", "include_markers": True}
+            ],
+            "frontmatter": False,
+            "placeholder": {"mode": "summary", "template": "> *(PH)*"},
+        },
+        "max_heading_level": None,
+    }
+    from lg.adapters.markdown import MarkdownAdapter
+    out, meta = MarkdownAdapter().bind(cfg).process(text, group_size=1, mixed=False)  # type: ignore
+    assert "noise" not in out
+    assert int(meta.get("md.placeholders", 0)) == 1
+    assert "ok" in out
