@@ -46,6 +46,8 @@ def render_document(sec_plan: SectionPlan, blobs: List[ProcessedBlob]) -> Render
                 if idx < len(grp.entries) - 1:
                     block_lines.append("\n\n")
 
+            if not block_lines[-1].endswith("\n"):
+                block_lines.append("\n")
             block_lines.append("```\n")
             block_text = "".join(block_lines)
             blocks.append(RenderBlock(lang=lang, text=block_text, file_paths=file_paths))
