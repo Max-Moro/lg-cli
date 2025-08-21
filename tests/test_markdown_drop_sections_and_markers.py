@@ -87,3 +87,59 @@ title: Doc
     # frontmatter исчез
     assert out.startswith("# H1")
     assert meta.get("md.removed.frontmatter") is True
+
+def test_marker_match_with_trailing_spaces():
+    text = """\
+# T
+
+<!-- lg:omit:start   -->
+noise
+<!-- lg:omit:end -->
+tail
+"""
+    cfg = {
+        "drop": {
+            "sections": [],
+            "markers": [
+                {"start": "<!-- lg:omit:start -->", "end": "<!-- lg:omit:end -->", "include_markers": True}
+            ],
+            "frontmatter": False,
+            "placeholder": {"mode": "summary", "template": "> *(omitted; {lines})*"},
+        },
+        "max_heading_level": None,
+    }
+    from lg.adapters.markdown import MarkdownAdapter
+    out, meta = MarkdownAdapter().bind(cfg).process(text, group_size=1, mixed=False)  # type: ignore
+    assert "noise" not in out
+    assert "lg:omit" not in out
+    assert "tail" in out
+    assert int(meta.get("md.placeholders", 0)) == 1
+
+
+def test_marker_match_with_indentation():
+    text = """\
+# T
+
+    <!-- lg:omit:start -->
+noise
+    <!-- lg:omit:end -->
+
+tail
+"""
+    cfg = {
+        "drop": {
+            "sections": [],
+            "markers": [
+                {"start": "<!-- lg:omit:start -->", "end": "<!-- lg:omit:end -->", "include_markers": True}
+            ],
+            "frontmatter": False,
+            "placeholder": {"mode": "summary", "template": "> *(omitted; {lines})*"},
+        },
+        "max_heading_level": None,
+    }
+    from lg.adapters.markdown import MarkdownAdapter
+    out, meta = MarkdownAdapter().bind(cfg).process(text, group_size=1, mixed=False)  # type: ignore
+    assert "noise" not in out
+    assert "lg:omit" not in out
+    assert "tail" in out
+    assert int(meta.get("md.placeholders", 0)) == 1

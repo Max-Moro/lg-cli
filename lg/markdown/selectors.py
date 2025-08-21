@@ -124,20 +124,30 @@ def select_marker_intervals(lines: List[str], markers: List[MarkerRule]) -> List
     """
     out: list[tuple[int, int, MarkerRule]] = []
     n = len(lines)
+    def _find_line(target: str, start_idx: int) -> int:
+        """Ищем строку сначала по точному равенству, затем по .strip()."""
+        t_exact = target
+        t_stripped = target.strip()
+        # точное совпадение
+        for j in range(start_idx, n):
+            if lines[j] == t_exact:
+                return j
+        # сравнение по .strip()
+        for j in range(start_idx, n):
+            if lines[j].strip() == t_stripped:
+                return j
+        return -1
+
     for rule in markers:
         i = 0
         while i < n:
-            # поиск start
-            try:
-                s = lines.index(rule.start, i)
-            except ValueError:
+            # поиск start (exact → strip)
+            s = _find_line(rule.start, i)
+            if s < 0:
                 break
-            # поиск end
-            try:
-                e = lines.index(rule.end, s + 1)
-                end_excl = e + 1
-            except ValueError:
-                end_excl = n
+            # поиск end (exact → strip)
+            e = _find_line(rule.end, s + 1)
+            end_excl = (e + 1) if e >= 0 else n
             # интервал
             if not rule.include_markers:
                 s0 = s + 1

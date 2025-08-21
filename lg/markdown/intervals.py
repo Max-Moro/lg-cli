@@ -19,9 +19,13 @@ def _merge_intervals(intervals: List[Interval]) -> List[Interval]:
     intervals = sorted(intervals, key=lambda x: (x[0], x[1]))
     merged: List[Interval] = []
     cur_s, cur_e, cur_meta = intervals[0]
+    # трекаем лучший источник placeholder/reason по ширине
+    best_width = max(0, cur_e - cur_s)
+    best_placeholder = cur_meta.get("placeholder") if isinstance(cur_meta, dict) else None
+    best_reason = cur_meta.get("reason") if isinstance(cur_meta, dict) else None
     for s, e, m in intervals[1:]:
         if s <= cur_e:  # перекрытие или касание
-            # extend
+            # extend границу
             if e > cur_e:
                 cur_e = e
             # агрегируем счётчики
@@ -33,10 +37,34 @@ def _merge_intervals(intervals: List[Interval]) -> List[Interval]:
                     if isinstance(v, list):
                         cur_meta[k] = list(cur_meta.get(k, [])) + v
                     else:
-                        cur_meta[k] = v
+                        # по умолчанию — сохраняем предыдущее (стабильно),
+                        # т.к. placeholder/reason выберем отдельной логикой.
+                        cur_meta.setdefault(k, v)
+            # политика выбора placeholder/reason: от самого широкого интервала,
+            # при равной ширине — из более раннего (т.е. оставляем текущий).
+            width_now = e - s
+            if width_now > best_width:
+                best_width = width_now
+                best_placeholder = m.get("placeholder")
+                best_reason = m.get("reason")
         else:
+            # финализируем placeholder/reason для собранного окна
+            if isinstance(cur_meta, dict):
+                if best_placeholder is not None:
+                    cur_meta["placeholder"] = best_placeholder
+                if best_reason is not None:
+                    cur_meta["reason"] = best_reason
             merged.append((cur_s, cur_e, cur_meta))
             cur_s, cur_e, cur_meta = s, e, m
+            best_width = max(0, e - s)
+            best_placeholder = m.get("placeholder")
+            best_reason = m.get("reason")
+    # финализируем хвост
+    if isinstance(cur_meta, dict):
+        if best_placeholder is not None:
+            cur_meta["placeholder"] = best_placeholder
+        if best_reason is not None:
+            cur_meta["reason"] = best_reason
     merged.append((cur_s, cur_e, cur_meta))
     return merged
 
