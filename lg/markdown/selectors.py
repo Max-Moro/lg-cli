@@ -65,12 +65,22 @@ def _path_pred(path: list[str] | None) -> Callable[[HeadingNode, list[HeadingNod
         return lambda h, all_heads: True
 
     def pred(h: HeadingNode, all_heads: list[HeadingNode]) -> bool:
-        if len(h.parents) < len(path):
-            return False
-        # Возьмём хвост соответствующей длины
-        parent_indices = h.parents[-len(path):] if path else []
-        titles = [all_heads[i].title for i in parent_indices]
-        return titles == path
+        # Заголовки предков по титулам
+        parent_titles = [all_heads[i].title for i in h.parents]
+
+        # Вариант 1: path описывает только предков (суффикс цепочки предков)
+        if len(path) <= len(parent_titles):
+            if parent_titles[-len(path):] == path:
+                return True
+
+        # Вариант 2: path описывает предков + текущий заголовок
+        if path and path[-1] == h.title:
+            need_parents = path[:-1]
+            if len(need_parents) <= len(parent_titles):
+                if not need_parents or parent_titles[-len(need_parents):] == need_parents:
+                    return True
+
+        return False
 
     return pred
 

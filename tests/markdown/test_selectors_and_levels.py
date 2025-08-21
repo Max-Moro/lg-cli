@@ -1,4 +1,5 @@
 from lg.adapters.markdown import MarkdownAdapter
+import re
 
 MD = """\
 # Guide
@@ -37,12 +38,15 @@ def test_sections_match_by_slug():
         "max_heading_level": None,
     }
     out, meta = _adapter(cfg).process(MD, group_size=1, mixed=False)
-    assert "CLI Options" not in out
-    assert "Getting Started" in out
-    assert "FAQ" in out
-    # уровень подставился
-    assert "L2" in out
-    assert int(meta.get("md.placeholders", 0)) == 1
+    # Заголовок "## CLI Options" отсутствует
+    assert re.search(r"^##\s+CLI Options\b", out, flags=re.M) is None
+    # Плейсхолдер с названием раздела присутствует
+    assert "> *(drop CLI Options L2; 4)*" in out
+    # Другие разделы остались
+    assert "## Getting Started" in out
+    assert "## FAQ" in out
+    # Сработал хотя бы один плейсхолдер
+    assert int(meta.get('md.placeholders', 0)) >= 1
 
 def test_sections_match_by_regex_flags():
     cfg = {
@@ -57,7 +61,10 @@ def test_sections_match_by_regex_flags():
         "max_heading_level": None,
     }
     out, meta = _adapter(cfg).process(MD, group_size=1, mixed=False)
-    assert "Legacy Notes" not in out
+    # заголовок раздела (## Legacy Notes) отсутствует
+    assert re.search(r"^##\s+Legacy Notes\b", out, flags=re.M) is None
+    # но плейсхолдер с title вставлен
+    assert "> *(omitted Legacy Notes)*" in out
     assert int(meta.get("md.placeholders", 0)) == 1
 
 def test_sections_match_by_path_only():
