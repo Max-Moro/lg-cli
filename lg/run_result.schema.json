@@ -3,10 +3,10 @@
   "$id": "https://example.org/lg/run_result.schema.json",
   "title": "RunResult",
   "type": "object",
-  "required": ["formatVersion","scope","model","encoder","ctxLimit","total","files","context"],
+  "required": ["formatVersion","scope","model","encoder","ctxLimit","total","files"],
   "properties": {
     "formatVersion": { "type": "integer", "const": 4 },
-    "scope": { "type": "string", "const": "context" },
+    "scope": { "type": "string", "enum": ["context", "section"] },
     "model": { "type": "string" },
     "encoder": { "type": "string" },
     "ctxLimit": { "type": "integer", "minimum": 1 },

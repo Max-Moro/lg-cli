@@ -84,9 +84,7 @@ def test_md_without_h1_no_overhead(tmp_path: Path, monkeypatch):
     assert total.renderedOverheadTokens == 0
 
     # финальный документ совпадает с пайплайном, шаблонов нет
-    ctx = report.context
-    assert ctx.finalRenderedTokens == total.renderedTokens
-    assert ctx.templateOnlyTokens == 0
+    assert report.context is None
 
 
 def test_non_md_with_fence_adds_overhead(tmp_path: Path, monkeypatch):

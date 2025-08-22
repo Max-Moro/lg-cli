@@ -11,6 +11,7 @@ from .api_schema import (
     File as FileM,
     Context as ContextM,
     RunResult as RunResultM,
+    Scope as ScopeE,
 )
 from .cache.fs_cache import Cache
 from .config import load_config, Config
@@ -153,26 +154,31 @@ def run_report(target: str, options: RunOptions) -> RunResultM:
         for row in files_rows
     ]
 
-    # Контекстный блок
-    context_m = ContextM(
-        templateName=ctx_block.templateName,
-        sectionsUsed=dict(ctx_block.sectionsUsed),
-        finalRenderedTokens=ctx_block.finalRenderedTokens,
-        templateOnlyTokens=ctx_block.templateOnlyTokens,
-        templateOverheadPct=ctx_block.templateOverheadPct,
-        finalCtxShare=ctx_block.finalCtxShare,
-    )
+    # Определяем scope (Enum)
+    scope = ScopeE.context if spec.kind == "context" else ScopeE.section
+
+    # Контекстный блок только для scope=context
+    context_m: ContextM | None = None
+    if scope is ScopeE.context:
+        context_m = ContextM(
+            templateName=ctx_block.templateName,
+            sectionsUsed=dict(ctx_block.sectionsUsed),
+            finalRenderedTokens=ctx_block.finalRenderedTokens,
+            templateOnlyTokens=ctx_block.templateOnlyTokens,
+            templateOverheadPct=ctx_block.templateOverheadPct,
+            finalCtxShare=ctx_block.finalCtxShare,
+        )
 
     # Финальная модель
     result = RunResultM(
         formatVersion=4,
-        scope="context",
+        scope=scope,
         model=options.model,
         encoder=enc_name,
         ctxLimit=ctx_limit,
         total=total_m,
         files=files_m,
-        context=context_m
+        context=context_m,
     )
     return result
 

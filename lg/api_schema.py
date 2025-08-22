@@ -3,9 +3,15 @@
 
 from __future__ import annotations
 
+from enum import Enum
 from typing import Literal, Optional, Union
 
 from pydantic import BaseModel, ConfigDict, conint
+
+
+class Scope(Enum):
+    context = 'context'
+    section = 'section'
 
 
 class Total(BaseModel):
@@ -55,10 +61,10 @@ class RunResult(BaseModel):
         extra='forbid',
     )
     formatVersion: Literal[4]
-    scope: Literal['context']
+    scope: Scope
     model: str
     encoder: str
     ctxLimit: conint(ge=1)
     total: Total
     files: list[File]
-    context: Context
+    context: Optional[Context] = None
