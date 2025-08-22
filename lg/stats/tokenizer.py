@@ -153,42 +153,48 @@ def compute_stats(
         for _, b, t_raw, t_proc, mult, saved_tokens, saved_pct in temp_rows
     ]
 
-    # rendered tokens для ВСЕГО документа (один раз)
-    # Ключ rendered кэша зависит от имени контекста, кратностей, опций, processed-ключей и хэшей шаблонов.
+    # ключи кэша одинаковые, вариант отличается
     processed_keys = {rel: b.cache_key_processed for rel, b in dedup.items()}
-    options_fp = {
-        "code_fence": bool(code_fence),
-    }
+    options_fp = {"code_fence": bool(code_fence)}
 
-    # Финальный документ (с клеем)
-    k_rendered_final, p_rendered_final = cache.build_rendered_key(
-        context_name=spec.name if spec.kind == "context" else f"__sec__:{spec.name}",
-        sections_used=spec.sections.by_name,
-        options_fp={**options_fp, "variant": "final"},
-        processed_keys=processed_keys,
-        templates=templates_hashes,
-    )
-    t_rendered_final_cached = cache.get_rendered_tokens(p_rendered_final, model=enc_info.model)
-    if isinstance(t_rendered_final_cached, int):
-        t_rendered_final = t_rendered_final_cached
-    else:
-        t_rendered_final = len(enc.encode(rendered_final_text))
-        cache.update_rendered_tokens(p_rendered_final, model=enc_info.model, value=t_rendered_final)
-
-    # «Sections-only» документ (без клея шаблонов)
-    k_rendered_so, p_rendered_so = cache.build_rendered_key(
+    # 1) Чистые секции (без FILE-маркеров, без fenced, без шаблонов)
+    k_so, p_so = cache.build_rendered_key(
         context_name=spec.name if spec.kind == "context" else f"__sec__:{spec.name}",
         sections_used=spec.sections.by_name,
         options_fp={**options_fp, "variant": "sections-only"},
         processed_keys=processed_keys,
         templates=templates_hashes,
     )
-    t_sections_only_cached = cache.get_rendered_tokens(p_rendered_so, model=enc_info.model)
-    if isinstance(t_sections_only_cached, int):
-        t_sections_only = t_sections_only_cached
-    else:
+    t_sections_only = cache.get_rendered_tokens(p_so, model=enc_info.model)
+    if not isinstance(t_sections_only, int):
         t_sections_only = len(enc.encode(rendered_sections_only_text))
-        cache.update_rendered_tokens(p_rendered_so, model=enc_info.model, value=t_sections_only)
+        cache.update_rendered_tokens(p_so, model=enc_info.model, value=t_sections_only)
+
+    # 2) После пайплайна (FILE-маркеры + fenced, но без шаблонов)
+    k_pipeline, p_pipeline = cache.build_rendered_key(
+        context_name=spec.name if spec.kind == "context" else f"__sec__:{spec.name}",
+        sections_used=spec.sections.by_name,
+        options_fp={**options_fp, "variant": "pipeline"},
+        processed_keys=processed_keys,
+        templates=templates_hashes,
+    )
+    t_pipeline = cache.get_rendered_tokens(p_pipeline, model=enc_info.model)
+    if not isinstance(t_pipeline, int):
+        t_pipeline = len(enc.encode(rendered_sections_only_text))
+        cache.update_rendered_tokens(p_pipeline, model=enc_info.model, value=t_pipeline)
+
+    # 3) Финальный документ (после шаблонов)
+    k_final, p_final = cache.build_rendered_key(
+        context_name=spec.name if spec.kind == "context" else f"__sec__:{spec.name}",
+        sections_used=spec.sections.by_name,
+        options_fp={**options_fp, "variant": "final"},
+        processed_keys=processed_keys,
+        templates=templates_hashes,
+    )
+    t_final = cache.get_rendered_tokens(p_final, model=enc_info.model)
+    if not isinstance(t_final, int):
+        t_final = len(enc.encode(rendered_final_text))
+        cache.update_rendered_tokens(p_final, model=enc_info.model, value=t_final)
 
     totals = Totals(
         sizeBytes=total_size,
@@ -197,18 +203,18 @@ def compute_stats(
         savedTokens=max(0, total_raw - total_proc),
         savedPct=(1 - (total_proc / total_raw)) * 100.0 if total_raw else 0.0,
         ctxShare=(total_proc / enc_info.ctx_limit * 100.0) if enc_info.ctx_limit else 0.0,
-        renderedTokens=t_rendered_final,
-        renderedOverheadTokens=max(0, t_rendered_final - total_proc),
+        renderedTokens=t_pipeline,
+        renderedOverheadTokens=max(0, t_pipeline - total_proc),
         metaSummary=meta_summary,
     )
 
     ctx_block = ContextBlock(
         templateName=(spec.kind == "context" and f"ctx:{spec.name}") or f"sec:{spec.name}",
         sectionsUsed=spec.sections.by_name,
-        finalRenderedTokens=t_rendered_final,
-        templateOnlyTokens=max(0, t_rendered_final - t_sections_only),
-        templateOverheadPct=((t_rendered_final - t_sections_only) / t_rendered_final * 100.0) if t_rendered_final else 0.0,
-        finalCtxShare=(t_rendered_final / enc_info.ctx_limit * 100.0) if enc_info.ctx_limit else 0.0,
-   )
+        finalRenderedTokens=t_final,
+        templateOnlyTokens=max(0, t_final - t_pipeline),
+        templateOverheadPct=((t_final - t_pipeline) / t_final * 100.0) if t_final else 0.0,
+        finalCtxShare=(t_final / enc_info.ctx_limit * 100.0) if enc_info.ctx_limit else 0.0,
+    )
 
     return files_rows, totals, ctx_block, enc_info.enc_name, enc_info.ctx_limit

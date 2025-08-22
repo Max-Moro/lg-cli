@@ -83,6 +83,11 @@ def test_md_without_h1_no_overhead(tmp_path: Path, monkeypatch):
     assert total.renderedTokens == total.tokensProcessed
     assert total.renderedOverheadTokens == 0
 
+    # финальный документ совпадает с пайплайном, шаблонов нет
+    ctx = report.context
+    assert ctx.finalRenderedTokens == total.renderedTokens
+    assert ctx.templateOnlyTokens == 0
+
 
 def test_non_md_with_fence_adds_overhead(tmp_path: Path, monkeypatch):
     """
@@ -139,7 +144,11 @@ def test_context_template_overhead_and_ctx_block(tmp_path: Path, monkeypatch):
     assert ctx.sectionsUsed == {"all": 1}
     assert isinstance(ctx.finalRenderedTokens, int) and ctx.finalRenderedTokens > 0
     assert isinstance(ctx.templateOnlyTokens, int) and ctx.templateOnlyTokens > 0
-    assert pytest.approx(ctx.finalCtxShare, rel=1e-6) == report.total.renderedTokens / report.ctxLimit * 100.0
+    # финальный share должен считаться от finalRenderedTokens
+    assert pytest.approx(ctx.finalCtxShare, rel=1e-6) == ctx.finalRenderedTokens / report.ctxLimit * 100.0
+
+    # иерархия уровней токенов: processed ≤ rendered ≤ final
+    assert report.total.tokensProcessed <= report.total.renderedTokens <= ctx.finalRenderedTokens
 
 
 def test_prompt_shares_sum_to_100(tmp_path: Path, monkeypatch):
