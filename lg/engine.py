@@ -156,6 +156,8 @@ def run_report(target: str, options: RunOptions) -> RunResultM:
 
     # Определяем scope (Enum)
     scope = ScopeE.context if spec.kind == "context" else ScopeE.section
+    # Единое имя цели
+    target_norm = f"{'ctx' if spec.kind == 'context' else 'sec'}:{spec.name}"
 
     # Контекстный блок только для scope=context
     context_m: ContextM | None = None
@@ -173,6 +175,7 @@ def run_report(target: str, options: RunOptions) -> RunResultM:
     result = RunResultM(
         formatVersion=4,
         scope=scope,
+        target=target_norm,
         model=options.model,
         encoder=enc_name,
         ctxLimit=ctx_limit,

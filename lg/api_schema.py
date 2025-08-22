@@ -62,6 +62,7 @@ class RunResult(BaseModel):
     )
     formatVersion: Literal[4]
     scope: Scope
+    target: str
     model: str
     encoder: str
     ctxLimit: conint(ge=1)
