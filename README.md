@@ -44,28 +44,6 @@
 
 ## Быстрый старт
 
-### Подключение в проект
-
-**Репозиторий инструмента** обычно ложится в папку `lg/` вашего проекта:
-
-* Git-сабмодуль (рекомендуется)
-
-```bash
-git submodule add https://github.com/your-org/lg.git lg
-git submodule update --init --remote
-# обновление
-git submodule update --remote lg
-```
-
-* Симлинк (для локальной разработки)
-
-```bash
-# Windows (PowerShell 5+)
-New-Item -ItemType SymbolicLink -Path lg -Target C:\path\to\lg
-# Linux/macOS
-ln -s ~/dev/lg lg
-```
-
 ### Установка и запуск
 
 Минимально нужен Python ≥ 3.8.
@@ -82,8 +60,6 @@ python -m lg.cli render sec:core > prompt.md
 pip install -e ./lg
 lg render sec:core > prompt.md      # если настроен console_script "lg"
 ```
-
-> Если команды `lg` нет, используйте всегда `python -m lg.cli ...`.
 
 Проверка окружения и кэша:
 
