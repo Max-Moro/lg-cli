@@ -1,3 +1,4 @@
+from lg.protocol import PROTOCOL_VERSION
 from .conftest import run_cli, jload
 
 def test_cli_list_contexts(tmpproj):
@@ -16,5 +17,5 @@ def test_cli_report_json(tmpproj):
     cp = run_cli(tmpproj, "report", "ctx:a")
     assert cp.returncode == 0, cp.stderr
     data = jload(cp.stdout)
-    assert data["formatVersion"] == 4
+    assert data["protocol"] == PROTOCOL_VERSION
     assert data["context"]["templateName"] == "ctx:a"

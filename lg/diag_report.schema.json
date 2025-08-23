@@ -66,8 +66,7 @@
         "expected_schema": { "type": ["integer", "null"], "minimum": 0 },
         "sections": {
           "type": "array",
-          "items": { "type": "string" },
-          "default": []
+          "items": { "type": "string" }
         },
         "error": { "type": ["string", "null"] }
       }

@@ -18,6 +18,7 @@ from .config import load_config, Config
 from .context import resolve_context, compose_context
 from .manifest import build_manifest
 from .plan import build_plan
+from .protocol import PROTOCOL_VERSION
 from .render import render_by_section
 from .stats import compute_stats
 from .types import RunOptions, RenderedDocument, ContextSpec, Manifest, ProcessedBlob, ContextPlan
@@ -173,7 +174,7 @@ def run_report(target: str, options: RunOptions) -> RunResultM:
 
     # Финальная модель
     result = RunResultM(
-        formatVersion=4,
+        protocol=PROTOCOL_VERSION,
         scope=scope,
         target=target_norm,
         model=options.model,

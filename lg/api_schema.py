@@ -4,7 +4,7 @@
 from __future__ import annotations
 
 from enum import Enum
-from typing import Literal, Optional, Union
+from typing import Optional, Union
 
 from pydantic import BaseModel, ConfigDict, conint
 
@@ -60,7 +60,7 @@ class RunResult(BaseModel):
     model_config = ConfigDict(
         extra='forbid',
     )
-    formatVersion: Literal[4]
+    protocol: conint(ge=1)
     scope: Scope
     target: str
     model: str

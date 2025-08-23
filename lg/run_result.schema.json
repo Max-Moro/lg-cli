@@ -3,9 +3,9 @@
   "$id": "https://example.org/lg/run_result.schema.json",
   "title": "RunResult",
   "type": "object",
-  "required": ["formatVersion","scope","target","model","encoder","ctxLimit","total","files"],
+  "required": ["protocol","scope","target","model","encoder","ctxLimit","total","files"],
   "properties": {
-    "formatVersion": { "type": "integer", "const": 4 },
+    "protocol": { "type": "integer", "minimum": 1 },
     "scope": { "type": "string", "enum": ["context", "section"] },
     "target": { "type": "string" },
     "model": { "type": "string" },

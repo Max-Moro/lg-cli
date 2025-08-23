@@ -9,6 +9,7 @@ from .config import load_config, SCHEMA_VERSION
 from .context import list_contexts
 from .diag_report_schema import DiagReport, DiagConfig, DiagCache, DiagCheck, DiagEnv
 from .engine import tool_version
+from .protocol import PROTOCOL_VERSION
 
 
 def run_diag(*, rebuild_cache: bool = False) -> DiagReport:
@@ -115,7 +116,7 @@ def run_diag(*, rebuild_cache: bool = False) -> DiagReport:
 
     # Build report
     report = DiagReport(
-        protocol=1,
+        protocol=PROTOCOL_VERSION,
         tool_version=tool_ver,
         root=str(root),
         config=cfg_block,
