@@ -37,8 +37,10 @@ def test_token_counts_cached_between_runs(tmpproj: Path, monkeypatch):
     monkeypatch.chdir(tmpproj)
     (tmpproj / "x.md").write_text("# T\nbody\n", encoding="utf-8")
 
-    # подменяем _enc_for_model, чтобы считать вызовы encode()
-    import lg.stats.tokenizer as tok
+    # Мокаем get_model_info и tiktoken.get_encoding
+    from lg.stats import ResolvedModel
+    import lg.stats as lg_models
+    import tiktoken
 
     class FakeEnc:
         def __init__(self, counter):
@@ -49,11 +51,16 @@ def test_token_counts_cached_between_runs(tmpproj: Path, monkeypatch):
             return list(s)
 
     counter = {"encode": 0}
-    def fake_enc_for_model(model: str):
-        info = tok._EncInfo(model=model, ctx_limit=32000, enc_name="fake", enc=FakeEnc(counter))
-        return info
 
-    monkeypatch.setattr(tok, "_enc_for_model", fake_enc_for_model, raising=True)
+    def fake_get_model_info(_root, selector: str):
+        # эффективный лимит 32K, энкодер "fake"
+        return ResolvedModel(
+            name=selector, base="o3", provider="openai",
+            encoder="fake", ctx_limit=32_000, plan=None
+        )
+
+    monkeypatch.setattr(lg_models, "get_model_info", fake_get_model_info, raising=True)
+    monkeypatch.setattr(tiktoken, "get_encoding", lambda *_args, **_kw: FakeEnc(counter), raising=True)
 
     # первый запуск — посчитает raw/processed + rendered (итоговый и sections-only)
     r1 = run_report("sec:docs", RunOptions(model="o3"))
@@ -69,7 +76,10 @@ def test_rendered_tokens_cached(tmpproj: Path, monkeypatch):
     # контекст a: "Intro\n\n${docs}\n"
     (tmpproj / "README.md").write_text("# A\nZ\n", encoding="utf-8")
 
-    import lg.stats.tokenizer as tok
+    # Мокаем get_model_info и tiktoken.get_encoding
+    from lg.stats import ResolvedModel
+    import lg.stats as lg_models
+    import tiktoken
 
     class FakeEnc:
         def __init__(self, counter):
@@ -79,10 +89,15 @@ def test_rendered_tokens_cached(tmpproj: Path, monkeypatch):
             return list(s)
 
     counter = {"encode": 0}
-    def fake_enc_for_model(model: str):
-        return tok._EncInfo(model=model, ctx_limit=32000, enc_name="fake", enc=FakeEnc(counter))
 
-    monkeypatch.setattr(tok, "_enc_for_model", fake_enc_for_model, raising=True)
+    def fake_get_model_info(_root, selector: str):
+        return ResolvedModel(
+            name=selector, base="o3", provider="openai",
+            encoder="fake", ctx_limit=32_000, plan=None
+        )
+
+    monkeypatch.setattr(lg_models, "get_model_info", fake_get_model_info, raising=True)
+    monkeypatch.setattr(tiktoken, "get_encoding", lambda *_args, **_kw: FakeEnc(counter), raising=True)
 
     # первый запуск (посчитает rendered для final и sections-only)
     r1 = run_report("ctx:a", RunOptions())
