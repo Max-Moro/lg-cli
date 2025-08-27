@@ -58,8 +58,3 @@ def make_id(base: str, plan: Optional[str]) -> str:
     if not plan:
         return base
     return f"{base}__{_slugify_plan(plan)}"
-
-def make_label(base: str, plan: Optional[str]) -> str:
-    if not plan:
-        return base
-    return f"{base} ({plan})"

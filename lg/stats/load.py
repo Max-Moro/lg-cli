@@ -9,7 +9,6 @@ from .model import (
     PlanInfo,
     ResolvedModel,
     make_id,
-    make_label,
     _slugify_plan
 )
 
@@ -41,17 +40,17 @@ _DEFAULT_MODELS: Dict[str, ModelInfo] = {
 
 _DEFAULT_PLANS: List[PlanInfo] = [
     # OpenAI ChatGPT планы (контекст в чате)
-    PlanInfo(name="Free",         provider="openai",   ctx_cap=16_000,  featured=False),
+    PlanInfo(name="Free",         provider="openai",   ctx_cap=16_000,  featured=True),
     PlanInfo(name="Plus/Team",    provider="openai",   ctx_cap=32_000,  featured=True),
-    PlanInfo(name="Pro",          provider="openai",   ctx_cap=128_000, featured=True),
+    PlanInfo(name="Pro",          provider="openai",   ctx_cap=128_000, featured=False),
     # Gemini Apps (контекст в приложении)
-    PlanInfo(name="Free",         provider="google",   ctx_cap=32_000,  featured=False),
+    PlanInfo(name="Free",         provider="google",   ctx_cap=32_000,  featured=True),
     PlanInfo(name="Pro",          provider="google",   ctx_cap=1_000_000, featured=True),
-    PlanInfo(name="Ultra",        provider="google",   ctx_cap=1_000_000, featured=True),
+    PlanInfo(name="Ultra",        provider="google",   ctx_cap=1_000_000, featured=False),
     # Claude (контекст в веб-клиенте Anthropic)
-    PlanInfo(name="Free",         provider="anthropic", ctx_cap=32_000,  featured=False),
+    PlanInfo(name="Free",         provider="anthropic", ctx_cap=32_000,  featured=True),
     PlanInfo(name="Pro",          provider="anthropic", ctx_cap=200_000, featured=True),
-    PlanInfo(name="Enterprise",   provider="anthropic", ctx_cap=500_000, featured=True),
+    PlanInfo(name="Enterprise",   provider="anthropic", ctx_cap=500_000, featured=False),
 ]
 
 # -----------------------------------------------------------------------
@@ -88,6 +87,23 @@ def load_models(root: Path) -> ModelsConfig:
         plans.append(PlanInfo(name=name, provider=provider, ctx_cap=ctx_cap, featured=featured))
     return ModelsConfig(schema_version=schema_version, models=models, plans=plans)
 
+# -------------------- Internal helpers (shared) --------------------
+def _is_public_provider(provider: str) -> bool:
+    """Публичные SaaS-провайдеры — для них «база» помечается как (No Cap), если есть планы."""
+    return provider.lower() in {"openai", "anthropic", "google", "cohere"}
+
+def _provider_has_plans(cfg: ModelsConfig, provider: str) -> bool:
+    return any(p.provider == provider for p in cfg.plans)
+
+def _base_label(m: ModelInfo, cfg: ModelsConfig) -> str:
+    """Единая логика отображения label для базовой модели (без плана)."""
+    if _is_public_provider(m.provider) and _provider_has_plans(cfg, m.provider):
+        return f"{m.alias} (No Cap)"
+    return m.alias
+
+def _plan_label(m: ModelInfo, p: PlanInfo) -> str:
+    return f"{m.alias} ({p.name})"
+
 def list_models(root: Path) -> List[dict]:
     """
     Возвращаем массив объектов:
@@ -96,31 +112,30 @@ def list_models(root: Path) -> List[dict]:
     cfg = load_models(root)
     out: List[dict] = []
     for m in cfg.models.values():
-        # голая модель
+        # Базовая (без плана)
         out.append({
             "id": make_id(m.alias, None),
-            "label": make_label(m.alias, None),
+            "label": _base_label(m, cfg),
             "base": m.alias,
             "plan": None,
             "provider": m.provider,
             "encoder": m.encoder,
             "ctxLimit": m.ctx_limit,
         })
-        # комбо с избранными планами
+        # Комбинации с избранными планами
         for p in cfg.plans:
             if p.provider != m.provider or not p.featured:
                 continue
             eff = min(m.ctx_limit, p.ctx_cap)
             out.append({
                 "id": make_id(m.alias, p.name),
-                "label": make_label(m.alias, p.name),
+                "label": _plan_label(m, p),
                 "base": m.alias,
                 "plan": p.name,
                 "provider": m.provider,
                 "encoder": m.encoder,
                 "ctxLimit": eff,
             })
-    # стабильная сортировка по id
     out.sort(key=lambda x: x["id"])
     return out
 
@@ -137,7 +152,7 @@ def get_model_info(root: Path, model_id: str) -> ResolvedModel:
     if not s:
         raise KeyError("Model id is empty")
 
-    # Разбор id: допускаем максимум один '__'
+    # Разбор id
     if "__" in s:
         parts = s.split("__")
         if len(parts) != 2:
@@ -146,16 +161,16 @@ def get_model_info(root: Path, model_id: str) -> ResolvedModel:
     else:
         base, slug = s, None
 
-    # Проверка базовой модели
+    # База
     m = cfg.models.get(base)
     if not m:
         raise KeyError(f"Model '{base}' not found")
 
-    # Если без плана — возвращаем «физическую» модель
+    # Без плана → «физическая» модель, label через общую функцию
     if not slug:
         return ResolvedModel(
             id=make_id(m.alias, None),
-            label=make_label(m.alias, None),
+            label=_base_label(m, cfg),
             base=m.alias,
             provider=m.provider,
             encoder=m.encoder,
@@ -163,7 +178,7 @@ def get_model_info(root: Path, model_id: str) -> ResolvedModel:
             plan=None,
         )
 
-    # Поиск плана по slug среди планов того же провайдера
+    # Со слагом → ищем соответствующий план у того же провайдера
     chosen: Optional[PlanInfo] = None
     for p in cfg.plans:
         if p.provider != m.provider:
@@ -177,7 +192,7 @@ def get_model_info(root: Path, model_id: str) -> ResolvedModel:
     eff_limit = min(m.ctx_limit, chosen.ctx_cap)
     return ResolvedModel(
         id=make_id(m.alias, chosen.name),
-        label=make_label(m.alias, chosen.name),
+        label=_plan_label(m, chosen),
         base=m.alias,
         provider=m.provider,
         encoder=m.encoder,
