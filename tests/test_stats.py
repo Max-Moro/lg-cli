@@ -19,7 +19,7 @@ def _w(p: Path, txt: str) -> Path:
 def _mkproj_md_only(root: Path, *, code_fence: bool = True, max_h: int | None = 2) -> None:
     """Минимальный проект: секция all → только .md (для md-only режимов рендера)."""
     _w(
-        root / "lg-cfg" / "config.yaml",
+        root / "lg-cfg" / "sections.yaml",
         textwrap.dedent(f"""
         schema_version: 6
         all:
@@ -34,7 +34,7 @@ def _mkproj_md_only(root: Path, *, code_fence: bool = True, max_h: int | None = 
 def _mkproj_py_only(root: Path, *, code_fence: bool = True) -> None:
     """Минимальный проект: секция all → только .py (для кодовых режимов рендера)."""
     _w(
-        root / "lg-cfg" / "config.yaml",
+        root / "lg-cfg" / "sections.yaml",
         textwrap.dedent(f"""
         schema_version: 6
         all:

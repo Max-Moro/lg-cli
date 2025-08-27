@@ -16,7 +16,7 @@ def test_list_sections(tmpproj: Path):
 
 def test_schema_version_mismatch(tmp_path: Path) -> None:
     """Некорректная версия схемы даёт читаемую RuntimeError."""
-    p = tmp_path / "lg-cfg" / "config.yaml"
+    p = tmp_path / "lg-cfg" / "sections.yaml"
     p.parent.mkdir(parents=True, exist_ok=True)
     p.write_text(
         textwrap.dedent("""

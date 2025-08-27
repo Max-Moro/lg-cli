@@ -19,7 +19,7 @@ def test_labels_auto_strip_common_prefix_and_uniquify(tmpproj: Path):
     """
     root = tmpproj
     # Переопределяем config: добавляем новую секцию cli-src
-    cfg = (root / "lg-cfg" / "config.yaml").read_text(encoding="utf-8")
+    cfg = (root / "lg-cfg" / "sections.yaml").read_text(encoding="utf-8")
     cfg += textwrap.dedent(
         """
 
@@ -32,7 +32,7 @@ def test_labels_auto_strip_common_prefix_and_uniquify(tmpproj: Path):
           path_labels: auto
         """
     )
-    (root / "lg-cfg" / "config.yaml").write_text(cfg, encoding="utf-8")
+    (root / "lg-cfg" / "sections.yaml").write_text(cfg, encoding="utf-8")
 
     # Структура файлов
     _write(root / "cli" / "pyproject.toml", "[project]\nname='x'\n")
@@ -58,7 +58,7 @@ def test_labels_basename_mode_uniquify(tmpproj: Path):
     В режиме basename все метки стартуют с одного basename и затем уникализируются суффиксом директорий.
     """
     root = tmpproj
-    cfg = (root / "lg-cfg" / "config.yaml").read_text(encoding="utf-8")
+    cfg = (root / "lg-cfg" / "sections.yaml").read_text(encoding="utf-8")
     cfg += textwrap.dedent(
         """
 
@@ -71,7 +71,7 @@ def test_labels_basename_mode_uniquify(tmpproj: Path):
           path_labels: basename
         """
     )
-    (root / "lg-cfg" / "config.yaml").write_text(cfg, encoding="utf-8")
+    (root / "lg-cfg" / "sections.yaml").write_text(cfg, encoding="utf-8")
 
     _write(root / "vscode" / "a" / "engine.py", "a=1\n")
     _write(root / "vscode" / "b" / "engine.py", "b=1\n")
@@ -90,7 +90,7 @@ def test_labels_auto_single_file_keeps_full_relative(tmpproj: Path):
     В режиме auto, если файл один — метка остаётся полным относительным путём (без среза префикса).
     """
     root = tmpproj
-    cfg = (root / "lg-cfg" / "config.yaml").read_text(encoding="utf-8")
+    cfg = (root / "lg-cfg" / "sections.yaml").read_text(encoding="utf-8")
     cfg += textwrap.dedent(
         """
 
@@ -103,7 +103,7 @@ def test_labels_auto_single_file_keeps_full_relative(tmpproj: Path):
           path_labels: auto
         """
     )
-    (root / "lg-cfg" / "config.yaml").write_text(cfg, encoding="utf-8")
+    (root / "lg-cfg" / "sections.yaml").write_text(cfg, encoding="utf-8")
 
     (root / "only").mkdir(parents=True, exist_ok=True)
     _write(root / "only" / "one.py", "print('one')\n")

@@ -24,7 +24,7 @@ def test_grouping_respects_sections(tmp_path: Path):
     root = tmp_path
     # Конфиг: две секции docs и code, каждая ограничена своим поддеревом
     _w(
-        root / "lg-cfg" / "config.yaml",
+        root / "lg-cfg" / "sections.yaml",
         textwrap.dedent("""
         schema_version: 6
         docs:

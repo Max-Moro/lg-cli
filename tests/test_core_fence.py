@@ -10,7 +10,7 @@ def _rewrite_all_section_exts(root: Path, exts: list[str]) -> None:
     Переписываем конфиг tmpproj так, чтобы секция `all` включала нужные расширения.
     Остальное (docs/markdown/code_fence) оставляем как в фикстуре.
     """
-    (root / "lg-cfg" / "config.yaml").write_text(
+    (root / "lg-cfg" / "sections.yaml").write_text(
         textwrap.dedent(f"""
         schema_version: 6
         all:

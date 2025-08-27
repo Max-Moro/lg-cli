@@ -20,7 +20,7 @@ def test_cli_report_included_paths(tmp_path, monkeypatch):
     # config: одна секция all, только .py, fencing включён,
     # блокируем *.log, а в secure/ разрешаем только *.py
     (tmp_path / "lg-cfg").mkdir()
-    (tmp_path / "lg-cfg/config.yaml").write_text(textwrap.dedent("""
+    (tmp_path / "lg-cfg/sections.yaml").write_text(textwrap.dedent("""
       schema_version: 6
       all:
         extensions: [".py"]

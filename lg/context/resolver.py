@@ -9,8 +9,10 @@ from ..config.load import Config
 
 # --------------------------- Helpers --------------------------- #
 
+_CFG_DIR = "lg-cfg"
 _TPL_SUFFIX = ".tpl.md"
-_CONTEXTS_DIR = "lg-cfg/contexts"
+_CTX_SUFFIX = ".ctx.md"
+
 
 class _Template:
     """
@@ -40,20 +42,29 @@ class _Template:
                 out.add(name)
         return out
 
-def _contexts_dir(root: Path) -> Path:
-    return (root / _CONTEXTS_DIR).resolve()
+
+def _cfg_root(root: Path) -> Path:
+    return (root / _CFG_DIR).resolve()
+
 
 def _template_path(root: Path, name: str) -> Path:
-    return _contexts_dir(root) / f"{name}.tpl.md"
+    # Шаблоны живут прямо под lg-cfg/: <name>.tpl.md (с поддиректориями)
+    return _cfg_root(root) / f"{name}{_TPL_SUFFIX}"
+
+
+def _ctx_path(root: Path, name: str) -> Path:
+    # Контексты: <name>.ctx.md под lg-cfg/
+    return _cfg_root(root) / f"{name}{_CTX_SUFFIX}"
+
 
 def list_contexts(root: Path) -> List[str]:
-    base = _contexts_dir(root)
+    base = _cfg_root(root)
     if not base.is_dir():
         return []
     out: List[str] = []
-    for p in base.rglob(f"*{_TPL_SUFFIX}"):
+    for p in base.rglob(f"*{_CTX_SUFFIX}"):
         rel = p.relative_to(base).as_posix()
-        out.append(rel[: -len(_TPL_SUFFIX)])
+        out.append(rel[: -len(_CTX_SUFFIX)])
     out.sort()
     return out
 
@@ -98,8 +109,8 @@ def _collect_sections_counts_for_context(
 def resolve_context(name_or_sec: str, run_ctx) -> ContextSpec:
     """
     Унифицированный резолвер:
-      - ctx:<name> → ищем шаблон в lg-cfg/contexts/<name>.tpl.md
-      - sec:<name> → виртуальный контекст для секции <name>
+      - ctx:<name> → ищем контекст в lg-cfg/<name>.ctx.md
+      - sec:<id>   → виртуальный контекст для секции <id> (канонический ID)
       - <name>     → сначала ctx:<name>, иначе sec:<name>
     """
     root = run_ctx.root
@@ -113,9 +124,9 @@ def resolve_context(name_or_sec: str, run_ctx) -> ContextSpec:
         kind, name = "section", name[4:]
 
     if kind in ("auto", "context"):
-        # сначала пробуем как контекст
-        tp = _template_path(root, name)
-        if tp.is_file():
+        # сначала пробуем как контекст (.ctx.md)
+        cp = _ctx_path(root, name)
+        if cp.is_file():
             sections = _collect_sections_counts_for_context(root=root, context_name=name)
             return ContextSpec(
                 kind="context",
@@ -123,9 +134,9 @@ def resolve_context(name_or_sec: str, run_ctx) -> ContextSpec:
                 sections=SectionUsage(by_name=sections or {}),
             )
         if kind == "context":
-            raise RuntimeError(f"Context template not found: {tp}")
+            raise RuntimeError(f"Context not found: {cp}")
 
-    # секция (виртуальный контекст) — проверяем, что такая секция объявлена в YAML
+    # секция (виртуальный контекст) — проверяем, что такой канонический ID объявлен
     if name not in cfg.sections:
         raise RuntimeError(f"Section '{name}' not found in config")
     return ContextSpec(

@@ -15,11 +15,11 @@ def write(p: Path, text: str) -> Path:
 
 @pytest.fixture
 def tmpproj(tmp_path: Path):
-    """Минимальный проект с lg-cfg/config.yaml и папкой contexts/."""
+    """Минимальный проект под схему: lg-cfg/sections.yaml + ctx/tpl в корне lg-cfg/."""
     root = tmp_path
-    # config с двумя секциями
+    # sections.yaml с двумя секциями
     write(
-        root / "lg-cfg" / "config.yaml",
+        root / "lg-cfg" / "sections.yaml",
         textwrap.dedent("""
         schema_version: 6
         all:
@@ -40,9 +40,10 @@ def tmpproj(tmp_path: Path):
             - match: ["/docs/**.md"]
         """).strip() + "\n",
     )
-    # контексты
-    write(root / "lg-cfg" / "contexts" / "a.tpl.md", "Intro\n\n${docs}\n")
-    write(root / "lg-cfg" / "contexts" / "b.tpl.md", "X ${tpl:a} Y ${all}\n")
+    # шаблон и два контекста
+    write(root / "lg-cfg" / "a.tpl.md", "Intro\n\n${docs}\n")
+    write(root / "lg-cfg" / "a.ctx.md", "Intro (ctx)\n\n${docs}\n")
+    write(root / "lg-cfg" / "b.ctx.md", "X ${tpl:a} Y ${all}\n")
     return root
 
 def run_cli(root: Path, *args: str) -> subprocess.CompletedProcess:

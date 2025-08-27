@@ -16,7 +16,7 @@ def test_empty_policy_include_overrides_section_skip(tmp_path: Path, monkeypatch
     пустой m.py должен попасть в рендер.
     """
     (tmp_path / "lg-cfg").mkdir(parents=True, exist_ok=True)
-    (tmp_path / "lg-cfg" / "config.yaml").write_text(
+    (tmp_path / "lg-cfg" / "sections.yaml").write_text(
         textwrap.dedent("""
         schema_version: 6
         all:
@@ -42,7 +42,7 @@ def test_empty_policy_exclude_overrides_section_allow(tmp_path: Path, monkeypatc
     Добавляем также .py, чтобы документ не был md-only (тогда виден маркер файлов).
     """
     (tmp_path / "lg-cfg").mkdir(parents=True, exist_ok=True)
-    (tmp_path / "lg-cfg" / "config.yaml").write_text(
+    (tmp_path / "lg-cfg" / "sections.yaml").write_text(
         textwrap.dedent("""
         schema_version: 6
         all:
@@ -71,7 +71,7 @@ def test_empty_policy_inherit_follows_section(tmp_path: Path, monkeypatch):
     Секция skip_empty:true → пустой .py отфильтровывается.
     """
     (tmp_path / "lg-cfg").mkdir(parents=True, exist_ok=True)
-    (tmp_path / "lg-cfg" / "config.yaml").write_text(
+    (tmp_path / "lg-cfg" / "sections.yaml").write_text(
         textwrap.dedent("""
         schema_version: 6
         all:
