@@ -1,6 +1,9 @@
 from __future__ import annotations
+
+import re
 from dataclasses import dataclass, field
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, Optional
+
 
 @dataclass(frozen=True)
 class ModelInfo:
@@ -35,16 +38,27 @@ class ModelsConfig:
 @dataclass(frozen=True)
 class ResolvedModel:
     # Полностью резолвленное представление (с учётом плана)
-    name: str          # исходный селектор (возможно с суффиксом плана)
+    id: str
     base: str          # базовый alias модели без плана
     provider: str
     encoder: str
     ctx_limit: int     # эффективный лимит = min(model.ctx_limit, plan.ctx_cap?) либо «физический»
     plan: Optional[str] = None
 
-def parse_selector(selector: str) -> Tuple[str, Optional[str]]:
-    s = selector.strip()
-    if s.endswith(")") and " (" in s:
-        base, rest = s.rsplit(" (", 1)
-        return base.strip(), rest[:-1].strip()  # сняли ")"
-    return s, None
+_slug_re = re.compile(r"[^a-z0-9-]+")
+
+def _slugify_plan(name: str) -> str:
+    s = name.strip().lower().replace(" ", "-").replace("_", "-")
+    s = _slug_re.sub("", s)
+    s = re.sub(r"-{2,}", "-", s).strip("-")
+    return s
+
+def make_id(base: str, plan: Optional[str]) -> str:
+    if not plan:
+        return base
+    return f"{base}__{_slugify_plan(plan)}"
+
+def make_label(base: str, plan: Optional[str]) -> str:
+    if not plan:
+        return base
+    return f"{base} ({plan})"

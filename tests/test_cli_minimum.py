@@ -19,3 +19,18 @@ def test_cli_report_json(tmpproj):
     data = jload(cp.stdout)
     assert data["protocol"] == PROTOCOL_VERSION
     assert data["context"]["templateName"] == "ctx:a"
+
+def test_cli_list_models_defaults(tmpproj):
+    cp = run_cli(tmpproj, "list", "models")
+    assert cp.returncode == 0, cp.stderr
+    data = jload(cp.stdout)
+    models = data["models"]
+    # Структура объектов
+    assert isinstance(models, list) and len(models) > 0
+    m0 = models[0]
+    assert {"id","label","base","plan","provider","encoder","ctxLimit"} <= set(m0.keys())
+    # Должны присутствовать и "o3", и один из комбо "o3 (Pro)"
+    ids = {m["id"] for m in models}
+    labels = {m["label"] for m in models}
+    assert "o3" in ids
+    assert any(lbl.startswith("o3 (Pro") for lbl in labels)

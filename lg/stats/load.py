@@ -3,7 +3,15 @@ from pathlib import Path
 from typing import Dict, List, Optional
 from ruamel.yaml import YAML
 
-from .model import ModelsConfig, ModelInfo, PlanInfo, ResolvedModel, parse_selector
+from .model import (
+    ModelsConfig,
+    ModelInfo,
+    PlanInfo,
+    ResolvedModel,
+    make_id,
+    make_label,
+    _slugify_plan
+)
 
 _yaml = YAML(typ="safe")
 _CFG_FILE = "lg-cfg/models.yaml"
@@ -80,30 +88,97 @@ def load_models(root: Path) -> ModelsConfig:
         plans.append(PlanInfo(name=name, provider=provider, ctx_cap=ctx_cap, featured=featured))
     return ModelsConfig(schema_version=schema_version, models=models, plans=plans)
 
-def list_models(root: Path) -> List[str]:
-    return load_models(root).list_display_names()
-
-def get_model_info(root: Path, selector: str) -> ResolvedModel:
+def list_models(root: Path) -> List[dict]:
+    """
+    Возвращаем массив объектов:
+      {id, label, base, plan, provider, encoder, ctxLimit}
+    """
     cfg = load_models(root)
-    base, plan_name = parse_selector(selector)
-    if base not in cfg.models:
-        raise KeyError(f"Model '{base}' not found")
-    m = cfg.models[base]
-    eff_limit = m.ctx_limit
-    chosen_plan: Optional[PlanInfo] = None
-    if plan_name:
+    out: List[dict] = []
+    for m in cfg.models.values():
+        # голая модель
+        out.append({
+            "id": make_id(m.alias, None),
+            "label": make_label(m.alias, None),
+            "base": m.alias,
+            "plan": None,
+            "provider": m.provider,
+            "encoder": m.encoder,
+            "ctxLimit": m.ctx_limit,
+        })
+        # комбо с избранными планами
         for p in cfg.plans:
-            if p.provider == m.provider and p.name.lower() == plan_name.lower():
-                chosen_plan = p
-                eff_limit = min(eff_limit, p.ctx_cap)
-                break
-        if chosen_plan is None:
-            raise KeyError(f"Plan '{plan_name}' not found for provider '{m.provider}'")
+            if p.provider != m.provider or not p.featured:
+                continue
+            eff = min(m.ctx_limit, p.ctx_cap)
+            out.append({
+                "id": make_id(m.alias, p.name),
+                "label": make_label(m.alias, p.name),
+                "base": m.alias,
+                "plan": p.name,
+                "provider": m.provider,
+                "encoder": m.encoder,
+                "ctxLimit": eff,
+            })
+    # стабильная сортировка по id
+    out.sort(key=lambda x: x["id"])
+    return out
+
+def get_model_info(root: Path, model_id: str) -> ResolvedModel:
+    """
+    Резолвит модель ТОЛЬКО по безопасному идентификатору:
+      • "<base>"
+      • "<base>__<plan-slug>"
+
+    Где <plan-slug> — slug(Plan.name): lowercase, пробелы/подчёркивания → '-', только [a-z0-9-].
+    """
+    cfg = load_models(root)
+    s = (model_id or "").strip()
+    if not s:
+        raise KeyError("Model id is empty")
+
+    # Разбор id: допускаем максимум один '__'
+    if "__" in s:
+        parts = s.split("__")
+        if len(parts) != 2:
+            raise KeyError(f"Invalid model id format: '{model_id}'")
+        base, slug = parts[0].strip(), parts[1].strip().lower()
+    else:
+        base, slug = s, None
+
+    # Проверка базовой модели
+    m = cfg.models.get(base)
+    if not m:
+        raise KeyError(f"Model '{base}' not found")
+
+    # Если без плана — возвращаем «физическую» модель
+    if not slug:
+        return ResolvedModel(
+            id=make_id(m.alias, None),
+            base=m.alias,
+            provider=m.provider,
+            encoder=m.encoder,
+            ctx_limit=int(m.ctx_limit),
+            plan=None,
+        )
+
+    # Поиск плана по slug среди планов того же провайдера
+    chosen: Optional[PlanInfo] = None
+    for p in cfg.plans:
+        if p.provider != m.provider:
+            continue
+        if _slugify_plan(p.name) == slug:
+            chosen = p
+            break
+    if chosen is None:
+        raise KeyError(f"Plan slug '{slug}' not found for provider '{m.provider}'")
+
+    eff_limit = min(m.ctx_limit, chosen.ctx_cap)
     return ResolvedModel(
-        name=selector,
+        id=make_id(m.alias, chosen.name),
         base=m.alias,
         provider=m.provider,
         encoder=m.encoder,
         ctx_limit=int(eff_limit),
-        plan=(chosen_plan.name if chosen_plan else None),
+        plan=chosen.name,
     )
