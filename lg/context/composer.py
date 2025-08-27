@@ -6,6 +6,7 @@ from pathlib import Path
 from typing import Dict, Tuple
 
 from .resolver import _template_path, _Template
+from .resolver import _ctx_path
 from ..types import ContextSpec
 
 
@@ -37,9 +38,13 @@ def compose_context(root: Path, spec: ContextSpec, rendered_by_section: Dict[str
         p = _template_path(root, name)
         return p.read_text(encoding="utf-8", errors="ignore")
 
-    def _expand(name: str, templates: Dict[str, str]) -> Tuple[str, str]:
+    def _load_context(name: str) -> str:
+        p = _ctx_path(root, name)
+        return p.read_text(encoding="utf-8", errors="ignore")
+
+    def _expand_template(name: str, templates: Dict[str, str]) -> Tuple[str, str]:
         """
-        Рекурсивно расширяет один шаблон.
+        Рекурсивно расширяет один ШАБЛОН (.tpl.md).
         Возвращает (final_text, sections_only_text).
         """
         src = _load_template(name)
@@ -58,7 +63,7 @@ def compose_context(root: Path, spec: ContextSpec, rendered_by_section: Dict[str
             if ph.startswith("tpl:"):
                 # Вложенный шаблон
                 child = ph[4:]
-                child_final, child_sections_only = _expand(child, templates)
+                child_final, child_sections_only = _expand_template(child, templates)
                 out_final_parts.append(child_final)
                 out_sections_only_parts.append(child_sections_only)
             else:
@@ -78,7 +83,35 @@ def compose_context(root: Path, spec: ContextSpec, rendered_by_section: Dict[str
         sec_text = rendered_by_section.get(spec.name, "")
         return ComposedDocument(text=sec_text, sections_only_text=sec_text, templates_hashes={})
 
+    # context: стартуем с .ctx.md и раскрываем ${tpl:...}
     templates_hashes: Dict[str, str] = {}
-    final_text, sections_only = _expand(spec.name, templates_hashes)
+    ctx_src = _load_context(spec.name)
+    # Хэш самого контекста (для стабильности/диагностики), как раньше делали для корневого шаблона
+    templates_hashes[spec.name] = _sha1(ctx_src)
+
+    out_final_parts: list[str] = []
+    out_sections_only_parts: list[str] = []
+    pos = 0
+    for m in _Template.pattern.finditer(ctx_src):
+        start, end = m.span()
+        if start > pos:
+            # клей из контекста уходит только в финальный документ
+            out_final_parts.append(ctx_src[pos:start])
+        ph = m.group("braced") or m.group("name") or ""
+        if ph.startswith("tpl:"):
+            child = ph[4:]
+            child_final, child_sections_only = _expand_template(child, templates_hashes)
+            out_final_parts.append(child_final)
+            out_sections_only_parts.append(child_sections_only)
+        else:
+            sec_text = rendered_by_section.get(ph, "")
+            out_final_parts.append(sec_text)
+            out_sections_only_parts.append(sec_text)
+        pos = end
+    if pos < len(ctx_src):
+        out_final_parts.append(ctx_src[pos:])
+
+    final_text = "".join(out_final_parts)
+    sections_only = "".join(out_sections_only_parts)
 
     return ComposedDocument(text=final_text, sections_only_text=sections_only, templates_hashes=templates_hashes)

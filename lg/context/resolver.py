@@ -76,32 +76,57 @@ def _load_template(root: Path, name: str) -> Tuple[Path, str]:
         raise RuntimeError(f"Template not found: {p}")
     return p, p.read_text(encoding="utf-8", errors="ignore")
 
-def _collect_sections_counts_for_context(
+def _collect_sections_counts_from_template(
     *,
     root: Path,
-    context_name: str,
+    template_name: str,
     stack: List[str] | None = None,
 ) -> Dict[str, int]:
     """
-    Рекурсивно обходит шаблон и его вложения `${tpl:...}`, собирает кратности секций.
+    Рекурсивно обходит ШАБЛОН (.tpl.md) и его вложения `${tpl:...}`, собирая кратности секций.
+    Стек отслеживает цикл именно по именам шаблонов.
     """
     stack = stack or []
-    if context_name in stack:
-        cycle = " → ".join(stack + [context_name])
+    if template_name in stack:
+        cycle = " → ".join(stack + [template_name])
         raise RuntimeError(f"Template cycle detected: {cycle}")
 
-    _, text = _load_template(root, context_name)
-    stack.append(context_name)
+    _, text = _load_template(root, template_name)
+    stack.append(template_name)
     counts: Dict[str, int] = {}
     for ph in _Template.placeholders(text):
         if ph.startswith("tpl:"):
             child = ph[4:]
-            child_counts = _collect_sections_counts_for_context(root=root, context_name=child, stack=stack)
+            child_counts = _collect_sections_counts_from_template(root=root, template_name=child, stack=stack)
             for k, v in child_counts.items():
                 counts[k] = counts.get(k, 0) + int(v)
         else:
             counts[ph] = counts.get(ph, 0) + 1
     stack.pop()
+    return counts
+
+def _collect_sections_counts_for_context(
+    *,
+    root: Path,
+    context_name: str
+) -> Dict[str, int]:
+    """
+    Обходит КОНТЕКСТ (.ctx.md): парсит плейсхолдеры, для `${tpl:...}`
+    делегирует разбор в `_collect_sections_counts_from_template(...)`.
+    """
+    cp = _ctx_path(root, context_name)
+    if not cp.is_file():
+        raise RuntimeError(f"Context not found: {cp}")
+    text = cp.read_text(encoding="utf-8", errors="ignore")
+    counts: Dict[str, int] = {}
+    for ph in _Template.placeholders(text):
+        if ph.startswith("tpl:"):
+            child = ph[4:]
+            tpl_counts = _collect_sections_counts_from_template(root=root, template_name=child, stack=[])
+            for k, v in tpl_counts.items():
+                counts[k] = counts.get(k, 0) + int(v)
+        else:
+            counts[ph] = counts.get(ph, 0) + 1
     return counts
 
 # --------------------------- Public API --------------------------- #
