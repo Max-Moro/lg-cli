@@ -10,6 +10,7 @@ from .diagnostics import run_diag
 from .engine import run_report, run_render
 from .jsonic import dumps as jdumps
 from .types import RunOptions
+from .stats import list_models
 
 
 def _build_parser() -> argparse.ArgumentParser:
@@ -90,8 +91,7 @@ def main(argv: list[str] | None = None) -> int:
         elif ns.what == "sections":
             data = {"sections": list_sections(root)}
         elif ns.what == "models":
-            from .stats.tokenizer import _MODEL_CTX
-            data = {"models": sorted(_MODEL_CTX.keys())}
+            data = {"models": list_models(root)}
         sys.stdout.write(jdumps(data))
         return 0
 

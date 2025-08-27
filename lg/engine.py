@@ -20,7 +20,7 @@ from .manifest import build_manifest
 from .plan import build_plan
 from .protocol import PROTOCOL_VERSION
 from .render import render_by_section
-from .stats import compute_stats
+from .stats import get_model_info, compute_stats
 from .types import RunOptions, RenderedDocument, ContextSpec, Manifest, ProcessedBlob, ContextPlan
 from .vcs import VcsProvider, NullVcs
 from .vcs.git import GitVcs
@@ -114,14 +114,15 @@ def run_report(target: str, options: RunOptions) -> RunResultM:
     rendered_by_sec = render_by_section(plan, blobs)
     composed = compose_context(run_ctx.root, spec, rendered_by_sec)
 
-    files_rows, totals, ctx_block, enc_name, ctx_limit = compute_stats(
+    model_info = get_model_info(run_ctx.root, options.model)
+    files_rows, totals, ctx_block, enc_name = compute_stats(
         blobs=blobs,
         rendered_final_text=composed.text,
         rendered_sections_only_text=composed.sections_only_text,
         templates_hashes=composed.templates_hashes,
         spec=spec,
         manifest=manifest,
-        model_name=options.model,
+        model_info=model_info,
         code_fence=options.code_fence,
         cache=run_ctx.cache,
     )
@@ -179,7 +180,7 @@ def run_report(target: str, options: RunOptions) -> RunResultM:
         target=target_norm,
         model=options.model,
         encoder=enc_name,
-        ctxLimit=ctx_limit,
+        ctxLimit=model_info.ctx_limit,
         total=total_m,
         files=files_m,
         context=context_m,

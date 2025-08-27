@@ -1,53 +1,14 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
 from typing import Dict, List, Tuple
 
 import tiktoken
 
+from .model import ResolvedModel
 from ..cache.fs_cache import Cache
 from ..manifest.builder import Manifest
 from ..types import ContextSpec
 from ..types import FileRow, Totals, ContextBlock, ProcessedBlob
-
-# —————————— модель → (ctx_limit, encoder_name, encoder) —————————— #
-_MODEL_CTX = {
-    "o3": 32_000,
-    "gpt-4o": 128_000,
-    "gpt-4o-mini": 25_000,
-    "claude-3-opus": 200_000,
-    "claude-3-sonnet": 200_000,
-    "gemini-1.5-pro": 1_000_000,
-}
-
-
-@dataclass(frozen=True)
-class _EncInfo:
-    model: str
-    ctx_limit: int
-    enc_name: str
-    enc: "tiktoken.Encoding"
-
-
-def _enc_for_model(model: str) -> _EncInfo:
-    if model not in _MODEL_CTX:
-        # Неизвестную модель считаем «о3» семантически, но с cl100k_base
-        ctx = 32_000
-        try:
-            enc = tiktoken.get_encoding("cl100k_base")
-        except Exception:
-            enc = tiktoken.get_encoding("cl100k_base")
-        return _EncInfo(model=model, ctx_limit=ctx, enc_name="cl100k_base", enc=enc)
-
-    ctx = _MODEL_CTX[model]
-    enc_name = "gpt-4o" if model == "o3" else model
-    try:
-        enc = tiktoken.encoding_for_model(enc_name)
-    except Exception:
-        enc = tiktoken.get_encoding("cl100k_base")
-        enc_name = "cl100k_base"
-    return _EncInfo(model=model, ctx_limit=ctx, enc_name=enc_name, enc=enc)
-
 
 # —————————— helpers —————————— #
 
@@ -74,10 +35,10 @@ def compute_stats(
     templates_hashes: Dict[str, str],
     spec: ContextSpec,
     manifest: Manifest,
-    model_name: str,
+    model_info: ResolvedModel,
     code_fence: bool,
     cache: Cache,
-) -> Tuple[List[FileRow], Totals, ContextBlock, str, int]:
+) -> Tuple[List[FileRow], Totals, ContextBlock, str]:
     """
     Считает:
       • tokensRaw / tokensProcessed на файлах (с учётом кратности из Manifest)
@@ -86,8 +47,16 @@ def compute_stats(
       • shares и агрегаты
     Возвращает (files_rows, totals, context_block, encoder_name, ctx_limit)
     """
-    enc_info = _enc_for_model(model_name)
-    enc = enc_info.enc
+
+    enc_name = model_info.encoder
+    try:
+        enc = tiktoken.get_encoding(enc_name)
+    except Exception:
+        try:
+            enc = tiktoken.encoding_for_model(enc_name)
+        except Exception:
+            enc = tiktoken.get_encoding("cl100k_base")
+            enc_name = "cl100k_base"
 
     # кратности по rel_path из Manifest
     mult_by_rel: Dict[str, int] = {fr.rel_path: fr.multiplicity for fr in manifest.files}
@@ -111,17 +80,17 @@ def compute_stats(
 
         # tokensProcessed
         p_path = cache.path_for_processed_key(b.cache_key_processed)
-        t_proc_cached = cache.get_tokens(p_path, model=enc_info.model, mode="processed")
+        t_proc_cached = cache.get_tokens(p_path, model=model_info.base, mode="processed")
         t_proc = t_proc_cached if isinstance(t_proc_cached, int) else len(enc.encode(b.processed_text))
         if not isinstance(t_proc_cached, int):
-            cache.update_tokens(p_path, model=enc_info.model, mode="processed", value=t_proc)
+            cache.update_tokens(p_path, model=model_info.base, mode="processed", value=t_proc)
 
         # tokensRaw
         r_path = cache.path_for_raw_tokens_key(b.cache_key_raw)
-        t_raw_cached = cache.get_tokens(r_path, model=enc_info.model, mode="raw")
+        t_raw_cached = cache.get_tokens(r_path, model=model_info.base, mode="raw")
         t_raw = t_raw_cached if isinstance(t_raw_cached, int) else len(enc.encode(b.raw_text))
         if not isinstance(t_raw_cached, int):
-            cache.update_tokens(r_path, model=enc_info.model, mode="raw", value=t_raw)
+            cache.update_tokens(r_path, model=model_info.base, mode="raw", value=t_raw)
 
         total_proc += t_proc * mult
         total_raw += t_raw * mult
@@ -147,7 +116,7 @@ def compute_stats(
             savedTokens=saved_tokens,
             savedPct=saved_pct,
             promptShare=(t_proc * mult / total_proc * 100.0) if total_proc else 0.0,
-            ctxShare=(t_proc * mult / enc_info.ctx_limit * 100.0) if enc_info.ctx_limit else 0.0,
+            ctxShare=(t_proc * mult / model_info.ctx_limit * 100.0) if model_info.ctx_limit else 0.0,
             meta=b.meta or {},
         )
         for _, b, t_raw, t_proc, mult, saved_tokens, saved_pct in temp_rows
@@ -165,10 +134,10 @@ def compute_stats(
         processed_keys=processed_keys,
         templates=templates_hashes,
     )
-    t_sections_only = cache.get_rendered_tokens(p_so, model=enc_info.model)
+    t_sections_only = cache.get_rendered_tokens(p_so, model=model_info.base)
     if not isinstance(t_sections_only, int):
         t_sections_only = len(enc.encode(rendered_sections_only_text))
-        cache.update_rendered_tokens(p_so, model=enc_info.model, value=t_sections_only)
+        cache.update_rendered_tokens(p_so, model=model_info.base, value=t_sections_only)
 
     # 2) После пайплайна (FILE-маркеры + fenced, но без шаблонов)
     k_pipeline, p_pipeline = cache.build_rendered_key(
@@ -178,10 +147,10 @@ def compute_stats(
         processed_keys=processed_keys,
         templates=templates_hashes,
     )
-    t_pipeline = cache.get_rendered_tokens(p_pipeline, model=enc_info.model)
+    t_pipeline = cache.get_rendered_tokens(p_pipeline, model=model_info.base)
     if not isinstance(t_pipeline, int):
         t_pipeline = len(enc.encode(rendered_sections_only_text))
-        cache.update_rendered_tokens(p_pipeline, model=enc_info.model, value=t_pipeline)
+        cache.update_rendered_tokens(p_pipeline, model=model_info.base, value=t_pipeline)
 
     # 3) Финальный документ (после шаблонов)
     k_final, p_final = cache.build_rendered_key(
@@ -191,10 +160,10 @@ def compute_stats(
         processed_keys=processed_keys,
         templates=templates_hashes,
     )
-    t_final = cache.get_rendered_tokens(p_final, model=enc_info.model)
+    t_final = cache.get_rendered_tokens(p_final, model=model_info.base)
     if not isinstance(t_final, int):
         t_final = len(enc.encode(rendered_final_text))
-        cache.update_rendered_tokens(p_final, model=enc_info.model, value=t_final)
+        cache.update_rendered_tokens(p_final, model=model_info.base, value=t_final)
 
     totals = Totals(
         sizeBytes=total_size,
@@ -202,7 +171,7 @@ def compute_stats(
         tokensRaw=total_raw,
         savedTokens=max(0, total_raw - total_proc),
         savedPct=(1 - (total_proc / total_raw)) * 100.0 if total_raw else 0.0,
-        ctxShare=(total_proc / enc_info.ctx_limit * 100.0) if enc_info.ctx_limit else 0.0,
+        ctxShare=(total_proc / model_info.ctx_limit * 100.0) if model_info.ctx_limit else 0.0,
         renderedTokens=t_pipeline,
         renderedOverheadTokens=max(0, t_pipeline - total_proc),
         metaSummary=meta_summary,
@@ -214,7 +183,7 @@ def compute_stats(
         finalRenderedTokens=t_final,
         templateOnlyTokens=max(0, t_final - t_pipeline),
         templateOverheadPct=((t_final - t_pipeline) / t_final * 100.0) if t_final else 0.0,
-        finalCtxShare=(t_final / enc_info.ctx_limit * 100.0) if enc_info.ctx_limit else 0.0,
+        finalCtxShare=(t_final / model_info.ctx_limit * 100.0) if model_info.ctx_limit else 0.0,
     )
 
-    return files_rows, totals, ctx_block, enc_info.enc_name, enc_info.ctx_limit
+    return files_rows, totals, ctx_block, enc_name
