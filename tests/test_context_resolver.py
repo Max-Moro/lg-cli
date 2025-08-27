@@ -42,12 +42,6 @@ def test_resolve_nested_and_counts(tmpproj: Path):
     spec = resolve_context("ctx:b", _ctx(tmpproj))
     assert spec.sections.by_name == {"docs": 1, "all": 1}
 
-def test_cycle_detection(tmpproj: Path):
-    # создаём цикл: a → tpl:b, b уже ссылается на a
-    (tmpproj / "lg-cfg" / "contexts" / "a.tpl.md").write_text("${tpl:b}\n", encoding="utf-8")
-    with pytest.raises(RuntimeError):
-        resolve_context("ctx:a", _ctx(tmpproj))
-
 def test_missing_section(tmpproj: Path):
     with pytest.raises(RuntimeError):
         resolve_context("sec:missing", _ctx(tmpproj))

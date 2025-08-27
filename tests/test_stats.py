@@ -132,7 +132,7 @@ def test_context_template_overhead_and_ctx_block(tmp_path: Path, monkeypatch):
     """
     _mkproj_py_only(tmp_path, code_fence=True)
     _w(tmp_path / "m.py", "x = 1\n")
-    _w(tmp_path / "lg-cfg" / "contexts" / "glued.tpl.md", "Intro\n\n${all}\n\nOutro\n")
+    _w(tmp_path / "lg-cfg" / "glued.ctx.md", "Intro\n\n${all}\n\nOutro\n")
 
     monkeypatch.chdir(tmp_path)
     report = run_report("ctx:glued", RunOptions())

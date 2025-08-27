@@ -44,7 +44,7 @@ def test_grouping_respects_sections(tmp_path: Path):
         """).strip() + "\n",
     )
     # Контекст использует обе секции
-    _w(root / "lg-cfg" / "contexts" / "mix.tpl.md", "${docs}\n\n${code}\n")
+    _w(root / "lg-cfg" / "mix.ctx.md", "${docs}\n\n${code}\n")
 
     # docs → два файла .md
     _w(root / "docs" / "a.md", "# A\n\nText\n")
