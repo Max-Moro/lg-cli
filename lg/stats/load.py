@@ -24,10 +24,10 @@ _CFG_FILE = "lg-cfg/models.yaml"
 
 _DEFAULT_MODELS: Dict[str, ModelInfo] = {
     # OpenAI
-    "o3":                 ModelInfo(alias="o3", provider="openai", ctx_limit=200_000, encoder="cl100k_base"),
-    "o3-mini":            ModelInfo(alias="o3-mini", provider="openai", ctx_limit=200_000, encoder="cl100k_base"),
-    "o4-mini":            ModelInfo(alias="o4-mini", provider="openai", ctx_limit=200_000, encoder="cl100k_base"),
-    "gpt-4o":             ModelInfo(alias="gpt-4o", provider="openai", ctx_limit=128_000, encoder="o200k_base"),
+    "o3":                 ModelInfo(alias="o3", provider="openai", ctx_limit=200_000, encoder="gpt-4o"),
+    "o3-mini":            ModelInfo(alias="o3-mini", provider="openai", ctx_limit=200_000, encoder="gpt-4o"),
+    "o4-mini":            ModelInfo(alias="o4-mini", provider="openai", ctx_limit=200_000, encoder="gpt-4o"),
+    "gpt-4o":             ModelInfo(alias="gpt-4o", provider="openai", ctx_limit=128_000, encoder="gpt-4o"),
     "gpt-4.1":            ModelInfo(alias="gpt-4.1", provider="openai", ctx_limit=1_000_000, encoder="o200k_base"),
     # Anthropic
     "claude-3.5-sonnet":  ModelInfo(alias="claude-3.5-sonnet", provider="anthropic", ctx_limit=200_000, encoder="cl100k_base"),
