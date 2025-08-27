@@ -178,7 +178,7 @@ def run_report(target: str, options: RunOptions) -> RunResultM:
         protocol=PROTOCOL_VERSION,
         scope=scope,
         target=target_norm,
-        model=options.model,
+        model=model_info.label,
         encoder=enc_name,
         ctxLimit=model_info.ctx_limit,
         total=total_m,

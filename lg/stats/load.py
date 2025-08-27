@@ -155,6 +155,7 @@ def get_model_info(root: Path, model_id: str) -> ResolvedModel:
     if not slug:
         return ResolvedModel(
             id=make_id(m.alias, None),
+            label=make_label(m.alias, None),
             base=m.alias,
             provider=m.provider,
             encoder=m.encoder,
@@ -176,6 +177,7 @@ def get_model_info(root: Path, model_id: str) -> ResolvedModel:
     eff_limit = min(m.ctx_limit, chosen.ctx_cap)
     return ResolvedModel(
         id=make_id(m.alias, chosen.name),
+        label=make_label(m.alias, chosen.name),
         base=m.alias,
         provider=m.provider,
         encoder=m.encoder,

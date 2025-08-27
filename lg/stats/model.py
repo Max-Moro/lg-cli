@@ -39,6 +39,7 @@ class ModelsConfig:
 class ResolvedModel:
     # Полностью резолвленное представление (с учётом плана)
     id: str
+    label: str
     base: str          # базовый alias модели без плана
     provider: str
     encoder: str
