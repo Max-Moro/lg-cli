@@ -2,9 +2,9 @@ from __future__ import annotations
 
 from typing import List, Tuple, Dict
 
-from ..config import SectionCfg
 from ..paths import build_labels
-from ..types import Manifest, Group, LangName, SectionPlan, ContextPlan
+from ..run_context import RunContext
+from ..types import Manifest, Group, LangName, SectionPlan, ContextPlan, SectionPlanCfg
 
 
 def _lang_of(rel_lang: str | None) -> LangName:
@@ -38,17 +38,15 @@ def _build_section_plan(
     entries,
     langs: List[LangName],
     *,
-    sec_cfg: SectionCfg,
-    run_ctx
+    sec_cfg: SectionPlanCfg,
+    run_ctx: RunContext
 ) -> SectionPlan:
     """
     Строит план ТОЛЬКО для одной секции с учётом локальной политики code_fence.
     """
     md_only = all(l == "" for l in langs)
     # Глобальная опция может оверрайдить, но секционная политика тоже учитывается.
-    opt_fence = bool(getattr(run_ctx, "options").code_fence)
-    sec_fence = bool(sec_cfg.code_fence)
-    use_fence = (opt_fence and sec_fence) and not md_only
+    use_fence = (run_ctx.options.code_fence and sec_cfg.code_fence) and not md_only
 
     groups: List[Group] = []
     if use_fence:
@@ -68,7 +66,7 @@ def _build_section_plan(
     return SectionPlan(section=sec_name, md_only=md_only, use_fence=use_fence, groups=groups, labels=labels_map)
 
 
-def build_plan(manifest: Manifest, run_ctx) -> ContextPlan:
+def build_plan(manifest: Manifest, run_ctx: RunContext) -> ContextPlan:
     """
     Manifest → ContextPlan (список секционных Plan).
     Группировка выполняется ВНУТРИ каждой секции независимо.
@@ -87,12 +85,12 @@ def build_plan(manifest: Manifest, run_ctx) -> ContextPlan:
         by_section[fr.section].append(fr)
 
     sections_out: List[SectionPlan] = []
-    sections_cfg = getattr(run_ctx, "config").sections
     for sec_name in order:
         entries = by_section[sec_name]
         langs: List[LangName] = [_lang_of(f.language_hint) for f in entries]
-        sec_cfg: SectionCfg = sections_cfg.get(sec_name)  # type: ignore[assignment]
-        sec_plan = _build_section_plan(sec_name, entries, langs, sec_cfg=sec_cfg, run_ctx=run_ctx)
+        # Берём hints из Manifest; для «чужих» секций они уже там.
+        sec_cfg_hint: SectionPlanCfg | None = manifest.sections_cfg.get(sec_name)
+        sec_plan = _build_section_plan(sec_name, entries, langs, sec_cfg=sec_cfg_hint, run_ctx=run_ctx)
         sections_out.append(sec_plan)
 
     return ContextPlan(sections=sections_out)

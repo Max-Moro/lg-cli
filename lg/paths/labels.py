@@ -1,8 +1,8 @@
 from __future__ import annotations
 
-from typing import Dict, Iterable, List, Literal, Tuple
+from typing import Dict, Iterable, List, Tuple
 
-PathLabelMode = Literal["auto", "relative", "basename", "off"]
+from ..types import PathLabelMode
 
 
 def _split(rel_posix: str) -> List[str]:

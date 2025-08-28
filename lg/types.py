@@ -6,6 +6,7 @@ from typing import Dict, List, Literal, Optional
 
 LangName = str  # "python" | "markdown" | "" ...
 ModelName = str  # "o3", "gpt-4o", ...
+PathLabelMode = Literal["auto", "relative", "basename", "off"]
 
 
 # -----------------------------
@@ -63,8 +64,17 @@ class FileRef:
     adapter_overrides: Dict[str, Dict] = field(default_factory=dict)
 
 @dataclass(frozen=True)
+class SectionPlanCfg:
+    """Подсказки для планировщика, извлечённые из SectionCfg (лениво по demand)."""
+    code_fence: bool = True
+    path_labels: PathLabelMode = "auto"
+
+@dataclass(frozen=True)
 class Manifest:
     files: List[FileRef]
+    # Лёгкая «выжимка» секционных настроек, необходимых для планировщика.
+    # Ключ — канонический секционный ключ (CanonSectionId.as_key()).
+    sections_cfg: Dict[str, "SectionPlanCfg"] = field(default_factory=dict)
 
 # -------- Planning / Grouping --------
 @dataclass(frozen=True)

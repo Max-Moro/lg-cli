@@ -10,7 +10,7 @@ from ..config.paths import is_cfg_relpath
 from ..io.filters import FilterEngine
 from ..io.fs import build_gitignore_spec, iter_files
 from ..lang import get_language_for_file
-from ..types import Manifest, FileRef, ContextSpec
+from ..types import Manifest, FileRef, ContextSpec, SectionPlanCfg
 from ..vcs import VcsProvider, NullVcs
 
 
@@ -31,6 +31,7 @@ def build_manifest(
 
     spec_git = build_gitignore_spec(root)
     files_out: List[FileRef] = []
+    sec_cfg_hints: Dict[str, SectionPlanCfg] = {}
 
     # КЭШ конфигов по cfg_root.parent
     _cfg_cache: Dict[Path, Dict[str, SectionCfg]] = {}
@@ -70,6 +71,15 @@ def build_manifest(
         cfg = local_sections.get(sref.name)
         if not cfg:
             continue
+
+        # Канонический ключ секции
+        canon_key = sref.canon.as_key()
+        # Сохраняем подсказки для планировщика один раз (первый встретившийся вариант)
+        if canon_key not in sec_cfg_hints:
+            sec_cfg_hints[canon_key] = SectionPlanCfg(
+                code_fence=cfg.code_fence,
+                path_labels=cfg.path_labels
+            )
 
         engine = FilterEngine(cfg.filters)
         exts = {e.lower() for e in cfg.extensions}
@@ -158,7 +168,7 @@ def build_manifest(
                 FileRef(
                     abs_path=fp,
                     rel_path=rel_posix,
-                    section=sref.canon.as_key(),
+                    section=canon_key,
                     multiplicity=int(sref.multiplicity),
                     language_hint=lang,
                     adapter_overrides=overrides,
@@ -167,4 +177,4 @@ def build_manifest(
 
     # стабильная сортировка
     files_out.sort(key=lambda fr: (fr.section, fr.rel_path))
-    return Manifest(files=files_out)
+    return Manifest(files=files_out, sections_cfg=sec_cfg_hints)

@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
 from importlib import metadata
 from pathlib import Path
 from typing import Tuple
@@ -14,28 +13,18 @@ from .api_schema import (
     Scope as ScopeE,
 )
 from .cache.fs_cache import Cache
-from .config import load_config, Config
+from .config import load_config
+from .config.paths import cfg_root as cfg_root_of
 from .context import resolve_context, compose_context
 from .manifest import build_manifest
 from .plan import build_plan
 from .protocol import PROTOCOL_VERSION
 from .render import render_by_section
+from .run_context import RunContext
 from .stats import get_model_info, compute_stats
 from .types import RunOptions, RenderedDocument, ContextSpec, Manifest, ProcessedBlob, ContextPlan
-from .vcs import VcsProvider, NullVcs
+from .vcs import NullVcs
 from .vcs.git import GitVcs
-from .config.paths import cfg_root as cfg_root_of
-
-
-# ----------------------------- RunContext ----------------------------- #
-
-@dataclass(frozen=True)
-class RunContext:
-    root: Path
-    config: Config
-    options: RunOptions
-    cache: Cache
-    vcs: VcsProvider
 
 
 # ----------------------------- helpers ----------------------------- #
@@ -199,4 +188,4 @@ def run_report(target: str, options: RunOptions) -> RunResultM:
     return result
 
 
-__all__ = ["run_render", "run_report", "tool_version", "RunContext"]
+__all__ = ["run_render", "run_report", "tool_version"]
