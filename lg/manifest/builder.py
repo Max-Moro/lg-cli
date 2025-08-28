@@ -46,6 +46,22 @@ def build_manifest(
             # Если пакет не внутри репо — пропускаем молча (или можно поднять ошибку)
             continue
 
+        # Нормализуем '.' → '' (корень репо)
+        if scope_rel == ".":
+            scope_rel = ""
+
+        def in_scope(path_posix: str) -> bool:
+            # Путь path_posix (repo-root relative) находится в скоупе?
+            if scope_rel == "":
+                return True
+            return path_posix == scope_rel or path_posix.startswith(scope_rel + "/")
+
+        def rel_for_engine(path_posix: str) -> str:
+            # Путь для сопоставления фильтров секции (относительно scope_dir)
+            if scope_rel == "":
+                return path_posix
+            return path_posix[len(scope_rel):].lstrip("/")
+
         # Загрузим (или возьмём из кэша) конфиг секций для ЭТОГО cfg_root
         if scope_dir not in _cfg_cache:
             cfg_model = load_config(scope_dir)  # load_config ожидает "repo root" рядом с lg-cfg
@@ -69,10 +85,10 @@ def build_manifest(
         # Pruner: не выходим за пределы скопа и учитываем фильтры на поддиректории СКОПА
         def _pruner(rel_dir: str) -> bool:
             # Отсекаем всё, что вне скопа
-            if not (rel_dir == scope_rel or rel_dir.startswith(scope_rel + "/") or rel_dir == ""):
+            if not in_scope(rel_dir) and rel_dir != "":
                 return False
             # Относительный путь ДЛЯ фильтров секции (относительно scope_dir)
-            sub_rel = rel_dir[len(scope_rel):].lstrip("/") if rel_dir.startswith(scope_rel) else rel_dir
+            sub_rel = rel_for_engine(rel_dir)
             if is_cfg_relpath(sub_rel):
                 return False
             return engine.may_descend(sub_rel)
@@ -84,12 +100,12 @@ def build_manifest(
                 continue
 
             # ограничиваемся файлами внутри scope_rel
-            if not (rel_posix == scope_rel or rel_posix.startswith(scope_rel + "/")):
+            if not in_scope(rel_posix):
                 continue
 
             # Относительный путь ДЛЯ фильтров секции (относительно scope_dir)
-            rel_for_engine = rel_posix[len(scope_rel):].lstrip("/")
-            if not engine.includes(rel_for_engine):
+            rel_engine = rel_for_engine(rel_posix)
+            if not engine.includes(rel_engine):
                 continue
 
             # ----- Политика пустых файлов: секционная + адаптерная -----
@@ -126,7 +142,7 @@ def build_manifest(
                     # Конфиг использует абсолютный стиль "/path/**". Нормализуем к относительному.
                     pat_rel = pat.lstrip("/")
                     # Сопоставляем относительно СКОПА
-                    if fnmatch.fnmatch(rel_for_engine, pat_rel):
+                    if fnmatch.fnmatch(rel_engine, pat_rel):
                         matched = True
                         break
                 if not matched:
