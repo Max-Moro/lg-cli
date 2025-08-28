@@ -8,7 +8,6 @@ from ..config.paths import cfg_root
 from ..types import ContextSpec, SectionRef
 
 
-
 # --------------------------- Internal walkers --------------------------- #
 
 def _parse_section_placeholder(ph: str, *, current_cfg_root: Path, repo_root: Path) -> Tuple[Path, str]:
@@ -72,7 +71,7 @@ def _collect_section_refs_from_template(
             ))
         else:
             cfg, name = _parse_section_placeholder(ph, current_cfg_root=cfg_root_current, repo_root=repo_root)
-            out.append(SectionRef(cfg_root=cfg, name=name, multiplicity=1))
+            out.append(SectionRef(cfg_root=cfg, name=name, ph=ph, multiplicity=1))
     stack.pop()
     return out
 
@@ -100,12 +99,12 @@ def _collect_section_refs_for_context(*, root: Path, context_name: str) -> List[
             ))
         else:
             cfg, name = _parse_section_placeholder(ph, current_cfg_root=base_cfg, repo_root=root)
-            out.append(SectionRef(cfg_root=cfg, name=name, multiplicity=1))
-    # агрегация кратностей по (cfg_root, name)
-    acc: Dict[Tuple[Path, str], int] = {}
+            out.append(SectionRef(cfg_root=cfg, name=name, ph=ph, multiplicity=1))
+    # агрегация кратностей
+    acc: Dict[Tuple[Path, str, str], int] = {}
     for r in out:
-        acc[(r.cfg_root, r.name)] = acc.get((r.cfg_root, r.name), 0) + 1
-    return [SectionRef(cfg_root=k[0], name=k[1], multiplicity=v) for k, v in acc.items()]
+        acc[(r.cfg_root, r.name, r.ph)] = acc.get((r.cfg_root, r.name, r.ph), 0) + 1
+    return [SectionRef(cfg_root=k[0], name=k[1], ph=k[2], multiplicity=v) for k, v in acc.items()]
 
 # --------------------------- Public API --------------------------- #
 
@@ -145,5 +144,5 @@ def resolve_context(name_or_sec: str, run_ctx) -> ContextSpec:
     return ContextSpec(
         kind="section",
         name=name,
-        section_refs=[SectionRef(cfg_root=cfg_root(root), name=name, multiplicity=1)],
+        section_refs=[SectionRef(cfg_root=cfg_root(root), name=name, ph=name, multiplicity=1)],
     )

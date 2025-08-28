@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-from pathlib import Path
 from typing import Dict, List, Tuple
 
 import tiktoken
@@ -64,12 +63,9 @@ def compute_stats(
     mult_by_rel: Dict[str, int] = {fr.rel_path: fr.multiplicity for fr in manifest.files}
 
     # ---- адресные секции: детерминированная карта для кэша и отчёта ----
-    # ключ = "<cfg_root_posix>::<section_name>" → multiplicity
     sections_used_map: Dict[str, int] = {}
     for ref in spec.section_refs:
-        cfg_str = Path(ref.cfg_root).resolve().as_posix()
-        key = f"{cfg_str}::{ref.name}"
-        sections_used_map[key] = sections_used_map.get(key, 0) + ref.multiplicity
+        sections_used_map[ref.ph] = sections_used_map.get(ref.ph, 0) + ref.multiplicity
 
     # Быстрый доступ к путям кэша по ключам
     # (в Cache добавили публичные методы path_for_*)

@@ -4,6 +4,7 @@ import pytest
 
 from lg.cache.fs_cache import Cache
 from lg.config import load_config
+from lg.config.paths import cfg_root
 from lg.context import list_contexts, resolve_context
 from lg.engine import RunContext
 from lg.types import RunOptions
@@ -14,6 +15,14 @@ def _ctx(root: Path):
     return RunContext(root=root, config=load_config(root), options=RunOptions(),
                       cache=Cache(root, tool_version="0.0.0"), vcs=NullVcs())
 
+def _as_counts(spec):
+    """Вспомогательно: свернуть section_refs → {ph: multiplicity} и проверить cfg_root=tmpproj/lg-cfg."""
+    # spec.section_refs — список SectionRef(cfg_root, name, ph, multiplicity)
+    counts = {}
+    for r in spec.section_refs:
+        counts[r.ph] = counts.get(r.ph, 0) + r.multiplicity
+    return counts
+
 def test_list_contexts(tmpproj: Path):
     assert list_contexts(tmpproj) == ["a", "b"]
 
@@ -21,12 +30,16 @@ def test_resolve_ctx_explicit(tmpproj: Path):
     spec = resolve_context("ctx:a", _ctx(tmpproj))
     assert spec.kind == "context"
     assert spec.name == "a"
-    assert spec.sections.by_name == {"docs": 1}
+    assert _as_counts(spec) == {"docs": 1}
+    base = cfg_root(tmpproj).resolve()
+    assert all(r.cfg_root.resolve() == base for r in spec.section_refs)
 
 def test_resolve_section_explicit(tmpproj: Path):
     spec = resolve_context("sec:all", _ctx(tmpproj))
     assert spec.kind == "section"
-    assert spec.sections.by_name == {"all": 1}
+    assert _as_counts(spec) == {"all": 1}
+    base = cfg_root(tmpproj).resolve()
+    assert all(r.cfg_root.resolve() == base for r in spec.section_refs)
 
 def test_resolve_auto_ctx_then_sec(tmpproj: Path):
     # "a" существует как контекст
@@ -35,12 +48,16 @@ def test_resolve_auto_ctx_then_sec(tmpproj: Path):
     # "docs" не существует как контекст — берём секцию
     spec2 = resolve_context("docs", _ctx(tmpproj))
     assert spec2.kind == "section"
-    assert spec2.sections.by_name == {"docs": 1}
+    assert _as_counts(spec2) == {"docs": 1}
+    base = cfg_root(tmpproj).resolve()
+    assert all(r.cfg_root.resolve() == base for r in spec2.section_refs)
 
 def test_resolve_nested_and_counts(tmpproj: Path):
     # b.tpl.md включает tpl:a (где docs) + секцию all
     spec = resolve_context("ctx:b", _ctx(tmpproj))
-    assert spec.sections.by_name == {"docs": 1, "all": 1}
+    assert _as_counts(spec) == {"docs": 1, "all": 1}
+    base = cfg_root(tmpproj).resolve()
+    assert all(r.cfg_root.resolve() == base for r in spec.section_refs)
 
 def test_missing_section(tmpproj: Path):
     with pytest.raises(RuntimeError):

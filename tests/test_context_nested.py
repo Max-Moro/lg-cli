@@ -1,14 +1,15 @@
 from pathlib import Path
+
 import pytest
 
-from lg.config import load_config
 from lg.cache.fs_cache import Cache
-from lg.context.resolver import resolve_context
-from lg.context.composer import compose_context
-from lg.types import RunOptions
-from lg.engine import RunContext
-from lg.vcs import NullVcs
+from lg.config import load_config
 from lg.config.paths import cfg_root
+from lg.context import resolve_context, compose_context
+from lg.engine import RunContext
+from lg.types import RunOptions
+from lg.vcs import NullVcs
+
 
 def _write_tpl(root: Path, rel: str, body: str):
     """Создаёт шаблон .tpl.md в lg-cfg/ (с поддиректорией при необходимости)."""
@@ -49,7 +50,11 @@ def test_context_nested_ok(tmp_path: Path, monkeypatch):
     # Резолвим контекст (строит AST и считает кратности секций)
     spec = resolve_context("ctx:root", run_ctx)
     assert spec.kind == "context"
-    assert spec.sections.by_name == {"sec": 1}
+    assert len(spec.section_refs) == 1
+    ref = spec.section_refs[0]
+    assert ref.name == "sec"
+    assert ref.multiplicity == 1
+    assert ref.cfg_root == cfg_root(tmp_path)
 
     # Подкладываем готовый рендер секции "sec" как будто его собрали ранее
     rendered_by_section = {"sec": "LISTING[sec]\n"}

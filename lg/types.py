@@ -24,6 +24,7 @@ class SectionRef:
     """
     cfg_root: Path
     name: str
+    ph: str
     multiplicity: int = 1
 
 @dataclass(frozen=True)

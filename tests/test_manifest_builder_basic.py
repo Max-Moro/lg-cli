@@ -48,7 +48,7 @@ all:
     spec = ContextSpec(
         kind="section",
         name="all",
-        section_refs=[SectionRef(cfg_root=cfg_root, name="all", multiplicity=1)],
+        section_refs=[SectionRef(cfg_root=cfg_root, name="all", ph="all", multiplicity=1)],
     )
 
     mf = build_manifest(root=tmp_path, spec=spec, mode="all", vcs=NullVcs())
@@ -80,7 +80,7 @@ all:
     spec = ContextSpec(
         kind="section",
         name="all",
-        section_refs=[SectionRef(cfg_root=cfg_root, name="all", multiplicity=1)],
+        section_refs=[SectionRef(cfg_root=cfg_root, name="all", ph="all", multiplicity=1)],
     )
 
     # фейковый VCS: изменён только один файл
