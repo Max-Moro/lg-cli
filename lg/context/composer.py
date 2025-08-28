@@ -73,7 +73,7 @@ def compose_context(
             else:
                 # Секция: ключуем по канону
                 canon_key = ph2canon[ph]
-                sec_text = rendered_by_section[canon_key]
+                sec_text = rendered_by_section.get(canon_key, "")
                 out_final_parts.append(sec_text)
                 out_sections_only_parts.append(sec_text)
 
@@ -87,7 +87,7 @@ def compose_context(
 
     if spec.kind == "section":
         canon_key = spec.section_refs[0].canon.as_key()
-        sec_text = rendered_by_section[canon_key]
+        sec_text = rendered_by_section.get(canon_key, "")
         return ComposedDocument(text=sec_text, sections_only_text=sec_text, templates_hashes={})
 
     # Контекст: читаем корневой .ctx.md (всегда из self cfg-root)
@@ -120,7 +120,7 @@ def compose_context(
 
         else:
             canon_key = ph2canon[ph]
-            sec_text = rendered_by_section[canon_key]
+            sec_text = rendered_by_section.get(canon_key, "")
             out_final_parts.append(sec_text)
             out_sections_only_parts.append(sec_text)
 
