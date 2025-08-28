@@ -3,9 +3,12 @@ from __future__ import annotations
 import hashlib
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Dict, Tuple
+from typing import Dict, List, Tuple, Iterable
 
-from .common import TemplateTokens, parse_tpl_locator, load_template_from, load_context_from
+from .common import (
+    TemplateTokens, parse_tpl_locator, load_template_from, context_path,
+    resolve_cfg_root,
+)
 from ..types import ContextSpec
 
 

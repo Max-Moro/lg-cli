@@ -3,126 +3,111 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Dict, List, Tuple
 
-from .common import TemplateTokens, parse_tpl_locator, load_template_from, context_path
-from ..config import Config
+from .common import TemplateTokens, parse_tpl_locator, load_template_from, context_path, resolve_cfg_root
 from ..config.paths import cfg_root
+from ..types import ContextSpec, SectionRef
+
 
 
 # --------------------------- Internal walkers --------------------------- #
 
-def _collect_sections_counts_from_template(
+def _parse_section_placeholder(ph: str, *, current_cfg_root: Path, repo_root: Path) -> Tuple[Path, str]:
+    """
+    Разбор секционного плейсхолдера:
+      - "name"                  -> (@self, "name")
+      - "@child:name"           -> (@child, "name")
+      - "@[child/with:colon]:n" -> (@child/with:colon, "n")
+    Возвращает (cfg_root, section_name).
+    """
+    if ph.startswith("@["):
+        # @[origin]:name
+        close = ph.find("]:")
+        if close < 0:
+            raise RuntimeError(f"Invalid section locator (missing ']:' ): {ph}")
+        origin = ph[2:close]
+        name = ph[close + 2 :]
+        cfg = resolve_cfg_root(origin, current_cfg_root=current_cfg_root, repo_root=repo_root)
+        return cfg, name
+    if ph.startswith("@"):
+        # @origin:name
+        colon = ph.find(":")
+        if colon < 0:
+            raise RuntimeError(f"Invalid section locator (missing ':'): {ph}")
+        origin = ph[1:colon]
+        name = ph[colon + 1 :]
+        cfg = resolve_cfg_root(origin, current_cfg_root=current_cfg_root, repo_root=repo_root)
+        return cfg, name
+    # без адресности → self
+    return current_cfg_root, ph
+
+def _collect_section_refs_from_template(
     *,
     repo_root: Path,
     cfg_root_current: Path,
     template_name: str,
     stack: List[Tuple[Path, str]] | None = None,
-) -> Dict[str, int]:
-    """
-    Рекурсивно обходит ШАБЛОН (.tpl.md) и его вложения `${tpl:...}` / `${tpl@...:...}`,
-    собирая кратности секций. Стек отслеживает цикл по паре (cfg_root, template_name).
-    """
+) -> List[SectionRef]:
+    """Собирает список адресных секций из шаблона (учитывает вложенные tpl и tpl@)."""
     stack = stack or []
     marker = (cfg_root_current, template_name)
     if marker in stack:
         cycle = " → ".join([f"{p.as_posix()}::{n}" for p, n in stack] + [f"{cfg_root_current.as_posix()}::{template_name}"])
         raise RuntimeError(f"Template cycle detected: {cycle}")
-
     _, text = load_template_from(cfg_root_current, template_name)
     stack.append(marker)
-
-    counts: Dict[str, int] = {}
+    out: List[SectionRef] = []
     for m in TemplateTokens.iter_matches(text):
         ph = m.group("braced") or m.group("name") or ""
         if not ph:
             continue
-
         if ph.startswith("tpl:"):
             child = ph[4:]
-            child_counts = _collect_sections_counts_from_template(
-                repo_root=repo_root,
-                cfg_root_current=cfg_root_current,
-                template_name=child,
-                stack=stack,
-            )
-            for k, v in child_counts.items():
-                counts[k] = counts.get(k, 0) + int(v)
-            continue
-
-        if ph.startswith("tpl@"):
+            out.extend(_collect_section_refs_from_template(
+                repo_root=repo_root, cfg_root_current=cfg_root_current, template_name=child, stack=stack
+            ))
+        elif ph.startswith("tpl@"):
             child_cfg_root, child_name = parse_tpl_locator(ph, current_cfg_root=cfg_root_current, repo_root=repo_root)
-            child_counts = _collect_sections_counts_from_template(
-                repo_root=repo_root,
-                cfg_root_current=child_cfg_root,
-                template_name=child_name,
-                stack=stack,
-            )
-            for k, v in child_counts.items():
-                counts[k] = counts.get(k, 0) + int(v)
-            continue
-
-        # Иначе — это секционный плейсхолдер (пока без адресности @child)
-        counts[ph] = counts.get(ph, 0) + 1
-
+            out.extend(_collect_section_refs_from_template(
+                repo_root=repo_root, cfg_root_current=child_cfg_root, template_name=child_name, stack=stack
+            ))
+        else:
+            cfg, name = _parse_section_placeholder(ph, current_cfg_root=cfg_root_current, repo_root=repo_root)
+            out.append(SectionRef(cfg_root=cfg, name=name, multiplicity=1))
     stack.pop()
-    return counts
+    return out
 
-
-def _collect_sections_counts_for_context(
-    *,
-    root: Path,
-    context_name: str,
-) -> Dict[str, int]:
-    """
-    Обходит КОНТЕКСТ (.ctx.md): парсит плейсхолдеры и раскрывает вклад секций,
-    делегируя разбор вложенных шаблонов в _collect_sections_counts_from_template(...).
-    """
+def _collect_section_refs_for_context(*, root: Path, context_name: str) -> List[SectionRef]:
+    """Собирает адресные секции из самого .ctx и его вложенных шаблонов."""
     cp = context_path(root, context_name)
     if not cp.is_file():
         raise RuntimeError(f"Context not found: {cp}")
-
     text = cp.read_text(encoding="utf-8", errors="ignore")
     base_cfg = cfg_root(root)
-
-    counts: Dict[str, int] = {}
+    out: List[SectionRef] = []
     for m in TemplateTokens.iter_matches(text):
         ph = m.group("braced") or m.group("name") or ""
         if not ph:
             continue
-
         if ph.startswith("tpl:"):
             child = ph[4:]
-            tpl_counts = _collect_sections_counts_from_template(
-                repo_root=root,
-                cfg_root_current=base_cfg,
-                template_name=child,
-                stack=[],
-            )
-            for k, v in tpl_counts.items():
-                counts[k] = counts.get(k, 0) + int(v)
-            continue
-
-        if ph.startswith("tpl@"):
+            out.extend(_collect_section_refs_from_template(
+                repo_root=root, cfg_root_current=base_cfg, template_name=child, stack=[]
+            ))
+        elif ph.startswith("tpl@"):
             child_cfg_root, child_name = parse_tpl_locator(ph, current_cfg_root=base_cfg, repo_root=root)
-            tpl_counts = _collect_sections_counts_from_template(
-                repo_root=root,
-                cfg_root_current=child_cfg_root,
-                template_name=child_name,
-                stack=[],
-            )
-            for k, v in tpl_counts.items():
-                counts[k] = counts.get(k, 0) + int(v)
-            continue
-
-        # Иначе — секция верхнего уровня
-        counts[ph] = counts.get(ph, 0) + 1
-
-    return counts
-
+            out.extend(_collect_section_refs_from_template(
+                repo_root=root, cfg_root_current=child_cfg_root, template_name=child_name, stack=[]
+            ))
+        else:
+            cfg, name = _parse_section_placeholder(ph, current_cfg_root=base_cfg, repo_root=root)
+            out.append(SectionRef(cfg_root=cfg, name=name, multiplicity=1))
+    # агрегация кратностей по (cfg_root, name)
+    acc: Dict[Tuple[Path, str], int] = {}
+    for r in out:
+        acc[(r.cfg_root, r.name)] = acc.get((r.cfg_root, r.name), 0) + 1
+    return [SectionRef(cfg_root=k[0], name=k[1], multiplicity=v) for k, v in acc.items()]
 
 # --------------------------- Public API --------------------------- #
-
-from ..types import ContextSpec, SectionUsage  # placed here to avoid circulars
-
 
 def resolve_context(name_or_sec: str, run_ctx) -> ContextSpec:
     """
@@ -134,7 +119,6 @@ def resolve_context(name_or_sec: str, run_ctx) -> ContextSpec:
      адресные tpl уже поддерживаются и учитываются в подсчёте кратностей.)
     """
     root = run_ctx.root
-    cfg: Config = run_ctx.config  # noqa: F841  (может использоваться в будущих версиях)
     kind = "auto"
     name = name_or_sec.strip()
 
@@ -146,11 +130,11 @@ def resolve_context(name_or_sec: str, run_ctx) -> ContextSpec:
     if kind in ("auto", "context"):
         cp = context_path(root, name)
         if cp.is_file():
-            sections = _collect_sections_counts_for_context(root=root, context_name=name)
+            refs = _collect_section_refs_for_context(root=root, context_name=name)
             return ContextSpec(
                 kind="context",
                 name=name,
-                sections=SectionUsage(by_name=sections or {}),
+                section_refs=refs,
             )
         if kind == "context":
             raise RuntimeError(f"Context not found: {cp}")
@@ -161,5 +145,5 @@ def resolve_context(name_or_sec: str, run_ctx) -> ContextSpec:
     return ContextSpec(
         kind="section",
         name=name,
-        sections=SectionUsage(by_name={name: 1}),
+        section_refs=[SectionRef(cfg_root=cfg_root(root), name=name, multiplicity=1)],
     )

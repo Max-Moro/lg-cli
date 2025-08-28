@@ -15,18 +15,24 @@ class RunOptions:
     model: ModelName = "o3"
     code_fence: bool = True  # override config if needed
 
-@dataclass(frozen=True)
-class SectionUsage:
-    by_name: Dict[str, int]  # {"core-model-src": 1, "docs": 2}
-
 # -------- Context --------
+@dataclass(frozen=True)
+class SectionRef:
+    """
+    Адресная (полная) ссылка на секцию: из какого lg-cfg и под каким именем.
+    multiplicity — сколько раз она встречается в контексте/шаблонах.
+    """
+    cfg_root: Path
+    name: str
+    multiplicity: int = 1
+
 @dataclass(frozen=True)
 class ContextSpec:
     # унифицированный источник правды для пайплайна
     # либо ctx:<name>, либо sec:<name> (виртуальный контекст)
     kind: Literal["context", "section"]
     name: str                     # "docs/arch" или "all"
-    sections: SectionUsage        # итоговый usage с кратностями
+    section_refs: List[SectionRef] = field(default_factory=list) # список адресных секций
 
 # -------- Manifest / Files --------
 @dataclass(frozen=True)

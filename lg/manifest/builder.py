@@ -5,7 +5,7 @@ from pathlib import Path
 from typing import List, Set, cast, Dict, Tuple
 
 from ..adapters import get_adapter_for_path
-from ..config import SectionCfg, EmptyPolicy
+from ..config import SectionCfg, EmptyPolicy, load_config
 from ..config.paths import is_cfg_relpath
 from ..io.filters import FilterEngine
 from ..io.fs import build_gitignore_spec, iter_files
@@ -18,8 +18,7 @@ def build_manifest(
     *,
     root: Path,
     spec: ContextSpec,
-    sections_cfg: dict[str, SectionCfg],
-    mode: str,                  # "all" | "changes"
+    mode: str, # "all" | "changes"
     vcs: VcsProvider | None = None,
 ) -> Manifest:
     """
@@ -33,23 +32,31 @@ def build_manifest(
     spec_git = build_gitignore_spec(root)
     files_out: List[FileRef] = []
 
-    # Перебираем секции, упомянутые в контексте
-    for sec_name, mult in spec.sections.by_name.items():
-        cfg = sections_cfg.get(sec_name)
+    # КЭШ конфигов по cfg_root.parent
+    _cfg_cache: Dict[Path, Dict[str, SectionCfg]] = {}
+    section_refs = spec.section_refs
+
+    # Перебираем адресные секции
+    for sref in section_refs:
+        scope_dir = sref.cfg_root.parent.resolve()      # каталог пакета/приложения
+        # Относительный префикс скопа от корня репо (POSIX)
+        try:
+            scope_rel = scope_dir.relative_to(root.resolve()).as_posix()
+        except Exception:
+            # Если пакет не внутри репо — пропускаем молча (или можно поднять ошибку)
+            continue
+
+        # Загрузим (или возьмём из кэша) конфиг секций для ЭТОГО cfg_root
+        if scope_dir not in _cfg_cache:
+            cfg_model = load_config(scope_dir)  # load_config ожидает "repo root" рядом с lg-cfg
+            _cfg_cache[scope_dir] = cfg_model.sections
+        local_sections = _cfg_cache.get(scope_dir, {})
+        cfg = local_sections.get(sref.name)
         if not cfg:
-            # секция отсутствует в конфиге — пропускаем молча; резолвер уже проверял
             continue
 
         engine = FilterEngine(cfg.filters)
         exts = {e.lower() for e in cfg.extensions}
-
-        # Простой pruner по дереву фильтров
-        def _pruner(rel_dir: str) -> bool:
-            # не спускаемся в служебную папку конфигурации,
-            # если только её явно не разрешили фильтрами.
-            if is_cfg_relpath(rel_dir):
-                return False
-            return engine.may_descend(rel_dir)
 
         # Предподготовка: список таргетов и их "вес" специфичности
         # Простейшая метрика специфичности: сумма длин строчек без '*' и '?'.
@@ -59,13 +66,30 @@ def build_manifest(
             pat_clean_len = sum(len(p.replace("*", "").replace("?", "")) for p in tr.match)
             target_specs.append((pat_clean_len, idx, tr.match, tr.adapter_cfgs))
 
+        # Pruner: не выходим за пределы скопа и учитываем фильтры на поддиректории СКОПА
+        def _pruner(rel_dir: str) -> bool:
+            # Отсекаем всё, что вне скопа
+            if not (rel_dir == scope_rel or rel_dir.startswith(scope_rel + "/") or rel_dir == ""):
+                return False
+            # Относительный путь ДЛЯ фильтров секции (относительно scope_dir)
+            sub_rel = rel_dir[len(scope_rel):].lstrip("/") if rel_dir.startswith(scope_rel) else rel_dir
+            if is_cfg_relpath(sub_rel):
+                return False
+            return engine.may_descend(sub_rel)
+
         for fp in iter_files(root, extensions=exts, spec_git=spec_git, dir_pruner=_pruner):
             rel_posix = fp.resolve().relative_to(root.resolve()).as_posix()
 
             if mode == "changes" and rel_posix not in changed:
                 continue
 
-            if not engine.includes(rel_posix):
+            # ограничиваемся файлами внутри scope_rel
+            if not (rel_posix == scope_rel or rel_posix.startswith(scope_rel + "/")):
+                continue
+
+            # Относительный путь ДЛЯ фильтров секции (относительно scope_dir)
+            rel_for_engine = rel_posix[len(scope_rel):].lstrip("/")
+            if not engine.includes(rel_for_engine):
                 continue
 
             # ----- Политика пустых файлов: секционная + адаптерная -----
@@ -101,7 +125,8 @@ def build_manifest(
                 for pat in patterns:
                     # Конфиг использует абсолютный стиль "/path/**". Нормализуем к относительному.
                     pat_rel = pat.lstrip("/")
-                    if fnmatch.fnmatch(rel_posix, pat_rel):
+                    # Сопоставляем относительно СКОПА
+                    if fnmatch.fnmatch(rel_for_engine, pat_rel):
                         matched = True
                         break
                 if not matched:
@@ -117,8 +142,8 @@ def build_manifest(
                 FileRef(
                     abs_path=fp,
                     rel_path=rel_posix,
-                    section=sec_name,
-                    multiplicity=int(mult),
+                    section=sref.name,
+                    multiplicity=int(sref.multiplicity),
                     language_hint=lang,
                     adapter_overrides=overrides,
                 )

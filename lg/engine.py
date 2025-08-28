@@ -71,11 +71,9 @@ def _pipeline_common(target: str, run_ctx: RunContext) -> Tuple[ContextSpec, Man
     spec = resolve_context(target, run_ctx)
 
     # 2) build manifest (учитывает .gitignore, фильтры и режим changes)
-    sections_cfg = run_ctx.config.sections  # type: ignore[attr-defined]
     manifest = build_manifest(
         root=run_ctx.root,
         spec=spec,
-        sections_cfg=sections_cfg,
         mode=run_ctx.options.mode,
         vcs=run_ctx.vcs,
     )
