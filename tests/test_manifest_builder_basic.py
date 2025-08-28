@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import pytest
+
 from lg.manifest.builder import build_manifest
 from lg.types import ContextSpec, SectionRef, CanonSectionId
 from lg.vcs import NullVcs
@@ -97,3 +99,21 @@ all:
     mf = build_manifest(root=tmp_path, spec=spec, mode="changes", vcs=FakeVcs())
     paths = [fr.rel_path for fr in mf.files]
     assert paths == ["src/changed.py"]
+
+def test_missing_section_raises(tmp_path: Path):
+    # создаём пустой sections.yaml без секции "ghost"
+    _write_sections_yaml(
+        tmp_path,
+        """
+schema_version: 6
+all:
+  extensions: [".py"]
+  code_fence: true
+  filters:
+    mode: block
+""".lstrip(),
+    )
+    spec = mk_local_sec_spec(tmp_path, "ghost")
+
+    with pytest.raises(RuntimeError):
+        build_manifest(root=tmp_path, spec=spec, mode="all", vcs=NullVcs())

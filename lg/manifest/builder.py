@@ -38,6 +38,9 @@ def build_manifest(
     _cfg_cache: Dict[Path, Dict[str, SectionCfg]] = {}
     section_refs = spec.section_refs
 
+    # Копим отсутствующие секции для прозрачной ошибки после прохода
+    missing: List[Tuple[str, Path, str]] = []  # (canon_key, scope_dir, placeholder)
+
     # Перебираем адресные секции
     for sref in section_refs:
         scope_dir = sref.cfg_root.parent.resolve()      # каталог пакета/приложения
@@ -71,6 +74,9 @@ def build_manifest(
         local_sections = _cfg_cache.get(scope_dir, {})
         cfg = local_sections.get(sref.name)
         if not cfg:
+            # Запомним отсутствие и продолжим, чтобы собрать все промахи за раз
+            canon_key = sref.canon.as_key()
+            missing.append((canon_key, scope_dir, sref.ph))
             continue
 
         # Канонический ключ секции
@@ -182,4 +188,21 @@ def build_manifest(
 
     # стабильная сортировка
     files_out.sort(key=lambda fr: (fr.section, fr.rel_path))
+
+    # Если какие-то секции не нашлись — бросаем детерминированную ошибку
+    if missing:
+        # Сгруппируем по scope_dir для более полезной диагностики
+        by_scope: Dict[Path, List[Tuple[str, str]]] = {}
+        for canon_key, scope_dir, ph in missing:
+            by_scope.setdefault(scope_dir, []).append((canon_key, ph))
+        parts: List[str] = ["Section(s) not found:"]
+        for scope_dir, items in by_scope.items():
+            # Доступные секции в этом scope_dir уже в кэше
+            available = sorted((_cfg_cache.get(scope_dir) or {}).keys())
+            parts.append(f"  • scope: {scope_dir.as_posix()}")
+            for canon_key, ph in items:
+                parts.append(f"    - {canon_key} (from placeholder '{ph}')")
+            parts.append(f"    available: {', '.join(available) if available else '(none)'}")
+        raise RuntimeError("\n".join(parts))
+
     return Manifest(files=files_out, sections_cfg=sec_cfg_hints, sections_adapters_cfg=sec_adapters_cfg)

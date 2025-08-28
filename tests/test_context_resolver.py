@@ -57,10 +57,6 @@ def test_resolve_nested_and_counts(tmpproj: Path):
     base = cfg_root(tmpproj).resolve()
     assert all(r.cfg_root.resolve() == base for r in spec.section_refs)
 
-def test_missing_section(tmpproj: Path):
-    with pytest.raises(RuntimeError):
-        resolve_context("sec:missing", _ctx(tmpproj))
-
 def test_missing_context(tmpproj: Path):
     with pytest.raises(RuntimeError):
         resolve_context("ctx:missing", _ctx(tmpproj))
