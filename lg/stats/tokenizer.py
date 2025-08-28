@@ -6,9 +6,7 @@ import tiktoken
 
 from .model import ResolvedModel
 from ..cache.fs_cache import Cache
-from ..manifest.builder import Manifest
-from ..types import ContextSpec
-from ..types import FileRow, Totals, ContextBlock, ProcessedBlob
+from ..types import ContextSpec, FileRow, Totals, ContextBlock, ProcessedBlob, Manifest
 
 
 # —————————— helpers —————————— #
@@ -65,7 +63,8 @@ def compute_stats(
     # ---- адресные секции: детерминированная карта для кэша и отчёта ----
     sections_used_map: Dict[str, int] = {}
     for ref in spec.section_refs:
-        sections_used_map[ref.ph] = sections_used_map.get(ref.ph, 0) + ref.multiplicity
+        key = ref.canon.as_key()
+        sections_used_map[key] = sections_used_map.get(key, 0) + ref.multiplicity
 
     # Быстрый доступ к путям кэша по ключам
     # (в Cache добавили публичные методы path_for_*)

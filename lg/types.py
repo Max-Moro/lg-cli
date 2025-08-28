@@ -17,15 +17,29 @@ class RunOptions:
 
 # -------- Context --------
 @dataclass(frozen=True)
+class CanonSectionId:
+    """
+    Канонический ID секции: (scope_rel :: name)
+    scope_rel — путь к каталогу пакета (cfg_root.parent) относительно репо-рута в POSIX.
+    Для корня репо используем пустую строку "" (в as_key печатаем как ".").
+    """
+    scope_rel: str
+    name: str
+
+    def as_key(self) -> str:
+        return f"{self.scope_rel or '.'}::{self.name}"
+
+@dataclass(frozen=True)
 class SectionRef:
     """
-    Адресная (полная) ссылка на секцию: из какого lg-cfg и под каким именем.
+    Секция.
     multiplicity — сколько раз она встречается в контексте/шаблонах.
     """
     cfg_root: Path
     name: str
     ph: str
     multiplicity: int = 1
+    canon: CanonSectionId | None = None
 
 @dataclass(frozen=True)
 class ContextSpec:
@@ -34,6 +48,8 @@ class ContextSpec:
     kind: Literal["context", "section"]
     name: str                     # "docs/arch" или "all"
     section_refs: List[SectionRef] = field(default_factory=list) # список адресных секций
+    # Карта "сырой плейсхолдер → канонический ключ секции", нужна компоновщику.
+    ph2canon: Dict[str, str] = field(default_factory=dict)
 
 # -------- Manifest / Files --------
 @dataclass(frozen=True)

@@ -31,6 +31,7 @@ def compose_context(
     base_cfg_root: Path,
     spec: ContextSpec,
     rendered_by_section: Dict[str, str],
+    ph2canon: Dict[str, str] | None = None,
 ) -> ComposedDocument:
     """
     Собирает итоговый документ по ContextSpec:
@@ -70,8 +71,9 @@ def compose_context(
                 out_sections_only_parts.append(child_sections_only)
 
             else:
-                # Секция
-                sec_text = rendered_by_section.get(ph, "")
+                # Секция: ключуем по канону
+                canon = (ph2canon or {}).get(ph, "")
+                sec_text = rendered_by_section.get(canon, "")
                 out_final_parts.append(sec_text)
                 out_sections_only_parts.append(sec_text)
 
@@ -116,7 +118,8 @@ def compose_context(
             out_sections_only_parts.append(child_sections_only)
 
         else:
-            sec_text = rendered_by_section.get(ph, "")
+            canon = (ph2canon or {}).get(ph, "")
+            sec_text = rendered_by_section.get(canon, "")
             out_final_parts.append(sec_text)
             out_sections_only_parts.append(sec_text)
 

@@ -101,6 +101,7 @@ def run_render(target: str, options: RunOptions) -> RenderedDocument:
         base_cfg_root=cfg_root_of(run_ctx.root),
         spec=spec,
         rendered_by_section=rendered_by_sec,
+        ph2canon=spec.ph2canon,
     )
     # Возвращаем итоговый текст; blocks здесь опускаем (они не отражают клей)
     return RenderedDocument(text=composed.text, blocks=[])
@@ -121,6 +122,7 @@ def run_report(target: str, options: RunOptions) -> RunResultM:
         base_cfg_root=cfg_root_of(run_ctx.root),
         spec=spec,
         rendered_by_section=rendered_by_sec,
+        ph2canon=spec.ph2canon,
     )
 
     model_info = get_model_info(run_ctx.root, options.model)

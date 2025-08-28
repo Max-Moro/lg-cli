@@ -5,7 +5,7 @@ from typing import Dict, List, Tuple
 
 from .common import TemplateTokens, parse_tpl_locator, load_template_from, context_path, resolve_cfg_root
 from ..config.paths import cfg_root
-from ..types import ContextSpec, SectionRef
+from ..types import ContextSpec, SectionRef, CanonSectionId
 
 
 # --------------------------- Internal walkers --------------------------- #
@@ -71,7 +71,14 @@ def _collect_section_refs_from_template(
             ))
         else:
             cfg, name = _parse_section_placeholder(ph, current_cfg_root=cfg_root_current, repo_root=repo_root)
-            out.append(SectionRef(cfg_root=cfg, name=name, ph=ph, multiplicity=1))
+            # канон
+            scope_dir = cfg.parent.resolve()
+            try:
+                scope_rel = scope_dir.relative_to(repo_root.resolve()).as_posix()
+            except Exception:
+                scope_rel = ""
+            canon = CanonSectionId(scope_rel=scope_rel if scope_rel != "." else "", name=name)
+            out.append(SectionRef(cfg_root=cfg, name=name, ph=ph, multiplicity=1, canon=canon))
     stack.pop()
     return out
 
@@ -99,12 +106,39 @@ def _collect_section_refs_for_context(*, root: Path, context_name: str) -> List[
             ))
         else:
             cfg, name = _parse_section_placeholder(ph, current_cfg_root=base_cfg, repo_root=root)
-            out.append(SectionRef(cfg_root=cfg, name=name, ph=ph, multiplicity=1))
+            # канон
+            scope_dir = cfg.parent.resolve()
+            try:
+                scope_rel = scope_dir.relative_to(root.resolve()).as_posix()
+            except Exception:
+                scope_rel = ""
+            canon = CanonSectionId(scope_rel=scope_rel if scope_rel != "." else "", name=name)
+            out.append(SectionRef(cfg_root=cfg, name=name, ph=ph, multiplicity=1, canon=canon))
     # агрегация кратностей
-    acc: Dict[Tuple[Path, str, str], int] = {}
+    by_canon: Dict[str, SectionRef] = {}
     for r in out:
-        acc[(r.cfg_root, r.name, r.ph)] = acc.get((r.cfg_root, r.name, r.ph), 0) + 1
-    return [SectionRef(cfg_root=k[0], name=k[1], ph=k[2], multiplicity=v) for k, v in acc.items()]
+        # гарантируем наличие канона (на всякий случай)
+        if r.canon is None:
+            scope_dir = r.cfg_root.parent.resolve()
+            try:
+                scope_rel = scope_dir.relative_to(root.resolve()).as_posix()
+            except Exception:
+                scope_rel = ""
+            canon = CanonSectionId(scope_rel=scope_rel if scope_rel != "." else "", name=r.name)
+            r = SectionRef(cfg_root=r.cfg_root, name=r.name, ph=r.ph, multiplicity=r.multiplicity, canon=canon)
+        key = r.canon.as_key()
+        if key in by_canon:
+            prev = by_canon[key]
+            by_canon[key] = SectionRef(
+                cfg_root=prev.cfg_root,
+                name=prev.name,
+                ph=prev.ph,  # первый встретившийся плейсхолдер оставим для удобной диагностики
+                multiplicity=prev.multiplicity + r.multiplicity,
+                canon=prev.canon,
+            )
+        else:
+            by_canon[key] = r
+    return list(by_canon.values())
 
 # --------------------------- Public API --------------------------- #
 
@@ -130,10 +164,17 @@ def resolve_context(name_or_sec: str, run_ctx) -> ContextSpec:
         cp = context_path(root, name)
         if cp.is_file():
             refs = _collect_section_refs_for_context(root=root, context_name=name)
+            refs = _collect_section_refs_for_context(root=root, context_name=name)
+            # Построим карту плейсхолдер → канон (последний wins — не важно, канон один и тот же)
+            ph2canon: Dict[str, str] = {}
+            for r in refs:
+                if r.canon:
+                    ph2canon[r.ph] = r.canon.as_key()
             return ContextSpec(
                 kind="context",
                 name=name,
                 section_refs=refs,
+                ph2canon=ph2canon,
             )
         if kind == "context":
             raise RuntimeError(f"Context not found: {cp}")
@@ -141,8 +182,17 @@ def resolve_context(name_or_sec: str, run_ctx) -> ContextSpec:
     # Секция как виртуальный контекст текущего lg-cfg
     if name not in run_ctx.config.sections:
         raise RuntimeError(f"Section '{name}' not found in config")
+    # секция текущего lg-cfg: канон строим относительно корня репо
+    base_cfg = cfg_root(root)
+    scope_dir = base_cfg.parent.resolve()
+    try:
+        scope_rel = scope_dir.relative_to(root.resolve()).as_posix()
+    except Exception:
+        scope_rel = ""
+    canon = CanonSectionId(scope_rel=scope_rel if scope_rel != "." else "", name=name)
     return ContextSpec(
         kind="section",
         name=name,
-        section_refs=[SectionRef(cfg_root=cfg_root(root), name=name, ph=name, multiplicity=1)],
+        section_refs=[SectionRef(cfg_root=cfg_root(root), name=name, ph=name, multiplicity=1, canon=canon)],
+        ph2canon={name: canon.as_key()},
     )

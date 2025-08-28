@@ -158,7 +158,7 @@ def build_manifest(
                 FileRef(
                     abs_path=fp,
                     rel_path=rel_posix,
-                    section=sref.name,
+                    section=sref.canon.as_key(),
                     multiplicity=int(sref.multiplicity),
                     language_hint=lang,
                     adapter_overrides=overrides,
