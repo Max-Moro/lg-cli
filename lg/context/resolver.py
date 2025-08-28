@@ -149,8 +149,8 @@ def resolve_context(name_or_sec: str, run_ctx: RunContext) -> ContextSpec:
       • ctx:<name> → ищем контекст в lg-cfg/<name>.ctx.md
       • sec:<id>   → виртуальный контекст для секции <id> (канонический ID текущего lg-cfg)
       • <name>     → сначала ctx:<name>, иначе sec:<name>
-    (В этой итерации адресные секции @child пока не поддерживаются,
-     адресные tpl уже поддерживаются и учитываются в подсчёте кратностей.)
+    Адресные шаблоны (${tpl@child:...}) и адресные секции (${@child:...})
+    поддерживаются и корректно учитываются в подсчёте кратностей.
     """
     root = run_ctx.root
     kind = "auto"
@@ -164,7 +164,6 @@ def resolve_context(name_or_sec: str, run_ctx: RunContext) -> ContextSpec:
     if kind in ("auto", "context"):
         cp = context_path(root, name)
         if cp.is_file():
-            refs = _collect_section_refs_for_context(root=root, context_name=name)
             refs = _collect_section_refs_for_context(root=root, context_name=name)
             # Построим карту плейсхолдер → канон (последний wins — не важно, канон один и тот же)
             ph2canon: Dict[str, str] = {}

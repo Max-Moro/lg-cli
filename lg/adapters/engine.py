@@ -95,13 +95,9 @@ def process_groups(plan: ContextPlan, run_ctx: RunContext) -> List[ProcessedBlob
 
                     # Всегда добавляем прозрачные метки группы — для тестов и диагностики
                     meta = dict(meta or {})
-                    meta["_group_size"] = int(group_size)
-                    meta["_group_mixed"] = bool(grp.mixed)
+                    meta["_group_size"] = group_size
+                    meta["_group_mixed"] = grp.mixed
                     meta["_group_lang"] = grp.lang
-                    try:
-                        meta["_group_lang"] = str(grp.lang or "")
-                    except Exception:
-                        meta["_group_lang"] = ""
                     meta["_section"] = e.section
 
                     cache.put_processed(p_proc, processed_text=processed_text, meta=meta)

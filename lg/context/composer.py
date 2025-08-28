@@ -72,7 +72,10 @@ def compose_context(
 
             else:
                 # Секция: ключуем по канону
-                canon_key = ph2canon[ph]
+                canon_key = ph2canon.get(ph)
+                if not canon_key:
+                    raise RuntimeError(f"Unknown section placeholder '{ph}' during composition "
+                                       f"(no canon mapping). Ensure resolver collected it from templates.")
                 sec_text = rendered_by_section.get(canon_key, "")
                 out_final_parts.append(sec_text)
                 out_sections_only_parts.append(sec_text)
@@ -119,7 +122,10 @@ def compose_context(
             out_sections_only_parts.append(child_sections_only)
 
         else:
-            canon_key = ph2canon[ph]
+            canon_key = ph2canon.get(ph)
+            if not canon_key:
+                raise RuntimeError(f"Unknown section placeholder '{ph}' during composition "
+                                   f"(no canon mapping). Ensure resolver collected it from templates.")
             sec_text = rendered_by_section.get(canon_key, "")
             out_final_parts.append(sec_text)
             out_sections_only_parts.append(sec_text)

@@ -162,5 +162,5 @@ def load_template_from(cfg_root: Path, name: str) -> Tuple[Path, str]:
     return load_from_cfg(cfg_root, name, suffix=TPL_SUFFIX)
 
 def load_context_from(cfg_root: Path, name: str) -> Tuple[Path, str]:
-    """Шаблон: <cfg_root>/<name>.tpl.md"""
+    """Контекст: <cfg_root>/<name>.ctx.md"""
     return load_from_cfg(cfg_root, name, suffix=CTX_SUFFIX)
