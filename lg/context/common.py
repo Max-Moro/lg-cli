@@ -1,11 +1,31 @@
 from __future__ import annotations
 
 import re
+from dataclasses import dataclass
 from pathlib import Path
-from typing import Iterable, Set, Tuple
+from typing import Iterable, List, Set, Tuple
 
-from ..config.paths import context_path
+from ..config.paths import cfg_root
 
+TPL_SUFFIX = ".tpl.md"
+CTX_SUFFIX = ".ctx.md"
+
+def list_contexts(root: Path) -> List[str]:
+    base = cfg_root(root)
+    if not base.is_dir():
+        return []
+    out: List[str] = []
+    for p in base.rglob(f"*{CTX_SUFFIX}"):
+        rel = p.relative_to(base).as_posix()
+        out.append(rel[: -len(CTX_SUFFIX)])
+    out.sort()
+    return out
+
+def context_path(root: Path, name: str) -> Path:
+    """Путь к контексту: lg-cfg/<name>.ctx.md (поддиректории поддерживаются)."""
+    return cfg_root(root) / f"{name}{CTX_SUFFIX}"
+
+# ---------------------------- Tokens/Placeholders ---------------------------- #
 
 class TemplateTokens:
     """
@@ -14,22 +34,22 @@ class TemplateTokens:
       - добавляем `@`, `[` и `]` для локаторов вида `tpl@child:res` и `tpl@[child]:res`
       - распознаём `${name}` и `$name`
     """
-    idpattern = r"[A-Za-z0-9_@:/\-\[\]\.]+"
-    pattern = re.compile(
+    _idpattern = r"[A-Za-z0-9_@:/\-\[\]\.]+"
+    _pattern = re.compile(
         r"""
         \$\{
-            (?P<braced>""" + idpattern + r""")
+            (?P<braced>""" + _idpattern + r""")
         \}
         |
         \$
-            (?P<name>""" + idpattern + r""")
+            (?P<name>""" + _idpattern + r""")
         """,
         re.VERBOSE,
     )
 
     @classmethod
     def iter_matches(cls, text: str) -> Iterable[re.Match]:
-        return cls.pattern.finditer(text)
+        return cls._pattern.finditer(text)
 
     @classmethod
     def placeholders(cls, text: str) -> Set[str]:
@@ -41,76 +61,106 @@ class TemplateTokens:
         return out
 
 
+# ---------------------------- Locators (generic) ----------------------------- #
+
+@dataclass(frozen=True)
+class Locator:
+    """Унифицированный локатор: kind + (origin, resource)."""
+    kind: str         # "tpl" | "sec" (в будущем можно расширять)
+    origin: str       # "self" или repo-relative путь (POSIX, без "lg-cfg" в конце)
+    resource: str     # имя внутри lg-cfg (например "docs/guide" или "core-src")
+
+
 def _ensure_inside_repo(path: Path, repo_root: Path) -> None:
-    """
-    Безопасность: не позволяем выходить за пределы репозитория (.., symlink-tricks).
-    """
+    """Безопасность: путь обязан быть внутри репозитория."""
     try:
         path.resolve().relative_to(repo_root.resolve())
     except Exception:
         raise RuntimeError(f"Resolved path escapes repository: {path} not under {repo_root}")
 
 
-def parse_tpl_locator(ph: str, *, current_cfg_root: Path, repo_root: Path) -> Tuple[Path, str]:
-    """
-    Разбор локатора шаблона:
-      • 'tpl:foo/bar'             -> (current_cfg_root, 'foo/bar')
-      • 'tpl@apps/web:docs/guide' -> (repo_root/apps/web/lg-cfg, 'docs/guide')
-      • 'tpl@[apps/web]:foo'      -> (repo_root/apps/web/lg-cfg, 'foo')
-    """
-    if not ph.startswith("tpl"):
-        raise RuntimeError(f"Not a template locator: {ph}")
+def _split_at(s: str, sep: str) -> Tuple[str, str]:
+    """Безопасный split по первому вхождению sep; если нет — ошибка."""
+    i = s.find(sep)
+    if i < 0:
+        raise RuntimeError(f"Invalid locator (missing '{sep}'): {s}")
+    return s[:i], s[i + len(sep):]
 
-    # Локальная форма (обратная совместимость)
-    if ph.startswith("tpl:"):
-        return current_cfg_root, ph[4:]
 
-    # Скобочная форма tpl@[ORIGIN]:NAME
-    if ph.startswith("tpl@["):
-        close = ph.find("]:")
-        if close < 0:
-            raise RuntimeError(f"Invalid tpl locator (missing ']:' ): {ph}")
-        origin = ph[5:close]
-        name = ph[close + 2 :]
+def parse_locator(ph: str, expected_kind: str) -> Locator:
+    """
+    Универсальный парсер локаторов для kind == expected_kind.
+    Поддерживаем три формы:
+      • '{kind}:name'                 → origin=self
+      • '{kind}@origin:name'          → явный origin
+      • '{kind}@[origin]:name'        → скобочная origin с ':' внутри
+    Пример: 'tpl:docs/guide', 'tpl@apps/web:docs/guide', 'tpl@[apps/web]:x:y'
+    """
+    if not ph.startswith(expected_kind):
+        raise RuntimeError(f"Not a {expected_kind} locator: {ph}")
+
+    # Локальная форма (обратная совместимость): '{kind}:name'
+    if ph.startswith(f"{expected_kind}:"):
+        return Locator(kind=expected_kind, origin="self", resource=ph[len(expected_kind) + 1 :])
+
+    # Скобочная форма: '{kind}@[origin]:name'
+    if ph.startswith(f"{expected_kind}@["):
+        left, resource = _split_at(ph, "]:")
+        origin = left[len(expected_kind) + 2 :]  # после '{kind}@['
         if not origin:
-            raise RuntimeError(f"Empty origin in tpl locator: {ph}")
+            raise RuntimeError(f"Empty origin in {expected_kind} locator: {ph}")
+        return Locator(kind=expected_kind, origin=origin, resource=resource)
+
+    # Классическая адресная форма: '{kind}@origin:name'
+    if ph.startswith(f"{expected_kind}@"):
+        left, resource = _split_at(ph, ":")
+        origin = left[len(expected_kind) + 1 :]  # после '{kind}@'
+        if not origin:
+            raise RuntimeError(f"Empty origin in {expected_kind} locator: {ph}")
+        return Locator(kind=expected_kind, origin=origin, resource=resource)
+
+    raise RuntimeError(f"Unsupported {expected_kind} locator: {ph}")
+
+
+def resolve_cfg_root(origin: str, *, current_cfg_root: Path, repo_root: Path) -> Path:
+    """
+    Превращает origin → абсолютный путь к каталогу lg-cfg/.
+    origin == 'self' → текущий cfg_root, иначе '<repo_root>/<origin>/lg-cfg'.
+    """
+    if origin == "self":
+        cfg = current_cfg_root
+    else:
         cfg = (repo_root / origin / "lg-cfg").resolve()
         _ensure_inside_repo(cfg, repo_root)
-        if not cfg.is_dir():
-            raise RuntimeError(f"Child lg-cfg not found: {cfg}")
-        return cfg, name
-
-    # Классическая адресная форма tpl@ORIGIN:NAME
-    if ph.startswith("tpl@"):
-        colon = ph.find(":")
-        if colon < 0:
-            raise RuntimeError(f"Invalid tpl locator (missing ':'): {ph}")
-        origin = ph[4:colon]
-        name = ph[colon + 1 :]
-        if not origin:
-            raise RuntimeError(f"Empty origin in tpl locator: {ph}")
-        cfg = (repo_root / origin / "lg-cfg").resolve()
-        _ensure_inside_repo(cfg, repo_root)
-        if not cfg.is_dir():
-            raise RuntimeError(f"Child lg-cfg not found: {cfg}")
-        return cfg, name
-
-    raise RuntimeError(f"Unsupported tpl locator: {ph}")
+    if not cfg.is_dir():
+        raise RuntimeError(f"Child lg-cfg not found: {cfg}")
+    return cfg
 
 
-def load_template_from(cfg_root: Path, name: str) -> Tuple[Path, str]:
+def load_from_cfg(cfg_root: Path, resource: str, *, suffix: str) -> Tuple[Path, str]:
     """
-    Читает шаблон <cfg_root>/<name>.tpl.md.
+    Единая загрузка файла из lg-cfg/: <cfg_root>/<resource><suffix>.
+    Пример: suffix='.tpl.md' → шаблон; suffix='.ctx.md' → контекст.
     """
-    p = (cfg_root / f"{name}.tpl.md").resolve()
+    p = (cfg_root / f"{resource}{suffix}").resolve()
     if not p.is_file():
-        raise RuntimeError(f"Template not found: {p}")
+        raise RuntimeError(f"Resource not found: {p}")
     return p, p.read_text(encoding="utf-8", errors="ignore")
 
 
-def load_context_text(repo_root: Path, name: str) -> str:
+def parse_tpl_locator(ph: str, *, current_cfg_root: Path, repo_root: Path) -> Tuple[Path, str]:
     """
-    Контексты (.ctx.md) всегда читаем из верхнего (self) cfg-root: lg-cfg/<name>.ctx.md.
+    Парсер specifically для шаблонов, возвращает (cfg_root, name).
+    Использует универсальный parse_locator и resolve_cfg_root.
     """
-    p = context_path(repo_root, name)
-    return p.read_text(encoding="utf-8", errors="ignore")
+    loc = parse_locator(ph, expected_kind="tpl")
+    cfg = resolve_cfg_root(loc.origin, current_cfg_root=current_cfg_root, repo_root=repo_root)
+    return cfg, loc.resource
+
+def load_template_from(cfg_root: Path, name: str) -> Tuple[Path, str]:
+    """Шаблон: <cfg_root>/<name>.tpl.md"""
+    return load_from_cfg(cfg_root, name, suffix=TPL_SUFFIX)
+
+def load_context_from(cfg_root: Path, name: str) -> Tuple[Path, str]:
+    """Шаблон: <cfg_root>/<name>.tpl.md"""
+    return load_from_cfg(cfg_root, name, suffix=CTX_SUFFIX)

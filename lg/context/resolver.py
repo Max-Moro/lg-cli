@@ -3,25 +3,9 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Dict, List, Tuple
 
-from .common import TemplateTokens, parse_tpl_locator, load_template_from
+from .common import TemplateTokens, parse_tpl_locator, load_template_from, context_path
 from ..config import Config
-from ..config.paths import (
-    cfg_root,
-    context_path,
-    CTX_SUFFIX,
-)
-
-
-def list_contexts(root: Path) -> List[str]:
-    base = cfg_root(root)
-    if not base.is_dir():
-        return []
-    out: List[str] = []
-    for p in base.rglob(f"*{CTX_SUFFIX}"):
-        rel = p.relative_to(base).as_posix()
-        out.append(rel[: -len(CTX_SUFFIX)])
-    out.sort()
-    return out
+from ..config.paths import cfg_root
 
 
 # --------------------------- Internal walkers --------------------------- #

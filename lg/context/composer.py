@@ -5,7 +5,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Dict, Tuple
 
-from .common import TemplateTokens, parse_tpl_locator, load_template_from, load_context_text
+from .common import TemplateTokens, parse_tpl_locator, load_template_from, load_context_from
 from ..types import ContextSpec
 
 
@@ -88,7 +88,7 @@ def compose_context(
         return ComposedDocument(text=sec_text, sections_only_text=sec_text, templates_hashes={})
 
     # Контекст: читаем корневой .ctx.md (всегда из self cfg-root)
-    ctx_src = load_context_text(repo_root, spec.name)
+    _, ctx_src = load_context_from(base_cfg_root, spec.name)
 
     templates_hashes: Dict[str, str] = {}
     templates_hashes[f"{base_cfg_root.as_posix()}::ctx:{spec.name}"] = _sha1(ctx_src)

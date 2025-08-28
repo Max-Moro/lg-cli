@@ -2,4 +2,4 @@
 
 ${tpl:inner}
 
-${tpl@self:sub-fold/inner}
+${tpl:sub-fold/inner}

@@ -7,8 +7,6 @@ from typing import List
 CFG_DIR = "lg-cfg"
 SECTIONS_FILE = "sections.yaml"
 MODELS_FILE = "models.yaml"
-TPL_SUFFIX = ".tpl.md"
-CTX_SUFFIX = ".ctx.md"
 
 
 def cfg_root(root: Path) -> Path:
@@ -24,11 +22,6 @@ def sections_path(root: Path) -> Path:
 def models_path(root: Path) -> Path:
     """Путь к файлу конфигурации моделей lg-cfg/models.yaml."""
     return cfg_root(root) / MODELS_FILE
-
-
-def context_path(root: Path, name: str) -> Path:
-    """Путь к контексту: lg-cfg/<name>.ctx.md (поддиректории поддерживаются)."""
-    return cfg_root(root) / f"{name}{CTX_SUFFIX}"
 
 
 def iter_section_fragments(root: Path) -> List[Path]:
