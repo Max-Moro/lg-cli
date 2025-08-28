@@ -8,6 +8,7 @@ from lg.context.composer import compose_context
 from lg.types import RunOptions
 from lg.engine import RunContext
 from lg.vcs import NullVcs
+from lg.config.paths import cfg_root
 
 def _write_tpl(root: Path, rel: str, body: str):
     """Создаёт шаблон .tpl.md в lg-cfg/ (с поддиректорией при необходимости)."""
@@ -54,7 +55,7 @@ def test_context_nested_ok(tmp_path: Path, monkeypatch):
     rendered_by_section = {"sec": "LISTING[sec]\n"}
 
     # Компонуем финальный документ
-    composed = compose_context(tmp_path, spec, rendered_by_section)
+    composed = compose_context(tmp_path, cfg_root(tmp_path), spec, rendered_by_section)
     out = composed.text
 
     assert "ROOT" in out
