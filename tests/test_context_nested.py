@@ -55,10 +55,17 @@ def test_context_nested_ok(tmp_path: Path, monkeypatch):
     assert ref.cfg_root == cfg_root(tmp_path)
 
     # Подкладываем готовый рендер секции "sec" как будто его собрали ранее
-    rendered_by_section = {"sec": "LISTING[sec]\n"}
+    assert ref.canon is not None
+    rendered_by_section = {ref.canon.as_key(): "LISTING[sec]\n"}
 
     # Компонуем финальный документ
-    composed = compose_context(tmp_path, cfg_root(tmp_path), spec, rendered_by_section)
+    composed = compose_context(
+        tmp_path,
+        cfg_root(tmp_path),
+        spec,
+        rendered_by_section,
+        ph2canon=spec.ph2canon,
+    )
     out = composed.text
 
     assert "ROOT" in out

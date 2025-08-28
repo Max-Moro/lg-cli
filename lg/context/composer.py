@@ -31,7 +31,7 @@ def compose_context(
     base_cfg_root: Path,
     spec: ContextSpec,
     rendered_by_section: Dict[str, str],
-    ph2canon: Dict[str, str] | None = None,
+    ph2canon: Dict[str, str],
 ) -> ComposedDocument:
     """
     Собирает итоговый документ по ContextSpec:
@@ -72,8 +72,8 @@ def compose_context(
 
             else:
                 # Секция: ключуем по канону
-                canon = (ph2canon or {}).get(ph, "")
-                sec_text = rendered_by_section.get(canon, "")
+                canon_key = ph2canon[ph]
+                sec_text = rendered_by_section[canon_key]
                 out_final_parts.append(sec_text)
                 out_sections_only_parts.append(sec_text)
 
@@ -87,7 +87,7 @@ def compose_context(
 
     if spec.kind == "section":
         canon_key = spec.section_refs[0].canon.as_key()
-        sec_text = rendered_by_section.get(canon_key, "")
+        sec_text = rendered_by_section[canon_key]
         return ComposedDocument(text=sec_text, sections_only_text=sec_text, templates_hashes={})
 
     # Контекст: читаем корневой .ctx.md (всегда из self cfg-root)
@@ -119,8 +119,8 @@ def compose_context(
             out_sections_only_parts.append(child_sections_only)
 
         else:
-            canon_key = (ph2canon or {}).get(ph, "")
-            sec_text = rendered_by_section.get(canon_key, "")
+            canon_key = ph2canon[ph]
+            sec_text = rendered_by_section[canon_key]
             out_final_parts.append(sec_text)
             out_sections_only_parts.append(sec_text)
 
