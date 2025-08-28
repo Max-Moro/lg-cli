@@ -7,7 +7,6 @@ from typing import Dict, List, Set, Tuple
 from ..config import Config
 from ..config.paths import (
     cfg_root,
-    template_path,
     context_path,
     CTX_SUFFIX
 )
@@ -18,9 +17,10 @@ class _Template:
     """
     Минимальный парсер плейсхолдеров по семантике:
       - разрешаем буквы/цифры/подчёркивание/дефис/слеш и двоеточие в идентификаторах
+      - добавляем `@`, `[` и `]` для локаторов вида `tpl@child:res` и `tpl@[child]:res`
       - распознаём `${name}` и `$name`
     """
-    idpattern = r"[A-Za-z0-9_:/-]+"
+    idpattern = r"[A-Za-z0-9_@:/\-\[\]\.]+"
     pattern = re.compile(
         r"""
         \$\{
@@ -55,34 +55,83 @@ def list_contexts(root: Path) -> List[str]:
 
 # --------------------------- Resolver --------------------------- #
 
-def _load_template(root: Path, name: str) -> Tuple[Path, str]:
-    p = template_path(root, name)
+def _load_template_from(cfg_root: Path, name: str) -> Tuple[Path, str]:
+    """
+    Локальная загрузка шаблона из указанного cfg_root: <cfg_root>/<name>.tpl.md
+    """
+    p = (cfg_root / f"{name}.tpl.md").resolve()
     if not p.is_file():
         raise RuntimeError(f"Template not found: {p}")
     return p, p.read_text(encoding="utf-8", errors="ignore")
 
+def _parse_tpl_locator(ph: str, current_cfg_root: Path, repo_root: Path) -> Tuple[Path, str]:
+    """
+    Разбор локатора шаблона:
+      - 'tpl:foo/bar'              -> (current_cfg_root, 'foo/bar')
+      - 'tpl@apps/web:docs/guide'  -> (repo_root/apps/web/lg-cfg, 'docs/guide')
+      - 'tpl@[apps/web]:foo'       -> (repo_root/apps/web/lg-cfg, 'foo')
+    """
+    assert ph.startswith("tpl")
+    if ph.startswith("tpl:"):
+        return current_cfg_root, ph[4:]
+    if ph.startswith("tpl@["):
+        close = ph.find("]:")
+        if close < 0:
+            raise RuntimeError(f"Invalid tpl locator (missing ']:' ): {ph}")
+        origin = ph[5:close]
+        name = ph[close + 2 :]
+        if not origin:
+            raise RuntimeError(f"Empty origin in tpl locator: {ph}")
+        cfg = (repo_root / origin / "lg-cfg").resolve()
+        if not cfg.is_dir():
+            raise RuntimeError(f"Child lg-cfg not found: {cfg}")
+        return cfg, name
+    if ph.startswith("tpl@"):
+        colon = ph.find(":")
+        if colon < 0:
+            raise RuntimeError(f"Invalid tpl locator (missing ':'): {ph}")
+        origin = ph[4:colon]
+        name = ph[colon + 1 :]
+        if not origin:
+            raise RuntimeError(f"Empty origin in tpl locator: {ph}")
+        cfg = (repo_root / origin / "lg-cfg").resolve()
+        if not cfg.is_dir():
+            raise RuntimeError(f"Child lg-cfg not found: {cfg}")
+        return cfg, name
+    raise RuntimeError(f"Unsupported tpl locator: {ph}")
+
 def _collect_sections_counts_from_template(
     *,
-    root: Path,
+    repo_root: Path,
+    cfg_root_current: Path,
     template_name: str,
-    stack: List[str] | None = None,
+    stack: List[Tuple[Path, str]] | None = None,
 ) -> Dict[str, int]:
     """
     Рекурсивно обходит ШАБЛОН (.tpl.md) и его вложения `${tpl:...}`, собирая кратности секций.
-    Стек отслеживает цикл именно по именам шаблонов.
+    Стек отслеживает цикл по паре (cfg_root, template_name).
     """
     stack = stack or []
-    if template_name in stack:
-        cycle = " → ".join(stack + [template_name])
+    if (cfg_root_current, template_name) in stack:
+        cycle = " → ".join([f"{p.as_posix()}::{n}" for p, n in stack] + [f"{cfg_root_current.as_posix()}::{template_name}"])
         raise RuntimeError(f"Template cycle detected: {cycle}")
 
-    _, text = _load_template(root, template_name)
-    stack.append(template_name)
+    _, text = _load_template_from(cfg_root_current, template_name)
+    stack.append((cfg_root_current, template_name))
     counts: Dict[str, int] = {}
     for ph in _Template.placeholders(text):
         if ph.startswith("tpl:"):
             child = ph[4:]
-            child_counts = _collect_sections_counts_from_template(root=root, template_name=child, stack=stack)
+            child_counts = _collect_sections_counts_from_template(
+                repo_root=repo_root, cfg_root_current=cfg_root_current, template_name=child, stack=stack
+            )
+            for k, v in child_counts.items():
+                counts[k] = counts.get(k, 0) + int(v)
+        elif ph.startswith("tpl@"):
+            child_cfg_root, child_name = _parse_tpl_locator(ph, cfg_root_current, repo_root)
+            child_counts = _collect_sections_counts_from_template(
+                repo_root=repo_root, cfg_root_current=child_cfg_root, template_name=child_name, stack=stack
+            )
             for k, v in child_counts.items():
                 counts[k] = counts.get(k, 0) + int(v)
         else:
@@ -103,11 +152,21 @@ def _collect_sections_counts_for_context(
     if not cp.is_file():
         raise RuntimeError(f"Context not found: {cp}")
     text = cp.read_text(encoding="utf-8", errors="ignore")
+    base_cfg = cfg_root(root)
     counts: Dict[str, int] = {}
     for ph in _Template.placeholders(text):
         if ph.startswith("tpl:"):
             child = ph[4:]
-            tpl_counts = _collect_sections_counts_from_template(root=root, template_name=child, stack=[])
+            tpl_counts = _collect_sections_counts_from_template(
+                repo_root=root, cfg_root_current=base_cfg, template_name=child, stack=[]
+            )
+            for k, v in tpl_counts.items():
+                counts[k] = counts.get(k, 0) + int(v)
+        elif ph.startswith("tpl@"):
+            child_cfg_root, child_name = _parse_tpl_locator(ph, base_cfg, root)
+            tpl_counts = _collect_sections_counts_from_template(
+                repo_root=root, cfg_root_current=child_cfg_root, template_name=child_name, stack=[]
+            )
             for k, v in tpl_counts.items():
                 counts[k] = counts.get(k, 0) + int(v)
         else:

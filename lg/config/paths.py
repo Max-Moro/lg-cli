@@ -26,11 +26,6 @@ def models_path(root: Path) -> Path:
     return cfg_root(root) / MODELS_FILE
 
 
-def template_path(root: Path, name: str) -> Path:
-    """Путь к шаблону: lg-cfg/<name>.tpl.md (поддиректории поддерживаются)."""
-    return cfg_root(root) / f"{name}{TPL_SUFFIX}"
-
-
 def context_path(root: Path, name: str) -> Path:
     """Путь к контексту: lg-cfg/<name>.ctx.md (поддиректории поддерживаются)."""
     return cfg_root(root) / f"{name}{CTX_SUFFIX}"

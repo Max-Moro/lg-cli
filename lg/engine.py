@@ -24,6 +24,7 @@ from .stats import get_model_info, compute_stats
 from .types import RunOptions, RenderedDocument, ContextSpec, Manifest, ProcessedBlob, ContextPlan
 from .vcs import VcsProvider, NullVcs
 from .vcs.git import GitVcs
+from .config.paths import cfg_root as cfg_root_of
 
 
 # ----------------------------- RunContext ----------------------------- #
@@ -97,7 +98,12 @@ def run_render(target: str, options: RunOptions) -> RenderedDocument:
     run_ctx = _build_run_ctx(options)
     spec, manifest, plan, blobs = _pipeline_common(target, run_ctx)
     rendered_by_sec = render_by_section(plan, blobs)
-    composed = compose_context(run_ctx.root, spec, rendered_by_sec)
+    composed = compose_context(
+        repo_root=run_ctx.root,
+        base_cfg_root=cfg_root_of(run_ctx.root),
+        spec=spec,
+        rendered_by_section=rendered_by_sec,
+    )
     # Возвращаем итоговый текст; blocks здесь опускаем (они не отражают клей)
     return RenderedDocument(text=composed.text, blocks=[])
 
@@ -112,7 +118,12 @@ def run_report(target: str, options: RunOptions) -> RunResultM:
     run_ctx = _build_run_ctx(options)
     spec, manifest, plan, blobs = _pipeline_common(target, run_ctx)
     rendered_by_sec = render_by_section(plan, blobs)
-    composed = compose_context(run_ctx.root, spec, rendered_by_sec)
+    composed = compose_context(
+        repo_root=run_ctx.root,
+        base_cfg_root=cfg_root_of(run_ctx.root),
+        spec=spec,
+        rendered_by_section=rendered_by_sec,
+    )
 
     model_info = get_model_info(run_ctx.root, options.model)
     files_rows, totals, ctx_block, enc_name = compute_stats(
