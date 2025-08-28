@@ -6,14 +6,14 @@ from typing import Dict, List, Tuple
 from ruamel.yaml import YAML
 
 from .model import Config, SectionCfg, SCHEMA_VERSION
+from .paths import (
+    cfg_root,
+    sections_path,
+    iter_section_fragments,
+    canonical_fragment_prefix,
+)
 
 _yaml = YAML(typ="safe")
-_CFG_DIR = "lg-cfg"
-_SECTIONS_FILE = "sections.yaml"
-
-
-def _cfg_root(root: Path) -> Path:
-    return (root / _CFG_DIR).resolve()
 
 
 def _read_yaml_map(path: Path) -> dict:
@@ -23,13 +23,13 @@ def _read_yaml_map(path: Path) -> dict:
     return raw
 
 
-def _collect_sections_from_sections_yaml(base: Path) -> Tuple[int, Dict[str, SectionCfg]]:
+def _collect_sections_from_sections_yaml(root: Path) -> Tuple[int, Dict[str, SectionCfg]]:
     """
     Читает lg-cfg/sections.yaml:
       - требует ключ 'schema_version' == SCHEMA_VERSION
       - все остальные ключи трактуются как секции с КОРОТКИМИ id (без префикса пути)
     """
-    p = (base / _SECTIONS_FILE)
+    p = sections_path(root)
     if not p.is_file():
         raise RuntimeError(f"Config file not found: {p}")
     raw = _read_yaml_map(p)
@@ -45,49 +45,20 @@ def _collect_sections_from_sections_yaml(base: Path) -> Tuple[int, Dict[str, Sec
         sections[name] = SectionCfg.from_dict(name, node)
     return sv, sections
 
-
-def _iter_fragment_files(base: Path) -> List[Path]:
-    """
-    Возвращает список всех **/*.sec.yaml внутри lg-cfg/ (кроме корневого sections.yaml).
-    """
-    out: List[Path] = []
-    for p in base.rglob("*.sec.yaml"):
-        # Корневой sections.yaml не является фрагментом
-        if p.name == _SECTIONS_FILE and p.parent == base:
-            continue
-        out.append(p)
-    out.sort()
-    return out
-
-
-def _canonical_prefix_for_fragment(base: Path, frag: Path) -> str:
-    """
-    Для файла lg-cfg/sub/pack.sec.yaml → канонический префикс 'sub/pack'
-    (относительно lg-cfg/, POSIX).
-    """
-    rel = frag.resolve().relative_to(base.resolve())
-    rel_posix = rel.as_posix()
-    # снимаем хвост '.sec.yaml'
-    if not rel_posix.endswith(".sec.yaml"):
-        raise RuntimeError(f"Invalid fragment filename (expected *.sec.yaml): {frag}")
-    stem = rel_posix[: -len(".sec.yaml")]
-    return stem
-
-
-def _collect_sections_from_fragments(base: Path) -> Dict[str, SectionCfg]:
+def _collect_sections_from_fragments(root: Path) -> Dict[str, SectionCfg]:
     """
     Собирает секции из всех **/*.sec.yaml.
     Канонический ID секции = '<prefix>/<section_local_name>',
     где <prefix> = путь к файлу без суффикса '.sec.yaml' относительно lg-cfg/.
     """
     acc: Dict[str, SectionCfg] = {}
-    for frag in _iter_fragment_files(base):
+    for frag in iter_section_fragments(root):
         raw = _read_yaml_map(frag)
         # schema_version в фрагментах — опционален, при наличии проверим и проигнорируем
         sv = raw.get("schema_version", None)
         if sv is not None and int(sv) != SCHEMA_VERSION:
             raise RuntimeError(f"{frag}: schema_version={sv} mismatches core {SCHEMA_VERSION}")
-        prefix = _canonical_prefix_for_fragment(base, frag)
+        prefix = canonical_fragment_prefix(root, frag)
         for local_name, node in raw.items():
             if local_name == "schema_version":
                 continue
@@ -104,12 +75,12 @@ def load_config(root: Path) -> Config:
       • lg-cfg/sections.yaml — обязательный файл с schema_version и базовыми секциями
       • lg-cfg/**\/*.sec.yaml — произвольное число фрагментов секций
     """
-    base = _cfg_root(root)
+    base = cfg_root(root)
     if not base.is_dir():
         raise RuntimeError(f"Config directory not found: {base}")
 
-    _sv, core_sections = _collect_sections_from_sections_yaml(base)
-    frag_sections = _collect_sections_from_fragments(base)
+    _sv, core_sections = _collect_sections_from_sections_yaml(root)
+    frag_sections = _collect_sections_from_fragments(root)
 
     # Сшиваем с проверкой дубликатов канонических ID
     all_sections: Dict[str, SectionCfg] = dict(core_sections)

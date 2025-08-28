@@ -5,8 +5,11 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Dict, Tuple
 
-from .resolver import _template_path, _Template
-from .resolver import _ctx_path
+from .resolver import _Template
+from ..config.paths import (
+    template_path,
+    context_path,
+)
 from ..types import ContextSpec
 
 
@@ -35,11 +38,11 @@ def compose_context(root: Path, spec: ContextSpec, rendered_by_section: Dict[str
     """
 
     def _load_template(name: str) -> str:
-        p = _template_path(root, name)
+        p = template_path(root, name)
         return p.read_text(encoding="utf-8", errors="ignore")
 
     def _load_context(name: str) -> str:
-        p = _ctx_path(root, name)
+        p = context_path(root, name)
         return p.read_text(encoding="utf-8", errors="ignore")
 
     def _expand_template(name: str, templates: Dict[str, str]) -> Tuple[str, str]:

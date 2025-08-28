@@ -6,6 +6,7 @@ from typing import List, Set, cast, Dict, Tuple
 
 from ..adapters import get_adapter_for_path
 from ..config import SectionCfg, EmptyPolicy
+from ..config.paths import is_cfg_relpath
 from ..io.filters import FilterEngine
 from ..io.fs import build_gitignore_spec, iter_files
 from ..lang import get_language_for_file
@@ -46,7 +47,7 @@ def build_manifest(
         def _pruner(rel_dir: str) -> bool:
             # не спускаемся в служебную папку конфигурации,
             # если только её явно не разрешили фильтрами.
-            if rel_dir == "lg-cfg" or rel_dir.startswith("lg-cfg/"):
+            if is_cfg_relpath(rel_dir):
                 return False
             return engine.may_descend(rel_dir)
 

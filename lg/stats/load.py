@@ -1,6 +1,8 @@
 from __future__ import annotations
+
 from pathlib import Path
 from typing import Dict, List, Optional
+
 from ruamel.yaml import YAML
 
 from .model import (
@@ -11,9 +13,9 @@ from .model import (
     make_id,
     _slugify_plan
 )
+from ..config.paths import models_path
 
 _yaml = YAML(typ="safe")
-_CFG_FILE = "lg-cfg/models.yaml"
 
 # -------------------- ДЕФОЛТЫ (при отсутствии lg-cfg/models.yaml) --------------------
 # Источники:
@@ -55,11 +57,8 @@ _DEFAULT_PLANS: List[PlanInfo] = [
 
 # -----------------------------------------------------------------------
 
-def _cfg_path(root: Path) -> Path:
-    return (root / _CFG_FILE).resolve()
-
 def load_models(root: Path) -> ModelsConfig:
-    p = _cfg_path(root)
+    p = models_path(root)
     if not p.is_file():
         return ModelsConfig(schema_version=1, models=dict(_DEFAULT_MODELS), plans=list(_DEFAULT_PLANS))
     raw = _yaml.load(p.read_text(encoding="utf-8")) or {}
