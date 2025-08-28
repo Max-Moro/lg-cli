@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from pathlib import Path
 from typing import Dict, List, Tuple
 
 import tiktoken
@@ -9,6 +10,7 @@ from ..cache.fs_cache import Cache
 from ..manifest.builder import Manifest
 from ..types import ContextSpec
 from ..types import FileRow, Totals, ContextBlock, ProcessedBlob
+
 
 # —————————— helpers —————————— #
 
@@ -60,6 +62,14 @@ def compute_stats(
 
     # кратности по rel_path из Manifest
     mult_by_rel: Dict[str, int] = {fr.rel_path: fr.multiplicity for fr in manifest.files}
+
+    # ---- адресные секции: детерминированная карта для кэша и отчёта ----
+    # ключ = "<cfg_root_posix>::<section_name>" → multiplicity
+    sections_used_map: Dict[str, int] = {}
+    for ref in spec.section_refs:
+        cfg_str = Path(ref.cfg_root).resolve().as_posix()
+        key = f"{cfg_str}::{ref.name}"
+        sections_used_map[key] = sections_used_map.get(key, 0) + ref.multiplicity
 
     # Быстрый доступ к путям кэша по ключам
     # (в Cache добавили публичные методы path_for_*)
@@ -129,7 +139,7 @@ def compute_stats(
     # 1) Чистые секции (без FILE-маркеров, без fenced, без шаблонов)
     k_so, p_so = cache.build_rendered_key(
         context_name=spec.name if spec.kind == "context" else f"__sec__:{spec.name}",
-        sections_used=spec.sections.by_name,
+        sections_used=sections_used_map,
         options_fp={**options_fp, "variant": "sections-only"},
         processed_keys=processed_keys,
         templates=templates_hashes,
@@ -142,7 +152,7 @@ def compute_stats(
     # 2) После пайплайна (FILE-маркеры + fenced, но без шаблонов)
     k_pipeline, p_pipeline = cache.build_rendered_key(
         context_name=spec.name if spec.kind == "context" else f"__sec__:{spec.name}",
-        sections_used=spec.sections.by_name,
+        sections_used=sections_used_map,
         options_fp={**options_fp, "variant": "pipeline"},
         processed_keys=processed_keys,
         templates=templates_hashes,
@@ -155,7 +165,7 @@ def compute_stats(
     # 3) Финальный документ (после шаблонов)
     k_final, p_final = cache.build_rendered_key(
         context_name=spec.name if spec.kind == "context" else f"__sec__:{spec.name}",
-        sections_used=spec.sections.by_name,
+        sections_used=sections_used_map,
         options_fp={**options_fp, "variant": "final"},
         processed_keys=processed_keys,
         templates=templates_hashes,
@@ -179,7 +189,7 @@ def compute_stats(
 
     ctx_block = ContextBlock(
         templateName=(spec.kind == "context" and f"ctx:{spec.name}") or f"sec:{spec.name}",
-        sectionsUsed=spec.sections.by_name,
+        sectionsUsed=sections_used_map,
         finalRenderedTokens=t_final,
         templateOnlyTokens=max(0, t_final - t_pipeline),
         templateOverheadPct=((t_final - t_pipeline) / t_final * 100.0) if t_final else 0.0,
