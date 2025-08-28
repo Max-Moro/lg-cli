@@ -7,6 +7,7 @@ from pathlib import Path
 from .cache.fs_cache import Cache
 from .config import load_config, SCHEMA_VERSION
 from .context import list_contexts
+from .config.paths import sections_path, cfg_root
 from .diag_report_schema import DiagReport, DiagConfig, DiagCache, DiagCheck, DiagEnv
 from .engine import tool_version
 from .protocol import PROTOCOL_VERSION
@@ -28,8 +29,12 @@ def run_diag(*, rebuild_cache: bool = False) -> DiagReport:
     )
 
     # --- Config ---
-    cfg_path = (root / "lg-cfg" / "config.yaml").resolve()
-    cfg_block = DiagConfig(exists=cfg_path.is_file(), path=str(cfg_path), expected_schema=SCHEMA_VERSION)
+    sec_path = sections_path(root).resolve()
+    cfg_block = DiagConfig(
+        exists=sec_path.is_file(),
+        path=str(sec_path),
+        expected_schema=SCHEMA_VERSION,
+    )
     sections: list[str] = []
     if cfg_block.exists:
         try:
@@ -88,20 +93,21 @@ def run_diag(*, rebuild_cache: bool = False) -> DiagReport:
     except Exception as e:
         checks.append(DiagCheck(name="tiktoken.available", ok=False, details=str(e)))
 
-    # Contexts dir
-    ctx_dir = (root / "lg-cfg" / "contexts")
-    if ctx_dir.is_dir():
-        try:
-            n = len(list(ctx_dir.rglob("*.tpl.md")))
-        except Exception:
-            n = 0
-        checks.append(DiagCheck(name="contexts.exists", ok=True, details=f"{n} template(s)"))
-    else:
-        checks.append(DiagCheck(name="contexts.exists", ok=False, details=str(ctx_dir)))
+    # Contexts/templates stats
+    lgcfg = cfg_root(root)
+    n_ctx = 0
+    n_tpl = 0
+    try:
+        n_ctx = len(list(lgcfg.rglob("*.ctx.md")))
+        n_tpl = len(list(lgcfg.rglob("*.tpl.md")))
+    except Exception:
+        pass
+    checks.append(DiagCheck(name="contexts.count", ok=True, details=str(n_ctx)))
+    checks.append(DiagCheck(name="templates.count", ok=True, details=str(n_tpl)))
 
     # Config presence/schema quick hint (if not already error)
     if not cfg_block.exists:
-        checks.append(DiagCheck(name="config.exists", ok=False, details=str(cfg_path)))
+        checks.append(DiagCheck(name="config.exists", ok=False, details=str(sec_path)))
     else:
         if cfg_block.error:
             checks.append(DiagCheck(name="config.schema", ok=False, details=cfg_block.error))
@@ -109,6 +115,7 @@ def run_diag(*, rebuild_cache: bool = False) -> DiagReport:
             ok = (cfg_block.schema_version == SCHEMA_VERSION)
             details = f"schema={cfg_block.schema_version}, expected={SCHEMA_VERSION}; sections={len(sections)}"
             checks.append(DiagCheck(name="config.schema", ok=ok, details=details))
+            checks.append(DiagCheck(name="sections.count", ok=True, details=str(len(sections))))
 
     # Cache health
     checks.append(DiagCheck(name="cache.enabled", ok=cache_block.enabled, details=cache_block.path))
