@@ -3,7 +3,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from lg.manifest.builder import build_manifest
-from lg.types import ContextSpec, SectionRef
+from lg.types import ContextSpec, SectionRef, CanonSectionId
 from lg.vcs import NullVcs
 
 
@@ -19,6 +19,22 @@ def _write_sections_yaml(tmp: Path, text: str) -> Path:
     p.parent.mkdir(parents=True, exist_ok=True)
     p.write_text(text, encoding="utf-8")
     return p
+
+
+def mk_local_sec_spec(repo_root: Path, sec_name: str) -> ContextSpec:
+    """
+    Формирует ContextSpec для секции текущего (self) lg-cfg,
+    сразу проставляя корректный canon.
+    """
+    cfg_root = (repo_root / "lg-cfg").resolve()
+    scope_dir = cfg_root.parent.resolve()
+    try:
+        scope_rel = scope_dir.relative_to(repo_root.resolve()).as_posix()
+    except Exception:
+        scope_rel = ""
+    canon = CanonSectionId(scope_rel=scope_rel if scope_rel != "." else "", name=sec_name)
+    ref = SectionRef(cfg_root=cfg_root, name=sec_name, ph=sec_name, multiplicity=1, canon=canon)
+    return ContextSpec(kind="section", name=sec_name, section_refs=[ref])
 
 
 def test_manifest_all_mode_with_gitignore_and_filters(tmp_path: Path):
@@ -43,13 +59,8 @@ all:
 """.lstrip(),
     )
 
-    # адресная секция: self lg-cfg
-    cfg_root = (tmp_path / "lg-cfg").resolve()
-    spec = ContextSpec(
-        kind="section",
-        name="all",
-        section_refs=[SectionRef(cfg_root=cfg_root, name="all", ph="all", multiplicity=1)],
-    )
+    # адресная секция: self lg-cfg с корректным canon
+    spec = mk_local_sec_spec(tmp_path, "all")
 
     mf = build_manifest(root=tmp_path, spec=spec, mode="all", vcs=NullVcs())
     paths = [fr.rel_path for fr in mf.files]
@@ -76,12 +87,7 @@ all:
 """.lstrip(),
     )
 
-    cfg_root = (tmp_path / "lg-cfg").resolve()
-    spec = ContextSpec(
-        kind="section",
-        name="all",
-        section_refs=[SectionRef(cfg_root=cfg_root, name="all", ph="all", multiplicity=1)],
-    )
+    spec = mk_local_sec_spec(tmp_path, "all")
 
     # фейковый VCS: изменён только один файл
     class FakeVcs:

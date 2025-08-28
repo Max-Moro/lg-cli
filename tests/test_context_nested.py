@@ -3,7 +3,6 @@ from pathlib import Path
 import pytest
 
 from lg.cache.fs_cache import Cache
-from lg.config import load_config
 from lg.config.paths import cfg_root
 from lg.context import resolve_context, compose_context
 from lg.run_context import RunContext
@@ -26,7 +25,6 @@ def _write_ctx(root: Path, rel: str, body: str):
 def _mk_ctx(root: Path) -> RunContext:
     return RunContext(
         root=root.resolve(),
-        config=load_config(root),
         options=RunOptions(),
         cache=Cache(root, tool_version="0.0.0"),
         vcs=NullVcs(),
@@ -81,7 +79,6 @@ def test_context_cycle_detection(tmp_path: Path):
 
     run_ctx = RunContext(
         root=tmp_path.resolve(),
-        config=load_config(tmp_path),
         options=RunOptions(),
         cache=Cache(tmp_path, tool_version="0.0.0"),
         vcs=NullVcs(),
