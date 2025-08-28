@@ -86,7 +86,8 @@ def compose_context(
         return "".join(out_final_parts), "".join(out_sections_only_parts)
 
     if spec.kind == "section":
-        sec_text = rendered_by_section.get(spec.name, "")
+        canon_key = spec.section_refs[0].canon.as_key()
+        sec_text = rendered_by_section.get(canon_key, "")
         return ComposedDocument(text=sec_text, sections_only_text=sec_text, templates_hashes={})
 
     # Контекст: читаем корневой .ctx.md (всегда из self cfg-root)
@@ -118,8 +119,8 @@ def compose_context(
             out_sections_only_parts.append(child_sections_only)
 
         else:
-            canon = (ph2canon or {}).get(ph, "")
-            sec_text = rendered_by_section.get(canon, "")
+            canon_key = (ph2canon or {}).get(ph, "")
+            sec_text = rendered_by_section.get(canon_key, "")
             out_final_parts.append(sec_text)
             out_sections_only_parts.append(sec_text)
 
