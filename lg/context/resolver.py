@@ -179,9 +179,6 @@ def resolve_context(name_or_sec: str, run_ctx) -> ContextSpec:
         if kind == "context":
             raise RuntimeError(f"Context not found: {cp}")
 
-    # Секция как виртуальный контекст текущего lg-cfg
-    if name not in run_ctx.config.sections:
-        raise RuntimeError(f"Section '{name}' not found in config")
     # секция текущего lg-cfg: канон строим относительно корня репо
     base_cfg = cfg_root(root)
     scope_dir = base_cfg.parent.resolve()

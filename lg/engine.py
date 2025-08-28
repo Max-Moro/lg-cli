@@ -13,7 +13,6 @@ from .api_schema import (
     Scope as ScopeE,
 )
 from .cache.fs_cache import Cache
-from .config import load_config
 from .config.paths import cfg_root as cfg_root_of
 from .context import resolve_context, compose_context
 from .manifest import build_manifest
@@ -44,11 +43,10 @@ def tool_version() -> str:
 
 def _build_run_ctx(options: RunOptions) -> RunContext:
     root = Path.cwd().resolve()
-    cfg = load_config(root)
     tool_ver = tool_version()
     cache = Cache(root, enabled=None, fresh=False, tool_version=tool_ver)
     vcs = GitVcs() if (root / ".git").is_dir() else NullVcs()
-    return RunContext(root=root, config=cfg, options=options, cache=cache, vcs=vcs)
+    return RunContext(root=root, options=options, cache=cache, vcs=vcs)
 
 
 def _pipeline_common(target: str, run_ctx: RunContext) -> Tuple[ContextSpec, Manifest, ContextPlan, list[ProcessedBlob]]:
