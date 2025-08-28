@@ -74,7 +74,10 @@ class Manifest:
     files: List[FileRef]
     # Лёгкая «выжимка» секционных настроек, необходимых для планировщика.
     # Ключ — канонический секционный ключ (CanonSectionId.as_key()).
-    sections_cfg: Dict[str, "SectionPlanCfg"] = field(default_factory=dict)
+    sections_cfg: Dict[str, SectionPlanCfg] = field(default_factory=dict)
+    # Выжимка «базовых» конфигов адаптеров для каждой адресной секции.
+    # Ключ — канонический секционный ключ; значение — имя_адаптера → raw dict конфиг.
+    sections_adapters_cfg: Dict[str, Dict[str, Dict]] = field(default_factory=dict)
 
 # -------- Planning / Grouping --------
 @dataclass(frozen=True)
@@ -92,6 +95,8 @@ class SectionPlan:
     use_fence: bool
     # Карта «rel_path → печатаемая метка» для маркеров FILE в этой секции
     labels: Dict[str, str] = field(default_factory=dict)
+    # Базовые конфиги адаптеров для этой секции (из соответствующего lg-cfg/)
+    adapters_cfg: Dict[str, Dict] = field(default_factory=dict)
 
 @dataclass(frozen=True)
 class ContextPlan:

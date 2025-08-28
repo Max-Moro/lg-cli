@@ -7,6 +7,7 @@ from lg.cache.fs_cache import Cache
 from lg.io.fs import read_text
 from lg.types import ContextPlan, ProcessedBlob
 from .registry import get_adapter_for_path
+from ..run_context import RunContext
 
 
 def _freeze_cfg(obj: Any) -> Any:
@@ -25,7 +26,7 @@ def _freeze_cfg(obj: Any) -> Any:
         return tuple(sorted(_freeze_cfg(x) for x in obj))
     return obj
 
-def process_groups(plan: ContextPlan, run_ctx) -> List[ProcessedBlob]:
+def process_groups(plan: ContextPlan, run_ctx: RunContext) -> List[ProcessedBlob]:
     """
     План групп → список ProcessedBlob с учётом:
       • эвристик should_skip()
@@ -43,10 +44,8 @@ def process_groups(plan: ContextPlan, run_ctx) -> List[ProcessedBlob]:
             for e in grp.entries:
                 fp: Path = e.abs_path
                 adapter_cls = get_adapter_for_path(fp)  # ← КЛАСС адаптера (лениво)
-                # сырой конфиг адаптера из секции и биндинг к экземпляру (лениво + кэш)
-                sec_cfg = run_ctx.config.sections[e.section]
-                # секционный конфиг
-                sec_raw_cfg: dict | None = sec_cfg.adapters.get(adapter_cls.name)
+                # Базовый (секционный) сырой конфиг Берём из плана секции (адресный lg-cfg)
+                sec_raw_cfg: dict | None = (getattr(sec_plan, "adapters_cfg", {}) or {}).get(adapter_cls.name)
                 # адресные оверрайды по пути
                 override_cfg: dict | None = (e.adapter_overrides or {}).get(adapter_cls.name)
                 # объединяем (секционный + оверрайды), локальные ключи перезаписывают секционные
@@ -98,6 +97,7 @@ def process_groups(plan: ContextPlan, run_ctx) -> List[ProcessedBlob]:
                     meta = dict(meta or {})
                     meta["_group_size"] = int(group_size)
                     meta["_group_mixed"] = bool(grp.mixed)
+                    meta["_group_lang"] = grp.lang
                     try:
                         meta["_group_lang"] = str(grp.lang or "")
                     except Exception:

@@ -32,6 +32,7 @@ def build_manifest(
     spec_git = build_gitignore_spec(root)
     files_out: List[FileRef] = []
     sec_cfg_hints: Dict[str, SectionPlanCfg] = {}
+    sec_adapters_cfg: Dict[str, Dict[str, dict]] = {}
 
     # КЭШ конфигов по cfg_root.parent
     _cfg_cache: Dict[Path, Dict[str, SectionCfg]] = {}
@@ -80,6 +81,10 @@ def build_manifest(
                 code_fence=cfg.code_fence,
                 path_labels=cfg.path_labels
             )
+        # Сохраняем базовые конфиги адаптеров (лениво, первый wins)
+        if canon_key not in sec_adapters_cfg:
+            # shallow copy достаточно (raw cfg уже плоский dict на адаптер)
+            sec_adapters_cfg[canon_key] = cfg.adapters
 
         engine = FilterEngine(cfg.filters)
         exts = {e.lower() for e in cfg.extensions}
@@ -177,4 +182,4 @@ def build_manifest(
 
     # стабильная сортировка
     files_out.sort(key=lambda fr: (fr.section, fr.rel_path))
-    return Manifest(files=files_out, sections_cfg=sec_cfg_hints)
+    return Manifest(files=files_out, sections_cfg=sec_cfg_hints, sections_adapters_cfg=sec_adapters_cfg)

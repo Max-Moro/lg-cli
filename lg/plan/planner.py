@@ -39,7 +39,8 @@ def _build_section_plan(
     langs: List[LangName],
     *,
     sec_cfg: SectionPlanCfg,
-    run_ctx: RunContext
+    run_ctx: RunContext,
+    adapters_cfg: dict[str, dict]
 ) -> SectionPlan:
     """
     Строит план ТОЛЬКО для одной секции с учётом локальной политики code_fence.
@@ -63,7 +64,14 @@ def _build_section_plan(
             rels_in_order.append(e.rel_path)
     labels_map = build_labels(rels_in_order, mode=sec_cfg.path_labels)
 
-    return SectionPlan(section=sec_name, md_only=md_only, use_fence=use_fence, groups=groups, labels=labels_map)
+    return SectionPlan(
+        section=sec_name,
+        md_only=md_only,
+        use_fence=use_fence,
+        groups=groups,
+        labels=labels_map,
+        adapters_cfg = adapters_cfg,
+    )
 
 
 def build_plan(manifest: Manifest, run_ctx: RunContext) -> ContextPlan:
@@ -90,7 +98,14 @@ def build_plan(manifest: Manifest, run_ctx: RunContext) -> ContextPlan:
         langs: List[LangName] = [_lang_of(f.language_hint) for f in entries]
         # Берём hints из Manifest; для «чужих» секций они уже там.
         sec_cfg_hint: SectionPlanCfg | None = manifest.sections_cfg.get(sec_name)
-        sec_plan = _build_section_plan(sec_name, entries, langs, sec_cfg=sec_cfg_hint, run_ctx=run_ctx)
+        # Прокинем базовые конфиги адаптеров секции
+        adapters_cfg = manifest.sections_adapters_cfg.get(sec_name, {})
+
+        sec_plan = _build_section_plan(sec_name, entries, langs,
+            sec_cfg=sec_cfg_hint,
+            run_ctx=run_ctx,
+            adapters_cfg=adapters_cfg,
+        )
         sections_out.append(sec_plan)
 
     return ContextPlan(sections=sections_out)

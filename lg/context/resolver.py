@@ -5,6 +5,7 @@ from typing import Dict, List, Tuple
 
 from .common import TemplateTokens, parse_tpl_locator, load_template_from, context_path, resolve_cfg_root
 from ..config.paths import cfg_root
+from ..run_context import RunContext
 from ..types import ContextSpec, SectionRef, CanonSectionId
 
 
@@ -142,7 +143,7 @@ def _collect_section_refs_for_context(*, root: Path, context_name: str) -> List[
 
 # --------------------------- Public API --------------------------- #
 
-def resolve_context(name_or_sec: str, run_ctx) -> ContextSpec:
+def resolve_context(name_or_sec: str, run_ctx: RunContext) -> ContextSpec:
     """
     Унифицированный резолвер:
       • ctx:<name> → ищем контекст в lg-cfg/<name>.ctx.md
