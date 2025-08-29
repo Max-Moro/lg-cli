@@ -1,15 +1,10 @@
 from __future__ import annotations
 
-from typing import List, Tuple, Dict
+from typing import List, Tuple
 
 from ..paths import build_labels
 from ..run_context import RunContext
-from ..types import Manifest, Group, LangName, SectionPlan, ContextPlan, SectionPlanCfg
-
-
-def _lang_of(rel_lang: str | None) -> LangName:
-    # В манифесте language_hint уже нормализован; пустая строка — markdown/plaintext
-    return rel_lang or ""
+from ..types import Manifest, Group, LangName, LANG_NONE, SectionPlan, ContextPlan, PathLabelMode
 
 
 def _consecutive_groups_by_lang(entries: list, langs: list[LangName]) -> List[Tuple[LangName, List]]:
@@ -38,7 +33,8 @@ def _build_section_plan(
     entries,
     langs: List[LangName],
     *,
-    sec_cfg: SectionPlanCfg,
+    code_fence: bool,
+    path_labels: PathLabelMode,
     run_ctx: RunContext,
     adapters_cfg: dict[str, dict]
 ) -> SectionPlan:
@@ -47,7 +43,7 @@ def _build_section_plan(
     """
     md_only = all(l == "" for l in langs)
     # Глобальная опция может оверрайдить, но секционная политика тоже учитывается.
-    use_fence = (run_ctx.options.code_fence and sec_cfg.code_fence) and not md_only
+    use_fence = (run_ctx.options.code_fence and code_fence) and not md_only
 
     groups: List[Group] = []
     if use_fence:
@@ -55,14 +51,14 @@ def _build_section_plan(
             groups.append(Group(lang=lang, entries=chunk, mixed=False))
     else:
         mixed = len(set(langs)) > 1
-        groups.append(Group(lang="", entries=list(entries), mixed=mixed))
+        groups.append(Group(lang=LANG_NONE, entries=list(entries), mixed=mixed))
 
     # Вычисление меток (файловых разделителей)
     rels_in_order: List[str] = []
     for g in groups:
         for e in g.entries:
             rels_in_order.append(e.rel_path)
-    labels_map = build_labels(rels_in_order, mode=sec_cfg.path_labels)
+    labels_map = build_labels(rels_in_order, mode=path_labels)
 
     return SectionPlan(
         section=sec_name,
@@ -79,32 +75,25 @@ def build_plan(manifest: Manifest, run_ctx: RunContext) -> ContextPlan:
     Manifest → ContextPlan (список секционных Plan).
     Группировка выполняется ВНУТРИ каждой секции независимо.
     """
-    files = manifest.files
-    if not files:
+    # Быстрый выход, если секций нет
+    any_section = next(manifest.iter_sections(), None)
+    if not any_section:
         return ContextPlan(sections=[])
 
     # Сохраняем порядок появления секций по Manifest.
-    by_section: Dict[str, List] = {}
-    order: List[str] = []
-    for fr in files:
-        if fr.section not in by_section:
-            by_section[fr.section] = []
-            order.append(fr.section)
-        by_section[fr.section].append(fr)
-
     sections_out: List[SectionPlan] = []
-    for sec_name in order:
-        entries = by_section[sec_name]
-        langs: List[LangName] = [_lang_of(f.language_hint) for f in entries]
-        # Берём hints из Manifest; для «чужих» секций они уже там.
-        sec_cfg_hint: SectionPlanCfg | None = manifest.sections_cfg.get(sec_name)
-        # Прокинем базовые конфиги адаптеров секции
-        adapters_cfg = manifest.sections_adapters_cfg.get(sec_name, {})
+    for sec in manifest.iter_sections():
+        entries = sec.files
+        langs: List[LangName] = [f.language_hint for f in entries]
 
-        sec_plan = _build_section_plan(sec_name, entries, langs,
-            sec_cfg=sec_cfg_hint,
+        sec_plan = _build_section_plan(
+            sec_name=sec.id.as_key(),
+            entries=entries,
+            langs=langs,
+            code_fence=sec.meta.code_fence,
+            path_labels=sec.meta.path_labels,
             run_ctx=run_ctx,
-            adapters_cfg=adapters_cfg,
+            adapters_cfg=sec.adapters_cfg,
         )
         sections_out.append(sec_plan)
 

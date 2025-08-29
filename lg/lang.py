@@ -6,6 +6,8 @@ Mapping of file names and extensions to languages for markdown fencing.
 from pathlib import Path
 from typing import Final
 
+from lg.types import LangName
+
 # Основной словарь: name (lowercase) или extension → fence language
 LANG_MAPPING: Final[dict[str, str]] = {
     # Расширения
@@ -52,7 +54,7 @@ LANG_MAPPING: Final[dict[str, str]] = {
     "README": "",        # без расширения
 }
 
-def get_language_for_file(path: Path) -> str:
+def get_language_for_file(path: Path) -> LangName:
     """
     Возвращает язык для fenced-кода по имени файла или расширению.
     Сначала пробуем полное имя (без учёта регистра), затем suffix.lower().

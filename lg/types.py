@@ -2,12 +2,16 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Dict, List, Literal, Optional
+from typing import Dict, List, Literal, Optional, NewType, Mapping, Any
 
-LangName = str  # "python" | "markdown" | "" ...
-ModelName = str  # "o3", "gpt-4o", ...
+# ---- Aliases for clarity ----
 PathLabelMode = Literal["auto", "relative", "basename", "off"]
-
+LangName = NewType("LangName", str)  # "python" | "markdown" | "" ...
+LANG_NONE: LangName = LangName("")
+ModelName = NewType("ModelName", str)  # "o3", "gpt-4o", ...
+RepoRelPath = NewType("RepoRelPath", str) # repo-root relative POSIX path
+AdapterName = NewType("AdapterName", str)
+AdapterRawCfg = Mapping[str, Any]
 
 # -----------------------------
 @dataclass(frozen=True)
@@ -53,36 +57,50 @@ class ContextSpec:
 
 # -------- Manifest / Files --------
 @dataclass(frozen=True)
-class FileRef:
+class ManifestFile:
     abs_path: Path
-    rel_path: str                 # POSIX
-    section: str                  # секция, где был обнаружен файл
-    multiplicity: int             # кратность из ContextSpec.sections
-    language_hint: LangName       # для fenced-блоков
-    # локальные оверрайды конфигов адаптеров (имя_адаптера → raw dict)
+    rel_path: RepoRelPath           # POSIX, repo-root relative
+    section_id: CanonSectionId      # принадлежность к секции
+    multiplicity: int               # кратность из ContextSpec
+    language_hint: LangName         # для fenced-блоков
     adapter_overrides: Dict[str, Dict] = field(default_factory=dict)
 
 @dataclass(frozen=True)
-class SectionPlanCfg:
-    """Подсказки для планировщика, извлечённые из SectionCfg (лениво по demand)."""
-    code_fence: bool = True
-    path_labels: PathLabelMode = "auto"
+class SectionMeta:
+    code_fence: bool
+    path_labels: PathLabelMode
+    scope_dir: Path               # абсолютный путь каталога-скоупа (cfg_root.parent)
+    scope_rel: RepoRelPath        # repo-root relative ("" для корня)
+
+@dataclass(frozen=True)
+class ManifestSection:
+    id: CanonSectionId
+    meta: SectionMeta
+    adapters_cfg: Dict[str, Dict]
+    files: List[ManifestFile] = field(default_factory=list)
 
 @dataclass(frozen=True)
 class Manifest:
-    files: List[FileRef]
-    # Лёгкая «выжимка» секционных настроек, необходимых для планировщика.
-    # Ключ — канонический секционный ключ (CanonSectionId.as_key()).
-    sections_cfg: Dict[str, SectionPlanCfg] = field(default_factory=dict)
-    # Выжимка «базовых» конфигов адаптеров для каждой адресной секции.
-    # Ключ — канонический секционный ключ; значение — имя_адаптера → raw dict конфиг.
-    sections_adapters_cfg: Dict[str, Dict[str, Dict]] = field(default_factory=dict)
+    # детерминированный порядок секций
+    order: List[CanonSectionId]
+    sections: Dict[CanonSectionId, ManifestSection]
+
+    def iter_sections(self):
+        for sid in self.order:
+            sec = self.sections.get(sid)
+            if sec:
+                yield sec
+
+    def iter_files(self):
+        for sec in self.iter_sections():
+            for f in sec.files:
+                yield f
 
 # -------- Planning / Grouping --------
 @dataclass(frozen=True)
 class Group:
     lang: LangName
-    entries: List[FileRef]
+    entries: List[ManifestFile]
     mixed: bool
 
 # -------- Section-scoped planning --------

@@ -10,7 +10,15 @@ from ..config.paths import is_cfg_relpath
 from ..io.filters import FilterEngine
 from ..io.fs import build_gitignore_spec, iter_files
 from ..lang import get_language_for_file
-from ..types import Manifest, FileRef, ContextSpec, SectionPlanCfg
+from ..types import (
+    Manifest,
+    ManifestFile,
+    ManifestSection,
+    SectionMeta,
+    ContextSpec,
+    CanonSectionId,
+    RepoRelPath,
+)
 from ..vcs import VcsProvider, NullVcs
 
 
@@ -30,9 +38,6 @@ def build_manifest(
         changed = vcs.changed_files(root)
 
     spec_git = build_gitignore_spec(root)
-    files_out: List[FileRef] = []
-    sec_cfg_hints: Dict[str, SectionPlanCfg] = {}
-    sec_adapters_cfg: Dict[str, Dict[str, dict]] = {}
 
     # КЭШ конфигов по cfg_root.parent
     _cfg_cache: Dict[Path, Dict[str, SectionCfg]] = {}
@@ -41,21 +46,26 @@ def build_manifest(
     # Копим отсутствующие секции для прозрачной ошибки после прохода
     missing: List[Tuple[str, Path, str]] = []  # (canon_key, scope_dir, placeholder)
 
+    # Накапливаем секции нового манифеста
+    sections_map: Dict[CanonSectionId, ManifestSection] = {}
+    order: List[CanonSectionId] = []
+
     # Перебираем адресные секции
     for sref in section_refs:
         scope_dir = sref.cfg_root.parent.resolve()      # каталог пакета/приложения
         # Относительный префикс скопа от корня репо (POSIX)
-        scope_rel = scope_dir.relative_to(root.resolve()).as_posix()
+        scope_rel_str = scope_dir.relative_to(root.resolve()).as_posix()
 
         # Нормализуем '.' → '' (корень репо)
-        if scope_rel == ".":
-            scope_rel = ""
+        if scope_rel_str == ".":
+            scope_rel_str = ""
+        scope_rel = RepoRelPath(scope_rel_str or "")
 
         def in_scope(path_posix: str) -> bool:
             # Путь path_posix (repo-root relative) находится в скоупе?
             if scope_rel == "":
                 return True
-            return path_posix == scope_rel or path_posix.startswith(scope_rel + "/")
+            return path_posix == scope_rel or path_posix.startswith(f"{scope_rel}/")
 
         def rel_for_engine(path_posix: str) -> str:
             # Путь для сопоставления фильтров секции (относительно scope_dir)
@@ -71,22 +81,23 @@ def build_manifest(
         cfg = local_sections.get(sref.canon.name)
         if not cfg:
             # Запомним отсутствие и продолжим, чтобы собрать все промахи за раз
-            canon_key = sref.canon.as_key()
-            missing.append((canon_key, scope_dir, sref.ph))
+            missing.append((sref.canon.as_key(), scope_dir, sref.ph))
             continue
 
-        # Канонический ключ секции
-        canon_key = sref.canon.as_key()
-        # Сохраняем подсказки для планировщика один раз (первый встретившийся вариант)
-        if canon_key not in sec_cfg_hints:
-            sec_cfg_hints[canon_key] = SectionPlanCfg(
-                code_fence=cfg.code_fence,
-                path_labels=cfg.path_labels
+        # Зарегистрировать секцию в манифесте при первом появлении
+        if sref.canon not in sections_map:
+            sections_map[sref.canon] = ManifestSection(
+                id=sref.canon,
+                meta=SectionMeta(
+                    code_fence=cfg.code_fence,
+                    path_labels=cfg.path_labels,
+                    scope_dir=scope_dir,
+                    scope_rel=scope_rel,
+                ),
+                adapters_cfg=cfg.adapters,  # raw cfgs
+                files=[],
             )
-        # Сохраняем базовые конфиги адаптеров (лениво, первый wins)
-        if canon_key not in sec_adapters_cfg:
-            # shallow copy достаточно (raw cfg уже плоский dict на адаптер)
-            sec_adapters_cfg[canon_key] = cfg.adapters
+            order.append(sref.canon)
 
         engine = FilterEngine(cfg.filters)
         exts = {e.lower() for e in cfg.extensions}
@@ -171,19 +182,20 @@ def build_manifest(
                     merged.update(patch_cfg or {})
                     overrides[adapter_name] = merged
 
-            files_out.append(
-                FileRef(
+            sections_map[sref.canon].files.append(
+                ManifestFile(
                     abs_path=fp,
-                    rel_path=rel_posix,
-                    section=canon_key,
+                    rel_path=RepoRelPath(rel_posix),
+                    section_id=sref.canon,
                     multiplicity=int(sref.multiplicity),
                     language_hint=lang,
                     adapter_overrides=overrides,
                 )
             )
 
-    # стабильная сортировка
-    files_out.sort(key=lambda fr: (fr.section, fr.rel_path))
+    # стабильная сортировка: в каждом разделе по rel_path, порядок секций — в order
+    for sec in sections_map.values():
+        sec.files.sort(key=lambda f: f.rel_path)
 
     # Если какие-то секции не нашлись — бросаем детерминированную ошибку
     if missing:
@@ -201,4 +213,4 @@ def build_manifest(
             parts.append(f"    available: {', '.join(available) if available else '(none)'}")
         raise RuntimeError("\n".join(parts))
 
-    return Manifest(files=files_out, sections_cfg=sec_cfg_hints, sections_adapters_cfg=sec_adapters_cfg)
+    return Manifest(order=order, sections=sections_map)

@@ -65,7 +65,7 @@ all:
     spec = mk_local_sec_spec(tmp_path, "all")
 
     mf = build_manifest(root=tmp_path, spec=spec, mode="all", vcs=NullVcs())
-    paths = [fr.rel_path for fr in mf.files]
+    paths = [f.rel_path for f in mf.iter_files()]
     assert "src/a.py" in paths
     assert "src/b.md" in paths
     assert "ignore/me.py" not in paths
@@ -97,7 +97,7 @@ all:
             return {"src/changed.py"}
 
     mf = build_manifest(root=tmp_path, spec=spec, mode="changes", vcs=FakeVcs())
-    paths = [fr.rel_path for fr in mf.files]
+    paths = [f.rel_path for f in mf.iter_files()]
     assert paths == ["src/changed.py"]
 
 def test_missing_section_raises(tmp_path: Path):

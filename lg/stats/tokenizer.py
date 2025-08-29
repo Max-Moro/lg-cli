@@ -58,7 +58,7 @@ def compute_stats(
             enc_name = "cl100k_base"
 
     # кратности по rel_path из Manifest
-    mult_by_rel: Dict[str, int] = {fr.rel_path: fr.multiplicity for fr in manifest.files}
+    mult_by_rel: Dict[str, int] = {f.rel_path: f.multiplicity for f in manifest.iter_files()}
 
     # ---- адресные секции: детерминированная карта для кэша и отчёта ----
     sections_used_map: Dict[str, int] = {}

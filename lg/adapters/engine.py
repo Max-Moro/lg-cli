@@ -95,7 +95,7 @@ def process_groups(plan: ContextPlan, run_ctx: RunContext) -> List[ProcessedBlob
                     meta["_group_size"] = group_size
                     meta["_group_mixed"] = grp.mixed
                     meta["_group_lang"] = grp.lang
-                    meta["_section"] = e.section
+                    meta["_section"] = e.section_id.as_key()
 
                     cache.put_processed(p_proc, processed_text=processed_text, meta=meta)
 
