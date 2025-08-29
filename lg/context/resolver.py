@@ -74,10 +74,7 @@ def _collect_section_refs_from_template(
             cfg, name = _parse_section_placeholder(ph, current_cfg_root=cfg_root_current, repo_root=repo_root)
             # канон
             scope_dir = cfg.parent.resolve()
-            try:
-                scope_rel = scope_dir.relative_to(repo_root.resolve()).as_posix()
-            except Exception:
-                scope_rel = ""
+            scope_rel = scope_dir.relative_to(repo_root.resolve()).as_posix()
             canon = CanonSectionId(scope_rel=scope_rel if scope_rel != "." else "", name=name)
             out.append(SectionRef(canon=canon, cfg_root=cfg, ph=ph, multiplicity=1))
     stack.pop()
@@ -109,10 +106,7 @@ def _collect_section_refs_for_context(*, root: Path, context_name: str) -> List[
             cfg, name = _parse_section_placeholder(ph, current_cfg_root=base_cfg, repo_root=root)
             # канон
             scope_dir = cfg.parent.resolve()
-            try:
-                scope_rel = scope_dir.relative_to(root.resolve()).as_posix()
-            except Exception:
-                scope_rel = ""
+            scope_rel = scope_dir.relative_to(root.resolve()).as_posix()
             canon = CanonSectionId(scope_rel=scope_rel if scope_rel != "." else "", name=name)
             out.append(SectionRef(canon=canon, cfg_root=cfg, ph=ph, multiplicity=1))
     # агрегация кратностей
@@ -172,10 +166,7 @@ def resolve_context(name_or_sec: str, run_ctx: RunContext) -> ContextSpec:
     # секция текущего lg-cfg: канон строим относительно корня репо
     base_cfg = cfg_root(root)
     scope_dir = base_cfg.parent.resolve()
-    try:
-        scope_rel = scope_dir.relative_to(root.resolve()).as_posix()
-    except Exception:
-        scope_rel = ""
+    scope_rel = scope_dir.relative_to(root.resolve()).as_posix()
     canon = CanonSectionId(scope_rel=scope_rel if scope_rel != "." else "", name=name)
     return ContextSpec(
         kind="section",

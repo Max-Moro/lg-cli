@@ -85,13 +85,10 @@ def process_groups(plan: ContextPlan, run_ctx: RunContext) -> List[ProcessedBlob
                     processed_text, meta = adapter.process(raw_text, group_size, bool(grp.mixed))
                     # добавим диагностическую «крошку» про использованные ключи конфигурации
                     if raw_cfg:
-                        try:
-                            keys = sorted(raw_cfg.keys())
-                            # не зашумляем, если ключей 1-2 — но это всё равно полезно при отладке
-                            meta = dict(meta or {})
-                            meta["_adapter_cfg_keys"] = ",".join(keys)
-                        except Exception:
-                            pass
+                        keys = sorted(raw_cfg.keys())
+                        # не зашумляем, если ключей 1-2 — но это всё равно полезно при отладке
+                        meta = dict(meta or {})
+                        meta["_adapter_cfg_keys"] = ",".join(keys)
 
                     # Всегда добавляем прозрачные метки группы — для тестов и диагностики
                     meta = dict(meta or {})

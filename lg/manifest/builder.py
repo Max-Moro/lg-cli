@@ -45,11 +45,7 @@ def build_manifest(
     for sref in section_refs:
         scope_dir = sref.cfg_root.parent.resolve()      # каталог пакета/приложения
         # Относительный префикс скопа от корня репо (POSIX)
-        try:
-            scope_rel = scope_dir.relative_to(root.resolve()).as_posix()
-        except Exception:
-            # Если пакет не внутри репо — пропускаем молча (или можно поднять ошибку)
-            continue
+        scope_rel = scope_dir.relative_to(root.resolve()).as_posix()
 
         # Нормализуем '.' → '' (корень репо)
         if scope_rel == ".":
