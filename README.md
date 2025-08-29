@@ -177,6 +177,8 @@ ${sub-fold/extra/bar}
 а из фрагментов — по иерархическому пути:
 файл `sub-fold/extra.sec.yaml` → секция `bar` → `${sub-fold/extra/bar}`.
 
+*Подробнее:* [docs/templates.md](docs/templates.md).
+
 ---
 
 ## Языковые адаптеры
