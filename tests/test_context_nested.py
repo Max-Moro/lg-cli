@@ -50,7 +50,7 @@ def test_context_nested_ok(tmp_path: Path, monkeypatch):
     assert spec.kind == "context"
     assert len(spec.section_refs) == 1
     ref = spec.section_refs[0]
-    assert ref.name == "sec"
+    assert ref.canon.name == "sec"
     assert ref.multiplicity == 1
     assert ref.cfg_root == cfg_root(tmp_path)
 

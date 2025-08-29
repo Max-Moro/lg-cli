@@ -35,7 +35,7 @@ def mk_local_sec_spec(repo_root: Path, sec_name: str) -> ContextSpec:
     except Exception:
         scope_rel = ""
     canon = CanonSectionId(scope_rel=scope_rel if scope_rel != "." else "", name=sec_name)
-    ref = SectionRef(cfg_root=cfg_root, name=sec_name, ph=sec_name, multiplicity=1, canon=canon)
+    ref = SectionRef(canon=canon, cfg_root=cfg_root, ph=sec_name, multiplicity=1)
     return ContextSpec(kind="section", name=sec_name, section_refs=[ref])
 
 

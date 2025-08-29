@@ -72,7 +72,7 @@ def build_manifest(
             cfg_model = load_config(scope_dir)  # load_config ожидает "repo root" рядом с lg-cfg
             _cfg_cache[scope_dir] = cfg_model.sections
         local_sections = _cfg_cache.get(scope_dir, {})
-        cfg = local_sections.get(sref.name)
+        cfg = local_sections.get(sref.canon.name)
         if not cfg:
             # Запомним отсутствие и продолжим, чтобы собрать все промахи за раз
             canon_key = sref.canon.as_key()

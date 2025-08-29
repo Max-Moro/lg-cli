@@ -36,11 +36,10 @@ class SectionRef:
     Секция.
     multiplicity — сколько раз она встречается в контексте/шаблонах.
     """
+    canon: CanonSectionId
     cfg_root: Path
-    name: str
     ph: str
     multiplicity: int = 1
-    canon: CanonSectionId | None = None
 
 @dataclass(frozen=True)
 class ContextSpec:

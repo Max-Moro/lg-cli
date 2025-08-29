@@ -79,7 +79,7 @@ def _collect_section_refs_from_template(
             except Exception:
                 scope_rel = ""
             canon = CanonSectionId(scope_rel=scope_rel if scope_rel != "." else "", name=name)
-            out.append(SectionRef(cfg_root=cfg, name=name, ph=ph, multiplicity=1, canon=canon))
+            out.append(SectionRef(canon=canon, cfg_root=cfg, ph=ph, multiplicity=1))
     stack.pop()
     return out
 
@@ -114,25 +114,15 @@ def _collect_section_refs_for_context(*, root: Path, context_name: str) -> List[
             except Exception:
                 scope_rel = ""
             canon = CanonSectionId(scope_rel=scope_rel if scope_rel != "." else "", name=name)
-            out.append(SectionRef(cfg_root=cfg, name=name, ph=ph, multiplicity=1, canon=canon))
+            out.append(SectionRef(canon=canon, cfg_root=cfg, ph=ph, multiplicity=1))
     # агрегация кратностей
     by_canon: Dict[str, SectionRef] = {}
     for r in out:
-        # гарантируем наличие канона (на всякий случай)
-        if r.canon is None:
-            scope_dir = r.cfg_root.parent.resolve()
-            try:
-                scope_rel = scope_dir.relative_to(root.resolve()).as_posix()
-            except Exception:
-                scope_rel = ""
-            canon = CanonSectionId(scope_rel=scope_rel if scope_rel != "." else "", name=r.name)
-            r = SectionRef(cfg_root=r.cfg_root, name=r.name, ph=r.ph, multiplicity=r.multiplicity, canon=canon)
         key = r.canon.as_key()
         if key in by_canon:
             prev = by_canon[key]
             by_canon[key] = SectionRef(
                 cfg_root=prev.cfg_root,
-                name=prev.name,
                 ph=prev.ph,  # первый встретившийся плейсхолдер оставим для удобной диагностики
                 multiplicity=prev.multiplicity + r.multiplicity,
                 canon=prev.canon,
@@ -190,6 +180,6 @@ def resolve_context(name_or_sec: str, run_ctx: RunContext) -> ContextSpec:
     return ContextSpec(
         kind="section",
         name=name,
-        section_refs=[SectionRef(cfg_root=cfg_root(root), name=name, ph=name, multiplicity=1, canon=canon)],
+        section_refs=[SectionRef(canon=canon, cfg_root=cfg_root(root), ph=name, multiplicity=1)],
         ph2canon={name: canon.as_key()},
     )
