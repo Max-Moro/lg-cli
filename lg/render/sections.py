@@ -17,7 +17,8 @@ def _dedup_blobs(blobs: List[ProcessedBlob]) -> Dict[str, ProcessedBlob]:
 
 def render_by_section(plan: ContextPlan, blobs: List[ProcessedBlob]) -> Dict[CanonSectionId, str]:
     """
-    Построить текст для каждой секции по заранее сформированному секционному плану.
+    Построить текст для каждой адресной секции по заранее сформированному секционному плану.
+    Ключом результата выступает CanonSectionId.
     """
     rendered_by_sec: Dict[CanonSectionId, str] = {}
     blobs_by_rel = _dedup_blobs(blobs)

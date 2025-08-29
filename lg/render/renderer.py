@@ -3,7 +3,7 @@ from __future__ import annotations
 from typing import Dict, List
 
 from ..paths import render_file_marker
-from ..types import SectionPlan, ProcessedBlob, RenderBlock, RenderedDocument
+from ..types import SectionPlan, ProcessedBlob, RenderBlock, RenderedDocument, LANG_NONE
 
 
 def render_document(sec_plan: SectionPlan, blobs: List[ProcessedBlob]) -> RenderedDocument:
@@ -29,7 +29,7 @@ def render_document(sec_plan: SectionPlan, blobs: List[ProcessedBlob]) -> Render
     if sec_plan.use_fence:
         for grp in sec_plan.groups:
             # открываем fenced-блок
-            lang = grp.lang or ""
+            lang = grp.lang
             block_lines: List[str] = [f"```{lang}\n"]
             file_paths: List[str] = []
 
@@ -84,7 +84,7 @@ def render_document(sec_plan: SectionPlan, blobs: List[ProcessedBlob]) -> Render
                     block_lines.append("\n\n")
 
         block_text = "".join(block_lines)
-        blocks.append(RenderBlock(lang="", text=block_text, file_paths=file_paths))
+        blocks.append(RenderBlock(lang=LANG_NONE, text=block_text, file_paths=file_paths))
         out_lines.append(block_text)
 
     # финальный текст
