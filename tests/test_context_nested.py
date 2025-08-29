@@ -56,7 +56,7 @@ def test_context_nested_ok(tmp_path: Path, monkeypatch):
 
     # Подкладываем готовый рендер секции "sec" как будто его собрали ранее
     assert ref.canon is not None
-    rendered_by_section = {ref.canon.as_key(): "LISTING[sec]\n"}
+    rendered_by_section = {ref.canon: "LISTING[sec]\n"}
 
     # Компонуем финальный документ
     composed = compose_context(

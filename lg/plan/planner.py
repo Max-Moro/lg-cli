@@ -4,7 +4,7 @@ from typing import List, Tuple
 
 from ..paths import build_labels
 from ..run_context import RunContext
-from ..types import Manifest, Group, LangName, LANG_NONE, SectionPlan, ContextPlan, PathLabelMode
+from ..types import Manifest, Group, LangName, LANG_NONE, SectionPlan, ContextPlan, PathLabelMode, CanonSectionId
 
 
 def _consecutive_groups_by_lang(entries: list, langs: list[LangName]) -> List[Tuple[LangName, List]]:
@@ -29,7 +29,7 @@ def _consecutive_groups_by_lang(entries: list, langs: list[LangName]) -> List[Tu
 
 
 def _build_section_plan(
-    sec_name: str,
+    section_id: CanonSectionId,
     entries,
     langs: List[LangName],
     *,
@@ -61,7 +61,7 @@ def _build_section_plan(
     labels_map = build_labels(rels_in_order, mode=path_labels)
 
     return SectionPlan(
-        section=sec_name,
+        section_id=section_id,
         md_only=md_only,
         use_fence=use_fence,
         groups=groups,
@@ -87,7 +87,7 @@ def build_plan(manifest: Manifest, run_ctx: RunContext) -> ContextPlan:
         langs: List[LangName] = [f.language_hint for f in entries]
 
         sec_plan = _build_section_plan(
-            sec_name=sec.id.as_key(),
+            section_id=sec.id,
             entries=entries,
             langs=langs,
             code_fence=sec.meta.code_fence,

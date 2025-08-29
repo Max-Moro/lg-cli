@@ -53,7 +53,7 @@ class ContextSpec:
     name: str                     # "docs/arch" или "all"
     section_refs: List[SectionRef] = field(default_factory=list) # список адресных секций
     # Карта "сырой плейсхолдер → канонический ключ секции", нужна компоновщику.
-    ph2canon: Dict[str, str] = field(default_factory=dict)
+    ph2canon: Dict[str, CanonSectionId] = field(default_factory=dict)
 
 # -------- Manifest / Files --------
 @dataclass(frozen=True)
@@ -106,7 +106,7 @@ class Group:
 # -------- Section-scoped planning --------
 @dataclass(frozen=True)
 class SectionPlan:
-    section: str
+    section_id: CanonSectionId
     groups: list[Group]
     md_only: bool
     use_fence: bool

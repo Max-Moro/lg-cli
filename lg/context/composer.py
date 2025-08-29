@@ -6,7 +6,7 @@ from pathlib import Path
 from typing import Dict, Tuple
 
 from .common import TemplateTokens, parse_tpl_locator, load_template_from, load_context_from
-from ..types import ContextSpec
+from ..types import ContextSpec, CanonSectionId
 
 
 def _sha1(text: str) -> str:
@@ -30,8 +30,8 @@ def compose_context(
     repo_root: Path,
     base_cfg_root: Path,
     spec: ContextSpec,
-    rendered_by_section: Dict[str, str],
-    ph2canon: Dict[str, str],
+    rendered_by_section: Dict[CanonSectionId, str],
+    ph2canon: Dict[str, CanonSectionId],
 ) -> ComposedDocument:
     """
     Собирает итоговый документ по ContextSpec:
@@ -72,11 +72,11 @@ def compose_context(
 
             else:
                 # Секция: ключуем по канону
-                canon_key = ph2canon.get(ph)
-                if not canon_key:
+                canon = ph2canon.get(ph)
+                if not canon:
                     raise RuntimeError(f"Unknown section placeholder '{ph}' during composition "
                                        f"(no canon mapping). Ensure resolver collected it from templates.")
-                sec_text = rendered_by_section.get(canon_key, "")
+                sec_text = rendered_by_section.get(canon, "")
                 out_final_parts.append(sec_text)
                 out_sections_only_parts.append(sec_text)
 
@@ -89,8 +89,8 @@ def compose_context(
         return "".join(out_final_parts), "".join(out_sections_only_parts)
 
     if spec.kind == "section":
-        canon_key = spec.section_refs[0].canon.as_key()
-        sec_text = rendered_by_section.get(canon_key, "")
+        canon = spec.section_refs[0].canon
+        sec_text = rendered_by_section.get(canon, "")
         return ComposedDocument(text=sec_text, sections_only_text=sec_text, templates_hashes={})
 
     # Контекст: читаем корневой .ctx.md (всегда из self cfg-root)
@@ -122,11 +122,11 @@ def compose_context(
             out_sections_only_parts.append(child_sections_only)
 
         else:
-            canon_key = ph2canon.get(ph)
-            if not canon_key:
+            canon = ph2canon.get(ph)
+            if not canon:
                 raise RuntimeError(f"Unknown section placeholder '{ph}' during composition "
                                    f"(no canon mapping). Ensure resolver collected it from templates.")
-            sec_text = rendered_by_section.get(canon_key, "")
+            sec_text = rendered_by_section.get(canon, "")
             out_final_parts.append(sec_text)
             out_sections_only_parts.append(sec_text)
 

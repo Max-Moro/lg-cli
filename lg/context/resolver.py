@@ -150,10 +150,10 @@ def resolve_context(name_or_sec: str, run_ctx: RunContext) -> ContextSpec:
         if cp.is_file():
             refs = _collect_section_refs_for_context(root=root, context_name=name)
             # Построим карту плейсхолдер → канон (последний wins — не важно, канон один и тот же)
-            ph2canon: Dict[str, str] = {}
+            ph2canon: Dict[str, CanonSectionId] = {}
             for r in refs:
                 if r.canon:
-                    ph2canon[r.ph] = r.canon.as_key()
+                    ph2canon[r.ph] = r.canon
             return ContextSpec(
                 kind="context",
                 name=name,
@@ -172,5 +172,5 @@ def resolve_context(name_or_sec: str, run_ctx: RunContext) -> ContextSpec:
         kind="section",
         name=name,
         section_refs=[SectionRef(canon=canon, cfg_root=cfg_root(root), ph=name, multiplicity=1)],
-        ph2canon={name: canon.as_key()},
+        ph2canon={name: canon},
     )

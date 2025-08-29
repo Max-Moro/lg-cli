@@ -3,7 +3,7 @@ from __future__ import annotations
 from typing import Dict, List
 
 from .renderer import render_document
-from ..types import ProcessedBlob, ContextPlan
+from ..types import ProcessedBlob, ContextPlan, CanonSectionId
 
 
 def _dedup_blobs(blobs: List[ProcessedBlob]) -> Dict[str, ProcessedBlob]:
@@ -15,11 +15,11 @@ def _dedup_blobs(blobs: List[ProcessedBlob]) -> Dict[str, ProcessedBlob]:
     return out
 
 
-def render_by_section(plan: ContextPlan, blobs: List[ProcessedBlob]) -> Dict[str, str]:
+def render_by_section(plan: ContextPlan, blobs: List[ProcessedBlob]) -> Dict[CanonSectionId, str]:
     """
     Построить текст для каждой секции по заранее сформированному секционному плану.
     """
-    rendered_by_sec: Dict[str, str] = {}
+    rendered_by_sec: Dict[CanonSectionId, str] = {}
     blobs_by_rel = _dedup_blobs(blobs)
 
     for sec_plan in plan.sections:
@@ -34,5 +34,5 @@ def render_by_section(plan: ContextPlan, blobs: List[ProcessedBlob]) -> Dict[str
             if b:
                 sub_blobs.append(b)
         sub_doc = render_document(sec_plan, sub_blobs)
-        rendered_by_sec[sec_plan.section] = sub_doc.text
+        rendered_by_sec[sec_plan.section_id] = sub_doc.text
     return rendered_by_sec
