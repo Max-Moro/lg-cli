@@ -14,14 +14,14 @@ from .api_schema import (
 )
 from .cache.fs_cache import Cache
 from .config.paths import cfg_root as cfg_root_of
-from .context import resolve_context, compose_context
+from .context import resolve_context, compose_context, ComposedDocument
 from .manifest import build_manifest
 from .plan import build_plan
 from .protocol import PROTOCOL_VERSION
 from .render import render_by_section
 from .run_context import RunContext
 from .stats import get_model_info, compute_stats
-from .types import RunOptions, RenderedDocument, ContextSpec, Manifest, ProcessedBlob, ContextPlan
+from .types import RunOptions, RenderedDocument, ContextSpec, Manifest, ProcessedBlob
 from .vcs import NullVcs
 from .vcs.git import GitVcs
 
@@ -49,15 +49,12 @@ def _build_run_ctx(options: RunOptions) -> RunContext:
     return RunContext(root=root, options=options, cache=cache, vcs=vcs)
 
 
-def _pipeline_common(target: str, run_ctx: RunContext) -> Tuple[ContextSpec, Manifest, ContextPlan, list[ProcessedBlob]]:
+def _pipeline_common(target: str, run_ctx: RunContext) -> Tuple[ContextSpec, Manifest, list[ProcessedBlob], ComposedDocument]:
     """
-    Общая часть пайплайна для render/report:
-      resolve → manifest → plan → process
+    Общая часть пайплайна для render/report.
     """
-    # 1) resolve context/spec
     spec = resolve_context(target, run_ctx)
 
-    # 2) build manifest (учитывает .gitignore, фильтры и режим changes)
     manifest = build_manifest(
         root=run_ctx.root,
         spec=spec,
@@ -65,13 +62,21 @@ def _pipeline_common(target: str, run_ctx: RunContext) -> Tuple[ContextSpec, Man
         vcs=run_ctx.vcs,
     )
 
-    # 3) plan (code_fence semantics + группировка по языкам)
     plan = build_plan(manifest, run_ctx)
 
-    # 4) adapters engine (process + cache)
     blobs = process_groups(plan, run_ctx)
 
-    return spec, manifest, plan, blobs
+    rendered_by_sec = render_by_section(plan, blobs)
+
+    composed = compose_context(
+        repo_root=run_ctx.root,
+        base_cfg_root=cfg_root_of(run_ctx.root),
+        spec=spec,
+        rendered_by_section=rendered_by_sec,
+        ph2canon=spec.ph2canon,
+    )
+
+    return spec, manifest, blobs, composed
 
 
 # ----------------------------- public API ----------------------------- #
@@ -81,15 +86,7 @@ def run_render(target: str, options: RunOptions) -> RenderedDocument:
     Полный рендер текста (включая клей шаблонов) без вычисления JSON-отчёта.
     """
     run_ctx = _build_run_ctx(options)
-    spec, manifest, plan, blobs = _pipeline_common(target, run_ctx)
-    rendered_by_sec = render_by_section(plan, blobs)
-    composed = compose_context(
-        repo_root=run_ctx.root,
-        base_cfg_root=cfg_root_of(run_ctx.root),
-        spec=spec,
-        rendered_by_section=rendered_by_sec,
-        ph2canon=spec.ph2canon,
-    )
+    _, _, _, composed = _pipeline_common(target, run_ctx)
     # Возвращаем итоговый текст; blocks здесь опускаем (они не отражают клей)
     return RenderedDocument(text=composed.text, blocks=[])
 
@@ -102,15 +99,7 @@ def run_report(target: str, options: RunOptions) -> RunResultM:
       • возвращает pydantic-модель RunResult (formatVersion=4)
     """
     run_ctx = _build_run_ctx(options)
-    spec, manifest, plan, blobs = _pipeline_common(target, run_ctx)
-    rendered_by_sec = render_by_section(plan, blobs)
-    composed = compose_context(
-        repo_root=run_ctx.root,
-        base_cfg_root=cfg_root_of(run_ctx.root),
-        spec=spec,
-        rendered_by_section=rendered_by_sec,
-        ph2canon=spec.ph2canon,
-    )
+    spec, manifest, blobs, composed = _pipeline_common(target, run_ctx)
 
     model_info = get_model_info(run_ctx.root, options.model)
     files_rows, totals, ctx_block, enc_name = compute_stats(
