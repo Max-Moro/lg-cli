@@ -102,6 +102,10 @@ def monorepo(tmp_path: Path) -> Path:
     write(root / "apps" / "web" / "lg-cfg" / "sections.yaml", "schema_version: 6\n")
     write(root / "apps" / "web" / "lg-cfg" / "web.sec.yaml", _web_sections())
     write(root / "apps" / "web" / "lg-cfg" / "docs" / "guide.tpl.md", "WEB GUIDE (no sections here)\n")
+    # Доп. контекст в child для проверки ctx@...
+    write(root / "apps" / "web" / "lg-cfg" / "external.ctx.md", "# WEBCTX\n\n${web-api}\n")
+    # И корневой контекст, который вставляет child-контекст
+    write(root / "lg-cfg" / "x.ctx.md", "# ROOT X\n\n${ctx@apps/web:external}\n")
 
     # --- payload files for filters/targets ---
     write(root / "packages" / "svc-a" / "src" / "pkg" / "x.py", "def foo():\n    return 1\n")

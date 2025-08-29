@@ -14,8 +14,8 @@ def test_list_commands_are_local_to_self(monorepo: Path):
     cp = run_cli(monorepo, "list", "contexts")
     assert cp.returncode == 0, cp.stderr
     data = jload(cp.stdout)
-    # В корне у нас только 'a'
-    assert data["contexts"] == ["a"]
+    # В корне у нас только 'a' и `x`
+    assert data["contexts"] == ["a", "x"]
 
     # sections
     cp = run_cli(monorepo, "list", "sections")
