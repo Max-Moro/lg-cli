@@ -3,20 +3,28 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Dict, List, Tuple
 
-from .common import TemplateTokens, parse_tpl_locator, load_template_from, context_path, resolve_cfg_root
+from .common import (
+    TemplateTokens,
+    parse_locator,
+    load_from_cfg,
+    context_path,
+    resolve_cfg_root,
+    CTX_SUFFIX,
+    TPL_SUFFIX,
+)
 from ..config.paths import cfg_root
-from ..run_context import RunContext
 from ..types import ContextSpec, SectionRef, CanonSectionId
+from ..run_context import RunContext
 
 
-# --------------------------- Internal walkers --------------------------- #
+# --------------------------- Internal helpers --------------------------- #
 
 def _parse_section_placeholder(ph: str, *, current_cfg_root: Path, repo_root: Path) -> Tuple[Path, str]:
     """
     Разбор секционного плейсхолдера:
       - "name"                  -> (@self, "name")
-      - "@child:name"           -> (@child, "name")
-      - "@[child/with:colon]:n" -> (@child/with:colon, "n")
+      - "@origin:name"          -> (@origin, "name")
+      - "@[origin/with:colon]:n"-> (@origin/with:colon, "n")
     Возвращает (cfg_root, section_name).
     """
     if ph.startswith("@["):
@@ -40,75 +48,83 @@ def _parse_section_placeholder(ph: str, *, current_cfg_root: Path, repo_root: Pa
     # без адресности → self
     return current_cfg_root, ph
 
-def _collect_section_refs_from_template(
+
+def _load_doc(kind: str, cfg_root_current: Path, name: str) -> str:
+    """Загрузка документа 'tpl' или 'ctx' по suffix."""
+    suffix = TPL_SUFFIX if kind == "tpl" else CTX_SUFFIX
+    _p, text = load_from_cfg(cfg_root_current, name, suffix=suffix)
+    return text
+
+
+def _collect_section_refs_from_doc(
     *,
     repo_root: Path,
     cfg_root_current: Path,
-    template_name: str,
+    kind: str,               # "tpl" | "ctx"
+    name: str,
     stack: List[Tuple[Path, str]] | None = None,
 ) -> List[SectionRef]:
-    """Собирает список адресных секций из шаблона (учитывает вложенные tpl и tpl@)."""
+    """
+    Рекурсивно собирает адресные секции из ДОКУМЕНТА (tpl/ctx), поддерживая вложенные tpl/ctx.
+    """
     stack = stack or []
-    marker = (cfg_root_current, template_name)
+    marker = (cfg_root_current, f"{kind}:{name}")
     if marker in stack:
-        cycle = " → ".join([f"{p.as_posix()}::{n}" for p, n in stack] + [f"{cfg_root_current.as_posix()}::{template_name}"])
-        raise RuntimeError(f"Template cycle detected: {cycle}")
-    _, text = load_template_from(cfg_root_current, template_name)
+        cycle = " → ".join([f"{p.as_posix()}::{n}" for p, n in stack] + [f"{cfg_root_current.as_posix()}::{kind}:{name}"])
+        raise RuntimeError(f"{kind.upper()} cycle detected: {cycle}")
+
+    text = _load_doc(kind, cfg_root_current, name)
     stack.append(marker)
     out: List[SectionRef] = []
+
     for m in TemplateTokens.iter_matches(text):
         ph = m.group("braced") or m.group("name") or ""
         if not ph:
             continue
+
         if ph.startswith("tpl:"):
             child = ph[4:]
-            out.extend(_collect_section_refs_from_template(
-                repo_root=repo_root, cfg_root_current=cfg_root_current, template_name=child, stack=stack
+            out.extend(_collect_section_refs_from_doc(
+                repo_root=repo_root, cfg_root_current=cfg_root_current, kind="tpl", name=child, stack=stack
             ))
         elif ph.startswith("tpl@"):
-            child_cfg_root, child_name = parse_tpl_locator(ph, current_cfg_root=cfg_root_current, repo_root=repo_root)
-            out.extend(_collect_section_refs_from_template(
-                repo_root=repo_root, cfg_root_current=child_cfg_root, template_name=child_name, stack=stack
+            loc = parse_locator(ph, expected_kind="tpl")
+            child_cfg = resolve_cfg_root(loc.origin, current_cfg_root=cfg_root_current, repo_root=repo_root)
+            out.extend(_collect_section_refs_from_doc(
+                repo_root=repo_root, cfg_root_current=child_cfg, kind="tpl", name=loc.resource, stack=stack
+            ))
+        elif ph.startswith("ctx:"):
+            child = ph[4:]
+            out.extend(_collect_section_refs_from_doc(
+                repo_root=repo_root, cfg_root_current=cfg_root_current, kind="ctx", name=child, stack=stack
+            ))
+        elif ph.startswith("ctx@"):
+            loc = parse_locator(ph, expected_kind="ctx")
+            child_cfg = resolve_cfg_root(loc.origin, current_cfg_root=cfg_root_current, repo_root=repo_root)
+            out.extend(_collect_section_refs_from_doc(
+                repo_root=repo_root, cfg_root_current=child_cfg, kind="ctx", name=loc.resource, stack=stack
             ))
         else:
-            cfg, name = _parse_section_placeholder(ph, current_cfg_root=cfg_root_current, repo_root=repo_root)
-            # канон
+            # Секционный плейсхолдер
+            cfg, sec_name = _parse_section_placeholder(ph, current_cfg_root=cfg_root_current, repo_root=repo_root)
             scope_dir = cfg.parent.resolve()
             scope_rel = scope_dir.relative_to(repo_root.resolve()).as_posix()
-            canon = CanonSectionId(scope_rel=scope_rel if scope_rel != "." else "", name=name)
+            canon = CanonSectionId(scope_rel=scope_rel if scope_rel != "." else "", name=sec_name)
             out.append(SectionRef(canon=canon, cfg_root=cfg, ph=ph, multiplicity=1))
+
     stack.pop()
     return out
 
+
 def _collect_section_refs_for_context(*, root: Path, context_name: str) -> List[SectionRef]:
-    """Собирает адресные секции из самого .ctx и его вложенных шаблонов."""
+    """Собирает адресные секции из .ctx (включая вложенные tpl и ctx)."""
     cp = context_path(root, context_name)
     if not cp.is_file():
         raise RuntimeError(f"Context not found: {cp}")
-    text = cp.read_text(encoding="utf-8", errors="ignore")
     base_cfg = cfg_root(root)
-    out: List[SectionRef] = []
-    for m in TemplateTokens.iter_matches(text):
-        ph = m.group("braced") or m.group("name") or ""
-        if not ph:
-            continue
-        if ph.startswith("tpl:"):
-            child = ph[4:]
-            out.extend(_collect_section_refs_from_template(
-                repo_root=root, cfg_root_current=base_cfg, template_name=child, stack=[]
-            ))
-        elif ph.startswith("tpl@"):
-            child_cfg_root, child_name = parse_tpl_locator(ph, current_cfg_root=base_cfg, repo_root=root)
-            out.extend(_collect_section_refs_from_template(
-                repo_root=root, cfg_root_current=child_cfg_root, template_name=child_name, stack=[]
-            ))
-        else:
-            cfg, name = _parse_section_placeholder(ph, current_cfg_root=base_cfg, repo_root=root)
-            # канон
-            scope_dir = cfg.parent.resolve()
-            scope_rel = scope_dir.relative_to(root.resolve()).as_posix()
-            canon = CanonSectionId(scope_rel=scope_rel if scope_rel != "." else "", name=name)
-            out.append(SectionRef(canon=canon, cfg_root=cfg, ph=ph, multiplicity=1))
+    out = _collect_section_refs_from_doc(
+        repo_root=root, cfg_root_current=base_cfg, kind="ctx", name=context_name, stack=[]
+    )
     # агрегация кратностей
     by_canon: Dict[str, SectionRef] = {}
     for r in out:
@@ -117,13 +133,14 @@ def _collect_section_refs_for_context(*, root: Path, context_name: str) -> List[
             prev = by_canon[key]
             by_canon[key] = SectionRef(
                 cfg_root=prev.cfg_root,
-                ph=prev.ph,  # первый встретившийся плейсхолдер оставим для удобной диагностики
+                ph=prev.ph,
                 multiplicity=prev.multiplicity + r.multiplicity,
                 canon=prev.canon,
             )
         else:
             by_canon[key] = r
     return list(by_canon.values())
+
 
 # --------------------------- Public API --------------------------- #
 
@@ -133,7 +150,7 @@ def resolve_context(name_or_sec: str, run_ctx: RunContext) -> ContextSpec:
       • ctx:<name> → ищем контекст в lg-cfg/<name>.ctx.md
       • sec:<id>   → виртуальный контекст для секции <id> (канонический ID текущего lg-cfg)
       • <name>     → сначала ctx:<name>, иначе sec:<name>
-    Адресные шаблоны (${tpl@child:...}) и адресные секции (${@child:...})
+    Адресные шаблоны (${tpl@child:...}) и адресные контексты (${ctx@child:...})
     поддерживаются и корректно учитываются в подсчёте кратностей.
     """
     root = run_ctx.root
@@ -149,7 +166,7 @@ def resolve_context(name_or_sec: str, run_ctx: RunContext) -> ContextSpec:
         cp = context_path(root, name)
         if cp.is_file():
             refs = _collect_section_refs_for_context(root=root, context_name=name)
-            # Построим карту плейсхолдер → канон (последний wins — не важно, канон один и тот же)
+            # Построим карту плейсхолдер → канон (не важно, какой placeholder встретился первым)
             ph2canon: Dict[str, CanonSectionId] = {}
             for r in refs:
                 if r.canon:

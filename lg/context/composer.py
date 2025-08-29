@@ -3,9 +3,9 @@ from __future__ import annotations
 import hashlib
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Dict, Tuple
+from typing import Dict, Tuple, List
 
-from .common import TemplateTokens, parse_tpl_locator, load_template_from, load_context_from
+from .common import TemplateTokens, parse_locator, load_from_cfg, CTX_SUFFIX, TPL_SUFFIX
 from ..types import ContextSpec, CanonSectionId
 
 
@@ -19,11 +19,22 @@ class ComposedDocument:
     Итог композиции контекста:
       • text — финальный документ (клей-шаблоны + вставки секций)
       • sections_only_text — тот же документ, но без «клея» (только вставки секций)
-      • templates_hashes — карта { '<cfg_root>::<name>' → sha1(исходного текста) }
+      • templates_hashes — карта { '<cfg_root>::{ctx|tpl}:<name>' → sha1(исходного текста) }
     """
     text: str
     sections_only_text: str
     templates_hashes: Dict[str, str]
+
+
+def _load_doc_text(kind: str, cfg_root_current: Path, name: str) -> Tuple[Path, str, str]:
+    """
+    Загрузка текста документа (tpl/ctx) и ключ для templates_hashes.
+    Возвращает (path, src, key).
+    """
+    suffix = TPL_SUFFIX if kind == "tpl" else CTX_SUFFIX
+    p, src = load_from_cfg(cfg_root_current, name, suffix=suffix)
+    key = f"{cfg_root_current.as_posix()}::{kind}:{name}"
+    return p, src, key
 
 
 def compose_context(
@@ -36,16 +47,24 @@ def compose_context(
     """
     Собирает итоговый документ по ContextSpec:
       • kind="section": возвращает рендер одной секции;
-      • kind="context": раскрывает шаблон и вложенные ${tpl:...}/${tpl@...:...}, подставляет секции.
+      • kind="context": раскрывает документ ctx + вложенные tpl/ctx, подставляет секции.
     """
 
-    def _expand_template(name: str, current_cfg_root: Path, templates: Dict[str, str]) -> Tuple[str, str]:
+    def _expand(kind: str, name: str, current_cfg_root: Path, templates: Dict[str, str],
+                stack: List[Tuple[Path, str]] | None = None) -> Tuple[str, str]:
         """
-        Рекурсивно расширяет один ШАБЛОН (.tpl.md) относительно current_cfg_root.
+        Универсальный расширитель tpl/ctx.
         Возвращает (final_text, sections_only_text).
         """
-        _p, src = load_template_from(current_cfg_root, name)
-        templates[f"{current_cfg_root.as_posix()}::{name}"] = _sha1(src)
+        _stack = stack or []
+        marker = (current_cfg_root, f"{kind}:{name}")
+        if marker in _stack:
+            cycle = " → ".join([f"{p.as_posix()}::{n}" for p, n in _stack] + [f"{current_cfg_root.as_posix()}::{kind}:{name}"])
+            raise RuntimeError(f"{kind.upper()} cycle detected: {cycle}")
+
+        _p, src, hkey = _load_doc_text(kind, current_cfg_root, name)
+        templates[hkey] = _sha1(src)
+        _stack.append(marker)
 
         out_final_parts: list[str] = []
         out_sections_only_parts: list[str] = []
@@ -53,20 +72,34 @@ def compose_context(
 
         for m in TemplateTokens.iter_matches(src):
             start, end = m.span()
-            # Литерал до плейсхолдера — идёт только в финальный текст
+            # Литерал между плейсхолдерами — только в финальный текст
             if start > pos:
                 out_final_parts.append(src[pos:start])
 
             ph = m.group("braced") or m.group("name") or ""
             if ph.startswith("tpl:"):
                 child = ph[4:]
-                child_final, child_sections_only = _expand_template(child, current_cfg_root, templates)
+                child_final, child_sections_only = _expand("tpl", child, current_cfg_root, templates, _stack)
                 out_final_parts.append(child_final)
                 out_sections_only_parts.append(child_sections_only)
 
             elif ph.startswith("tpl@"):
-                child_cfg_root, child_name = parse_tpl_locator(ph, current_cfg_root=current_cfg_root, repo_root=repo_root)
-                child_final, child_sections_only = _expand_template(child_name, child_cfg_root, templates)
+                loc = parse_locator(ph, expected_kind="tpl")
+                child_cfg_root = (repo_root / loc.origin / "lg-cfg").resolve() if loc.origin != "self" else current_cfg_root
+                child_final, child_sections_only = _expand("tpl", loc.resource, child_cfg_root, templates, _stack)
+                out_final_parts.append(child_final)
+                out_sections_only_parts.append(child_sections_only)
+
+            elif ph.startswith("ctx:"):
+                child = ph[4:]
+                child_final, child_sections_only = _expand("ctx", child, current_cfg_root, templates, _stack)
+                out_final_parts.append(child_final)
+                out_sections_only_parts.append(child_sections_only)
+
+            elif ph.startswith("ctx@"):
+                loc = parse_locator(ph, expected_kind="ctx")
+                child_cfg_root = (repo_root / loc.origin / "lg-cfg").resolve() if loc.origin != "self" else current_cfg_root
+                child_final, child_sections_only = _expand("ctx", loc.resource, child_cfg_root, templates, _stack)
                 out_final_parts.append(child_final)
                 out_sections_only_parts.append(child_sections_only)
 
@@ -74,8 +107,10 @@ def compose_context(
                 # Секция: ключуем по канону
                 canon = ph2canon.get(ph)
                 if not canon:
-                    raise RuntimeError(f"Unknown section placeholder '{ph}' during composition "
-                                       f"(no canon mapping). Ensure resolver collected it from templates.")
+                    raise RuntimeError(
+                        f"Unknown section placeholder '{ph}' during composition "
+                        f"(no canon mapping). Ensure resolver collected it from templates/contexts."
+                    )
                 sec_text = rendered_by_section.get(canon, "")
                 out_final_parts.append(sec_text)
                 out_sections_only_parts.append(sec_text)
@@ -86,6 +121,7 @@ def compose_context(
         if pos < len(src):
             out_final_parts.append(src[pos:])
 
+        _stack.pop()
         return "".join(out_final_parts), "".join(out_sections_only_parts)
 
     if spec.kind == "section":
@@ -93,49 +129,8 @@ def compose_context(
         sec_text = rendered_by_section.get(canon, "")
         return ComposedDocument(text=sec_text, sections_only_text=sec_text, templates_hashes={})
 
-    # Контекст: читаем корневой .ctx.md (всегда из self cfg-root)
-    _, ctx_src = load_context_from(base_cfg_root, spec.name)
-
+    # Контекст: раскрываем через общий расширитель
     templates_hashes: Dict[str, str] = {}
-    templates_hashes[f"{base_cfg_root.as_posix()}::ctx:{spec.name}"] = _sha1(ctx_src)
-
-    out_final_parts: list[str] = []
-    out_sections_only_parts: list[str] = []
-    pos = 0
-
-    for m in TemplateTokens.iter_matches(ctx_src):
-        start, end = m.span()
-        if start > pos:
-            out_final_parts.append(ctx_src[pos:start])
-
-        ph = m.group("braced") or m.group("name") or ""
-        if ph.startswith("tpl:"):
-            child = ph[4:]
-            child_final, child_sections_only = _expand_template(child, base_cfg_root, templates_hashes)
-            out_final_parts.append(child_final)
-            out_sections_only_parts.append(child_sections_only)
-
-        elif ph.startswith("tpl@"):
-            child_cfg_root, child_name = parse_tpl_locator(ph, current_cfg_root=base_cfg_root, repo_root=repo_root)
-            child_final, child_sections_only = _expand_template(child_name, child_cfg_root, templates_hashes)
-            out_final_parts.append(child_final)
-            out_sections_only_parts.append(child_sections_only)
-
-        else:
-            canon = ph2canon.get(ph)
-            if not canon:
-                raise RuntimeError(f"Unknown section placeholder '{ph}' during composition "
-                                   f"(no canon mapping). Ensure resolver collected it from templates.")
-            sec_text = rendered_by_section.get(canon, "")
-            out_final_parts.append(sec_text)
-            out_sections_only_parts.append(sec_text)
-
-        pos = end
-
-    if pos < len(ctx_src):
-        out_final_parts.append(ctx_src[pos:])
-
-    final_text = "".join(out_final_parts)
-    sections_only = "".join(out_sections_only_parts)
+    final_text, sections_only = _expand("ctx", spec.name, base_cfg_root, templates_hashes, stack=[])
 
     return ComposedDocument(text=final_text, sections_only_text=sections_only, templates_hashes=templates_hashes)

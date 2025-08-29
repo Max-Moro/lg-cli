@@ -7,23 +7,10 @@ from typing import Iterable, List, Set, Tuple
 
 from ..config.paths import cfg_root
 
+# Унифицированные суффиксы документов
 TPL_SUFFIX = ".tpl.md"
 CTX_SUFFIX = ".ctx.md"
 
-def list_contexts(root: Path) -> List[str]:
-    base = cfg_root(root)
-    if not base.is_dir():
-        return []
-    out: List[str] = []
-    for p in base.rglob(f"*{CTX_SUFFIX}"):
-        rel = p.relative_to(base).as_posix()
-        out.append(rel[: -len(CTX_SUFFIX)])
-    out.sort()
-    return out
-
-def context_path(root: Path, name: str) -> Path:
-    """Путь к контексту: lg-cfg/<name>.ctx.md (поддиректории поддерживаются)."""
-    return cfg_root(root) / f"{name}{CTX_SUFFIX}"
 
 # ---------------------------- Tokens/Placeholders ---------------------------- #
 
@@ -66,7 +53,7 @@ class TemplateTokens:
 @dataclass(frozen=True)
 class Locator:
     """Унифицированный локатор: kind + (origin, resource)."""
-    kind: str         # "tpl" | "sec" (в будущем можно расширять)
+    kind: str         # "tpl" | "ctx"
     origin: str       # "self" или repo-relative путь (POSIX, без "lg-cfg" в конце)
     resource: str     # имя внутри lg-cfg (например "docs/guide" или "core-src")
 
@@ -99,7 +86,7 @@ def parse_locator(ph: str, expected_kind: str) -> Locator:
     if not ph.startswith(expected_kind):
         raise RuntimeError(f"Not a {expected_kind} locator: {ph}")
 
-    # Локальная форма (обратная совместимость): '{kind}:name'
+    # Локальная форма: '{kind}:name'
     if ph.startswith(f"{expected_kind}:"):
         resource = ph[len(expected_kind) + 1 :].strip()
         if not resource:
@@ -149,7 +136,6 @@ def resolve_cfg_root(origin: str, *, current_cfg_root: Path, repo_root: Path) ->
 def load_from_cfg(cfg_root: Path, resource: str, *, suffix: str) -> Tuple[Path, str]:
     """
     Единая загрузка файла из lg-cfg/: <cfg_root>/<resource><suffix>.
-    Пример: suffix='.tpl.md' → шаблон; suffix='.ctx.md' → контекст.
     """
     p = (cfg_root / f"{resource}{suffix}").resolve()
     if not p.is_file():
@@ -157,19 +143,47 @@ def load_from_cfg(cfg_root: Path, resource: str, *, suffix: str) -> Tuple[Path, 
     return p, p.read_text(encoding="utf-8", errors="ignore")
 
 
-def parse_tpl_locator(ph: str, *, current_cfg_root: Path, repo_root: Path) -> Tuple[Path, str]:
+# ---------------------- Public helpers & compatibility ----------------------- #
+
+def list_contexts(root: Path) -> List[str]:
     """
-    Парсер specifically для шаблонов, возвращает (cfg_root, name).
-    Использует универсальный parse_locator и resolve_cfg_root.
+    Перечислить доступные контексты (ТОЛЬКО *.ctx.md) относительно lg-cfg/.
     """
-    loc = parse_locator(ph, expected_kind="tpl")
-    cfg = resolve_cfg_root(loc.origin, current_cfg_root=current_cfg_root, repo_root=repo_root)
-    return cfg, loc.resource
+    base = cfg_root(root)
+    if not base.is_dir():
+        return []
+    out: List[str] = []
+    for p in base.rglob(f"*{CTX_SUFFIX}"):
+        rel = p.relative_to(base).as_posix()
+        out.append(rel[: -len(CTX_SUFFIX)])
+    out.sort()
+    return out
+
+
+def context_path(root: Path, name: str) -> Path:
+    """Путь к контексту: lg-cfg/<name>.ctx.md (поддиректории поддерживаются)."""
+    return cfg_root(root) / f"{name}{CTX_SUFFIX}"
+
+
+def load_context_from(cfg_root: Path, name: str) -> Tuple[Path, str]:
+    """Контекст: <cfg_root>/<name>.ctx.md"""
+    return load_from_cfg(cfg_root, name, suffix=CTX_SUFFIX)
+
 
 def load_template_from(cfg_root: Path, name: str) -> Tuple[Path, str]:
     """Шаблон: <cfg_root>/<name>.tpl.md"""
     return load_from_cfg(cfg_root, name, suffix=TPL_SUFFIX)
 
-def load_context_from(cfg_root: Path, name: str) -> Tuple[Path, str]:
-    """Контекст: <cfg_root>/<name>.ctx.md"""
-    return load_from_cfg(cfg_root, name, suffix=CTX_SUFFIX)
+
+def parse_tpl_locator(ph: str, *, current_cfg_root: Path, repo_root: Path) -> Tuple[Path, str]:
+    """Совместимость: парсер specifically для шаблонов ('tpl')."""
+    loc = parse_locator(ph, expected_kind="tpl")
+    cfg = resolve_cfg_root(loc.origin, current_cfg_root=current_cfg_root, repo_root=repo_root)
+    return cfg, loc.resource
+
+
+def parse_ctx_locator(ph: str, *, current_cfg_root: Path, repo_root: Path) -> Tuple[Path, str]:
+    """Совместимость: парсер specifically для контекстов ('ctx')."""
+    loc = parse_locator(ph, expected_kind="ctx")
+    cfg = resolve_cfg_root(loc.origin, current_cfg_root=current_cfg_root, repo_root=repo_root)
+    return cfg, loc.resource
