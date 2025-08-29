@@ -48,8 +48,14 @@ def _collect_sections_from_sections_yaml(root: Path) -> Tuple[int, Dict[str, Sec
 def _collect_sections_from_fragments(root: Path) -> Dict[str, SectionCfg]:
     """
     Собирает секции из всех **/*.sec.yaml.
-    Канонический ID секции = '<prefix>/<section_local_name>',
-    где <prefix> = путь к файлу без суффикса '.sec.yaml' относительно lg-cfg/.
+    Канонический ID секции формируется так:
+      • Если фрагмент содержит РОВНО одну секцию → канон-ID = <имя этой секции> (префикс игнорируем).
+        Пример: 'web.sec.yaml' c единственной секцией 'web-api' → 'web-api'.
+      • Иначе:
+          – prefix = путь к файлу без суффикса '.sec.yaml' относительно lg-cfg/ (POSIX).
+          – Если последний сегмент prefix совпадает с именем секции → канон-ID = prefix
+            (устраняем "a/a", "pkg/core/core").
+          – Иначе → канон-ID = 'prefix/<section_local_name>'.
     """
     acc: Dict[str, SectionCfg] = {}
     for frag in iter_section_fragments(root):
@@ -59,12 +65,31 @@ def _collect_sections_from_fragments(root: Path) -> Dict[str, SectionCfg]:
         if sv is not None and int(sv) != SCHEMA_VERSION:
             raise RuntimeError(f"{frag}: schema_version={sv} mismatches core {SCHEMA_VERSION}")
         prefix = canonical_fragment_prefix(root, frag)
-        for local_name, node in raw.items():
+
+        # Соберём список секций (игнорируя служебный ключ)
+        section_items = [(name, node) for name, node in raw.items() if name != "schema_version"]
+        if not section_items:
+            # Пустой фрагмент — корректен, но нечего добавлять
+            continue
+
+        # Правило 1: одинарная секция → канон = её имя
+        if len(section_items) == 1:
+            local_name, node = section_items[0]
+            if not isinstance(node, dict):
+                raise RuntimeError(f"Section '{local_name}' in {frag} must be a mapping")
+            canon_id = local_name
+            acc[canon_id] = SectionCfg.from_dict(canon_id, node)
+            continue
+
+        # Правило 2: несколько секций → нормализация "хвоста" по prefix
+        pref_tail = prefix.split("/")[-1] if prefix else ""
+        for local_name, node in section_items:
             if local_name == "schema_version":
                 continue
             if not isinstance(node, dict):
                 raise RuntimeError(f"Section '{local_name}' in {frag} must be a mapping")
-            canon_id = f"{prefix}/{local_name}"
+            # Нормализация канон-ID без повторения хвоста (исправляет "a/a" и т. п.)
+            canon_id = prefix if (pref_tail and local_name == pref_tail) else f"{prefix}/{local_name}"
             acc[canon_id] = SectionCfg.from_dict(canon_id, node)
     return acc
 

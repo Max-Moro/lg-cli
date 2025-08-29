@@ -112,11 +112,39 @@ def build_manifest(
 
         # Pruner: не выходим за пределы скопа и учитываем фильтры на поддиректории СКОПА
         def _pruner(rel_dir: str) -> bool:
-            # Отсекаем всё, что вне скопа
-            if not in_scope(rel_dir) and rel_dir != "":
+            """
+            Решаем, углубляться ли в каталог rel_dir (repo-root relative, POSIX).
+            Правила:
+              • Всегда позволяем идти через предков scope_rel (иначе до него не дойдём).
+              • Внутри scope_rel применяем фильтры секции (engine.may_descend) к пути,
+                приведённому к относительному от scope_dir.
+              • Любые ветви, которые не являются ни предком scope_rel, ни его поддеревом, – отсекаем.
+              • Всегда отсекаем служебный lg-cfg/ внутри поддерева секции.
+            """
+            if scope_rel == "":
+                # Глобальный скоуп (корень репо): применяем фильтры везде
+                sub_rel = rel_dir
+                if is_cfg_relpath(sub_rel):
+                    return False
+                return engine.may_descend(sub_rel)
+
+            if rel_dir == "":
+                # корень репо — всегда можно спуститься
+                return True
+
+            is_ancestor_of_scope = scope_rel.startswith(rel_dir + "/") or scope_rel == rel_dir
+            is_inside_scope = rel_dir.startswith(scope_rel + "/") or rel_dir == scope_rel
+
+            if not (is_ancestor_of_scope or is_inside_scope):
+                # Ветка гарантированно вне интереса данной секции
                 return False
-            # Относительный путь ДЛЯ фильтров секции (относительно scope_dir)
-            sub_rel = rel_for_engine(rel_dir)
+
+            if is_ancestor_of_scope and not is_inside_scope:
+                # Мы выше scope_rel: фильтры секции ещё не применимы, просто спускаемся
+                return True
+
+            # Мы в пределах scope_rel: применяем фильтры секции
+            sub_rel = rel_for_engine(rel_dir)  # теперь rel_dir гарантированно под scope_rel
             if is_cfg_relpath(sub_rel):
                 return False
             return engine.may_descend(sub_rel)
