@@ -46,7 +46,7 @@ def test_compose_context_expands_tpl_at_and_builds_hashes(monorepo: Path):
 
     # Хэши шаблонов: ключи вида "<cfg_root>::ctx:a" и "<apps/web/lg-cfg>::docs/guide"
     base_key = f"{cfg_root(monorepo).as_posix()}::ctx:a"
-    child_key = f"{(monorepo / 'apps' / 'web' / 'lg-cfg').as_posix()}::docs/guide"
+    child_key = f"{(monorepo / 'apps' / 'web' / 'lg-cfg').as_posix()}::tpl:docs/guide"
     assert base_key in composed.templates_hashes
     assert child_key in composed.templates_hashes
     assert all(len(v) == 40 for v in composed.templates_hashes.values())  # sha1

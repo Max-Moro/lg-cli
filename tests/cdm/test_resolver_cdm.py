@@ -75,5 +75,5 @@ def test_template_cycle_is_detected(monorepo: Path):
     )
 
     rc = _mk_run_ctx(monorepo)
-    with pytest.raises(RuntimeError, match="Template cycle detected"):
+    with pytest.raises(RuntimeError, match="TPL cycle detected"):
         resolve_context("ctx:a", rc)

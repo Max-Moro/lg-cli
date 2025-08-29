@@ -1,0 +1,20 @@
+basic:
+  extensions: [".py"]
+  filters:
+    mode: allow
+    allow:
+      - "/tests/*.py"
+
+markdown:
+  extensions: [".py"]
+  filters:
+    mode: allow
+    allow:
+      - "/tests/markdown/"
+
+cdm:
+  extensions: [".py"]
+  filters:
+    mode: allow
+    allow:
+      - "/tests/cdm/"
