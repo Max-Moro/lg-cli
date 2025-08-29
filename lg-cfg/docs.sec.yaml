@@ -1,0 +1,19 @@
+intro:
+  extensions: [".md"]
+  filters:
+    mode: allow
+    allow:
+      - "/README.md"
+  markdown:
+    drop:
+      sections:
+        - match: { kind: text, pattern: "Быстрый старт" }
+
+extended:
+  extensions: [".md"]
+  filters:
+    mode: allow
+    allow:
+      - "/docs/"
+  markdown:
+    max_heading_level: 2

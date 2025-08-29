@@ -1,0 +1,45 @@
+schema_version: 6
+
+src:
+  extensions: [".py", ".toml", ".json"]
+  filters:
+    mode: allow
+    allow:
+      - "/pyproject.toml"
+      - "/lg/"
+      - "/tests/"
+    children:
+      lg:
+        mode: block
+        block:
+          - "/stats/tokenizer.py"
+          - "/cache/"
+          - "/diag**"
+          - "/io/"
+          - "/markdown/"
+          - "/stats/"
+      tests:
+        mode: allow
+        allow:
+          - "/conftest.py"
+          - "/test_adapters_registry.py"
+          - "/test_cli_minimum.py"
+
+src-short:
+  extensions: [".py", ".toml"]
+  filters:
+    mode: allow
+    allow:
+      - "/pyproject.toml"
+      - "/lg/"
+    children:
+      lg:
+        mode: allow
+        allow:
+          - "/cli.py"
+          - "/types.py"
+          - "/api_schema.py"
+          - "/engine.py"
+          - "/config/model.py"
+          - "/config/load.py"
+          - "/context/resolver.py"
