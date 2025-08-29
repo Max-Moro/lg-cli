@@ -101,22 +101,31 @@ def parse_locator(ph: str, expected_kind: str) -> Locator:
 
     # Локальная форма (обратная совместимость): '{kind}:name'
     if ph.startswith(f"{expected_kind}:"):
-        return Locator(kind=expected_kind, origin="self", resource=ph[len(expected_kind) + 1 :])
+        resource = ph[len(expected_kind) + 1 :].strip()
+        if not resource:
+            raise RuntimeError(f"Invalid locator (empty resource): {ph}")
+        return Locator(kind=expected_kind, origin="self", resource=resource)
 
     # Скобочная форма: '{kind}@[origin]:name'
     if ph.startswith(f"{expected_kind}@["):
         left, resource = _split_at(ph, "]:")
+        resource = resource.strip()
         origin = left[len(expected_kind) + 2 :]  # после '{kind}@['
         if not origin:
             raise RuntimeError(f"Empty origin in {expected_kind} locator: {ph}")
+        if not resource:
+            raise RuntimeError(f"Invalid locator (empty resource): {ph}")
         return Locator(kind=expected_kind, origin=origin, resource=resource)
 
     # Классическая адресная форма: '{kind}@origin:name'
     if ph.startswith(f"{expected_kind}@"):
         left, resource = _split_at(ph, ":")
+        resource = resource.strip()
         origin = left[len(expected_kind) + 1 :]  # после '{kind}@'
         if not origin:
             raise RuntimeError(f"Empty origin in {expected_kind} locator: {ph}")
+        if not resource:
+            raise RuntimeError(f"Invalid locator (empty resource): {ph}")
         return Locator(kind=expected_kind, origin=origin, resource=resource)
 
     raise RuntimeError(f"Unsupported {expected_kind} locator: {ph}")
