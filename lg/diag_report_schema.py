@@ -58,7 +58,6 @@ class DiagConfig(BaseModel):
     actual: Optional[conint(ge=0)] = None
     fingerprint: Optional[str] = None
     applied: Optional[list[DiagMigrationRef]] = None
-    pending: Optional[list[DiagMigrationRef]] = None
     last_error: Optional[DiagLastError] = None
     sections: Optional[list[str]] = None
     error: Optional[str] = None

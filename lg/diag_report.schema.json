@@ -89,10 +89,6 @@
           "type": "array",
           "items": { "$ref": "#/$defs/DiagMigrationRef" }
         },
-        "pending": {
-          "type": "array",
-          "items": { "$ref": "#/$defs/DiagMigrationRef" }
-        },
         "last_error": { "anyOf": [{ "$ref": "#/$defs/DiagLastError" }, { "type": "null" }] },
         "sections": {
           "type": "array",

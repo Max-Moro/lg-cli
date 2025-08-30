@@ -16,8 +16,6 @@ from .diag_report_schema import DiagReport, DiagConfig, DiagCache, DiagCheck, Di
 from .version import tool_version
 from .protocol import PROTOCOL_VERSION
 from .migrate.version import CFG_CURRENT
-from .migrate.fs import CfgFs
-from .migrate.registry import get_migrations
 
 def run_diag(*, rebuild_cache: bool = False) -> DiagReport:
     """
@@ -34,18 +32,33 @@ def run_diag(*, rebuild_cache: bool = False) -> DiagReport:
         cwd=str(root),
     )
 
-    # --- Config (read-only: сначала миграционное состояние, потом, при отсутствии pending, безопасная загрузка) ---
+    # --- Config ---
     sec_path = sections_path(root).resolve()
     cfg_block = DiagConfig(
         exists=sec_path.is_file(),
         path=str(sec_path),
         current=CFG_CURRENT,
     )
+
+    git_ok = (root / ".git").is_dir()
+
+    # Безопасная загрузка секций
+    # Во время `load_config` возможны миграции, поэтому проверяем наличие Git
     sections: list[str] = []
+    if cfg_block.exists and git_ok:
+        try:
+            cfg = load_config(root)
+            sections = sorted(cfg.sections.keys())
+            cfg_block.sections = sections
+        except Exception as e:
+            cfg_block.error = str(e)
+    elif cfg_block.exists and not git_ok:
+        # Вне Git не пытаемся читать конфиг (чтобы не провоцировать побочные эффекты)
+        cfg_block.error = "Git repository required for safe config inspection; skipped loading to avoid implicit migrations."
+
     cfg_fingerprint: str | None = None
     cfg_actual: int | None = None
     applied_refs: list[DiagMigrationRef] = []
-    pending_refs: list[DiagMigrationRef] = []
 
     # Contexts list
     try:
@@ -77,9 +90,8 @@ def run_diag(*, rebuild_cache: bool = False) -> DiagReport:
             error=str(e),
         )
 
-    # --- Миграционное состояние lg-cfg/ (без применения) ---
+    # --- Миграционное состояние lg-cfg/ ---
     cfg_dir = cfg_root(root)
-    git_ok = (root / ".git").is_dir()
     if cfg_dir.is_dir() and git_ok:
         try:
             state = cache.get_cfg_state(cfg_dir) or {}
@@ -106,17 +118,6 @@ def run_diag(*, rebuild_cache: bool = False) -> DiagReport:
                 except Exception:
                     # best-effort
                     cfg_block.last_error = DiagLastError(message=str(state.get("last_error")))
-            # pending — по probe() без изменений на диске
-            fs = CfgFs(root, cfg_dir)
-            for m in get_migrations():
-                if cfg_actual is not None and m.id <= cfg_actual:
-                    continue
-                try:
-                    needs = m.probe(fs)
-                except Exception:
-                    needs = False
-                if needs:
-                    pending_refs.append(DiagMigrationRef(id=m.id, title=getattr(m, "title", f"migration-{m.id}")))
         except Exception:
             # игнорируем проблемы миграционной подсистемы в диагностике
             pass
@@ -125,20 +126,6 @@ def run_diag(*, rebuild_cache: bool = False) -> DiagReport:
     cfg_block.actual = cfg_actual
     cfg_block.fingerprint = cfg_fingerprint
     cfg_block.applied = applied_refs
-    cfg_block.pending = pending_refs
-
-    # Безопасная загрузка секций только если миграций к применению нет
-    if cfg_block.exists and git_ok and len(pending_refs) == 0:
-        try:
-            # ВАЖНО: это вызовет ensure_cfg_actual, но pending уже пуст — изменений не будет
-            cfg = load_config(root)
-            sections = sorted(cfg.sections.keys())
-            cfg_block.sections = sections
-        except Exception as e:
-            cfg_block.error = str(e)
-    elif cfg_block.exists and not git_ok:
-        # Вне Git не пытаемся читать конфиг (чтобы не провоцировать побочные эффекты)
-        cfg_block.error = "Git repository required for safe config inspection; skipped loading to avoid implicit migrations."
 
     # --- Checks (best-effort) ---
     checks: list[DiagCheck] = []
@@ -181,10 +168,9 @@ def run_diag(*, rebuild_cache: bool = False) -> DiagReport:
         else:
             checks.append(DiagCheck(name="sections.count", ok=True, details=str(len(sections))))
         # миграционная сводка
-        pend = len(pending_refs) if pending_refs else 0
         appl = len(applied_refs) if applied_refs else 0
-        details = f"current={CFG_CURRENT}, actual={cfg_actual or 0}, pending={pend}, applied={appl}"
-        checks.append(DiagCheck(name="config.migrations", ok=(pend == 0), details=details))
+        details = f"current={CFG_CURRENT}, actual={cfg_actual or 0}, applied={appl}"
+        checks.append(DiagCheck(name="config.migrations", ok=(cfg_block.last_error is None), details=details))
 
     # Cache health
     checks.append(DiagCheck(name="cache.enabled", ok=cache_block.enabled, details=cache_block.path))
