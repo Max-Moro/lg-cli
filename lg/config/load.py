@@ -5,6 +5,7 @@ from typing import Dict, List, Tuple
 
 from ruamel.yaml import YAML
 
+from lg.migrate import ensure_cfg_actual
 from .model import Config, SectionCfg, SCHEMA_VERSION
 from .paths import (
     cfg_root,
@@ -26,16 +27,14 @@ def _read_yaml_map(path: Path) -> dict:
 def _collect_sections_from_sections_yaml(root: Path) -> Tuple[int, Dict[str, SectionCfg]]:
     """
     Читает lg-cfg/sections.yaml:
-      - требует ключ 'schema_version' == SCHEMA_VERSION
+      - допускает отсутствие или несовпадение 'schema_version' (игнорируется)
       - все остальные ключи трактуются как секции с КОРОТКИМИ id (без префикса пути)
     """
     p = sections_path(root)
     if not p.is_file():
         raise RuntimeError(f"Config file not found: {p}")
     raw = _read_yaml_map(p)
-    sv = int(raw.get("schema_version", 0))
-    if sv != SCHEMA_VERSION:
-        raise RuntimeError(f"Unsupported config schema {sv} (expected {SCHEMA_VERSION}) in {p}")
+    sv = int(raw.get("schema_version", SCHEMA_VERSION))
     sections: Dict[str, SectionCfg] = {}
     for name, node in raw.items():
         if name == "schema_version":
@@ -60,10 +59,7 @@ def _collect_sections_from_fragments(root: Path) -> Dict[str, SectionCfg]:
     acc: Dict[str, SectionCfg] = {}
     for frag in iter_section_fragments(root):
         raw = _read_yaml_map(frag)
-        # schema_version в фрагментах — опционален, при наличии проверим и проигнорируем
-        sv = raw.get("schema_version", None)
-        if sv is not None and int(sv) != SCHEMA_VERSION:
-            raise RuntimeError(f"{frag}: schema_version={sv} mismatches core {SCHEMA_VERSION}")
+        # schema_version в фрагментах — опционален и не валидируется
         prefix = canonical_fragment_prefix(root, frag)
 
         # Соберём список секций (игнорируя служебный ключ)
@@ -103,6 +99,8 @@ def load_config(root: Path) -> Config:
     base = cfg_root(root)
     if not base.is_dir():
         raise RuntimeError(f"Config directory not found: {base}")
+    # Перед любым чтением приводим lg-cfg/ к актуальному формату
+    ensure_cfg_actual(base)
 
     _sv, core_sections = _collect_sections_from_sections_yaml(root)
     frag_sections = _collect_sections_from_fragments(root)

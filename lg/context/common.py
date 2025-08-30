@@ -6,6 +6,7 @@ from pathlib import Path
 from typing import Iterable, List, Set, Tuple
 
 from ..config.paths import cfg_root
+from ..migrate import ensure_cfg_actual
 
 # Унифицированные суффиксы документов
 TPL_SUFFIX = ".tpl.md"
@@ -130,6 +131,8 @@ def resolve_cfg_root(origin: str, *, current_cfg_root: Path, repo_root: Path) ->
         _ensure_inside_repo(cfg, repo_root)
     if not cfg.is_dir():
         raise RuntimeError(f"Child lg-cfg not found: {cfg}")
+    # Перед любой загрузкой из чужого lg-cfg/ — актуализировать
+    ensure_cfg_actual(cfg)
     return cfg
 
 
@@ -137,6 +140,7 @@ def load_from_cfg(cfg_root: Path, resource: str, *, suffix: str) -> Tuple[Path, 
     """
     Единая загрузка файла из lg-cfg/: <cfg_root>/<resource><suffix>.
     """
+    ensure_cfg_actual(cfg_root)
     p = (cfg_root / f"{resource}{suffix}").resolve()
     if not p.is_file():
         raise RuntimeError(f"Resource not found: {p}")

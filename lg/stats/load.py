@@ -13,7 +13,8 @@ from .model import (
     make_id,
     _slugify_plan
 )
-from ..config.paths import models_path
+from ..config.paths import models_path, cfg_root
+from ..migrate import ensure_cfg_actual
 
 _yaml = YAML(typ="safe")
 
@@ -58,6 +59,8 @@ _DEFAULT_PLANS: List[PlanInfo] = [
 # -----------------------------------------------------------------------
 
 def load_models(root: Path) -> ModelsConfig:
+    # Приводим lg-cfg/ к актуальному формату перед чтением models.yaml
+    ensure_cfg_actual(cfg_root(root))
     p = models_path(root)
     if not p.is_file():
         return ModelsConfig(schema_version=1, models=dict(_DEFAULT_MODELS), plans=list(_DEFAULT_PLANS))

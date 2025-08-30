@@ -267,6 +267,18 @@ class Cache:
     def path_for_rendered_key(self, key: str) -> Path:
         return self._bucket_path("rendered", key)
 
+    # --------------------------- CFG STATE (lg-cfg) --------------------------- #
+    def _cfg_state_path(self, cfg_root: Path) -> Path:
+        # ключ по абсолютному пути (sha1), чтобы устойчиво к переносам/линкам
+        h = hashlib.sha1(str(cfg_root.resolve()).encode("utf-8")).hexdigest()
+        return self._bucket_path("cfg_state", h)
+
+    def get_cfg_state(self, cfg_root: Path) -> Optional[dict]:
+        return self._load_json(self._cfg_state_path(cfg_root))
+
+    def put_cfg_state(self, cfg_root: Path, data: dict) -> None:
+        self._atom_write(self._cfg_state_path(cfg_root), data or {})
+
     # --------------------------- MAINTENANCE --------------------------- #
     def purge_all(self) -> bool:
         """Полная очистка содержимого кэша (.lg-cache)."""
