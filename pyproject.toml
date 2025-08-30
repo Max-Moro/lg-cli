@@ -24,3 +24,7 @@ dev = [
     "pytest>=8.0",
     "datamodel-code-generator>=0.25",
 ]
+
+[tool.setuptools.package-data]
+# Включить все файлы пресетов и их вложения
+"lg._skeletons" = ["**/*"]

@@ -1,10 +1,10 @@
 from __future__ import annotations
 
-import shutil
-from dataclasses import dataclass
+import sys
 from importlib import resources
 from pathlib import Path
 from typing import Dict, List
+from typing import Tuple
 
 # Ресурсы лежат под пакетом lg._skeletons/<preset>/lg-cfg/...
 _SKELETONS_PKG = "lg._skeletons"
@@ -27,30 +27,37 @@ def list_presets() -> List[str]:
     return out
 
 
-@dataclass
-class _CopyPlan:
-    src: Path
-    dst: Path
+def _iter_all_files(node):
+    """Рекурсивный обход Traversable-ресурсов (совместимо с .whl/zip)."""
+    for entry in node.iterdir():
+        if entry.is_dir():
+            yield from _iter_all_files(entry)
+        elif entry.is_file():
+            yield entry
 
 
-def _iter_skeleton_files(preset: str) -> List[Path]:
+def _collect_skeleton_entries(preset: str) -> List[Tuple[str, bytes]]:
     """
-    Возвращает список всех файлов в пресете (как временные файлы на FS через as_file()).
+    Собирает пары (rel, data) для всех файлов из пресета.
     Структура пресета: <preset>/lg-cfg/**/*
     """
     base = resources.files(_SKELETONS_PKG) / preset
     if not base.exists():
         raise RuntimeError(f"Preset not found: {preset}")
-    out: List[Path] = []
-    # Делаем проход только по файлам
-    for p in (base / "lg-cfg").rglob("*"):
+    root = base / "lg-cfg"
+    if not root.exists():
+        raise RuntimeError(f"Preset '{preset}' has no 'lg-cfg' directory")
+    out: List[Tuple[str, bytes]] = []
+    for res in _iter_all_files(root):
+        rel = res.relative_to(root).as_posix()
         try:
-            if p.is_file():
-                # as_file извлекает ресурс на FS, если он в zip/whl
-                out.append(Path(resources.as_file(p).__enter__()))
+            data = res.read_bytes()
         except Exception:
-            continue
-    out.sort()
+            # На некоторых платформах read_bytes может отсутствовать — fallback через open()
+            with res.open("rb") as f:
+                data = f.read()
+        out.append((rel, data))
+    out.sort(key=lambda t: t[0])
     return out
 
 
@@ -83,24 +90,15 @@ def init_cfg(
     created: List[str] = []
     skipped: List[str] = []
     conflicts: List[str] = []
-    plan: List[_CopyPlan] = []
+    plan: List[Tuple[str, bytes]] = []
 
     # Собираем исходные файлы пресета
     try:
-        src_files = _iter_skeleton_files(preset)
+        src_entries = _collect_skeleton_entries(preset)
     except Exception as e:
         return {"ok": False, "error": str(e), "preset": preset}
 
-    for src in src_files:
-        # Относительный путь от корня lg-cfg/ в пресете
-        # Находим «lg-cfg» в пути и берём хвост
-        parts = src.as_posix().split("/")
-        try:
-            idx = parts.index("lg-cfg")
-        except ValueError:
-            # неожиданно — пропустим
-            continue
-        rel = "/".join(parts[idx + 1 :])
+    for rel, data in src_entries:
         if not _want_file(rel, include_examples=include_examples, include_models=include_models):
             skipped.append(rel)
             continue
@@ -108,7 +106,7 @@ def init_cfg(
         if dst.exists() and not force:
             conflicts.append(rel)
             continue
-        plan.append(_CopyPlan(src=src, dst=dst))
+        plan.append((rel, data))
 
     # Если есть конфликты и не force — выходим/сообщаем
     if conflicts and not force:
@@ -125,9 +123,9 @@ def init_cfg(
     if dry_run:
         will_create: List[str] = []
         will_overwrite: List[str] = []
-        for p in plan:
-            rel = p.dst.resolve().relative_to(target).as_posix()
-            if p.dst.exists():
+        for rel, _ in plan:
+            dst = (target / rel)
+            if dst.exists():
                 will_overwrite.append(rel)
             else:
                 will_create.append(rel)
@@ -141,12 +139,12 @@ def init_cfg(
             "skipped": sorted(skipped),
         }
 
-    # Выполняем копирование
-    for p in plan:
-        p.dst.parent.mkdir(parents=True, exist_ok=True)
-        # Копируем как текст/бинарь — shutil.copyfile корректен для любых ресурсов
-        shutil.copyfile(p.src, p.dst)
-        rel = p.dst.resolve().relative_to(target).as_posix()
+    # Выполняем запись
+    for rel, data in plan:
+        dst = (target / rel)
+        dst.parent.mkdir(parents=True, exist_ok=True)
+        with dst.open("wb") as f:
+            f.write(data)
         created.append(rel)
 
     return {
@@ -157,3 +155,52 @@ def init_cfg(
         "skipped": sorted(skipped),
         "conflicts": sorted(conflicts) if force else [],
     }
+
+# ---------------- CLI glue ---------------- #
+
+def add_cli(subparsers) -> None:
+    """
+    Регистрирует подкоманду 'init' и привязывает обработчик через set_defaults(func=...).
+    Это позволяет развивать CLI без правок в lg/cli.py.
+    """
+    sp = subparsers.add_parser(
+        "init",
+        help="Инициализировать стартовую конфигурацию lg-cfg/ из упакованных пресетов",
+    )
+    sp.add_argument("--preset", default="basic", help="имя пресета (см. --list-presets)")
+    sp.add_argument("--force", action="store_true", help="перезаписывать существующие файлы")
+    sp.add_argument("--no-examples", action="store_true", help="не копировать примеры *.tpl.md и *.ctx.md")
+    sp.add_argument("--with-models", action="store_true", help="положить пример lg-cfg/models.yaml")
+    sp.add_argument("--dry-run", action="store_true", help="показать план действий, ничего не изменяя на диске")
+    sp.add_argument("--list-presets", action="store_true", help="перечислить доступные пресеты и выйти")
+    # Хендлер — сюда придёт argparse.Namespace
+    sp.set_defaults(func=_run_cli, cmd="init")
+
+
+def _run_cli(ns) -> int:
+    """Обработчик подкоманды `lg init`."""
+    from .jsonic import dumps as jdumps
+    if bool(getattr(ns, "list_presets", False)):
+        print(jdumps({"presets": list_presets()}))
+        return 0
+
+    root = Path.cwd()
+    result = init_cfg(
+        repo_root=root,
+        preset=str(ns.preset),
+        force=bool(getattr(ns, "force", False)),
+        include_examples=not bool(getattr(ns, "no_examples", False)),
+        include_models=bool(getattr(ns, "with_models", False)),
+        dry_run=bool(getattr(ns, "dry_run", False)),
+    )
+    # После успешной инициализации (и не dry-run) мягко приведём конфиг к актуальному виду
+    if not bool(getattr(ns, "dry_run", False)) and result.get("ok"):
+        try:
+            from .config.paths import cfg_root as _cfg_root
+            from .migrate import ensure_cfg_actual as _ensure
+            _ensure(_cfg_root(root))
+        except Exception:
+            # best-effort: инициализация уже состоялась, ошибки диагностики не критичны
+            pass
+    sys.stdout.write(jdumps(result))
+    return 0

@@ -69,38 +69,13 @@ def _build_parser() -> argparse.ArgumentParser:
         help="собрать диагностический бандл (.zip) с diag.json, lg-cfg и git-метаданными",
     )
 
-    # --- init (scaffold) ---
-    sp_init = sub.add_parser("init", help="Инициализировать стартовую конфигурацию lg-cfg/ из упакованных пресетов")
-    sp_init.add_argument(
-        "--preset",
-        default="basic",
-        help="имя пресета (см. --list-presets)",
-    )
-    sp_init.add_argument(
-        "--force",
-        action="store_true",
-        help="перезаписывать существующие файлы",
-    )
-    sp_init.add_argument(
-        "--no-examples",
-        action="store_true",
-        help="не копировать примеры *.tpl.md и *.ctx.md",
-    )
-    sp_init.add_argument(
-        "--with-models",
-        action="store_true",
-        help="положить пример lg-cfg/models.yaml (по умолчанию не создаём)",
-    )
-    sp_init.add_argument(
-        "--dry-run",
-        action="store_true",
-        help="показать план действий, ничего не изменяя на диске",
-    )
-    sp_init.add_argument(
-        "--list-presets",
-        action="store_true",
-        help="перечислить доступные пресеты и выйти",
-    )
+    # Регистрация внешних подкоманд (расширяемость без правок CLI)
+    try:
+        from .scaffold import add_cli as _add_scaffold_cli
+        _add_scaffold_cli(sub)
+    except Exception:
+        # best-effort: отсутствие модуля не должно ломать базовый CLI
+        pass
 
     return p
 
@@ -117,23 +92,10 @@ def main(argv: list[str] | None = None) -> int:
     ns = _build_parser().parse_args(argv)
 
     try:
-        if ns.cmd == "init":
-            from .scaffold import list_presets, init_cfg
-            if bool(getattr(ns, "list_presets", False)):
-                data = {"presets": list_presets()}
-                sys.stdout.write(jdumps(data))
-                return 0
-            root = Path.cwd()
-            result = init_cfg(
-                repo_root=root,
-                preset=str(ns.preset),
-                force=bool(getattr(ns, "force", False)),
-                include_examples=not bool(getattr(ns, "no_examples", False)),
-                include_models=bool(getattr(ns, "with_models", False)),
-                dry_run=bool(getattr(ns, "dry_run", False)),
-            )
-            sys.stdout.write(jdumps(result))
-            return 0
+        # Унифицированный хук для внешних подкоманд: subparser.set_defaults(func=...)
+        if hasattr(ns, "func") and callable(getattr(ns, "func")):
+            rc = ns.func(ns)
+            return int(rc) if isinstance(rc, int) else 0
 
         if ns.cmd == "report":
             result = run_report(ns.target, _opts(ns))
