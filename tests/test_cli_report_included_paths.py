@@ -21,7 +21,6 @@ def test_cli_report_included_paths(tmp_path, monkeypatch):
     # блокируем *.log, а в secure/ разрешаем только *.py
     (tmp_path / "lg-cfg").mkdir()
     (tmp_path / "lg-cfg/sections.yaml").write_text(textwrap.dedent("""
-      schema_version: 6
       all:
         extensions: [".py"]
         code_fence: true

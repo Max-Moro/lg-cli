@@ -50,7 +50,6 @@ def test_manifest_all_mode_with_gitignore_and_filters(tmp_path: Path):
     _write_sections_yaml(
         tmp_path,
         """
-schema_version: 6
 all:
   extensions: [".py", ".md"]
   code_fence: true
@@ -80,7 +79,6 @@ def test_manifest_changes_mode(tmp_path: Path):
     _write_sections_yaml(
         tmp_path,
         """
-schema_version: 6
 all:
   extensions: [".py"]
   code_fence: true
@@ -105,7 +103,6 @@ def test_missing_section_raises(tmp_path: Path):
     _write_sections_yaml(
         tmp_path,
         """
-schema_version: 6
 all:
   extensions: [".py"]
   code_fence: true

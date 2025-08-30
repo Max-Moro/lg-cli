@@ -34,7 +34,7 @@ def test_context_nested_ok(tmp_path: Path, monkeypatch):
     # Минимальный конфиг с секцией "sec" по новой схеме (sections.yaml)
     (tmp_path / "lg-cfg").mkdir(parents=True, exist_ok=True)
     (tmp_path / "lg-cfg" / "sections.yaml").write_text(
-        "schema_version: 6\nsec:\n  extensions: ['.md']\n  code_fence: false\n",
+        "sec:\n  extensions: ['.md']\n  code_fence: false\n",
         encoding="utf-8",
     )
     # Тemplating: root.ctx.md → ${tpl:mid/inner} → mid/inner.tpl.md → ${tpl:leaf}
@@ -76,7 +76,7 @@ def test_context_cycle_detection(tmp_path: Path):
     # Конфиг (любая секция, чтобы загрузка прошла)
     (tmp_path / "lg-cfg").mkdir(parents=True, exist_ok=True)
     (tmp_path / "lg-cfg" / "sections.yaml").write_text(
-        "schema_version: 6\nx:\n  extensions: ['.md']\n",
+        "x:\n  extensions: ['.md']\n",
         encoding="utf-8",
     )
     # Цикл через шаблоны: a.tpl.md -> ${tpl:b}, b.tpl.md -> ${tpl:a}, контекст указывает на один из них

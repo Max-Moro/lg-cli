@@ -91,7 +91,6 @@ def test_render_with_allow_specific_file(tmp_path: Path, monkeypatch):
     # ── конфиг: одна секция all
     (tmp_path / "lg-cfg").mkdir()
     (tmp_path / "lg-cfg" / "sections.yaml").write_text(
-        "schema_version: 6\n"
         "all:\n"
         "  extensions: ['.md']\n"
         "  code_fence: false\n"        # md-only → без fenced/маркеров

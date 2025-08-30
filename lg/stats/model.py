@@ -21,7 +21,6 @@ class PlanInfo:
 
 @dataclass
 class ModelsConfig:
-    schema_version: int = 1
     models: Dict[str, ModelInfo] = field(default_factory=dict)
     plans: List[PlanInfo] = field(default_factory=list)
 

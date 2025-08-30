@@ -21,7 +21,7 @@ class _M002_SkipEmptyToEnum:
     id = 2
     title = "Adapters: skip_empty(bool) → empty_policy(enum)"
 
-    _SERVICE_KEYS = {"extensions", "filters", "skip_empty", "code_fence", "targets", "path_labels", "schema_version"}
+    _SERVICE_KEYS = {"extensions", "filters", "skip_empty", "code_fence", "targets", "path_labels"}
 
     def probe(self, fs: CfgFs) -> bool:
         # Быстрая эвристика: встречается ли 'skip_empty' в адаптерных узлах?
@@ -108,8 +108,6 @@ class _M002_SkipEmptyToEnum:
                 changed = False
                 # doc — карта секций (или пустая)
                 for name, node in list(doc.items()):
-                    if name == "schema_version":
-                        continue
                     if not isinstance(node, CommentedMap):
                         continue
                     if self._patch_section(node):

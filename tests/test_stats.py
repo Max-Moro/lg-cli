@@ -21,7 +21,6 @@ def _mkproj_md_only(root: Path, *, code_fence: bool = True, max_h: int | None = 
     _w(
         root / "lg-cfg" / "sections.yaml",
         textwrap.dedent(f"""
-        schema_version: 6
         all:
           extensions: [".md"]
           code_fence: {str(code_fence).lower()}
@@ -36,7 +35,6 @@ def _mkproj_py_only(root: Path, *, code_fence: bool = True) -> None:
     _w(
         root / "lg-cfg" / "sections.yaml",
         textwrap.dedent(f"""
-        schema_version: 6
         all:
           extensions: [".py"]
           code_fence: {str(code_fence).lower()}

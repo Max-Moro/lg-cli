@@ -12,7 +12,6 @@ def _rewrite_all_section_exts(root: Path, exts: list[str]) -> None:
     """
     (root / "lg-cfg" / "sections.yaml").write_text(
         textwrap.dedent(f"""
-        schema_version: 6
         all:
           extensions: {exts}
           code_fence: true

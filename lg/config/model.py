@@ -6,7 +6,6 @@ from typing import Dict, List, Literal
 from lg.io.model import FilterNode
 from ..paths import PathLabelMode
 
-SCHEMA_VERSION = 6
 
 @dataclass
 class TargetRule:
@@ -45,7 +44,7 @@ class SectionCfg:
         service_keys = {"extensions", "filters", "skip_empty", "code_fence", "targets", "path_labels"}
         adapters_cfg: Dict[str, dict] = {}
         for k, v in node.items():
-            if k in service_keys or k == "schema_version":
+            if k in service_keys:
                 continue
             if not isinstance(v, dict):
                 raise RuntimeError(f"Adapter config for '{k}' in section '{name}' must be a mapping")
@@ -92,28 +91,8 @@ class SectionCfg:
             targets=targets,
         )
 
-
 @dataclass
 class Config:
-    schema_version: int = SCHEMA_VERSION
     sections: Dict[str, SectionCfg] = field(default_factory=dict)
-
-    @staticmethod
-    def from_dict(raw: dict) -> "Config":
-        if not isinstance(raw, dict):
-            raise RuntimeError("Config root must be a mapping")
-        sv = raw.get("schema_version")
-        if sv != SCHEMA_VERSION:
-            raise RuntimeError(f"Unsupported config schema {sv} (expected {SCHEMA_VERSION})")
-
-        sections: Dict[str, SectionCfg] = {}
-        for name, node in raw.items():
-            if name == "schema_version":
-                continue
-            if not isinstance(node, dict):
-                raise RuntimeError(f"Section '{name}' must be a mapping")
-            sections[name] = SectionCfg.from_dict(name, node)
-        return Config(schema_version=SCHEMA_VERSION, sections=sections)
-
 
 EmptyPolicy = Literal["inherit", "include", "exclude"]

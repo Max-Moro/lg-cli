@@ -26,7 +26,6 @@ def test_grouping_respects_sections(tmp_path: Path):
     _w(
         root / "lg-cfg" / "sections.yaml",
         textwrap.dedent("""
-        schema_version: 6
         docs:
           extensions: [".md"]
           code_fence: false

@@ -11,7 +11,6 @@ from tests.conftest import write  # уже есть в вашем репо
 def _root_sections_yaml() -> str:
     # Корневой конфиг: хотя бы одна простая секция, но тесты CDM опираются на child-секции
     return textwrap.dedent("""
-    schema_version: 6
     root-md:
       extensions: [".md"]
       code_fence: false
@@ -94,12 +93,10 @@ def monorepo(tmp_path: Path) -> Path:
     )
 
     # --- child: packages/svc-a ---
-    write(root / "packages" / "svc-a" / "lg-cfg" / "sections.yaml", "schema_version: 6\n")
     write(root / "packages" / "svc-a" / "lg-cfg" / "a.sec.yaml", _svc_a_sections())
     write(root / "packages" / "svc-a" / "lg-cfg" / "docs" / "guide.tpl.md", "SVC-A GUIDE (no sections here)\n")
 
     # --- child: apps/web ---
-    write(root / "apps" / "web" / "lg-cfg" / "sections.yaml", "schema_version: 6\n")
     write(root / "apps" / "web" / "lg-cfg" / "web.sec.yaml", _web_sections())
     write(root / "apps" / "web" / "lg-cfg" / "docs" / "guide.tpl.md", "WEB GUIDE (no sections here)\n")
     # Доп. контекст в child для проверки ctx@...

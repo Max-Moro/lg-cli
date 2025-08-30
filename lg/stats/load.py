@@ -63,11 +63,10 @@ def load_models(root: Path) -> ModelsConfig:
     ensure_cfg_actual(cfg_root(root))
     p = models_path(root)
     if not p.is_file():
-        return ModelsConfig(schema_version=1, models=dict(_DEFAULT_MODELS), plans=list(_DEFAULT_PLANS))
+        return ModelsConfig(models=dict(_DEFAULT_MODELS), plans=list(_DEFAULT_PLANS))
     raw = _yaml.load(p.read_text(encoding="utf-8")) or {}
     if not isinstance(raw, dict):
-        raise RuntimeError("models.yaml must be a mapping with keys: schema_version?, models, plans?")
-    schema_version = int(raw.get("schema_version", 1))
+        raise RuntimeError("models.yaml must be a mapping with keys: models, plans?")
     models_node = raw.get("models", {}) or {}
     plans_node = raw.get("plans", []) or []
     models: Dict[str, ModelInfo] = {}
@@ -87,7 +86,7 @@ def load_models(root: Path) -> ModelsConfig:
         ctx_cap = int(node.get("ctx_cap"))
         featured = bool(node.get("featured", False))
         plans.append(PlanInfo(name=name, provider=provider, ctx_cap=ctx_cap, featured=featured))
-    return ModelsConfig(schema_version=schema_version, models=models, plans=plans)
+    return ModelsConfig(models=models, plans=plans)
 
 # -------------------- Internal helpers (shared) --------------------
 def _is_public_provider(provider: str) -> bool:

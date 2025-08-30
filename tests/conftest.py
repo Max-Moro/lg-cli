@@ -21,7 +21,6 @@ def tmpproj(tmp_path: Path):
     write(
         root / "lg-cfg" / "sections.yaml",
         textwrap.dedent("""
-        schema_version: 6
         all:
           extensions: [".md", ".py"]
           code_fence: true

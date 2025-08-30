@@ -18,7 +18,6 @@ def test_empty_policy_include_overrides_section_skip(tmp_path: Path, monkeypatch
     (tmp_path / "lg-cfg").mkdir(parents=True, exist_ok=True)
     (tmp_path / "lg-cfg" / "sections.yaml").write_text(
         textwrap.dedent("""
-        schema_version: 6
         all:
           extensions: [".py"]
           code_fence: true
@@ -44,7 +43,6 @@ def test_empty_policy_exclude_overrides_section_allow(tmp_path: Path, monkeypatc
     (tmp_path / "lg-cfg").mkdir(parents=True, exist_ok=True)
     (tmp_path / "lg-cfg" / "sections.yaml").write_text(
         textwrap.dedent("""
-        schema_version: 6
         all:
           extensions: [".md", ".py"]
           code_fence: true
@@ -73,7 +71,6 @@ def test_empty_policy_inherit_follows_section(tmp_path: Path, monkeypatch):
     (tmp_path / "lg-cfg").mkdir(parents=True, exist_ok=True)
     (tmp_path / "lg-cfg" / "sections.yaml").write_text(
         textwrap.dedent("""
-        schema_version: 6
         all:
           extensions: [".py"]
           code_fence: true
