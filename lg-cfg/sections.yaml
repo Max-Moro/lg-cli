@@ -12,6 +12,8 @@ src:
           - "/stats/tokenizer.py"
           - "/io/"
           - "/markdown/"
+          - "/migrate/migrations/"
+          - "/cache/"
 
 src-short:
   extensions: [".py", ".toml"]
