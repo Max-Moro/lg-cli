@@ -1,8 +1,12 @@
 from __future__ import annotations
 
+import json
 import platform
+import subprocess
+from datetime import datetime
 import sys
 from pathlib import Path
+from zipfile import ZipFile, ZIP_DEFLATED
 
 from .cache.fs_cache import Cache
 from .config import load_config
@@ -14,7 +18,6 @@ from .protocol import PROTOCOL_VERSION
 from .migrate.version import CFG_CURRENT
 from .migrate.fs import CfgFs
 from .migrate.registry import get_migrations
-
 
 def run_diag(*, rebuild_cache: bool = False) -> DiagReport:
     """
@@ -185,3 +188,68 @@ def run_diag(*, rebuild_cache: bool = False) -> DiagReport:
         env=env,
     )
     return report
+
+
+# ----------------------------- Bundle builder ----------------------------- #
+
+def _git(root: Path, args: list[str]) -> str:
+    try:
+        out = subprocess.check_output(["git", "-C", str(root), *args], text=True, encoding="utf-8", errors="ignore")
+        return out
+    except Exception:
+        return ""
+
+
+def build_diag_bundle(report: DiagReport) -> str:
+    """
+    Собирает zip-бандл с diag.json и содержимым lg-cfg/.
+    Возвращает абсолютный путь к архиву.
+    """
+    root = Path(report.root).resolve()
+    cache = Cache(root, enabled=None, fresh=False, tool_version=tool_version())
+    out_dir = cache.dir / "diag"
+    out_dir.mkdir(parents=True, exist_ok=True)
+
+    ts = datetime.utcnow().strftime("%Y%m%d-%H%M%S")
+    zpath = (out_dir / f"diag-{ts}.zip").resolve()
+
+    cfg_dir = cfg_root(root)
+
+    with ZipFile(zpath, "w", compression=ZIP_DEFLATED) as zf:
+        # diag.json (тот же отчёт, что в stdout)
+        zf.writestr("diag.json", json.dumps(report.model_dump(mode="json"), ensure_ascii=False, indent=2))
+
+        # env.txt — краткая сводка
+        env_lines = [
+            f"tool_version: {report.tool_version}",
+            f"protocol: {report.protocol}",
+            f"python: {report.env.python}",
+            f"platform: {report.env.platform}",
+            f"cwd: {report.env.cwd}",
+            f"timestamp_utc: {ts}",
+        ]
+        zf.writestr("env.txt", "\n".join(env_lines) + "\n")
+
+        # git info (best-effort)
+        head = _git(root, ["rev-parse", "HEAD"]).strip()
+        status = _git(root, ["status", "--porcelain"])
+        if head:
+            zf.writestr("git/head.txt", head + "\n")
+        if status:
+            zf.writestr("git/status.txt", status)
+
+        # lg-cfg/** (если существует)
+        if cfg_dir.is_dir():
+            base = cfg_dir
+            for p in base.rglob("*"):
+                if not p.is_file():
+                    continue
+                rel = p.relative_to(base).as_posix()
+                arc = f"lg-cfg/{rel}"
+                try:
+                    zf.write(p, arcname=arc)
+                except Exception:
+                    # best-effort: пропускаем проблемные файлы
+                    pass
+
+    return str(zpath)

@@ -59,6 +59,11 @@ def _build_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="очистить и заново инициализировать кэш (.lg-cache) перед диагностикой",
     )
+    sp_diag.add_argument(
+        "--bundle",
+        action="store_true",
+        help="собрать диагностический бандл (.zip) с diag.json, lg-cfg и git-метаданными",
+    )
 
     return p
 
@@ -97,6 +102,14 @@ def main(argv: list[str] | None = None) -> int:
 
     if ns.cmd == "diag":
         report = run_diag(rebuild_cache=bool(getattr(ns, "rebuild_cache", False)))
+        # По флагу --bundle собираем zip; путь пишем в stderr, stdout остаётся JSON
+        if bool(getattr(ns, "bundle", False)):
+            try:
+                from .diagnostics import build_diag_bundle
+                bundle_path = build_diag_bundle(report)
+                sys.stderr.write(f"Diagnostic bundle written to: {bundle_path}\n")
+            except Exception as e:
+                sys.stderr.write(f"Failed to build diagnostic bundle: {e}\n")
         sys.stdout.write(jdumps(report.model_dump(mode="json")))
         return 0
 
