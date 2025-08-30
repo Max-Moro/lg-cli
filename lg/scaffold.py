@@ -11,7 +11,12 @@ _SKELETONS_PKG = "lg._skeletons"
 
 
 def list_presets() -> List[str]:
-    """Перечислить доступные пресеты, основываясь на подпапках внутри lg/_skeletons/."""
+    """
+    Перечислить доступные пресеты:
+      • только директории внутри lg/_skeletons/
+      • исключаем служебные ('.*', '_*', '__pycache__', '*.dist-info')
+      • требуем наличие подкаталога 'lg-cfg'
+    """
     try:
         base = resources.files(_SKELETONS_PKG)
     except Exception:
@@ -19,8 +24,14 @@ def list_presets() -> List[str]:
     out: List[str] = []
     for entry in base.iterdir():
         try:
-            if entry.is_dir():
-                out.append(entry.name)
+            name = entry.name
+            if not entry.is_dir():
+                continue
+            if name.startswith(".") or name.startswith("_") or name == "__pycache__" or name.endswith(".dist-info"):
+                continue
+            if not (entry / "lg-cfg").exists() or not (entry / "lg-cfg").is_dir():
+                continue
+            out.append(name)
         except Exception:
             continue
     out.sort()
@@ -193,14 +204,5 @@ def _run_cli(ns) -> int:
         include_models=bool(getattr(ns, "with_models", False)),
         dry_run=bool(getattr(ns, "dry_run", False)),
     )
-    # После успешной инициализации (и не dry-run) мягко приведём конфиг к актуальному виду
-    if not bool(getattr(ns, "dry_run", False)) and result.get("ok"):
-        try:
-            from .config.paths import cfg_root as _cfg_root
-            from .migrate import ensure_cfg_actual as _ensure
-            _ensure(_cfg_root(root))
-        except Exception:
-            # best-effort: инициализация уже состоялась, ошибки диагностики не критичны
-            pass
     sys.stdout.write(jdumps(result))
     return 0
