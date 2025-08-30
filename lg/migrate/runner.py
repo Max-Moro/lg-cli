@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import hashlib
+import os
 from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, List, Optional
@@ -114,6 +115,9 @@ def _record_failure(
 def _git_present(repo_root: Path) -> bool:
     return (repo_root / ".git").is_dir()
 
+def _allow_no_git() -> bool:
+    val = os.environ.get("LG_MIGRATE_ALLOW_NO_GIT", "")
+    return val.strip().lower() in {"1", "true", "yes", "on"}
 
 # —— in lg/migrate/runner.py ——
 
@@ -220,7 +224,7 @@ def ensure_cfg_actual(cfg_root: Path) -> None:
             continue
 
         # Перед применением — требуем Git. Если его нет, аккуратно фиксируем preflight и подсказываем пользователю.
-        if not _git_present(repo_root):
+        if not _git_present(repo_root) and not _allow_no_git():
             msg = f"Требуется Git-репозиторий для применения миграций. Не найден каталог: {repo_root / '.git'}"
             _record_failure(
                 cache,

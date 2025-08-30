@@ -30,7 +30,7 @@ def _collect_sections_from_sections_yaml(root: Path) -> Dict[str, SectionCfg]:
     """
     p = sections_path(root)
     if not p.is_file():
-        raise RuntimeError(f"Config file not found: {p}")
+        return {}
     raw = _read_yaml_map(p)
     sections: Dict[str, SectionCfg] = {}
     for name, node in raw.items():

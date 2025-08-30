@@ -45,6 +45,11 @@ def tmpproj(tmp_path: Path):
     write(root / "lg-cfg" / "b.ctx.md", "X ${tpl:a} Y ${all}\n")
     return root
 
+@pytest.fixture(autouse=True)
+def _allow_migrations_without_git(monkeypatch):
+    # безопасно для юнит-тестов: в проде переменная не задана
+    monkeypatch.setenv("LG_MIGRATE_ALLOW_NO_GIT", "1")
+
 def run_cli(root: Path, *args: str) -> subprocess.CompletedProcess:
     env = os.environ.copy()
     return subprocess.run(
