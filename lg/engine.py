@@ -13,6 +13,7 @@ from .api_schema import (
 )
 from .cache.fs_cache import Cache
 from .config.paths import cfg_root as cfg_root_of
+from .migrate import ensure_cfg_actual
 from .context import resolve_context, compose_context, ComposedDocument
 from .manifest import build_manifest
 from .plan import build_plan
@@ -40,6 +41,8 @@ def _pipeline_common(target: str, run_ctx: RunContext) -> Tuple[ContextSpec, Man
     """
     Общая часть пайплайна для render/report.
     """
+    ensure_cfg_actual(cfg_root_of(run_ctx.root))
+
     spec = resolve_context(target, run_ctx)
 
     manifest = build_manifest(
