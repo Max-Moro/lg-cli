@@ -55,6 +55,53 @@ class CfgFs:
         except Exception:
             pass
 
+    def remove_file(self, rel: str) -> None:
+        try:
+            (self.cfg_root / rel).unlink()
+        except Exception:
+            pass
+
+    # ---------- директории ----------
+    def dir_has_files(self, rel: str) -> bool:
+        """
+        True, если в каталоге (или его подкаталогах) есть хотя бы один файл.
+        Если каталога нет — False.
+        """
+        p = self.cfg_root / rel
+        if not p.exists() or not p.is_dir():
+            return False
+        for q in p.rglob("*"):
+            try:
+                if q.is_file():
+                    return True
+            except Exception:
+                continue
+        return False
+
+    def remove_dir_tree(self, rel: str) -> None:
+        """
+        Удаляет пустой каталог и все его пустые подкаталоги (bottom-up).
+        Если внутри остались файлы — ничего не делает.
+        """
+        p = self.cfg_root / rel
+        if not p.exists() or not p.is_dir():
+            return
+        # если есть файлы — выходим
+        if self.dir_has_files(rel):
+            return
+        # идём снизу вверх и пытаемся rmdir
+        items = sorted(p.rglob("*"), key=lambda x: len(x.as_posix().split("/")), reverse=True)
+        for q in items:
+            try:
+                if q.is_dir():
+                    q.rmdir()
+            except Exception:
+                pass
+        try:
+            p.rmdir()
+        except Exception:
+            pass
+
     # ---------- поиск ----------
     def glob_rel(self, pattern: str) -> List[str]:
         """

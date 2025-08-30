@@ -4,8 +4,10 @@ from __future__ import annotations
 from ..registry import register
 from .m001_config_to_sections import MIGRATION as M001
 from .m002_skip_empty_to_enum import MIGRATION as M002
+from .m003_contexts_flatten import MIGRATION as M003
 
 register(M001)
 register(M002)
+register(M003)
 
-__all__ = ["M001", "M002"]
+__all__ = ["M001", "M002", "M003"]
