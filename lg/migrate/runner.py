@@ -2,11 +2,12 @@ from __future__ import annotations
 
 import hashlib
 from datetime import datetime
+from importlib import metadata
 from pathlib import Path
 from typing import Any
 
 from lg.cache.fs_cache import Cache
-from lg.engine import tool_version
+from . import migrations  # noqa: F401  # важно импортировать для side-effect регистрации
 from .fs import CfgFs
 from .registry import get_migrations
 from .version import CFG_CURRENT
@@ -41,6 +42,13 @@ def _require_git(repo_root: Path) -> None:
     if not (repo_root / ".git").is_dir():
         raise RuntimeError(f"Listing Generator requires a Git repository. Not found: {repo_root / '.git'}")
 
+def _tool_version() -> str:
+    for dist in ("listing-generator", "lg"):
+        try:
+            return metadata.version(dist)
+        except Exception:
+            continue
+    return "0.0.0"
 
 def ensure_cfg_actual(cfg_root: Path) -> None:
     """
@@ -54,7 +62,7 @@ def ensure_cfg_actual(cfg_root: Path) -> None:
     repo_root = cfg_root.parent.resolve()
     _require_git(repo_root)
 
-    cache = Cache(repo_root, enabled=None, fresh=False, tool_version=tool_version())
+    cache = Cache(repo_root, enabled=None, fresh=False, tool_version=_tool_version())
     state = cache.get_cfg_state(cfg_root)
     old_actual = int((state or {}).get("actual", 0))
     old_fp = (state or {}).get("fingerprint", "")
@@ -84,7 +92,7 @@ def ensure_cfg_actual(cfg_root: Path) -> None:
     cache.put_cfg_state(cfg_root, {
         "actual": actual,
         "fingerprint": new_fp,
-        "tool": tool_version(),
+        "tool": _tool_version(),
         "applied": applied,
         "updated_at": datetime.utcnow().isoformat() + "Z",
     })
