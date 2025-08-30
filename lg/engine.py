@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-from importlib import metadata
 from pathlib import Path
 from typing import Tuple
 
@@ -24,22 +23,10 @@ from .stats import get_model_info, compute_stats
 from .types import RunOptions, RenderedDocument, ContextSpec, Manifest, ProcessedBlob
 from .vcs import NullVcs
 from .vcs.git import GitVcs
+from .version import tool_version
 
 
 # ----------------------------- helpers ----------------------------- #
-
-def tool_version() -> str:
-    """
-    Пытаемся аккуратно достать версию инструмента.
-    Падает в "0.0.0" при любых проблемах/локальном запуске.
-    """
-    for dist in ("listing-generator", "lg"):
-        try:
-            return metadata.version(dist)
-        except Exception:
-            continue
-    return "0.0.0"
-
 
 def _build_run_ctx(options: RunOptions) -> RunContext:
     root = Path.cwd().resolve()

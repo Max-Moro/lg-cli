@@ -13,7 +13,7 @@ from .config import load_config
 from .context import list_contexts
 from .config.paths import sections_path, cfg_root
 from .diag_report_schema import DiagReport, DiagConfig, DiagCache, DiagCheck, DiagEnv, DiagMigrationRef, DiagLastError
-from .engine import tool_version
+from .version import tool_version
 from .protocol import PROTOCOL_VERSION
 from .migrate.version import CFG_CURRENT
 from .migrate.fs import CfgFs

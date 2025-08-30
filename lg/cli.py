@@ -11,6 +11,7 @@ from .engine import run_report, run_render
 from .jsonic import dumps as jdumps
 from .types import RunOptions
 from .stats import list_models
+from .version import tool_version
 
 
 def _build_parser() -> argparse.ArgumentParser:
@@ -19,6 +20,7 @@ def _build_parser() -> argparse.ArgumentParser:
         description="Listing Generator (context-first pipeline)",
         add_help=True,
     )
+    p.add_argument("-v", "--version", action="version", version=f"%(prog)s {tool_version()}")
     sub = p.add_subparsers(dest="cmd", required=True)
 
     # Общие аргументы для render/report
@@ -53,7 +55,7 @@ def _build_parser() -> argparse.ArgumentParser:
     sp_list = sub.add_parser("list", help="Списки сущностей (JSON)")
     sp_list.add_argument("what", choices=["contexts", "sections", "models"], help="что вывести")
 
-    sp_diag = sub.add_parser("diag", help="Диагностика окружения и конфига (JSON)")
+    sp_diag = sub.add_parser("diag", help="Диагностика окружения и конфига (JSON) [--bundle] [--rebuild-cache]")
     sp_diag.add_argument(
         "--rebuild-cache",
         action="store_true",
