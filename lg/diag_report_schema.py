@@ -38,6 +38,16 @@ class DiagMigrationRef(BaseModel):
     title: str
 
 
+class DiagLastError(BaseModel):
+    model_config = ConfigDict(
+        extra='forbid',
+    )
+    message: str
+    traceback: Optional[str] = None
+    failed: Optional[DiagMigrationRef] = None
+    at: Optional[str] = None
+
+
 class DiagConfig(BaseModel):
     model_config = ConfigDict(
         extra='forbid',
@@ -49,6 +59,7 @@ class DiagConfig(BaseModel):
     fingerprint: Optional[str] = None
     applied: Optional[list[DiagMigrationRef]] = None
     pending: Optional[list[DiagMigrationRef]] = None
+    last_error: Optional[DiagLastError] = None
     sections: Optional[list[str]] = None
     error: Optional[str] = None
 

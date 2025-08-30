@@ -81,9 +81,36 @@ def ensure_cfg_actual(cfg_root: Path) -> None:
             continue
         if not m.probe(fs):
             continue
-        m.apply(fs)  # идемпотентная запись
-        actual = m.id
-        applied.append({"id": m.id, "title": getattr(m, "title", f"migration-{m.id}")})
+        try:
+            m.apply(fs)
+            actual = m.id
+            applied.append({"id": m.id, "title": getattr(m, "title", f"migration-{m.id}")})
+            # фиксируем частичный прогресс сразу после успешной миграции
+            cache.put_cfg_state(cfg_root, {
+                "actual": actual,
+                "fingerprint": _fingerprint_cfg(repo_root, cfg_root),
+                "tool": _tool_version(),
+                "applied": applied,
+                "last_error": None,
+                "updated_at": datetime.utcnow().isoformat() + "Z",
+            })
+        except Exception as e:
+            # записываем ошибку и частичный прогресс, затем пробрасываем дальше
+            import traceback as _tb
+            cache.put_cfg_state(cfg_root, {
+                "actual": actual,  # последний успешно применённый id
+                "fingerprint": _fingerprint_cfg(repo_root, cfg_root),
+                "tool": _tool_version(),
+                "applied": applied,
+                "last_error": {
+                    "message": str(e),
+                    "traceback": _tb.format_exc(),
+                    "failed": {"id": m.id, "title": getattr(m, "title", f"migration-{m.id}")},
+                    "at": datetime.utcnow().isoformat() + "Z",
+                },
+                "updated_at": datetime.utcnow().isoformat() + "Z",
+            })
+            raise
 
     # После прогонов поднимаем до CURRENT (мегамиграции могут «перепрыгнуть»)
     actual = max(actual, CFG_CURRENT)
@@ -94,6 +121,7 @@ def ensure_cfg_actual(cfg_root: Path) -> None:
         "fingerprint": new_fp,
         "tool": _tool_version(),
         "applied": applied,
+        "last_error": None,
         "updated_at": datetime.utcnow().isoformat() + "Z",
     })
 

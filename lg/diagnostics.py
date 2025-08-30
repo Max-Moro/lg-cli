@@ -12,7 +12,7 @@ from .cache.fs_cache import Cache
 from .config import load_config
 from .context import list_contexts
 from .config.paths import sections_path, cfg_root
-from .diag_report_schema import DiagReport, DiagConfig, DiagCache, DiagCheck, DiagEnv, DiagMigrationRef
+from .diag_report_schema import DiagReport, DiagConfig, DiagCache, DiagCheck, DiagEnv, DiagMigrationRef, DiagLastError
 from .engine import tool_version
 from .protocol import PROTOCOL_VERSION
 from .migrate.version import CFG_CURRENT
@@ -92,6 +92,20 @@ def run_diag(*, rebuild_cache: bool = False) -> DiagReport:
                     applied_refs.append(DiagMigrationRef(id=int(item.get("id", 0)), title=str(item.get("title", ""))))
                 except Exception:
                     continue
+            # last_error из кэша
+            if state.get("last_error"):
+                le = state["last_error"]
+                try:
+                    cfg_block.last_error = DiagLastError(
+                        message=str(le.get("message", "")),
+                        traceback=le.get("traceback"),
+                        failed=DiagMigrationRef(id=int(le.get("failed", {}).get("id", 0)),
+                                                title=str(le.get("failed", {}).get("title", ""))) if le.get("failed") else None,
+                        at=str(le.get("at") or ""),
+                    )
+                except Exception:
+                    # best-effort
+                    cfg_block.last_error = DiagLastError(message=str(state.get("last_error")))
             # pending — по probe() без изменений на диске
             fs = CfgFs(root, cfg_dir)
             for m in get_migrations():
@@ -251,5 +265,24 @@ def build_diag_bundle(report: DiagReport) -> str:
                 except Exception:
                     # best-effort: пропускаем проблемные файлы
                     pass
+
+        # migrations/state.json + last_error.txt (если есть)
+        try:
+            cache = Cache(root, enabled=None, fresh=False, tool_version=tool_version())
+            state = cache.get_cfg_state(cfg_dir) or {}
+            zf.writestr("migrations/state.json", json.dumps(state, ensure_ascii=False, indent=2))
+            le = state.get("last_error")
+            if isinstance(le, dict) and le.get("message"):
+                msg = le.get("message", "")
+                tb = le.get("traceback", "")
+                failed = le.get("failed", {})
+                mid = failed.get("id", "")
+                mtitle = failed.get("title", "")
+                at = le.get("at", "")
+                txt = f"[{at}] migration #{mid} {mtitle}\n\n{msg}\n\n{tb}\n"
+                zf.writestr("migrations/last_error.txt", txt)
+        except Exception:
+            # best-effort
+            pass
 
     return str(zpath)

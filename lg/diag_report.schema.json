@@ -64,6 +64,17 @@
         "title": { "type": "string" }
       }
     },
+    "DiagLastError": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["message"],
+      "properties": {
+        "message": { "type": "string" },
+        "traceback": { "type": ["string", "null"] },
+        "failed": { "anyOf": [{ "$ref": "#/$defs/DiagMigrationRef" }, { "type": "null" }] },
+        "at": { "type": ["string", "null"] }
+      }
+    },
     "DiagConfig": {
       "type": "object",
       "additionalProperties": false,
@@ -82,6 +93,7 @@
           "type": "array",
           "items": { "$ref": "#/$defs/DiagMigrationRef" }
         },
+        "last_error": { "anyOf": [{ "$ref": "#/$defs/DiagLastError" }, { "type": "null" }] },
         "sections": {
           "type": "array",
           "items": { "type": "string" }
