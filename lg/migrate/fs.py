@@ -3,7 +3,7 @@ from __future__ import annotations
 import hashlib
 import subprocess
 from pathlib import Path
-from typing import Iterable
+from typing import Iterable, List
 
 
 def _sha1_bytes(data: bytes) -> str:
@@ -54,6 +54,21 @@ class CfgFs:
             src.unlink()
         except Exception:
             pass
+
+    # ---------- поиск ----------
+    def glob_rel(self, pattern: str) -> List[str]:
+        """
+        Возвращает список относительных путей под lg-cfg/, соответствующих glob-паттерну.
+        Например: "*.sec.yaml", "**/*.sec.yaml"
+        """
+        out: List[str] = []
+        for p in self.cfg_root.rglob(pattern):
+            try:
+                out.append(p.relative_to(self.cfg_root).as_posix())
+            except Exception:
+                continue
+        out.sort()
+        return out
 
     # ---------- утилиты ----------
     def git_tracked_index(self) -> list[str]:
