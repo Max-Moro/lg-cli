@@ -30,15 +30,26 @@ class DiagCache(BaseModel):
     error: Optional[str] = None
 
 
+class DiagMigrationRef(BaseModel):
+    model_config = ConfigDict(
+        extra='forbid',
+    )
+    id: conint(ge=1)
+    title: str
+
+
 class DiagConfig(BaseModel):
     model_config = ConfigDict(
         extra='forbid',
     )
     exists: bool
     path: str
-    schema_version: Optional[conint(ge=0)] = None
-    expected_schema: Optional[conint(ge=0)] = None
-    sections: list[str] = []
+    current: Optional[conint(ge=0)] = None
+    actual: Optional[conint(ge=0)] = None
+    fingerprint: Optional[str] = None
+    applied: Optional[list[DiagMigrationRef]] = None
+    pending: Optional[list[DiagMigrationRef]] = None
+    sections: Optional[list[str]] = None
     error: Optional[str] = None
 
 

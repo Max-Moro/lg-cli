@@ -55,6 +55,15 @@
         "error": { "type": ["string", "null"] }
       }
     },
+    "DiagMigrationRef": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "title"],
+      "properties": {
+        "id": { "type": "integer", "minimum": 1 },
+        "title": { "type": "string" }
+      }
+    },
     "DiagConfig": {
       "type": "object",
       "additionalProperties": false,
@@ -62,8 +71,17 @@
       "properties": {
         "exists": { "type": "boolean" },
         "path": { "type": "string" },
-        "schema_version": { "type": ["integer", "null"], "minimum": 0 },
-        "expected_schema": { "type": ["integer", "null"], "minimum": 0 },
+        "current": { "type": ["integer", "null"], "minimum": 0 },
+        "actual": { "type": ["integer", "null"], "minimum": 0 },
+        "fingerprint": { "type": ["string", "null"] },
+        "applied": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/DiagMigrationRef" }
+        },
+        "pending": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/DiagMigrationRef" }
+        },
         "sections": {
           "type": "array",
           "items": { "type": "string" }
