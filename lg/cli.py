@@ -3,14 +3,16 @@ from __future__ import annotations
 import argparse
 import sys
 from pathlib import Path
+from typing import Any, Dict
 
 from .config import list_sections
 from .context import list_contexts
 from .diagnostics import run_diag
 from .engine import run_report, run_render
 from .jsonic import dumps as jdumps
-from .types import RunOptions
+from .migrate.errors import MigrationFatalError
 from .stats import list_models
+from .types import RunOptions
 from .version import tool_version
 
 
@@ -81,39 +83,44 @@ def _opts(ns: argparse.Namespace) -> RunOptions:
 def main(argv: list[str] | None = None) -> int:
     ns = _build_parser().parse_args(argv)
 
-    if ns.cmd == "report":
-        result = run_report(ns.target, _opts(ns))
-        sys.stdout.write(jdumps(result.model_dump(mode="json")))
-        return 0
+    try:
+        if ns.cmd == "report":
+            result = run_report(ns.target, _opts(ns))
+            sys.stdout.write(jdumps(result.model_dump(mode="json")))
+            return 0
 
-    if ns.cmd == "render":
-        doc = run_render(ns.target, _opts(ns))
-        sys.stdout.write(doc.text)
-        return 0
+        if ns.cmd == "render":
+            doc = run_render(ns.target, _opts(ns))
+            sys.stdout.write(doc.text)
+            return 0
 
-    if ns.cmd == "list":
-        root = Path.cwd()
-        if ns.what == "contexts":
-            data = {"contexts": list_contexts(root)}
-        elif ns.what == "sections":
-            data = {"sections": list_sections(root)}
-        elif ns.what == "models":
-            data = {"models": list_models(root)}
-        sys.stdout.write(jdumps(data))
-        return 0
+        if ns.cmd == "list":
+            root = Path.cwd()
+            data: Dict[str, Any]
+            if ns.what == "contexts":
+                data = {"contexts": list_contexts(root)}
+            elif ns.what == "sections":
+                data = {"sections": list_sections(root)}
+            else:  # ns.what == "models" (choices enforce this)
+                data = {"models": list_models(root)}
+            sys.stdout.write(jdumps(data))
+            return 0
 
-    if ns.cmd == "diag":
-        report = run_diag(rebuild_cache=bool(getattr(ns, "rebuild_cache", False)))
-        # По флагу --bundle собираем zip; путь пишем в stderr, stdout остаётся JSON
-        if bool(getattr(ns, "bundle", False)):
-            try:
-                from .diagnostics import build_diag_bundle
-                bundle_path = build_diag_bundle(report)
-                sys.stderr.write(f"Diagnostic bundle written to: {bundle_path}\n")
-            except Exception as e:
-                sys.stderr.write(f"Failed to build diagnostic bundle: {e}\n")
-        sys.stdout.write(jdumps(report.model_dump(mode="json")))
-        return 0
+        if ns.cmd == "diag":
+            report = run_diag(rebuild_cache=bool(getattr(ns, "rebuild_cache", False)))
+            # По флагу --bundle собираем zip; путь пишем в stderr, stdout остаётся JSON
+            if bool(getattr(ns, "bundle", False)):
+                try:
+                    from .diagnostics import build_diag_bundle
+                    bundle_path = build_diag_bundle(report)
+                    sys.stderr.write(f"Diagnostic bundle written to: {bundle_path}\n")
+                except Exception as e:
+                    sys.stderr.write(f"Failed to build diagnostic bundle: {e}\n")
+            sys.stdout.write(jdumps(report.model_dump(mode="json")))
+            return 0
+
+    except MigrationFatalError as e:
+        sys.stderr.write(str(e).rstrip() + "\n")
 
     return 2
 

@@ -7,6 +7,7 @@ from typing import Any
 
 from lg.cache.fs_cache import Cache
 from . import migrations  # noqa: F401  # важно импортировать для side-effect регистрации
+from .errors import MigrationFatalError
 from .fs import CfgFs
 from .registry import get_migrations
 from .version import CFG_CURRENT
@@ -102,7 +103,13 @@ def ensure_cfg_actual(cfg_root: Path) -> None:
                 },
                 "updated_at": datetime.utcnow().isoformat() + "Z",
             })
-            raise
+            user_msg = (
+                f"Миграция #{m.id} «{getattr(m, 'title', f'migration-{m.id}')}» завершилась ошибкой: {e}\n\n"
+                "Что делать:\n"
+                "  • Выполните `lg diag --bundle` и приложите получившийся архив к обращению.\n"
+                "  • Временно используйте предыдущую версию LG и восстановите `lg-cfg/` из Git."
+            )
+            raise MigrationFatalError(user_msg) from e
 
     # После прогонов поднимаем до CURRENT (мегамиграции могут «перепрыгнуть»)
     actual = max(actual, CFG_CURRENT)
