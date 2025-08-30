@@ -26,25 +26,25 @@ def _sha1_lines(lines: List[str]) -> str:
 def _fingerprint_cfg(repo_root: Path, cfg_root: Path) -> str:
     """
     Отпечаток текущего содержимого lg-cfg/ по рабочему дереву (tracked + untracked).
-    Не опираемся на индекс, чтобы ловить unstaged изменения.
+    Не опираемся на git-индекс — ловим любые правки без `git add`.
     """
     lines: list[str] = []
     base = cfg_root.resolve()
-
+    rr = repo_root.resolve()
     for p in sorted(base.rglob("*")):
         if not p.is_file():
             continue
-        rel = p.resolve().relative_to(repo_root.resolve()).as_posix()
+        try:
+            rel = p.resolve().relative_to(rr).as_posix()
+        except Exception:
+            # Если вдруг не внутри repo_root — используем абсолютный POSIX
+            rel = p.resolve().as_posix()
         try:
             data = p.read_bytes()
         except Exception:
-            data = b""  # best-effort: если не читается, считаем пустым
-        # простой sha1 по контенту; не обязательно совпадать с git blob id
-        import hashlib
+            data = b""
         h = hashlib.sha1(data).hexdigest()
         lines.append(f"F {h} {rel}")
-
-    # стабильная агрегация
     return _sha1_lines(lines)
 
 
@@ -85,20 +85,23 @@ def _record_failure(
     applied: List[Dict[str, Any]],
     migration_id: int,
     migration_title: str,
-    exc: Exception,
-    phase: str,  # "probe" | "apply"
+    exc: Exception | str,
+    phase: str,  # "probe" | "apply" | "preflight"
 ) -> None:
     import traceback as _tb
+
+    message = str(exc)
+    tb = _tb.format_exc() if isinstance(exc, Exception) else None
 
     _put_state(
         cache,
         repo_root=repo_root,
         cfg_root=cfg_root,
-        actual=actual,  # последний успешно применённый id
+        actual=actual,
         applied=applied,
         last_error={
-            "message": str(exc),
-            "traceback": _tb.format_exc(),
+            "message": message,
+            "traceback": tb,
             "failed": {"id": migration_id, "title": migration_title},
             "phase": phase,
             "at": _now_utc(),
@@ -106,23 +109,47 @@ def _record_failure(
     )
 
 
-# ----------------------------- UX helpers ----------------------------- #
+# ----------------------------- Misc helpers ----------------------------- #
 
-def _require_git(repo_root: Path) -> None:
-    if not (repo_root / ".git").is_dir():
-        raise MigrationFatalError(
-            "Требуется Git-репозиторий для запуска миграций.\n"
-            f"Не найден каталог: {repo_root / '.git'}"
+def _git_present(repo_root: Path) -> bool:
+    return (repo_root / ".git").is_dir()
+
+
+# —— in lg/migrate/runner.py ——
+
+def _user_msg(migration_id: int, title: str, phase: str, exc: Exception | str) -> str:
+    """
+    Человекопонятное сообщение для пользователя в зависимости от фазы:
+      • probe       — проверка совместимости
+      • apply       — применение изменений
+      • preflight   — подготовки к применению (например, требуется Git)
+    """
+    if phase == "probe":
+        action = "выполнить проверку совместимости (probe)"
+        tips = (
+            "  • Выполните `lg diag --bundle` и приложите получившийся архив.\n"
+            "  • При необходимости восстановите `lg-cfg/` из Git и повторите команду."
         )
+    elif phase == "apply":
+        action = "применить изменения (apply)"
+        tips = (
+            "  • Выполните `lg diag --bundle` и приложите получившийся архив.\n"
+            "  • Временно откатите локальные правки в `lg-cfg/` (например, `git restore -- lg-cfg/`) и повторите."
+        )
+    elif phase == "preflight":
+        action = "начать применение миграции — требуется Git"
+        tips = (
+            "  • Запустите команду внутри Git-репозитория "
+            "(или инициализируйте его: `git init && git add lg-cfg && git commit -m \"init lg-cfg\"`).\n"
+            "  • Затем повторите команду."
+        )
+    else:
+        action = phase
+        tips = "  • Выполните `lg diag --bundle` и приложите получившийся архив."
 
-
-def _user_msg(migration_id: int, title: str, action: str, exc: Exception) -> str:
-    # action: "проверить (probe)" | "применить (apply)"
     return (
         f"Миграция #{migration_id} «{title}» не смогла {action}: {exc}\n\n"
-        "Что делать:\n"
-        "  • Выполните `lg diag --bundle` и приложите получившийся архив к обращению.\n"
-        "  • Временно используйте предыдущую версию LG и восстановите `lg-cfg/` из Git."
+        f"Что делать:\n{tips}"
     )
 
 
@@ -131,14 +158,13 @@ def _user_msg(migration_id: int, title: str, action: str, exc: Exception) -> str
 def ensure_cfg_actual(cfg_root: Path) -> None:
     """
     Приводит lg-cfg/ к актуальному формату:
-      • требует Git;
-      • сверяет кэш по отпечатку;
-      • при необходимости прогоняет миграции (строгий probe/apply);
-      • фиксирует новое состояние в кэше (в т.ч. частичные успехи и последнюю ошибку).
+      • сверяет кэш по отпечатку рабочего дерева;
+      • выполняет строгий probe() без требований к Git;
+      • требует Git ТОЛЬКО если нужно реально применять миграцию;
+      • фиксирует частичный прогресс и ошибки (probe/apply/preflight) в кэше.
     """
     cfg_root = cfg_root.resolve()
     repo_root = cfg_root.parent.resolve()
-    _require_git(repo_root)
 
     cache = Cache(repo_root, enabled=None, fresh=False, tool_version=tool_version())
     state = cache.get_cfg_state(cfg_root)
@@ -161,6 +187,8 @@ def ensure_cfg_actual(cfg_root: Path) -> None:
     actual = 0 if old_fp != fp else old_actual
     applied: List[Dict[str, Any]] = []
 
+    fs = CfgFs(repo_root, cfg_root)
+
     # Стабильный порядок миграций
     for m in sorted(get_migrations(), key=lambda x: x.id):
         mid = int(m.id)
@@ -171,7 +199,7 @@ def ensure_cfg_actual(cfg_root: Path) -> None:
 
         # Строгий probe: любые исключения — фатал с записью в кэш
         try:
-            needs = m.probe(CfgFs(repo_root, cfg_root))
+            needs = m.probe(fs)
         except Exception as e:
             _record_failure(
                 cache,
@@ -184,16 +212,32 @@ def ensure_cfg_actual(cfg_root: Path) -> None:
                 exc=e,
                 phase="probe",
             )
-            raise MigrationFatalError(_user_msg(mid, mtitle, "выполнить проверку (probe)", e)) from e
+            raise MigrationFatalError(_user_msg(mid, mtitle, "probe", e)) from e
 
         if not needs:
             # «idle-advance»: миграция не нужна, но уровень совместимости повышаем
             actual = mid
             continue
 
+        # Перед применением — требуем Git. Если его нет, аккуратно фиксируем preflight и подсказываем пользователю.
+        if not _git_present(repo_root):
+            msg = f"Требуется Git-репозиторий для применения миграций. Не найден каталог: {repo_root / '.git'}"
+            _record_failure(
+                cache,
+                repo_root=repo_root,
+                cfg_root=cfg_root,
+                actual=actual,
+                applied=applied,
+                migration_id=mid,
+                migration_title=mtitle,
+                exc=msg,
+                phase="preflight",
+            )
+            raise MigrationFatalError(_user_msg(mid, mtitle, "preflight", msg))
+
         # Применение миграции
         try:
-            m.apply(CfgFs(repo_root, cfg_root))  # идемпотентная запись на диск
+            m.apply(fs)  # идемпотентная запись на диск
             actual = mid
             applied.append({"id": mid, "title": mtitle})
             # фиксируем частичный прогресс сразу после успешной миграции
@@ -217,7 +261,7 @@ def ensure_cfg_actual(cfg_root: Path) -> None:
                 exc=e,
                 phase="apply",
             )
-            raise MigrationFatalError(_user_msg(mid, mtitle, "применить (apply)", e)) from e
+            raise MigrationFatalError(_user_msg(mid, mtitle, "apply", e)) from e
 
     # Финальная фиксация: «подтягиваем» до CURRENT (мегамиграции могли перепрыгнуть)
     actual = max(actual, CFG_CURRENT)

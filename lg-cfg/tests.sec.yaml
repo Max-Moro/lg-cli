@@ -5,6 +5,21 @@ basic:
     allow:
       - "/tests/*.py"
 
+min:
+  extensions: [".py"]
+  filters:
+    mode: allow
+    allow:
+      - "/tests/"
+    children:
+      tests:
+        mode: allow
+        allow:
+          - "/conftest.py"
+          - "/test_adapters_registry.py"
+          - "/test_cli_minimum.py"
+          - "/tests/test_config.py"
+
 markdown:
   extensions: [".py"]
   filters:
