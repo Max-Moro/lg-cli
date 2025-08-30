@@ -25,19 +25,26 @@ def _sha1_lines(lines: List[str]) -> str:
 
 def _fingerprint_cfg(repo_root: Path, cfg_root: Path) -> str:
     """
-    Отпечаток содержимого lg-cfg/ с учётом Git-состояния:
-      • tracked: используем вывод `git ls-files -s` (включает blob-хэши),
-      • untracked: добавляем sha1 по содержимому.
-    Порядок стабилен.
+    Отпечаток текущего содержимого lg-cfg/ по рабочему дереву (tracked + untracked).
+    Не опираемся на индекс, чтобы ловить unstaged изменения.
     """
-    fs = CfgFs(repo_root, cfg_root)
-    tracked = fs.git_tracked_index()          # уже POSIX
-    untracked = fs.git_untracked()            # список POSIX-путей
-    lines = [f"T {ln}" for ln in tracked]
-    if untracked:
-        # ожидается формат вида: ["U <sha1> <posix-path>", ...]
-        lines.extend(fs.sha1_untracked_files(untracked))
-    lines.sort()
+    lines: list[str] = []
+    base = cfg_root.resolve()
+
+    for p in sorted(base.rglob("*")):
+        if not p.is_file():
+            continue
+        rel = p.resolve().relative_to(repo_root.resolve()).as_posix()
+        try:
+            data = p.read_bytes()
+        except Exception:
+            data = b""  # best-effort: если не читается, считаем пустым
+        # простой sha1 по контенту; не обязательно совпадать с git blob id
+        import hashlib
+        h = hashlib.sha1(data).hexdigest()
+        lines.append(f"F {h} {rel}")
+
+    # стабильная агрегация
     return _sha1_lines(lines)
 
 

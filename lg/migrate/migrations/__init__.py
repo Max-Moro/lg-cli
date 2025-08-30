@@ -9,5 +9,3 @@ from .m003_contexts_flatten import MIGRATION as M003
 register(M001)
 register(M002)
 register(M003)
-
-__all__ = ["M001", "M002", "M003"]
