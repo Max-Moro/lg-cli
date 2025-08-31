@@ -9,7 +9,7 @@ class Migration(Protocol):
     title: str
 
     def probe(self, fs: "CfgFs") -> bool: ...   # noqa: E701
-    def apply(self, fs: "CfgFs") -> None: ...   # noqa: E701
+    def apply(self, fs: "CfgFs") -> bool: ...   # noqa: E701
 
 
 _MIGRATIONS: List[Migration] = []

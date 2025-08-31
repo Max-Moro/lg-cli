@@ -64,6 +64,11 @@ def _put_state(
     applied: List[Dict[str, Any]],
     last_error: Optional[Dict[str, Any]],
 ) -> None:
+    """
+    Единая точка записи состояния миграций в кэш.
+    Обратите внимание: applied — кумулятивное множество успехов,
+    не зависящее от fingerprint.
+    """
     cache.put_cfg_state(
         cfg_root,
         {
@@ -171,9 +176,10 @@ def ensure_cfg_actual(cfg_root: Path) -> None:
     repo_root = cfg_root.parent.resolve()
 
     cache = Cache(repo_root, enabled=None, fresh=False, tool_version=tool_version())
-    state = cache.get_cfg_state(cfg_root)
-    old_actual = int((state or {}).get("actual", 0))
-    old_fp = (state or {}).get("fingerprint", "")
+    state = cache.get_cfg_state(cfg_root) or {}
+    old_actual = int(state.get("actual", 0))
+    old_fp = state.get("fingerprint", "")
+    applied: List[Dict[str, Any]] = list(state.get("applied") or [])
 
     # Конфигурация новее поддерживаемой инструментом версии
     if old_actual > CFG_CURRENT:
@@ -182,14 +188,14 @@ def ensure_cfg_actual(cfg_root: Path) -> None:
             "Обновите Listing Generator."
         )
 
-    # Быстрый путь: отпечаток совпадает и уровень не ниже текущего
+    # Быстрый путь: отпечаток совпадает и уровень не ниже текущего, и нет last_error
     fp = _fingerprint_cfg(repo_root, cfg_root)
-    if old_fp == fp and old_actual >= CFG_CURRENT:
+    if old_fp == fp and old_actual >= CFG_CURRENT and not state.get("last_error"):
         return
 
-    # Если отпечаток поменялся — начинаем с нуля, иначе — с кэшированного уровня
-    actual = 0 if old_fp != fp else old_actual
-    applied: List[Dict[str, Any]] = []
+    # При смене fingerprint пробегаем все миграции с нуля (probe быстрый),
+    # но историю успехов (applied) НЕ обнуляем.
+    actual = 0
 
     fs = CfgFs(repo_root, cfg_root)
 
@@ -197,9 +203,6 @@ def ensure_cfg_actual(cfg_root: Path) -> None:
     for m in sorted(get_migrations(), key=lambda x: x.id):
         mid = int(m.id)
         mtitle = getattr(m, "title", f"migration-{mid}")
-
-        if mid <= actual:
-            continue
 
         # Строгий probe: любые исключения — фатал с записью в кэш
         try:
@@ -219,8 +222,8 @@ def ensure_cfg_actual(cfg_root: Path) -> None:
             raise MigrationFatalError(_user_msg(mid, mtitle, "probe", e)) from e
 
         if not needs:
-            # «idle-advance»: миграция не нужна, но уровень совместимости повышаем
-            actual = mid
+            # «idle-advance» — ничего применять не надо, поднимаем фактический уровень
+            actual = max(actual, mid)
             continue
 
         # Перед применением — требуем Git. Если его нет, аккуратно фиксируем preflight и подсказываем пользователю.
@@ -241,10 +244,14 @@ def ensure_cfg_actual(cfg_root: Path) -> None:
 
         # Применение миграции
         try:
-            m.apply(fs)  # идемпотентная запись на диск
-            actual = mid
-            applied.append({"id": mid, "title": mtitle})
-            # фиксируем частичный прогресс сразу после успешной миграции
+            changed = bool(m.apply(fs))  # идемпотентная запись на диск
+            actual = max(actual, mid)
+            if changed:
+                # добавим в кумулятивную историю успехов (без дублей по id)
+                seen = {int(x.get("id", -1)) for x in applied}
+                if mid not in seen:
+                    applied.append({"id": mid, "title": mtitle, "at": _now_utc(), "tool": tool_version()})
+            # фиксируем частичный прогресс сразу после применения (обновляя fp)
             _put_state(
                 cache,
                 repo_root=repo_root,
