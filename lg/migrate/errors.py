@@ -10,4 +10,8 @@ class MigrationFatalError(RuntimeError):
     """
     pass
 
-__all__ = ["MigrationFatalError"]
+class PreflightRequired(RuntimeError):
+    """Поднимается миграцией, если для применения обязательно требуется Git."""
+    pass
+
+__all__ = ["MigrationFatalError", "PreflightRequired"]

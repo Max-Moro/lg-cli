@@ -7,9 +7,9 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 from lg.cache.fs_cache import Cache
-from . import migrations  # noqa: F401  # важно импортировать для side-effect регистрации
-from .errors import MigrationFatalError
+from .errors import MigrationFatalError, PreflightRequired
 from .fs import CfgFs
+from . import migrations  # noqa: F401  # важно: side-effect регистрации
 from .registry import get_migrations
 from .version import CFG_CURRENT
 from ..version import tool_version
@@ -92,7 +92,7 @@ def _record_failure(
     migration_id: int,
     migration_title: str,
     exc: Exception | str,
-    phase: str,  # "probe" | "apply" | "preflight"
+    phase: str,  # "run" | "preflight"
 ) -> None:
     import traceback as _tb
 
@@ -120,33 +120,26 @@ def _record_failure(
 def _git_present(repo_root: Path) -> bool:
     return (repo_root / ".git").is_dir()
 
+
 def _allow_no_git() -> bool:
     val = os.environ.get("LG_MIGRATE_ALLOW_NO_GIT", "")
     return val.strip().lower() in {"1", "true", "yes", "on"}
 
-# —— in lg/migrate/runner.py ——
 
 def _user_msg(migration_id: int, title: str, phase: str, exc: Exception | str) -> str:
     """
     Человекопонятное сообщение для пользователя в зависимости от фазы:
-      • probe       — проверка совместимости
-      • apply       — применение изменений
-      • preflight   — подготовки к применению (например, требуется Git)
+      • run         — ошибка выполнения миграции
+      • preflight   — требуется подготовка (обычно Git/бэкап)
     """
-    if phase == "probe":
-        action = "выполнить проверку совместимости (probe)"
-        tips = (
-            "  • Выполните `lg diag --bundle` и приложите получившийся архив.\n"
-            "  • При необходимости восстановите `lg-cfg/` из Git и повторите команду."
-        )
-    elif phase == "apply":
-        action = "применить изменения (apply)"
+    if phase == "run":
+        action = "выполнить миграцию"
         tips = (
             "  • Выполните `lg diag --bundle` и приложите получившийся архив.\n"
             "  • Временно откатите локальные правки в `lg-cfg/` (например, `git restore -- lg-cfg/`) и повторите."
         )
     elif phase == "preflight":
-        action = "начать применение миграции — требуется Git"
+        action = "начать применение миграции — требуется Git/бэкап"
         tips = (
             "  • Запустите команду внутри Git-репозитория "
             "(или инициализируйте его: `git init && git add lg-cfg && git commit -m \"init lg-cfg\"`).\n"
@@ -168,9 +161,10 @@ def ensure_cfg_actual(cfg_root: Path) -> None:
     """
     Приводит lg-cfg/ к актуальному формату:
       • сверяет кэш по отпечатку рабочего дерева;
-      • выполняет строгий probe() без требований к Git;
-      • требует Git ТОЛЬКО если нужно реально применять миграцию;
-      • фиксирует частичный прогресс и ошибки (probe/apply/preflight) в кэше.
+      • запускает миграции по порядку единым методом run(fs, allow_side_effects);
+      • фиксирует кумулятивную историю applied;
+      • различает preflight и run-ошибки;
+      • не теряет историю при смене fingerprint.
     """
     cfg_root = cfg_root.resolve()
     repo_root = cfg_root.parent.resolve()
@@ -193,65 +187,29 @@ def ensure_cfg_actual(cfg_root: Path) -> None:
     if old_fp == fp and old_actual >= CFG_CURRENT and not state.get("last_error"):
         return
 
-    # При смене fingerprint пробегаем все миграции с нуля (probe быстрый),
-    # но историю успехов (applied) НЕ обнуляем.
-    actual = 0
+    # Разрешение на сайд-эффекты (готов ли бэкап / git)
+    allow_side_effects = _git_present(repo_root) or _allow_no_git()
 
+    # Пробегаем все миграции; историю успехов не обнуляем
+    actual = 0
     fs = CfgFs(repo_root, cfg_root)
 
-    # Стабильный порядок миграций
-    for m in sorted(get_migrations(), key=lambda x: x.id):
+    # Метод сам сортирует и замораживает миграции
+    for m in get_migrations():
         mid = int(m.id)
-        mtitle = getattr(m, "title", f"migration-{mid}")
+        mtitle = m.title
 
-        # Строгий probe: любые исключения — фатал с записью в кэш
         try:
-            needs = m.probe(fs)
-        except Exception as e:
-            _record_failure(
-                cache,
-                repo_root=repo_root,
-                cfg_root=cfg_root,
-                actual=actual,
-                applied=applied,
-                migration_id=mid,
-                migration_title=mtitle,
-                exc=e,
-                phase="probe",
-            )
-            raise MigrationFatalError(_user_msg(mid, mtitle, "probe", e)) from e
-
-        if not needs:
-            # «idle-advance» — ничего применять не надо, поднимаем фактический уровень
-            actual = max(actual, mid)
-            continue
-
-        # Перед применением — требуем Git. Если его нет, аккуратно фиксируем preflight и подсказываем пользователю.
-        if not _git_present(repo_root) and not _allow_no_git():
-            msg = f"Требуется Git-репозиторий для применения миграций. Не найден каталог: {repo_root / '.git'}"
-            _record_failure(
-                cache,
-                repo_root=repo_root,
-                cfg_root=cfg_root,
-                actual=actual,
-                applied=applied,
-                migration_id=mid,
-                migration_title=mtitle,
-                exc=msg,
-                phase="preflight",
-            )
-            raise MigrationFatalError(_user_msg(mid, mtitle, "preflight", msg))
-
-        # Применение миграции
-        try:
-            changed = bool(m.apply(fs))  # идемпотентная запись на диск
+            changed = m.run(fs, allow_side_effects=allow_side_effects)
             actual = max(actual, mid)
             if changed:
                 # добавим в кумулятивную историю успехов (без дублей по id)
                 seen = {int(x.get("id", -1)) for x in applied}
                 if mid not in seen:
-                    applied.append({"id": mid, "title": mtitle, "at": _now_utc(), "tool": tool_version()})
-            # фиксируем частичный прогресс сразу после применения (обновляя fp)
+                    applied.append(
+                        {"id": mid, "title": mtitle, "at": _now_utc(), "tool": tool_version()}
+                    )
+            # частичная фиксация прогресса (и fingerprint) после каждой миграции
             _put_state(
                 cache,
                 repo_root=repo_root,
@@ -260,6 +218,19 @@ def ensure_cfg_actual(cfg_root: Path) -> None:
                 applied=applied,
                 last_error=None,
             )
+        except PreflightRequired as e:
+            _record_failure(
+                cache,
+                repo_root=repo_root,
+                cfg_root=cfg_root,
+                actual=actual,
+                applied=applied,
+                migration_id=mid,
+                migration_title=mtitle,
+                exc=e,
+                phase="preflight",
+            )
+            raise MigrationFatalError(_user_msg(mid, mtitle, "preflight", e)) from e
         except Exception as e:
             _record_failure(
                 cache,
@@ -270,9 +241,9 @@ def ensure_cfg_actual(cfg_root: Path) -> None:
                 migration_id=mid,
                 migration_title=mtitle,
                 exc=e,
-                phase="apply",
+                phase="run",
             )
-            raise MigrationFatalError(_user_msg(mid, mtitle, "apply", e)) from e
+            raise MigrationFatalError(_user_msg(mid, mtitle, "run", e)) from e
 
     # Финальная фиксация: «подтягиваем» до CURRENT (мегамиграции могли перепрыгнуть)
     actual = max(actual, CFG_CURRENT)
@@ -284,6 +255,3 @@ def ensure_cfg_actual(cfg_root: Path) -> None:
         applied=applied,
         last_error=None,
     )
-
-
-__all__ = ["ensure_cfg_actual"]

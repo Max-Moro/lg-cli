@@ -8,8 +8,13 @@ class Migration(Protocol):
     id: int
     title: str
 
-    def probe(self, fs: "CfgFs") -> bool: ...   # noqa: E701
-    def apply(self, fs: "CfgFs") -> bool: ...   # noqa: E701
+    """
+    ДОЛЖНА быстро выйти (return False), если миграция не нужна.
+    Вернуть True, если реально изменила содержимое lg-cfg/.
+    Если нужны сайд-эффекты при allow_side_effects=False — бросить PreflightRequired.
+    Любые другие исключения трактуются как ошибка миграции (фаза "run").
+    """
+    def run(self, fs: "CfgFs", *, allow_side_effects: bool) -> bool: ...   # noqa: E701
 
 
 _MIGRATIONS: List[Migration] = []
