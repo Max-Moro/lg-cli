@@ -3,9 +3,16 @@
 
 from __future__ import annotations
 
+from enum import Enum
 from typing import Optional
 
-from pydantic import BaseModel, ConfigDict, conint
+from pydantic import BaseModel, ConfigDict, Field, conint
+
+
+class Severity(Enum):
+    ok = 'ok'
+    warn = 'warn'
+    error = 'error'
 
 
 class DiagCheck(BaseModel):
@@ -13,7 +20,7 @@ class DiagCheck(BaseModel):
         extra='forbid',
     )
     name: str
-    ok: bool
+    level: Severity = Field(..., title='Level')
     details: Optional[str] = None
 
 

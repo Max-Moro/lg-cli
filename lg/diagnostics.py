@@ -3,19 +3,25 @@ from __future__ import annotations
 import json
 import platform
 import subprocess
-from datetime import datetime
 import sys
+from datetime import datetime
 from pathlib import Path
 from zipfile import ZipFile, ZIP_DEFLATED
 
 from .cache.fs_cache import Cache
-from .config import load_config
+from .config.load import _collect_sections_from_fragments as _peek_frags  # local use
+from .config.load import _collect_sections_from_sections_yaml as _peek_core  # local use
+from .config.paths import cfg_root
 from .context import list_contexts
-from .config.paths import sections_path, cfg_root
-from .diag_report_schema import DiagReport, DiagConfig, DiagCache, DiagCheck, DiagEnv, DiagMigrationRef, DiagLastError
-from .version import tool_version
-from .protocol import PROTOCOL_VERSION
+from .diag_report_schema import (
+    DiagReport, DiagConfig, DiagCache, DiagCheck, DiagEnv, DiagMigrationRef, DiagLastError, Severity
+)
+from .migrate import ensure_cfg_actual
+from .migrate.errors import MigrationFatalError
 from .migrate.version import CFG_CURRENT
+from .protocol import PROTOCOL_VERSION
+from .version import tool_version
+
 
 def run_diag(*, rebuild_cache: bool = False) -> DiagReport:
     """
@@ -33,32 +39,25 @@ def run_diag(*, rebuild_cache: bool = False) -> DiagReport:
     )
 
     # --- Config ---
-    sec_path = sections_path(root).resolve()
+    cfg_dir = cfg_root(root)
     cfg_block = DiagConfig(
-        exists=sec_path.is_file(),
-        path=str(sec_path),
+        exists=cfg_dir.is_dir(),
+        path=str(cfg_dir),
         current=CFG_CURRENT,
     )
 
-    git_ok = (root / ".git").is_dir()
-
-    # Безопасная загрузка секций
-    # Во время `load_config` возможны миграции, поэтому проверяем наличие Git
+    # Перечень секций: теперь стараемся прочитать даже БЕЗ Git, без запуска миграций (best-effort).
     sections: list[str] = []
-    if cfg_block.exists and git_ok:
+    if cfg_block.exists:
         try:
-            cfg = load_config(root)
-            sections = sorted(cfg.sections.keys())
+            # Поскольку load_config() запускает миграции, здесь используем «пик»:
+            # прочитать sections.yaml и все *.sec.yaml напрямую.
+            core = _peek_core(root)
+            frags = _peek_frags(root)
+            sections = sorted({*core.keys(), *frags.keys()})
             cfg_block.sections = sections
         except Exception as e:
             cfg_block.error = str(e)
-    elif cfg_block.exists and not git_ok:
-        # Вне Git не пытаемся читать конфиг (чтобы не провоцировать побочные эффекты)
-        cfg_block.error = "Git repository required for safe config inspection; skipped loading to avoid implicit migrations."
-
-    cfg_fingerprint: str | None = None
-    cfg_actual: int | None = None
-    applied_refs: list[DiagMigrationRef] = []
 
     # Contexts list
     try:
@@ -90,9 +89,34 @@ def run_diag(*, rebuild_cache: bool = False) -> DiagReport:
             error=str(e),
         )
 
-    # --- Миграционное состояние lg-cfg/ ---
-    cfg_dir = cfg_root(root)
-    if cfg_dir.is_dir() and git_ok:
+    # --- Checks (best-effort) ---
+    checks: list[DiagCheck] = []
+    def _mk(name: str, level: Severity, details: str = "") -> None:
+        checks.append(DiagCheck(name=name, level=level, details=details))
+
+    # Cache health
+    _mk("cache.enabled", Severity.ok if cache_block.enabled else Severity.warn, cache_block.path)
+    _mk("cache.size", Severity.ok, f"{cache_block.sizeBytes} bytes, {cache_block.entries} entries")
+
+    # Git
+    git_ok = (root / ".git").is_dir()
+
+    cfg_fingerprint: str | None = None
+    cfg_actual: int | None = None
+    applied_refs: list[DiagMigrationRef] = []
+
+    if cfg_dir.is_dir():
+        # Если просили rebuild-cache — после очистки кэша запустим ensure_cfg_actual,
+        # чтобы восстановить CFG STATE. Ошибки — в warn/error, но не фатальные.
+        if rebuild_cache:
+            try:
+                ensure_cfg_actual(cfg_dir)
+            except MigrationFatalError as e:
+                # ошибка уже зафиксирована в cfg_state, но подсветим чек
+                _mk("config.migrations.rebuild", Severity.warn if not git_ok else Severity.error,
+                    str(e).splitlines()[0])
+
+        # --- Миграционное состояние lg-cfg/ ---
         try:
             state = cache.get_cfg_state(cfg_dir) or {}
             cfg_actual = int(state.get("actual", 0))
@@ -127,25 +151,21 @@ def run_diag(*, rebuild_cache: bool = False) -> DiagReport:
     cfg_block.fingerprint = cfg_fingerprint
     cfg_block.applied = applied_refs
 
-    # --- Checks (best-effort) ---
-    checks: list[DiagCheck] = []
-
-    # Git
     try:
         import shutil as _sh
         git_path = _sh.which("git")
-        checks.append(DiagCheck(name="git.available", ok=bool(git_path), details=str(git_path or "")))
+        _mk("git.available", Severity.ok if git_path else Severity.warn, str(git_path or "not found in PATH"))
     except Exception as e:
-        checks.append(DiagCheck(name="git.available", ok=False, details=str(e)))
-    # Git required (по нашему контракту миграций)
-    checks.append(DiagCheck(name="git.required", ok=git_ok, details=str(root / ".git")))
+        _mk("git.available", Severity.warn, str(e))
+    # Git present in repo
+    _mk("git.present", Severity.ok if git_ok else Severity.warn, str(root / ".git"))
 
     # tiktoken
     try:
         import tiktoken as _tk  # noqa: F401
-        checks.append(DiagCheck(name="tiktoken.available", ok=True))
+        _mk("tiktoken.available", Severity.ok)
     except Exception as e:
-        checks.append(DiagCheck(name="tiktoken.available", ok=False, details=str(e)))
+        _mk("tiktoken.available", Severity.error, str(e))
 
     # Contexts/templates stats
     lgcfg = cfg_root(root)
@@ -156,25 +176,28 @@ def run_diag(*, rebuild_cache: bool = False) -> DiagReport:
         n_tpl = len(list(lgcfg.rglob("*.tpl.md")))
     except Exception:
         pass
-    checks.append(DiagCheck(name="contexts.count", ok=True, details=str(n_ctx)))
-    checks.append(DiagCheck(name="templates.count", ok=True, details=str(n_tpl)))
+    _mk("contexts.count", Severity.ok, str(n_ctx))
+    _mk("templates.count", Severity.ok, str(n_tpl))
 
     # Конфиг/миграции quick hints
     if not cfg_block.exists:
-        checks.append(DiagCheck(name="config.exists", ok=False, details=str(sec_path)))
+        _mk("config.exists", Severity.error, str(cfg_dir))
     else:
         if cfg_block.error:
-            checks.append(DiagCheck(name="config.load", ok=False, details=cfg_block.error))
+            _mk("config.load", Severity.warn, cfg_block.error)
         else:
-            checks.append(DiagCheck(name="sections.count", ok=True, details=str(len(sections))))
-        # миграционная сводка
+            _mk("sections.count", Severity.ok, str(len(sections)))
+        # миграционная сводка (без фатальности при отсутствии Git)
         appl = len(applied_refs) if applied_refs else 0
-        details = f"current={CFG_CURRENT}, actual={cfg_actual or 0}, applied={appl}"
-        checks.append(DiagCheck(name="config.migrations", ok=(cfg_block.last_error is None), details=details))
-
-    # Cache health
-    checks.append(DiagCheck(name="cache.enabled", ok=cache_block.enabled, details=cache_block.path))
-    checks.append(DiagCheck(name="cache.size", ok=True, details=f"{cache_block.sizeBytes} bytes, {cache_block.entries} entries"))
+        mig_level = Severity.ok
+        mig_details = f"current={CFG_CURRENT}, actual={cfg_actual or 0}, applied={appl}"
+        if cfg_block.last_error:
+            mig_level = Severity.error
+            mig_details += " (last_error present)"
+        elif (cfg_actual or 0) < CFG_CURRENT:
+            mig_level = Severity.warn
+            mig_details += " (update recommended)"
+        _mk("config.migrations", mig_level, mig_details)
 
     # Build report
     report = DiagReport(

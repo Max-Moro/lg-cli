@@ -31,13 +31,18 @@
     "env": { "$ref": "#/$defs/DiagEnv" }
   },
   "$defs": {
+    "Severity": {
+      "title": "Severity",
+      "type": "string",
+      "enum": ["ok", "warn", "error"]
+    },
     "DiagCheck": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["name", "ok"],
+      "required": ["name", "level"],
       "properties": {
         "name": { "type": "string" },
-        "ok": { "type": "boolean" },
+        "level": { "title": "Level", "$ref": "#/$defs/Severity" },
         "details": { "type": ["string", "null"] }
       }
     },

@@ -33,9 +33,9 @@ src-short:
           - "/config/model.py"
           - "/config/load.py"
           - "/context/resolver.py"
-          - "/diag_report_schema.py"
-          - "/diagnostics.py"
+          - "/diag**"
           - "/migrate/"
+          - "/cache/"
         children:
           migrate:
             mode: block
