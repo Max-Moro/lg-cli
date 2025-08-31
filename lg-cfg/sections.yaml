@@ -42,3 +42,9 @@ src-short:
             block:
               - "/migrations/"
 
+migrations:
+  extensions: [".py"]
+  filters:
+    mode: allow
+    allow:
+      - "/lg/migrate/migrations/"
