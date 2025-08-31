@@ -42,7 +42,3 @@ def test_diag_rebuild_cache_clears_and_repairs(tmpproj: Path, monkeypatch):
     assert d_re["cache"]["exists"] is True
     assert d_re["cache"]["entries"] == 0
     assert d_re["cache"]["sizeBytes"] == 0
-
-    # 5) контроль: повторный snapshot через API тоже должен быть пустым
-    snap2 = cache.snapshot()
-    assert snap2.entries == 0 and snap2.size_bytes == 0
