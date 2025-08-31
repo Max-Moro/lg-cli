@@ -9,8 +9,7 @@ from pathlib import Path
 from zipfile import ZipFile, ZIP_DEFLATED
 
 from .cache.fs_cache import Cache
-from .config.load import _collect_sections_from_fragments as _peek_frags  # local use
-from .config.load import _collect_sections_from_sections_yaml as _peek_core  # local use
+from .config import list_sections_peek
 from .config.paths import cfg_root
 from .context import list_contexts
 from .diag_report_schema import (
@@ -50,11 +49,7 @@ def run_diag(*, rebuild_cache: bool = False) -> DiagReport:
     sections: list[str] = []
     if cfg_block.exists:
         try:
-            # Поскольку load_config() запускает миграции, здесь используем «пик»:
-            # прочитать sections.yaml и все *.sec.yaml напрямую.
-            core = _peek_core(root)
-            frags = _peek_frags(root)
-            sections = sorted({*core.keys(), *frags.keys()})
+            sections = list_sections_peek(root)
             cfg_block.sections = sections
         except Exception as e:
             cfg_block.error = str(e)

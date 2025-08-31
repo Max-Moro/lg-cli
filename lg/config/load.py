@@ -108,5 +108,21 @@ def load_config(root: Path) -> Config:
 
 
 def list_sections(root: Path) -> List[str]:
+    """
+    Строгий список (через load_config) — МИГРАЦИИ ВОЗМОЖНЫ.
+    Используется там, где формат гарантированно актуален.
+    """
     cfg = load_config(root)
     return sorted(cfg.sections.keys())
+
+def list_sections_peek(root: Path) -> List[str]:
+    """
+    Безопасный список без запуска миграций.
+    Читает lg-cfg/sections.yaml и все **/*.sec.yaml напрямую.
+    """
+    base = cfg_root(root)
+    if not base.is_dir():
+        return []
+    core = _collect_sections_from_sections_yaml(root)
+    frags = _collect_sections_from_fragments(root)
+    return sorted({*core.keys(), *frags.keys()})
