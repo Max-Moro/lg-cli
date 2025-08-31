@@ -1,3 +1,4 @@
+# —— FILE: lg/migrate/runner.py ——
 from __future__ import annotations
 
 import hashlib
@@ -158,33 +159,44 @@ def _user_msg(migration_id: int, title: str, phase: str, exc: Exception | str) -
     )
 
 
-# ----------------------------- Lock (context manager) ----------------------------- #
+# ----------------------------- Lock in .lg-cache (context manager) ----------------------------- #
 
 class _MigrationLock:
     """
-    Межпроцессный лок на директорию lg-cfg/.lg-migrating.
+    Межпроцессный лок миграций, хранящийся ВНЕ `lg-cfg/`, под `.lg-cache/locks/`.
+    • Имя лока уникально для конкретного cfg_root (sha1 от абсолютного пути).
     • Создаётся атомарно (os.mkdir).
     • Уважает «свежие» локи, стягивает «протухшие».
     • Гарантированно освобождается через __exit__.
     """
 
-    def __init__(self, cfg_root: Path, *, stale_seconds: int | None = None) -> None:
+    def __init__(self, cache_dir: Path, cfg_root: Path, *, stale_seconds: int | None = None) -> None:
+        self.cache_dir = cache_dir.resolve()
         self.cfg_root = cfg_root.resolve()
-        self.lock_dir = self.cfg_root / ".lg-migrating"
-        self.stale_seconds = int(stale_seconds if stale_seconds is not None
-                                 else os.environ.get("LG_MIGRATE_LOCK_STALE_SEC", "600"))
+        self.stale_seconds = int(
+            stale_seconds if stale_seconds is not None else os.environ.get("LG_MIGRATE_LOCK_STALE_SEC", "600")
+        )
+        # Уникальное имя по cfg_root (как и в Cache._cfg_state_path)
+        h = hashlib.sha1(str(self.cfg_root).encode("utf-8")).hexdigest()
+        self.base = self.cache_dir / "locks"
+        self.lock_dir = self.base / f"migrate-{h}"
         self.acquired = False
 
     def __enter__(self):
-        now_ts = time.time()
+        # Гарантируем наличие базы lock-папок (не сам lock!)
+        try:
+            self.base.mkdir(parents=True, exist_ok=True)
+        except Exception:
+            # Если не смогли создать базу — лучше не рисковать параллельными миграциями
+            raise MigrationFatalError("MIGRATION_IN_PROGRESS: another lg process is updating lg-cfg/")
 
+        now_ts = time.time()
         try:
             os.mkdir(self.lock_dir)
             self._write_info({"pid": os.getpid(), "started_at": _now_utc()})
             self.acquired = True
             return self
         except FileExistsError:
-            # Лок уже есть — проверим, не протух ли он
             try:
                 st = self.lock_dir.stat()
                 if (now_ts - st.st_mtime) <= self.stale_seconds:
@@ -199,10 +211,8 @@ class _MigrationLock:
             except MigrationFatalError:
                 raise
             except Exception:
-                # Не получилось ни прочитать, ни перехватить — считаем, что миграция уже идёт
                 raise MigrationFatalError("MIGRATION_IN_PROGRESS: another lg process is updating lg-cfg/")
         except Exception:
-            # Любая другая ошибка при создании лока — не рискуем
             raise MigrationFatalError("MIGRATION_IN_PROGRESS: another lg process is updating lg-cfg/")
 
     def __exit__(self, exc_type, exc, tb):
@@ -212,8 +222,7 @@ class _MigrationLock:
                 shutil.rmtree(self.lock_dir, ignore_errors=True)
             except Exception:
                 pass
-        # Не подавляем исключения
-        return False
+        return False  # не подавляем исключения
 
     def _write_info(self, payload: Dict[str, Any]) -> None:
         try:
@@ -234,7 +243,7 @@ def ensure_cfg_actual(cfg_root: Path) -> None:
       • фиксирует кумулятивную историю applied;
       • различает preflight и run-ошибки;
       • не теряет историю при смене fingerprint;
-      • безопасна к параллельному запуску (file-lock).
+      • безопасна к параллельному запуску (file-lock в .lg-cache/locks).
     """
     cfg_root = cfg_root.resolve()
     repo_root = cfg_root.parent.resolve()
@@ -257,8 +266,8 @@ def ensure_cfg_actual(cfg_root: Path) -> None:
     if old_fp == fp and old_actual >= CFG_CURRENT and not state.get("last_error"):
         return
 
-    # Параллельная безопасность: лок
-    with _MigrationLock(cfg_root):
+    # Параллельная безопасность: лок в .lg-cache/locks (вне lg-cfg/, чтобы не триггерить watcher)
+    with _MigrationLock(cache.dir, cfg_root):
         # Double-check после получения лока (на случай гонки между fast-path и acquire)
         state = cache.get_cfg_state(cfg_root) or {}
         old_actual = int(state.get("actual", 0))
