@@ -1,7 +1,10 @@
 from __future__ import annotations
 
 import hashlib
+import json
 import os
+import shutil
+import time
 from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, List, Optional
@@ -155,6 +158,72 @@ def _user_msg(migration_id: int, title: str, phase: str, exc: Exception | str) -
     )
 
 
+# ----------------------------- Lock (context manager) ----------------------------- #
+
+class _MigrationLock:
+    """
+    Межпроцессный лок на директорию lg-cfg/.lg-migrating.
+    • Создаётся атомарно (os.mkdir).
+    • Уважает «свежие» локи, стягивает «протухшие».
+    • Гарантированно освобождается через __exit__.
+    """
+
+    def __init__(self, cfg_root: Path, *, stale_seconds: int | None = None) -> None:
+        self.cfg_root = cfg_root.resolve()
+        self.lock_dir = self.cfg_root / ".lg-migrating"
+        self.stale_seconds = int(stale_seconds if stale_seconds is not None
+                                 else os.environ.get("LG_MIGRATE_LOCK_STALE_SEC", "600"))
+        self.acquired = False
+
+    def __enter__(self):
+        now_ts = time.time()
+
+        try:
+            os.mkdir(self.lock_dir)
+            self._write_info({"pid": os.getpid(), "started_at": _now_utc()})
+            self.acquired = True
+            return self
+        except FileExistsError:
+            # Лок уже есть — проверим, не протух ли он
+            try:
+                st = self.lock_dir.stat()
+                if (now_ts - st.st_mtime) <= self.stale_seconds:
+                    # Свежий лок — кто-то уже мигрирует
+                    raise MigrationFatalError("MIGRATION_IN_PROGRESS: another lg process is updating lg-cfg/")
+                # Протухший — аккуратно перехватим
+                shutil.rmtree(self.lock_dir, ignore_errors=True)
+                os.mkdir(self.lock_dir)
+                self._write_info({"pid": os.getpid(), "recovered_at": _now_utc()})
+                self.acquired = True
+                return self
+            except MigrationFatalError:
+                raise
+            except Exception:
+                # Не получилось ни прочитать, ни перехватить — считаем, что миграция уже идёт
+                raise MigrationFatalError("MIGRATION_IN_PROGRESS: another lg process is updating lg-cfg/")
+        except Exception:
+            # Любая другая ошибка при создании лока — не рискуем
+            raise MigrationFatalError("MIGRATION_IN_PROGRESS: another lg process is updating lg-cfg/")
+
+    def __exit__(self, exc_type, exc, tb):
+        # Всегда освобождаем лок (best-effort)
+        if self.acquired:
+            try:
+                shutil.rmtree(self.lock_dir, ignore_errors=True)
+            except Exception:
+                pass
+        # Не подавляем исключения
+        return False
+
+    def _write_info(self, payload: Dict[str, Any]) -> None:
+        try:
+            (self.lock_dir / "lock.json").write_text(
+                json.dumps(payload, ensure_ascii=False), encoding="utf-8"
+            )
+        except Exception:
+            pass
+
+
 # ----------------------------- Public entrypoint ----------------------------- #
 
 def ensure_cfg_actual(cfg_root: Path) -> None:
@@ -164,7 +233,8 @@ def ensure_cfg_actual(cfg_root: Path) -> None:
       • запускает миграции по порядку единым методом run(fs, allow_side_effects);
       • фиксирует кумулятивную историю applied;
       • различает preflight и run-ошибки;
-      • не теряет историю при смене fingerprint.
+      • не теряет историю при смене fingerprint;
+      • безопасна к параллельному запуску (file-lock).
     """
     cfg_root = cfg_root.resolve()
     repo_root = cfg_root.parent.resolve()
@@ -182,76 +252,85 @@ def ensure_cfg_actual(cfg_root: Path) -> None:
             "Обновите Listing Generator."
         )
 
-    # Быстрый путь: отпечаток совпадает и уровень не ниже текущего, и нет last_error
+    # Быстрый путь: если отпечаток совпадает и уровень не ниже текущего, и нет last_error
     fp = _fingerprint_cfg(repo_root, cfg_root)
     if old_fp == fp and old_actual >= CFG_CURRENT and not state.get("last_error"):
         return
 
-    # Разрешение на сайд-эффекты (готов ли бэкап / git)
-    allow_side_effects = _git_present(repo_root) or _allow_no_git()
+    # Параллельная безопасность: лок
+    with _MigrationLock(cfg_root):
+        # Double-check после получения лока (на случай гонки между fast-path и acquire)
+        state = cache.get_cfg_state(cfg_root) or {}
+        old_actual = int(state.get("actual", 0))
+        old_fp = state.get("fingerprint", "")
+        fp = _fingerprint_cfg(repo_root, cfg_root)
+        if old_fp == fp and old_actual >= CFG_CURRENT and not state.get("last_error"):
+            return
 
-    # Пробегаем все миграции; историю успехов не обнуляем
-    actual = 0
-    fs = CfgFs(repo_root, cfg_root)
+        # Разрешение на сайд-эффекты (готов ли бэкап / git)
+        allow_side_effects = _git_present(repo_root) or _allow_no_git()
 
-    # Метод сам сортирует и замораживает миграции
-    for m in get_migrations():
-        mid = int(m.id)
-        mtitle = m.title
+        # Пробегаем все миграции; историю успехов не обнуляем
+        actual = 0
+        fs = CfgFs(repo_root, cfg_root)
 
-        try:
-            changed = m.run(fs, allow_side_effects=allow_side_effects)
-            actual = max(actual, mid)
-            if changed:
-                # добавим в кумулятивную историю успехов (без дублей по id)
-                seen = {int(x.get("id", -1)) for x in applied}
-                if mid not in seen:
-                    applied.append(
-                        {"id": mid, "title": mtitle, "at": _now_utc(), "tool": tool_version()}
-                    )
-            # частичная фиксация прогресса (и fingerprint) после каждой миграции
-            _put_state(
-                cache,
-                repo_root=repo_root,
-                cfg_root=cfg_root,
-                actual=actual,
-                applied=applied,
-                last_error=None,
-            )
-        except PreflightRequired as e:
-            _record_failure(
-                cache,
-                repo_root=repo_root,
-                cfg_root=cfg_root,
-                actual=actual,
-                applied=applied,
-                migration_id=mid,
-                migration_title=mtitle,
-                exc=e,
-                phase="preflight",
-            )
-            raise MigrationFatalError(_user_msg(mid, mtitle, "preflight", e)) from e
-        except Exception as e:
-            _record_failure(
-                cache,
-                repo_root=repo_root,
-                cfg_root=cfg_root,
-                actual=actual,
-                applied=applied,
-                migration_id=mid,
-                migration_title=mtitle,
-                exc=e,
-                phase="run",
-            )
-            raise MigrationFatalError(_user_msg(mid, mtitle, "run", e)) from e
+        for m in get_migrations():
+            mid = int(m.id)
+            mtitle = m.title
 
-    # Финальная фиксация: «подтягиваем» до CURRENT (мегамиграции могли перепрыгнуть)
-    actual = max(actual, CFG_CURRENT)
-    _put_state(
-        cache,
-        repo_root=repo_root,
-        cfg_root=cfg_root,
-        actual=actual,
-        applied=applied,
-        last_error=None,
-    )
+            try:
+                changed = m.run(fs, allow_side_effects=allow_side_effects)
+                actual = max(actual, mid)
+                if changed:
+                    # добавим в кумулятивную историю успехов (без дублей по id)
+                    seen = {int(x.get("id", -1)) for x in applied}
+                    if mid not in seen:
+                        applied.append(
+                            {"id": mid, "title": mtitle, "at": _now_utc(), "tool": tool_version()}
+                        )
+                # частичная фиксация прогресса (и fingerprint) после каждой миграции
+                _put_state(
+                    cache,
+                    repo_root=repo_root,
+                    cfg_root=cfg_root,
+                    actual=actual,
+                    applied=applied,
+                    last_error=None,
+                )
+            except PreflightRequired as e:
+                _record_failure(
+                    cache,
+                    repo_root=repo_root,
+                    cfg_root=cfg_root,
+                    actual=actual,
+                    applied=applied,
+                    migration_id=mid,
+                    migration_title=mtitle,
+                    exc=e,
+                    phase="preflight",
+                )
+                raise MigrationFatalError(_user_msg(mid, mtitle, "preflight", e)) from e
+            except Exception as e:
+                _record_failure(
+                    cache,
+                    repo_root=repo_root,
+                    cfg_root=cfg_root,
+                    actual=actual,
+                    applied=applied,
+                    migration_id=mid,
+                    migration_title=mtitle,
+                    exc=e,
+                    phase="run",
+                )
+                raise MigrationFatalError(_user_msg(mid, mtitle, "run", e)) from e
+
+        # Финальная фиксация: «подтягиваем» до CURRENT (мегамиграции могли перепрыгнуть)
+        actual = max(actual, CFG_CURRENT)
+        _put_state(
+            cache,
+            repo_root=repo_root,
+            cfg_root=cfg_root,
+            actual=actual,
+            applied=applied,
+            last_error=None,
+        )
