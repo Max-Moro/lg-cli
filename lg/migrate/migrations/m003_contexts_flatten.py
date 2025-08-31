@@ -5,6 +5,7 @@ from pathlib import Path
 from typing import Set
 
 from ..fs import CfgFs
+from ..errors import PreflightRequired
 
 
 class _M003_ContextsFlatten:
@@ -36,12 +37,71 @@ class _M003_ContextsFlatten:
         re.VERBOSE,
     )
 
-    def probe(self, fs: CfgFs) -> bool:
-        # Сработает только если есть что переносить
-        md_files = fs.glob_rel("contexts/**/*.md")
-        if not md_files:
-            md_files = fs.glob_rel("contexts/*.md")
-        return bool(md_files)
+    def run(self, fs: CfgFs, *, allow_side_effects: bool) -> bool:
+        """
+        Возвращает True, если реально модифицировал дерево (перенос/удаление/очистка каталога),
+        иначе False. Если требуется модификация, но сайд-эффекты запрещены — бросает PreflightRequired.
+        """
+        # 1) Собираем все кандидаты под перенос
+        src_files = fs.glob_rel("contexts/**/*.md")
+        src_files += [rel for rel in fs.glob_rel("contexts/*.md") if rel not in src_files]
+        if not src_files:
+            return False  # нечего делать
+
+        # Любое наличие файлов под contexts/ → потребуются сайд-эффекты
+        if not allow_side_effects:
+            raise PreflightRequired(
+                "Migration #3 requires side effects (moving/removing files from lg-cfg/contexts). "
+                "Run inside a Git repo or enable no-git mode."
+            )
+
+        # 2) Сканируем использование ${tpl:...} во ВСЕХ md файлах текущего lg-cfg/
+        used_as_tpl = self._collect_tpl_usages(fs)
+
+        # 3) Переносим/удаляем по классификации
+        any_changed = False
+        for src_rel in src_files:
+            resource = self._resource_name(src_rel)
+            is_tpl = resource in used_as_tpl
+            dst_rel = self._dst_for(resource, is_tpl=is_tpl)
+
+            if fs.exists(dst_rel):
+                try:
+                    src_text = fs.read_text(src_rel)
+                    dst_text = fs.read_text(dst_rel)
+                except Exception:
+                    src_text = ""
+                    dst_text = None
+
+                if dst_text is not None and src_text == dst_text:
+                    # Совпадает — просто удалить исходник
+                    fs.remove_file(src_rel)
+                    any_changed = True
+                    continue
+
+                # Конфликт по содержимому — размещаем рядом .from-contexts(-N)
+                n = 1
+                alt_rel = self._with_variant(dst_rel, n)
+                while fs.exists(alt_rel):
+                    n += 1
+                    alt_rel = self._with_variant(dst_rel, n)
+                fs.move_atomic(src_rel, alt_rel)
+                any_changed = True
+                continue
+
+            # Обычный перенос
+            fs.move_atomic(src_rel, dst_rel)
+            any_changed = True
+
+        # 4) Если contexts/ опустела — удалим хвост
+        if not fs.dir_has_files("contexts"):
+            fs.remove_dir_tree("contexts")
+            # даже если тут больше нечего удалять — это безопасно; считать это изменением не обязательно,
+            # но логично: раз переносили — any_changed уже True. Если же вдруг единственным действием
+            # стала очистка пустой папки — засчитаем это как изменение:
+            any_changed = True or any_changed
+
+        return any_changed
 
     # ---------- helpers ----------
     @staticmethod
@@ -99,8 +159,6 @@ class _M003_ContextsFlatten:
         """
         used_as_tpl: Set[str] = set()
         for rel in fs.glob_rel("**/*.md"):
-            # Игнорируем всё, что под contexts/ — эти файлы мы и так переносим,
-            # но их содержимое тоже может ссылаться на tpl — учитывать можно (и полезно).
             text = fs.read_text(rel)
             for m in self._PH_RE.finditer(text):
                 token = m.group("braced") or m.group("name") or ""
@@ -111,49 +169,6 @@ class _M003_ContextsFlatten:
                     if res:
                         used_as_tpl.add(res)
         return used_as_tpl
-
-    def apply(self, fs: CfgFs) -> None:
-        # 1) Собираем все кандидаты под перенос
-        src_files = fs.glob_rel("contexts/**/*.md")
-        src_files += [rel for rel in fs.glob_rel("contexts/*.md") if rel not in src_files]
-        if not src_files:
-            return
-
-        # 2) Сканируем использование ${tpl:...} во ВСЕХ md файлах текущего lg-cfg/
-        used_as_tpl = self._collect_tpl_usages(fs)
-
-        # 3) Переносим каждый файл по классификации
-        for src_rel in src_files:
-            resource = self._resource_name(src_rel)
-            is_tpl = resource in used_as_tpl
-            dst_rel = self._dst_for(resource, is_tpl=is_tpl)
-
-            if fs.exists(dst_rel):
-                try:
-                    src_text = fs.read_text(src_rel)
-                    dst_text = fs.read_text(dst_rel)
-                except Exception:
-                    src_text = ""
-                    dst_text = None
-                if dst_text is not None and src_text == dst_text:
-                    # Совпадает — просто удалить исходник
-                    fs.remove_file(src_rel)
-                    continue
-                # Ищем свободный вариант с .from-contexts(-N)
-                n = 1
-                alt_rel = self._with_variant(dst_rel, n)
-                while fs.exists(alt_rel):
-                    n += 1
-                    alt_rel = self._with_variant(dst_rel, n)
-                fs.move_atomic(src_rel, alt_rel)
-                continue
-
-            # Обычный перенос
-            fs.move_atomic(src_rel, dst_rel)
-
-        # 4) Если contexts/ опустела — удалим хвост
-        if not fs.dir_has_files("contexts"):
-            fs.remove_dir_tree("contexts")
 
 
 MIGRATION = _M003_ContextsFlatten()

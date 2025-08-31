@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from ..fs import CfgFs
+from ..errors import PreflightRequired
 
 
 class _M001_ConfigToSections:
@@ -12,13 +13,24 @@ class _M001_ConfigToSections:
     id = 1
     title = "Rename lg-cfg/config.yaml → lg-cfg/sections.yaml"
 
-    def probe(self, fs: CfgFs) -> bool:
-        return fs.exists("config.yaml") and not fs.exists("sections.yaml")
+    def run(self, fs: CfgFs, *, allow_side_effects: bool) -> bool:
+        """
+        Переносит lg-cfg/config.yaml → lg-cfg/sections.yaml.
+        Возвращает True, если реально выполнила перенос (были изменения),
+        иначе False (ничего делать не нужно).
+        """
+        needs = fs.exists("config.yaml") and not fs.exists("sections.yaml")
+        if not needs:
+            return False
 
-    def apply(self, fs: CfgFs) -> None:
-        # Идемпотентно: если уже перенесено — ничего не делаем.
-        if fs.exists("config.yaml") and not fs.exists("sections.yaml"):
-            fs.move_atomic("config.yaml", "sections.yaml")
+        if not allow_side_effects:
+            raise PreflightRequired(
+                "Migration #1 requires side effects (rename config.yaml → sections.yaml). "
+                "Run inside a Git repo or allow no-git mode."
+            )
+
+        fs.move_atomic("config.yaml", "sections.yaml")
+        return True
 
 
 MIGRATION = _M001_ConfigToSections()

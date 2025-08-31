@@ -3,6 +3,7 @@ from __future__ import annotations
 from ruamel.yaml.comments import CommentedMap
 
 from ..fs import CfgFs
+from ..errors import PreflightRequired
 from ..yaml_rt import rewrite_yaml_rt, load_yaml_rt
 
 
@@ -15,21 +16,36 @@ class _M004_DropSchemaVersion:
     id = 4
     title = "Remove legacy top-level 'schema_version' from sections.yaml"
 
-    def probe(self, fs: CfgFs) -> bool:
+    def _needs(self, fs: CfgFs) -> bool:
+        """Быстрый детектор необходимости правки."""
         if not fs.exists("sections.yaml"):
             return False
         try:
             doc = load_yaml_rt(fs.cfg_root / "sections.yaml")
-            # Удаляем при наличии ключа — неважно, какое у него значение/тип
             return isinstance(doc, CommentedMap) and "schema_version" in doc
         except Exception:
-            # На всякий случай: эвристика по тексту
-            txt = fs.read_text("sections.yaml")
-            return "schema_version" in txt
+            # Фолбэк: грубая эвристика по тексту
+            try:
+                txt = fs.read_text("sections.yaml")
+                return "schema_version" in txt
+            except Exception:
+                return False
 
-    def apply(self, fs: CfgFs) -> None:
-        if not fs.exists("sections.yaml"):
-            return
+    def run(self, fs: CfgFs, *, allow_side_effects: bool) -> bool:
+        """
+        Удаляет верхнеуровневый ключ schema_version из sections.yaml.
+        Возвращает True при реальном изменении файла, иначе False.
+        Если требуется изменить файл, но сайд-эффекты запрещены — PreflightRequired.
+        """
+        need = self._needs(fs)
+        if not need:
+            return False
+
+        if not allow_side_effects:
+            raise PreflightRequired(
+                "Migration #4 requires side effects (rewrite lg-cfg/sections.yaml). "
+                "Run inside a Git repo or enable no-git mode."
+            )
 
         def _transform(doc: CommentedMap) -> bool:
             if not isinstance(doc, CommentedMap):
@@ -42,7 +58,11 @@ class _M004_DropSchemaVersion:
                 return True
             return False
 
-        rewrite_yaml_rt(fs.cfg_root / "sections.yaml", _transform)
+        try:
+            return bool(rewrite_yaml_rt(fs.cfg_root / "sections.yaml", _transform))
+        except Exception:
+            # Некорректный YAML — оставляем как есть; диагностика всплывёт в Doctor/CLI.
+            return False
 
 
 MIGRATION = _M004_DropSchemaVersion()
