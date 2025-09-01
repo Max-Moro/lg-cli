@@ -7,7 +7,7 @@
 #   • Process ALL known schemas in one go (easy to extend)
 #   • Support --project switch: cli | vscode | jetbrains
 #       - cli       → generate Pydantic v2 models (Python) via datamodel-code-generator
-#       - vscode    → (stub) future TS generation (e.g., json-schema-to-typescript)
+#       - vscode    → generate TypeScript models via json-schema-to-typescript (npx json2ts)
 #       - jetbrains → (stub) future Kotlin generation (e.g., KotlinPoet, KSP)
 #
 # Location (canonical): <monorepo>/cli/scripts/gen_models.sh
@@ -172,8 +172,8 @@ find_json2ts_local() {
 
 # Node / npx / json2ts availability checks (for VS Code project)
 ensure_node_tools() {
-  # If local binary exists — we're good
-  if JSON2TS_BIN="$(find_json2ts_local)"; then
+  # If local binary/CLI exists — we're good
+  if [[ -f "${VSCODE_DIR}/node_modules/json-schema-to-typescript/dist/cli.js" ]] || JSON2TS_BIN="$(find_json2ts_local)"; then
     return 0
   fi
 
@@ -382,13 +382,18 @@ generate_vscode() {
 
   ensure_node_tools
 
-  # Resolve json2ts command (prefer local binary)
-  local JSON2TS_CMD=""
-  if JSON2TS_CMD="$(find_json2ts_local)"; then
-    :
+  # -------- Resolve json2ts runner (prefer direct Node CLI over *.cmd shim) --------
+  # 1) if local CLI JS exists → run via `node <cli.js>`
+  # 2) else if local bin exists → call it directly
+  # 3) else fallback to npx
+  declare -a JSON2TS
+  local CLI_JS="${VSCODE_DIR}/node_modules/json-schema-to-typescript/dist/cli.js"
+  if [[ -f "$CLI_JS" ]]; then
+    JSON2TS=( node "$CLI_JS" )
+  elif JSON2TS_BIN="$(find_json2ts_local)"; then
+    JSON2TS=( "$JSON2TS_BIN" )
   else
-    # Use npx with explicit package if no local bin
-    JSON2TS_CMD="npx -p json-schema-to-typescript json2ts"
+    JSON2TS=( npx -p json-schema-to-typescript json2ts )
   fi
 
   # Common options for json2ts
@@ -404,8 +409,8 @@ generate_vscode() {
     mkdir -p "$(dirname "$out")"
     echo "• Generating $(bold "$(basename "$out")") from $(basename "$in")"
     if [[ $VERBOSE -eq 1 ]]; then set -x; fi
-    # Run either local json2ts or npx-pinned one
-    eval "$JSON2TS_CMD" \
+    # Run either local json2ts or npx-pinned one (array-safe, без eval)
+    "${JSON2TS[@]}" \
       -i "$in" \
       -o "$out" \
       --bannerComment "$banner" \
