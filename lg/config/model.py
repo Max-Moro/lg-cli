@@ -3,8 +3,8 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Dict, List, Literal
 
-from lg.io.model import FilterNode
-from ..paths import PathLabelMode
+from ..io.model import FilterNode
+from ..types import PathLabelMode
 
 
 @dataclass

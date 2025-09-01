@@ -18,12 +18,11 @@ src:
           - "/context/"
 
 src-short:
-  extensions: [".py", ".json", ".sh"]
+  extensions: [".py"]
   filters:
     mode: allow
     allow:
       - "/lg/"
-      - "/scripts/"
     children:
       lg:
         mode: allow
@@ -33,7 +32,6 @@ src-short:
           - "/engine.py"
           - "/config/model.py"
           - "/config/load.py"
-          - "/*.json"
 
 migrations:
   extensions: [".py"]
