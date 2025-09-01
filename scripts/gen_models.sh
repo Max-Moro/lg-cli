@@ -44,6 +44,8 @@ SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" >/dev/null 2>&1 && pwd -
 CLI_DIR="$(cd -- "${SCRIPT_DIR}/.." && pwd -P)"
 # <monorepo> (parent of cli)
 MONOREPO_ROOT="$(cd -- "${CLI_DIR}/.." && pwd -P)"
+# <monorepo>/vscode (VS Code extension project)
+VSCODE_DIR="${MONOREPO_ROOT}/vscode"
 
 # ------------- defaults / args -------------
 PROJECT=""
@@ -148,6 +150,58 @@ PY
   fi
 }
 
+# Try to find a locally installed json2ts (preferred, avoids npx hangs)
+find_json2ts_local() {
+  local cand=""
+  # Prefer VS Code project bin
+  if [[ -x "${VSCODE_DIR}/node_modules/.bin/json2ts" ]]; then
+    echo "${VSCODE_DIR}/node_modules/.bin/json2ts"; return 0
+  fi
+  if [[ -x "${VSCODE_DIR}/node_modules/.bin/json2ts.cmd" ]]; then
+    echo "${VSCODE_DIR}/node_modules/.bin/json2ts.cmd"; return 0
+  fi
+  # Fallback: monorepo root (in case tools are hoisted)
+  if [[ -x "${MONOREPO_ROOT}/node_modules/.bin/json2ts" ]]; then
+    echo "${MONOREPO_ROOT}/node_modules/.bin/json2ts"; return 0
+  fi
+  if [[ -x "${MONOREPO_ROOT}/node_modules/.bin/json2ts.cmd" ]]; then
+    echo "${MONOREPO_ROOT}/node_modules/.bin/json2ts.cmd"; return 0
+  fi
+  return 1
+}
+
+# Node / npx / json2ts availability checks (for VS Code project)
+ensure_node_tools() {
+  # If local binary exists — we're good
+  if JSON2TS_BIN="$(find_json2ts_local)"; then
+    return 0
+  fi
+
+  # Require node and npx
+  if ! command -v node >/dev/null 2>&1; then
+    echo "$(red "Error:") Node.js is not installed or not in PATH."
+    echo "Install Node.js LTS from https://nodejs.org/ and try again."
+    exit 2
+  fi
+  if ! command -v npx >/dev/null 2>&1; then
+    echo "$(red "Error:") npx is not available (npm is missing)."
+    echo "Install Node.js (with npm) and try again."
+    exit 2
+  fi
+  # Probe that npx can run json2ts (json-schema-to-typescript)
+  # Use a very quick version check; allow older npx without --yes.
+  if npx --yes json2ts --version >/dev/null 2>&1; then
+    return 0
+  fi
+  if npx json2ts --version >/dev/null 2>&1; then
+    return 0
+  fi
+  # As a final hint
+  echo "$(red "Error:") Unable to run $(bold "json2ts") via npx."
+  echo "Try: npx --yes json2ts --version"
+  exit 2
+}
+
 # ------------- discovery (schemas) -------------
 
 # Collect JSON Schema files for CLI project (Python models)
@@ -177,6 +231,25 @@ cli_output_path_for_schema() {
   fi
 
   echo "$default_py"
+}
+
+# Collect JSON Schema files for VS Code project (TypeScript models)
+# For now we reuse the same canonical schemas under <monorepo>/cli/lg/*.schema.json
+discover_vscode_schemas() {
+  discover_cli_schemas
+}
+
+# Map schema path → output TypeScript file inside <monorepo>/vscode/src/models/
+# Default: foo.schema.json → <vscode>/src/models/foo.ts
+vscode_output_path_for_schema() {
+  local schema="$1"
+  local name="$(basename "${schema}")"
+  name="${name%".schema.json"}"
+  local out="${VSCODE_DIR}/src/models/${name}.ts"
+  # Per-file overrides (if we want custom filenames later)
+  # Example:
+  # if [[ "$name" == "run_result" ]]; then out="${VSCODE_DIR}/src/models/run_result.ts"; fi
+  echo "$out"
 }
 
 # ------------- generators -------------
@@ -271,20 +344,90 @@ generate_cli() {
   echo "$(green "All models generated successfully.")"
 }
 
-generate_vscode_stub() {
+generate_vscode() {
   echo "$(bold "Project: VS Code Extension (TypeScript)")"
   echo "Monorepo: ${MONOREPO_ROOT}"
+  echo "VS Code : ${VSCODE_DIR}"
   echo
-  echo "$(yellow "Note:") TypeScript model generation is not implemented yet."
-  echo "Planned toolchain candidates:"
-  echo "  - json-schema-to-typescript  (npx json2ts …)"
-  echo "  - quicktype                  (npx quicktype …)"
+
+  if [[ ! -d "${VSCODE_DIR}/src" ]]; then
+    echo "$(red "Error:") VS Code project not found at ${VSCODE_DIR}/src"
+    exit 2
+  fi
+
+  # Plan
+  mapfile -t schemas < <(discover_vscode_schemas)
+  if [[ ${#schemas[@]} -eq 0 ]]; then
+    echo "$(yellow "Warning:") no *.schema.json found in ${CLI_DIR}/lg"
+    return 0
+  fi
+
+  echo "$(bold "Plan:")"
+  declare -a plan_schema=()
+  declare -a plan_output=()
+  for s in "${schemas[@]}"; do
+    out="$(vscode_output_path_for_schema "$s")"
+    plan_schema+=("$s")
+    plan_output+=("$out")
+  done
+  for ((i=0; i<${#plan_schema[@]}; i++)); do
+    printf "  - %s\n    → %s\n" "${plan_schema[$i]}" "${plan_output[$i]}"
+  done
   echo
-  echo "When implemented, this mode will:"
-  echo "  • discover *.schema.json (shared or CLI schemas)"
-  echo "  • emit *.d.ts or .ts models into <monorepo>/vscode/src/models/"
-  echo "  • include per-schema override mappings (similar to CLI)"
-  [[ $DRY_RUN -eq 1 ]] && echo && echo "$(green "Dry-run") done."
+
+  if [[ $DRY_RUN -eq 1 ]]; then
+    echo "$(green "Dry-run") done."
+    return 0
+  fi
+
+  ensure_node_tools
+
+  # Resolve json2ts command (prefer local binary)
+  local JSON2TS_CMD=""
+  if JSON2TS_CMD="$(find_json2ts_local)"; then
+    :
+  else
+    # Use npx with explicit package if no local bin
+    JSON2TS_CMD="npx -p json-schema-to-typescript json2ts"
+  fi
+
+  # Common options for json2ts
+  # Notes:
+  #  - We output real .ts modules (not .d.ts) so they are picked by tsconfig include.
+  #  - Keep banner small; repos often run formatters/linters afterwards.
+  local banner=$'/*\n * AUTO-GENERATED by cli/scripts/gen_models.sh\n * Source: JSON Schemas under cli/lg/*.schema.json\n */'
+
+  local ok=0
+  for ((i=0; i<${#plan_schema[@]}; i++)); do
+    local in="${plan_schema[$i]}"
+    local out="${plan_output[$i]}"
+    mkdir -p "$(dirname "$out")"
+    echo "• Generating $(bold "$(basename "$out")") from $(basename "$in")"
+    if [[ $VERBOSE -eq 1 ]]; then set -x; fi
+    # Run either local json2ts or npx-pinned one
+    eval "$JSON2TS_CMD" \
+      -i "$in" \
+      -o "$out" \
+      --bannerComment "$banner" \
+      --cwd "$MONOREPO_ROOT"
+    local rc=$?
+    if [[ $VERBOSE -eq 1 ]]; then { set +x; } 2>/dev/null; fi
+    if [[ $rc -ne 0 ]]; then
+      echo "$(red "Failed:") $in → $out"
+      ok=1
+    else
+      echo "  $(green "OK") $out"
+    fi
+  done
+
+  if [[ $ok -ne 0 ]]; then
+    echo
+    echo "$(red "One or more TypeScript generations failed.")"
+    exit 3
+  fi
+
+  echo
+  echo "$(green "All TypeScript models generated successfully.")"
 }
 
 generate_jetbrains_stub() {
@@ -316,7 +459,7 @@ case "${PROJECT}" in
     generate_cli "$PY_EXE"
     ;;
   vscode)
-    generate_vscode_stub
+    generate_vscode
     ;;
   jetbrains)
     generate_jetbrains_stub

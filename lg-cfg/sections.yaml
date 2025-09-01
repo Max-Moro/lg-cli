@@ -1,46 +1,39 @@
 src:
-  extensions: [".py", ".toml"]
+  extensions: [".py", ".toml", ".json", ".sh"]
   filters:
     mode: allow
     allow:
       - "/pyproject.toml"
       - "/lg/"
+      - "/scripts/"
     children:
       lg:
         mode: block
         block:
-          - "/stats/tokenizer.py"
+          - "/stats/"
           - "/io/"
           - "/markdown/"
-          - "/migrate/migrations/"
+          - "/migrate/"
           - "/cache/"
+          - "/context/"
 
 src-short:
-  extensions: [".py", ".toml"]
+  extensions: [".py", ".json", ".sh"]
   filters:
     mode: allow
     allow:
-      - "/pyproject.toml"
       - "/lg/"
+      - "/scripts/"
     children:
       lg:
         mode: allow
         allow:
           - "/cli.py"
           - "/types.py"
-          - "/api_schema.py"
           - "/engine.py"
           - "/config/model.py"
           - "/config/load.py"
-          - "/context/resolver.py"
-          - "/diag**"
-          - "/migrate/"
-          - "/cache/"
-        children:
-          migrate:
-            mode: block
-            block:
-              - "/migrations/"
+          - "/*.json"
 
 migrations:
   extensions: [".py"]
