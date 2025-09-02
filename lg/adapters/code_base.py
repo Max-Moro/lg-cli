@@ -312,17 +312,15 @@ class CodeAdapter(BaseAdapter[C], ABC):
         """
         Обрабатывает импорты согласно политике import_config.
         """
-        from .import_utils import ImportAnalyzer, ImportClassifier
-        
         config = self.cfg.import_config
         
         # Если политика keep_all, ничего не делаем
         if config.policy == "keep_all":
             return
         
-        # Создаем анализатор импортов
-        classifier = ImportClassifier(config.external_only_patterns)
-        analyzer = ImportAnalyzer(classifier)
+        # Языковые адаптеры должны предоставлять свои реализации
+        classifier = self._create_import_classifier(config.external_only_patterns)
+        analyzer = self._create_import_analyzer(classifier)
         
         # Анализируем все импорты
         imports = analyzer.analyze_imports(doc)
@@ -483,6 +481,14 @@ class CodeAdapter(BaseAdapter[C], ABC):
                 return f"… {count} external imports: {', '.join(module_names[:2])}, ..."
         else:
             return f"… {count} local imports"
+    
+    def _create_import_classifier(self, external_patterns: List[str] = None):
+        """Создает языко-специфичный классификатор импортов. Должен быть переопределен наследниками."""
+        raise NotImplementedError(f"{self.__class__.__name__} must implement _create_import_classifier")
+    
+    def _create_import_analyzer(self, classifier):
+        """Создает языко-специфичный анализатор импортов. Должен быть переопределен наследниками."""
+        raise NotImplementedError(f"{self.__class__.__name__} must implement _create_import_analyzer")
 
     def _should_strip_function_body(self, cfg, function_text: str, lines_count: int) -> bool:
         """Определяет, нужно ли удалять тело функции."""

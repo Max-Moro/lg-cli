@@ -5,8 +5,9 @@ Tests for import optimization implementation (M3).
 import pytest
 
 from lg.adapters.code_model import ImportConfig
-from lg.adapters.import_utils import ImportClassifier, ImportAnalyzer
+from lg.adapters.python_tree_sitter import PythonImportClassifier, PythonImportAnalyzer
 from lg.adapters.python_tree_sitter import PythonTreeSitterAdapter, PythonCfg
+from lg.adapters.typescript_tree_sitter import TypeScriptImportClassifier, TypeScriptImportAnalyzer
 from lg.adapters.typescript_tree_sitter import TypeScriptTreeSitterAdapter, TypeScriptCfg
 
 pytestmark = pytest.mark.usefixtures("skip_if_no_tree_sitter")
@@ -17,7 +18,7 @@ class TestImportClassifier:
     
     def test_python_external_classification(self):
         """Test classification of Python external packages."""
-        classifier = ImportClassifier()
+        classifier = PythonImportClassifier()
         
         # Common external packages should be detected
         assert classifier.is_external("numpy") is True
@@ -35,7 +36,7 @@ class TestImportClassifier:
     
     def test_typescript_external_classification(self):
         """Test classification of TypeScript/JavaScript external packages."""
-        classifier = ImportClassifier()
+        classifier = TypeScriptImportClassifier()
         
         # External packages
         assert classifier.is_external("react") is True
@@ -52,7 +53,7 @@ class TestImportClassifier:
     def test_custom_patterns(self):
         """Test custom external patterns."""
         patterns = [r"^myorg-.*", r"^@mycompany/.*"]
-        classifier = ImportClassifier(patterns)
+        classifier = PythonImportClassifier(patterns)
         
         assert classifier.is_external("myorg-utils") is True
         assert classifier.is_external("@mycompany/shared") is True
@@ -76,7 +77,8 @@ from .relative import something
 '''
         
         doc = create_document(code, "python")
-        analyzer = ImportAnalyzer()
+        classifier = PythonImportClassifier()
+        analyzer = PythonImportAnalyzer(classifier)
         imports = analyzer.analyze_imports(doc)
         
         # Should find all imports
@@ -100,7 +102,8 @@ import { helper } from '../utils/helper';
 '''
         
         doc = create_document(code, "typescript")
-        analyzer = ImportAnalyzer()
+        classifier = TypeScriptImportClassifier()
+        analyzer = TypeScriptImportAnalyzer(classifier)
         imports = analyzer.analyze_imports(doc)
         
         # Should find all imports
@@ -123,7 +126,8 @@ from .utils import helper
 '''
         
         doc = create_document(code, "python")
-        analyzer = ImportAnalyzer()
+        classifier = PythonImportClassifier()
+        analyzer = PythonImportAnalyzer(classifier)
         imports = analyzer.analyze_imports(doc)
         grouped = analyzer.group_imports(imports)
         
