@@ -15,7 +15,9 @@ dependencies = [
     "tiktoken>=0.6",
     "pydantic>=2.0,<3.0",
     "tree-sitter>=0.21",
-    "tree-sitter-languages>=1.10",
+    "tree-sitter-python>=0.23",
+    "tree-sitter-typescript>=0.23",
+    "tree-sitter-javascript>=0.25",
 ]
 
 [project.scripts]
@@ -25,6 +27,14 @@ listing-generator = "lg.cli:main"
 dev = [
     "pytest>=8.0",
     "datamodel-code-generator>=0.25",
+]
+
+# Дополнительные языки для будущих итераций (M7)
+extended-langs = [
+    "tree-sitter-java",
+    "tree-sitter-cpp", 
+    "tree-sitter-c",
+    "tree-sitter-scala",
 ]
 
 [tool.setuptools.package-data]
