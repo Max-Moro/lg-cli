@@ -12,6 +12,11 @@ from typing import Dict, List, Optional, Tuple, Any
 
 from .base import BaseAdapter
 from .code_model import CodeCfg, PlaceholderConfig, create_lang_config
+from .tree_sitter_support import (
+    TreeSitterDocument, create_document, is_tree_sitter_available,
+    TreeSitterError, query_registry
+)
+from .range_edits import RangeEditor, PlaceholderGenerator, get_comment_style
 
 
 class CodeAdapter(BaseAdapter[CodeCfg], ABC):
@@ -40,16 +45,33 @@ class CodeAdapter(BaseAdapter[CodeCfg], ABC):
         Основной метод обработки кода.
         Применяет все конфигурированные оптимизации.
         """
+        # Проверяем доступность Tree-sitter
+        if not is_tree_sitter_available():
+            # Fallback to simple processing without Tree-sitter
+            return self._fallback_process(text, group_size, mixed)
+        
         meta = self._init_meta()
         
-        # Парсим исходный код в промежуточное представление
-        parsed = self.parse_code(text)
-        
-        # Применяем оптимизации согласно конфигурации
-        optimized = self.apply_optimizations(parsed, meta)
-        
-        # Генерируем финальный текст с плейсхолдерами
-        result_text = self.generate_output(optimized, meta)
+        try:
+            # Парсим исходный код с Tree-sitter
+            doc = create_document(text, self.name)
+            
+            # Создаем редактор для range-based изменений
+            editor = RangeEditor(text)
+            
+            # Применяем оптимизации
+            self.apply_tree_sitter_optimizations(doc, editor, meta)
+            
+            # Применяем все изменения
+            result_text, edit_stats = editor.apply_edits()
+            
+            # Объединяем статистики
+            meta.update(edit_stats)
+            
+        except TreeSitterError as e:
+            # Fallback при ошибках парсинга
+            meta["tree_sitter_error"] = str(e)
+            return self._fallback_process(text, group_size, mixed)
         
         # Добавляем метаданные группы
         meta.update({
@@ -74,11 +96,110 @@ class CodeAdapter(BaseAdapter[CodeCfg], ABC):
             "code.bytes_saved": 0,
         }
 
-    @abstractmethod
+    def apply_tree_sitter_optimizations(
+        self, 
+        doc: TreeSitterDocument, 
+        editor: RangeEditor, 
+        meta: Dict[str, Any]
+    ) -> None:
+        """
+        Применяет оптимизации используя Tree-sitter документ.
+        Базовая реализация - наследники могут переопределить.
+        """
+        if self.cfg.strip_function_bodies:
+            self.strip_function_bodies_ts(doc, editor, meta)
+        
+        # Другие оптимизации можно добавить здесь
+        # if self.cfg.public_api_only:
+        #     self.filter_public_api_ts(doc, editor, meta)
+    
+    def strip_function_bodies_ts(
+        self, 
+        doc: TreeSitterDocument, 
+        editor: RangeEditor, 
+        meta: Dict[str, Any]
+    ) -> None:
+        """
+        Удаляет тела функций используя Tree-sitter.
+        Базовая реализация для всех языков.
+        """
+        cfg = self.cfg.strip_function_bodies
+        if not cfg:
+            return
+        
+        # Получаем генератор плейсхолдеров
+        comment_style = get_comment_style(self.name)
+        placeholder_gen = PlaceholderGenerator(comment_style)
+        
+        # Ищем функции для обработки
+        functions = doc.query("functions")
+        
+        for node, capture_name in functions:
+            if capture_name == "function_body":
+                # Получаем информацию о функции
+                function_text = doc.get_node_text(node)
+                start_byte, end_byte = doc.get_node_range(node)
+                start_line, end_line = doc.get_line_range(node)
+                lines_count = end_line - start_line + 1
+                
+                # Проверяем условия удаления
+                should_strip = self._should_strip_function_body(cfg, function_text, lines_count)
+                
+                if should_strip:
+                    # Создаем плейсхолдер
+                    placeholder = placeholder_gen.create_function_placeholder(
+                        name="function",
+                        lines_removed=lines_count,
+                        bytes_removed=end_byte - start_byte,
+                        style=self.cfg.placeholders.style
+                    )
+                    
+                    # Добавляем правку
+                    editor.add_replacement(
+                        start_byte, end_byte, placeholder,
+                        type="function_body_removal",
+                        is_placeholder=True,
+                        lines_removed=lines_count
+                    )
+                    
+                    meta["code.removed.functions"] += 1
+    
+    def _should_strip_function_body(self, cfg, function_text: str, lines_count: int) -> bool:
+        """Определяет, нужно ли удалять тело функции."""
+        if isinstance(cfg, bool):
+            return cfg
+        
+        # Если конфигурация - объект, применяем более сложную логику
+        if hasattr(cfg, 'mode'):
+            if cfg.mode == "none":
+                return False
+            elif cfg.mode == "all":
+                return True
+            elif cfg.mode == "large_only":
+                return lines_count >= getattr(cfg, 'min_lines', 5)
+            # TODO: реализовать public_only, non_public после добавления семантики
+        
+        return False
+    
+    def _fallback_process(self, text: str, group_size: int, mixed: bool) -> Tuple[str, Dict[str, Any]]:
+        """
+        Fallback обработка без Tree-sitter.
+        Возвращает исходный текст с минимальными метаданными.
+        """
+        meta = self._init_meta()
+        meta.update({
+            "_group_size": group_size,
+            "_group_mixed": mixed,
+            "_adapter": self.name,
+            "_fallback_mode": True,
+        })
+        return text, meta
+    
+    @abstractmethod 
     def parse_code(self, text: str) -> "CodeDocument":
         """
-        Парсит исходный код в промежуточное представление.
-        Должен быть реализован каждым язык-специфичным адаптером.
+        DEPRECATED: Используется только для совместимости.
+        Новые адаптеры должны переопределять apply_tree_sitter_optimizations.
         """
         pass
 
