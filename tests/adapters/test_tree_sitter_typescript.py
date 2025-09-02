@@ -3,12 +3,10 @@ Tests for Tree-sitter based TypeScript adapter.
 """
 
 import pytest
-from pathlib import Path
 
-from lg.adapters.typescript_tree_sitter import TypeScriptTreeSitterAdapter, JavaScriptTreeSitterAdapter, TypeScriptCfg
 from lg.adapters.code_model import FunctionBodyConfig
-from tests.adapters.conftest import assert_golden_match, create_temp_file
-
+from lg.adapters.typescript_tree_sitter import TypeScriptTreeSitterAdapter, JavaScriptTreeSitterAdapter, TypeScriptCfg
+from tests.adapters.conftest import assert_golden_match
 
 pytestmark = pytest.mark.usefixtures("skip_if_no_tree_sitter")
 

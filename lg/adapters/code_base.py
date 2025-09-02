@@ -111,6 +111,9 @@ class CodeAdapter(BaseAdapter[C], ABC):
         if self.cfg.strip_function_bodies:
             self.strip_function_bodies_ts(doc, editor, meta)
         
+        # Обработка комментариев
+        self.process_comments_ts(doc, editor, meta)
+        
         # Другие оптимизации можно добавить здесь
         # if self.cfg.public_api_only:
         #     self.filter_public_api_ts(doc, editor, meta)
@@ -174,6 +177,129 @@ class CodeAdapter(BaseAdapter[C], ABC):
                     
                     meta["code.removed.functions"] += 1
     
+    def process_comments_ts(
+        self, 
+        doc: TreeSitterDocument, 
+        editor: RangeEditor, 
+        meta: Dict[str, Any]
+    ) -> None:
+        """
+        Обрабатывает комментарии согласно политике comment_policy.
+        """
+        policy = self.cfg.comment_policy
+        
+        # Если политика keep_all, ничего не делаем
+        if isinstance(policy, str) and policy == "keep_all":
+            return
+        
+        # Получаем генератор плейсхолдеров
+        comment_style = get_comment_style(self.name)
+        placeholder_gen = PlaceholderGenerator(comment_style)
+        
+        # Ищем комментарии
+        comments = doc.query("comments")
+        processed_ranges = set()
+        
+        for node, capture_name in comments:
+            start_byte, end_byte = doc.get_node_range(node)
+            range_key = (start_byte, end_byte)
+            
+            if range_key in processed_ranges:
+                continue
+            processed_ranges.add(range_key)
+            
+            comment_text = doc.get_node_text(node)
+            start_line, end_line = doc.get_line_range(node)
+            lines_count = end_line - start_line + 1
+            
+            should_remove, replacement = self._should_process_comment(
+                policy, capture_name, comment_text, placeholder_gen
+            )
+            
+            if should_remove:
+                editor.add_replacement(
+                    start_byte, end_byte, replacement,
+                    type=f"{capture_name}_removal",
+                    is_placeholder=bool(replacement),
+                    lines_removed=lines_count
+                )
+                
+                if capture_name == "comment":
+                    meta["code.removed.comments"] += 1
+                elif capture_name == "docstring":
+                    # Count docstrings separately if needed
+                    meta["code.removed.comments"] += 1
+    
+    def _should_process_comment(
+        self, 
+        policy, 
+        capture_name: str, 
+        comment_text: str, 
+        placeholder_gen: PlaceholderGenerator
+    ) -> Tuple[bool, str]:
+        """
+        Определяет нужно ли обрабатывать комментарий и какую замену использовать.
+        
+        Returns:
+            Tuple of (should_remove, replacement_text)
+        """
+        # Простая строковая политика
+        if isinstance(policy, str):
+            if policy == "keep_all":
+                return False, ""
+            elif policy == "strip_all":
+                # Удаляем все комментарии с плейсхолдером
+                placeholder = placeholder_gen.create_comment_placeholder(
+                    capture_name, style=self.cfg.placeholders.style
+                )
+                return True, placeholder
+            elif policy == "keep_doc":
+                # Удаляем обычные комментарии, сохраняем докстринги
+                if capture_name == "comment":
+                    placeholder = placeholder_gen.create_comment_placeholder(
+                        capture_name, style=self.cfg.placeholders.style
+                    )
+                    return True, placeholder
+                else:
+                    return False, ""
+            elif policy == "keep_first_sentence":
+                # Для докстрингов оставляем первое предложение
+                if capture_name == "docstring":
+                    first_sentence = self._extract_first_sentence(comment_text)
+                    if first_sentence != comment_text:
+                        return True, first_sentence
+                # Обычные комментарии удаляем
+                elif capture_name == "comment":
+                    placeholder = placeholder_gen.create_comment_placeholder(
+                        capture_name, style=self.cfg.placeholders.style
+                    )
+                    return True, placeholder
+        
+        # TODO: Обработка комплексной политики (CommentConfig)
+        
+        return False, ""
+    
+    def _extract_first_sentence(self, text: str) -> str:
+        """Извлекает первое предложение из текста."""
+        # Убираем кавычки для Python docstrings
+        clean_text = text.strip('"\'')
+        
+        # Ищем первое предложение (заканчивается на . ! ?)
+        import re
+        sentences = re.split(r'[.!?]+', clean_text)
+        if sentences and sentences[0].strip():
+            first = sentences[0].strip()
+            # Восстанавливаем кавычки если это Python docstring
+            if text.startswith('"""') or text.startswith("'''"):
+                return f'"""{first}."""'
+            elif text.startswith('"') or text.startswith("'"):
+                quote = text[0]
+                return f'{quote}{first}.{quote}'
+            else:
+                return f"{first}."
+        
+        return text  # Fallback к оригинальному тексту
+
     def _should_strip_function_body(self, cfg, function_text: str, lines_count: int) -> bool:
         """Определяет, нужно ли удалять тело функции."""
         if isinstance(cfg, bool):

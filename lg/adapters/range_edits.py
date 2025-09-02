@@ -242,6 +242,50 @@ class PlaceholderGenerator:
         else:
             return ""
     
+    def create_comment_placeholder(
+        self,
+        comment_type: str,
+        count: int = 1,
+        lines_removed: int = 0,
+        style: str = "inline"
+    ) -> str:
+        """Create a placeholder for removed comments."""
+        if count == 1:
+            content = f"… {comment_type} omitted"
+        else:
+            content = f"… {count} {comment_type}s omitted"
+            
+        if lines_removed > 0:
+            content += f" (−{lines_removed})"
+            
+        if style == "inline" or style == "auto":
+            return f"{self.single_line_comment} {content}"
+        elif style == "block":
+            return f"{self.multi_line_start} {content} {self.multi_line_end}"
+        else:
+            return ""
+    
+    def create_docstring_placeholder(
+        self,
+        policy: str,
+        lines_removed: int = 0,
+        style: str = "inline"
+    ) -> str:
+        """Create a placeholder for processed docstrings."""
+        if policy == "strip_all":
+            content = f"… docstring omitted (−{lines_removed})"
+        elif policy == "keep_first_sentence":
+            content = f"… docstring truncated (−{lines_removed})"
+        else:
+            content = f"… docstring processed (−{lines_removed})"
+            
+        if style == "inline" or style == "auto":
+            return f"{self.single_line_comment} {content}"
+        elif style == "block":
+            return f"{self.multi_line_start} {content} {self.multi_line_end}"
+        else:
+            return ""
+
     def create_custom_placeholder(
         self,
         template: str,

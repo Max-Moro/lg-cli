@@ -3,11 +3,10 @@ Smoke tests that work even without Tree-sitter dependencies.
 Tests fallback behavior and basic adapter loading.
 """
 
-import pytest
 from unittest.mock import patch
 
 from lg.adapters.python_tree_sitter import PythonTreeSitterAdapter, PythonCfg
-from lg.adapters.typescript_tree_sitter import TypeScriptTreeSitterAdapter, TypeScriptCfg
+from lg.adapters.typescript_tree_sitter import TypeScriptTreeSitterAdapter
 
 
 class TestSmokeWithoutDeps:

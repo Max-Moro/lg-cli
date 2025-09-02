@@ -85,14 +85,15 @@ class PythonTreeSitterAdapter(CodeAdapter[PythonCfg]):
     ) -> None:
         """Python-специфичная обработка с Tree-sitter."""
         
-        # Применяем базовые оптимизации
-        super().apply_tree_sitter_optimizations(doc, editor, meta)
-        
-        # Python-специфичные оптимизации
+        # Применяем базовую обработку функций
         if self.cfg.strip_function_bodies:
+            self.strip_function_bodies_ts(doc, editor, meta)
             self._strip_python_methods(doc, editor, meta)
         
-        # TODO: добавить обработку декораторов, docstrings, etc.
+        # Применяем базовую обработку комментариев
+        self.process_comments_ts(doc, editor, meta)
+        
+        # TODO: добавить обработку декораторов, etc.
     
     def _strip_python_methods(
         self, 

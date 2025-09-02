@@ -4,16 +4,14 @@ Tests the complete pipeline from configuration to output.
 """
 
 import pytest
-from pathlib import Path
 
+from lg.adapters.python_tree_sitter import PythonTreeSitterAdapter
+from lg.adapters.range_edits import RangeEditor, PlaceholderGenerator, get_comment_style
 from lg.adapters.tree_sitter_support import (
     is_tree_sitter_available, query_registry, get_supported_languages,
-    create_document, TreeSitterError
+    create_document
 )
-from lg.adapters.range_edits import RangeEditor, PlaceholderGenerator, get_comment_style
-from lg.adapters.python_tree_sitter import PythonTreeSitterAdapter
 from lg.adapters.typescript_tree_sitter import TypeScriptTreeSitterAdapter
-
 
 pytestmark = pytest.mark.usefixtures("skip_if_no_tree_sitter")
 

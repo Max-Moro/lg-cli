@@ -38,13 +38,16 @@ class TypeScriptTreeSitterAdapter(CodeAdapter[TypeScriptCfg]):
     ) -> None:
         """TypeScript-специфичная обработка с Tree-sitter."""
         
-        # TypeScript-специфичные оптимизации (не вызываем super() чтобы избежать дублирования)
+        # TypeScript-специфичные оптимизации для функций
         if self.cfg.strip_function_bodies:
             # Используем общий set для отслеживания обработанных диапазонов
             processed_ranges = set()
             self._strip_ts_functions(doc, editor, meta, processed_ranges)
             self._strip_ts_methods(doc, editor, meta, processed_ranges)
             self._strip_arrow_functions(doc, editor, meta, processed_ranges)
+        
+        # Вызываем базовую обработку комментариев
+        self.process_comments_ts(doc, editor, meta)
     
     def _strip_ts_functions(
         self, 

@@ -171,6 +171,11 @@ def register_default_queries():
     (import_from_statement) @import_from
     """)
     
+    query_registry.register_query("python", "comments", """
+    (comment) @comment
+    (string) @docstring
+    """)
+    
     # TypeScript/JavaScript queries
     for lang in ["typescript", "javascript"]:
         query_registry.register_query(lang, "functions", """
@@ -204,6 +209,10 @@ def register_default_queries():
         
         query_registry.register_query(lang, "imports", """
         (import_statement) @import
+        """)
+        
+        query_registry.register_query(lang, "comments", """
+        (comment) @comment
         """)
     
     # Add TypeScript-specific queries
@@ -260,6 +269,8 @@ class TreeSitterDocument:
             return self._find_functions()
         elif query_name == "methods":
             return self._find_methods()
+        elif query_name == "comments":
+            return self._find_comments()
         else:
             # Fallback to empty results for now
             return []
@@ -358,6 +369,61 @@ class TreeSitterDocument:
     def get_line_range(self, node: Node) -> Tuple[int, int]:
         """Get line range (0-based) for a node."""
         return node.start_point[0], node.end_point[0]
+    
+    def _find_comments(self) -> List[Tuple[Node, str]]:
+        """Find all comments and docstrings manually."""
+        results = []
+        
+        def traverse(node: Node):
+            # Python comments and docstrings
+            if node.type == "comment":
+                results.append((node, "comment"))
+            elif node.type == "expression_statement" and self.lang_name == "python":
+                # Potential docstring - expression statement with string literal
+                for child in node.children:
+                    if child.type == "string":
+                        # Check if this is at the beginning of a function/class/module
+                        if self._is_docstring(node):
+                            results.append((child, "docstring"))
+                        break
+            elif node.type == "string" and self.lang_name == "python":
+                # Handle standalone strings that might be docstrings
+                if self._is_docstring(node):
+                    results.append((node, "docstring"))
+            
+            # TypeScript/JavaScript comments  
+            elif self.lang_name in ("typescript", "javascript"):
+                if node.type == "comment":
+                    results.append((node, "comment"))
+            
+            # Traverse children
+            for child in node.children:
+                traverse(child)
+        
+        traverse(self.root_node)
+        return results
+    
+    def _is_docstring(self, node: Node) -> bool:
+        """Check if a string node is likely a docstring."""
+        # Simple heuristic: check if string is the first statement in a function/class/module
+        parent = node.parent
+        if not parent:
+            return False
+            
+        # Check if this is the first statement in a block
+        if parent.type == "block":
+            # Find the first significant child (not comment or whitespace)
+            for child in parent.children:
+                if child.type not in ("comment", "newline"):
+                    return child == node or (child.type == "expression_statement" and node in child.children)
+        
+        # Check if this is at module level (direct child of module)
+        elif parent.type == "module":
+            for child in parent.children:
+                if child.type not in ("comment", "newline", "import_statement", "import_from_statement"):
+                    return child == node or (child.type == "expression_statement" and node in child.children)
+        
+        return False
 
 
 def create_document(text: str, lang_name: str) -> TreeSitterDocument:
