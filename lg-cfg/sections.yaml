@@ -38,3 +38,10 @@ migrations:
     mode: allow
     allow:
       - "/lg/migrate/migrations/"
+
+src-adapters:
+  extensions: [".py"]
+  filters:
+    mode: allow
+    allow:
+      - "/lg/adapters/"
