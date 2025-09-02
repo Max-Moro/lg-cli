@@ -27,13 +27,67 @@ class TypeScriptTreeSitterAdapter(CodeAdapter[TypeScriptCfg]):
     ) -> None:
         """TypeScript-специфичная обработка с Tree-sitter."""
         
-        # Применяем базовые оптимизации
-        super().apply_tree_sitter_optimizations(doc, editor, meta)
-        
-        # TypeScript-специфичные оптимизации
+        # TypeScript-специфичные оптимизации (не вызываем super() чтобы избежать дублирования)
         if self.cfg.strip_function_bodies:
+            self._strip_ts_functions(doc, editor, meta)
             self._strip_ts_methods(doc, editor, meta)
             self._strip_arrow_functions(doc, editor, meta)
+    
+    def _strip_ts_functions(
+        self, 
+        doc: TreeSitterDocument, 
+        editor: RangeEditor, 
+        meta: Dict[str, Any]
+    ) -> None:
+        """Обрабатывает функции TypeScript."""
+        cfg = self.cfg.strip_function_bodies
+        if not cfg:
+            return
+        
+        # Получаем генератор плейсхолдеров
+        comment_style = get_comment_style(self.name)
+        placeholder_gen = PlaceholderGenerator(comment_style)
+        
+        # Ищем функции
+        functions = doc.query("functions")
+        processed_ranges = set()
+        
+        for node, capture_name in functions:
+            if capture_name == "function_body":
+                # Получаем информацию о функции
+                start_byte, end_byte = doc.get_node_range(node)
+                
+                # Пропускаем если этот диапазон уже обработан
+                range_key = (start_byte, end_byte)
+                if range_key in processed_ranges:
+                    continue
+                processed_ranges.add(range_key)
+                
+                function_text = doc.get_node_text(node)
+                start_line, end_line = doc.get_line_range(node)
+                lines_count = end_line - start_line + 1
+                
+                # Проверяем условия удаления (используем метод из базового класса)
+                should_strip = super()._should_strip_function_body(cfg, function_text, lines_count)
+                
+                if should_strip:
+                    # Создаем плейсхолдер
+                    placeholder = placeholder_gen.create_function_placeholder(
+                        name="function",
+                        lines_removed=lines_count,
+                        bytes_removed=end_byte - start_byte,
+                        style=self.cfg.placeholders.style
+                    )
+                    
+                    # Добавляем правку
+                    editor.add_replacement(
+                        start_byte, end_byte, placeholder,
+                        type="function_body_removal",
+                        is_placeholder=True,
+                        lines_removed=lines_count
+                    )
+                    
+                    meta["code.removed.functions"] += 1
     
     def _strip_ts_methods(
         self, 
@@ -61,8 +115,8 @@ class TypeScriptTreeSitterAdapter(CodeAdapter[TypeScriptCfg]):
                 start_line, end_line = doc.get_line_range(node)
                 lines_count = end_line - start_line + 1
                 
-                # Проверяем условия удаления
-                should_strip = self._should_strip_function_body(cfg, method_text, lines_count)
+                # Проверяем условия удаления (используем метод из базового класса)
+                should_strip = super()._should_strip_function_body(cfg, method_text, lines_count)
                 
                 if should_strip:
                     # Создаем плейсхолдер для метода
@@ -110,7 +164,7 @@ class TypeScriptTreeSitterAdapter(CodeAdapter[TypeScriptCfg]):
                 
                 # Для стрелочных функций применяем более консервативный подход
                 # Удаляем только многострочные тела
-                if lines_count > 1 and self._should_strip_function_body(cfg, arrow_text, lines_count):
+                if lines_count > 1 and super()._should_strip_function_body(cfg, arrow_text, lines_count):
                     placeholder = placeholder_gen.create_function_placeholder(
                         name="arrow",
                         lines_removed=lines_count,

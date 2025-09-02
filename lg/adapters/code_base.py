@@ -8,7 +8,7 @@ from __future__ import annotations
 import re
 from abc import ABC, abstractmethod
 from pathlib import Path
-from typing import Dict, List, Optional, Tuple, Any
+from typing import Dict, List, Optional, Tuple, Any, Generic, TypeVar
 
 from .base import BaseAdapter
 from .code_model import CodeCfg, PlaceholderConfig, create_lang_config
@@ -18,20 +18,23 @@ from .tree_sitter_support import (
 )
 from .range_edits import RangeEditor, PlaceholderGenerator, get_comment_style
 
+C = TypeVar("C", bound=CodeCfg)
 
-class CodeAdapter(BaseAdapter[CodeCfg], ABC):
+class CodeAdapter(BaseAdapter[C], ABC):
     """
     Базовый класс для всех адаптеров языков программирования.
     Предоставляет общие методы для обработки кода и системы плейсхолдеров.
     """
 
     @classmethod
-    def load_cfg(cls, raw_cfg: dict | None) -> CodeCfg:
+    def load_cfg(cls, raw_cfg: dict | None) -> C:
         """
         Загружает конфигурацию с учетом специфики языка.
         Переопределяет базовый метод для создания язык-специфичной конфигурации.
         """
-        return create_lang_config(cls.name, raw_cfg)
+        # create_lang_config возвращает CodeCfg или его наследника
+        config = create_lang_config(cls.name, raw_cfg)
+        return config  # type: ignore[return-value]
 
     def should_skip(self, path: Path, text: str) -> bool:
         """
@@ -133,12 +136,20 @@ class CodeAdapter(BaseAdapter[CodeCfg], ABC):
         
         # Ищем функции для обработки
         functions = doc.query("functions")
+        processed_ranges = set()  # Отслеживаем уже обработанные диапазоны
         
         for node, capture_name in functions:
             if capture_name == "function_body":
                 # Получаем информацию о функции
-                function_text = doc.get_node_text(node)
                 start_byte, end_byte = doc.get_node_range(node)
+                
+                # Пропускаем если этот диапазон уже обработан
+                range_key = (start_byte, end_byte)
+                if range_key in processed_ranges:
+                    continue
+                processed_ranges.add(range_key)
+                
+                function_text = doc.get_node_text(node)
                 start_line, end_line = doc.get_line_range(node)
                 lines_count = end_line - start_line + 1
                 

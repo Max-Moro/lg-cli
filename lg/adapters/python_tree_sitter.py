@@ -34,7 +34,25 @@ class PythonTreeSitterAdapter(CodeAdapter[PythonCfg]):
             ]
             
             # Используем конфигурацию (по умолчанию как в старом адаптере)
-            limit = 1  # trivial_init_max_noncomment
+            # Получаем конфигурацию безопасно, если она не установлена - используем дефолты
+            try:
+                # Попытаемся получить конфигурацию
+                cfg = self.cfg
+                skip_trivial = cfg.skip_trivial_inits
+                limit = cfg.trivial_init_max_noncomment
+            except AttributeError:
+                # Если конфигурация не установлена, используем дефолты
+                skip_trivial = True
+                limit = 1
+            
+            if not skip_trivial:
+                return False
+            
+            # Пустой файл должен быть пропущен
+            if len(significant) == 0:
+                return True
+                
+            # Файлы с только pass/... в пределах лимита должны быть пропущены
             if len(significant) <= limit and all(
                 ln in ("pass", "...") for ln in significant
             ):
@@ -72,12 +90,19 @@ class PythonTreeSitterAdapter(CodeAdapter[PythonCfg]):
         
         # Ищем методы в классах
         methods = doc.query("methods")
+        processed_ranges = getattr(self, '_processed_ranges', set())
         
         for node, capture_name in methods:
             if capture_name == "method_body":
                 # Получаем информацию о методе
-                method_text = doc.get_node_text(node)
                 start_byte, end_byte = doc.get_node_range(node)
+                
+                # Пропускаем если этот диапазон уже обработан в базовом методе
+                range_key = (start_byte, end_byte)
+                if range_key in processed_ranges:
+                    continue
+                    
+                method_text = doc.get_node_text(node)
                 start_line, end_line = doc.get_line_range(node)
                 lines_count = end_line - start_line + 1
                 

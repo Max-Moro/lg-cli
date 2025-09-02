@@ -193,7 +193,7 @@ class PlaceholderGenerator:
         style: str = "inline"
     ) -> str:
         """Create a placeholder for a removed function body."""
-        if style == "inline":
+        if style == "inline" or style == "auto":
             return f"{self.single_line_comment} … body omitted (−{lines_removed})"
         elif style == "block":
             return f"{self.multi_line_start} … {name} body omitted (−{lines_removed}) {self.multi_line_end}"
@@ -208,7 +208,7 @@ class PlaceholderGenerator:
         style: str = "inline"
     ) -> str:
         """Create a placeholder for a removed method body."""
-        if style == "inline":
+        if style == "inline" or style == "auto":
             return f"{self.single_line_comment} … method omitted (−{lines_removed})"
         elif style == "block":
             return f"{self.multi_line_start} … {name} method omitted (−{lines_removed}) {self.multi_line_end}"
@@ -221,7 +221,7 @@ class PlaceholderGenerator:
         style: str = "inline"
     ) -> str:
         """Create a placeholder for summarized imports."""
-        if style == "inline":
+        if style == "inline" or style == "auto":
             return f"{self.single_line_comment} … {count} imports omitted"
         elif style == "block":
             return f"{self.multi_line_start} … {count} imports omitted {self.multi_line_end}"
@@ -235,7 +235,7 @@ class PlaceholderGenerator:
         style: str = "inline"
     ) -> str:
         """Create a placeholder for truncated literals."""
-        if style == "inline":
+        if style == "inline" or style == "auto":
             return f"{self.single_line_comment} … {literal_type} data omitted ({bytes_removed} bytes)"
         elif style == "block":
             return f"{self.multi_line_start} … {literal_type} data omitted ({bytes_removed} bytes) {self.multi_line_end}"

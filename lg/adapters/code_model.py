@@ -205,7 +205,10 @@ class CodeCfg:
 class PythonCfg(CodeCfg):
     """Конфигурация для Python адаптера."""
     # Наследует все поля от CodeCfg
-    # Дополнительные Python-специфичные настройки можно добавить через lang_specific
+    
+    # Python-специфичные настройки
+    skip_trivial_inits: bool = True
+    trivial_init_max_noncomment: int = 1
     
     def __post_init__(self):
         # Устанавливаем Python-специфичные дефолты

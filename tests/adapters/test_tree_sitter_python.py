@@ -78,14 +78,19 @@ class TestPythonTreeSitterAdapter:
         ]
         
         for i, content in enumerate(trivial_cases):
-            init_file = create_temp_file(tmp_path, f"__init_{i}.py", content)
+            # Все файлы должны называться __init__.py чтобы логика сработала
+            subdir = tmp_path / f"subdir_{i}"
+            subdir.mkdir(exist_ok=True)
+            init_file = create_temp_file(subdir, "__init__.py", content)
             should_skip = adapter.should_skip(init_file, content)
             assert should_skip, f"Should skip trivial __init__.py: {repr(content)}"
         
         # Test non-trivial __init__.py
         non_trivial = "from .module import something\npass"
-        init_file = create_temp_file(tmp_path, "__init_real.py", non_trivial)
-        should_not_skip = adapter.should_skip(init_file, non_trivial)
+        real_package = tmp_path / "real_package"
+        real_package.mkdir(exist_ok=True)
+        non_trivial_file = create_temp_file(real_package, "__init__.py", non_trivial)
+        should_not_skip = adapter.should_skip(non_trivial_file, non_trivial)
         assert not should_not_skip, "Should not skip non-trivial __init__.py"
     
     def test_fallback_mode(self, python_code_sample, monkeypatch):
