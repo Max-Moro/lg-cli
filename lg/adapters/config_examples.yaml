@@ -1,0 +1,196 @@
+# Примеры конфигураций для языковых адаптеров
+# Демонстрируют различные стратегии оптимизации листингов кода
+
+# ==================== PYTHON ====================
+
+# Минимальная конфигурация - только публичный API
+python_api_only:
+  extensions: [".py"]
+  python:
+    public_api_only: true
+    strip_function_bodies: true
+    comment_policy: "keep_doc"
+    placeholders:
+      template: "# … {kind} {name} (−{lines})"
+
+# Полная конфигурация с детальными настройками
+python_full:
+  extensions: [".py"]
+  python:
+    public_api_only: false
+    strip_function_bodies:
+      mode: "large_only"
+      min_lines: 10
+      except_patterns: ["__init__", "main"]
+      keep_annotated: ["@property", "@classmethod"]
+    comment_policy:
+      policy: "keep_first_sentence"
+      max_length: 100
+      keep_annotations: ["TODO", "FIXME", "NOTE"]
+    import_config:
+      policy: "summarize_long"
+      max_items_before_summary: 5
+      external_only_patterns: ["^[a-z]+$"]  # stdlib modules
+    literal_config:
+      max_string_length: 50
+      max_array_elements: 10
+      max_object_properties: 8
+    field_config:
+      keep_initializers: true
+      max_initializer_length: 30
+    budget:
+      max_tokens_per_file: 2000
+      priority_order: ["imports", "classes", "functions", "docs"]
+    placeholders:
+      mode: "summary"
+      template: "# … {kind} {name} (−{lines})"
+
+# ==================== TYPESCRIPT ====================
+
+# Экспортный API для библиотек
+typescript_lib:
+  extensions: [".ts", ".d.ts"]
+  typescript:
+    public_api_only: true  # только exported элементы
+    strip_function_bodies: true
+    comment_policy:
+      policy: "keep_doc" 
+      keep_annotations: ["@param", "@returns", "@throws", "@deprecated"]
+    import_config:
+      policy: "external_only"
+    placeholders:
+      template: "/* … {kind} {name} (−{lines}) */"
+
+# Полная конфигурация для приложений
+typescript_app:
+  extensions: [".ts", ".tsx"]
+  typescript:
+    public_api_only: false
+    strip_function_bodies:
+      mode: "non_public"
+    comment_policy: "keep_first_sentence"
+    import_config:
+      policy: "summarize_long"
+      max_items_before_summary: 8
+    literal_config:
+      max_string_length: 100
+      max_object_properties: 12
+    lang_specific:
+      keep_jsx_props: true
+      interface_bodies: "signature_only"
+
+# ==================== JAVA ====================
+
+# Корпоративный Java - только публичные API
+java_enterprise:
+  extensions: [".java"]
+  java:
+    public_api_only: true
+    strip_function_bodies: true
+    comment_policy:
+      policy: "keep_doc"
+      keep_annotations: ["@param", "@return", "@throws", "@since", "@deprecated"]
+    field_config:
+      strip_trivial_accessors: true  # убираем геттеры/сеттеры
+    lang_specific:
+      keep_annotations: ["@Service", "@Component", "@RestController", "@Entity"]
+      lombok_aware: true  # понимание Lombok аннотаций
+    placeholders:
+      template: "/* … {kind} {name} (−{lines}) */"
+
+# ==================== C/C++ ====================
+
+# Заголовки - только объявления
+cpp_headers:
+  extensions: [".h", ".hpp"]
+  cpp:
+    public_api_only: true
+    strip_function_bodies: true  # в заголовках обычно только объявления
+    comment_policy: "keep_doc"
+    lang_specific:
+      header_mode: "declarations_only"
+      macro_policy: "keep_defines"
+      template_instantiations: "signature_only"
+
+# Исходники - сжатые
+cpp_sources:
+  extensions: [".cpp", ".cxx", ".cc"]
+  cpp:
+    strip_function_bodies:
+      mode: "large_only"
+      min_lines: 15
+    comment_policy: "strip_all"
+    literal_config:
+      max_string_length: 30
+      max_array_elements: 5
+    lang_specific:
+      keep_main: true
+      inline_functions: "body_only"
+
+# ==================== SCALA ====================
+
+# Scala библиотека
+scala_lib:
+  extensions: [".scala"]
+  scala:
+    public_api_only: true
+    strip_function_bodies: true
+    comment_policy: "keep_doc"
+    lang_specific:
+      keep_given_using: true     # implicit/given/using сигнатуры
+      case_class_policy: "signature_only"
+      trait_bodies: "signature_only"
+      object_bodies: "public_only"
+    placeholders:
+      template: "/* … {kind} {name} (−{lines}) */"
+
+# ==================== АДРЕСНЫЕ ОВЕРРАЙДЫ ====================
+
+# Пример использования targets для разных участков кода
+mixed_project:
+  extensions: [".py", ".ts", ".java"]
+  # Базовые настройки
+  python:
+    public_api_only: false
+    strip_function_bodies: false
+  
+  # Адресные оверрайды
+  targets:
+    # API модули - только публичные интерфейсы
+    - match: ["**/api/**", "**/interfaces/**"]
+      python:
+        public_api_only: true
+        strip_function_bodies: true
+        comment_policy: "keep_doc"
+      typescript:
+        public_api_only: true
+        strip_function_bodies: true
+      java:
+        public_api_only: true
+        strip_function_bodies: true
+    
+    # Тесты - краткий формат
+    - match: ["**/test/**", "**/*test*", "**/*spec*"]
+      python:
+        strip_function_bodies:
+          mode: "all"
+          except_patterns: ["test_.*_integration"]
+        comment_policy: "strip_all"
+      
+    # Утилиты и хелперы - минимальный объем
+    - match: ["**/utils/**", "**/helpers/**", "**/tools/**"]
+      python:
+        strip_function_bodies: true
+        comment_policy: "keep_first_sentence"
+        budget:
+          max_tokens_per_file: 500
+      
+    # Модели данных - только структура
+    - match: ["**/models/**", "**/entities/**", "**/dto/**"]
+      python:
+        strip_function_bodies: true
+        comment_policy: "keep_doc"
+      java:
+        field_config:
+          strip_trivial_accessors: true
+        strip_function_bodies: true
