@@ -1,9 +1,10 @@
 from __future__ import annotations
 
-# Тонкая оболочка над новым пайплайном lg.markdown.*
-
-from .base import BaseAdapter
 from lg.markdown import MarkdownCfg, process_markdown
+from .base import BaseAdapter
+
+
+# Тонкая оболочка над новым пайплайном lg.markdown.*
 
 
 class MarkdownAdapter(BaseAdapter[MarkdownCfg]):

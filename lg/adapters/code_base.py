@@ -5,18 +5,17 @@
 
 from __future__ import annotations
 
-import re
 from abc import ABC, abstractmethod
 from pathlib import Path
-from typing import Dict, List, Optional, Tuple, Any, Generic, TypeVar
+from typing import Dict, List, Optional, Tuple, Any, TypeVar
 
 from .base import BaseAdapter
 from .code_model import CodeCfg, PlaceholderConfig, create_lang_config
+from .range_edits import RangeEditor, PlaceholderGenerator, get_comment_style
 from .tree_sitter_support import (
     TreeSitterDocument, create_document, is_tree_sitter_available,
-    TreeSitterError, query_registry
+    TreeSitterError
 )
-from .range_edits import RangeEditor, PlaceholderGenerator, get_comment_style
 
 C = TypeVar("C", bound=CodeCfg)
 

@@ -8,7 +8,6 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Dict, List, Optional, Literal, Union, Any
 
-
 # ---- Типы для конфигурации ----
 
 VisibilityLevel = Literal["public", "protected", "private", "internal", "exported"]

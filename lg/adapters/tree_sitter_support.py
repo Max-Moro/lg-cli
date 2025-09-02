@@ -5,9 +5,7 @@ Provides grammar loading, query management, and utilities for AST parsing.
 
 from __future__ import annotations
 
-import hashlib
 from functools import lru_cache
-from pathlib import Path
 from typing import Dict, List, Optional, Tuple, Any
 
 try:

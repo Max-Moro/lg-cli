@@ -5,13 +5,12 @@ Tree-sitter based TypeScript/JavaScript adapter.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from pathlib import Path
 from typing import Dict, Any
 
 from .code_base import CodeAdapter, CodeDocument
 from .code_model import CodeCfg
-from .tree_sitter_support import TreeSitterDocument
 from .range_edits import RangeEditor, PlaceholderGenerator, get_comment_style
+from .tree_sitter_support import TreeSitterDocument
 
 
 @dataclass

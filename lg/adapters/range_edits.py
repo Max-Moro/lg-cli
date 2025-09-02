@@ -6,7 +6,7 @@ Provides safe text manipulation while preserving formatting and structure.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import List, Tuple, Optional, Dict, Any
+from typing import List, Tuple, Dict, Any
 
 
 @dataclass
