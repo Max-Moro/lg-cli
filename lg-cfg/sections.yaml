@@ -1,11 +1,10 @@
 src:
-  extensions: [".py", ".toml", ".json", ".sh"]
+  extensions: [".py", ".toml"]
   filters:
     mode: allow
     allow:
       - "/pyproject.toml"
       - "/lg/"
-      - "/scripts/"
     children:
       lg:
         mode: block
@@ -16,6 +15,7 @@ src:
           - "/migrate/"
           - "/cache/"
           - "/context/"
+          - "/_skeletons/"
 
 src-short:
   extensions: [".py"]
