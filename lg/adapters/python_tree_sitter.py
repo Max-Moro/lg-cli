@@ -93,6 +93,9 @@ class PythonTreeSitterAdapter(CodeAdapter[PythonCfg]):
         # Применяем базовую обработку комментариев
         self.process_comments_ts(doc, editor, meta)
         
+        # Применяем базовую обработку импортов
+        self.process_imports_ts(doc, editor, meta)
+        
         # TODO: добавить обработку декораторов, etc.
     
     def _strip_python_methods(

@@ -114,6 +114,9 @@ class CodeAdapter(BaseAdapter[C], ABC):
         # Обработка комментариев
         self.process_comments_ts(doc, editor, meta)
         
+        # Обработка импортов
+        self.process_imports_ts(doc, editor, meta)
+        
         # Другие оптимизации можно добавить здесь
         # if self.cfg.public_api_only:
         #     self.filter_public_api_ts(doc, editor, meta)
@@ -299,6 +302,187 @@ class CodeAdapter(BaseAdapter[C], ABC):
                 return f"{first}."
         
         return text  # Fallback к оригинальному тексту
+    
+    def process_imports_ts(
+        self, 
+        doc: TreeSitterDocument, 
+        editor: RangeEditor, 
+        meta: Dict[str, Any]
+    ) -> None:
+        """
+        Обрабатывает импорты согласно политике import_config.
+        """
+        from .import_utils import ImportAnalyzer, ImportClassifier
+        
+        config = self.cfg.import_config
+        
+        # Если политика keep_all, ничего не делаем
+        if config.policy == "keep_all":
+            return
+        
+        # Создаем анализатор импортов
+        classifier = ImportClassifier(config.external_only_patterns)
+        analyzer = ImportAnalyzer(classifier)
+        
+        # Анализируем все импорты
+        imports = analyzer.analyze_imports(doc)
+        if not imports:
+            return
+        
+        # Группируем по типу
+        grouped = analyzer.group_imports(imports)
+        
+        # Получаем генератор плейсхолдеров
+        comment_style = get_comment_style(self.name)
+        placeholder_gen = PlaceholderGenerator(comment_style)
+        
+        processed_ranges = set()
+        
+        if config.policy == "external_only":
+            # Удаляем локальные импорты, оставляем внешние
+            self._process_external_only(
+                grouped["local"], editor, placeholder_gen, meta, processed_ranges
+            )
+        
+        elif config.policy == "summarize_long":
+            # Суммаризируем длинные списки импортов
+            if analyzer.should_summarize(imports, config.max_items_before_summary):
+                self._process_summarize_long(
+                    grouped, analyzer, editor, placeholder_gen, meta, processed_ranges
+                )
+    
+    def _process_external_only(
+        self,
+        local_imports: List,
+        editor: RangeEditor,
+        placeholder_gen: PlaceholderGenerator,
+        meta: Dict[str, Any],
+        processed_ranges: set
+    ) -> None:
+        """Удаляет локальные импорты, оставляя только внешние."""
+
+        if not local_imports:
+            return
+        
+        for imp in local_imports:
+            start_byte, end_byte = imp.start_byte, imp.end_byte
+            range_key = (start_byte, end_byte)
+            
+            if range_key in processed_ranges:
+                continue
+            processed_ranges.add(range_key)
+            
+            # Создаем плейсхолдер для удаленных локальных импортов
+            placeholder = placeholder_gen.create_import_placeholder(
+                count=1, style=self.cfg.placeholders.style
+            )
+            
+            editor.add_replacement(
+                start_byte, end_byte, placeholder,
+                type="local_import_removal",
+                is_placeholder=True,
+                lines_removed=imp.line_count
+            )
+            
+            meta["code.removed.imports"] += 1
+    
+    def _process_summarize_long(
+        self,
+        grouped_imports: Dict[str, List],
+        analyzer,
+        editor: RangeEditor,
+        placeholder_gen: PlaceholderGenerator,
+        meta: Dict[str, Any],
+        processed_ranges: set
+    ) -> None:
+        """Суммаризирует длинные списки импортов."""
+
+        # Обрабатываем каждую группу отдельно
+        for group_type, imports in grouped_imports.items():
+            if not imports or len(imports) <= self.cfg.import_config.max_items_before_summary:
+                continue
+            
+            # Группируем последовательные импорты для суммаризации
+            import_ranges = []
+            for imp in imports:
+                import_ranges.append((imp.start_byte, imp.end_byte, imp))
+            
+            # Сортируем по позиции в файле
+            import_ranges.sort(key=lambda x: x[0])
+            
+            # Ищем группы последовательных импортов
+            groups = self._find_consecutive_import_groups(import_ranges)
+            
+            for group in groups:
+                if len(group) <= 2:  # Не суммаризируем маленькие группы
+                    continue
+                
+                # Получаем диапазон всей группы
+                start_byte = group[0][0]
+                end_byte = group[-1][1]
+                
+                range_key = (start_byte, end_byte)
+                if range_key in processed_ranges:
+                    continue
+                processed_ranges.add(range_key)
+                
+                # Создаем суммарный плейсхолдер
+                module_names = [imp[2].module_name for imp in group]
+                summary = self._create_import_summary(module_names, group_type)
+                
+                placeholder = f"# {summary}"  # Используем простой формат
+                if self.cfg.placeholders.style == "block":
+                    placeholder = placeholder_gen.create_custom_placeholder(
+                        summary, {}, style="block"
+                    )
+                
+                total_lines = sum(imp[2].line_count for imp in group)
+                
+                editor.add_replacement(
+                    start_byte, end_byte, placeholder,
+                    type="import_summarization",
+                    is_placeholder=True,
+                    lines_removed=total_lines
+                )
+                
+                meta["code.removed.imports"] += len(group)
+    
+    def _find_consecutive_import_groups(self, import_ranges: List[Tuple[int, int, 'ImportInfo']]) -> List[List]:
+        """Находит группы последовательных импортов."""
+        if not import_ranges:
+            return []
+        
+        groups = []
+        current_group = [import_ranges[0]]
+        
+        for i in range(1, len(import_ranges)):
+            prev_end = current_group[-1][1]
+            curr_start = import_ranges[i][0]
+            
+            # Если между импортами мало пространства (только пробелы/переносы), считаем их последовательными
+            if curr_start - prev_end < 50:  # Эвристика: 50 байт
+                current_group.append(import_ranges[i])
+            else:
+                if len(current_group) > 1:
+                    groups.append(current_group)
+                current_group = [import_ranges[i]]
+        
+        if len(current_group) > 1:
+            groups.append(current_group)
+        
+        return groups
+    
+    def _create_import_summary(self, module_names: List[str], group_type: str) -> str:
+        """Создает краткое описание суммаризированных импортов."""
+        count = len(module_names)
+        
+        if group_type == "external":
+            if count <= 3:
+                return f"… {count} external imports: {', '.join(module_names[:3])}"
+            else:
+                return f"… {count} external imports: {', '.join(module_names[:2])}, ..."
+        else:
+            return f"… {count} local imports"
 
     def _should_strip_function_body(self, cfg, function_text: str, lines_count: int) -> bool:
         """Определяет, нужно ли удалять тело функции."""

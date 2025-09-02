@@ -271,6 +271,8 @@ class TreeSitterDocument:
             return self._find_methods()
         elif query_name == "comments":
             return self._find_comments()
+        elif query_name == "imports":
+            return self._find_imports()
         else:
             # Fallback to empty results for now
             return []
@@ -424,6 +426,30 @@ class TreeSitterDocument:
                     return child == node or (child.type == "expression_statement" and node in child.children)
         
         return False
+    
+    def _find_imports(self) -> List[Tuple[Node, str]]:
+        """Find all import statements manually."""
+        results = []
+        
+        def traverse(node: Node):
+            # Python imports
+            if self.lang_name == "python":
+                if node.type == "import_statement":
+                    results.append((node, "import"))
+                elif node.type == "import_from_statement":
+                    results.append((node, "import_from"))
+            
+            # TypeScript/JavaScript imports
+            elif self.lang_name in ("typescript", "javascript"):
+                if node.type == "import_statement":
+                    results.append((node, "import"))
+            
+            # Traverse children
+            for child in node.children:
+                traverse(child)
+        
+        traverse(self.root_node)
+        return results
 
 
 def create_document(text: str, lang_name: str) -> TreeSitterDocument:

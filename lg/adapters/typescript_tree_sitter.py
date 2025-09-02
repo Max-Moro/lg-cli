@@ -48,6 +48,9 @@ class TypeScriptTreeSitterAdapter(CodeAdapter[TypeScriptCfg]):
         
         # Вызываем базовую обработку комментариев
         self.process_comments_ts(doc, editor, meta)
+        
+        # Вызываем базовую обработку импортов
+        self.process_imports_ts(doc, editor, meta)
     
     def _strip_ts_functions(
         self, 
