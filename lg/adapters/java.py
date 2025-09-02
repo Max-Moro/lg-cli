@@ -5,8 +5,22 @@ Java адаптер.
 
 from __future__ import annotations
 
+from dataclasses import dataclass
+
 from .code_base import CodeAdapter, CodeDocument
-from .code_model import JavaCfg
+from .code_model import CodeCfg
+
+
+@dataclass
+class JavaCfg(CodeCfg):
+    """Конфигурация для Java адаптера."""
+    
+    def __post_init__(self):
+        # Java-специфичные дефолты
+        if not hasattr(self, '_java_defaults_applied'):
+            self.public_api_only = True
+            self.field_config.strip_trivial_accessors = True  # убираем геттеры/сеттеры
+            self._java_defaults_applied = True
 
 
 class JavaAdapter(CodeAdapter[JavaCfg]):

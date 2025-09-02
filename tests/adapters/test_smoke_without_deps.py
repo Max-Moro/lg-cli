@@ -6,9 +6,8 @@ Tests fallback behavior and basic adapter loading.
 import pytest
 from unittest.mock import patch
 
-from lg.adapters.python_tree_sitter import PythonTreeSitterAdapter
-from lg.adapters.typescript_tree_sitter import TypeScriptTreeSitterAdapter
-from lg.adapters.code_model import PythonCfg, TypeScriptCfg
+from lg.adapters.python_tree_sitter import PythonTreeSitterAdapter, PythonCfg
+from lg.adapters.typescript_tree_sitter import TypeScriptTreeSitterAdapter, TypeScriptCfg
 
 
 class TestSmokeWithoutDeps:

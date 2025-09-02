@@ -13,14 +13,14 @@ def test_processed_cache_skips_adapter_on_second_run(tmpproj: Path, monkeypatch)
     # счётчик вызовов process у PythonAdapter
     calls = {"process": 0}
 
-    import lg.adapters.python as py_ad
-    orig_process = py_ad.PythonAdapter.process
+    import lg.adapters.python_tree_sitter as py_ad
+    orig_process = py_ad.PythonTreeSitterAdapter.process
 
     def wrapped_process(self, text, group_size, mixed):
         calls["process"] += 1
         return orig_process(self, text, group_size, mixed)
 
-    monkeypatch.setattr(py_ad.PythonAdapter, "process", wrapped_process, raising=True)
+    monkeypatch.setattr(py_ad.PythonTreeSitterAdapter, "process", wrapped_process, raising=True)
 
     # первый прогон — адаптер обязан сработать
     r1 = run_report("sec:all", RunOptions())

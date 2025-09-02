@@ -5,8 +5,8 @@ Tests for Tree-sitter based Python adapter.
 import pytest
 from pathlib import Path
 
-from lg.adapters.python_tree_sitter import PythonTreeSitterAdapter
-from lg.adapters.code_model import PythonCfg, FunctionBodyConfig
+from lg.adapters.python_tree_sitter import PythonTreeSitterAdapter, PythonCfg
+from lg.adapters.code_model import FunctionBodyConfig
 from tests.adapters.conftest import assert_golden_match, create_temp_file
 
 

@@ -5,10 +5,24 @@ C/C++ адаптер.
 
 from __future__ import annotations
 
+from dataclasses import dataclass
 from pathlib import Path
 
 from .code_base import CodeAdapter, CodeDocument
-from .code_model import CppCfg
+from .code_model import CodeCfg
+
+
+@dataclass
+class CppCfg(CodeCfg):
+    """Конфигурация для C/C++ адаптера."""
+    
+    def __post_init__(self):
+        # C/C++-специфичные настройки
+        if not hasattr(self, '_cpp_defaults_applied'):
+            # В заголовках (.h/.hpp) обычно нужны только объявления
+            self.lang_specific.setdefault("header_mode", "declarations_only")
+            self.lang_specific.setdefault("macro_policy", "summarize_large")
+            self._cpp_defaults_applied = True
 
 
 class CppAdapter(CodeAdapter[CppCfg]):

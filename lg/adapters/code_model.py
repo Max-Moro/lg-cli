@@ -200,89 +200,18 @@ class CodeCfg:
 
 
 # ---- Язык-специфичные конфигурации ----
-
-@dataclass
-class PythonCfg(CodeCfg):
-    """Конфигурация для Python адаптера."""
-    # Наследует все поля от CodeCfg
-    
-    # Python-специфичные настройки
-    skip_trivial_inits: bool = True
-    trivial_init_max_noncomment: int = 1
-    
-    def __post_init__(self):
-        # Устанавливаем Python-специфичные дефолты
-        if self.placeholders.template == "/* … {kind} {name} (−{lines}) */":
-            self.placeholders.template = "# … {kind} {name} (−{lines})"
-            self.placeholders.body_template = "# … body omitted (−{lines})"
-            self.placeholders.import_template = "# … {count} imports omitted"
-            self.placeholders.literal_template = "# … data omitted ({bytes} bytes)"
-
-
-@dataclass
-class TypeScriptCfg(CodeCfg):
-    """Конфигурация для TypeScript/JavaScript адаптера."""
-    
-    def __post_init__(self):
-        # TypeScript-специфичные дефолты
-        if not hasattr(self, '_ts_defaults_applied'):
-            self.public_api_only = True  # для TS часто нужен только exported API
-            self._ts_defaults_applied = True
-
-
-@dataclass
-class JavaCfg(CodeCfg):
-    """Конфигурация для Java адаптера."""
-    
-    def __post_init__(self):
-        # Java-специфичные дефолты
-        if not hasattr(self, '_java_defaults_applied'):
-            self.public_api_only = True
-            self.field_config.strip_trivial_accessors = True  # убираем геттеры/сеттеры
-            self._java_defaults_applied = True
-
-
-@dataclass
-class CppCfg(CodeCfg):
-    """Конфигурация для C/C++ адаптера."""
-    
-    def __post_init__(self):
-        # C/C++-специфичные настройки
-        if not hasattr(self, '_cpp_defaults_applied'):
-            # В заголовках (.h/.hpp) обычно нужны только объявления
-            self.lang_specific.setdefault("header_mode", "declarations_only")
-            self.lang_specific.setdefault("macro_policy", "summarize_large")
-            self._cpp_defaults_applied = True
-
-
-@dataclass
-class ScalaCfg(CodeCfg):
-    """Конфигурация для Scala адаптера."""
-    
-    def __post_init__(self):
-        # Scala-специфичные настройки
-        if not hasattr(self, '_scala_defaults_applied'):
-            self.lang_specific.setdefault("keep_given_using", True)
-            self.lang_specific.setdefault("case_class_policy", "signature_only")
-            self._scala_defaults_applied = True
-
-
-# ---- Реестр язык-специфичных конфигураций ----
-
-LANG_CONFIG_CLASSES = {
-    "python": PythonCfg,
-    "typescript": TypeScriptCfg,
-    "javascript": TypeScriptCfg,  # JS использует ту же конфигурацию что и TS
-    "java": JavaCfg,
-    "cpp": CppCfg,
-    "c": CppCfg,  # C использует ту же конфигурацию что и C++
-    "scala": ScalaCfg,
-}
+# Конфигурации теперь определены в соответствующих языковых модулях:
+# - PythonCfg в python_tree_sitter.py
+# - TypeScriptCfg в typescript_tree_sitter.py  
+# - JavaCfg в java.py
+# - CppCfg в cpp.py
+# - ScalaCfg в scala.py
 
 
 def create_lang_config(lang_name: str, raw_dict: Optional[Dict[str, Any]] = None) -> CodeCfg:
     """
     Фабрика для создания язык-специфичной конфигурации.
+    Использует ленивую загрузку для получения правильного класса конфигурации.
     
     Args:
         lang_name: имя языка адаптера
@@ -291,7 +220,8 @@ def create_lang_config(lang_name: str, raw_dict: Optional[Dict[str, Any]] = None
     Returns:
         Экземпляр соответствующей конфигурации
     """
-    config_class = LANG_CONFIG_CLASSES.get(lang_name, CodeCfg)
+    # Ленивая загрузка класса конфигурации из соответствующего модуля
+    config_class = _get_config_class_for_lang(lang_name)
     
     # Загружаем базовую конфигурацию
     base_cfg = CodeCfg.from_dict(raw_dict)
@@ -305,3 +235,28 @@ def create_lang_config(lang_name: str, raw_dict: Optional[Dict[str, Any]] = None
         return specialized_cfg
     
     return base_cfg
+
+
+def _get_config_class_for_lang(lang_name: str) -> type:
+    """Ленивая загрузка класса конфигурации для языка."""
+    try:
+        if lang_name == "python":
+            from .python_tree_sitter import PythonCfg
+            return PythonCfg
+        elif lang_name in ("typescript", "javascript"):
+            from .typescript_tree_sitter import TypeScriptCfg
+            return TypeScriptCfg
+        elif lang_name == "java":
+            from .java import JavaCfg
+            return JavaCfg
+        elif lang_name in ("cpp", "c"):
+            from .cpp import CppCfg
+            return CppCfg
+        elif lang_name == "scala":
+            from .scala import ScalaCfg
+            return ScalaCfg
+        else:
+            return CodeCfg
+    except ImportError:
+        # Fallback если модуль не найден
+        return CodeCfg

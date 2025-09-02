@@ -5,13 +5,30 @@ Replaces the existing python.py with enhanced Tree-sitter support.
 
 from __future__ import annotations
 
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Dict, Any
 
 from .code_base import CodeAdapter, CodeDocument
-from .code_model import PythonCfg
+from .code_model import CodeCfg, PlaceholderConfig
 from .tree_sitter_support import TreeSitterDocument
-from .range_edits import RangeEditor
+from .range_edits import RangeEditor, PlaceholderGenerator, get_comment_style
+
+
+@dataclass
+class PythonCfg(CodeCfg):
+    """Конфигурация для Python адаптера."""
+    # Python-специфичные настройки
+    skip_trivial_inits: bool = True
+    trivial_init_max_noncomment: int = 1
+    
+    def __post_init__(self):
+        # Устанавливаем Python-специфичные дефолты для плейсхолдеров
+        if self.placeholders.template == "/* … {kind} {name} (−{lines}) */":
+            self.placeholders.template = "# … {kind} {name} (−{lines})"
+            self.placeholders.body_template = "# … body omitted (−{lines})"
+            self.placeholders.import_template = "# … {count} imports omitted"
+            self.placeholders.literal_template = "# … data omitted ({bytes} bytes)"
 
 
 class PythonTreeSitterAdapter(CodeAdapter[PythonCfg]):

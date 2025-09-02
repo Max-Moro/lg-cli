@@ -5,8 +5,22 @@ Scala адаптер.
 
 from __future__ import annotations
 
+from dataclasses import dataclass
+
 from .code_base import CodeAdapter, CodeDocument
-from .code_model import ScalaCfg
+from .code_model import CodeCfg
+
+
+@dataclass
+class ScalaCfg(CodeCfg):
+    """Конфигурация для Scala адаптера."""
+    
+    def __post_init__(self):
+        # Scala-специфичные настройки
+        if not hasattr(self, '_scala_defaults_applied'):
+            self.lang_specific.setdefault("keep_given_using", True)
+            self.lang_specific.setdefault("case_class_policy", "signature_only")
+            self._scala_defaults_applied = True
 
 
 class ScalaAdapter(CodeAdapter[ScalaCfg]):
