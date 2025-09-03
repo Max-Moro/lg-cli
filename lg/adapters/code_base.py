@@ -86,7 +86,7 @@ class CodeAdapter(BaseAdapter[C], ABC):
             "code.bytes_saved": 0,
         }
 
-    def apply_tree_sitter_optimizations(
+    def _apply_optimizations(
         self, 
         doc: TreeSitterDocument, 
         editor: RangeEditor, 
@@ -94,32 +94,34 @@ class CodeAdapter(BaseAdapter[C], ABC):
     ) -> None:
         """
         Применяет оптимизации используя Tree-sitter документ.
-        Базовая реализация - наследники могут переопределить.
+        Конкретные адаптеры не должны переопределять данный метод.
+        Для кастомизации логики необходимо использовать языковые флаги или дополнительные хуки.
         """
 
         # Обработка тел функций
         if self.cfg.strip_function_bodies:
-            self.strip_function_bodies_ts(doc, editor, meta)
+            self.strip_function_bodies(doc, editor, meta)
+            if self.lang_flag__is_oop():
+                self.strip_methods_bodies(doc, editor, meta)
         
         # Обработка комментариев
-        self.process_comments_ts(doc, editor, meta)
+        self.process_comments(doc, editor, meta)
         
         # Обработка импортов
-        self.process_imports_ts(doc, editor, meta)
+        self.process_import(doc, editor, meta)
         
         # Другие оптимизации можно добавить здесь
         # if self.cfg.public_api_only:
         #     self.filter_public_api_ts(doc, editor, meta)
 
-    def strip_function_bodies_ts(
+    def strip_function_bodies(
         self, 
         doc: TreeSitterDocument, 
         editor: RangeEditor, 
         meta: Dict[str, Any]
     ) -> None:
         """
-        Удаляет тела функций используя Tree-sitter.
-        Базовая реализация для всех языков.
+        Удаляет тела функций.
         """
         cfg = self.cfg.strip_function_bodies
         if not cfg:
@@ -147,7 +149,6 @@ class CodeAdapter(BaseAdapter[C], ABC):
                 if should_strip:
                     # Создаем плейсхолдер
                     placeholder = placeholder_gen.create_function_placeholder(
-                        name="function",
                         lines_removed=lines_count,
                         bytes_removed=end_byte - start_byte,
                         style=self.cfg.placeholders.style
@@ -162,8 +163,58 @@ class CodeAdapter(BaseAdapter[C], ABC):
                     )
                     
                     meta["code.removed.functions"] += 1
-    
-    def process_comments_ts(
+
+    def strip_methods_bodies(
+            self,
+            doc: TreeSitterDocument,
+            editor: RangeEditor,
+            meta: Dict[str, Any]
+    ) -> None:
+        """
+        Обрабатывает методы классов.
+        """
+        cfg = self.cfg.strip_function_bodies
+        if not cfg:
+            return
+
+        # Получаем генератор плейсхолдеров
+        comment_style = self.get_comment_style()
+        placeholder_gen = PlaceholderGenerator(comment_style)
+
+        # Ищем методы в классах
+        methods = doc.query("methods")
+
+        for node, capture_name in methods:
+            if capture_name == "method_body":
+                # Получаем информацию о функции
+                start_byte, end_byte = doc.get_node_range(node)
+
+                method_text = doc.get_node_text(node)
+                start_line, end_line = doc.get_line_range(node)
+                lines_count = end_line - start_line + 1
+
+                # Проверяем условия удаления
+                should_strip = self._should_strip_function_body(cfg, method_text, lines_count)
+
+                if should_strip:
+                    # Создаем плейсхолдер
+                    placeholder = placeholder_gen.create_method_placeholder(
+                        lines_removed=lines_count,
+                        bytes_removed=end_byte - start_byte,
+                        style=self.cfg.placeholders.style
+                    )
+
+                    # Добавляем правку
+                    editor.add_replacement(
+                        start_byte, end_byte, placeholder,
+                        type="method_body_removal",
+                        is_placeholder=True,
+                        lines_removed=lines_count
+                    )
+
+                    meta["code.removed.methods"] += 1
+
+    def process_comments(
         self, 
         doc: TreeSitterDocument, 
         editor: RangeEditor, 
@@ -280,7 +331,7 @@ class CodeAdapter(BaseAdapter[C], ABC):
         
         return text  # Fallback к оригинальному тексту
     
-    def process_imports_ts(
+    def process_import(
         self, 
         doc: TreeSitterDocument, 
         editor: RangeEditor, 

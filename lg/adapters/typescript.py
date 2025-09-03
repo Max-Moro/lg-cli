@@ -75,15 +75,15 @@ class TypeScriptAdapter(CodeAdapter[TypeScriptCfg]):
         # TypeScript-специфичные оптимизации для функций
         if self.cfg.strip_function_bodies:
             # Используем общий set для отслеживания обработанных диапазонов
-            self.strip_function_bodies_ts(doc, editor, meta)
+            self.strip_function_bodies(doc, editor, meta)
             self._strip_ts_methods(doc, editor, meta)
             self._strip_arrow_functions(doc, editor, meta)
         
         # Вызываем базовую обработку комментариев
-        self.process_comments_ts(doc, editor, meta)
+        self.process_comments(doc, editor, meta)
         
         # Вызываем базовую обработку импортов
-        self.process_imports_ts(doc, editor, meta)
+        self.process_import(doc, editor, meta)
     
     def _create_import_classifier(self, external_patterns: List[str] = None):
         """Создает TypeScript-специфичный классификатор импортов."""

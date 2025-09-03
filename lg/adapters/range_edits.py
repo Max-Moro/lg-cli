@@ -187,7 +187,6 @@ class PlaceholderGenerator:
     
     def create_function_placeholder(
         self,
-        name: str,
         lines_removed: int,
         bytes_removed: int,
         style: str = "inline"
@@ -196,13 +195,12 @@ class PlaceholderGenerator:
         if style == "inline" or style == "auto":
             return f"{self.single_line_comment} … body omitted (−{lines_removed})"
         elif style == "block":
-            return f"{self.multi_line_start} … {name} body omitted (−{lines_removed}) {self.multi_line_end}"
+            return f"{self.multi_line_start} … body omitted (−{lines_removed}) {self.multi_line_end}"
         else:
             return ""
     
     def create_method_placeholder(
         self,
-        name: str,
         lines_removed: int,
         bytes_removed: int,
         style: str = "inline"
@@ -211,7 +209,7 @@ class PlaceholderGenerator:
         if style == "inline" or style == "auto":
             return f"{self.single_line_comment} … method omitted (−{lines_removed})"
         elif style == "block":
-            return f"{self.multi_line_start} … {name} method omitted (−{lines_removed}) {self.multi_line_end}"
+            return f"{self.multi_line_start} … method omitted (−{lines_removed}) {self.multi_line_end}"
         else:
             return ""
     

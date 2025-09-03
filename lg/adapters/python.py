@@ -13,7 +13,6 @@ from tree_sitter import Language, Parser
 from .code_base import CodeAdapter
 from .code_model import CodeCfg
 from .import_utils import ImportClassifier, ImportAnalyzer, ImportInfo
-from .range_edits import RangeEditor
 from .tree_sitter_support import TreeSitterDocument, Node
 
 
@@ -74,27 +73,6 @@ class PythonAdapter(CodeAdapter[PythonCfg]):
     def create_document(self, text: str, ext: str) -> TreeSitterDocument:
         return PythonDocument(text, ext)
 
-    def apply_tree_sitter_optimizations(
-        self,
-        doc: TreeSitterDocument,
-        editor: RangeEditor,
-        meta: Dict[str, Any]
-    ) -> None:
-        """Python-специфичная обработка с Tree-sitter."""
-
-        # Применяем базовую обработку функций
-        if self.cfg.strip_function_bodies:
-            self.strip_function_bodies_ts(doc, editor, meta)
-            self._strip_python_methods(doc, editor, meta)
-
-        # Применяем базовую обработку комментариев
-        self.process_comments_ts(doc, editor, meta)
-
-        # Применяем базовую обработку импортов
-        self.process_imports_ts(doc, editor, meta)
-
-        # TODO: добавить обработку декораторов, etc.
-    
     def _create_import_classifier(self, external_patterns: List[str] = None):
         """Создает Python-специфичный классификатор импортов."""
         return PythonImportClassifier(external_patterns)
@@ -103,49 +81,9 @@ class PythonAdapter(CodeAdapter[PythonCfg]):
         """Создает Python-специфичный анализатор импортов."""
         return PythonImportAnalyzer(classifier)
     
-    def _strip_python_methods(
-        self, 
-        doc: TreeSitterDocument, 
-        editor: RangeEditor, 
-        meta: Dict[str, Any]
-    ) -> None:
-        """Обрабатывает методы классов в Python."""
-        cfg = self.cfg.strip_function_bodies
-        if not cfg:
-            return
-        
-        # Ищем методы в классах
-        methods = doc.query("methods")
-        
-        for node, capture_name in methods:
-            if capture_name == "method_body":
-                # Получаем информацию о методе
-                start_byte, end_byte = doc.get_node_range(node)
-
-                method_text = doc.get_node_text(node)
-                start_line, end_line = doc.get_line_range(node)
-                lines_count = end_line - start_line + 1
-                
-                # Проверяем условия удаления
-                should_strip = self._should_strip_function_body(cfg, method_text, lines_count)
-                
-                if should_strip:
-                    # Для методов создаем другой плейсхолдер
-                    placeholder = f"# … method body omitted (−{lines_count})"
-                    
-                    editor.add_replacement(
-                        start_byte, end_byte, placeholder,
-                        type="method_body_removal",
-                        is_placeholder=True,
-                        lines_removed=lines_count
-                    )
-                    
-                    meta["code.removed.methods"] += 1
-
     def should_skip(self, path: Path, text: str, ext: str) -> bool:
         """
         Python-специфичные эвристики пропуска.
-        Сохраняет логику для __init__.py из существующего адаптера.
         """
         if path.name == "__init__.py":
             # Проверяем на тривиальные __init__.py файлы
@@ -155,17 +93,8 @@ class PythonAdapter(CodeAdapter[PythonCfg]):
                 if ln.strip() and not ln.lstrip().startswith("#")
             ]
 
-            # Используем конфигурацию (по умолчанию как в старом адаптере)
-            # Получаем конфигурацию безопасно, если она не установлена - используем дефолты
-            try:
-                # Попытаемся получить конфигурацию
-                cfg = self.cfg
-                skip_trivial = cfg.skip_trivial_inits
-                limit = cfg.trivial_init_max_noncomment
-            except AttributeError:
-                # Если конфигурация не установлена, используем дефолты
-                skip_trivial = True
-                limit = 1
+            skip_trivial = self.cfg.skip_trivial_inits
+            limit = self.cfg.trivial_init_max_noncomment
 
             if not skip_trivial:
                 return False
@@ -180,7 +109,7 @@ class PythonAdapter(CodeAdapter[PythonCfg]):
             ):
                 return True
 
-        return super().should_skip(path, text)
+        return False
 
 
 class PythonImportClassifier(ImportClassifier):
