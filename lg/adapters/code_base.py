@@ -9,7 +9,7 @@ from abc import ABC, abstractmethod
 from typing import Dict, List, Tuple, Any, TypeVar
 
 from .base import BaseAdapter
-from .code_model import CodeCfg, create_lang_config
+from .code_model import CodeCfg
 from .range_edits import RangeEditor, PlaceholderGenerator
 from .tree_sitter_support import TreeSitterDocument
 
@@ -21,15 +21,20 @@ class CodeAdapter(BaseAdapter[C], ABC):
     Предоставляет общие методы для обработки кода и системы плейсхолдеров.
     """
 
-    @classmethod
-    def load_cfg(cls, raw_cfg: dict | None) -> C:
-        """
-        Загружает конфигурацию с учетом специфики языка.
-        Переопределяет базовый метод для создания язык-специфичной конфигурации.
-        """
-        # create_lang_config возвращает CodeCfg или его наследника
-        config = create_lang_config(cls.name, raw_cfg)
-        return config  # type: ignore[return-value]
+    @abstractmethod
+    def lang_flag__is_oop(self) -> bool:
+        """В языке есть как функции, так и методы классов."""
+        pass
+
+    @abstractmethod
+    def lang_flag__with_access_modifiers(self) -> bool:
+        """В языке есть модификаторы доступа."""
+        pass
+
+    @abstractmethod
+    def get_comment_style(self) -> Tuple[str, tuple[str, str]]:
+        """Cтиль комментариев для языка (однострочный, многострочный)."""
+        pass
 
     @abstractmethod
     def create_document(self, text: str, ext: str) -> TreeSitterDocument:
@@ -105,13 +110,6 @@ class CodeAdapter(BaseAdapter[C], ABC):
         # Другие оптимизации можно добавить здесь
         # if self.cfg.public_api_only:
         #     self.filter_public_api_ts(doc, editor, meta)
-
-    def get_comment_style(self) -> Tuple[str, tuple[str, str]]:
-        """
-        Возвращает стиль комментариев для языка (однострочный, многострочный).
-        Должен быть переопределен наследниками.
-        """
-        return "//", ("/*", "*/")
 
     def strip_function_bodies_ts(
         self, 

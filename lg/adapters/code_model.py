@@ -104,25 +104,18 @@ class CodeCfg:
     # Бюджетирование
     budget: Optional[BudgetConfig] = None
     
-    # Язык-специфичные расширения (raw dict для гибкости)
-    lang_specific: Dict[str, Any] = field(default_factory=dict)
+    def general_load(self, d: Optional[Dict[str, Any]]):
+        """Загрузка универсальной части конфигурации из словаря YAML."""
 
-    @staticmethod
-    def from_dict(d: Optional[Dict[str, Any]]) -> "CodeCfg":
-        """Загрузка конфигурации из словаря YAML."""
-        if not d:
-            return CodeCfg()
-        
         # Парсинг основных полей
-        cfg = CodeCfg()
-        cfg.public_api_only = bool(d.get("public_api_only", False))
+        self.public_api_only = bool(d.get("public_api_only", False))
         
         # strip_function_bodies: bool | dict
         sfb = d.get("strip_function_bodies", False)
         if isinstance(sfb, bool):
-            cfg.strip_function_bodies = sfb
+            self.strip_function_bodies = sfb
         elif isinstance(sfb, dict):
-            cfg.strip_function_bodies = FunctionBodyConfig(
+            self.strip_function_bodies = FunctionBodyConfig(
                 mode=sfb.get("mode", "none"),
                 min_lines=int(sfb.get("min_lines", 5)),
                 except_patterns=list(sfb.get("except_patterns", [])),
@@ -132,9 +125,9 @@ class CodeCfg:
         # comment_policy: str | dict
         cp = d.get("comment_policy", "keep_doc")
         if isinstance(cp, str):
-            cfg.comment_policy = cp
+            self.comment_policy = cp
         elif isinstance(cp, dict):
-            cfg.comment_policy = CommentConfig(
+            self.comment_policy = CommentConfig(
                 policy=cp.get("policy", "keep_doc"),
                 max_length=cp.get("max_length"),
                 keep_annotations=list(cp.get("keep_annotations", [])),
@@ -144,7 +137,7 @@ class CodeCfg:
         # Вложенные конфиги
         if "import_config" in d:
             ic = d["import_config"]
-            cfg.import_config = ImportConfig(
+            self.import_config = ImportConfig(
                 policy=ic.get("policy", "keep_all"),
                 max_items_before_summary=int(ic.get("max_items_before_summary", 10)),
                 external_only_patterns=list(ic.get("external_only_patterns", []))
@@ -152,7 +145,7 @@ class CodeCfg:
         
         if "literal_config" in d:
             lc = d["literal_config"]
-            cfg.literal_config = LiteralConfig(
+            self.literal_config = LiteralConfig(
                 max_string_length=int(lc.get("max_string_length", 200)),
                 max_array_elements=int(lc.get("max_array_elements", 20)),
                 max_object_properties=int(lc.get("max_object_properties", 15)),
@@ -162,7 +155,7 @@ class CodeCfg:
         
         if "field_config" in d:
             fc = d["field_config"]
-            cfg.field_config = FieldConfig(
+            self.field_config = FieldConfig(
                 keep_initializers=bool(fc.get("keep_initializers", True)),
                 max_initializer_length=int(fc.get("max_initializer_length", 50)),
                 strip_trivial_accessors=bool(fc.get("strip_trivial_accessors", False))
@@ -170,7 +163,7 @@ class CodeCfg:
         
         if "placeholders" in d:
             pc = d["placeholders"]
-            cfg.placeholders = PlaceholderConfig(
+            self.placeholders = PlaceholderConfig(
                 mode=pc.get("mode", "summary"),
                 style=pc.get("style", "auto"),
                 template=pc.get("template", "/* … {kind} {name} (−{lines}) */"),
@@ -181,7 +174,7 @@ class CodeCfg:
         
         if "budget" in d:
             bc = d["budget"]
-            cfg.budget = BudgetConfig(
+            self.budget = BudgetConfig(
                 max_tokens_per_file=bc.get("max_tokens_per_file"),
                 priority_order=list(bc.get("priority_order", [
                     "imports", "types", "public_methods", "fields", "private_methods", "docs"
@@ -193,69 +186,5 @@ class CodeCfg:
             "public_api_only", "strip_function_bodies", "comment_policy",
             "import_config", "literal_config", "field_config", "placeholders", "budget"
         }
-        cfg.lang_specific = {k: v for k, v in d.items() if k not in excluded_keys}
-        
-        return cfg
+        self.lang_specific = {k: v for k, v in d.items() if k not in excluded_keys}
 
-
-# ---- Язык-специфичные конфигурации ----
-# Конфигурации теперь определены в соответствующих языковых модулях:
-# - PythonCfg в python_tree_sitter.py
-# - TypeScriptCfg в typescript_tree_sitter.py  
-# - JavaCfg в java.py
-# - CppCfg в cpp.py
-# - ScalaCfg в scala.py
-
-
-def create_lang_config(lang_name: str, raw_dict: Optional[Dict[str, Any]] = None) -> CodeCfg:
-    """
-    Фабрика для создания язык-специфичной конфигурации.
-    Использует ленивую загрузку для получения правильного класса конфигурации.
-    
-    Args:
-        lang_name: имя языка адаптера
-        raw_dict: сырые данные конфигурации из YAML
-    
-    Returns:
-        Экземпляр соответствующей конфигурации
-    """
-    # Ленивая загрузка класса конфигурации из соответствующего модуля
-    config_class = _get_config_class_for_lang(lang_name)
-    
-    # Загружаем базовую конфигурацию
-    base_cfg = CodeCfg.from_dict(raw_dict)
-    
-    # Если есть специализированный класс, создаем экземпляр с теми же данными
-    if config_class != CodeCfg:
-        # Копируем все поля из базовой конфигурации
-        specialized_cfg = config_class()
-        for field_name, field_value in base_cfg.__dict__.items():
-            setattr(specialized_cfg, field_name, field_value)
-        return specialized_cfg
-    
-    return base_cfg
-
-
-def _get_config_class_for_lang(lang_name: str) -> type:
-    """Ленивая загрузка класса конфигурации для языка."""
-    try:
-        if lang_name == "python":
-            from .python_tree_sitter import PythonCfg
-            return PythonCfg
-        elif lang_name in ("typescript", "javascript"):
-            from .typescript_tree_sitter import TypeScriptCfg
-            return TypeScriptCfg
-        elif lang_name == "java":
-            from .java import JavaCfg
-            return JavaCfg
-        elif lang_name in ("cpp", "c"):
-            from .cpp import CppCfg
-            return CppCfg
-        elif lang_name == "scala":
-            from .scala import ScalaCfg
-            return ScalaCfg
-        else:
-            return CodeCfg
-    except ImportError:
-        # Fallback если модуль не найден
-        return CodeCfg

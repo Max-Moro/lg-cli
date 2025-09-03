@@ -19,11 +19,18 @@ from .tree_sitter_support import TreeSitterDocument, Node
 class TypeScriptCfg(CodeCfg):
     """Конфигурация для TypeScript адаптера."""
     
-    def __post_init__(self):
-        # TypeScript-специфичные дефолты
-        if not hasattr(self, '_ts_defaults_applied'):
-            self.public_api_only = True  # для TS часто нужен только exported API
-            self._ts_defaults_applied = True
+    @staticmethod
+    def from_dict(d: Optional[Dict[str, Any]]) -> TypeScriptCfg:
+        """Загрузка конфигурации из словаря YAML."""
+        if not d:
+            return TypeScriptCfg()
+
+        cfg = TypeScriptCfg()
+        cfg.general_load(d)
+
+        # TypeScript-специфичные настройки
+
+        return cfg
 
 
 class TypeScriptDocument(TreeSitterDocument):
@@ -44,6 +51,12 @@ class TypeScriptAdapter(CodeAdapter[TypeScriptCfg]):
     
     name = "typescript"
     extensions = {".ts", ".tsx"}
+
+    def lang_flag__is_oop(self) -> bool:
+        return True
+
+    def lang_flag__with_access_modifiers(self) -> bool:
+        return True
 
     def get_comment_style(self) -> tuple[str, tuple[str, str]]:
         return "//", ("/*", "*/")

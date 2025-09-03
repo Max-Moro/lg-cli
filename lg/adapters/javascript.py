@@ -5,6 +5,7 @@ Tree-sitter based JavaScript adapter.
 from __future__ import annotations
 
 from dataclasses import dataclass
+from typing import Optional, Dict, Any
 
 from tree_sitter import Language, Parser
 
@@ -16,7 +17,19 @@ from .tree_sitter_support import TreeSitterDocument
 @dataclass
 class JavaScriptCfg(CodeCfg):
     """Конфигурация для JavaScript адаптера."""
-    # У JavaScript пока нет специфичных настроек
+
+    @staticmethod
+    def from_dict(d: Optional[Dict[str, Any]]) -> JavaScriptCfg:
+        """Загрузка конфигурации из словаря YAML."""
+        if not d:
+            return JavaScriptCfg()
+
+        cfg = JavaScriptCfg()
+        cfg.general_load(d)
+
+        # JavaScript-специфичные настройки
+
+        return cfg
 
 
 class JavaScriptDocument(TreeSitterDocument):

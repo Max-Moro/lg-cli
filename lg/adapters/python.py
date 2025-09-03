@@ -21,10 +21,25 @@ from .tree_sitter_support import TreeSitterDocument, Node
 @dataclass
 class PythonCfg(CodeCfg):
     """Конфигурация для Python адаптера."""
-    # Python-специфичные настройки
     skip_trivial_inits: bool = True
     trivial_init_max_noncomment: int = 1
-    
+
+    @staticmethod
+    def from_dict(d: Optional[Dict[str, Any]]) -> PythonCfg:
+        """Загрузка конфигурации из словаря YAML."""
+        if not d:
+            return PythonCfg()
+
+        cfg = PythonCfg()
+        cfg.general_load(d)
+
+        # Python-специфичные настройки
+        cfg.skip_trivial_inits = bool(d.get("skip_trivial_inits", True))
+        cfg.trivial_init_max_noncomment = int(d.get("trivial_init_max_noncomment", 1))
+
+        return cfg
+
+
     def __post_init__(self):
         # Устанавливаем Python-специфичные дефолты для плейсхолдеров
         if self.placeholders.template == "/* … {kind} {name} (−{lines}) */":
@@ -47,45 +62,11 @@ class PythonAdapter(CodeAdapter[PythonCfg]):
     name = "python"
     extensions = {".py"}
 
-    def should_skip(self, path: Path, text: str, ext: str) -> bool:
-        """
-        Python-специфичные эвристики пропуска.
-        Сохраняет логику для __init__.py из существующего адаптера.
-        """
-        if path.name == "__init__.py":
-            # Проверяем на тривиальные __init__.py файлы
-            significant = [
-                ln.strip()
-                for ln in text.splitlines()
-                if ln.strip() and not ln.lstrip().startswith("#")
-            ]
-            
-            # Используем конфигурацию (по умолчанию как в старом адаптере)
-            # Получаем конфигурацию безопасно, если она не установлена - используем дефолты
-            try:
-                # Попытаемся получить конфигурацию
-                cfg = self.cfg
-                skip_trivial = cfg.skip_trivial_inits
-                limit = cfg.trivial_init_max_noncomment
-            except AttributeError:
-                # Если конфигурация не установлена, используем дефолты
-                skip_trivial = True
-                limit = 1
-            
-            if not skip_trivial:
-                return False
-            
-            # Пустой файл должен быть пропущен
-            if len(significant) == 0:
-                return True
-                
-            # Файлы с только pass/... в пределах лимита должны быть пропущены
-            if len(significant) <= limit and all(
-                ln in ("pass", "...") for ln in significant
-            ):
-                return True
+    def lang_flag__is_oop(self) -> bool:
+        return True
 
-        return super().should_skip(path, text)
+    def lang_flag__with_access_modifiers(self) -> bool:
+        return False
 
     def get_comment_style(self) -> tuple[str, tuple[str, str]]:
         return "#", ('"""', '"""')
@@ -160,6 +141,46 @@ class PythonAdapter(CodeAdapter[PythonCfg]):
                     )
                     
                     meta["code.removed.methods"] += 1
+
+    def should_skip(self, path: Path, text: str, ext: str) -> bool:
+        """
+        Python-специфичные эвристики пропуска.
+        Сохраняет логику для __init__.py из существующего адаптера.
+        """
+        if path.name == "__init__.py":
+            # Проверяем на тривиальные __init__.py файлы
+            significant = [
+                ln.strip()
+                for ln in text.splitlines()
+                if ln.strip() and not ln.lstrip().startswith("#")
+            ]
+
+            # Используем конфигурацию (по умолчанию как в старом адаптере)
+            # Получаем конфигурацию безопасно, если она не установлена - используем дефолты
+            try:
+                # Попытаемся получить конфигурацию
+                cfg = self.cfg
+                skip_trivial = cfg.skip_trivial_inits
+                limit = cfg.trivial_init_max_noncomment
+            except AttributeError:
+                # Если конфигурация не установлена, используем дефолты
+                skip_trivial = True
+                limit = 1
+
+            if not skip_trivial:
+                return False
+
+            # Пустой файл должен быть пропущен
+            if len(significant) == 0:
+                return True
+
+            # Файлы с только pass/... в пределах лимита должны быть пропущены
+            if len(significant) <= limit and all(
+                    ln in ("pass", "...") for ln in significant
+            ):
+                return True
+
+        return super().should_skip(path, text)
 
 
 class PythonImportClassifier(ImportClassifier):

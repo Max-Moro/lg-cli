@@ -6,6 +6,7 @@ Scala адаптер.
 from __future__ import annotations
 
 from dataclasses import dataclass
+from typing import Optional, Dict, Any
 
 from .code_base import CodeAdapter
 from .code_model import CodeCfg
@@ -14,13 +15,23 @@ from .code_model import CodeCfg
 @dataclass
 class ScalaCfg(CodeCfg):
     """Конфигурация для Scala адаптера."""
+    keep_given_using: bool = True
+    case_class_policy: str = "signature_only"
     
-    def __post_init__(self):
+    @staticmethod
+    def from_dict(d: Optional[Dict[str, Any]]) -> ScalaCfg:
+        """Загрузка конфигурации из словаря YAML."""
+        if not d:
+            return ScalaCfg()
+
+        cfg = ScalaCfg()
+        cfg.general_load(d)
+
         # Scala-специфичные настройки
-        if not hasattr(self, '_scala_defaults_applied'):
-            self.lang_specific.setdefault("keep_given_using", True)
-            self.lang_specific.setdefault("case_class_policy", "signature_only")
-            self._scala_defaults_applied = True
+        cfg.keep_given_using = bool(d.get("keep_given_using", True))
+        cfg.case_class_policy = d.get("case_class_policy", "signature_only")
+
+        return cfg
 
 
 class ScalaAdapter(CodeAdapter[ScalaCfg]):
