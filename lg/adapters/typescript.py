@@ -5,6 +5,7 @@ Tree-sitter based TypeScript adapter.
 from __future__ import annotations
 
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Dict, Any, List, Optional
 from tree_sitter import Language, Parser
 
@@ -64,131 +65,21 @@ class TypeScriptAdapter(CodeAdapter[TypeScriptCfg]):
     def create_document(self, text: str, ext: str) -> TreeSitterDocument:
         return TypeScriptDocument(text, ext)
 
-    def apply_tree_sitter_optimizations(
-        self, 
-        doc: TreeSitterDocument, 
-        editor: RangeEditor, 
-        meta: Dict[str, Any]
-    ) -> None:
-        """TypeScript-специфичная обработка с Tree-sitter."""
-        
-        # TypeScript-специфичные оптимизации для функций
-        if self.cfg.strip_function_bodies:
-            # Используем общий set для отслеживания обработанных диапазонов
-            self.strip_function_bodies(doc, editor, meta)
-            self._strip_ts_methods(doc, editor, meta)
-            self._strip_arrow_functions(doc, editor, meta)
-        
-        # Вызываем базовую обработку комментариев
-        self.process_comments(doc, editor, meta)
-        
-        # Вызываем базовую обработку импортов
-        self.process_import(doc, editor, meta)
-    
     def _create_import_classifier(self, external_patterns: List[str] = None):
         """Создает TypeScript-специфичный классификатор импортов."""
         return TypeScriptImportClassifier(external_patterns)
-    
+
     def _create_import_analyzer(self, classifier):
         """Создает TypeScript-специфичный анализатор импортов."""
         return TypeScriptImportAnalyzer(classifier)
-    
-    def _strip_ts_functions(
-        self, 
-        doc: TreeSitterDocument, 
-        editor: RangeEditor, 
-        meta: Dict[str, Any],
-    ) -> None:
-        """Обрабатывает функции TypeScript."""
-        cfg = self.cfg.strip_function_bodies
-        if not cfg:
-            return
-        
-        # Получаем генератор плейсхолдеров
-        comment_style = self.get_comment_style()
-        placeholder_gen = PlaceholderGenerator(comment_style)
-        
-        # Ищем функции
-        functions = doc.query("functions")
-        
-        for node, capture_name in functions:
-            if capture_name == "function_body":
-                # Получаем информацию о функции
-                start_byte, end_byte = doc.get_node_range(node)
 
-                function_text = doc.get_node_text(node)
-                start_line, end_line = doc.get_line_range(node)
-                lines_count = end_line - start_line + 1
-                
-                # Проверяем условия удаления (используем метод из базового класса)
-                should_strip = super()._should_strip_function_body(cfg, function_text, lines_count)
-                
-                if should_strip:
-                    # Создаем плейсхолдер
-                    placeholder = placeholder_gen.create_function_placeholder(
-                        name="function",
-                        lines_removed=lines_count,
-                        bytes_removed=end_byte - start_byte,
-                        style=self.cfg.placeholders.style
-                    )
-                    
-                    # Добавляем правку
-                    editor.add_replacement(
-                        start_byte, end_byte, placeholder,
-                        type="function_body_removal",
-                        is_placeholder=True,
-                        lines_removed=lines_count
-                    )
-                    
-                    meta["code.removed.functions"] += 1
-    
-    def _strip_ts_methods(
-        self, 
-        doc: TreeSitterDocument, 
-        editor: RangeEditor, 
-        meta: Dict[str, Any],
+    def hook__strip_function_bodies(
+        self,
+        doc: TreeSitterDocument,
+        editor: RangeEditor,
+        meta: Dict[str, Any]
     ) -> None:
-        """Обрабатывает методы классов в TypeScript."""
-        cfg = self.cfg.strip_function_bodies
-        if not cfg:
-            return
-        
-        # Получаем генератор плейсхолдеров
-        comment_style = self.get_comment_style()
-        placeholder_gen = PlaceholderGenerator(comment_style)
-        
-        # Ищем методы в классах
-        methods = doc.query("methods")
-        
-        for node, capture_name in methods:
-            if capture_name == "method_body":
-                # Получаем информацию о методе
-                start_byte, end_byte = doc.get_node_range(node)
-                
-                method_text = doc.get_node_text(node)
-                start_line, end_line = doc.get_line_range(node)
-                lines_count = end_line - start_line + 1
-                
-                # Проверяем условия удаления (используем метод из базового класса)
-                should_strip = super()._should_strip_function_body(cfg, method_text, lines_count)
-                
-                if should_strip:
-                    # Создаем плейсхолдер для метода
-                    placeholder = placeholder_gen.create_method_placeholder(
-                        name="method",
-                        lines_removed=lines_count,
-                        bytes_removed=end_byte - start_byte,
-                        style=self.cfg.placeholders.style
-                    )
-                    
-                    editor.add_replacement(
-                        start_byte, end_byte, placeholder,
-                        type="method_body_removal",
-                        is_placeholder=True,
-                        lines_removed=lines_count
-                    )
-                    
-                    meta["code.removed.methods"] += 1
+        self._strip_arrow_functions(doc, editor, meta)
     
     def _strip_arrow_functions(
         self, 

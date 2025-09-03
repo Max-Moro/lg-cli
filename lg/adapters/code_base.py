@@ -55,7 +55,7 @@ class CodeAdapter(BaseAdapter[C], ABC):
         editor = RangeEditor(text)
 
         # Применяем оптимизации
-        self.apply_tree_sitter_optimizations(doc, editor, meta)
+        self._apply_optimizations(doc, editor, meta)
 
         # Применяем все изменения
         result_text, edit_stats = editor.apply_edits()
@@ -103,6 +103,7 @@ class CodeAdapter(BaseAdapter[C], ABC):
             self.strip_function_bodies(doc, editor, meta)
             if self.lang_flag__is_oop():
                 self.strip_methods_bodies(doc, editor, meta)
+            self.hook__strip_function_bodies(doc, editor, meta)
         
         # Обработка комментариев
         self.process_comments(doc, editor, meta)
@@ -114,6 +115,16 @@ class CodeAdapter(BaseAdapter[C], ABC):
         # if self.cfg.public_api_only:
         #     self.filter_public_api_ts(doc, editor, meta)
 
+    # ============= ХУКИ для вклинивания в процесс оптимизации ===========
+    def hook__strip_function_bodies(
+        self,
+        doc: TreeSitterDocument,
+        editor: RangeEditor,
+        meta: Dict[str, Any]
+    ) -> None:
+        pass
+
+    # ========= Оптимизации, полезные для всех/большинства языков =========
     def strip_function_bodies(
         self, 
         doc: TreeSitterDocument, 
