@@ -135,18 +135,12 @@ class PythonAdapter(CodeAdapter[PythonCfg]):
         
         # Ищем методы в классах
         methods = doc.query("methods")
-        processed_ranges = getattr(self, '_processed_ranges', set())
         
         for node, capture_name in methods:
             if capture_name == "method_body":
                 # Получаем информацию о методе
                 start_byte, end_byte = doc.get_node_range(node)
-                
-                # Пропускаем если этот диапазон уже обработан в базовом методе
-                range_key = (start_byte, end_byte)
-                if range_key in processed_ranges:
-                    continue
-                    
+
                 method_text = doc.get_node_text(node)
                 start_line, end_line = doc.get_line_range(node)
                 lines_count = end_line - start_line + 1

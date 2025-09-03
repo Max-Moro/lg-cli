@@ -133,18 +133,11 @@ class CodeAdapter(BaseAdapter[C], ABC):
         
         # Ищем функции для обработки
         functions = doc.query("functions")
-        processed_ranges = set()  # Отслеживаем уже обработанные диапазоны
         
         for node, capture_name in functions:
             if capture_name == "function_body":
                 # Получаем информацию о функции
                 start_byte, end_byte = doc.get_node_range(node)
-                
-                # Пропускаем если этот диапазон уже обработан
-                range_key = (start_byte, end_byte)
-                if range_key in processed_ranges:
-                    continue
-                processed_ranges.add(range_key)
                 
                 function_text = doc.get_node_text(node)
                 start_line, end_line = doc.get_line_range(node)
@@ -193,16 +186,10 @@ class CodeAdapter(BaseAdapter[C], ABC):
         
         # Ищем комментарии
         comments = doc.query("comments")
-        processed_ranges = set()
-        
+
         for node, capture_name in comments:
             start_byte, end_byte = doc.get_node_range(node)
-            range_key = (start_byte, end_byte)
-            
-            if range_key in processed_ranges:
-                continue
-            processed_ranges.add(range_key)
-            
+
             comment_text = doc.get_node_text(node)
             start_line, end_line = doc.get_line_range(node)
             lines_count = end_line - start_line + 1
@@ -326,28 +313,21 @@ class CodeAdapter(BaseAdapter[C], ABC):
         comment_style = self.get_comment_style()
         placeholder_gen = PlaceholderGenerator(comment_style)
         
-        processed_ranges = set()
-        
         if config.policy == "external_only":
             # Удаляем локальные импорты, оставляем внешние
-            self._process_external_only(
-                grouped["local"], editor, placeholder_gen, meta, processed_ranges
-            )
+            self._process_external_only(grouped["local"], editor, placeholder_gen, meta)
         
         elif config.policy == "summarize_long":
             # Суммаризируем длинные списки импортов
             if analyzer.should_summarize(imports, config.max_items_before_summary):
-                self._process_summarize_long(
-                    grouped, analyzer, editor, placeholder_gen, meta, processed_ranges
-                )
+                self._process_summarize_long(grouped, analyzer, editor, placeholder_gen, meta)
     
     def _process_external_only(
         self,
         local_imports: List,
         editor: RangeEditor,
         placeholder_gen: PlaceholderGenerator,
-        meta: Dict[str, Any],
-        processed_ranges: set
+        meta: Dict[str, Any]
     ) -> None:
         """Удаляет локальные импорты, оставляя только внешние."""
 
@@ -356,12 +336,7 @@ class CodeAdapter(BaseAdapter[C], ABC):
         
         for imp in local_imports:
             start_byte, end_byte = imp.start_byte, imp.end_byte
-            range_key = (start_byte, end_byte)
-            
-            if range_key in processed_ranges:
-                continue
-            processed_ranges.add(range_key)
-            
+
             # Создаем плейсхолдер для удаленных локальных импортов
             placeholder = placeholder_gen.create_import_placeholder(
                 count=1, style=self.cfg.placeholders.style
@@ -383,7 +358,6 @@ class CodeAdapter(BaseAdapter[C], ABC):
         editor: RangeEditor,
         placeholder_gen: PlaceholderGenerator,
         meta: Dict[str, Any],
-        processed_ranges: set
     ) -> None:
         """Суммаризирует длинные списки импортов."""
 
@@ -410,12 +384,7 @@ class CodeAdapter(BaseAdapter[C], ABC):
                 # Получаем диапазон всей группы
                 start_byte = group[0][0]
                 end_byte = group[-1][1]
-                
-                range_key = (start_byte, end_byte)
-                if range_key in processed_ranges:
-                    continue
-                processed_ranges.add(range_key)
-                
+
                 # Создаем суммарный плейсхолдер
                 module_names = [imp[2].module_name for imp in group]
                 summary = self._create_import_summary(module_names, group_type)

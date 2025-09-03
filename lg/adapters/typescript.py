@@ -62,10 +62,9 @@ class TypeScriptAdapter(CodeAdapter[TypeScriptCfg]):
         # TypeScript-специфичные оптимизации для функций
         if self.cfg.strip_function_bodies:
             # Используем общий set для отслеживания обработанных диапазонов
-            processed_ranges = set()
-            self.strip_function_bodies_ts(doc, editor, meta, processed_ranges)
-            self._strip_ts_methods(doc, editor, meta, processed_ranges)
-            self._strip_arrow_functions(doc, editor, meta, processed_ranges)
+            self.strip_function_bodies_ts(doc, editor, meta)
+            self._strip_ts_methods(doc, editor, meta)
+            self._strip_arrow_functions(doc, editor, meta)
         
         # Вызываем базовую обработку комментариев
         self.process_comments_ts(doc, editor, meta)
@@ -86,7 +85,6 @@ class TypeScriptAdapter(CodeAdapter[TypeScriptCfg]):
         doc: TreeSitterDocument, 
         editor: RangeEditor, 
         meta: Dict[str, Any],
-        processed_ranges: set
     ) -> None:
         """Обрабатывает функции TypeScript."""
         cfg = self.cfg.strip_function_bodies
@@ -104,13 +102,7 @@ class TypeScriptAdapter(CodeAdapter[TypeScriptCfg]):
             if capture_name == "function_body":
                 # Получаем информацию о функции
                 start_byte, end_byte = doc.get_node_range(node)
-                
-                # Пропускаем если этот диапазон уже обработан
-                range_key = (start_byte, end_byte)
-                if range_key in processed_ranges:
-                    continue
-                processed_ranges.add(range_key)
-                
+
                 function_text = doc.get_node_text(node)
                 start_line, end_line = doc.get_line_range(node)
                 lines_count = end_line - start_line + 1
@@ -142,7 +134,6 @@ class TypeScriptAdapter(CodeAdapter[TypeScriptCfg]):
         doc: TreeSitterDocument, 
         editor: RangeEditor, 
         meta: Dict[str, Any],
-        processed_ranges: set
     ) -> None:
         """Обрабатывает методы классов в TypeScript."""
         cfg = self.cfg.strip_function_bodies
@@ -160,12 +151,6 @@ class TypeScriptAdapter(CodeAdapter[TypeScriptCfg]):
             if capture_name == "method_body":
                 # Получаем информацию о методе
                 start_byte, end_byte = doc.get_node_range(node)
-                
-                # Пропускаем если этот диапазон уже обработан
-                range_key = (start_byte, end_byte)
-                if range_key in processed_ranges:
-                    continue
-                processed_ranges.add(range_key)
                 
                 method_text = doc.get_node_text(node)
                 start_line, end_line = doc.get_line_range(node)
@@ -196,8 +181,7 @@ class TypeScriptAdapter(CodeAdapter[TypeScriptCfg]):
         self, 
         doc: TreeSitterDocument, 
         editor: RangeEditor, 
-        meta: Dict[str, Any],
-        processed_ranges: set
+        meta: Dict[str, Any]
     ) -> None:
         """Обрабатывает стрелочные функции в TypeScript."""
         cfg = self.cfg.strip_function_bodies
@@ -223,10 +207,6 @@ class TypeScriptAdapter(CodeAdapter[TypeScriptCfg]):
                 continue
                 
             start_byte, end_byte = doc.get_node_range(body_node)
-            range_key = (start_byte, end_byte)
-            if range_key in processed_ranges:
-                continue
-            processed_ranges.add(range_key)
             
             arrow_text = doc.get_node_text(body_node)
             start_line, end_line = doc.get_line_range(body_node)
