@@ -8,7 +8,7 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 from typing import List, Optional, Tuple
 
-from tree_sitter import Tree, Node, Language, Parser
+from tree_sitter import Tree, Node, Parser
 
 
 class TreeSitterDocument(ABC):

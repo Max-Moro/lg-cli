@@ -61,9 +61,10 @@ def process_groups(plan: ContextPlan, run_ctx: RunContext) -> List[ProcessedBlob
                     bound_cache[bkey] = adapter
 
                 raw_text = read_text(fp)
+                ext = fp.suffix.lstrip(".") if fp.is_file() else ""
 
                 # Эвристики пропуска на уровне адаптера (пустые уже отфильтрованы в Manifest)
-                if adapter.name != "base" and adapter.should_skip(fp, raw_text):
+                if adapter.name != "base" and adapter.should_skip(fp, raw_text, ext):
                     continue
 
                 # ключи кэша
@@ -82,7 +83,7 @@ def process_groups(plan: ContextPlan, run_ctx: RunContext) -> List[ProcessedBlob
                     processed_text = cached["processed_text"]
                     meta = cached.get("meta", {}) or {}
                 else:
-                    processed_text, meta = adapter.process(raw_text, group_size, bool(grp.mixed))
+                    processed_text, meta = adapter.process(raw_text, ext, group_size, bool(grp.mixed))
                     # добавим диагностическую «крошку» про использованные ключи конфигурации
                     if raw_cfg:
                         keys = sorted(raw_cfg.keys())

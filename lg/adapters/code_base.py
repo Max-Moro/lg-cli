@@ -32,11 +32,11 @@ class CodeAdapter(BaseAdapter[C], ABC):
         return config  # type: ignore[return-value]
 
     @abstractmethod
-    def create_document(text: str, ext: str) -> TreeSitterDocument:
+    def create_document(self, text: str, ext: str) -> TreeSitterDocument:
         """Create a parsed Tree-sitter document."""
         pass
 
-    def process(self, text: str, group_size: int, mixed: bool) -> Tuple[str, Dict[str, Any]]:
+    def process(self, text: str, ext: str, group_size: int, mixed: bool) -> Tuple[str, Dict[str, Any]]:
         """
         Основной метод обработки кода.
         Применяет все конфигурированные оптимизации.
@@ -44,7 +44,7 @@ class CodeAdapter(BaseAdapter[C], ABC):
         meta = self._init_meta()
         
         # Парсим исходный код с Tree-sitter
-        doc = self.create_document(text, self.ext)
+        doc = self.create_document(text, ext)
 
         # Создаем редактор для range-based изменений
         editor = RangeEditor(text)

@@ -14,5 +14,5 @@ class MarkdownAdapter(BaseAdapter[MarkdownCfg]):
     name = "markdown"
     extensions = {".md"}
 
-    def process(self, text: str, group_size: int, mixed: bool):
+    def process(self, text: str, ext: str, group_size: int, mixed: bool):
         return process_markdown(text, self.cfg, group_size=group_size, mixed=mixed)

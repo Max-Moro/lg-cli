@@ -31,7 +31,7 @@ class CppAdapter(CodeAdapter[CppCfg]):
     name = "cpp"
     extensions = {".cpp", ".cxx", ".cc", ".c", ".h", ".hpp", ".hxx"}
 
-    def should_skip(self, path: Path, text: str) -> bool:
+    def should_skip(self, path: Path, text: str, ext: str) -> bool:
         """
         C/C++ специфичные эвристики пропуска.
         Например, очень большие автогенерированные заголовки.

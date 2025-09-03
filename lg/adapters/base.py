@@ -90,12 +90,12 @@ class BaseAdapter(Generic[C]):
         return self._cfg
 
     # --- переопределяемая логика ------------------
-    def should_skip(self, path: Path, text: str) -> bool:
+    def should_skip(self, path: Path, text: str, ext: str) -> bool:
         """True → файл исключается (языковые эвристики)."""
         return False
 
     # --- единый API с метаданными ---
-    def process(self, text: str, group_size: int, mixed: bool) -> tuple[str, dict]:
+    def process(self, text: str, ext: str, group_size: int, mixed: bool) -> tuple[str, dict]:
         """
         Возвращает (content, meta), где meta — произвольный словарь
         (например: {"removed_comments": 120, "kept_signatures": 34}).

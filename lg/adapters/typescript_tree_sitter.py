@@ -48,7 +48,7 @@ class TypeScriptTreeSitterAdapter(CodeAdapter[TypeScriptCfg]):
     def get_comment_style(self) -> tuple[str, tuple[str, str]]:
         return "//", ("/*", "*/")
 
-    def create_document(text: str, ext: str) -> TreeSitterDocument:
+    def create_document(self, text: str, ext: str) -> TreeSitterDocument:
         return TypeScriptTreeSitterDocument(text, ext)
 
     def apply_tree_sitter_optimizations(

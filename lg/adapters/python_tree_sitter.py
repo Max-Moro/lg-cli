@@ -7,7 +7,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Dict, Any, List, Optional, Tuple
+from typing import Dict, Any, List, Optional
 from tree_sitter import Language, Parser
 
 from .code_base import CodeAdapter
@@ -47,7 +47,7 @@ class PythonTreeSitterAdapter(CodeAdapter[PythonCfg]):
     name = "python"
     extensions = {".py"}
 
-    def should_skip(self, path: Path, text: str) -> bool:
+    def should_skip(self, path: Path, text: str, ext: str) -> bool:
         """
         Python-специфичные эвристики пропуска.
         Сохраняет логику для __init__.py из существующего адаптера.
@@ -90,7 +90,7 @@ class PythonTreeSitterAdapter(CodeAdapter[PythonCfg]):
     def get_comment_style(self) -> tuple[str, tuple[str, str]]:
         return "#", ('"""', '"""')
 
-    def create_document(text: str, ext: str) -> TreeSitterDocument:
+    def create_document(self, text: str, ext: str) -> TreeSitterDocument:
         return PythonTreeSitterDocument(text, ext)
 
     def apply_tree_sitter_optimizations(
