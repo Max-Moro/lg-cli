@@ -35,8 +35,7 @@ class ScalaCfg(CodeCfg):
 
 
 class ScalaAdapter(CodeAdapter[ScalaCfg]):
-    """Адаптер для Scala файлов (.scala)."""
-    
+
     name = "scala"
     extensions = {".scala"}
 

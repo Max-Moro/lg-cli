@@ -1,5 +1,5 @@
 """
-Tree-sitter based JavaScript adapter.
+JavaScript adapter.
 """
 
 from __future__ import annotations
@@ -40,8 +40,7 @@ class JavaScriptDocument(TreeSitterDocument):
         return Parser(Language(tsjs.language()))
 
 class JavaScriptAdapter(CodeAdapter[JavaScriptCfg]):
-    """Tree-sitter based JavaScript adapter (наследует от TypeScript)."""
-    
+
     name = "javascript"
     extensions = {".js", ".jsx"}
 

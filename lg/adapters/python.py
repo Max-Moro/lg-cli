@@ -1,6 +1,5 @@
 """
-Tree-sitter based Python adapter.
-Replaces the existing python.py with enhanced Tree-sitter support.
+Python adapter.
 """
 
 from __future__ import annotations
@@ -46,8 +45,7 @@ class PythonDocument(TreeSitterDocument):
 
 
 class PythonAdapter(CodeAdapter[PythonCfg]):
-    """Tree-sitter based Python adapter."""
-    
+
     name = "python"
     extensions = {".py"}
 

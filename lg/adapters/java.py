@@ -1,6 +1,5 @@
 """
 Java адаптер.
-Оптимизация листингов Java кода.
 """
 
 from __future__ import annotations
@@ -32,8 +31,7 @@ class JavaCfg(CodeCfg):
 
 
 class JavaAdapter(CodeAdapter[JavaCfg]):
-    """Адаптер для Java файлов (.java)."""
-    
+
     name = "java"
     extensions = {".java"}
 

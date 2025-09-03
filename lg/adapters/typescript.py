@@ -1,5 +1,5 @@
 """
-Tree-sitter based TypeScript adapter.
+TypeScript adapter.
 """
 
 from __future__ import annotations
@@ -48,8 +48,7 @@ class TypeScriptDocument(TreeSitterDocument):
         return Parser(lang)
 
 class TypeScriptAdapter(CodeAdapter[TypeScriptCfg]):
-    """Tree-sitter based TypeScript adapter."""
-    
+
     name = "typescript"
     extensions = {".ts", ".tsx"}
 
