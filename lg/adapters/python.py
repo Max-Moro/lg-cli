@@ -16,7 +16,6 @@ from .import_utils import ImportClassifier, ImportAnalyzer, ImportInfo
 from .tree_sitter_support import TreeSitterDocument, Node
 
 
-
 @dataclass
 class PythonCfg(CodeCfg):
     """Конфигурация для Python адаптера."""
@@ -37,15 +36,6 @@ class PythonCfg(CodeCfg):
         cfg.trivial_init_max_noncomment = int(d.get("trivial_init_max_noncomment", 1))
 
         return cfg
-
-
-    def __post_init__(self):
-        # Устанавливаем Python-специфичные дефолты для плейсхолдеров
-        if self.placeholders.template == "/* … {kind} {name} (−{lines}) */":
-            self.placeholders.template = "# … {kind} {name} (−{lines})"
-            self.placeholders.body_template = "# … body omitted (−{lines})"
-            self.placeholders.import_template = "# … {count} imports omitted"
-            self.placeholders.literal_template = "# … data omitted ({bytes} bytes)"
 
 
 class PythonDocument(TreeSitterDocument):
@@ -73,11 +63,11 @@ class PythonAdapter(CodeAdapter[PythonCfg]):
     def create_document(self, text: str, ext: str) -> TreeSitterDocument:
         return PythonDocument(text, ext)
 
-    def _create_import_classifier(self, external_patterns: List[str] = None):
+    def create_import_classifier(self, external_patterns: List[str] = None):
         """Создает Python-специфичный классификатор импортов."""
         return PythonImportClassifier(external_patterns)
     
-    def _create_import_analyzer(self, classifier):
+    def create_import_analyzer(self, classifier):
         """Создает Python-специфичный анализатор импортов."""
         return PythonImportAnalyzer(classifier)
     

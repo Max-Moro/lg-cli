@@ -76,10 +76,6 @@ class PlaceholderConfig:
     """Конфигурация плейсхолдеров для удаленного кода."""
     mode: Literal["summary", "none"] = "summary"
     style: PlaceholderStyle = "auto"
-    template: str = "/* … {kind} {name} (−{lines}) */"
-    body_template: str = "/* … body omitted (−{lines}) */"
-    import_template: str = "/* … {count} imports omitted */"
-    literal_template: str = "/* … data omitted ({bytes} bytes) */"
 
 
 @dataclass
@@ -165,11 +161,7 @@ class CodeCfg:
             pc = d["placeholders"]
             self.placeholders = PlaceholderConfig(
                 mode=pc.get("mode", "summary"),
-                style=pc.get("style", "auto"),
-                template=pc.get("template", "/* … {kind} {name} (−{lines}) */"),
-                body_template=pc.get("body_template", "/* … body omitted (−{lines}) */"),
-                import_template=pc.get("import_template", "/* … {count} imports omitted */"),
-                literal_template=pc.get("literal_template", "/* … data omitted ({bytes} bytes) */")
+                style=pc.get("style", "auto")
             )
         
         if "budget" in d:

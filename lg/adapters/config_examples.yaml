@@ -10,8 +10,6 @@ python_api_only:
     public_api_only: true
     strip_function_bodies: true
     comment_policy: "keep_doc"
-    placeholders:
-      template: "# … {kind} {name} (−{lines})"
 
 # Полная конфигурация с детальными настройками
 python_full:
@@ -43,7 +41,6 @@ python_full:
       priority_order: ["imports", "classes", "functions", "docs"]
     placeholders:
       mode: "summary"
-      template: "# … {kind} {name} (−{lines})"
 
 # ==================== TYPESCRIPT ====================
 
@@ -58,8 +55,6 @@ typescript_lib:
       keep_annotations: ["@param", "@returns", "@throws", "@deprecated"]
     import_config:
       policy: "external_only"
-    placeholders:
-      template: "/* … {kind} {name} (−{lines}) */"
 
 # Полная конфигурация для приложений
 typescript_app:
@@ -95,8 +90,6 @@ java_enterprise:
     lang_specific:
       keep_annotations: ["@Service", "@Component", "@RestController", "@Entity"]
       lombok_aware: true  # понимание Lombok аннотаций
-    placeholders:
-      template: "/* … {kind} {name} (−{lines}) */"
 
 # ==================== C/C++ ====================
 
@@ -141,8 +134,6 @@ scala_lib:
       case_class_policy: "signature_only"
       trait_bodies: "signature_only"
       object_bodies: "public_only"
-    placeholders:
-      template: "/* … {kind} {name} (−{lines}) */"
 
 # ==================== АДРЕСНЫЕ ОВЕРРАЙДЫ ====================
 

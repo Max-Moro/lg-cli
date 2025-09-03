@@ -10,6 +10,7 @@ from typing import Dict, List, Tuple, Any, TypeVar
 
 from .base import BaseAdapter
 from .code_model import CodeCfg
+from .import_utils import ImportInfo
 from .range_edits import RangeEditor, PlaceholderGenerator
 from .tree_sitter_support import TreeSitterDocument
 
@@ -358,8 +359,8 @@ class CodeAdapter(BaseAdapter[C], ABC):
             return
         
         # Языковые адаптеры должны предоставлять свои реализации
-        classifier = self._create_import_classifier(config.external_only_patterns)
-        analyzer = self._create_import_analyzer(classifier)
+        classifier = self.create_import_classifier(config.external_only_patterns)
+        analyzer = self.create_import_analyzer(classifier)
         
         # Анализируем все импорты
         imports = analyzer.analyze_imports(doc)
@@ -466,7 +467,7 @@ class CodeAdapter(BaseAdapter[C], ABC):
                 
                 meta["code.removed.imports"] += len(group)
     
-    def _find_consecutive_import_groups(self, import_ranges: List[Tuple[int, int, 'ImportInfo']]) -> List[List]:
+    def _find_consecutive_import_groups(self, import_ranges: List[Tuple[int, int, ImportInfo]]) -> List[List]:
         """Находит группы последовательных импортов."""
         if not import_ranges:
             return []
@@ -503,11 +504,11 @@ class CodeAdapter(BaseAdapter[C], ABC):
         else:
             return f"… {count} local imports"
     
-    def _create_import_classifier(self, external_patterns: List[str] = None):
+    def create_import_classifier(self, external_patterns: List[str] = None):
         """Создает языко-специфичный классификатор импортов. Должен быть переопределен наследниками."""
         raise NotImplementedError(f"{self.__class__.__name__} must implement _create_import_classifier")
     
-    def _create_import_analyzer(self, classifier):
+    def create_import_analyzer(self, classifier):
         """Создает языко-специфичный анализатор импортов. Должен быть переопределен наследниками."""
         raise NotImplementedError(f"{self.__class__.__name__} must implement _create_import_analyzer")
 
