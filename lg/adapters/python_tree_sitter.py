@@ -78,25 +78,28 @@ class PythonTreeSitterAdapter(CodeAdapter[PythonCfg]):
 
         return super().should_skip(path, text)
 
+    def get_comment_style(self) -> tuple[str, tuple[str, str]]:
+        return "#", ('"""', '"""')
+
     def apply_tree_sitter_optimizations(
-        self, 
-        doc: TreeSitterDocument, 
-        editor: RangeEditor, 
+        self,
+        doc: TreeSitterDocument,
+        editor: RangeEditor,
         meta: Dict[str, Any]
     ) -> None:
         """Python-специфичная обработка с Tree-sitter."""
-        
+
         # Применяем базовую обработку функций
         if self.cfg.strip_function_bodies:
             self.strip_function_bodies_ts(doc, editor, meta)
             self._strip_python_methods(doc, editor, meta)
-        
+
         # Применяем базовую обработку комментариев
         self.process_comments_ts(doc, editor, meta)
-        
+
         # Применяем базовую обработку импортов
         self.process_imports_ts(doc, editor, meta)
-        
+
         # TODO: добавить обработку декораторов, etc.
     
     def _create_import_classifier(self, external_patterns: List[str] = None):

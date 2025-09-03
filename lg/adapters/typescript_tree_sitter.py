@@ -10,7 +10,7 @@ from typing import Dict, Any, List, Optional
 from .code_base import CodeAdapter, CodeDocument
 from .code_model import CodeCfg
 from .import_utils import ImportClassifier, ImportAnalyzer, ImportInfo
-from .range_edits import RangeEditor, PlaceholderGenerator, get_comment_style
+from .range_edits import RangeEditor, PlaceholderGenerator
 from .tree_sitter_support import TreeSitterDocument, Node
 
 
@@ -30,6 +30,9 @@ class TypeScriptTreeSitterAdapter(CodeAdapter[TypeScriptCfg]):
     
     name = "typescript"
     extensions = {".ts", ".tsx"}
+
+    def get_comment_style(self) -> tuple[str, tuple[str, str]]:
+        return "//", ("/*", "*/")
 
     def apply_tree_sitter_optimizations(
         self, 
@@ -74,7 +77,7 @@ class TypeScriptTreeSitterAdapter(CodeAdapter[TypeScriptCfg]):
             return
         
         # Получаем генератор плейсхолдеров
-        comment_style = get_comment_style(self.name)
+        comment_style = self.get_comment_style()
         placeholder_gen = PlaceholderGenerator(comment_style)
         
         # Ищем функции
@@ -130,7 +133,7 @@ class TypeScriptTreeSitterAdapter(CodeAdapter[TypeScriptCfg]):
             return
         
         # Получаем генератор плейсхолдеров
-        comment_style = get_comment_style(self.name)
+        comment_style = self.get_comment_style()
         placeholder_gen = PlaceholderGenerator(comment_style)
         
         # Ищем методы в классах
@@ -185,7 +188,7 @@ class TypeScriptTreeSitterAdapter(CodeAdapter[TypeScriptCfg]):
             return
         
         # Получаем генератор плейсхолдеров
-        comment_style = get_comment_style(self.name)
+        comment_style = self.get_comment_style()
         placeholder_gen = PlaceholderGenerator(comment_style)
         
         # Ищем стрелочные функции отдельно через re-query

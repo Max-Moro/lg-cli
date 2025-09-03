@@ -301,17 +301,3 @@ class PlaceholderGenerator:
         except KeyError as e:
             # Fallback if template variables are missing
             return f"{self.single_line_comment} … placeholder error: {e}"
-
-
-def get_comment_style(lang_name: str) -> Tuple[str, Tuple[str, str]]:
-    """Get comment style for a language."""
-    styles = {
-        "python": ("#", ('"""', '"""')),
-        "typescript": ("//", ("/*", "*/")),
-        "javascript": ("//", ("/*", "*/")),
-        "java": ("//", ("/*", "*/")),
-        "cpp": ("//", ("/*", "*/")),
-        "c": ("//", ("/*", "*/")),
-        "scala": ("//", ("/*", "*/")),
-    }
-    return styles.get(lang_name, ("//", ("/*", "*/")))  # Default to C-style

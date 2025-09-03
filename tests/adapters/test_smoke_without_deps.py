@@ -94,20 +94,3 @@ def test_function():
         assert result == "Hi, World!"
         assert stats["edits_applied"] == 1
         assert stats["bytes_saved"] > 0
-    
-    def test_placeholder_generation(self):
-        """Test placeholder generation without Tree-sitter."""
-        from lg.adapters.range_edits import PlaceholderGenerator, get_comment_style
-        
-        # Test comment style detection
-        python_style = get_comment_style("python")
-        assert python_style[0] == "#"
-        
-        ts_style = get_comment_style("typescript")
-        assert ts_style[0] == "//"
-        
-        # Test placeholder generation
-        gen = PlaceholderGenerator(python_style)
-        placeholder = gen.create_function_placeholder("test", 5, 100)
-        assert "#" in placeholder
-        assert "5" in placeholder

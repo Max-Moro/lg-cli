@@ -6,12 +6,11 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from pathlib import Path
 from typing import Dict, List, Optional, Tuple, Any, TypeVar
 
 from .base import BaseAdapter
 from .code_model import CodeCfg, PlaceholderConfig, create_lang_config
-from .range_edits import RangeEditor, PlaceholderGenerator, get_comment_style
+from .range_edits import RangeEditor, PlaceholderGenerator
 from .tree_sitter_support import (
     TreeSitterDocument, create_document, is_tree_sitter_available,
     TreeSitterError
@@ -34,13 +33,6 @@ class CodeAdapter(BaseAdapter[C], ABC):
         # create_lang_config возвращает CodeCfg или его наследника
         config = create_lang_config(cls.name, raw_cfg)
         return config  # type: ignore[return-value]
-
-    def should_skip(self, path: Path, text: str) -> bool:
-        """
-        Базовая логика пропуска файлов.
-        Наследники могут переопределить для язык-специфичных эвристик.
-        """
-        return False
 
     def process(self, text: str, group_size: int, mixed: bool) -> Tuple[str, Dict[str, Any]]:
         """
@@ -120,7 +112,14 @@ class CodeAdapter(BaseAdapter[C], ABC):
         # Другие оптимизации можно добавить здесь
         # if self.cfg.public_api_only:
         #     self.filter_public_api_ts(doc, editor, meta)
-    
+
+    def get_comment_style(self) -> Tuple[str, tuple[str, str]]:
+        """
+        Возвращает стиль комментариев для языка (однострочный, многострочный).
+        Должен быть переопределен наследниками.
+        """
+        return "//", ("/*", "*/")
+
     def strip_function_bodies_ts(
         self, 
         doc: TreeSitterDocument, 
@@ -136,7 +135,7 @@ class CodeAdapter(BaseAdapter[C], ABC):
             return
         
         # Получаем генератор плейсхолдеров
-        comment_style = get_comment_style(self.name)
+        comment_style = self.get_comment_style()
         placeholder_gen = PlaceholderGenerator(comment_style)
         
         # Ищем функции для обработки
@@ -196,7 +195,7 @@ class CodeAdapter(BaseAdapter[C], ABC):
             return
         
         # Получаем генератор плейсхолдеров
-        comment_style = get_comment_style(self.name)
+        comment_style = self.get_comment_style()
         placeholder_gen = PlaceholderGenerator(comment_style)
         
         # Ищем комментарии
@@ -331,7 +330,7 @@ class CodeAdapter(BaseAdapter[C], ABC):
         grouped = analyzer.group_imports(imports)
         
         # Получаем генератор плейсхолдеров
-        comment_style = get_comment_style(self.name)
+        comment_style = self.get_comment_style()
         placeholder_gen = PlaceholderGenerator(comment_style)
         
         processed_ranges = set()
@@ -646,13 +645,6 @@ class CodeAdapter(BaseAdapter[C], ABC):
         )
         
         return placeholder
-
-    def get_comment_style(self) -> Tuple[str, str]:
-        """
-        Возвращает стиль комментариев для языка (однострочный, многострочный).
-        Должен быть переопределен наследниками.
-        """
-        return "//", ("/*", "*/")
 
 
 # ---- Промежуточное представление кода ----

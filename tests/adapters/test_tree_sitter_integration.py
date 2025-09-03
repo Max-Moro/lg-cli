@@ -6,7 +6,7 @@ Tests the complete pipeline from configuration to output.
 import pytest
 
 from lg.adapters.python_tree_sitter import PythonTreeSitterAdapter
-from lg.adapters.range_edits import RangeEditor, PlaceholderGenerator, get_comment_style
+from lg.adapters.range_edits import RangeEditor, PlaceholderGenerator
 from lg.adapters.tree_sitter_support import (
     is_tree_sitter_available, query_registry, get_supported_languages,
     create_document
@@ -139,7 +139,7 @@ class TestRangeEditorSystem:
     def test_placeholder_generation(self):
         """Test placeholder generation for different languages."""
         # Test Python style
-        python_style = get_comment_style("python")
+        python_style = PythonTreeSitterAdapter().get_comment_style()
         python_gen = PlaceholderGenerator(python_style)
         
         placeholder = python_gen.create_function_placeholder("test_func", 5, 100)
@@ -147,7 +147,7 @@ class TestRangeEditorSystem:
         assert "5" in placeholder  # Line count
         
         # Test TypeScript style
-        ts_style = get_comment_style("typescript")
+        ts_style = TypeScriptTreeSitterAdapter().get_comment_style()
         ts_gen = PlaceholderGenerator(ts_style)
         
         placeholder = ts_gen.create_method_placeholder("testMethod", 3, 80, style="block")
