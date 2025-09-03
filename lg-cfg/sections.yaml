@@ -45,3 +45,5 @@ src-adapters:
     mode: allow
     allow:
       - "/lg/adapters/"
+  python:
+    comment_policy: "keep_all"
