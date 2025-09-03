@@ -7,13 +7,15 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Dict, Any, List, Optional
+from typing import Dict, Any, List, Optional, Tuple
+from tree_sitter import Language, Parser
 
-from .code_base import CodeAdapter, CodeDocument
+from .code_base import CodeAdapter
 from .code_model import CodeCfg
 from .import_utils import ImportClassifier, ImportAnalyzer, ImportInfo
 from .range_edits import RangeEditor
 from .tree_sitter_support import TreeSitterDocument, Node
+
 
 
 @dataclass
@@ -30,6 +32,13 @@ class PythonCfg(CodeCfg):
             self.placeholders.body_template = "# … body omitted (−{lines})"
             self.placeholders.import_template = "# … {count} imports omitted"
             self.placeholders.literal_template = "# … data omitted ({bytes} bytes)"
+
+
+class PythonTreeSitterDocument(TreeSitterDocument):
+
+    def get_language_parser(self) -> Parser:
+        import tree_sitter_python as tspython
+        return Parser(Language(tspython.language()))
 
 
 class PythonTreeSitterAdapter(CodeAdapter[PythonCfg]):
@@ -80,6 +89,9 @@ class PythonTreeSitterAdapter(CodeAdapter[PythonCfg]):
 
     def get_comment_style(self) -> tuple[str, tuple[str, str]]:
         return "#", ('"""', '"""')
+
+    def create_document(text: str, ext: str) -> TreeSitterDocument:
+        return PythonTreeSitterDocument(text, ext)
 
     def apply_tree_sitter_optimizations(
         self,
@@ -154,12 +166,6 @@ class PythonTreeSitterAdapter(CodeAdapter[PythonCfg]):
                     )
                     
                     meta["code.removed.methods"] += 1
-
-    # Совместимость со старым интерфейсом
-    def parse_code(self, text: str) -> CodeDocument:
-        """Совместимость - создает заглушку CodeDocument."""
-        lines = text.splitlines()
-        return CodeDocument(lines)
 
 
 class PythonImportClassifier(ImportClassifier):

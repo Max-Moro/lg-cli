@@ -4,10 +4,8 @@ Shared fixtures and utilities for language adapter tests.
 
 import pytest
 from pathlib import Path
-from typing import Dict, Any, Optional
 
-from lg.adapters.tree_sitter_support import is_tree_sitter_available
-from lg.adapters.code_model import CodeCfg
+
 from lg.adapters.python_tree_sitter import PythonCfg
 from lg.adapters.typescript_tree_sitter import TypeScriptCfg
 

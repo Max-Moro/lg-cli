@@ -1,13 +1,14 @@
 """
-Tree-sitter based TypeScript/JavaScript adapter.
+Tree-sitter based TypeScript adapter.
 """
 
 from __future__ import annotations
 
 from dataclasses import dataclass
 from typing import Dict, Any, List, Optional
+from tree_sitter import Language, Parser
 
-from .code_base import CodeAdapter, CodeDocument
+from .code_base import CodeAdapter
 from .code_model import CodeCfg
 from .import_utils import ImportClassifier, ImportAnalyzer, ImportInfo
 from .range_edits import RangeEditor, PlaceholderGenerator
@@ -16,7 +17,7 @@ from .tree_sitter_support import TreeSitterDocument, Node
 
 @dataclass
 class TypeScriptCfg(CodeCfg):
-    """Конфигурация для TypeScript/JavaScript адаптера."""
+    """Конфигурация для TypeScript адаптера."""
     
     def __post_init__(self):
         # TypeScript-специфичные дефолты
@@ -24,6 +25,19 @@ class TypeScriptCfg(CodeCfg):
             self.public_api_only = True  # для TS часто нужен только exported API
             self._ts_defaults_applied = True
 
+
+class TypeScriptTreeSitterDocument(TreeSitterDocument):
+
+    def get_language_parser(self) -> Parser:
+        import tree_sitter_typescript as tsts
+        # У TS и TSX — две разные грамматики в одном пакете.
+        lang: Optional[Language] = None
+        if self.ext == "ts":
+            lang =Language(tsts.language_typescript())
+        elif self.ext == "tsx":
+            lang = Language(tsts.language_tsx())
+
+        return Parser(lang)
 
 class TypeScriptTreeSitterAdapter(CodeAdapter[TypeScriptCfg]):
     """Tree-sitter based TypeScript adapter."""
@@ -33,6 +47,9 @@ class TypeScriptTreeSitterAdapter(CodeAdapter[TypeScriptCfg]):
 
     def get_comment_style(self) -> tuple[str, tuple[str, str]]:
         return "//", ("/*", "*/")
+
+    def create_document(text: str, ext: str) -> TreeSitterDocument:
+        return TypeScriptTreeSitterDocument(text, ext)
 
     def apply_tree_sitter_optimizations(
         self, 
@@ -233,25 +250,9 @@ class TypeScriptTreeSitterAdapter(CodeAdapter[TypeScriptCfg]):
                 
                 meta["code.removed.functions"] += 1
 
-    # Совместимость со старым интерфейсом
-    def parse_code(self, text: str) -> CodeDocument:
-        """Совместимость - создает заглушку CodeDocument."""
-        lines = text.splitlines()
-        return CodeDocument(lines)
-
-
-class JavaScriptTreeSitterAdapter(TypeScriptTreeSitterAdapter):
-    """Tree-sitter based JavaScript adapter (наследует от TypeScript)."""
-    
-    name = "javascript"
-    extensions = {".js", ".jsx"}
-    
-    # JavaScript использует ту же логику, что и TypeScript,
-    # но без типов (которые в любом случае обрабатываются Tree-sitter'ом)
-
 
 class TypeScriptImportClassifier(ImportClassifier):
-    """TypeScript/JavaScript-specific import classifier."""
+    """TypeScript-specific import classifier."""
     
     def __init__(self, external_patterns: List[str] = None):
         self.external_patterns = external_patterns or []
@@ -341,10 +342,10 @@ class TypeScriptImportClassifier(ImportClassifier):
 
 
 class TypeScriptImportAnalyzer(ImportAnalyzer):
-    """TypeScript/JavaScript-specific import analyzer."""
+    """TypeScript-specific import analyzer."""
     
     def _parse_import_node(self, doc: TreeSitterDocument, node: Node, import_type: str) -> Optional[ImportInfo]:
-        """Parse a TypeScript/JavaScript import node into ImportInfo."""
+        """Parse a TypeScript import node into ImportInfo."""
         import re
         
         import_text = doc.get_node_text(node)
