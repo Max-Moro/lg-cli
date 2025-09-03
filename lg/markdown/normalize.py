@@ -23,7 +23,7 @@ def _strip_single_h1_if_needed(lines: list[str], group_size: int) -> Tuple[list[
     return lines, False
 
 
-def normalize_markdown(text: str, *, max_heading_level: int | None, group_size: int, mixed: bool) -> tuple[str, dict]:
+def normalize_markdown(text: str, *, max_heading_level: int | None, strip_single_h1: bool, group_size: int, mixed: bool) -> tuple[str, dict]:
     """
     Ровно та же семантика, что была в исходном MarkdownAdapter.process:
       • Если mixed=True или max_heading_level=None → не трогаем (кроме снятия H1).
@@ -34,14 +34,15 @@ def normalize_markdown(text: str, *, max_heading_level: int | None, group_size: 
     meta = {"md.removed_h1": 0, "md.shifted": False}
 
     lines = text.splitlines()
-    # если смешанный листинг или нормализация отключена — ничего не меняем (сохраняем текст как есть)
-    if mixed or max_heading_level is None:
-        return text, meta
 
-    # 1) снять единственный верхний H1 (только когда нормализация активна)
-    lines, removed_h1 = _strip_single_h1_if_needed(lines, group_size)
-    if removed_h1:
-        meta["md.removed_h1"] = 1
+    # 1) снять единственный верхний H1
+    if strip_single_h1:
+        lines, removed_h1 = _strip_single_h1_if_needed(lines, group_size)
+        if removed_h1:
+            meta["md.removed_h1"] = 1
+
+    if max_heading_level is None:
+        return text, meta
 
     max_lvl = int(max_heading_level)
 

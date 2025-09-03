@@ -19,6 +19,7 @@ class MarkdownCfg:
     Конфиг Markdown-адаптера.
     """
     max_heading_level: int | None = None
+    strip_single_h1: bool = False
     # блок drop: секции/маркеры/frontmatter/политика плейсхолдеров
     drop: MarkdownDropCfg | None = None
 
@@ -28,15 +29,18 @@ class MarkdownCfg:
             # Конфиг не задан → включаем дефолтные маркеры lg:omit
             return MarkdownCfg(
                 max_heading_level=None,
+                strip_single_h1=False,
                 drop=MarkdownDropCfg._with_default_markers()
             )
-        _assert_only_keys(d, ["max_heading_level", "drop"], ctx="MarkdownCfg")
+        _assert_only_keys(d, ["max_heading_level", "strip_single_h1", "drop"], ctx="MarkdownCfg")
         max_heading_level = d.get("max_heading_level", None)
+        strip_single_h1 = d.get("strip_single_h1", False)
         drop_cfg = d.get("drop", None)
         # Если блок drop не задан — создаём с дефолтными маркерами.
         drop = MarkdownDropCfg.from_dict(drop_cfg) if drop_cfg is not None else MarkdownDropCfg._with_default_markers()
         return MarkdownCfg(
             max_heading_level=max_heading_level if max_heading_level is None else int(max_heading_level),
+            strip_single_h1=strip_single_h1,
             drop=drop,
         )
 

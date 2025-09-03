@@ -19,6 +19,7 @@ def process_markdown(text: str, cfg: MarkdownCfg, *, group_size: int, mixed: boo
       4) meta агрегируем
     """
     max_lvl = cfg.max_heading_level
+    strip_single_h1 = cfg.strip_single_h1
     drop_cfg: MarkdownDropCfg | None = cfg.drop
 
     meta: dict = {
@@ -64,6 +65,7 @@ def process_markdown(text: str, cfg: MarkdownCfg, *, group_size: int, mixed: boo
     norm_text, norm_meta = normalize_markdown(
         current_text,
         max_heading_level=max_lvl,
+        strip_single_h1=strip_single_h1,
         group_size=group_size,
         mixed=mixed,
     )

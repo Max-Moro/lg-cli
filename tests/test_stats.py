@@ -16,7 +16,7 @@ def _w(p: Path, txt: str) -> Path:
     return p
 
 
-def _mkproj_md_only(root: Path, *, code_fence: bool = True, max_h: int | None = 2) -> None:
+def _mkproj_md_only(root: Path, *, code_fence: bool = True, max_h: int | None = 2, strip_single_h1: bool = False) -> None:
     """Минимальный проект: секция all → только .md (для md-only режимов рендера)."""
     _w(
         root / "lg-cfg" / "sections.yaml",
@@ -26,6 +26,7 @@ def _mkproj_md_only(root: Path, *, code_fence: bool = True, max_h: int | None = 
           code_fence: {str(code_fence).lower()}
           markdown:
             max_heading_level: {max_h if max_h is not None else 'null'}
+            strip_single_h1: {strip_single_h1}
         """).strip() + "\n",
     )
 
@@ -49,7 +50,7 @@ def test_md_with_h1_processed_saves_tokens_and_meta(tmp_path: Path, monkeypatch)
     Для Markdown адаптер удаляет одиночный H1 при group_size=1
     и заданном max_heading_level → processed < raw.
     """
-    _mkproj_md_only(tmp_path, code_fence=True, max_h=2)
+    _mkproj_md_only(tmp_path, code_fence=True, max_h=2, strip_single_h1=True)
     _w(tmp_path / "README.md", "# Title\nBody line\n")
     monkeypatch.chdir(tmp_path)
 
