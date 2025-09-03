@@ -8,7 +8,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from pathlib import Path
 
-from .code_base import CodeAdapter, CodeDocument
+from .code_base import CodeAdapter
 from .code_model import CodeCfg
 
 
@@ -41,19 +41,6 @@ class CppAdapter(CodeAdapter[CppCfg]):
             return True
         
         return super().should_skip(path, text)
-
-    def parse_code(self, text: str) -> CodeDocument:
-        """
-        Парсит C/C++ код.
-        TODO: Реализация парсинга C/C++ AST.
-        """
-        lines = text.splitlines()
-        doc = CodeDocument(lines)
-        
-        # Заглушка - в реальной реализации здесь будет парсинг C/C++
-        # с помощью соответствующих библиотек (например, через tree-sitter-cpp или clang)
-        
-        return doc
 
     def get_comment_style(self) -> tuple[str, tuple[str, str]]:
         """C/C++ использует C-style комментарии."""

@@ -34,14 +34,14 @@ class PythonCfg(CodeCfg):
             self.placeholders.literal_template = "# … data omitted ({bytes} bytes)"
 
 
-class PythonTreeSitterDocument(TreeSitterDocument):
+class PythonDocument(TreeSitterDocument):
 
     def get_language_parser(self) -> Parser:
         import tree_sitter_python as tspython
         return Parser(Language(tspython.language()))
 
 
-class PythonTreeSitterAdapter(CodeAdapter[PythonCfg]):
+class PythonAdapter(CodeAdapter[PythonCfg]):
     """Tree-sitter based Python adapter."""
     
     name = "python"
@@ -91,7 +91,7 @@ class PythonTreeSitterAdapter(CodeAdapter[PythonCfg]):
         return "#", ('"""', '"""')
 
     def create_document(self, text: str, ext: str) -> TreeSitterDocument:
-        return PythonTreeSitterDocument(text, ext)
+        return PythonDocument(text, ext)
 
     def apply_tree_sitter_optimizations(
         self,

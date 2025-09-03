@@ -7,7 +7,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from .code_base import CodeAdapter, CodeDocument
+from .code_base import CodeAdapter
 from .code_model import CodeCfg
 
 
@@ -28,19 +28,6 @@ class JavaAdapter(CodeAdapter[JavaCfg]):
     
     name = "java"
     extensions = {".java"}
-
-    def parse_code(self, text: str) -> CodeDocument:
-        """
-        Парсит Java код.
-        TODO: Реализация парсинга Java AST.
-        """
-        lines = text.splitlines()
-        doc = CodeDocument(lines)
-        
-        # Заглушка - в реальной реализации здесь будет парсинг Java
-        # с помощью соответствующих библиотек (например, через tree-sitter-java)
-        
-        return doc
 
     def get_comment_style(self) -> tuple[str, tuple[str, str]]:
         """Java использует C-style комментарии."""

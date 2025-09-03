@@ -19,18 +19,18 @@ class JavaScriptCfg(CodeCfg):
     # У JavaScript пока нет специфичных настроек
 
 
-class JavaScriptTreeSitterDocument(TreeSitterDocument):
+class JavaScriptDocument(TreeSitterDocument):
 
     def get_language_parser(self) -> Parser:
         import tree_sitter_javascript as tsjs
         # одна грамматика покрывает JS и JSX
         return Parser(Language(tsjs.language()))
 
-class JavaScriptTreeSitterAdapter(CodeAdapter[JavaScriptCfg]):
+class JavaScriptAdapter(CodeAdapter[JavaScriptCfg]):
     """Tree-sitter based JavaScript adapter (наследует от TypeScript)."""
     
     name = "javascript"
     extensions = {".js", ".jsx"}
 
     def create_document(self, text: str, ext: str) -> TreeSitterDocument:
-        return JavaScriptTreeSitterDocument(text, ext)
+        return JavaScriptDocument(text, ext)

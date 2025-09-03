@@ -7,7 +7,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from .code_base import CodeAdapter, CodeDocument
+from .code_base import CodeAdapter
 from .code_model import CodeCfg
 
 
@@ -28,19 +28,6 @@ class ScalaAdapter(CodeAdapter[ScalaCfg]):
     
     name = "scala"
     extensions = {".scala"}
-
-    def parse_code(self, text: str) -> CodeDocument:
-        """
-        Парсит Scala код.
-        TODO: Реализация парсинга Scala AST.
-        """
-        lines = text.splitlines()
-        doc = CodeDocument(lines)
-        
-        # Заглушка - в реальной реализации здесь будет парсинг Scala
-        # с помощью соответствующих библиотек (например, через tree-sitter-scala или scalameta)
-        
-        return doc
 
     def get_comment_style(self) -> tuple[str, tuple[str, str]]:
         """Scala использует C-style комментарии."""

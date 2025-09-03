@@ -26,7 +26,7 @@ class TypeScriptCfg(CodeCfg):
             self._ts_defaults_applied = True
 
 
-class TypeScriptTreeSitterDocument(TreeSitterDocument):
+class TypeScriptDocument(TreeSitterDocument):
 
     def get_language_parser(self) -> Parser:
         import tree_sitter_typescript as tsts
@@ -39,7 +39,7 @@ class TypeScriptTreeSitterDocument(TreeSitterDocument):
 
         return Parser(lang)
 
-class TypeScriptTreeSitterAdapter(CodeAdapter[TypeScriptCfg]):
+class TypeScriptAdapter(CodeAdapter[TypeScriptCfg]):
     """Tree-sitter based TypeScript adapter."""
     
     name = "typescript"
@@ -49,7 +49,7 @@ class TypeScriptTreeSitterAdapter(CodeAdapter[TypeScriptCfg]):
         return "//", ("/*", "*/")
 
     def create_document(self, text: str, ext: str) -> TreeSitterDocument:
-        return TypeScriptTreeSitterDocument(text, ext)
+        return TypeScriptDocument(text, ext)
 
     def apply_tree_sitter_optimizations(
         self, 
@@ -63,7 +63,7 @@ class TypeScriptTreeSitterAdapter(CodeAdapter[TypeScriptCfg]):
         if self.cfg.strip_function_bodies:
             # Используем общий set для отслеживания обработанных диапазонов
             processed_ranges = set()
-            self._strip_ts_functions(doc, editor, meta, processed_ranges)
+            self.strip_function_bodies_ts(doc, editor, meta, processed_ranges)
             self._strip_ts_methods(doc, editor, meta, processed_ranges)
             self._strip_arrow_functions(doc, editor, meta, processed_ranges)
         
