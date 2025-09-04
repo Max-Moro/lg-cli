@@ -63,5 +63,29 @@ QUERIES = {
     # Export statements
     "exports": """
     (export_statement) @export
+    
+    (export_statement
+      (function_declaration) @exported_function)
+      
+    (export_statement
+      (class_declaration) @exported_class)
+      
+    (export_statement
+      (interface_declaration) @exported_interface)
+    """,
+    
+    # Visibility modifiers
+    "visibility": """
+    (method_definition
+      (accessibility_modifier) @access_modifier
+      name: (property_identifier) @method_name)
+      
+    (public_field_definition
+      (accessibility_modifier) @access_modifier
+      name: (property_identifier) @field_name)
+      
+    (class_declaration
+      (accessibility_modifier) @access_modifier
+      name: (type_identifier) @class_name)
     """,
 }

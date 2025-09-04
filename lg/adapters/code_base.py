@@ -6,14 +6,14 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from typing import Dict, List, Tuple, Any, TypeVar
+from typing import Dict, List, Tuple, Any, TypeVar, Optional
 
 from .base import BaseAdapter
 from .code_model import CodeCfg, CommentConfig
 from .context import ProcessingContext
 from .import_utils import ImportInfo
 from .range_edits import RangeEditor, PlaceholderGenerator
-from .tree_sitter_support import TreeSitterDocument
+from .tree_sitter_support import TreeSitterDocument, Node
 
 C = TypeVar("C", bound=CodeCfg)
 
@@ -53,6 +53,34 @@ class CodeAdapter(BaseAdapter[C], ABC):
         """Создает языко-специфичный анализатор импортов. Должен быть переопределен наследниками."""
         pass
 
+    @abstractmethod
+    def is_public_element(self, node: Node, context: ProcessingContext) -> bool:
+        """
+        Определяет, является ли элемент кода публичным.
+        
+        Args:
+            node: Узел Tree-sitter для анализа
+            context: Контекст обработки с доступом к документу
+            
+        Returns:
+            True если элемент публичный, False если приватный/защищенный
+        """
+        pass
+
+    @abstractmethod
+    def is_exported_element(self, node: Node, context: ProcessingContext) -> bool:
+        """
+        Определяет, экспортируется ли элемент из модуля.
+        
+        Args:
+            node: Узел Tree-sitter для анализа
+            context: Контекст обработки с доступом к документу
+            
+        Returns:
+            True если элемент экспортируется, False если только для внутреннего использования
+        """
+        pass
+
     def process(self, text: str, ext: str, group_size: int, mixed: bool) -> Tuple[str, Dict[str, Any]]:
         """
         Основной метод обработки кода.
@@ -89,6 +117,10 @@ class CodeAdapter(BaseAdapter[C], ABC):
         """
         Применение оптимизаций.
         """
+        # Фильтрация по публичному API
+        if self.cfg.public_api_only:
+            self.filter_public_api(context)
+        
         # Обработка тел функций - используем единый метод для избежания перекрытий
         if self.cfg.strip_function_bodies:
             self._strip_all_function_bodies(context)
@@ -99,10 +131,6 @@ class CodeAdapter(BaseAdapter[C], ABC):
         
         # Обработка импортов
         self.process_import(context)
-        
-        # Другие оптимизации можно добавить здесь
-        # if self.cfg.public_api_only:
-        #     self.filter_public_api(context)
 
 
     # ============= ХУКИ для вклинивания в процесс оптимизации ===========
@@ -111,6 +139,74 @@ class CodeAdapter(BaseAdapter[C], ABC):
         pass
 
     # ========= Оптимизации, полезные для всех/большинства языков =========
+    def filter_public_api(self, context: ProcessingContext) -> None:
+        """
+        Фильтрация кода для показа только публичного API.
+        Помечает приватные элементы для пропуска в других оптимизациях.
+        """
+        # Ищем все функции и методы
+        functions = context.query("functions")
+        private_ranges = []
+        
+        for node, capture_name in functions:
+            if capture_name in ("function_name", "method_name"):
+                function_def = node.parent
+                # Проверяем публичность элемента
+                is_public = self.is_public_element(function_def, context)
+                is_exported = self.is_exported_element(function_def, context)
+                
+                # Для методов - учитываем модификаторы доступа
+                # Для top-level функций - главное экспорт  
+                if capture_name == "method_name":
+                    # Метод удаляется если он приватный/защищенный
+                    if not is_public:
+                        start_byte, end_byte = context.get_node_range(function_def)
+                        private_ranges.append((start_byte, end_byte, function_def))
+                else:  # function_name
+                    # Top-level функция удаляется если не экспортируется
+                    if not is_exported:
+                        start_byte, end_byte = context.get_node_range(function_def)
+                        private_ranges.append((start_byte, end_byte, function_def))
+        
+        # Также проверяем классы
+        classes = context.query("classes")
+        for node, capture_name in classes:
+            if capture_name == "class_name":
+                class_def = node.parent
+                # Проверяем экспорт класса
+                is_exported = self.is_exported_element(class_def, context)
+                
+                # Для top-level элементов главное - экспорт, а не модификаторы доступа
+                # Класс удаляется если он НЕ экспортируется (независимо от модификаторов)
+                if not is_exported:
+                    start_byte, end_byte = context.get_node_range(class_def)
+                    private_ranges.append((start_byte, end_byte, class_def))
+        
+        # Сортируем по позиции (от конца к началу для безопасного удаления)
+        private_ranges.sort(key=lambda x: x[0], reverse=True)
+        
+        # Удаляем приватные элементы целиком
+        for start_byte, end_byte, element in private_ranges:
+            start_line, end_line = context.get_line_range(element)
+            lines_count = end_line - start_line + 1
+            
+            placeholder = context.placeholder_gen.create_custom_placeholder(
+                "… private element omitted (−{lines})",
+                {"lines": lines_count},
+                style=self.cfg.placeholders.style
+            )
+            
+            context.editor.add_replacement(
+                start_byte, end_byte, placeholder,
+                type="private_element_removal",
+                is_placeholder=True,
+                lines_removed=lines_count
+            )
+            
+            context.metrics.increment("code.removed.private_elements")
+            context.metrics.add_lines_saved(lines_count)
+            context.metrics.mark_placeholder_inserted()
+
     def _strip_all_function_bodies(self, context: ProcessingContext) -> None:
         """
         Удаление тел функций.
@@ -121,24 +217,80 @@ class CodeAdapter(BaseAdapter[C], ABC):
         
         # Ищем все функции и классифицируем их как функции или методы
         functions = context.query("functions")
+        
         for node, capture_name in functions:
-            if capture_name == "function_body":
-                function_text = context.get_node_text(node)
+            # Поддерживаем как function_body, так и method_body
+            if capture_name in ("function_body", "method_body"):
                 start_line, end_line = context.get_line_range(node)
                 lines_count = end_line - start_line + 1
                 
                 # Определяем, нужно ли удалять тело
-                should_strip = context.should_strip_function_body(function_text, lines_count, cfg)
+                should_strip = self.should_strip_function_body(node, lines_count, cfg, context)
                 
                 if should_strip:
                     # Определяем тип (метод vs функция)
-                    func_type = "method" if context.is_method(node) else "function"
+                    func_type = "method" if capture_name == "method_body" or context.is_method(node) else "function"
                     
                     context.remove_function_body(
                         node, 
                         func_type=func_type,
                         placeholder_style=self.cfg.placeholders.style
                     )
+
+    def should_strip_function_body(
+        self, 
+        body_node: Node, 
+        lines_count: int,
+        cfg, 
+        context: ProcessingContext
+    ) -> bool:
+        """
+        Логика определения необходимости удаления тела функции.
+        """
+        if isinstance(cfg, bool):
+            # Для булевого значения True применяем умную логику:
+            # не удаляем однострочные тела (особенно важно для стрелочных функций)
+            if cfg and lines_count <= 1:
+                return False
+            return cfg
+        
+        # Если конфигурация - объект, применяем более сложную логику
+        if hasattr(cfg, 'mode'):
+            if cfg.mode == "none":
+                return False
+            elif cfg.mode == "all":
+                return True
+            elif cfg.mode == "large_only":
+                return lines_count >= getattr(cfg, 'min_lines', 5)
+            elif cfg.mode == "public_only":
+                # Удаляем тела только у публичных функций
+                parent_function = self._find_function_definition(body_node)
+                if parent_function:
+                    is_public = self.is_public_element(parent_function, context)
+                    is_exported = self.is_exported_element(parent_function, context)
+                    return is_public or is_exported
+                return False
+            elif cfg.mode == "non_public":
+                # Удаляем тела только у приватных функций
+                parent_function = self._find_function_definition(body_node)
+                if parent_function:
+                    is_public = self.is_public_element(parent_function, context)
+                    is_exported = self.is_exported_element(parent_function, context)
+                    return not (is_public or is_exported)
+                return False
+        
+        return False
+
+    def _find_function_definition(self, body_node: Node) -> Optional[Node]:
+        """
+        Найти узел определения функции для заданного тела функции.
+        """
+        current = body_node.parent
+        while current:
+            if current.type in ("function_definition", "method_definition", "arrow_function"):
+                return current
+            current = current.parent
+        return None
 
     def process_comments(self, context: ProcessingContext) -> None:
         """

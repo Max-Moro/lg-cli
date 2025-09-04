@@ -12,7 +12,8 @@ from tree_sitter import Language
 
 from ..code_base import CodeAdapter
 from ..code_model import CodeCfg
-from ..tree_sitter_support import TreeSitterDocument
+from ..context import ProcessingContext
+from ..tree_sitter_support import TreeSitterDocument, Node
 
 
 @dataclass
@@ -104,3 +105,59 @@ class PythonAdapter(CodeAdapter[PythonCfg]):
                 return True
 
         return False
+
+    def is_public_element(self, node: Node, context: ProcessingContext) -> bool:
+        """
+        Определяет публичность элемента Python по соглашениям об underscore.
+        
+        Правила:
+        - Имена, начинающиеся с одного _ считаются "protected" (внутренние)
+        - Имена, начинающиеся с двух __ считаются "private" 
+        - Имена без _ или с trailing _ считаются публичными
+        - Специальные методы __method__ считаются публичными
+        """
+        # Получаем имя элемента
+        element_name = self._get_element_name(node, context)
+        if not element_name:
+            return True  # Если имя не найдено, считаем публичным
+        
+        # Специальные методы Python (dunder methods) считаются публичными
+        if element_name.startswith("__") and element_name.endswith("__"):
+            return True
+        
+        # Имена с двумя подчеркиваниями в начале - приватные
+        if element_name.startswith("__"):
+            return False
+        
+        # Имена с одним подчеркиванием в начале - защищенные (считаем приватными)
+        if element_name.startswith("_"):
+            return False
+        
+        # Все остальные - публичные
+        return True
+
+    def is_exported_element(self, node: Node, context: ProcessingContext) -> bool:
+        """
+        Определяет, экспортируется ли элемент Python.
+        
+        В Python экспорт определяется через __all__ или по умолчанию все публичные элементы.
+        Пока упрощенная реализация - считаем все публичные элементы экспортируемыми.
+        """
+        # TODO: Реализовать проверку __all__ в будущих итерациях
+        return self.is_public_element(node, context)
+
+    def _get_element_name(self, node: Node, context: ProcessingContext) -> Optional[str]:
+        """
+        Извлекает имя элемента из узла Tree-sitter.
+        """
+        # Ищем дочерний узел с именем функции/класса/метода
+        for child in node.children:
+            if child.type == "identifier":
+                return context.get_node_text(child)
+        
+        # Для некоторых типов узлов имя может быть в поле name
+        name_node = node.child_by_field_name("name")
+        if name_node:
+            return context.get_node_text(name_node)
+        
+        return None

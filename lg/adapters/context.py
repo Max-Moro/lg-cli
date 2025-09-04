@@ -152,29 +152,6 @@ class ProcessingContext:
         
         return True
     
-    def should_strip_function_body(self, function_text: str, lines_count: int, cfg) -> bool:
-        """
-        Универсальный метод определения необходимости удаления тела функции.
-        """
-        if isinstance(cfg, bool):
-            # Для булевого значения True применяем умную логику:
-            # не удаляем однострочные тела (особенно важно для стрелочных функций)
-            if cfg and lines_count <= 1:
-                return False
-            return cfg
-        
-        # Если конфигурация - объект, применяем более сложную логику
-        if hasattr(cfg, 'mode'):
-            if cfg.mode == "none":
-                return False
-            elif cfg.mode == "all":
-                return True
-            elif cfg.mode == "large_only":
-                return lines_count >= getattr(cfg, 'min_lines', 5)
-            # TODO: реализовать public_only, non_public после добавления семантики
-        
-        return False
-    
     def is_method(self, function_body_node: Node) -> bool:
         """
         Определяет, является ли узел function_body методом класса.
