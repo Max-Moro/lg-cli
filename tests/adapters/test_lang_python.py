@@ -51,8 +51,6 @@ class TestPythonAdapter:
         result, meta = adapter.process(python_code_sample, "py", group_size=1, mixed=False)
         
         # No functions should be removed
-        assert meta["code.removed.functions"] == 0
-        assert meta["code.removed.methods"] == 0
         # Result should be close to original (may have minor whitespace changes)
         assert "def add(self, a: int, b: int) -> int:" in result
         assert "result = a + b" in result

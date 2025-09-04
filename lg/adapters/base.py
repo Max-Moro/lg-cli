@@ -42,7 +42,7 @@ class BaseAdapter(Generic[C]):
         Внешний код не видит тип конфигурации — полная инкапсуляция.
         """
         inst = cls()
-        inst._cfg = cls.load_cfg(raw_cfg)
+        inst._cfg = cls._load_cfg(raw_cfg)
         return inst
 
     @classmethod

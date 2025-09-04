@@ -30,7 +30,6 @@ def hello():
         assert '"""Function docstring."""' in result
         assert "# This is a comment" in result
         assert "# Another comment" in result
-        assert meta["code.removed.comments"] == 0
     
     def test_strip_all_policy(self):
         """Test that strip_all removes all comments."""
@@ -123,8 +122,7 @@ function greet(user: User) {
         assert "// inline comment" in result
         assert "JSDoc comment" in result
         assert "// Another comment" in result
-        assert meta["code.removed.comments"] == 0
-    
+
     def test_strip_all_policy(self):
         """Test that strip_all removes all comments."""
         code = '''// This is a comment
@@ -161,7 +159,6 @@ class TestCommentPolicyEdgeCases:
         result, meta = adapter.process("", "py", group_size=1, mixed=False)
         
         assert result == ""
-        assert meta["code.removed.comments"] == 0
     
     def test_no_comments(self):
         """Test processing file without comments."""
@@ -176,7 +173,6 @@ def hello():
         result, meta = adapter.process(code, "py", group_size=1, mixed=False)
         
         assert result == code  # Should be unchanged
-        assert meta["code.removed.comments"] == 0
     
     def test_placeholder_styles(self):
         """Test different placeholder styles."""

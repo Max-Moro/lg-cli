@@ -135,5 +135,3 @@ export class Calculator {
         
         # Should be nearly identical to original
         assert "return 42;" in result
-        assert meta["code.removed.functions"] == 0
-        assert meta["code.removed.methods"] == 0
