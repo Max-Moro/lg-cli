@@ -2,12 +2,8 @@
 Tests for comment policy implementation (M2).
 """
 
-import pytest
-
 from lg.adapters.python import PythonAdapter, PythonCfg
-from lg.adapters.typescript_tree_sitter import TypeScriptTreeSitterAdapter, TypeScriptCfg
-
-pytestmark = pytest.mark.usefixtures("skip_if_no_tree_sitter")
+from lg.adapters.typescript import TypeScriptAdapter, TypeScriptCfg
 
 
 class TestCommentPolicyPython:
@@ -27,7 +23,7 @@ def hello():
         adapter = PythonAdapter()
         adapter._cfg = PythonCfg(comment_policy="keep_all")
         
-        result, meta = adapter.process(code, group_size=1, mixed=False)
+        result, meta = adapter.process(code, "py", group_size=1, mixed=False)
         
         # Should preserve all comments
         assert '"""Module docstring."""' in result
@@ -47,10 +43,10 @@ def hello():
     # Another comment
     return "hello"
 '''
-        adapter = PythonTreeSitterAdapter()
+        adapter = PythonAdapter()
         adapter._cfg = PythonCfg(comment_policy="strip_all")
         
-        result, meta = adapter.process(code, group_size=1, mixed=False)
+        result, meta = adapter.process(code, "py", group_size=1, mixed=False)
         
         # Should remove all comments but add placeholders
         assert "# … comment omitted" in result or "# … docstring omitted" in result
@@ -67,10 +63,10 @@ def hello():
     # Another comment
     return "hello"
 '''
-        adapter = PythonTreeSitterAdapter()
+        adapter = PythonAdapter()
         adapter._cfg = PythonCfg(comment_policy="keep_doc")
         
-        result, meta = adapter.process(code, group_size=1, mixed=False)
+        result, meta = adapter.process(code, "py", group_size=1, mixed=False)
         
         # Should preserve docstrings
         assert '"""Module docstring."""' in result
@@ -87,10 +83,10 @@ def hello():
     """Short description. Longer explanation that goes on."""
     return "hello"
 '''
-        adapter = PythonTreeSitterAdapter()
+        adapter = PythonAdapter()
         adapter._cfg = PythonCfg(comment_policy="keep_first_sentence")
         
-        result, meta = adapter.process(code, group_size=1, mixed=False)
+        result, meta = adapter.process(code, "py", group_size=1, mixed=False)
         
         # Should truncate to first sentence
         assert '"""This is the first sentence."""' in result
@@ -117,10 +113,10 @@ function greet(user: User) {
     return `Hello, ${user.name}`;
 }
 '''
-        adapter = TypeScriptTreeSitterAdapter()
+        adapter = TypeScriptAdapter()
         adapter._cfg = TypeScriptCfg(comment_policy="keep_all")
         
-        result, meta = adapter.process(code, group_size=1, mixed=False)
+        result, meta = adapter.process(code, "ts", group_size=1, mixed=False)
         
         # Should preserve all comments
         assert "// This is a comment" in result
@@ -144,10 +140,10 @@ function greet(user: User) {
     return `Hello, ${user.name}`;
 }
 '''
-        adapter = TypeScriptTreeSitterAdapter()
+        adapter = TypeScriptAdapter()
         adapter._cfg = TypeScriptCfg(comment_policy="strip_all")
         
-        result, meta = adapter.process(code, group_size=1, mixed=False)
+        result, meta = adapter.process(code, "ts", group_size=1, mixed=False)
         
         # Should remove all comments but add placeholders
         assert "// … comment omitted" in result
@@ -159,10 +155,10 @@ class TestCommentPolicyEdgeCases:
     
     def test_empty_file(self):
         """Test processing empty file."""
-        adapter = PythonTreeSitterAdapter()
+        adapter = PythonAdapter()
         adapter._cfg = PythonCfg(comment_policy="strip_all")
         
-        result, meta = adapter.process("", group_size=1, mixed=False)
+        result, meta = adapter.process("", "py", group_size=1, mixed=False)
         
         assert result == ""
         assert meta["code.removed.comments"] == 0
@@ -174,10 +170,10 @@ class TestCommentPolicyEdgeCases:
 def hello():
     return "hello"
 '''
-        adapter = PythonTreeSitterAdapter()
+        adapter = PythonAdapter()
         adapter._cfg = PythonCfg(comment_policy="strip_all")
         
-        result, meta = adapter.process(code, group_size=1, mixed=False)
+        result, meta = adapter.process(code, "py", group_size=1, mixed=False)
         
         assert result == code  # Should be unchanged
         assert meta["code.removed.comments"] == 0
@@ -190,15 +186,15 @@ def hello():
 '''
         
         # Test inline style (default)
-        adapter = PythonTreeSitterAdapter() 
+        adapter = PythonAdapter()
         adapter._cfg = PythonCfg(comment_policy="strip_all")
         adapter._cfg.placeholders.style = "inline"
         
-        result, meta = adapter.process(code, group_size=1, mixed=False)
+        result, meta = adapter.process(code, "py", group_size=1, mixed=False)
         assert "# … comment omitted" in result
         
         # Test block style
         adapter._cfg.placeholders.style = "block"
-        result, meta = adapter.process(code, group_size=1, mixed=False)
+        result, meta = adapter.process(code, "py", group_size=1, mixed=False)
         # For Python, block style might still use # comments
         assert "comment omitted" in result

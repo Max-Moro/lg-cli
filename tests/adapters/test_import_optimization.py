@@ -2,15 +2,11 @@
 Tests for import optimization implementation (M3).
 """
 
-import pytest
-
 from lg.adapters.code_model import ImportConfig
-from lg.adapters.python_tree_sitter import PythonImportClassifier, PythonImportAnalyzer
-from lg.adapters.python_tree_sitter import PythonTreeSitterAdapter, PythonCfg
-from lg.adapters.typescript_tree_sitter import TypeScriptImportClassifier, TypeScriptImportAnalyzer
-from lg.adapters.typescript_tree_sitter import TypeScriptTreeSitterAdapter, TypeScriptCfg
-
-pytestmark = pytest.mark.usefixtures("skip_if_no_tree_sitter")
+from lg.adapters.python import PythonImportClassifier, PythonImportAnalyzer, PythonDocument
+from lg.adapters.python import PythonAdapter, PythonCfg
+from lg.adapters.typescript import TypeScriptImportClassifier, TypeScriptImportAnalyzer, TypeScriptDocument
+from lg.adapters.typescript import TypeScriptAdapter, TypeScriptCfg
 
 
 class TestImportClassifier:
@@ -66,8 +62,7 @@ class TestImportAnalyzer:
     
     def test_python_import_parsing(self):
         """Test parsing Python import statements."""
-        from lg.adapters.tree_sitter_support import create_document
-        
+
         code = '''import os
 import sys, json
 import numpy as np
@@ -76,7 +71,7 @@ from myapp.utils import helper
 from .relative import something
 '''
         
-        doc = create_document(code, "python")
+        doc = PythonDocument(code, "py")
         classifier = PythonImportClassifier()
         analyzer = PythonImportAnalyzer(classifier)
         imports = analyzer.analyze_imports(doc)
@@ -92,8 +87,7 @@ from .relative import something
     
     def test_typescript_import_parsing(self):
         """Test parsing TypeScript import statements."""
-        from lg.adapters.tree_sitter_support import create_document
-        
+
         code = '''import React from 'react';
 import { Component, OnInit } from '@angular/core';
 import * as fs from 'fs';
@@ -101,7 +95,7 @@ import './styles.css';
 import { helper } from '../utils/helper';
 '''
         
-        doc = create_document(code, "typescript")
+        doc = TypeScriptDocument(code, "ts")
         classifier = TypeScriptImportClassifier()
         analyzer = TypeScriptImportAnalyzer(classifier)
         imports = analyzer.analyze_imports(doc)
@@ -117,15 +111,14 @@ import { helper } from '../utils/helper';
     
     def test_import_grouping(self):
         """Test grouping imports by external vs local."""
-        from lg.adapters.tree_sitter_support import create_document
-        
+
         code = '''import numpy as np
 import pandas as pd
 from myapp.models import User
 from .utils import helper
 '''
         
-        doc = create_document(code, "python")
+        doc = PythonDocument(code, "python")
         classifier = PythonImportClassifier()
         analyzer = PythonImportAnalyzer(classifier)
         imports = analyzer.analyze_imports(doc)
@@ -152,11 +145,11 @@ def main():
     pass
 '''
         
-        adapter = PythonTreeSitterAdapter()
+        adapter = PythonAdapter()
         import_config = ImportConfig(policy="keep_all")
         adapter._cfg = PythonCfg(import_config=import_config)
         
-        result, meta = adapter.process(code, group_size=1, mixed=False)
+        result, meta = adapter.process(code, "py", group_size=1, mixed=False)
         
         # All imports should be preserved
         assert "import os" in result
@@ -178,11 +171,11 @@ def main():
     pass
 '''
         
-        adapter = PythonTreeSitterAdapter()
+        adapter = PythonAdapter()
         import_config = ImportConfig(policy="external_only")
         adapter._cfg = PythonCfg(import_config=import_config)
         
-        result, meta = adapter.process(code, group_size=1, mixed=False)
+        result, meta = adapter.process(code, "py", group_size=1, mixed=False)
         
         # External imports should be preserved
         assert "import os" in result
@@ -206,14 +199,14 @@ def main():
     pass
 '''
         
-        adapter = PythonTreeSitterAdapter()
+        adapter = PythonAdapter()
         import_config = ImportConfig(
             policy="summarize_long",
             max_items_before_summary=5  # Lower threshold for testing
         )
         adapter._cfg = PythonCfg(import_config=import_config)
         
-        result, meta = adapter.process(code, group_size=1, mixed=False)
+        result, meta = adapter.process(code, "py", group_size=1, mixed=False)
         
         # Should contain summarization placeholders
         assert "external imports" in result or meta["code.removed.imports"] > 0
@@ -235,11 +228,11 @@ export class MyComponent {
 }
 '''
         
-        adapter = TypeScriptTreeSitterAdapter()
+        adapter = TypeScriptAdapter()
         import_config = ImportConfig(policy="external_only")
         adapter._cfg = TypeScriptCfg(import_config=import_config)
         
-        result, meta = adapter.process(code, group_size=1, mixed=False)
+        result, meta = adapter.process(code, "ts", group_size=1, mixed=False)
         
         # External imports should be preserved
         assert "react" in result
@@ -260,14 +253,14 @@ export class MyClass {
 }
 '''
         
-        adapter = TypeScriptTreeSitterAdapter()
+        adapter = TypeScriptAdapter()
         import_config = ImportConfig(
             policy="summarize_long",
             max_items_before_summary=5
         )
         adapter._cfg = TypeScriptCfg(import_config=import_config)
         
-        result, meta = adapter.process(code, group_size=1, mixed=False)
+        result, meta = adapter.process(code, "ts", group_size=1, mixed=False)
         
         # Should be summarized
         assert "external imports" in result or meta["code.removed.imports"] > 0
@@ -282,11 +275,11 @@ class TestImportOptimizationEdgeCases:
     print("Hello world")
 '''
         
-        adapter = PythonTreeSitterAdapter()
+        adapter = PythonAdapter()
         import_config = ImportConfig(policy="external_only")
         adapter._cfg = PythonCfg(import_config=import_config)
         
-        result, meta = adapter.process(code, group_size=1, mixed=False)
+        result, meta = adapter.process(code, "py", group_size=1, mixed=False)
         
         assert result == code  # Should be unchanged
         assert meta["code.removed.imports"] == 0
@@ -302,14 +295,14 @@ def main():
     pass
 '''
         
-        adapter = PythonTreeSitterAdapter()
+        adapter = PythonAdapter()
         import_config = ImportConfig(
             policy="external_only",
             external_only_patterns=["^myapp.*"]  # Treat myapp as external
         )
         adapter._cfg = PythonCfg(import_config=import_config)
         
-        result, meta = adapter.process(code, group_size=1, mixed=False)
+        result, meta = adapter.process(code, "py", group_size=1, mixed=False)
         
         # Should preserve os, numpy, and myapp (due to custom pattern)
         assert "import os" in result
@@ -327,16 +320,16 @@ def main():
     pass
 '''
         
-        adapter = PythonTreeSitterAdapter()
+        adapter = PythonAdapter()
         import_config = ImportConfig(policy="external_only")
         adapter._cfg = PythonCfg(import_config=import_config)
         
         # Test inline style
         adapter._cfg.placeholders.style = "inline"
-        result, meta = adapter.process(code, group_size=1, mixed=False)
+        result, meta = adapter.process(code, "py", group_size=1, mixed=False)
         assert "# … 1 imports omitted" in result
         
         # Test block style
         adapter._cfg.placeholders.style = "block"
-        result, meta = adapter.process(code, group_size=1, mixed=False)
+        result, meta = adapter.process(code, "py", group_size=1, mixed=False)
         assert "imports omitted" in result  # Should still contain the message
