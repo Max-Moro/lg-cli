@@ -1,4 +1,18 @@
 src:
+  extensions: [".py"]
+  filters:
+    mode: allow
+    allow:
+      - "/lg/adapters/"
+
+src-tests:
+  extensions: [".py"]
+  filters:
+    mode: allow
+    allow:
+      - "/tests/adapters/"
+
+src-without:
   extensions: [".py", ".toml"]
   filters:
     mode: allow
@@ -16,26 +30,13 @@ src:
           - "/cache/"
           - "/context/"
           - "/_skeletons/"
+          - "/adapters/"
 
-src-short:
-  extensions: [".py"]
+docs-tree-sitter:
+  extensions: [".md"]
   filters:
     mode: allow
     allow:
-      - "/lg/"
-    children:
-      lg:
-        mode: allow
-        allow:
-          - "/cli.py"
-          - "/types.py"
-          - "/engine.py"
-          - "/config/model.py"
-          - "/config/load.py"
-
-migrations:
-  extensions: [".py"]
-  filters:
-    mode: allow
-    allow:
-      - "/lg/migrate/migrations/"
+      - "/lg-cfg/adapters/gen/TREE_SITTER_README.md"
+  markdown:
+    max_heading_level: 2
