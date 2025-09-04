@@ -155,7 +155,6 @@ class ProcessingContext:
     def should_strip_function_body(self, function_text: str, lines_count: int, cfg) -> bool:
         """
         Универсальный метод определения необходимости удаления тела функции.
-        Вынесен из CodeAdapter для переиспользования.
         """
         if isinstance(cfg, bool):
             # Для булевого значения True применяем умную логику:

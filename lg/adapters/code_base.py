@@ -43,6 +43,16 @@ class CodeAdapter(BaseAdapter[C], ABC):
         """Create a parsed Tree-sitter document."""
         pass
 
+    @abstractmethod
+    def create_import_classifier(self, external_patterns: List[str] = None):
+        """Создает языко-специфичный классификатор импортов. Должен быть переопределен наследниками."""
+        pass
+
+    @abstractmethod
+    def create_import_analyzer(self, classifier):
+        """Создает языко-специфичный анализатор импортов. Должен быть переопределен наследниками."""
+        pass
+
     def process(self, text: str, ext: str, group_size: int, mixed: bool) -> Tuple[str, Dict[str, Any]]:
         """
         Основной метод обработки кода.
@@ -330,11 +340,3 @@ class CodeAdapter(BaseAdapter[C], ABC):
             groups.append(current_group)
         
         return groups
-    
-    def create_import_classifier(self, external_patterns: List[str] = None):
-        """Создает языко-специфичный классификатор импортов. Должен быть переопределен наследниками."""
-        raise NotImplementedError(f"{self.__class__.__name__} must implement _create_import_classifier")
-    
-    def create_import_analyzer(self, classifier):
-        """Создает языко-специфичный анализатор импортов. Должен быть переопределен наследниками."""
-        raise NotImplementedError(f"{self.__class__.__name__} must implement _create_import_analyzer")
