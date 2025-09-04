@@ -5,7 +5,6 @@ Tests for based Python adapter.
 import pytest
 from lg.adapters.code_model import FunctionBodyConfig
 from lg.adapters.python import PythonAdapter, PythonCfg
-from lg.adapters.context import create_test_lightweight_context
 from tests.adapters.conftest import assert_golden_match, create_temp_file
 
 
@@ -18,11 +17,8 @@ class TestPythonAdapter:
         adapter._cfg = PythonCfg(strip_function_bodies=True)
         
         # Create lightweight context with sample code
-        ctx = create_test_lightweight_context(
+        ctx = lctx(
             raw_text=python_code_sample,
-            filename="test.py",
-            group_size=1,
-            mixed=False
         )
         
         result, meta = adapter.process(ctx)
@@ -81,22 +77,18 @@ class TestPythonAdapter:
         
         for i, content in enumerate(trivial_cases):
             # Создаем контекст для __init__.py файла
-            ctx = create_test_lightweight_context(
+            ctx = lctx(
                 raw_text=content,
                 filename="__init__.py",
-                group_size=1,
-                mixed=False
             )
             should_skip = adapter.should_skip(ctx)
             assert should_skip, f"Should skip trivial __init__.py: {repr(content)}"
         
         # Test non-trivial __init__.py
         non_trivial = "from .module import something\npass"
-        non_trivial_ctx = create_test_lightweight_context(
+        non_trivial_ctx = lctx(
             raw_text=non_trivial,
             filename="__init__.py",
-            group_size=1,
-            mixed=False
         )
         should_not_skip = adapter.should_skip(non_trivial_ctx)
         assert not should_not_skip, "Should not skip non-trivial __init__.py"

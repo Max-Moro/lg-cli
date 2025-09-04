@@ -321,28 +321,3 @@ class ProcessingContext:
 
 # ===== TEST UTILITIES ===== #
 
-def create_test_lightweight_context(
-    raw_text: str = "# Test content",
-    filename: str = "test.py",
-    group_size: int = 1,
-    mixed: bool = False
-) -> LightweightContext:
-    """
-    Создает stub LightweightContext для тестов.
-    
-    Args:
-        raw_text: Содержимое файла
-        filename: Имя файла
-        group_size: Размер группы
-        mixed: Смешанные языки
-        
-    Returns:
-        LightweightContext для использования в тестах
-    """
-    test_path = Path(filename)
-    return LightweightContext(
-        file_path=test_path,
-        raw_text=raw_text,
-        group_size=group_size,
-        mixed=mixed
-    )

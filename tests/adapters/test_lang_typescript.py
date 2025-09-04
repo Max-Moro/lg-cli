@@ -4,7 +4,6 @@ Tests for based TypeScript adapter.
 
 from lg.adapters.code_model import FunctionBodyConfig
 from lg.adapters.typescript import TypeScriptAdapter, TypeScriptCfg
-from lg.adapters.context import create_test_lightweight_context
 from tests.adapters.conftest import assert_golden_match
 
 
@@ -143,22 +142,18 @@ export class Calculator {
         adapter._cfg = TypeScriptCfg(skip_barrel_files=True)
         
         # index.ts files should be detected as barrel files
-        index_ctx = create_test_lightweight_context(
+        index_ctx = lctx(
             raw_text="export { Component } from './component';",
             filename="index.ts",
-            group_size=1,
-            mixed=False
         )
         
         assert adapter._is_barrel_file(index_ctx) == True
         assert adapter.should_skip(index_ctx) == True
         
         # index.tsx files should also be detected as barrel files  
-        index_tsx_ctx = create_test_lightweight_context(
+        index_tsx_ctx = lctx(
             raw_text="export { Component } from './component';",
             filename="index.tsx",
-            group_size=1,
-            mixed=False
         )
         
         assert adapter._is_barrel_file(index_tsx_ctx) == True
@@ -170,11 +165,9 @@ export class Calculator {
         adapter._cfg = TypeScriptCfg(skip_barrel_files=True)
         
         # Barrel file with many re-exports should be detected
-        barrel_ctx = create_test_lightweight_context(
+        barrel_ctx = lctx(
             raw_text=typescript_barrel_file_sample,
             filename="exports.ts",  # Not index.ts to test content-based detection
-            group_size=1,
-            mixed=False
         )
         
         assert adapter._is_barrel_file(barrel_ctx) == True
@@ -186,11 +179,9 @@ export class Calculator {
         adapter._cfg = TypeScriptCfg(skip_barrel_files=True)
         
         # Regular component file should not be detected as barrel
-        regular_ctx = create_test_lightweight_context(
+        regular_ctx = lctx(
             raw_text=typescript_non_barrel_file_sample,
             filename="user.component.ts",
-            group_size=1,
-            mixed=False
         )
         
         assert adapter._is_barrel_file(regular_ctx) == False
@@ -202,11 +193,9 @@ export class Calculator {
         adapter._cfg = TypeScriptCfg(skip_barrel_files=False)  # Disabled
         
         # Even obvious barrel file should not be skipped when disabled
-        barrel_ctx = create_test_lightweight_context(
+        barrel_ctx = lctx(
             raw_text=typescript_barrel_file_sample,
             filename="index.ts",
-            group_size=1,
-            mixed=False
         )
         
         assert adapter._is_barrel_file(barrel_ctx) == True  # Still detected
@@ -218,25 +207,21 @@ export class Calculator {
         adapter._cfg = TypeScriptCfg(skip_barrel_files=True)
         
         # Empty file
-        empty_ctx = create_test_lightweight_context(
+        empty_ctx = lctx(
             raw_text="",
             filename="empty.ts",
-            group_size=1,
-            mixed=False
         )
         assert adapter._is_barrel_file(empty_ctx) == False
         
         # Only comments
-        comments_ctx = create_test_lightweight_context(
+        comments_ctx = lctx(
             raw_text="// Just comments\n/* More comments */",
             filename="comments.ts",
-            group_size=1,
-            mixed=False
         )
         assert adapter._is_barrel_file(comments_ctx) == False
         
         # Mixed content (some exports, some regular code)
-        mixed_ctx = create_test_lightweight_context(
+        mixed_ctx = lctx(
             raw_text="""
 export { Component } from './component';
 export { Service } from './service';
@@ -252,8 +237,6 @@ class LocalClass {
 export default LocalClass;
             """,
             filename="mixed.ts",
-            group_size=1,
-            mixed=False
         )
         # This should trigger deep analysis due to mixed content
         result = adapter._is_barrel_file(mixed_ctx)

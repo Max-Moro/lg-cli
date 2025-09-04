@@ -7,6 +7,8 @@ from pathlib import Path
 
 import pytest
 
+from lg.adapters.context import LightweightContext
+
 
 def write(p: Path, text: str) -> Path:
     p.parent.mkdir(parents=True, exist_ok=True)
@@ -56,6 +58,33 @@ def run_cli(root: Path, *args: str) -> subprocess.CompletedProcess:
         [sys.executable, "-m", "lg.cli", *args],
         cwd=root, env=env, capture_output=True, text=True, encoding="utf-8"
     )
+
+def lctx(
+        raw_text: str = "# Test content",
+        filename: str = "test.py",
+        group_size: int = 1,
+        mixed: bool = False
+) -> LightweightContext:
+    """
+    Создает stub LightweightContext для тестов.
+
+    Args:
+        raw_text: Содержимое файла
+        filename: Имя файла
+        group_size: Размер группы
+        mixed: Смешанные языки
+
+    Returns:
+        LightweightContext для использования в тестах
+    """
+    test_path = Path(filename)
+    return LightweightContext(
+        file_path=test_path,
+        raw_text=raw_text,
+        group_size=group_size,
+        mixed=mixed
+    )
+
 
 def jload(s: str):
     return json.loads(s)
