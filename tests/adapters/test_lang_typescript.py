@@ -1,25 +1,21 @@
 """
-Tests for Tree-sitter based TypeScript adapter.
+Tests for based TypeScript adapter.
 """
 
-import pytest
-
 from lg.adapters.code_model import FunctionBodyConfig
-from lg.adapters.typescript_tree_sitter import TypeScriptTreeSitterAdapter, JavaScriptTreeSitterAdapter, TypeScriptCfg
+from lg.adapters.typescript import TypeScriptAdapter, TypeScriptCfg
 from tests.adapters.conftest import assert_golden_match
 
-pytestmark = pytest.mark.usefixtures("skip_if_no_tree_sitter")
 
-
-class TestTypeScriptTreeSitterAdapter:
-    """Test suite for TypeScript Tree-sitter adapter."""
+class TestTypeScriptAdapter:
+    """Test suite for TypeScript adapter."""
     
     def test_basic_function_stripping(self, typescript_code_sample, tmp_path):
         """Test basic function body stripping."""
-        adapter = TypeScriptTreeSitterAdapter()
+        adapter = TypeScriptAdapter()
         adapter._cfg = TypeScriptCfg(strip_function_bodies=True)
         
-        result, meta = adapter.process(typescript_code_sample, group_size=1, mixed=False)
+        result, meta = adapter.process(typescript_code_sample, "ts", group_size=1, mixed=False)
         
         # Check that functions were processed
         assert meta["code.removed.functions"] >= 0  # May not find arrow functions in sample
@@ -34,7 +30,7 @@ class TestTypeScriptTreeSitterAdapter:
     
     def test_public_api_only_default(self, typescript_code_sample):
         """Test that TypeScript defaults to public API only."""
-        adapter = TypeScriptTreeSitterAdapter()
+        adapter = TypeScriptAdapter()
         
         # Load default config
         adapter._cfg = TypeScriptCfg()
@@ -42,26 +38,9 @@ class TestTypeScriptTreeSitterAdapter:
         # Check default value - currently False by default, can be changed later
         assert hasattr(adapter._cfg, 'public_api_only')
     
-    def test_javascript_adapter_inheritance(self, typescript_code_sample):
-        """Test that JavaScript adapter inherits TypeScript logic."""
-        js_adapter = JavaScriptTreeSitterAdapter()
-        js_adapter._cfg = TypeScriptCfg(strip_function_bodies=True)
-        
-        # Convert TS sample to JS-like code (remove types)
-        js_code = typescript_code_sample.replace(": number", "").replace(": string", "").replace("?: string", "")
-        js_code = js_code.replace(": User[]", "").replace(": Observable<User[]>", "")
-        js_code = js_code.replace(": Promise<User>", "").replace(": boolean", "")
-        
-        result, meta = js_adapter.process(js_code, group_size=1, mixed=False)
-        
-        # Should process similar to TypeScript
-        assert meta["_adapter"] == "javascript"
-        assert js_adapter.name == "javascript"
-        assert ".js" in js_adapter.extensions
-    
     def test_large_only_method_stripping(self, typescript_code_sample, tmp_path):
         """Test stripping only large methods."""
-        adapter = TypeScriptTreeSitterAdapter()
+        adapter = TypeScriptAdapter()
         adapter._cfg = TypeScriptCfg(
             strip_function_bodies=FunctionBodyConfig(
                 mode="large_only",
@@ -69,7 +48,7 @@ class TestTypeScriptTreeSitterAdapter:
             )
         )
         
-        result, meta = adapter.process(typescript_code_sample, group_size=1, mixed=False)
+        result, meta = adapter.process(typescript_code_sample, "ts", group_size=1, mixed=False)
         
         # Should have fewer removals than basic test
         golden_file = tmp_path / "typescript_large_only_strip.golden"
@@ -94,10 +73,10 @@ const multiline = (users) => {
 };
 '''
         
-        adapter = TypeScriptTreeSitterAdapter()
+        adapter = TypeScriptAdapter()
         adapter._cfg = TypeScriptCfg(strip_function_bodies=True)
         
-        result, meta = adapter.process(arrow_code, group_size=1, mixed=False)
+        result, meta = adapter.process(arrow_code, "ts", group_size=1, mixed=False)
         
         # Should only strip multiline arrow functions
         assert 'const simple = () => "hello";' in result  # Single line preserved
@@ -129,10 +108,10 @@ export class Calculator {
 }
 '''
         
-        adapter = TypeScriptTreeSitterAdapter()
+        adapter = TypeScriptAdapter()
         adapter._cfg = TypeScriptCfg(strip_function_bodies=True)
         
-        result, meta = adapter.process(class_code, group_size=1, mixed=False)
+        result, meta = adapter.process(class_code, "ts", group_size=1, mixed=False)
         
         # Class structure should be preserved
         assert "export class Calculator {" in result
@@ -149,40 +128,12 @@ export class Calculator {
         """Test that disabling stripping preserves original code."""
         code = "function test() { return 42; }"
         
-        adapter = TypeScriptTreeSitterAdapter()
+        adapter = TypeScriptAdapter()
         adapter._cfg = TypeScriptCfg(strip_function_bodies=False)
         
-        result, meta = adapter.process(code, group_size=1, mixed=False)
+        result, meta = adapter.process(code, "ts", group_size=1, mixed=False)
         
         # Should be nearly identical to original
         assert "return 42;" in result
         assert meta["code.removed.functions"] == 0
         assert meta["code.removed.methods"] == 0
-
-
-class TestJavaScriptTreeSitterAdapter:
-    """Test suite for JavaScript Tree-sitter adapter."""
-    
-    def test_javascript_specific_behavior(self):
-        """Test JavaScript-specific behavior."""
-        js_code = '''
-function calculateTax(amount) {
-    const rate = 0.1;
-    const tax = amount * rate;
-    console.log("Tax calculated:", tax);
-    return tax;
-}
-
-const arrow = (x) => {
-    return x * 2;
-};
-'''
-        
-        adapter = JavaScriptTreeSitterAdapter()
-        adapter._cfg = TypeScriptCfg(strip_function_bodies=True)
-        
-        result, meta = adapter.process(js_code, group_size=1, mixed=False)
-        
-        assert meta["_adapter"] == "javascript"
-        assert adapter.name == "javascript"
-        assert ".js" in adapter.extensions and ".jsx" in adapter.extensions

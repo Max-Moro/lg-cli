@@ -1,25 +1,21 @@
 """
-Tests for Tree-sitter based Python adapter.
+Tests for based Python adapter.
 """
 
-import pytest
-
 from lg.adapters.code_model import FunctionBodyConfig
-from lg.adapters.python_tree_sitter import PythonTreeSitterAdapter, PythonCfg
+from lg.adapters.python import PythonAdapter, PythonCfg
 from tests.adapters.conftest import assert_golden_match, create_temp_file
 
-pytestmark = pytest.mark.usefixtures("skip_if_no_tree_sitter")
 
-
-class TestPythonTreeSitterAdapter:
-    """Test suite for Python Tree-sitter adapter."""
+class TestPythonAdapter:
+    """Test suite for Python adapter."""
     
     def test_basic_function_stripping(self, python_code_sample, tmp_path):
         """Test basic function body stripping."""
-        adapter = PythonTreeSitterAdapter()
+        adapter = PythonAdapter()
         adapter._cfg = PythonCfg(strip_function_bodies=True)
         
-        result, meta = adapter.process(python_code_sample, group_size=1, mixed=False)
+        result, meta = adapter.process(python_code_sample, "py", group_size=1, mixed=False)
         
         # Check that functions were processed
         assert meta["code.removed.functions"] > 0
@@ -32,7 +28,7 @@ class TestPythonTreeSitterAdapter:
     
     def test_large_only_function_stripping(self, python_code_sample, tmp_path):
         """Test stripping only large functions."""
-        adapter = PythonTreeSitterAdapter()
+        adapter = PythonAdapter()
         adapter._cfg = PythonCfg(
             strip_function_bodies=FunctionBodyConfig(
                 mode="large_only",
@@ -40,7 +36,7 @@ class TestPythonTreeSitterAdapter:
             )
         )
         
-        result, meta = adapter.process(python_code_sample, group_size=1, mixed=False)
+        result, meta = adapter.process(python_code_sample, "py", group_size=1, mixed=False)
         
         # Should have fewer removals than basic test
         golden_file = tmp_path / "python_large_only_strip.golden"
@@ -48,10 +44,10 @@ class TestPythonTreeSitterAdapter:
     
     def test_no_stripping(self, python_code_sample):
         """Test with stripping disabled."""
-        adapter = PythonTreeSitterAdapter()
+        adapter = PythonAdapter()
         adapter._cfg = PythonCfg(strip_function_bodies=False)
         
-        result, meta = adapter.process(python_code_sample, group_size=1, mixed=False)
+        result, meta = adapter.process(python_code_sample, "py", group_size=1, mixed=False)
         
         # No functions should be removed
         assert meta["code.removed.functions"] == 0
@@ -62,7 +58,7 @@ class TestPythonTreeSitterAdapter:
     
     def test_trivial_init_py_skipping(self, tmp_path):
         """Test that trivial __init__.py files are skipped."""
-        adapter = PythonTreeSitterAdapter()
+        adapter = PythonAdapter()
         adapter._cfg = PythonCfg()
         
         # Test various trivial __init__.py patterns
@@ -80,7 +76,7 @@ class TestPythonTreeSitterAdapter:
             subdir = tmp_path / f"subdir_{i}"
             subdir.mkdir(exist_ok=True)
             init_file = create_temp_file(subdir, "__init__.py", content)
-            should_skip = adapter.should_skip(init_file, content)
+            should_skip = adapter.should_skip(init_file, content, "py")
             assert should_skip, f"Should skip trivial __init__.py: {repr(content)}"
         
         # Test non-trivial __init__.py
@@ -88,7 +84,7 @@ class TestPythonTreeSitterAdapter:
         real_package = tmp_path / "real_package"
         real_package.mkdir(exist_ok=True)
         non_trivial_file = create_temp_file(real_package, "__init__.py", non_trivial)
-        should_not_skip = adapter.should_skip(non_trivial_file, non_trivial)
+        should_not_skip = adapter.should_skip(non_trivial_file, non_trivial, "py")
         assert not should_not_skip, "Should not skip non-trivial __init__.py"
     
     def test_fallback_mode(self, python_code_sample, monkeypatch):
@@ -96,10 +92,10 @@ class TestPythonTreeSitterAdapter:
         # Mock Tree-sitter as unavailable
         monkeypatch.setattr("lg.adapters.code_base.is_tree_sitter_available", lambda: False)
         
-        adapter = PythonTreeSitterAdapter()
+        adapter = PythonAdapter()
         adapter._cfg = PythonCfg(strip_function_bodies=True)
         
-        result, meta = adapter.process(python_code_sample, group_size=1, mixed=False)
+        result, meta = adapter.process(python_code_sample, "py", group_size=1, mixed=False)
         
         # Should use fallback mode
         assert meta["_fallback_mode"] is True
@@ -108,10 +104,10 @@ class TestPythonTreeSitterAdapter:
     
     def test_metadata_collection(self, python_code_sample):
         """Test that metadata is properly collected."""
-        adapter = PythonTreeSitterAdapter()
+        adapter = PythonAdapter()
         adapter._cfg = PythonCfg(strip_function_bodies=True)
         
-        result, meta = adapter.process(python_code_sample, group_size=1, mixed=False)
+        result, meta = adapter.process(python_code_sample, "py", group_size=1, mixed=False)
         
         # Check required metadata fields
         required_fields = [
