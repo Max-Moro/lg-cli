@@ -3,10 +3,10 @@ Tests for import optimization implementation (M3).
 """
 
 from lg.adapters.code_model import ImportConfig
-from lg.adapters.python import PythonImportClassifier, PythonImportAnalyzer, PythonDocument
-from lg.adapters.python import PythonAdapter, PythonCfg
-from lg.adapters.typescript import TypeScriptImportClassifier, TypeScriptImportAnalyzer, TypeScriptDocument
-from lg.adapters.typescript import TypeScriptAdapter, TypeScriptCfg
+from lg.adapters.python.imports import PythonImportClassifier, PythonImportAnalyzer
+from lg.adapters.python.adapter import PythonAdapter, PythonCfg, PythonDocument
+from lg.adapters.typescript.imports import TypeScriptImportClassifier, TypeScriptImportAnalyzer
+from lg.adapters.typescript.adapter import TypeScriptAdapter, TypeScriptCfg, TypeScriptDocument
 
 
 class TestImportClassifier:
