@@ -253,58 +253,6 @@ function internalFunction() {
         # Private method body should be preserved (it's not public)
         assert "private multiply(a: number, b: number): number" in result
         assert "const result = a * b;" in result
-    
-    def test_barrel_file_detection(self):
-        """Test detection of TypeScript barrel files."""
-        barrel_code = '''export { UserService } from './user.service';
-export { ProductService } from './product.service';
-export * from './types';
-export { default as Utils } from './utils';
-'''
-        
-        adapter = TypeScriptAdapter()
-        adapter._cfg = TypeScriptCfg()
-        
-        # Create a mock context to test barrel file detection
-        from lg.adapters.typescript.adapter import TypeScriptDocument
-        from lg.adapters.context import ProcessingContext
-        from lg.adapters.range_edits import RangeEditor, PlaceholderGenerator
-        
-        doc = TypeScriptDocument(barrel_code, "ts")
-        editor = RangeEditor(barrel_code)
-        placeholder_gen = PlaceholderGenerator(adapter.get_comment_style())
-        context = ProcessingContext(doc, editor, placeholder_gen)
-        
-        # Test barrel file detection
-        is_barrel = adapter._is_barrel_file(context)
-        assert is_barrel is True
-    
-    def test_non_barrel_file_detection(self):
-        """Test that regular files are not detected as barrel files."""
-        regular_code = '''export class UserService {
-    constructor(private apiUrl: string) {}
-    
-    getUsers(): Promise<User[]> {
-        return fetch(this.apiUrl + '/users')
-            .then(response => response.json());
-    }
-}
-'''
-        
-        adapter = TypeScriptAdapter()
-        adapter._cfg = TypeScriptCfg()
-        
-        from lg.adapters.typescript.adapter import TypeScriptDocument
-        from lg.adapters.context import ProcessingContext
-        from lg.adapters.range_edits import RangeEditor, PlaceholderGenerator
-        
-        doc = TypeScriptDocument(regular_code, "ts")
-        editor = RangeEditor(regular_code)
-        placeholder_gen = PlaceholderGenerator(adapter.get_comment_style())
-        context = ProcessingContext(doc, editor, placeholder_gen)
-        
-        is_barrel = adapter._is_barrel_file(context)
-        assert is_barrel is False
 
 
 class TestPublicAPIFilteringEdgeCases:

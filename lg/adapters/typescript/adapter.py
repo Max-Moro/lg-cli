@@ -11,13 +11,14 @@ from tree_sitter import Language
 
 from ..code_base import CodeAdapter
 from ..code_model import CodeCfg
-from ..context import ProcessingContext
+from ..context import ProcessingContext, LightweightContext
 from ..tree_sitter_support import TreeSitterDocument, Node
 
 
 @dataclass
 class TypeScriptCfg(CodeCfg):
     """Конфигурация для TypeScript адаптера."""
+    skip_barrel_files: bool = False  # Пропускать barrel files (index.ts с реэкспортами)
     
     @staticmethod
     def from_dict(d: Optional[Dict[str, Any]]) -> TypeScriptCfg:
@@ -29,6 +30,7 @@ class TypeScriptCfg(CodeCfg):
         cfg.general_load(d)
 
         # TypeScript-специфичные настройки
+        cfg.skip_barrel_files = bool(d.get("skip_barrel_files", False))
 
         return cfg
 
@@ -77,6 +79,18 @@ class TypeScriptAdapter(CodeAdapter[TypeScriptCfg]):
         """Создает TypeScript-специфичный анализатор импортов."""
         from .imports import TypeScriptImportAnalyzer
         return TypeScriptImportAnalyzer(classifier)
+
+    def should_skip(self, lightweight_ctx: LightweightContext) -> bool:
+        """
+        TypeScript-специфичные эвристики пропуска файлов.
+        """
+        # Пропускаем barrel files если включена соответствующая опция
+        if self.cfg.skip_barrel_files:
+            if self._is_barrel_file(lightweight_ctx):
+                return True
+        
+        # Можно добавить другие эвристики пропуска для TypeScript
+        return False
 
     def hook__strip_function_bodies(self, context: ProcessingContext) -> None:
         """Хук для обработки стрелочных функций."""
@@ -191,16 +205,17 @@ class TypeScriptAdapter(CodeAdapter[TypeScriptCfg]):
         
         return False
 
-    def _is_barrel_file(self, context: ProcessingContext) -> bool:
+    def _is_barrel_file(self, lightweight_ctx: LightweightContext) -> bool:
         """
         Определяет, является ли файл barrel file (index.ts или содержит только реэкспорты).
+        Использует ленивую инициализацию - сначала простые эвристики, затем парсинг если нужно.
         """
-        # Проверяем имя файла
-        if context.doc.ext in ("index.ts", "index.tsx"):
+        # Быстрая проверка по имени файла
+        if lightweight_ctx.filename in ("index.ts", "index.tsx"):
             return True
         
-        # Анализируем содержимое - если большинство строк содержат export ... from
-        lines = context.doc.text.split('\n')
+        # Анализируем содержимое текстуально - если большинство строк содержат export ... from
+        lines = lightweight_ctx.raw_text.split('\n')
         export_lines = 0
         non_empty_lines = 0
         
@@ -211,5 +226,63 @@ class TypeScriptAdapter(CodeAdapter[TypeScriptCfg]):
                 if 'export' in stripped and 'from' in stripped:
                     export_lines += 1
         
-        # Если больше 50% строк - реэкспорты, считаем barrel file
-        return non_empty_lines > 0 and (export_lines / non_empty_lines) > 0.5
+        # Если нет значимых строк, не barrel file
+        if non_empty_lines == 0:
+            return False
+        
+        # Эвристика: если больше 70% строк - реэкспорты, считаем barrel file
+        export_ratio = export_lines / non_empty_lines
+        
+        # Если очевидно barrel file (много реэкспортов), возвращаем True
+        if export_ratio > 0.7:
+            return True
+        
+        # Если очевидно НЕ barrel file (мало реэкспортов), возвращаем False
+        if export_ratio < 0.3:
+            return False
+        
+        # Для промежуточных случаев (30-70%) используем ленивую инициализацию Tree-sitter
+        # для более точного анализа структуры файла
+        try:
+            full_context = lightweight_ctx.get_full_context(self)
+            return self._deep_barrel_file_analysis(full_context)
+        except Exception:
+            # Если Tree-sitter парсинг не удался, полагаемся на текстовую эвристику
+            return export_ratio > 0.5
+
+    def _deep_barrel_file_analysis(self, context: ProcessingContext) -> bool:
+        """
+        Глубокий анализ barrel file через Tree-sitter парсинг.
+        Вызывается только в сложных случаях.
+        """
+        try:
+            # Ищем все export statements
+            exports = context.query("exports")
+            export_count = len(exports)
+            
+            # Ищем re-export statements (export ... from ...)
+            reexport_count = 0
+            for node, capture_name in exports:
+                node_text = context.get_node_text(node)
+                if ' from ' in node_text:
+                    reexport_count += 1
+            
+            # Также ищем обычные объявления (functions, classes, interfaces)
+            functions = context.query("functions")
+            classes = context.query("classes")
+            interfaces = context.query("interfaces")
+            
+            declaration_count = len(functions) + len(classes) + len(interfaces)
+            
+            # Barrel file если:
+            # 1. Много реэкспортов и мало собственных объявлений
+            # 2. Или очень высокий процент реэкспортов
+            if export_count > 0:
+                reexport_ratio = reexport_count / export_count
+                return reexport_ratio > 0.6 and declaration_count < 3
+            
+            return False
+            
+        except Exception:
+            # При ошибках парсинга возвращаем False
+            return False

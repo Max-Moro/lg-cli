@@ -4,6 +4,7 @@ Tests for based TypeScript adapter.
 
 from lg.adapters.code_model import FunctionBodyConfig
 from lg.adapters.typescript import TypeScriptAdapter, TypeScriptCfg
+from lg.adapters.context import create_test_lightweight_context
 from tests.adapters.conftest import assert_golden_match
 
 
@@ -135,3 +136,126 @@ export class Calculator {
         
         # Should be nearly identical to original
         assert "return 42;" in result
+    
+    def test_barrel_file_detection_by_name(self):
+        """Test barrel file detection by filename."""
+        adapter = TypeScriptAdapter()
+        adapter._cfg = TypeScriptCfg(skip_barrel_files=True)
+        
+        # index.ts files should be detected as barrel files
+        index_ctx = create_test_lightweight_context(
+            raw_text="export { Component } from './component';",
+            filename="index.ts",
+            group_size=1,
+            mixed=False
+        )
+        
+        assert adapter._is_barrel_file(index_ctx) == True
+        assert adapter.should_skip(index_ctx) == True
+        
+        # index.tsx files should also be detected as barrel files  
+        index_tsx_ctx = create_test_lightweight_context(
+            raw_text="export { Component } from './component';",
+            filename="index.tsx",
+            group_size=1,
+            mixed=False
+        )
+        
+        assert adapter._is_barrel_file(index_tsx_ctx) == True
+        assert adapter.should_skip(index_tsx_ctx) == True
+
+    def test_barrel_file_detection_by_content(self, typescript_barrel_file_sample):
+        """Test barrel file detection by content analysis."""
+        adapter = TypeScriptAdapter()
+        adapter._cfg = TypeScriptCfg(skip_barrel_files=True)
+        
+        # Barrel file with many re-exports should be detected
+        barrel_ctx = create_test_lightweight_context(
+            raw_text=typescript_barrel_file_sample,
+            filename="exports.ts",  # Not index.ts to test content-based detection
+            group_size=1,
+            mixed=False
+        )
+        
+        assert adapter._is_barrel_file(barrel_ctx) == True
+        assert adapter.should_skip(barrel_ctx) == True
+
+    def test_non_barrel_file_detection(self, typescript_non_barrel_file_sample):
+        """Test that regular TypeScript files are not detected as barrel files."""
+        adapter = TypeScriptAdapter()
+        adapter._cfg = TypeScriptCfg(skip_barrel_files=True)
+        
+        # Regular component file should not be detected as barrel
+        regular_ctx = create_test_lightweight_context(
+            raw_text=typescript_non_barrel_file_sample,
+            filename="user.component.ts",
+            group_size=1,
+            mixed=False
+        )
+        
+        assert adapter._is_barrel_file(regular_ctx) == False
+        assert adapter.should_skip(regular_ctx) == False
+
+    def test_barrel_file_skipping_disabled(self, typescript_barrel_file_sample):
+        """Test that barrel files are not skipped when option is disabled."""
+        adapter = TypeScriptAdapter()
+        adapter._cfg = TypeScriptCfg(skip_barrel_files=False)  # Disabled
+        
+        # Even obvious barrel file should not be skipped when disabled
+        barrel_ctx = create_test_lightweight_context(
+            raw_text=typescript_barrel_file_sample,
+            filename="index.ts",
+            group_size=1,
+            mixed=False
+        )
+        
+        assert adapter._is_barrel_file(barrel_ctx) == True  # Still detected
+        assert adapter.should_skip(barrel_ctx) == False     # But not skipped
+    
+    def test_barrel_file_edge_cases(self):
+        """Test edge cases in barrel file detection."""
+        adapter = TypeScriptAdapter()
+        adapter._cfg = TypeScriptCfg(skip_barrel_files=True)
+        
+        # Empty file
+        empty_ctx = create_test_lightweight_context(
+            raw_text="",
+            filename="empty.ts",
+            group_size=1,
+            mixed=False
+        )
+        assert adapter._is_barrel_file(empty_ctx) == False
+        
+        # Only comments
+        comments_ctx = create_test_lightweight_context(
+            raw_text="// Just comments\n/* More comments */",
+            filename="comments.ts",
+            group_size=1,
+            mixed=False
+        )
+        assert adapter._is_barrel_file(comments_ctx) == False
+        
+        # Mixed content (some exports, some regular code)
+        mixed_ctx = create_test_lightweight_context(
+            raw_text="""
+export { Component } from './component';
+export { Service } from './service';
+
+function localFunction() {
+    return "local";
+}
+
+class LocalClass {
+    constructor() {}
+}
+
+export default LocalClass;
+            """,
+            filename="mixed.ts",
+            group_size=1,
+            mixed=False
+        )
+        # This should trigger deep analysis due to mixed content
+        result = adapter._is_barrel_file(mixed_ctx)
+        # Result may vary depending on Tree-sitter analysis, but shouldn't crash
+        assert isinstance(result, bool)
