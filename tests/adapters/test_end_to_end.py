@@ -5,6 +5,7 @@ Tests the complete pipeline from configuration to output.
 
 from lg.adapters.python import PythonAdapter, PythonCfg
 from lg.adapters.typescript import TypeScriptAdapter, TypeScriptCfg
+from tests.conftest import lctx_py, lctx_ts
 
 
 class TestEndToEndIntegration:
@@ -21,7 +22,7 @@ class TestEndToEndIntegration:
             }
         })
 
-        result, meta = adapter.process(python_code_sample, "py", group_size=1, mixed=False)
+        result, meta = adapter.process(lctx_py(raw_text=python_code_sample))
 
         # Verify processing occurred
         assert meta.get("code.removed.functions", 0) >= 0
@@ -50,7 +51,7 @@ class TestEndToEndIntegration:
             }
         })
 
-        result, meta = adapter.process(typescript_code_sample, "ts", group_size=1, mixed=False)
+        result, meta = adapter.process(lctx_ts(raw_text=typescript_code_sample))
 
         # Verify processing occurred
         assert meta["_adapter"] == "typescript"
@@ -71,7 +72,7 @@ class TestEndToEndIntegration:
         malformed_code = "def incomplete_function("
         
         # Should not crash, even with syntax errors
-        result, meta = adapter.process(malformed_code, "py", group_size=1, mixed=False)
+        result, meta = adapter.process(lctx_py(raw_text=malformed_code))
         
         # Should have processed something
         assert meta["_adapter"] == "python"

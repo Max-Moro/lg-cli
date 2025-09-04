@@ -4,7 +4,7 @@ Tests for based TypeScript adapter.
 
 from lg.adapters.code_model import FunctionBodyConfig
 from lg.adapters.typescript import TypeScriptAdapter, TypeScriptCfg
-from tests.adapters.conftest import assert_golden_match
+from tests.adapters.conftest import assert_golden_match, lctx, lctx_ts
 
 
 class TestTypeScriptAdapter:
@@ -15,7 +15,7 @@ class TestTypeScriptAdapter:
         adapter = TypeScriptAdapter()
         adapter._cfg = TypeScriptCfg(strip_function_bodies=True)
         
-        result, meta = adapter.process(typescript_code_sample, "ts", group_size=1, mixed=False)
+        result, meta = adapter.process(lctx_ts(raw_text=typescript_code_sample))
         
         # Check that functions were processed
         assert meta["code.removed.functions"] >= 0  # May not find arrow functions in sample
@@ -48,7 +48,7 @@ class TestTypeScriptAdapter:
             )
         )
         
-        result, meta = adapter.process(typescript_code_sample, "ts", group_size=1, mixed=False)
+        result, meta = adapter.process(lctx_ts(raw_text=typescript_code_sample))
         
         # Should have fewer removals than basic test
         golden_file = tmp_path / "typescript_large_only_strip.golden"
@@ -76,7 +76,7 @@ const multiline = (users) => {
         adapter = TypeScriptAdapter()
         adapter._cfg = TypeScriptCfg(strip_function_bodies=True)
         
-        result, meta = adapter.process(arrow_code, "ts", group_size=1, mixed=False)
+        result, meta = adapter.process(lctx_ts(raw_text=arrow_code))
         
         # Should only strip multiline arrow functions
         assert 'const simple = () => "hello";' in result  # Single line preserved
@@ -111,7 +111,7 @@ export class Calculator {
         adapter = TypeScriptAdapter()
         adapter._cfg = TypeScriptCfg(strip_function_bodies=True)
         
-        result, meta = adapter.process(class_code, "ts", group_size=1, mixed=False)
+        result, meta = adapter.process(lctx_ts(raw_text=class_code))
         
         # Class structure should be preserved
         assert "export class Calculator {" in result
@@ -131,7 +131,7 @@ export class Calculator {
         adapter = TypeScriptAdapter()
         adapter._cfg = TypeScriptCfg(strip_function_bodies=False)
         
-        result, meta = adapter.process(code, "ts", group_size=1, mixed=False)
+        result, meta = adapter.process(lctx_ts(raw_text=code))
         
         # Should be nearly identical to original
         assert "return 42;" in result

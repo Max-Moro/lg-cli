@@ -1,6 +1,8 @@
 from lg.adapters.markdown import MarkdownAdapter
 
 
+from tests.conftest import lctx_md
+
 def test_drop_section_by_text_with_placeholder():
     text = """\
 # Title
@@ -27,7 +29,7 @@ ok
         "max_heading_level": 2,
     }
     adapter = MarkdownAdapter().bind(cfg)  # type: ignore
-    out, meta = adapter.process(text, "md", group_size=1, mixed=False)
+    out, meta = adapter.process(lctx_md(raw_text=text))
     # Раздел Installation должен исчезнуть и появиться placeholder
     assert "Installation" not in out
     assert "step 1" not in out
@@ -59,7 +61,7 @@ Body
         "max_heading_level": None,
     }
     adapter = MarkdownAdapter().bind(cfg)  # type: ignore
-    out, meta = adapter.process(text, "md", group_size=1, mixed=False)
+    out, meta = adapter.process(lctx_md(raw_text=text))
     assert "noise" not in out
     assert "lg:omit" not in out
     assert "Body" in out
@@ -83,7 +85,7 @@ title: Doc
         "max_heading_level": None,
     }
     adapter = MarkdownAdapter().bind(cfg)  # type: ignore
-    out, meta = adapter.process(text, "md", group_size=1, mixed=False)
+    out, meta = adapter.process(lctx_md(raw_text=text))
     # frontmatter исчез
     assert out.startswith("# H1")
     assert meta.get("md.removed.frontmatter") is True
@@ -109,7 +111,7 @@ tail
         "max_heading_level": None,
     }
     from lg.adapters.markdown import MarkdownAdapter
-    out, meta = MarkdownAdapter().bind(cfg).process(text, "md", group_size=1, mixed=False)  # type: ignore
+    out, meta = MarkdownAdapter().bind(cfg).process(lctx_md(raw_text=text))  # type: ignore
     assert "noise" not in out
     assert "lg:omit" not in out
     assert "tail" in out
@@ -138,7 +140,7 @@ tail
         "max_heading_level": None,
     }
     from lg.adapters.markdown import MarkdownAdapter
-    out, meta = MarkdownAdapter().bind(cfg).process(text, "md", group_size=1, mixed=False)  # type: ignore
+    out, meta = MarkdownAdapter().bind(cfg).process(lctx_md(raw_text=text))  # type: ignore
     assert "noise" not in out
     assert "lg:omit" not in out
     assert "tail" in out
@@ -164,7 +166,7 @@ ok
         "max_heading_level": None,
     }
     from lg.adapters.markdown import MarkdownAdapter
-    out, meta = MarkdownAdapter().bind(cfg).process(text, "md", group_size=1, mixed=False)  # type: ignore
+    out, meta = MarkdownAdapter().bind(cfg).process(lctx_md(raw_text=text))  # type: ignore
     assert "noise" not in out
     assert int(meta.get("md.placeholders", 0)) == 1
     assert "ok" in out
@@ -181,7 +183,7 @@ ok
 """
     # Конфиг без drop: {}
     cfg = {"max_heading_level": None}
-    out, meta = MarkdownAdapter().bind(cfg).process(text, "md", group_size=1, mixed=False)  # type: ignore
+    out, meta = MarkdownAdapter().bind(cfg).process(lctx_md(raw_text=text))  # type: ignore
     assert "noise" not in out
     assert "lg:omit" not in out
     assert "ok" in out

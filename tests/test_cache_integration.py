@@ -16,9 +16,9 @@ def test_processed_cache_skips_adapter_on_second_run(tmpproj: Path, monkeypatch)
     import lg.adapters.python.adapter as py_ad
     orig_process = py_ad.PythonAdapter.process
 
-    def wrapped_process(self, text, ext, group_size, mixed):
+    def wrapped_process(self, lightweight_ctx):
         calls["process"] += 1
-        return orig_process(self, text, ext, group_size, mixed)
+        return orig_process(self, lightweight_ctx)
 
     monkeypatch.setattr(py_ad.PythonAdapter, "process", wrapped_process, raising=True)
 

@@ -5,7 +5,7 @@ Tests for based Python adapter.
 import pytest
 from lg.adapters.code_model import FunctionBodyConfig
 from lg.adapters.python import PythonAdapter, PythonCfg
-from tests.adapters.conftest import assert_golden_match, create_temp_file
+from .conftest import assert_golden_match, lctx, lctx_py
 
 
 class TestPythonAdapter:
@@ -17,9 +17,7 @@ class TestPythonAdapter:
         adapter._cfg = PythonCfg(strip_function_bodies=True)
         
         # Create lightweight context with sample code
-        ctx = lctx(
-            raw_text=python_code_sample,
-        )
+        ctx = lctx_py(raw_text=python_code_sample)
         
         result, meta = adapter.process(ctx)
         
@@ -42,7 +40,7 @@ class TestPythonAdapter:
             )
         )
         
-        result, meta = adapter.process(python_code_sample, "py", group_size=1, mixed=False)
+        result, meta = adapter.process(lctx_py(raw_text=python_code_sample))
         
         # Should have fewer removals than basic test
         golden_file = tmp_path / "python_large_only_strip.golden"
@@ -53,7 +51,7 @@ class TestPythonAdapter:
         adapter = PythonAdapter()
         adapter._cfg = PythonCfg(strip_function_bodies=False)
         
-        result, meta = adapter.process(python_code_sample, "py", group_size=1, mixed=False)
+        result, meta = adapter.process(lctx_py(raw_text=python_code_sample))
         
         # No functions should be removed
         # Result should be close to original (may have minor whitespace changes)
@@ -106,14 +104,14 @@ class TestPythonAdapter:
         
         # Should handle parsing errors gracefully
         with pytest.raises(Exception):
-            adapter.process("def test(): pass", "py", group_size=1, mixed=False)
+            adapter.process(lctx_py(raw_text="def test(): pass"))
     
     def test_metadata_collection(self, python_code_sample):
         """Test that metadata is properly collected."""
         adapter = PythonAdapter()
         adapter._cfg = PythonCfg(strip_function_bodies=True)
         
-        result, meta = adapter.process(python_code_sample, "py", group_size=1, mixed=False)
+        result, meta = adapter.process(lctx_py(raw_text=python_code_sample))
         
         # Check required metadata fields
         required_fields = [

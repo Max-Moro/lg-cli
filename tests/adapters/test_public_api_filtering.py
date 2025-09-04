@@ -5,6 +5,7 @@ Tests for public API filtering functionality (M4).
 from lg.adapters.python import PythonAdapter, PythonCfg
 from lg.adapters.typescript import TypeScriptAdapter, TypeScriptCfg
 from lg.adapters.code_model import FunctionBodyConfig
+from .conftest import lctx_py, lctx_ts
 
 
 class TestPublicAPIFilteringPython:
@@ -35,7 +36,7 @@ class TestPublicAPIFilteringPython:
         adapter = PythonAdapter()
         adapter._cfg = PythonCfg(public_api_only=True)
         
-        result, meta = adapter.process(code, "py", group_size=1, mixed=False)
+        result, meta = adapter.process(lctx_py(raw_text=code))
         
         # Public methods should be preserved
         assert "def add(self, a, b):" in result
@@ -67,7 +68,7 @@ def __very_private():
         adapter = PythonAdapter()
         adapter._cfg = PythonCfg(public_api_only=True)
         
-        result, meta = adapter.process(code, "py", group_size=1, mixed=False)
+        result, meta = adapter.process(lctx_py(raw_text=code))
         
         # Public function should be preserved
         assert "def public_function():" in result
@@ -97,7 +98,7 @@ def _private_function():
         function_config = FunctionBodyConfig(mode="public_only")
         adapter._cfg = PythonCfg(strip_function_bodies=function_config)
         
-        result, meta = adapter.process(code, "py", group_size=1, mixed=False)
+        result, meta = adapter.process(lctx_py(raw_text=code))
         
         # Public function body should be stripped
         assert "def public_function():" in result
@@ -129,7 +130,7 @@ def _private_function():
         function_config = FunctionBodyConfig(mode="non_public")
         adapter._cfg = PythonCfg(strip_function_bodies=function_config)
         
-        result, meta = adapter.process(code, "py", group_size=1, mixed=False)
+        result, meta = adapter.process(lctx_py(raw_text=code))
         
         # Public function body should be preserved
         assert "def public_function():" in result
@@ -171,7 +172,7 @@ class TestPublicAPIFilteringTypeScript:
         adapter = TypeScriptAdapter()
         adapter._cfg = TypeScriptCfg(public_api_only=True)
         
-        result, meta = adapter.process(code, "ts", group_size=1, mixed=False)
+        result, meta = adapter.process(lctx_ts(raw_text=code))
         
         # Public methods should be preserved
         assert "public getName():" in result
@@ -209,7 +210,7 @@ function internalFunction() {
         adapter = TypeScriptAdapter()
         adapter._cfg = TypeScriptCfg(public_api_only=True)
         
-        result, meta = adapter.process(code, "ts", group_size=1, mixed=False)
+        result, meta = adapter.process(lctx_ts(raw_text=code))
         
         # Exported elements should be preserved
         assert "export class PublicClass" in result
@@ -242,7 +243,7 @@ function internalFunction() {
         function_config = FunctionBodyConfig(mode="public_only")
         adapter._cfg = TypeScriptCfg(strip_function_bodies=function_config)
         
-        result, meta = adapter.process(code, "ts", group_size=1, mixed=False)
+        result, meta = adapter.process(lctx_ts(raw_text=code))
         
         # Public method body should be stripped
         assert "public add(a: number, b: number): number" in result
@@ -267,7 +268,7 @@ class TestPublicAPIFilteringEdgeCases:
         adapter = PythonAdapter()
         adapter._cfg = PythonCfg(public_api_only=True)
         
-        result, meta = adapter.process(code, "py", group_size=1, mixed=False)
+        result, meta = adapter.process(lctx_py(raw_text=code))
         
         # Empty public class should be preserved
         assert "class EmptyClass:" in result
@@ -293,7 +294,7 @@ class TestPublicAPIFilteringEdgeCases:
         adapter = PythonAdapter()
         adapter._cfg = PythonCfg(public_api_only=True)
         
-        result, meta = adapter.process(code, "py", group_size=1, mixed=False)
+        result, meta = adapter.process(lctx_py(raw_text=code))
         
         # Public elements should be preserved
         assert "def public_method(self):" in result
@@ -317,7 +318,7 @@ import sys
         adapter = PythonAdapter()
         adapter._cfg = PythonCfg(public_api_only=True)
         
-        result, meta = adapter.process(code, "py", group_size=1, mixed=False)
+        result, meta = adapter.process(lctx_py(raw_text=code))
         
         # Should be preserved since there are no private elements to filter
         assert "PI = 3.14159" in result
@@ -342,7 +343,7 @@ def _private_function():
             comment_policy="keep_doc"
         )
         
-        result, meta = adapter.process(code, "py", group_size=1, mixed=False)
+        result, meta = adapter.process(lctx_py(raw_text=code))
         
         # Public function and its docstring should be preserved
         assert "def public_function():" in result

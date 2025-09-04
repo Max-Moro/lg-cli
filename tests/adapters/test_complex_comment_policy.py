@@ -5,6 +5,7 @@ Tests for complex comment policy implementation (CommentConfig).
 from lg.adapters.python import PythonAdapter, PythonCfg
 from lg.adapters.typescript import TypeScriptAdapter, TypeScriptCfg
 from lg.adapters.code_model import CommentConfig
+from .conftest import lctx_py, lctx_ts
 
 
 class TestComplexCommentPolicyPython:
@@ -29,7 +30,7 @@ def hello():
         )
         adapter._cfg = PythonCfg(comment_policy=comment_config)
         
-        result, meta = adapter.process(code, "py", group_size=1, mixed=False)
+        result, meta = adapter.process(lctx_py(raw_text=code))
         
         # Should preserve TODO and FIXME comments
         assert "# TODO: Implement this feature" in result
@@ -58,7 +59,7 @@ def hello():
         )
         adapter._cfg = PythonCfg(comment_policy=comment_config)
         
-        result, meta = adapter.process(code, "py", group_size=1, mixed=False)
+        result, meta = adapter.process(lctx_py(raw_text=code))
         
         # Should remove copyright and license comments
         assert "# … comment omitted" in result
@@ -86,7 +87,7 @@ def hello():
         )
         adapter._cfg = PythonCfg(comment_policy=comment_config)
         
-        result, meta = adapter.process(code, "py", group_size=1, mixed=False)
+        result, meta = adapter.process(lctx_py(raw_text=code))
         
         # Should contain truncated comments with "..."
         assert "..." in result
@@ -115,7 +116,7 @@ def hello():
         )
         adapter._cfg = PythonCfg(comment_policy=comment_config)
         
-        result, meta = adapter.process(code, "py", group_size=1, mixed=False)
+        result, meta = adapter.process(lctx_py(raw_text=code))
         
         # Should preserve TODO but truncate it
         assert "# TODO: Implement this very lo..." in result
@@ -139,7 +140,7 @@ def hello():
         )
         adapter._cfg = PythonCfg(comment_policy=comment_config)
         
-        result, meta = adapter.process(code, "py", group_size=1, mixed=False)
+        result, meta = adapter.process(lctx_py(raw_text=code))
         
         # TODO with "copyright" should be stripped (strip_patterns wins)
         assert "# TODO: Remove this copyright notice" not in result
@@ -162,7 +163,7 @@ def hello():
         )
         adapter._cfg = PythonCfg(comment_policy=comment_config)
         
-        result, meta = adapter.process(code, "py", group_size=1, mixed=False)
+        result, meta = adapter.process(lctx_py(raw_text=code))
         
         # Should extract first sentence and then apply max_length
         assert "This is the first..." in result or "This is the first sentence..." in result
@@ -196,7 +197,7 @@ function greet(user: User) {
         )
         adapter._cfg = TypeScriptCfg(comment_policy=comment_config)
         
-        result, meta = adapter.process(code, "ts", group_size=1, mixed=False)
+        result, meta = adapter.process(lctx_ts(raw_text=code))
         
         # Should preserve TODO and FIXME comments
         assert "// TODO: Implement this interface" in result
@@ -224,7 +225,7 @@ function greet(user: User) {
         )
         adapter._cfg = TypeScriptCfg(comment_policy=comment_config)
         
-        result, meta = adapter.process(code, "ts", group_size=1, mixed=False)
+        result, meta = adapter.process(lctx_ts(raw_text=code))
         
         # Should contain truncated comment
         assert "..." in result
@@ -248,7 +249,7 @@ interface User {
         )
         adapter._cfg = TypeScriptCfg(comment_policy=comment_config)
         
-        result, meta = adapter.process(code, "ts", group_size=1, mixed=False)
+        result, meta = adapter.process(lctx_ts(raw_text=code))
         
         # Should remove copyright header
         assert "/* … comment omitted */" in result or "// … comment omitted" in result
@@ -277,7 +278,7 @@ def hello():
         )
         adapter._cfg = PythonCfg(comment_policy=comment_config)
         
-        result, meta = adapter.process(code, "py", group_size=1, mixed=False)
+        result, meta = adapter.process(lctx_py(raw_text=code))
         
         # Should behave like normal keep_doc policy
         assert "# … comment omitted" in result  # Both TODO and regular comment removed
@@ -297,7 +298,7 @@ def hello():
         )
         adapter._cfg = PythonCfg(comment_policy=comment_config)
         
-        result, meta = adapter.process(code, "py", group_size=1, mixed=False)
+        result, meta = adapter.process(lctx_py(raw_text=code))
         
         # All comments should be truncated to just "..." since max_length=0
         # Both comment and docstring should be affected
@@ -323,7 +324,7 @@ def hello():
         )
         adapter._cfg = PythonCfg(comment_policy=comment_config)
         
-        result, meta = adapter.process(code, "py", group_size=1, mixed=False)
+        result, meta = adapter.process(lctx_py(raw_text=code))
         
         # All variations should be preserved due to case-insensitive matching
         assert "# todo: lowercase" in result
@@ -344,7 +345,7 @@ def hello():
         adapter._cfg = PythonCfg(comment_policy=comment_config)
         
         # Should handle regex errors gracefully
-        result, meta = adapter.process(code, "py", group_size=1, mixed=False)
+        result, meta = adapter.process(lctx_py(raw_text=code))
         
         # Should fall back to base policy (strip_all)
         assert "# … comment omitted" in result
@@ -367,7 +368,7 @@ def hello():
         )
         adapter._cfg = PythonCfg(comment_policy=comment_config)
         
-        result, meta = adapter.process(code, "py", group_size=1, mixed=False)
+        result, meta = adapter.process(lctx_py(raw_text=code))
         
         # Should preserve docstrings (base policy)
         assert '"""Module docstring."""' in result

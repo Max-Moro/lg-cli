@@ -16,6 +16,17 @@ src:
           - "/cache/"
           - "/context/"
           - "/_skeletons/"
+          - "/adapters/code_base.py"
+          - "/manifest/builder.py"
+          - "/diag**"
+          - "/scaffold.py"
+          - "/adapters/range_edits.py"
+          - "/adapters/typescript/adapter.py"
+          - "/adapters/python/adapter.py"
+          - "/adapters/code_model.py"
+          - "/adapters/python/imports.py"
+          - "/tests/adapters/test_complex_comment_policy.py"
+          - "/tests/adapters/test_public_api_filtering.py"
 
 src-short:
   extensions: [".py"]

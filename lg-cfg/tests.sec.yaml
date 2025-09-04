@@ -5,6 +5,12 @@ all:
     mode: allow
     allow:
       - "/tests/"
+    children:
+      tests:
+        mode: block
+        block:
+          - "/adapters/test_complex_comment_policy.py"
+          - "/adapters/test_public_api_filtering.py"
 
 basic:
   extensions: [".py"]

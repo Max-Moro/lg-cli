@@ -9,6 +9,9 @@ import pytest
 
 from lg.adapters.context import LightweightContext
 
+# Экспортируем хелперы для использования в других тестах
+__all__ = ["lctx", "lctx_py", "lctx_ts", "lctx_md", "write", "run_cli", "jload"]
+
 
 def write(p: Path, text: str) -> Path:
     p.parent.mkdir(parents=True, exist_ok=True)
@@ -84,6 +87,21 @@ def lctx(
         group_size=group_size,
         mixed=mixed
     )
+
+
+def lctx_py(raw_text: str = "# Test Python", group_size: int = 1, mixed: bool = False) -> LightweightContext:
+    """Создает LightweightContext для Python файла."""
+    return lctx(raw_text=raw_text, filename="test.py", group_size=group_size, mixed=mixed)
+
+
+def lctx_ts(raw_text: str = "// Test TypeScript", group_size: int = 1, mixed: bool = False) -> LightweightContext:
+    """Создает LightweightContext для TypeScript файла.""" 
+    return lctx(raw_text=raw_text, filename="test.ts", group_size=group_size, mixed=mixed)
+
+
+def lctx_md(raw_text: str = "# Test Markdown", group_size: int = 1, mixed: bool = False) -> LightweightContext:
+    """Создает LightweightContext для Markdown файла."""
+    return lctx(raw_text=raw_text, filename="test.md", group_size=group_size, mixed=mixed)
 
 
 def jload(s: str):

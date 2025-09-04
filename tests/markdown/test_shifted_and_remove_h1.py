@@ -2,6 +2,7 @@ import re
 import pytest
 
 from lg.adapters.markdown import MarkdownAdapter
+from tests.conftest import lctx_md
 
 # Помощник: проверяем только ожидаемые поля, не требуя точного совпадения всех ключей.
 def assert_meta_subset(meta: dict, expected_subset: dict):
@@ -62,7 +63,7 @@ def make_adapter(max_lvl):
 ])
 def test_header_normalization(text, max_lvl, group_size, mixed, expected, expected_meta):
     adapter = make_adapter(max_lvl)
-    out, meta = adapter.process(text, "md", group_size, mixed)
+    out, meta = adapter.process(lctx_md(text, group_size, mixed))
     # сравниваем линии напрямую
     assert out == expected
     # и метаданные тоже
@@ -72,7 +73,7 @@ def test_only_strips_single_h1_line_when_alone():
     # если только H1 и никаких подзаголовков – убираем его, получаем пустую строку
     text = "# Lone Title\n"
     adapter = make_adapter(3)
-    out, meta = adapter.process(text, "md", group_size=1, mixed=False)
+    out, meta = adapter.process(lctx_md(raw_text=text))
     assert out == ""
     # В этом граничном кейсе min_lvl отсутствует → shifted остаётся False,
     # но removed_h1 обязательно должен быть 1.
@@ -82,7 +83,7 @@ def test_complex_markdown_preserves_non_header_content():
     text = "# T\n## A\nPara line\n### B\n- item\n"
     adapter = make_adapter(2)
     # group_size=1 → удаляет # T, shift = 2-2 = 0
-    out, meta = adapter.process(text, "md", group_size=1, mixed=False)
+    out, meta = adapter.process(lctx_md(raw_text=text))
     lines = out.splitlines()
     # первая строка должна быть "## A"
     assert lines[0] == "## A"
@@ -112,7 +113,7 @@ print("hello")
     # Убираем H1, max_heading_level=2 → Next Section остаётся на уровне 2,
     # а комментарий в коде не трогаем
     adapter = make_adapter(2)
-    out, meta = adapter.process(text, "md", group_size=1, mixed=False)
+    out, meta = adapter.process(lctx_md(raw_text=text))
     lines = out.splitlines()
 
 

@@ -7,6 +7,7 @@ from lg.adapters.python.imports import PythonImportClassifier, PythonImportAnaly
 from lg.adapters.python.adapter import PythonAdapter, PythonCfg, PythonDocument
 from lg.adapters.typescript.imports import TypeScriptImportClassifier, TypeScriptImportAnalyzer
 from lg.adapters.typescript.adapter import TypeScriptAdapter, TypeScriptCfg, TypeScriptDocument
+from tests.conftest import lctx_py, lctx_ts
 
 
 class TestImportClassifier:
@@ -149,7 +150,7 @@ def main():
         import_config = ImportConfig(policy="keep_all")
         adapter._cfg = PythonCfg(import_config=import_config)
         
-        result, meta = adapter.process(code, "py", group_size=1, mixed=False)
+        result, meta = adapter.process(lctx_py(raw_text=code))
         
         # All imports should be preserved
         assert "import os" in result
@@ -174,7 +175,7 @@ def main():
         import_config = ImportConfig(policy="external_only")
         adapter._cfg = PythonCfg(import_config=import_config)
         
-        result, meta = adapter.process(code, "py", group_size=1, mixed=False)
+        result, meta = adapter.process(lctx_py(raw_text=code))
         
         # External imports should be preserved
         assert "import os" in result
@@ -205,7 +206,7 @@ def main():
         )
         adapter._cfg = PythonCfg(import_config=import_config)
         
-        result, meta = adapter.process(code, "py", group_size=1, mixed=False)
+        result, meta = adapter.process(lctx_py(raw_text=code))
         
         # Should contain summarization placeholders
         assert "external imports" in result or meta["code.removed.imports"] > 0
@@ -231,7 +232,7 @@ export class MyComponent {
         import_config = ImportConfig(policy="external_only")
         adapter._cfg = TypeScriptCfg(import_config=import_config)
         
-        result, meta = adapter.process(code, "ts", group_size=1, mixed=False)
+        result, meta = adapter.process(lctx_ts(raw_text=code))
         
         # External imports should be preserved
         assert "react" in result
@@ -259,7 +260,7 @@ export class MyClass {
         )
         adapter._cfg = TypeScriptCfg(import_config=import_config)
         
-        result, meta = adapter.process(code, "ts", group_size=1, mixed=False)
+        result, meta = adapter.process(lctx_ts(raw_text=code))
         
         # Should be summarized
         assert "external imports" in result or meta["code.removed.imports"] > 0
@@ -278,7 +279,7 @@ class TestImportOptimizationEdgeCases:
         import_config = ImportConfig(policy="external_only")
         adapter._cfg = PythonCfg(import_config=import_config)
         
-        result, meta = adapter.process(code, "py", group_size=1, mixed=False)
+        result, meta = adapter.process(lctx_py(raw_text=code))
         
         assert result == code  # Should be unchanged
     
@@ -300,7 +301,7 @@ def main():
         )
         adapter._cfg = PythonCfg(import_config=import_config)
         
-        result, meta = adapter.process(code, "py", group_size=1, mixed=False)
+        result, meta = adapter.process(lctx_py(raw_text=code))
         
         # Should preserve os, numpy, and myapp (due to custom pattern)
         assert "import os" in result
@@ -324,10 +325,10 @@ def main():
         
         # Test inline style
         adapter._cfg.placeholders.style = "inline"
-        result, meta = adapter.process(code, "py", group_size=1, mixed=False)
+        result, meta = adapter.process(lctx_py(raw_text=code))
         assert "# … 1 imports omitted" in result
         
         # Test block style
         adapter._cfg.placeholders.style = "block"
-        result, meta = adapter.process(code, "py", group_size=1, mixed=False)
+        result, meta = adapter.process(lctx_py(raw_text=code))
         assert "imports omitted" in result  # Should still contain the message
