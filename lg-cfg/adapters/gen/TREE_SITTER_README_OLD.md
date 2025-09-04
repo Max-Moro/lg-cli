@@ -155,7 +155,6 @@ class UserService {
 
 ### M4: Public API Only
 - [ ] Синтаксическая фильтрация (export, public модификаторы)
-- [ ] Интеграция с нативными парсерами (опционально)
 - [ ] TypeScript barrel files и реэкспорты
 
 ### M5: Literal Trimming
