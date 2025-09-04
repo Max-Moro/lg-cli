@@ -317,7 +317,3 @@ class ProcessingContext:
         placeholder_gen = PlaceholderGenerator(adapter.get_comment_style())
         
         return cls(doc, editor, placeholder_gen)
-
-
-# ===== TEST UTILITIES ===== #
-

@@ -57,33 +57,45 @@ class TestPythonAdapter:
         # Result should be close to original (may have minor whitespace changes)
         assert "def add(self, a: int, b: int) -> int:" in result
         assert "result = a + b" in result
-    
+
     def test_trivial_init_py_skipping(self, tmp_path):
         """Test that trivial __init__.py files are skipped."""
         adapter = PythonAdapter()
         adapter._cfg = PythonCfg()
-        
-        # Test various trivial __init__.py patterns
+
+        # Тривиальные случаи (__init__.py): пусто, pass, ..., комментарии + pass/...
         trivial_cases = [
             "",
             "pass",
             "...",
-            "# Comment only",
             "# Comment\npass",
             "# Comment\n...",
         ]
-        
+
         for i, content in enumerate(trivial_cases):
-            # Создаем контекст для __init__.py файла
             ctx = lctx(
                 raw_text=content,
                 filename="__init__.py",
             )
             should_skip = adapter.should_skip(ctx)
             assert should_skip, f"Should skip trivial __init__.py: {repr(content)}"
-        
-        # Test non-trivial __init__.py
-        non_trivial = "from .module import something\npass"
+
+        # Только комментарии — НЕ тривиальный
+        comment_only_ctx = lctx(
+            raw_text="# Comment only",
+            filename="__init__.py",
+        )
+        assert not adapter.should_skip(comment_only_ctx), "Comment-only __init__.py must NOT be considered trivial"
+
+        # Редекларация публичного API (только относительные импорты / __all__) — тривиальный
+        reexport_ctx = lctx(
+            raw_text="from .module import something\n__all__ = ['something']",
+            filename="__init__.py",
+        )
+        assert adapter.should_skip(reexport_ctx), "Re-export-only __init__.py should be considered trivial"
+
+        # Нетривиальный: есть «настоящее» содержимое
+        non_trivial = "from .module import something\nvalue = 42"
         non_trivial_ctx = lctx(
             raw_text=non_trivial,
             filename="__init__.py",

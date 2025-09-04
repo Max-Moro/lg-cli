@@ -268,8 +268,6 @@ all:
      skip_empty: true
      # Пропускать тривиальные __init__.py
      skip_trivial_inits: true
-     # Максимум значимых строк в __init__.py для его оставления
-     trivial_init_max_noncomment: 1
    
    java:
      # Не пропускать пустые .java-файлы
@@ -348,7 +346,6 @@ core-model-src:
   python:
     skip_empty: true
     skip_trivial_inits: true
-    trivial_init_max_noncomment: 1
   filters:
     mode: allow
     allow:

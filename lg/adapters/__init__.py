@@ -13,8 +13,8 @@ __all__ = ["process_groups", "get_adapter_for_path", "register_lazy"]
 # Модуль адаптера будет импортирован ровно в момент первого запроса по расширению.
 
 # Tree-sitter based adapters
-register_lazy(module=".python.adapter", class_name="PythonAdapter", extensions=[".py"])
-register_lazy(module=".typescript.adapter", class_name="TypeScriptAdapter", extensions=[".ts", ".tsx"])
+register_lazy(module=".python", class_name="PythonAdapter", extensions=[".py"])
+register_lazy(module=".typescript", class_name="TypeScriptAdapter", extensions=[".ts", ".tsx"])
 
 # Markdown adapter
 register_lazy(module=".markdown", class_name="MarkdownAdapter", extensions=[".md", ".markdown"])

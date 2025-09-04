@@ -118,7 +118,6 @@ core-model-src:
   skip_empty: true
   python:
     skip_trivial_inits: true
-    trivial_init_max_noncomment: 1
   markdown:
     max_heading_level: 3
   filters:

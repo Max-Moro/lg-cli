@@ -5,7 +5,6 @@ Python adapter core: configuration, document and adapter classes.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from pathlib import Path
 from typing import Dict, Any, List, Optional
 
 from tree_sitter import Language
@@ -20,7 +19,6 @@ from ..tree_sitter_support import TreeSitterDocument, Node
 class PythonCfg(CodeCfg):
     """Конфигурация для Python адаптера."""
     skip_trivial_inits: bool = True
-    trivial_init_max_noncomment: int = 1
 
     @staticmethod
     def from_dict(d: Optional[Dict[str, Any]]) -> PythonCfg:
@@ -33,7 +31,6 @@ class PythonCfg(CodeCfg):
 
         # Python-специфичные настройки
         cfg.skip_trivial_inits = bool(d.get("skip_trivial_inits", True))
-        cfg.trivial_init_max_noncomment = int(d.get("trivial_init_max_noncomment", 1))
 
         return cfg
 
@@ -75,36 +72,104 @@ class PythonAdapter(CodeAdapter[PythonCfg]):
         """Создает Python-специфичный анализатор импортов."""
         from .imports import PythonImportAnalyzer
         return PythonImportAnalyzer(classifier)
-    
+
     def should_skip(self, lightweight_ctx: LightweightContext) -> bool:
         """
         Python-специфичные эвристики пропуска.
         """
-        if lightweight_ctx.filename == "__init__.py":
-            # Проверяем на тривиальные __init__.py файлы
-            significant = [
-                ln.strip()
-                for ln in lightweight_ctx.raw_text.splitlines()
-                if ln.strip() and not ln.lstrip().startswith("#")
-            ]
-
-            skip_trivial = self.cfg.skip_trivial_inits
-            limit = self.cfg.trivial_init_max_noncomment
-
-            if not skip_trivial:
-                return False
-
-            # Пустой файл должен быть пропущен
-            if len(significant) == 0:
-                return True
-
-            # Файлы с только pass/... в пределах лимита должны быть пропущены
-            if len(significant) <= limit and all(
-                    ln in ("pass", "...") for ln in significant
-            ):
+        # Пропускаем тривиальные __init__.py если включена соответствующая опция
+        if self.cfg.skip_trivial_inits:
+            if self._is_trivial_init_file(lightweight_ctx):
                 return True
 
         return False
+
+    def _is_trivial_init_file(self, lightweight_ctx: LightweightContext) -> bool:
+        """
+        Пропуск тривиальных __init__.py при включённом cfg.skip_trivial_inits:
+        - пустой файл
+        - только 'pass' / '...'
+        - только переэкспорт публичного API (относительные from-импорты, __all__)
+        Комментарии сами по себе НЕ делают файл тривиальным (комментарии могут быть полезны).
+        """
+        # Только для __init__.py
+        if lightweight_ctx.filename != "__init__.py":
+            return False
+
+        text = lightweight_ctx.raw_text or ""
+        stripped = text.strip()
+
+        # Пустой файл — тривиальный
+        if stripped == "":
+            return True
+
+        lines = text.splitlines()
+
+        # Выделяем строки без пустых и без комментариев для классификации
+        non_comment_lines = []
+        for ln in lines:
+            s = ln.strip()
+            if not s:
+                continue
+            if s.startswith("#"):
+                # Комментарии не учитываем в классификации (они не делают файл тривиальным)
+                continue
+            non_comment_lines.append(s)
+
+        # Если в файле есть только комментарии — НЕ тривиальный
+        if not non_comment_lines:
+            return False
+
+        def is_pass_or_ellipsis(s: str) -> bool:
+            return s in ("pass", "...")
+
+        def is_relative_from_import(s: str) -> bool:
+            # from .pkg import X, Y
+            if not s.startswith("from "):
+                return False
+            rest = s[5:].lstrip()
+            return rest.startswith(".")
+
+        def is_all_assign_start(s: str) -> bool:
+            # __all__ = [...]
+            return s.startswith("__all__")
+
+        in_import_paren = False
+        in_all_list = False
+
+        for s in non_comment_lines:
+            if in_import_paren:
+                # Продолжаем, пока не закроется группа импорта
+                if ")" in s:
+                    in_import_paren = False
+                continue
+
+            if in_all_list:
+                # Разрешаем многострочный список в __all__
+                if "]" in s:
+                    in_all_list = False
+                continue
+
+            if is_pass_or_ellipsis(s):
+                continue
+
+            if is_relative_from_import(s):
+                # Разрешаем многострочные импорты с '('
+                if s.endswith("(") or s.endswith("\\") or "(" in s and ")" not in s:
+                    in_import_paren = True
+                continue
+
+            if is_all_assign_start(s):
+                # Разрешаем многострочный __all__ = [
+                if "[" in s and "]" not in s:
+                    in_all_list = True
+                continue
+
+            # Любая другая конструкция делает файл нетривиальным
+            return False
+
+        # Если добрались сюда — все нетиповые строки допустимы → файл тривиальный
+        return True
 
     def is_public_element(self, node: Node, context: ProcessingContext) -> bool:
         """
