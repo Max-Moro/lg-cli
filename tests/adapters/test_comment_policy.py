@@ -4,7 +4,7 @@ Tests for comment policy implementation (M2).
 
 import pytest
 
-from lg.adapters.python_tree_sitter import PythonTreeSitterAdapter, PythonCfg
+from lg.adapters.python import PythonAdapter, PythonCfg
 from lg.adapters.typescript_tree_sitter import TypeScriptTreeSitterAdapter, TypeScriptCfg
 
 pytestmark = pytest.mark.usefixtures("skip_if_no_tree_sitter")
@@ -24,7 +24,7 @@ def hello():
     # Another comment
     return "hello"
 '''
-        adapter = PythonTreeSitterAdapter()
+        adapter = PythonAdapter()
         adapter._cfg = PythonCfg(comment_policy="keep_all")
         
         result, meta = adapter.process(code, group_size=1, mixed=False)
