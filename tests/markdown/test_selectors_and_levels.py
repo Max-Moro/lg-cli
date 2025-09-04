@@ -37,7 +37,7 @@ def test_sections_match_by_slug():
         },
         "max_heading_level": None,
     }
-    out, meta = _adapter(cfg).process(MD, group_size=1, mixed=False)
+    out, meta = _adapter(cfg).process(MD, "md", group_size=1, mixed=False)
     # Заголовок "## CLI Options" отсутствует
     assert re.search(r"^##\s+CLI Options\b", out, flags=re.M) is None
     # Плейсхолдер с названием раздела присутствует
@@ -60,7 +60,7 @@ def test_sections_match_by_regex_flags():
         },
         "max_heading_level": None,
     }
-    out, meta = _adapter(cfg).process(MD, group_size=1, mixed=False)
+    out, meta = _adapter(cfg).process(MD, "md", group_size=1, mixed=False)
     # заголовок раздела (## Legacy Notes) отсутствует
     assert re.search(r"^##\s+Legacy Notes\b", out, flags=re.M) is None
     # но плейсхолдер с title вставлен
@@ -79,7 +79,7 @@ def test_sections_match_by_path_only():
         },
         "max_heading_level": None,
     }
-    out, meta = _adapter(cfg).process(MD, group_size=1, mixed=False)
+    out, meta = _adapter(cfg).process(MD, "md", group_size=1, mixed=False)
     assert "### User" not in out
     assert "### Dev" in out
     assert "> *(FAQ user pruned)*" in out
@@ -98,7 +98,7 @@ def test_sections_level_bounds():
         },
         "max_heading_level": None,
     }
-    out, meta = _adapter(cfg).process(MD, group_size=1, mixed=False)
+    out, meta = _adapter(cfg).process(MD, "md", group_size=1, mixed=False)
     # Все H2 (Getting Started, CLI Options, FAQ, Legacy Notes) удалены целиком
     assert "## " not in out
     # остался только корневой H1
@@ -121,7 +121,7 @@ def test_sections_match_plus_path_combo():
         },
         "max_heading_level": None,
     }
-    out, meta = _adapter(cfg).process(MD, group_size=1, mixed=False)
+    out, meta = _adapter(cfg).process(MD, "md", group_size=1, mixed=False)
     assert "### Dev" not in out
     assert "### User" in out
     assert int(meta.get("md.placeholders", 0)) == 1

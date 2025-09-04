@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Any, Generic, Optional, Set, Type, TypeVar, get_args, get_origin
+from typing import Any, Generic, Optional, Set, Type, TypeVar, get_args
 
 __all__ = ["BaseAdapter"]
 
@@ -25,13 +25,13 @@ class BaseAdapter(Generic[C]):
         Пытается извлечь конкретный тип C из объявления наследника BaseAdapter[C].
         Возвращает None, если адаптер не параметризован конфигом.
         """
-        # Проходим по MRO и смотрим __orig_bases__ у каждого класса
+        # Проходим по MRO и ищем первый конкретный тип конфигурации
         for kls in cls.__mro__:
             for base in getattr(kls, "__orig_bases__", ()) or ():
-                if get_origin(base) is BaseAdapter:
-                    args = get_args(base) or ()
-                    if args:
-                        return args[0]
+                args = get_args(base) or ()
+                if args and not isinstance(args[0], TypeVar):
+                    # Нашли конкретный тип (не TypeVar), возвращаем его
+                    return args[0]
         return None
 
     # --- Конфигурирование адаптера -------------
