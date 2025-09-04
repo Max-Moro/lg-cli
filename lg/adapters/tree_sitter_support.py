@@ -23,16 +23,6 @@ class TreeSitterDocument(ABC):
         self._parse()
 
     @abstractmethod
-    def get_language_parser(self) -> Parser:
-        """
-        Get parser for the language.
-        
-        Returns:
-            Parser instance
-        """
-        pass
-
-    @abstractmethod
     def get_language(self) -> Language:
         """
         Get Language instance for queries.
@@ -52,9 +42,18 @@ class TreeSitterDocument(ABC):
         """
         pass
 
+    def get_parser(self) -> Parser:
+        """
+        Get parser for the language.
+
+        Returns:
+            Parser instance
+        """
+        return Parser(self.get_language())
+
     def _parse(self):
         """Parse the document with Tree-sitter."""
-        parser = self.get_language_parser()
+        parser = self.get_parser()
         self.tree = parser.parse(self._text_bytes)
 
     @property

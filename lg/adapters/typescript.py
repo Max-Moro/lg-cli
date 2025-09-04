@@ -7,7 +7,8 @@ from __future__ import annotations
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Dict, Any, List, Optional
-from tree_sitter import Language, Parser
+
+from tree_sitter import Language
 
 from .code_base import CodeAdapter
 from .code_model import CodeCfg
@@ -36,20 +37,10 @@ class TypeScriptCfg(CodeCfg):
 
 class TypeScriptDocument(TreeSitterDocument):
 
-    def get_language_parser(self) -> Parser:
-        import tree_sitter_typescript as tsts
-        # У TS и TSX — две разные грамматики в одном пакете.
-        lang: Optional[Language] = None
-        if self.ext == "ts":
-            lang = Language(tsts.language_typescript())
-        elif self.ext == "tsx":
-            lang = Language(tsts.language_tsx())
-
-        return Parser(lang)
-
     def get_language(self) -> Language:
         import tree_sitter_typescript as tsts
         if self.ext == "ts":
+            # У TS и TSX — две разные грамматики в одном пакете.
             return Language(tsts.language_typescript())
         elif self.ext == "tsx":
             return Language(tsts.language_tsx())

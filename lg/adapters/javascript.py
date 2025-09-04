@@ -7,7 +7,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Optional, Dict, Any
 
-from tree_sitter import Language, Parser
+from tree_sitter import Language
 
 from .code_base import CodeAdapter
 from .code_model import CodeCfg
@@ -34,10 +34,10 @@ class JavaScriptCfg(CodeCfg):
 
 class JavaScriptDocument(TreeSitterDocument):
 
-    def get_language_parser(self) -> Parser:
+    def get_language(self) -> Language:
         import tree_sitter_javascript as tsjs
         # одна грамматика покрывает JS и JSX
-        return Parser(Language(tsjs.language()))
+        return Language(tsjs.language())
 
 class JavaScriptAdapter(CodeAdapter[JavaScriptCfg]):
 

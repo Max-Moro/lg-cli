@@ -7,7 +7,8 @@ from __future__ import annotations
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Dict, Any, List, Optional
-from tree_sitter import Language, Parser
+
+from tree_sitter import Language
 
 from .code_base import CodeAdapter
 from .code_model import CodeCfg
@@ -38,10 +39,6 @@ class PythonCfg(CodeCfg):
 
 
 class PythonDocument(TreeSitterDocument):
-
-    def get_language_parser(self) -> Parser:
-        import tree_sitter_python as tspython
-        return Parser(Language(tspython.language()))
 
     def get_language(self) -> Language:
         import tree_sitter_python as tspython
