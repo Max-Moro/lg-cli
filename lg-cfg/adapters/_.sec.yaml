@@ -31,6 +31,9 @@ src-without:
           - "/context/"
           - "/_skeletons/"
           - "/adapters/"
+          - "/dia**"
+          - "/manifest/builder.py"
+          - "/scaffold.py"
 
 docs-tree-sitter:
   extensions: [".md"]
