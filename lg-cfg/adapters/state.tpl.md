@@ -20,7 +20,9 @@
 
 ### M4: Public API Only
 - [ ] Синтаксическая фильтрация (export, public модификаторы)
+- [ ] Доработка `public_only`, `non_public` режимов для should_strip_function_body
 - [ ] TypeScript barrel files и реэкспорты
+- [ ] Тесты в рамках майлстоуна
 
 ### M5: Literal Trimming
 - [ ] Обрезка строк, массивов, объектов

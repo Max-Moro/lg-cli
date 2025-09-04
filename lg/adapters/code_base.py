@@ -9,7 +9,7 @@ from abc import ABC, abstractmethod
 from typing import Dict, List, Tuple, Any, TypeVar
 
 from .base import BaseAdapter
-from .code_model import CodeCfg
+from .code_model import CodeCfg, CommentConfig
 from .context import ProcessingContext
 from .import_utils import ImportInfo
 from .range_edits import RangeEditor, PlaceholderGenerator
@@ -213,7 +213,95 @@ class CodeAdapter(BaseAdapter[C], ABC):
                     )
                     return True, placeholder
         
-        # TODO: Обработка комплексной политики (CommentConfig)
+        # Обработка комплексной политики (CommentConfig)
+        elif hasattr(policy, 'policy'):
+            return self._process_complex_comment_policy(policy, capture_name, comment_text, context)
+        
+        return False, ""
+
+    def _process_complex_comment_policy(
+        self,
+        policy: CommentConfig,
+        capture_name: str,
+        comment_text: str,
+        context: ProcessingContext
+    ) -> Tuple[bool, str]:
+        """
+        Обработка комплексной политики комментариев (CommentConfig).
+        
+        Returns:
+            Tuple of (should_remove, replacement_text)
+        """
+        import re
+        
+        # Проверяем на принудительное удаление по strip_patterns
+        for pattern in policy.strip_patterns:
+            try:
+                if re.search(pattern, comment_text, re.IGNORECASE):
+                    placeholder = context.placeholder_gen.create_comment_placeholder(
+                        capture_name, style=self.cfg.placeholders.style
+                    )
+                    return True, placeholder
+            except re.error:
+                # Игнорируем некорректные regex паттерны
+                continue
+        
+        # Проверяем на сохранение по keep_annotations
+        for pattern in policy.keep_annotations:
+            try:
+                if re.search(pattern, comment_text, re.IGNORECASE):
+                    # Проверяем max_length для сохраняемых комментариев
+                    if policy.max_length is not None and len(comment_text) > policy.max_length:
+                        # Обрезаем комментарий до максимальной длины
+                        truncated = comment_text[:policy.max_length].rstrip()
+                        # Добавляем индикатор обрезки
+                        truncated += "..."
+                        return True, truncated
+                    return False, ""  # Сохраняем как есть
+            except re.error:
+                # Игнорируем некорректные regex паттерны
+                continue
+        
+        # Применяем базовую политику с учетом max_length
+        base_policy = policy.policy
+        if base_policy == "keep_all":
+            # Проверяем max_length даже для keep_all
+            if policy.max_length is not None and len(comment_text) > policy.max_length:
+                truncated = comment_text[:policy.max_length].rstrip() + "..."
+                return True, truncated
+            return False, ""
+        
+        elif base_policy == "strip_all":
+            placeholder = context.placeholder_gen.create_comment_placeholder(
+                capture_name, style=self.cfg.placeholders.style
+            )
+            return True, placeholder
+        
+        elif base_policy == "keep_doc":
+            if capture_name == "comment":
+                placeholder = context.placeholder_gen.create_comment_placeholder(
+                    capture_name, style=self.cfg.placeholders.style
+                )
+                return True, placeholder
+            else:  # docstring
+                if policy.max_length is not None and len(comment_text) > policy.max_length:
+                    truncated = comment_text[:policy.max_length].rstrip() + "..."
+                    return True, truncated
+                return False, ""
+        
+        elif base_policy == "keep_first_sentence":
+            if capture_name == "docstring":
+                first_sentence = self._extract_first_sentence(comment_text)
+                # Применяем max_length к извлеченному предложению
+                if policy.max_length is not None and len(first_sentence) > policy.max_length:
+                    first_sentence = first_sentence[:policy.max_length].rstrip() + "..."
+                if first_sentence != comment_text:
+                    return True, first_sentence
+            elif capture_name == "comment":
+                placeholder = context.placeholder_gen.create_comment_placeholder(
+                    capture_name, style=self.cfg.placeholders.style
+                )
+                return True, placeholder
         
         return False, ""
 
