@@ -12,6 +12,7 @@ from tree_sitter import Language
 
 from ..code_base import CodeAdapter
 from ..code_model import CodeCfg
+from ..context import ProcessingContext
 from ..tree_sitter_support import TreeSitterDocument
 
 

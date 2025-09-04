@@ -10,6 +10,7 @@ from typing import Dict, List, Tuple, Any, TypeVar
 
 from .base import BaseAdapter
 from .code_model import CodeCfg
+from .context import ProcessingContext
 from .import_utils import ImportInfo
 from .range_edits import RangeEditor, PlaceholderGenerator
 from .tree_sitter_support import TreeSitterDocument
@@ -47,34 +48,58 @@ class CodeAdapter(BaseAdapter[C], ABC):
         Основной метод обработки кода.
         Применяет все конфигурированные оптимизации.
         """
-        meta = self._init_meta()
-        
         # Парсим исходный код с Tree-sitter
         doc = self.create_document(text, ext)
 
         # Создаем редактор для range-based изменений
         editor = RangeEditor(text)
 
+        # Создаем генератор плейсхолдеров
+        placeholder_gen = PlaceholderGenerator(self.get_comment_style())
+
+        # Создаем контекст обработки
+        context = ProcessingContext(doc, editor, placeholder_gen, self.cfg)
+
         # Применяем оптимизации
-        self._apply_optimizations(doc, editor, meta)
+        self._apply_optimizations_v2(context)
 
         # Применяем все изменения
         result_text, edit_stats = editor.apply_edits()
 
-        # Объединяем статистики
-        meta.update(edit_stats)
+        # Получаем финальные метрики
+        final_metrics = context.finalize(group_size, mixed)
         
-        # Добавляем метаданные группы
-        meta.update({
-            "_group_size": group_size,
-            "_group_mixed": mixed,
-            "_adapter": self.name,
-        })
+        # Объединяем статистики из редактора и контекста
+        final_metrics.update(edit_stats)
+        final_metrics["_adapter"] = self.name
         
-        return result_text, meta
+        return result_text, final_metrics
+
+    def _apply_optimizations_v2(self, context: ProcessingContext) -> None:
+        """
+        Новая версия применения оптимизаций через ProcessingContext.
+        Решает проблему прокидывания состояния (doc, editor, meta).
+        """
+        # Обработка тел функций - используем единый метод для избежания перекрытий
+        if self.cfg.strip_function_bodies:
+            self._strip_all_function_bodies_v2(context)
+            self.hook__strip_function_bodies_v2(context)
+        
+        # Обработка комментариев
+        self.process_comments_v2(context)
+        
+        # Обработка импортов
+        self.process_import_v2(context)
+        
+        # Другие оптимизации можно добавить здесь
+        # if self.cfg.public_api_only:
+        #     self.filter_public_api_v2(context)
 
     def _init_meta(self) -> Dict[str, Any]:
-        """Инициализирует метаданные для отслеживания изменений."""
+        """
+        DEPRECATED: Инициализирует метаданные для отслеживания изменений.
+        Используйте ProcessingContext.metrics для новой логики.
+        """
         return {
             "code.removed.functions": 0,
             "code.removed.methods": 0,
@@ -114,16 +139,210 @@ class CodeAdapter(BaseAdapter[C], ABC):
         # if self.cfg.public_api_only:
         #     self.filter_public_api_ts(doc, editor, meta)
 
-    # ============= ХУКИ для вклинивания в процесс оптимизации ===========
+    # ============= НОВЫЕ ХУКИ с ProcessingContext ===========
+    def hook__strip_function_bodies_v2(self, context: ProcessingContext) -> None:
+        """Хук для кастомизации удаления тел функций через контекст."""
+        pass
+
+    # ============= УСТАРЕВШИЕ ХУКИ (для обратной совместимости) ===========
     def hook__strip_function_bodies(
         self,
         doc: TreeSitterDocument,
         editor: RangeEditor,
         meta: Dict[str, Any]
     ) -> None:
+        """DEPRECATED: используйте hook__strip_function_bodies_v2."""
         pass
 
-    # ========= Оптимизации, полезные для всех/большинства языков =========
+    # ========= НОВЫЕ ОПТИМИЗАЦИИ с ProcessingContext =========
+    def _strip_all_function_bodies_v2(self, context: ProcessingContext) -> None:
+        """
+        Новая версия удаления тел функций через ProcessingContext.
+        Решает проблему прокидывания состояния и ленивых метрик.
+        """
+        cfg = self.cfg.strip_function_bodies
+        if not cfg:
+            return
+        
+        # Ищем все функции и классифицируем их как функции или методы
+        functions = context.query("functions")
+        for node, capture_name in functions:
+            if capture_name == "function_body":
+                function_text = context.get_node_text(node)
+                start_line, end_line = context.get_line_range(node)
+                lines_count = end_line - start_line + 1
+                
+                # Определяем, нужно ли удалять тело
+                should_strip = context.should_strip_function_body(function_text, lines_count, cfg)
+                
+                if should_strip:
+                    # Определяем тип (метод vs функция)
+                    func_type = "method" if context.is_method(node) else "function"
+                    
+                    # Используем удобный метод контекста
+                    context.remove_function_body(
+                        node, 
+                        func_type=func_type,
+                        placeholder_style=self.cfg.placeholders.style
+                    )
+
+    def process_comments_v2(self, context: ProcessingContext) -> None:
+        """
+        Новая версия обработки комментариев через ProcessingContext.
+        """
+        policy = self.cfg.comment_policy
+        
+        # Если политика keep_all, ничего не делаем
+        if isinstance(policy, str) and policy == "keep_all":
+            return
+        
+        # Ищем комментарии
+        comments = context.query("comments")
+
+        for node, capture_name in comments:
+            comment_text = context.get_node_text(node)
+            
+            should_remove, replacement = self._should_process_comment_v2(
+                policy, capture_name, comment_text, context
+            )
+            
+            if should_remove:
+                context.remove_comment(
+                    node,
+                    comment_type=capture_name,
+                    replacement=replacement,
+                    placeholder_style=self.cfg.placeholders.style
+                )
+
+    def _should_process_comment_v2(
+        self, 
+        policy, 
+        capture_name: str, 
+        comment_text: str, 
+        context: ProcessingContext
+    ) -> Tuple[bool, str]:
+        """
+        Новая версия определения обработки комментария через ProcessingContext.
+        
+        Returns:
+            Tuple of (should_remove, replacement_text)
+        """
+        # Простая строковая политика
+        if isinstance(policy, str):
+            if policy == "keep_all":
+                return False, ""
+            elif policy == "strip_all":
+                # Удаляем все комментарии с плейсхолдером
+                placeholder = context.placeholder_gen.create_comment_placeholder(
+                    capture_name, style=self.cfg.placeholders.style
+                )
+                return True, placeholder
+            elif policy == "keep_doc":
+                # Удаляем обычные комментарии, сохраняем докстринги
+                if capture_name == "comment":
+                    placeholder = context.placeholder_gen.create_comment_placeholder(
+                        capture_name, style=self.cfg.placeholders.style
+                    )
+                    return True, placeholder
+                else:
+                    return False, ""
+            elif policy == "keep_first_sentence":
+                # Для докстрингов оставляем первое предложение
+                if capture_name == "docstring":
+                    first_sentence = self._extract_first_sentence(comment_text)
+                    if first_sentence != comment_text:
+                        return True, first_sentence
+                # Обычные комментарии удаляем
+                elif capture_name == "comment":
+                    placeholder = context.placeholder_gen.create_comment_placeholder(
+                        capture_name, style=self.cfg.placeholders.style
+                    )
+                    return True, placeholder
+        
+        # TODO: Обработка комплексной политики (CommentConfig)
+        
+        return False, ""
+
+    def process_import_v2(self, context: ProcessingContext) -> None:
+        """
+        Новая версия обработки импортов через ProcessingContext.
+        """
+        config = self.cfg.import_config
+        
+        # Если политика keep_all, ничего не делаем
+        if config.policy == "keep_all":
+            return
+        
+        # Языковые адаптеры должны предоставлять свои реализации
+        classifier = self.create_import_classifier(config.external_only_patterns)
+        analyzer = self.create_import_analyzer(classifier)
+        
+        # Анализируем все импорты
+        imports = analyzer.analyze_imports(context.doc)
+        if not imports:
+            return
+        
+        # Группируем по типу
+        grouped = analyzer.group_imports(imports)
+        
+        if config.policy == "external_only":
+            # Удаляем локальные импорты, оставляем внешние
+            self._process_external_only_v2(grouped["local"], context)
+        
+        elif config.policy == "summarize_long":
+            # Суммаризируем длинные списки импортов
+            if analyzer.should_summarize(imports, config.max_items_before_summary):
+                self._process_summarize_long_v2(grouped, analyzer, context)
+
+    def _process_external_only_v2(
+        self,
+        local_imports: List,
+        context: ProcessingContext
+    ) -> None:
+        """Новая версия удаления локальных импортов через ProcessingContext."""
+        if not local_imports:
+            return
+        
+        for imp in local_imports:
+            context.remove_import(
+                imp.node,
+                import_type="local_import",
+                placeholder_style=self.cfg.placeholders.style
+            )
+
+    def _process_summarize_long_v2(
+        self,
+        grouped_imports: Dict[str, List],
+        analyzer,
+        context: ProcessingContext,
+    ) -> None:
+        """Новая версия суммаризации длинных импортов через ProcessingContext."""
+        # Обрабатываем каждую группу отдельно
+        for group_type, imports in grouped_imports.items():
+            if not imports or len(imports) <= self.cfg.import_config.max_items_before_summary:
+                continue
+            
+            # Группируем последовательные импорты для суммаризации
+            import_ranges = []
+            for imp in imports:
+                import_ranges.append((imp.start_byte, imp.end_byte, imp))
+            
+            # Сортируем по позиции в файле
+            import_ranges.sort(key=lambda x: x[0])
+            
+            # Ищем группы последовательных импортов
+            groups = self._find_consecutive_import_groups(import_ranges)
+            
+            for group in groups:
+                if len(group) <= 2:  # Не суммаризируем маленькие группы
+                    continue
+                
+                # Используем метод контекста для группового удаления
+                context.remove_consecutive_imports(
+                    group, group_type, self.cfg.placeholders.style
+                )
+
+    # ========= УСТАРЕВШИЕ ОПТИМИЗАЦИИ (для обратной совместимости) =========
     def _strip_all_function_bodies(
         self, 
         doc: TreeSitterDocument, 

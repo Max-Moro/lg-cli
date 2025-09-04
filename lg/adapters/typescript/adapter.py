@@ -11,6 +11,7 @@ from tree_sitter import Language
 
 from ..code_base import CodeAdapter
 from ..code_model import CodeCfg
+from ..context import ProcessingContext
 from ..range_edits import RangeEditor, PlaceholderGenerator
 from ..tree_sitter_support import TreeSitterDocument
 
@@ -78,14 +79,54 @@ class TypeScriptAdapter(CodeAdapter[TypeScriptCfg]):
         from .imports import TypeScriptImportAnalyzer
         return TypeScriptImportAnalyzer(classifier)
 
+    def hook__strip_function_bodies_v2(self, context: ProcessingContext) -> None:
+        """Новая версия хука для обработки стрелочных функций через ProcessingContext."""
+        self._strip_arrow_functions_v2(context)
+
     def hook__strip_function_bodies(
         self,
         doc: TreeSitterDocument,
         editor: RangeEditor,
         meta: Dict[str, Any]
     ) -> None:
+        """DEPRECATED: используйте hook__strip_function_bodies_v2."""
         self._strip_arrow_functions(doc, editor, meta)
     
+    def _strip_arrow_functions_v2(self, context: ProcessingContext) -> None:
+        """Новая версия обработки стрелочных функций через ProcessingContext."""
+        cfg = self.cfg.strip_function_bodies
+        if not cfg:
+            return
+        
+        # Ищем стрелочные функции отдельно через re-query
+        arrow_functions = [n for n, c in context.query("functions") if n.type == "arrow_function"]
+        
+        for node in arrow_functions:
+            # Найти тело стрелочной функции
+            body_node = None
+            for child in node.children:
+                if child.type in ("statement_block", "expression"):
+                    body_node = child
+                    break
+            
+            if not body_node:
+                continue
+                
+            arrow_text = context.get_node_text(body_node)
+            start_line, end_line = context.get_line_range(body_node)
+            lines_count = end_line - start_line + 1
+            
+            # Только стрипим многострочные стрелочные функции
+            should_strip = lines_count > 1 and context.should_strip_function_body(arrow_text, lines_count, cfg)
+            
+            if should_strip:
+                # Используем удобный метод контекста
+                context.remove_function_body(
+                    body_node,
+                    func_type="function",
+                    placeholder_style=self.cfg.placeholders.style
+                )
+
     def _strip_arrow_functions(
         self, 
         doc: TreeSitterDocument, 
