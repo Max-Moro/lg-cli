@@ -90,26 +90,18 @@ class TreeSitterDocument(ABC):
         # Execute query and collect results
         results = []
         try:
-            # Try different API approaches
             cursor = QueryCursor(query)
-            captures = cursor.captures(self.root_node)
             
-            # Handle different formats of captures
-            for capture in captures:
-                if len(capture) == 2:
-                    node, capture_id = capture
-                    # Try to get capture name from different sources
-                    capture_name = f"capture_{capture_id}"  # Fallback
-                    results.append((node, capture_name))
-                elif len(capture) == 3:
-                    node, capture_name, capture_id = capture
-                    results.append((node, capture_name))
-                else:
-                    # Unknown format, skip
-                    continue
+            # Use matches to get pattern matches with capture info
+            matches = cursor.matches(self.root_node)
+            for pattern_index, captures in matches:
+                for capture_name, nodes in captures.items():
+                    for node in nodes:
+                        results.append((node, capture_name))
+                        
         except Exception as e:
-            # Fallback: return empty results for now to allow tests to progress
-            pass
+            # Re-raise exception instead of silently failing
+            raise RuntimeError(f"Query execution failed for '{query_name}': {e}") from e
         
         return results
 

@@ -17,7 +17,7 @@ QUERIES = {
       body: (statement_block) @method_body)
       
     (arrow_function
-      body: (_) @arrow_function_body)
+      body: (_) @function_body)
     """,
     
     "methods": """

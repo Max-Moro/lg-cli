@@ -21,7 +21,7 @@ class TestPythonAdapter:
         # Check that functions were processed
         assert meta["code.removed.functions"] > 0
         assert meta["code.removed.methods"] > 0
-        assert "# … function body omitted" in result or "# … method body omitted" in result
+        assert "# … method omitted" in result or "# … body omitted" in result
         
         # Golden file test
         golden_file = tmp_path / "python_basic_strip.golden"
@@ -91,10 +91,10 @@ class TestPythonAdapter:
     def test_error_handling(self, monkeypatch):
         """Test error handling when Tree-sitter has issues."""
         # Mock Tree-sitter to raise an error during parsing
-        def mock_parse(text_bytes):
+        def mock_parse(self):
             raise RuntimeError("Mocked parsing error")
         
-        monkeypatch.setattr("lg.adapters.python.PythonDocument._parse", lambda self: None)
+        monkeypatch.setattr("lg.adapters.python.adapter.PythonDocument._parse", mock_parse)
         
         adapter = PythonAdapter()
         adapter._cfg = PythonCfg(strip_function_bodies=True)

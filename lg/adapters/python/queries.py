@@ -31,7 +31,7 @@ QUERIES = {
     
     # Import statements
     "imports": """
-    (import_statement) @import_statement
+    (import_statement) @import
       
     (import_from_statement) @import_from
     """,

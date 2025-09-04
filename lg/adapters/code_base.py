@@ -99,11 +99,9 @@ class CodeAdapter(BaseAdapter[C], ABC):
         Для кастомизации логики необходимо использовать языковые флаги или дополнительные хуки.
         """
 
-        # Обработка тел функций
+        # Обработка тел функций - используем единый метод для избежания перекрытий
         if self.cfg.strip_function_bodies:
-            self.strip_function_bodies(doc, editor, meta)
-            if self.lang_flag__is_oop():
-                self.strip_methods_bodies(doc, editor, meta)
+            self._strip_all_function_bodies(doc, editor, meta)
             self.hook__strip_function_bodies(doc, editor, meta)
         
         # Обработка комментариев
@@ -126,14 +124,14 @@ class CodeAdapter(BaseAdapter[C], ABC):
         pass
 
     # ========= Оптимизации, полезные для всех/большинства языков =========
-    def strip_function_bodies(
+    def _strip_all_function_bodies(
         self, 
         doc: TreeSitterDocument, 
         editor: RangeEditor, 
         meta: Dict[str, Any]
     ) -> None:
         """
-        Удаляет тела функций.
+        Единый метод для удаления тел функций и методов без дублирования правок.
         """
         cfg = self.cfg.strip_function_bodies
         if not cfg:
@@ -143,88 +141,73 @@ class CodeAdapter(BaseAdapter[C], ABC):
         comment_style = self.get_comment_style()
         placeholder_gen = PlaceholderGenerator(comment_style)
         
-        # Ищем функции для обработки
+        # Ищем все функции и классифицируем их как функции или методы
         functions = doc.query("functions")
-        
         for node, capture_name in functions:
             if capture_name == "function_body":
-                # Получаем информацию о функции
-                start_byte, end_byte = doc.get_node_range(node)
-                
-                function_text = doc.get_node_text(node)
-                start_line, end_line = doc.get_line_range(node)
-                lines_count = end_line - start_line + 1
-                
-                # Проверяем условия удаления
-                should_strip = self._should_strip_function_body(cfg, function_text, lines_count)
-                
-                if should_strip:
-                    # Создаем плейсхолдер
-                    placeholder = placeholder_gen.create_function_placeholder(
-                        lines_removed=lines_count,
-                        bytes_removed=end_byte - start_byte,
-                        style=self.cfg.placeholders.style
-                    )
-                    
-                    # Добавляем правку
-                    editor.add_replacement(
-                        start_byte, end_byte, placeholder,
-                        type="function_body_removal",
-                        is_placeholder=True,
-                        lines_removed=lines_count
-                    )
-                    
-                    meta["code.removed.functions"] += 1
+                # Определяем, является ли это методом (находится ли внутри класса)
+                func_type = "method" if self._is_method(node, doc) else "function"
+                self._process_function_body(
+                    node, doc, editor, meta,
+                    placeholder_gen, cfg, func_type
+                )
 
-    def strip_methods_bodies(
-            self,
-            doc: TreeSitterDocument,
-            editor: RangeEditor,
-            meta: Dict[str, Any]
+    def _process_function_body(
+        self, 
+        node, 
+        doc: TreeSitterDocument,
+        editor: RangeEditor, 
+        meta: Dict[str, Any],
+        placeholder_gen: PlaceholderGenerator,
+        cfg,
+        func_type: str  # "function" or "method"
     ) -> None:
+        """Обрабатывает одно тело функции/метода."""
+        start_byte, end_byte = doc.get_node_range(node)
+        
+        function_text = doc.get_node_text(node)
+        start_line, end_line = doc.get_line_range(node)
+        lines_count = end_line - start_line + 1
+        
+        # Проверяем условия удаления
+        should_strip = self._should_strip_function_body(cfg, function_text, lines_count)
+        
+        if should_strip:
+            # Создаем плейсхолдер
+            if func_type == "method":
+                placeholder = placeholder_gen.create_method_placeholder(
+                    lines_removed=lines_count,
+                    bytes_removed=end_byte - start_byte,
+                    style=self.cfg.placeholders.style
+                )
+                meta["code.removed.methods"] += 1
+            else:
+                placeholder = placeholder_gen.create_function_placeholder(
+                    lines_removed=lines_count,
+                    bytes_removed=end_byte - start_byte,
+                    style=self.cfg.placeholders.style
+                )
+                meta["code.removed.functions"] += 1
+            
+            # Добавляем правку
+            editor.add_replacement(
+                start_byte, end_byte, placeholder,
+                type=f"{func_type}_body_removal",
+                is_placeholder=True,
+                lines_removed=lines_count
+            )
+
+    def _is_method(self, function_body_node, doc: TreeSitterDocument) -> bool:
         """
-        Обрабатывает методы классов.
+        Определяет, является ли узел function_body методом класса.
+        Проходит вверх по дереву в поисках class_definition или class_declaration.
         """
-        cfg = self.cfg.strip_function_bodies
-        if not cfg:
-            return
-
-        # Получаем генератор плейсхолдеров
-        comment_style = self.get_comment_style()
-        placeholder_gen = PlaceholderGenerator(comment_style)
-
-        # Ищем методы в классах
-        methods = doc.query("methods")
-
-        for node, capture_name in methods:
-            if capture_name == "method_body":
-                # Получаем информацию о функции
-                start_byte, end_byte = doc.get_node_range(node)
-
-                method_text = doc.get_node_text(node)
-                start_line, end_line = doc.get_line_range(node)
-                lines_count = end_line - start_line + 1
-
-                # Проверяем условия удаления
-                should_strip = self._should_strip_function_body(cfg, method_text, lines_count)
-
-                if should_strip:
-                    # Создаем плейсхолдер
-                    placeholder = placeholder_gen.create_method_placeholder(
-                        lines_removed=lines_count,
-                        bytes_removed=end_byte - start_byte,
-                        style=self.cfg.placeholders.style
-                    )
-
-                    # Добавляем правку
-                    editor.add_replacement(
-                        start_byte, end_byte, placeholder,
-                        type="method_body_removal",
-                        is_placeholder=True,
-                        lines_removed=lines_count
-                    )
-
-                    meta["code.removed.methods"] += 1
+        current = function_body_node.parent
+        while current:
+            if current.type in ("class_definition", "class_declaration"):
+                return True
+            current = current.parent
+        return False
 
     def process_comments(
         self, 
@@ -515,6 +498,10 @@ class CodeAdapter(BaseAdapter[C], ABC):
     def _should_strip_function_body(self, cfg, function_text: str, lines_count: int) -> bool:
         """Определяет, нужно ли удалять тело функции."""
         if isinstance(cfg, bool):
+            # Для булевого значения True применяем умную логику:
+            # не удаляем однострочные тела (особенно важно для стрелочных функций)
+            if cfg and lines_count <= 1:
+                return False
             return cfg
         
         # Если конфигурация - объект, применяем более сложную логику
