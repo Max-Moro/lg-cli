@@ -6,8 +6,8 @@ import pytest
 from pathlib import Path
 
 
-from lg.adapters.python_tree_sitter import PythonCfg
-from lg.adapters.typescript_tree_sitter import TypeScriptCfg
+from lg.adapters.python import PythonCfg
+from lg.adapters.typescript import TypeScriptCfg
 
 
 @pytest.fixture
@@ -170,3 +170,14 @@ def create_temp_file(tmp_path: Path, filename: str, content: str) -> Path:
     file_path = tmp_path / filename
     file_path.write_text(content, encoding='utf-8')
     return file_path
+
+
+def is_tree_sitter_available() -> bool:
+    """Check if Tree-sitter is available for testing."""
+    try:
+        import tree_sitter
+        import tree_sitter_python
+        import tree_sitter_typescript
+        return True
+    except ImportError:
+        return False

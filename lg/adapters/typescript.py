@@ -41,11 +41,25 @@ class TypeScriptDocument(TreeSitterDocument):
         # У TS и TSX — две разные грамматики в одном пакете.
         lang: Optional[Language] = None
         if self.ext == "ts":
-            lang =Language(tsts.language_typescript())
+            lang = Language(tsts.language_typescript())
         elif self.ext == "tsx":
             lang = Language(tsts.language_tsx())
 
         return Parser(lang)
+
+    def get_language(self) -> Language:
+        import tree_sitter_typescript as tsts
+        if self.ext == "ts":
+            return Language(tsts.language_typescript())
+        elif self.ext == "tsx":
+            return Language(tsts.language_tsx())
+        else:
+            # Default to TypeScript
+            return Language(tsts.language_typescript())
+
+    def get_query_definitions(self) -> Dict[str, str]:
+        from .queries import get_queries_for_language
+        return get_queries_for_language('typescript')
 
 class TypeScriptAdapter(CodeAdapter[TypeScriptCfg]):
 
@@ -118,7 +132,6 @@ class TypeScriptAdapter(CodeAdapter[TypeScriptCfg]):
             # Только стрипим многострочные стрелочные функции
             if lines_count > 1 and super()._should_strip_function_body(cfg, arrow_text, lines_count):
                 placeholder = placeholder_gen.create_function_placeholder(
-                    name="arrow",
                     lines_removed=lines_count,
                     bytes_removed=end_byte - start_byte,
                     style=self.cfg.placeholders.style

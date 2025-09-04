@@ -43,6 +43,14 @@ class PythonDocument(TreeSitterDocument):
         import tree_sitter_python as tspython
         return Parser(Language(tspython.language()))
 
+    def get_language(self) -> Language:
+        import tree_sitter_python as tspython
+        return Language(tspython.language())
+
+    def get_query_definitions(self) -> Dict[str, str]:
+        from .queries import get_queries_for_language
+        return get_queries_for_language('python')
+
 
 class PythonAdapter(CodeAdapter[PythonCfg]):
 
