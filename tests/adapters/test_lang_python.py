@@ -5,6 +5,7 @@ Tests for based Python adapter.
 import pytest
 from lg.adapters.code_model import FunctionBodyConfig
 from lg.adapters.python import PythonAdapter, PythonCfg
+from lg.adapters.context import create_test_lightweight_context
 from tests.adapters.conftest import assert_golden_match, create_temp_file
 
 
@@ -16,7 +17,15 @@ class TestPythonAdapter:
         adapter = PythonAdapter()
         adapter._cfg = PythonCfg(strip_function_bodies=True)
         
-        result, meta = adapter.process(python_code_sample, "py", group_size=1, mixed=False)
+        # Create lightweight context with sample code
+        ctx = create_test_lightweight_context(
+            raw_text=python_code_sample,
+            filename="test.py",
+            group_size=1,
+            mixed=False
+        )
+        
+        result, meta = adapter.process(ctx)
         
         # Check that functions were processed
         assert meta["code.removed.functions"] > 0
@@ -71,19 +80,25 @@ class TestPythonAdapter:
         ]
         
         for i, content in enumerate(trivial_cases):
-            # Все файлы должны называться __init__.py чтобы логика сработала
-            subdir = tmp_path / f"subdir_{i}"
-            subdir.mkdir(exist_ok=True)
-            init_file = create_temp_file(subdir, "__init__.py", content)
-            should_skip = adapter.should_skip(init_file, content, "py")
+            # Создаем контекст для __init__.py файла
+            ctx = create_test_lightweight_context(
+                raw_text=content,
+                filename="__init__.py",
+                group_size=1,
+                mixed=False
+            )
+            should_skip = adapter.should_skip(ctx)
             assert should_skip, f"Should skip trivial __init__.py: {repr(content)}"
         
         # Test non-trivial __init__.py
         non_trivial = "from .module import something\npass"
-        real_package = tmp_path / "real_package"
-        real_package.mkdir(exist_ok=True)
-        non_trivial_file = create_temp_file(real_package, "__init__.py", non_trivial)
-        should_not_skip = adapter.should_skip(non_trivial_file, non_trivial, "py")
+        non_trivial_ctx = create_test_lightweight_context(
+            raw_text=non_trivial,
+            filename="__init__.py",
+            group_size=1,
+            mixed=False
+        )
+        should_not_skip = adapter.should_skip(non_trivial_ctx)
         assert not should_not_skip, "Should not skip non-trivial __init__.py"
     
     def test_error_handling(self, monkeypatch):

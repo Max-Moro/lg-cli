@@ -12,7 +12,7 @@ from tree_sitter import Language
 
 from ..code_base import CodeAdapter
 from ..code_model import CodeCfg
-from ..context import ProcessingContext
+from ..context import ProcessingContext, LightweightContext
 from ..tree_sitter_support import TreeSitterDocument, Node
 
 
@@ -76,15 +76,15 @@ class PythonAdapter(CodeAdapter[PythonCfg]):
         from .imports import PythonImportAnalyzer
         return PythonImportAnalyzer(classifier)
     
-    def should_skip(self, path: Path, text: str, ext: str) -> bool:
+    def should_skip(self, lightweight_ctx: LightweightContext) -> bool:
         """
         Python-специфичные эвристики пропуска.
         """
-        if path.name == "__init__.py":
+        if lightweight_ctx.filename == "__init__.py":
             # Проверяем на тривиальные __init__.py файлы
             significant = [
                 ln.strip()
-                for ln in text.splitlines()
+                for ln in lightweight_ctx.raw_text.splitlines()
                 if ln.strip() and not ln.lstrip().startswith("#")
             ]
 

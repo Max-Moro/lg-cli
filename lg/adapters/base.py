@@ -1,7 +1,10 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Any, Generic, Optional, Set, Type, TypeVar, get_args
+from typing import Any, Generic, Optional, Set, Type, TypeVar, get_args, TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from .context import LightweightContext
 
 __all__ = ["BaseAdapter"]
 
@@ -90,15 +93,27 @@ class BaseAdapter(Generic[C]):
         return self._cfg
 
     # --- переопределяемая логика ------------------
-    def should_skip(self, path: Path, text: str, ext: str) -> bool:
-        """True → файл исключается (языковые эвристики)."""
+    def should_skip(self, lightweight_ctx: 'LightweightContext') -> bool:
+        """
+        True → файл исключается (языковые эвристики).
+        
+        Args:
+            lightweight_ctx: Облегченный контекст с информацией о файле
+            
+        Returns:
+            True если файл должен быть пропущен
+        """
         return False
 
     # --- единый API с метаданными ---
-    def process(self, text: str, ext: str, group_size: int, mixed: bool) -> tuple[str, dict]:
+    def process(self, lightweight_ctx: 'LightweightContext') -> tuple[str, dict]:
         """
-        Возвращает (content, meta), где meta — произвольный словарь
-        (например: {"removed_comments": 120, "kept_signatures": 34}).
-        Базовая реализация — идентичность текста без метаданных.
+        Обрабатывает файл и возвращает (content, meta).
+        
+        Args:
+            lightweight_ctx: Облегченный контекст с информацией о файле
+            
+        Returns:
+            Tuple из обработанного содержимого и метаданных
         """
-        return text, {}
+        return lightweight_ctx.raw_text, {}

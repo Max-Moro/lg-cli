@@ -7,6 +7,7 @@ from lg.cache.fs_cache import Cache
 from lg.io.fs import read_text
 from lg.types import ContextPlan, ProcessedBlob
 from .registry import get_adapter_for_path
+from .context import LightweightContext
 from ..run_context import RunContext
 
 
@@ -61,10 +62,17 @@ def process_groups(plan: ContextPlan, run_ctx: RunContext) -> List[ProcessedBlob
                     bound_cache[bkey] = adapter
 
                 raw_text = read_text(fp)
-                ext = fp.suffix.lstrip(".") if fp.is_file() else ""
+                
+                # Создаем облегченный контекст
+                lightweight_ctx = LightweightContext(
+                    file_path=fp,
+                    raw_text=raw_text,
+                    group_size=group_size,
+                    mixed=bool(grp.mixed)
+                )
 
                 # Эвристики пропуска на уровне адаптера (пустые уже отфильтрованы в Manifest)
-                if adapter.name != "base" and adapter.should_skip(fp, raw_text, ext):
+                if adapter.name != "base" and adapter.should_skip(lightweight_ctx):
                     continue
 
                 # ключи кэша
@@ -83,7 +91,7 @@ def process_groups(plan: ContextPlan, run_ctx: RunContext) -> List[ProcessedBlob
                     processed_text = cached["processed_text"]
                     meta = cached.get("meta", {}) or {}
                 else:
-                    processed_text, meta = adapter.process(raw_text, ext, group_size, bool(grp.mixed))
+                    processed_text, meta = adapter.process(lightweight_ctx)
                     # добавим диагностическую «крошку» про использованные ключи конфигурации
                     if raw_cfg:
                         keys = sorted(raw_cfg.keys())
@@ -93,8 +101,8 @@ def process_groups(plan: ContextPlan, run_ctx: RunContext) -> List[ProcessedBlob
 
                     # Всегда добавляем прозрачные метки группы — для тестов и диагностики
                     meta = dict(meta or {})
-                    meta["_group_size"] = group_size
-                    meta["_group_mixed"] = grp.mixed
+                    meta["_group_size"] = lightweight_ctx.group_size
+                    meta["_group_mixed"] = lightweight_ctx.mixed
                     meta["_group_lang"] = grp.lang
                     meta["_section"] = e.section_id.as_key()
 

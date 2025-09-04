@@ -10,9 +10,8 @@ from typing import Dict, List, Tuple, Any, TypeVar, Optional
 
 from .base import BaseAdapter
 from .code_model import CodeCfg, CommentConfig
-from .context import ProcessingContext
+from .context import ProcessingContext, LightweightContext
 from .import_utils import ImportInfo
-from .range_edits import RangeEditor, PlaceholderGenerator
 from .tree_sitter_support import TreeSitterDocument, Node
 
 C = TypeVar("C", bound=CodeCfg)
@@ -81,31 +80,22 @@ class CodeAdapter(BaseAdapter[C], ABC):
         """
         pass
 
-    def process(self, text: str, ext: str, group_size: int, mixed: bool) -> Tuple[str, Dict[str, Any]]:
+    def process(self, lightweight_ctx: LightweightContext) -> Tuple[str, Dict[str, Any]]:
         """
         Основной метод обработки кода.
         Применяет все конфигурированные оптимизации.
         """
-        # Парсим исходный код с Tree-sitter
-        doc = self.create_document(text, ext)
-
-        # Создаем редактор для range-based изменений
-        editor = RangeEditor(text)
-
-        # Создаем генератор плейсхолдеров
-        placeholder_gen = PlaceholderGenerator(self.get_comment_style())
-
-        # Создаем контекст обработки
-        context = ProcessingContext(doc, editor, placeholder_gen)
+        # Получаем полноценный контекст из облегченного (ленивая инициализация)
+        context = lightweight_ctx.get_full_context(self)
 
         # Применяем оптимизации
         self._apply_optimizations(context)
 
         # Применяем все изменения
-        result_text, edit_stats = editor.apply_edits()
+        result_text, edit_stats = context.editor.apply_edits()
 
         # Получаем финальные метрики
-        final_metrics = context.finalize(group_size, mixed)
+        final_metrics = context.finalize(lightweight_ctx)
         
         # Объединяем статистики из редактора и контекста
         final_metrics.update(edit_stats)
