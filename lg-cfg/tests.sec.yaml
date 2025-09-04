@@ -1,5 +1,14 @@
+all:
+  extensions: [".py"]
+  path_labels: relative
+  filters:
+    mode: allow
+    allow:
+      - "/tests/"
+
 basic:
   extensions: [".py"]
+  path_labels: relative
   filters:
     mode: allow
     allow:
@@ -7,6 +16,7 @@ basic:
 
 min:
   extensions: [".py"]
+  path_labels: relative
   filters:
     mode: allow
     allow:
@@ -22,6 +32,7 @@ min:
 
 markdown:
   extensions: [".py"]
+  path_labels: relative
   filters:
     mode: allow
     allow:
@@ -29,6 +40,7 @@ markdown:
 
 cdm:
   extensions: [".py"]
+  path_labels: relative
   filters:
     mode: allow
     allow:
