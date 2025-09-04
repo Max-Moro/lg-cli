@@ -15,7 +15,6 @@ from .tree_sitter_support import TreeSitterDocument, Node
 class ProcessingContext:
     """
     Контекст обработки, инкапсулирующий doc, editor и metrics.
-    Решает проблему прокидывания состояния через множество методов.
     """
     
     def __init__(
@@ -23,15 +22,13 @@ class ProcessingContext:
         doc: TreeSitterDocument, 
         editor: RangeEditor, 
         placeholder_gen: PlaceholderGenerator,
-        adapter_config = None
     ):
         self.doc = doc
         self.editor = editor
         self.placeholder_gen = placeholder_gen
         self.metrics = MetricsCollector()
-        self.config = adapter_config
     
-    # ============= Удобные методы для типовых операций =============
+    # ============= Методы для типовых операций =============
     
     def remove_function_body(
         self, 
@@ -268,5 +265,5 @@ class ProcessingContext:
         # Добавляем метаданные группы
         self.metrics.set("_group_size", group_size)
         self.metrics.set("_group_mixed", mixed)
-        
+
         return self.metrics.to_dict()

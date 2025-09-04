@@ -45,11 +45,11 @@ class MetricsCollector:
         return key in self._metrics
     
     def add_bytes_saved(self, bytes_count: int) -> None:
-        """Удобный метод для учета сэкономленных байт."""
+        """Метод для учета сэкономленных байт."""
         self.increment("code.bytes_saved", bytes_count)
     
     def add_lines_saved(self, lines_count: int) -> None:
-        """Удобный метод для учета сэкономленных строк."""
+        """Метод для учета сэкономленных строк."""
         self.increment("code.lines_saved", lines_count)
     
     def mark_placeholder_inserted(self) -> None:
