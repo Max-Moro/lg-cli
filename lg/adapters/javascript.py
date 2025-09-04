@@ -1,48 +1,28 @@
 """
-JavaScript adapter.
+JavaScript adapter stub.
+Will be implemented in M7 as lg/adapters/javascript/ package.
 """
 
 from __future__ import annotations
 
-from dataclasses import dataclass
-from typing import Optional, Dict, Any
-
-from tree_sitter import Language
-
 from .code_base import CodeAdapter
 from .code_model import CodeCfg
-from .tree_sitter_support import TreeSitterDocument
 
 
-@dataclass
-class JavaScriptCfg(CodeCfg):
-    """Конфигурация для JavaScript адаптера."""
-
-    @staticmethod
-    def from_dict(d: Optional[Dict[str, Any]]) -> JavaScriptCfg:
-        """Загрузка конфигурации из словаря YAML."""
-        if not d:
-            return JavaScriptCfg()
-
-        cfg = JavaScriptCfg()
-        cfg.general_load(d)
-
-        # JavaScript-специфичные настройки
-
-        return cfg
-
-
-class JavaScriptDocument(TreeSitterDocument):
-
-    def get_language(self) -> Language:
-        import tree_sitter_javascript as tsjs
-        # одна грамматика покрывает JS и JSX
-        return Language(tsjs.language())
-
-class JavaScriptAdapter(CodeAdapter[JavaScriptCfg]):
-
+class JavaScriptAdapter(CodeAdapter[CodeCfg]):
+    """JavaScript адаптер (заглушка для M7)."""
+    
     name = "javascript"
     extensions = {".js", ".jsx"}
 
-    def create_document(self, text: str, ext: str) -> TreeSitterDocument:
-        return JavaScriptDocument(text, ext)
+    def lang_flag__is_oop(self) -> bool:
+        return True
+
+    def lang_flag__with_access_modifiers(self) -> bool:
+        return False
+
+    def get_comment_style(self) -> tuple[str, tuple[str, str]]:
+        return "//", ("/*", "*/")
+
+    def create_document(self, text: str, ext: str):
+        raise NotImplementedError("JavaScript adapter will be implemented in M7")

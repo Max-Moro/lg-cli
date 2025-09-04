@@ -1,40 +1,29 @@
 """
-Java адаптер.
+Java adapter stub.
+Will be implemented in M7 as lg/adapters/java/ package.
 """
 
 from __future__ import annotations
-
-from dataclasses import dataclass
-from typing import Optional, Dict, Any
 
 from .code_base import CodeAdapter
 from .code_model import CodeCfg
 
 
-@dataclass
-class JavaCfg(CodeCfg):
-    """Конфигурация для Java адаптера."""
-    strip_trivial_accessors: bool = True
-    
-    @staticmethod
-    def from_dict(d: Optional[Dict[str, Any]]) -> JavaCfg:
-        """Загрузка конфигурации из словаря YAML."""
-        if not d:
-            return JavaCfg()
-
-        cfg = JavaCfg()
-        cfg.general_load(d)
-
-        # Java-специфичные настройки
-
-        return cfg
-
-
-class JavaAdapter(CodeAdapter[JavaCfg]):
+class JavaAdapter(CodeAdapter[CodeCfg]):
+    """Java адаптер (заглушка для M7)."""
 
     name = "java"
     extensions = {".java"}
 
+    def lang_flag__is_oop(self) -> bool:
+        return True
+
+    def lang_flag__with_access_modifiers(self) -> bool:
+        return True
+
     def get_comment_style(self) -> tuple[str, tuple[str, str]]:
         """Java использует C-style комментарии."""
         return "//", ("/*", "*/")
+
+    def create_document(self, text: str, ext: str):
+        raise NotImplementedError("Java adapter will be implemented in M7")
