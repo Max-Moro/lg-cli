@@ -33,19 +33,6 @@ class TestRangeEditorSystem:
         assert len(errors) > 0
         assert "exceeds text length" in errors[0]
     
-    def test_overlapping_edit_detection(self):
-        """Test overlapping edit detection."""
-        text = "1234567890"
-        editor = RangeEditor(text)
-        
-        # Add overlapping edits
-        editor.add_edit(2, 6, "AAA")  # positions 2-6
-        editor.add_edit(4, 8, "BBB")  # positions 4-8 (overlaps)
-        
-        errors = editor.validate_edits()
-        assert len(errors) > 0
-        assert "Overlapping edits" in errors[0]
-    
     def test_placeholder_generation(self):
         """Test placeholder generation for different languages."""
         # Test Python style

@@ -63,6 +63,12 @@ class RangeEditor:
     def add_edit(self, start_byte: int, end_byte: int, replacement: str, **metadata) -> None:
         """Add an edit operation."""
         text_range = TextRange(start_byte, end_byte)
+
+        # First-wins: если новая правка перекрывается с любой уже добавленной — тихо пропускаем её.
+        for existing in self.edits:
+            if text_range.overlaps(existing.range):
+                return
+
         edit = Edit(text_range, replacement, metadata)
         self.edits.append(edit)
     
@@ -76,26 +82,18 @@ class RangeEditor:
     
     def validate_edits(self) -> List[str]:
         """
-        Validate that all edits are non-overlapping and within bounds.
-        Returns list of validation error messages.
+        Validate that all edits are within bounds.
+        Overlap conflicts отфильтровываются на этапе add_edit (first-wins).
         """
         errors = []
-        
-        # Check bounds
+
+        # Check bounds only
         for i, edit in enumerate(self.edits):
             if edit.range.start_byte < 0:
                 errors.append(f"Edit {i}: start_byte ({edit.range.start_byte}) is negative")
             if edit.range.end_byte > len(self.original_bytes):
                 errors.append(f"Edit {i}: end_byte ({edit.range.end_byte}) exceeds text length ({len(self.original_bytes)})")
-        
-        # Check for overlaps
-        sorted_edits = sorted(self.edits, key=lambda e: e.range.start_byte)
-        for i in range(len(sorted_edits) - 1):
-            current = sorted_edits[i]
-            next_edit = sorted_edits[i + 1]
-            if current.range.overlaps(next_edit.range):
-                errors.append(f"Overlapping edits: [{current.range.start_byte}:{current.range.end_byte}] and [{next_edit.range.start_byte}:{next_edit.range.end_byte}]")
-        
+
         return errors
     
     def apply_edits(self) -> Tuple[str, Dict[str, Any]]:

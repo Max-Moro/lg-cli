@@ -7,7 +7,7 @@ from pathlib import Path
 
 from lg.adapters.python import PythonCfg
 from lg.adapters.typescript import TypeScriptCfg
-from tests.conftest import lctx, lctx_py, lctx_ts, lctx_md
+from tests.conftest import lctx, lctx_py, lctx_ts, lctx_md # noqa: F401
 
 
 @pytest.fixture
