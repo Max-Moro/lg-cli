@@ -19,6 +19,9 @@ from .optimizations import (
     ImportOptimizer,
     LiteralOptimizer,
     FieldOptimizer,
+    FieldsClassifier,
+    ImportAnalyzer,
+    ImportClassifier
 )
 
 C = TypeVar("C", bound=CodeCfg)
@@ -50,13 +53,18 @@ class CodeAdapter(BaseAdapter[C], ABC):
         pass
 
     @abstractmethod
-    def create_import_classifier(self, external_patterns: List[str] = None):
+    def create_import_classifier(self, external_patterns: List[str] = None) -> ImportClassifier:
         """Создает языко-специфичный классификатор импортов. Должен быть переопределен наследниками."""
         pass
 
     @abstractmethod
-    def create_import_analyzer(self, classifier):
+    def create_import_analyzer(self, classifier: ImportClassifier) -> ImportAnalyzer:
         """Создает языко-специфичный анализатор импортов. Должен быть переопределен наследниками."""
+        pass
+
+    @abstractmethod
+    def create_fields_classifier(self, doc: TreeSitterDocument) -> FieldsClassifier:
+        """Создает языко-специфичный классификатор конструкторов и полей."""
         pass
 
     @abstractmethod
@@ -143,6 +151,6 @@ class CodeAdapter(BaseAdapter[C], ABC):
 
 
     # ============= ХУКИ для вклинивания в процесс оптимизации ===========
-    def hook__strip_function_bodies(self, context: ProcessingContext) -> None:
+    def hook__strip_function_bodies(self, context: ProcessingContext, root_optimizer: FunctionBodyOptimizer) -> None:
         """Хук для кастомизации удаления тел функций."""
         pass

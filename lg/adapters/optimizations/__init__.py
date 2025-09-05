@@ -6,9 +6,9 @@ Each module handles a specific type of code optimization.
 from .public_api import PublicApiOptimizer
 from .function_bodies import FunctionBodyOptimizer  
 from .comments import CommentOptimizer
-from .imports import ImportOptimizer
+from .imports import ImportOptimizer, ImportAnalyzer, ImportClassifier
 from .literals import LiteralOptimizer
-from .fields import FieldOptimizer
+from .fields import FieldOptimizer, FieldsClassifier
 
 __all__ = [
     "PublicApiOptimizer",
@@ -17,4 +17,7 @@ __all__ = [
     "ImportOptimizer",
     "LiteralOptimizer",
     "FieldOptimizer",
+    "FieldsClassifier",
+    "ImportAnalyzer",
+    "ImportClassifier",
 ]

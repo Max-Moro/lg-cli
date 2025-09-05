@@ -57,7 +57,7 @@ class FunctionBodyOptimizer:
                     )
         
         # Give adapter a chance to handle language-specific cases (e.g., arrow functions)
-        self.adapter.hook__strip_function_bodies(context)
+        self.adapter.hook__strip_function_bodies(context, self)
     
     def should_strip_function_body(
         self, 
@@ -112,7 +112,8 @@ class FunctionBodyOptimizer:
         
         return False
     
-    def _find_function_definition(self, body_node: Node) -> Optional[Node]:
+    @staticmethod
+    def _find_function_definition(body_node: Node) -> Optional[Node]:
         """
         Find the function definition node for a given function body.
         

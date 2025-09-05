@@ -12,6 +12,7 @@ from tree_sitter import Language
 from ..code_base import CodeAdapter
 from ..code_model import CodeCfg
 from ..context import ProcessingContext, LightweightContext
+from ..optimizations import FieldsClassifier, ImportClassifier, ImportAnalyzer
 from ..tree_sitter_support import TreeSitterDocument, Node
 
 
@@ -63,15 +64,20 @@ class PythonAdapter(CodeAdapter[PythonCfg]):
     def create_document(self, text: str, ext: str) -> TreeSitterDocument:
         return PythonDocument(text, ext)
 
-    def create_import_classifier(self, external_patterns: List[str] = None):
+    def create_import_classifier(self, external_patterns: List[str] = None) -> ImportClassifier:
         """Создает Python-специфичный классификатор импортов."""
         from .imports import PythonImportClassifier
         return PythonImportClassifier(external_patterns)
     
-    def create_import_analyzer(self, classifier):
+    def create_import_analyzer(self, classifier: ImportClassifier) -> ImportAnalyzer:
         """Создает Python-специфичный анализатор импортов."""
         from .imports import PythonImportAnalyzer
         return PythonImportAnalyzer(classifier)
+
+    def create_fields_classifier(self, doc: TreeSitterDocument) -> FieldsClassifier:
+        """Создает языко-специфичный классификатор конструкторов и полей."""
+        from .fields import PythonFieldsClassifier
+        return PythonFieldsClassifier(doc)
 
     def should_skip(self, lightweight_ctx: LightweightContext) -> bool:
         """
@@ -84,7 +90,8 @@ class PythonAdapter(CodeAdapter[PythonCfg]):
 
         return False
 
-    def _is_trivial_init_file(self, lightweight_ctx: LightweightContext) -> bool:
+    @staticmethod
+    def _is_trivial_init_file(lightweight_ctx: LightweightContext) -> bool:
         """
         Пропуск тривиальных __init__.py при включённом cfg.skip_trivial_inits:
         - пустой файл
@@ -211,7 +218,8 @@ class PythonAdapter(CodeAdapter[PythonCfg]):
         # TODO: Реализовать проверку __all__ в будущих итерациях
         return self.is_public_element(node, context)
 
-    def _get_element_name(self, node: Node, context: ProcessingContext) -> Optional[str]:
+    @staticmethod
+    def _get_element_name(node: Node, context: ProcessingContext) -> Optional[str]:
         """
         Извлекает имя элемента из узла Tree-sitter.
         """
@@ -226,18 +234,3 @@ class PythonAdapter(CodeAdapter[PythonCfg]):
             return context.get_node_text(name_node)
         
         return None
-    
-    def is_trivial_constructor(self, constructor_body: Node, context: ProcessingContext) -> bool:
-        """Определяет, является ли конструктор тривиальным."""
-        from .fields import is_trivial_constructor
-        return is_trivial_constructor(constructor_body, context)
-    
-    def is_trivial_getter(self, getter_body: Node, context: ProcessingContext) -> bool:
-        """Определяет, является ли геттер тривиальным."""
-        from .fields import is_trivial_getter
-        return is_trivial_getter(getter_body, context)
-    
-    def is_trivial_setter(self, setter_body: Node, context: ProcessingContext) -> bool:
-        """Определяет, является ли сеттер тривиальным."""
-        from .fields import is_trivial_setter
-        return is_trivial_setter(setter_body, context)

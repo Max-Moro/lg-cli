@@ -5,7 +5,33 @@ Processes trivial constructors, getters, and setters according to configuration.
 
 from __future__ import annotations
 
+from typing import Optional
+
 from ..context import ProcessingContext
+from abc import ABC, abstractmethod
+
+from ..tree_sitter_support import Node, TreeSitterDocument
+
+
+class FieldsClassifier(ABC):
+    """Abstract base class for fields classification."""
+    def __init__(self, doc: TreeSitterDocument):
+        self.doc = doc
+
+    @abstractmethod
+    def is_trivial_constructor(self, constructor_body: Node) -> bool:
+        """Определяет, является ли конструктор тривиальным."""
+        pass
+
+    @abstractmethod
+    def is_trivial_getter(self, getter_body: Node) -> bool:
+        """Определяет, является ли геттер тривиальным."""
+        pass
+
+    @abstractmethod
+    def is_trivial_setter(self, setter_body: Node) -> bool:
+        """Определяет, является ли сеттер тривиальным."""
+        pass
 
 
 class FieldOptimizer:
@@ -28,16 +54,20 @@ class FieldOptimizer:
             context: Processing context with document and editor
         """
         config = self.adapter.cfg.field_config
+
+        classifier: Optional[FieldsClassifier] = None
+        if config.strip_trivial_constructors or config.strip_trivial_accessors:
+            classifier = self.adapter.create_fields_classifier(context.doc)
         
         # Apply trivial constructor optimization
         if config.strip_trivial_constructors:
-            self._process_trivial_constructors(context)
+            self._process_trivial_constructors(context, classifier)
         
         # Apply trivial accessor optimization  
         if config.strip_trivial_accessors:
-            self._process_trivial_accessors(context)
+            self._process_trivial_accessors(context, classifier)
     
-    def _process_trivial_constructors(self, context: ProcessingContext) -> None:
+    def _process_trivial_constructors(self, context: ProcessingContext, classifier: FieldsClassifier) -> None:
         """
         Process and strip trivial constructors.
         
@@ -50,13 +80,12 @@ class FieldOptimizer:
         for node, capture_name in constructors:
             if capture_name == "constructor_body":
                 # Check if constructor is trivial
-                if hasattr(self.adapter, 'is_trivial_constructor'):
-                    is_trivial = self.adapter.is_trivial_constructor(node, context)
-                    
-                    if is_trivial:
-                        self._strip_constructor_body(node, context)
+                is_trivial = classifier.is_trivial_constructor(node)
+
+                if is_trivial:
+                    self._strip_constructor_body(node, context)
     
-    def _process_trivial_accessors(self, context: ProcessingContext) -> None:
+    def _process_trivial_accessors(self, context: ProcessingContext, classifier: FieldsClassifier) -> None:
         """
         Process and strip trivial getters and setters.
         
@@ -64,12 +93,12 @@ class FieldOptimizer:
             context: Processing context
         """
         # Process property getters and setters (Python @property, TypeScript get/set)
-        self._process_property_accessors(context)
+        self._process_property_accessors(context, classifier)
         
         # Process simple getters and setters (get_/set_ methods)
-        self._process_simple_accessors(context)
+        self._process_simple_accessors(context, classifier)
     
-    def _process_property_accessors(self, context: ProcessingContext) -> None:
+    def _process_property_accessors(self, context: ProcessingContext, classifier: FieldsClassifier) -> None:
         """Process @property or get/set methods."""
         # Process getters
         getters = context.query("getters") if "getters" in context.doc.get_query_definitions() else []
@@ -80,47 +109,43 @@ class FieldOptimizer:
         
         for node, capture_name in all_getters:
             if capture_name in ("getter_body", "property_body"):
-                if hasattr(self.adapter, 'is_trivial_getter'):
-                    is_trivial = self.adapter.is_trivial_getter(node, context)
-                    
-                    if is_trivial:
-                        self._strip_getter_body(node, context)
+                is_trivial = classifier.is_trivial_getter(node)
+
+                if is_trivial:
+                    self._strip_getter_body(node, context)
         
         # Process setters
         setters = context.query("setters") if "setters" in context.doc.get_query_definitions() else []
         
         for node, capture_name in setters:
             if capture_name in ("setter_body",):
-                if hasattr(self.adapter, 'is_trivial_setter'):
-                    is_trivial = self.adapter.is_trivial_setter(node, context)
-                    
-                    if is_trivial:
-                        self._strip_setter_body(node, context)
+                is_trivial = classifier.is_trivial_setter(node)
+
+                if is_trivial:
+                    self._strip_setter_body(node, context)
     
-    def _process_simple_accessors(self, context: ProcessingContext) -> None:
+    def _process_simple_accessors(self, context: ProcessingContext, classifier: FieldsClassifier) -> None:
         """Process simple get_/set_ methods."""
         simple_accessors = context.query("simple_getters_setters") if "simple_getters_setters" in context.doc.get_query_definitions() else []
         
         for node, capture_name in simple_accessors:
             if capture_name == "method_body":
                 # Get method name to determine if it's getter or setter
-                method_name = self._get_method_name(node, context)
+                method_name = self._get_method_name(node, context.doc)
                 
                 if method_name and method_name.startswith(("get_", "get")):
                     # Simple getter
-                    if hasattr(self.adapter, 'is_trivial_getter'):
-                        is_trivial = self.adapter.is_trivial_getter(node, context)
-                        
-                        if is_trivial:
-                            self._strip_getter_body(node, context)
+                    is_trivial = classifier.is_trivial_getter(node)
+
+                    if is_trivial:
+                        self._strip_getter_body(node, context)
                 
                 elif method_name and method_name.startswith(("set_", "set")):
                     # Simple setter
-                    if hasattr(self.adapter, 'is_trivial_setter'):
-                        is_trivial = self.adapter.is_trivial_setter(node, context)
-                        
-                        if is_trivial:
-                            self._strip_setter_body(node, context)
+                    is_trivial = classifier.is_trivial_setter(node)
+
+                    if is_trivial:
+                        self._strip_setter_body(node, context)
     
     def _strip_constructor_body(self, body_node, context: ProcessingContext) -> None:
         """Strip trivial constructor body."""
@@ -200,13 +225,14 @@ class FieldOptimizer:
         context.metrics.add_bytes_saved(end_byte - start_byte - len(placeholder.encode('utf-8')))
         context.metrics.mark_placeholder_inserted()
     
-    def _get_method_name(self, body_node, context: ProcessingContext) -> str:
+    @staticmethod
+    def _get_method_name(body_node, doc: TreeSitterDocument) -> str:
         """
         Get method name for a method body node.
         
         Args:
             body_node: Method body node
-            context: Processing context
+            doc: Tree-sitter документ
             
         Returns:
             Method name or empty string if not found
@@ -218,7 +244,7 @@ class FieldOptimizer:
                 # Find name node
                 for child in current.children:
                     if child.type in ("identifier", "property_identifier"):
-                        return context.get_node_text(child)
+                        return doc.get_node_text(child)
                 break
             current = current.parent
         

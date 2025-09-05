@@ -7,7 +7,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import List, Optional
 
-from ..import_utils import ImportClassifier, ImportAnalyzer, ImportInfo
+from ..optimizations.imports import ImportClassifier, ImportAnalyzer, ImportInfo
 from ..tree_sitter_support import TreeSitterDocument, Node
 
 
@@ -58,7 +58,8 @@ class PythonImportClassifier(ImportClassifier):
         # If we can't determine, assume external for unknown packages
         return not self._looks_like_local(module_name)
     
-    def _is_local_import(self, module_name: str) -> bool:
+    @staticmethod
+    def _is_local_import(module_name: str) -> bool:
         """Check if import looks like a local/relative import."""
         import re
         
@@ -82,7 +83,8 @@ class PythonImportClassifier(ImportClassifier):
         
         return False
     
-    def _looks_like_local(self, module_name: str) -> bool:
+    @staticmethod
+    def _looks_like_local(module_name: str) -> bool:
         """Heuristics to identify local modules."""
         import re
         

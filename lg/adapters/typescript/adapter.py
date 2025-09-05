@@ -12,6 +12,7 @@ from tree_sitter import Language
 from ..code_base import CodeAdapter
 from ..code_model import CodeCfg
 from ..context import ProcessingContext, LightweightContext
+from ..optimizations import FunctionBodyOptimizer, FieldsClassifier, ImportClassifier, ImportAnalyzer
 from ..tree_sitter_support import TreeSitterDocument, Node
 
 
@@ -70,15 +71,20 @@ class TypeScriptAdapter(CodeAdapter[TypeScriptCfg]):
     def create_document(self, text: str, ext: str) -> TreeSitterDocument:
         return TypeScriptDocument(text, ext)
 
-    def create_import_classifier(self, external_patterns: List[str] = None):
+    def create_import_classifier(self, external_patterns: List[str] = None) -> ImportClassifier:
         """Создает TypeScript-специфичный классификатор импортов."""
         from .imports import TypeScriptImportClassifier
         return TypeScriptImportClassifier(external_patterns)
 
-    def create_import_analyzer(self, classifier):
+    def create_import_analyzer(self, classifier: ImportClassifier) -> ImportAnalyzer:
         """Создает TypeScript-специфичный анализатор импортов."""
         from .imports import TypeScriptImportAnalyzer
         return TypeScriptImportAnalyzer(classifier)
+
+    def create_fields_classifier(self, doc: TreeSitterDocument) -> FieldsClassifier:
+        """Создает языко-специфичный классификатор конструкторов и полей."""
+        from .fields import TypeScriptFieldsClassifier
+        return TypeScriptFieldsClassifier(doc)
 
     def should_skip(self, lightweight_ctx: LightweightContext) -> bool:
         """
@@ -92,11 +98,11 @@ class TypeScriptAdapter(CodeAdapter[TypeScriptCfg]):
         # Можно добавить другие эвристики пропуска для TypeScript
         return False
 
-    def hook__strip_function_bodies(self, context: ProcessingContext) -> None:
+    def hook__strip_function_bodies(self, context: ProcessingContext, root_optimizer: FunctionBodyOptimizer) -> None:
         """Хук для обработки стрелочных функций."""
-        self._strip_arrow_functions(context)
+        self._strip_arrow_functions(context, root_optimizer)
 
-    def _strip_arrow_functions(self, context: ProcessingContext) -> None:
+    def _strip_arrow_functions(self, context: ProcessingContext, root_optimizer: FunctionBodyOptimizer) -> None:
         """Обработка стрелочных функций."""
         cfg = self.cfg.strip_function_bodies
         if not cfg:
@@ -120,7 +126,7 @@ class TypeScriptAdapter(CodeAdapter[TypeScriptCfg]):
             lines_count = end_line - start_line + 1
             
             # Только стрипим многострочные стрелочные функции
-            should_strip = lines_count > 1 and self.should_strip_function_body(node, lines_count, cfg, context)
+            should_strip = lines_count > 1 and root_optimizer.should_strip_function_body(node, lines_count, cfg, context)
             
             if should_strip:
                 context.remove_function_body(
@@ -189,7 +195,8 @@ class TypeScriptAdapter(CodeAdapter[TypeScriptCfg]):
         # Дополнительная проверка через поиск export в начале строки
         return self._check_export_in_source_line(node, context)
 
-    def _check_export_in_source_line(self, node: Node, context: ProcessingContext) -> bool:
+    @staticmethod
+    def _check_export_in_source_line(node: Node, context: ProcessingContext) -> bool:
         """
         Проверяет наличие 'export' в исходной строке элемента.
         Это fallback для случаев, когда Tree-sitter не правильно парсит export.
@@ -250,7 +257,8 @@ class TypeScriptAdapter(CodeAdapter[TypeScriptCfg]):
             # Если Tree-sitter парсинг не удался, полагаемся на текстовую эвристику
             return export_ratio > 0.5
 
-    def _deep_barrel_file_analysis(self, context: ProcessingContext) -> bool:
+    @staticmethod
+    def _deep_barrel_file_analysis(context: ProcessingContext) -> bool:
         """
         Глубокий анализ barrel file через Tree-sitter парсинг.
         Вызывается только в сложных случаях.
@@ -286,18 +294,3 @@ class TypeScriptAdapter(CodeAdapter[TypeScriptCfg]):
         except Exception:
             # При ошибках парсинга возвращаем False
             return False
-
-    def is_trivial_constructor(self, constructor_body: Node, context: ProcessingContext) -> bool:
-        """Определяет, является ли конструктор тривиальным."""
-        from .fields import is_trivial_constructor
-        return is_trivial_constructor(constructor_body, context)
-    
-    def is_trivial_getter(self, getter_body: Node, context: ProcessingContext) -> bool:
-        """Определяет, является ли геттер тривиальным."""
-        from .fields import is_trivial_getter
-        return is_trivial_getter(getter_body, context)
-    
-    def is_trivial_setter(self, setter_body: Node, context: ProcessingContext) -> bool:
-        """Определяет, является ли сеттер тривиальным."""
-        from .fields import is_trivial_setter
-        return is_trivial_setter(setter_body, context)
