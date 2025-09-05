@@ -1,0 +1,225 @@
+"""
+Field optimization.
+Processes trivial constructors, getters, and setters according to configuration.
+"""
+
+from __future__ import annotations
+
+from ..context import ProcessingContext
+
+
+class FieldOptimizer:
+    """Handles field-related optimization (constructors, getters, setters)."""
+    
+    def __init__(self, adapter):
+        """
+        Initialize with parent adapter for language-specific checks.
+        
+        Args:
+            adapter: Parent CodeAdapter instance for language-specific methods
+        """
+        self.adapter = adapter
+    
+    def apply(self, context: ProcessingContext) -> None:
+        """
+        Apply field optimization based on configuration.
+        
+        Args:
+            context: Processing context with document and editor
+        """
+        config = self.adapter.cfg.field_config
+        
+        # Apply trivial constructor optimization
+        if config.strip_trivial_constructors:
+            self._process_trivial_constructors(context)
+        
+        # Apply trivial accessor optimization  
+        if config.strip_trivial_accessors:
+            self._process_trivial_accessors(context)
+    
+    def _process_trivial_constructors(self, context: ProcessingContext) -> None:
+        """
+        Process and strip trivial constructors.
+        
+        Args:
+            context: Processing context
+        """
+        # Find constructors using language-specific queries
+        constructors = context.query("constructors")
+        
+        for node, capture_name in constructors:
+            if capture_name == "constructor_body":
+                # Check if constructor is trivial
+                if hasattr(self.adapter, 'is_trivial_constructor'):
+                    is_trivial = self.adapter.is_trivial_constructor(node, context)
+                    
+                    if is_trivial:
+                        self._strip_constructor_body(node, context)
+    
+    def _process_trivial_accessors(self, context: ProcessingContext) -> None:
+        """
+        Process and strip trivial getters and setters.
+        
+        Args:
+            context: Processing context
+        """
+        # Process property getters and setters (Python @property, TypeScript get/set)
+        self._process_property_accessors(context)
+        
+        # Process simple getters and setters (get_/set_ methods)
+        self._process_simple_accessors(context)
+    
+    def _process_property_accessors(self, context: ProcessingContext) -> None:
+        """Process @property or get/set methods."""
+        # Process getters
+        getters = context.query("getters") if "getters" in context.doc.get_query_definitions() else []
+        properties = context.query("properties") if "properties" in context.doc.get_query_definitions() else []
+        
+        # Combine Python @property and TypeScript get methods
+        all_getters = list(getters) + list(properties)
+        
+        for node, capture_name in all_getters:
+            if capture_name in ("getter_body", "property_body"):
+                if hasattr(self.adapter, 'is_trivial_getter'):
+                    is_trivial = self.adapter.is_trivial_getter(node, context)
+                    
+                    if is_trivial:
+                        self._strip_getter_body(node, context)
+        
+        # Process setters
+        setters = context.query("setters") if "setters" in context.doc.get_query_definitions() else []
+        
+        for node, capture_name in setters:
+            if capture_name in ("setter_body",):
+                if hasattr(self.adapter, 'is_trivial_setter'):
+                    is_trivial = self.adapter.is_trivial_setter(node, context)
+                    
+                    if is_trivial:
+                        self._strip_setter_body(node, context)
+    
+    def _process_simple_accessors(self, context: ProcessingContext) -> None:
+        """Process simple get_/set_ methods."""
+        simple_accessors = context.query("simple_getters_setters") if "simple_getters_setters" in context.doc.get_query_definitions() else []
+        
+        for node, capture_name in simple_accessors:
+            if capture_name == "method_body":
+                # Get method name to determine if it's getter or setter
+                method_name = self._get_method_name(node, context)
+                
+                if method_name and method_name.startswith(("get_", "get")):
+                    # Simple getter
+                    if hasattr(self.adapter, 'is_trivial_getter'):
+                        is_trivial = self.adapter.is_trivial_getter(node, context)
+                        
+                        if is_trivial:
+                            self._strip_getter_body(node, context)
+                
+                elif method_name and method_name.startswith(("set_", "set")):
+                    # Simple setter
+                    if hasattr(self.adapter, 'is_trivial_setter'):
+                        is_trivial = self.adapter.is_trivial_setter(node, context)
+                        
+                        if is_trivial:
+                            self._strip_setter_body(node, context)
+    
+    def _strip_constructor_body(self, body_node, context: ProcessingContext) -> None:
+        """Strip trivial constructor body."""
+        start_byte, end_byte = context.get_node_range(body_node)
+        start_line, end_line = context.get_line_range(body_node)
+        lines_count = end_line - start_line + 1
+        
+        # Create constructor-specific placeholder
+        placeholder = context.placeholder_gen.create_custom_placeholder(
+            "… trivial constructor omitted (−{lines})",
+            {"lines": lines_count},
+            style=self.adapter.cfg.placeholders.style
+        )
+        
+        context.editor.add_replacement(
+            start_byte, end_byte, placeholder,
+            type="trivial_constructor_removal",
+            is_placeholder=True,
+            lines_removed=lines_count
+        )
+        
+        # Update metrics
+        context.metrics.increment("code.removed.constructors")
+        context.metrics.add_lines_saved(lines_count)
+        context.metrics.add_bytes_saved(end_byte - start_byte - len(placeholder.encode('utf-8')))
+        context.metrics.mark_placeholder_inserted()
+    
+    def _strip_getter_body(self, body_node, context: ProcessingContext) -> None:
+        """Strip trivial getter body."""
+        start_byte, end_byte = context.get_node_range(body_node)
+        start_line, end_line = context.get_line_range(body_node)
+        lines_count = end_line - start_line + 1
+        
+        # Create getter-specific placeholder
+        placeholder = context.placeholder_gen.create_custom_placeholder(
+            "… trivial getter omitted (−{lines})",
+            {"lines": lines_count},
+            style=self.adapter.cfg.placeholders.style
+        )
+        
+        context.editor.add_replacement(
+            start_byte, end_byte, placeholder,
+            type="trivial_getter_removal",
+            is_placeholder=True,
+            lines_removed=lines_count
+        )
+        
+        # Update metrics
+        context.metrics.increment("code.removed.getters")
+        context.metrics.add_lines_saved(lines_count)
+        context.metrics.add_bytes_saved(end_byte - start_byte - len(placeholder.encode('utf-8')))
+        context.metrics.mark_placeholder_inserted()
+    
+    def _strip_setter_body(self, body_node, context: ProcessingContext) -> None:
+        """Strip trivial setter body."""
+        start_byte, end_byte = context.get_node_range(body_node)
+        start_line, end_line = context.get_line_range(body_node)
+        lines_count = end_line - start_line + 1
+        
+        # Create setter-specific placeholder
+        placeholder = context.placeholder_gen.create_custom_placeholder(
+            "… trivial setter omitted (−{lines})",
+            {"lines": lines_count},
+            style=self.adapter.cfg.placeholders.style
+        )
+        
+        context.editor.add_replacement(
+            start_byte, end_byte, placeholder,
+            type="trivial_setter_removal",
+            is_placeholder=True,
+            lines_removed=lines_count
+        )
+        
+        # Update metrics
+        context.metrics.increment("code.removed.setters")
+        context.metrics.add_lines_saved(lines_count)
+        context.metrics.add_bytes_saved(end_byte - start_byte - len(placeholder.encode('utf-8')))
+        context.metrics.mark_placeholder_inserted()
+    
+    def _get_method_name(self, body_node, context: ProcessingContext) -> str:
+        """
+        Get method name for a method body node.
+        
+        Args:
+            body_node: Method body node
+            context: Processing context
+            
+        Returns:
+            Method name or empty string if not found
+        """
+        # Walk up to find the method definition
+        current = body_node.parent
+        while current:
+            if current.type in ("function_definition", "method_definition"):
+                # Find name node
+                for child in current.children:
+                    if child.type in ("identifier", "property_identifier"):
+                        return context.get_node_text(child)
+                break
+            current = current.parent
+        
+        return ""

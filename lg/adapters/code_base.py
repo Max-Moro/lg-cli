@@ -18,6 +18,7 @@ from .optimizations import (
     CommentOptimizer,
     ImportOptimizer,
     LiteralOptimizer,
+    FieldOptimizer,
 )
 
 C = TypeVar("C", bound=CodeCfg)
@@ -135,6 +136,10 @@ class CodeAdapter(BaseAdapter[C], ABC):
         # Обработка литералов
         literal_optimizer = LiteralOptimizer(self)
         literal_optimizer.apply(context)
+        
+        # Обработка полей (конструкторы, геттеры, сеттеры)
+        field_optimizer = FieldOptimizer(self)
+        field_optimizer.apply(context)
 
 
     # ============= ХУКИ для вклинивания в процесс оптимизации ===========

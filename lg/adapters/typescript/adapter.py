@@ -286,3 +286,18 @@ class TypeScriptAdapter(CodeAdapter[TypeScriptCfg]):
         except Exception:
             # При ошибках парсинга возвращаем False
             return False
+
+    def is_trivial_constructor(self, constructor_body: Node, context: ProcessingContext) -> bool:
+        """Определяет, является ли конструктор тривиальным."""
+        from .fields import is_trivial_constructor
+        return is_trivial_constructor(constructor_body, context)
+    
+    def is_trivial_getter(self, getter_body: Node, context: ProcessingContext) -> bool:
+        """Определяет, является ли геттер тривиальным."""
+        from .fields import is_trivial_getter
+        return is_trivial_getter(getter_body, context)
+    
+    def is_trivial_setter(self, setter_body: Node, context: ProcessingContext) -> bool:
+        """Определяет, является ли сеттер тривиальным."""
+        from .fields import is_trivial_setter
+        return is_trivial_setter(setter_body, context)

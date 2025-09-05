@@ -62,4 +62,43 @@ QUERIES = {
     
     (tuple) @array
     """,
+    
+    # Constructors and field-related methods
+    "constructors": """
+    (class_definition
+      body: (block
+        (function_definition
+          name: (identifier) @constructor_name
+          (#eq? @constructor_name "__init__")
+          body: (block) @constructor_body)))
+    """,
+    
+    "properties": """
+    (decorated_definition
+      (decorator
+        (identifier) @decorator_name
+        (#eq? @decorator_name "property"))
+      definition: (function_definition
+        name: (identifier) @property_name
+        body: (block) @property_body))
+    """,
+    
+    "setters": """
+    (decorated_definition
+      (decorator
+        (attribute
+          object: (identifier) @property_base
+          attribute: (identifier) @setter_attr
+          (#eq? @setter_attr "setter")))
+      definition: (function_definition
+        name: (identifier) @setter_name
+        body: (block) @setter_body))
+    """,
+    
+    "simple_getters_setters": """
+    (function_definition
+      name: (identifier) @method_name
+      (#match? @method_name "^(get_|set_)")
+      body: (block) @method_body)
+    """,
 }

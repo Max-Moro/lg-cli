@@ -99,4 +99,41 @@ QUERIES = {
     
     (object) @object
     """,
+    
+    # Constructors and field-related methods
+    "constructors": """
+    (class_declaration
+      body: (class_body
+        (method_definition
+          name: (property_identifier) @constructor_name
+          (#eq? @constructor_name "constructor")
+          body: (statement_block) @constructor_body)))
+    """,
+    
+    "getters": """
+    (class_declaration
+      body: (class_body
+        (method_definition
+          (accessibility_modifier)? @access_modifier
+          "get"
+          name: (property_identifier) @getter_name
+          body: (statement_block) @getter_body)))
+    """,
+    
+    "setters": """
+    (class_declaration
+      body: (class_body
+        (method_definition
+          (accessibility_modifier)? @access_modifier
+          "set"
+          name: (property_identifier) @setter_name
+          body: (statement_block) @setter_body)))
+    """,
+    
+    "simple_getters_setters": """
+    (method_definition
+      name: (property_identifier) @method_name
+      (#match? @method_name "^(get|set)[A-Z]")
+      body: (statement_block) @method_body)
+    """,
 }
