@@ -88,4 +88,15 @@ QUERIES = {
       (accessibility_modifier) @access_modifier
       name: (type_identifier) @class_name)
     """,
+    
+    # Literals for trimming
+    "literals": """
+    (string) @string
+    
+    (template_string) @string
+    
+    (array) @array
+    
+    (object) @object
+    """,
 }

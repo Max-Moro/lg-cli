@@ -49,4 +49,17 @@ QUERIES = {
       left: (identifier) @variable_name
       right: (_) @variable_value)
     """,
+    
+    # Literals for trimming
+    "literals": """
+    (string) @string
+    
+    (list) @array
+    
+    (dictionary) @object
+    
+    (set) @array
+    
+    (tuple) @array
+    """,
 }
