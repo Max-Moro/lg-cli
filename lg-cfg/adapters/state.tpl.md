@@ -4,30 +4,19 @@
 - Python
 - TypeScript
 
-### M1: Comment Policy
-- [✓] Реализовать `keep_doc`, `keep_first_sentence`, `strip_all`
-- [✓] Queries для комментариев и docstrings
-- [✓] Тесты на сохранение/удаление документации
+### [✓] M1: Comment Policy
 
-### M2: Import Optimization  
-- [✓] `external_only`, `summarize_long` для импортов
-- [✓] Группировка и сжатие длинных списков
-- [✓] Распознавание внешних vs локальных модулей
-- [✓] Тесты в рамках майлстоуна
+### [✓] M2: Import Optimization  
 
-### M3: Подключение Tree-sitter на уровне инфраструктурного парсера
-- [✓] Крупный майлстоун. Выполнен.
+### [✓] M3: Подключение Tree-sitter на уровне инфраструктурного парсера
 
-### M4: Public API Only
-- [✓] Синтаксическая фильтрация (export, public модификаторы)
-- [✓] Доработка `public_only`, `non_public` режимов для should_strip_function_body
-- [✓] TypeScript barrel files и реэкспорты
-- [✓] Тесты в рамках майлстоуна
+### [✓] M4: Public API Only
 
 ### M5: Literal Trimming
 - [ ] Обрезка строк, массивов, объектов
 - [ ] Настраиваемые лимиты по размеру
 - [ ] Безопасное сжатие JSON/данных
+- [ ] Тесты в рамках майлстоуна
 
 ### M6: Budget System
 - [ ] Ограничение токенов на файл
