@@ -471,3 +471,30 @@ def process_data():
             assert meta.get("code.removed.literals", 0) > 0
         if "body omitted" in result:
             assert meta.get("code.removed.functions", 0) > 0
+
+    def test_function_docstring_not_literal(self):
+        """Test must not recognize docstrings or comments as literals."""
+        code = '''"""Module docstring."""
+import os
+
+# This is a comment
+def hello():
+    """Function docstring."""
+    # Another comment
+    return "hello"
+'''
+        adapter = PythonAdapter()
+        literal_config = LiteralConfig(max_string_length=1)
+        adapter._cfg = PythonCfg(literal_config=literal_config)
+
+        result, meta = adapter.process(lctx_py(raw_text=code))
+
+        assert 'Module docstring.' in result
+        assert 'Function docstring.' in result
+        assert "# This is a comment" in result
+        assert "# Another comment" in result
+
+        assert "h..." in result
+
+        # Only the regular string literal "hello" should be removed, not docstrings/comments
+        assert meta.get("code.removed.literals", 0) == 1

@@ -32,10 +32,18 @@ class LiteralOptimizer:
         """
         config = self.adapter.cfg.literal_config
 
+        # Get all docstrings to exclude them from processing
+        comments = context.query("comments")
+        docstring_nodes = {node for node, capture_name in comments if capture_name == "docstring"}
+
         # Get all literals from code
         literals = context.query("literals")
 
         for node, capture_name in literals:
+            # Skip docstrings - they should not be processed as literals
+            if node in docstring_nodes:
+                continue
+                
             self._process_single_literal(node, capture_name, config, context)
     
     def _process_single_literal(
