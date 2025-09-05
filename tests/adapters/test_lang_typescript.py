@@ -135,7 +135,9 @@ export class Calculator {
         
         # Should be nearly identical to original
         assert "return 42;" in result
-    
+        assert meta.get("code.removed.functions", 0) == 0
+        assert meta.get("code.removed.methods", 0) == 0
+
     def test_barrel_file_detection_by_name(self):
         """Test barrel file detection by filename."""
         adapter = TypeScriptAdapter()

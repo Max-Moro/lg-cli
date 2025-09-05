@@ -31,6 +31,7 @@ def hello():
         assert '"""Function docstring."""' in result
         assert "# This is a comment" in result
         assert "# Another comment" in result
+        assert meta.get("code.removed.comments", 0) == 0
     
     def test_strip_all_policy(self):
         """Test that strip_all removes all comments."""
@@ -123,7 +124,8 @@ function greet(user: User) {
         assert "// inline comment" in result
         assert "JSDoc comment" in result
         assert "// Another comment" in result
-
+        assert meta.get("code.removed.comments", 0) == 0
+    
     def test_strip_all_policy(self):
         """Test that strip_all removes all comments."""
         code = '''// This is a comment
@@ -156,11 +158,12 @@ class TestCommentPolicyEdgeCases:
         """Test processing empty file."""
         adapter = PythonAdapter()
         adapter._cfg = PythonCfg(comment_policy="strip_all")
-        
+
         result, meta = adapter.process(lctx_py(raw_text=""))
-        
+
         assert result == ""
-    
+        assert meta.get("code.removed.comments", 0) == 0
+
     def test_no_comments(self):
         """Test processing file without comments."""
         code = '''import os
@@ -170,10 +173,11 @@ def hello():
 '''
         adapter = PythonAdapter()
         adapter._cfg = PythonCfg(comment_policy="strip_all")
-        
+
         result, meta = adapter.process(lctx_py(raw_text=code))
-        
+
         assert result == code  # Should be unchanged
+        assert meta.get("code.removed.comments", 0) == 0
     
     def test_placeholder_styles(self):
         """Test different placeholder styles."""

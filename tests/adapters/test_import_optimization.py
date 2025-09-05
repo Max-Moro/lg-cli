@@ -158,7 +158,8 @@ def main():
         assert "import numpy as np" in result
         assert "from myapp.utils import helper" in result
         assert "from .relative import something" in result
-
+        assert meta.get("code.removed.imports", 0) == 0
+    
     def test_external_only_policy(self):
         """Test that external_only removes local imports."""
         code = '''import os
@@ -282,6 +283,7 @@ class TestImportOptimizationEdgeCases:
         result, meta = adapter.process(lctx_py(raw_text=code))
         
         assert result == code  # Should be unchanged
+        assert meta.get("code.removed.imports", 0) == 0
     
     def test_mixed_import_types(self):
         """Test processing mixed import types."""

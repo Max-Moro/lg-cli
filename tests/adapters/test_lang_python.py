@@ -54,6 +54,8 @@ class TestPythonAdapter:
         result, meta = adapter.process(lctx_py(raw_text=python_code_sample))
         
         # No functions should be removed
+        assert meta.get("code.removed.functions", 0) == 0
+        assert meta.get("code.removed.methods", 0) == 0
         # Result should be close to original (may have minor whitespace changes)
         assert "def add(self, a: int, b: int) -> int:" in result
         assert "result = a + b" in result
@@ -106,7 +108,7 @@ class TestPythonAdapter:
     def test_error_handling(self, monkeypatch):
         """Test error handling when Tree-sitter has issues."""
         # Mock Tree-sitter to raise an error during parsing
-        def mock_parse(self):
+        def mock_parse():
             raise RuntimeError("Mocked parsing error")
         
         monkeypatch.setattr("lg.adapters.python.adapter.PythonDocument._parse", mock_parse)
