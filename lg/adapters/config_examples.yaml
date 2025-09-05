@@ -34,8 +34,8 @@ python_full:
       max_array_elements: 10
       max_object_properties: 8
     field_config:
-      keep_initializers: true
-      max_initializer_length: 30
+      strip_trivial_constructors: true
+      strip_trivial_accessors: true
     budget:
       max_tokens_per_file: 2000
       priority_order: ["imports", "classes", "functions", "docs"]

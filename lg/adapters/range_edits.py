@@ -282,20 +282,6 @@ class PlaceholderGenerator:
         else:
             return ""
 
-    def create_literal_placeholder(
-        self,
-        literal_type: str,
-        bytes_removed: int,
-        style: str = "inline"
-    ) -> str:
-        """Create a placeholder for truncated literals."""
-        if style == "inline" or style == "auto":
-            return f"{self.single_line_comment} … {literal_type} data omitted ({bytes_removed} bytes)"
-        elif style == "block":
-            return f"{self.multi_line_start} … {literal_type} data omitted ({bytes_removed} bytes) {self.multi_line_end}"
-        else:
-            return ""
-
     def create_custom_placeholder(
         self,
         template: str,

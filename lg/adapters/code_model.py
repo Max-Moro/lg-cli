@@ -57,9 +57,8 @@ class LiteralConfig:
 @dataclass
 class FieldConfig:
     """Конфигурация обработки полей/свойств."""
-    keep_initializers: bool = True
-    max_initializer_length: int = 50
-    strip_trivial_accessors: bool = False  # геттеры/сеттеры в Java/C#
+    strip_trivial_constructors: bool = False # пропуск тривиального тела в конструкторах
+    strip_trivial_accessors: bool = False  # геттеры/сеттеры
 
 
 @dataclass
@@ -152,8 +151,7 @@ class CodeCfg:
         if "field_config" in d:
             fc = d["field_config"]
             self.field_config = FieldConfig(
-                keep_initializers=bool(fc.get("keep_initializers", True)),
-                max_initializer_length=int(fc.get("max_initializer_length", 50)),
+                strip_trivial_constructors=bool(fc.get("strip_trivial_constructors", False)),
                 strip_trivial_accessors=bool(fc.get("strip_trivial_accessors", False))
             )
         
