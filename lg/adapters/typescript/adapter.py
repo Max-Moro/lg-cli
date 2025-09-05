@@ -18,7 +18,7 @@ from ..tree_sitter_support import TreeSitterDocument, Node
 @dataclass
 class TypeScriptCfg(CodeCfg):
     """Конфигурация для TypeScript адаптера."""
-    skip_barrel_files: bool = False  # Пропускать barrel files (index.ts с реэкспортами)
+    skip_barrel_files: bool = True  # Пропускать barrel files (index.ts с реэкспортами)
     
     @staticmethod
     def from_dict(d: Optional[Dict[str, Any]]) -> TypeScriptCfg:
@@ -30,7 +30,7 @@ class TypeScriptCfg(CodeCfg):
         cfg.general_load(d)
 
         # TypeScript-специфичные настройки
-        cfg.skip_barrel_files = bool(d.get("skip_barrel_files", False))
+        cfg.skip_barrel_files = bool(d.get("skip_barrel_files", True))
 
         return cfg
 

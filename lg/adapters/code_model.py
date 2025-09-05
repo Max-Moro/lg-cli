@@ -30,7 +30,7 @@ class FunctionBodyConfig:
 @dataclass
 class CommentConfig:
     """Конфигурация обработки комментариев и документации."""
-    policy: CommentPolicy = "keep_doc"
+    policy: CommentPolicy = "keep_all"
     max_length: Optional[int] = None  # максимальная длина сохраняемого комментария
     keep_annotations: List[str] = field(default_factory=list)  # regex аннотаций для сохранения
     strip_patterns: List[str] = field(default_factory=list)  # regex паттернов для удаления
@@ -87,7 +87,7 @@ class CodeCfg:
     # Основные политики
     public_api_only: bool = False
     strip_function_bodies: Union[bool, FunctionBodyConfig] = False
-    comment_policy: Union[CommentPolicy, CommentConfig] = "keep_doc"
+    comment_policy: Union[CommentPolicy, CommentConfig] = "keep_all"
     
     # Дополнительные оптимизации
     import_config: ImportConfig = field(default_factory=ImportConfig)
@@ -119,12 +119,12 @@ class CodeCfg:
             )
         
         # comment_policy: str | dict
-        cp = d.get("comment_policy", "keep_doc")
+        cp = d.get("comment_policy", "keep_all")
         if isinstance(cp, str):
             self.comment_policy = cp
         elif isinstance(cp, dict):
             self.comment_policy = CommentConfig(
-                policy=cp.get("policy", "keep_doc"),
+                policy=cp.get("policy", "keep_all"),
                 max_length=cp.get("max_length"),
                 keep_annotations=list(cp.get("keep_annotations", [])),
                 strip_patterns=list(cp.get("strip_patterns", []))

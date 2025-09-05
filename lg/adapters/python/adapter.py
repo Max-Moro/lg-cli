@@ -18,7 +18,7 @@ from ..tree_sitter_support import TreeSitterDocument, Node
 @dataclass
 class PythonCfg(CodeCfg):
     """Конфигурация для Python адаптера."""
-    skip_trivial_inits: bool = True
+    skip_trivial_inits: bool = True  # Пропускать тривиальные __init__.py
 
     @staticmethod
     def from_dict(d: Optional[Dict[str, Any]]) -> PythonCfg:
