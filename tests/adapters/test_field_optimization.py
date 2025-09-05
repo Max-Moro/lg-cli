@@ -362,7 +362,14 @@ class User:
             strip_trivial_constructors=True,
             strip_trivial_accessors=True
         )
-        adapter._cfg = PythonCfg(field_config=field_config)
+        # Увеличиваем лимиты literal optimization чтобы объекты не заменялись на placeholders
+        from lg.adapters.code_model import LiteralConfig
+        literal_config = LiteralConfig(
+            max_object_properties=50,
+            max_literal_lines=50,
+            collapse_threshold=1000  # Увеличиваем чтобы тестовый объект не заменялся
+        )
+        adapter._cfg = PythonCfg(field_config=field_config, literal_config=literal_config)
         
         result, meta = adapter.process(lctx_py(raw_text=code))
         

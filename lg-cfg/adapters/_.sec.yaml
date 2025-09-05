@@ -22,8 +22,9 @@ src-tests:
             block:
               - "test_literal_trimming.py"
               - "test_complex_comment_policy.py"
-              - "test_import_optimization.py.py"
+              - "test_import_optimization.py"
               - "test_public_api_filtering.py"
+              - "test_lang_typescript.py"
 
 src-without:
   extensions: [".py", ".toml"]

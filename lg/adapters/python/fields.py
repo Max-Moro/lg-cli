@@ -49,7 +49,20 @@ class PythonFieldsClassifier(FieldsClassifier):
                 if self._is_super_init_call(self.doc.get_node_text(stmt)):
                     continue
 
-            # Проверяем простые присваивания self.field = param
+            # В Python присваивания имеют структуру expression_statement -> assignment
+            if stmt_type == "expression_statement":
+                # Ищем assignment внутри expression_statement
+                assignment_node = None
+                for child in stmt.children:
+                    if child.type == "assignment":
+                        assignment_node = child
+                        break
+                
+                if assignment_node and self._is_simple_field_assignment(assignment_node):
+                    significant_statements.append(stmt)
+                    continue
+
+            # Проверяем простые присваивания self.field = param (старая логика для совместимости)
             if stmt_type == "assignment":
                 if self._is_simple_field_assignment(stmt):
                     significant_statements.append(stmt)
@@ -138,7 +151,24 @@ class PythonFieldsClassifier(FieldsClassifier):
                 if self._is_docstring(stmt):
                     continue
 
-            # Ищем assignment statement
+            # В Python присваивания имеют структуру expression_statement -> assignment
+            if stmt_type == "expression_statement":
+                # Ищем assignment внутри expression_statement
+                assignment_node = None
+                for child in stmt.children:
+                    if child.type == "assignment":
+                        assignment_node = child
+                        break
+                
+                if assignment_node:
+                    if assignment_statement is not None:
+                        # Более одного присваивания - нетривиальный
+                        return False
+                    if self._is_simple_field_assignment(assignment_node):
+                        assignment_statement = stmt
+                        continue
+
+            # Ищем assignment statement (старая логика для совместимости)
             if stmt_type == "assignment":
                 if assignment_statement is not None:
                     # Более одного присваивания - нетривиальный
@@ -150,10 +180,7 @@ class PythonFieldsClassifier(FieldsClassifier):
             return False
 
         # Должно быть ровно одно простое присваивание поля
-        if assignment_statement is None:
-            return False
-
-        return self._is_simple_field_assignment(assignment_statement)
+        return assignment_statement is not None
 
     # ============= Вспомогательные функции =============
 
@@ -193,30 +220,49 @@ class PythonFieldsClassifier(FieldsClassifier):
         Проверяет, является ли присваивание простым присваиванием поля.
         Формат: self.field = param
         """
-        # Ищем левую часть (target) и правую часть (value)
+        # В Tree-sitter assignment имеет структуру: left = right
+        # Нужно найти левую и правую части
         left_node = None
         right_node = None
 
-        for child in assignment_node.children:
-            if child.type == "attribute":
-                left_node = child
-            elif child.type in ("identifier", "attribute"):
-                if left_node is not None:
-                    right_node = child
-                else:
-                    left_node = child
+        children = list(assignment_node.children)
+        
+        # Ищем левую часть (до =) и правую часть (после =)
+        equals_index = -1
+        for i, child in enumerate(children):
+            if child.type == "=" or self.doc.get_node_text(child) == "=":
+                equals_index = i
+                break
+        
+        if equals_index == -1:
+            return False
+            
+        # Левая часть - до знака =
+        if equals_index > 0:
+            left_node = children[equals_index - 1]
+        
+        # Правая часть - после знака =
+        if equals_index < len(children) - 1:
+            right_node = children[equals_index + 1]
 
         if left_node is None or right_node is None:
             return False
 
-        # Левая часть должна быть self.something
+        # Левая часть должна быть self.something (attribute узел)
+        if left_node.type != "attribute":
+            return False
+            
         left_text = self.doc.get_node_text(left_node)
         if not left_text.startswith("self."):
             return False
 
         # Правая часть должна быть простым идентификатором (параметром)
+        if right_node.type != "identifier":
+            return False
+            
         right_text = self.doc.get_node_text(right_node)
-        if not right_text.replace("_", "").replace("-", "").isalnum():
+        # Проверяем что это валидный идентификатор
+        if not right_text.isidentifier():
             return False
 
         return True
