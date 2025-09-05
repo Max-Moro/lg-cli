@@ -28,6 +28,7 @@ src-tests:
 
 src-without:
   extensions: [".py", ".toml"]
+  path_labels: relative
   filters:
     mode: allow
     allow:

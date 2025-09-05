@@ -29,10 +29,12 @@ src:
           - "/tests/adapters/test_public_api_filtering.py"
 
 src-short:
-  extensions: [".py"]
+  extensions: [".py", ".toml"]
+  path_labels: relative
   filters:
     mode: allow
     allow:
+      - "/pyproject.toml"
       - "/lg/"
     children:
       lg:
