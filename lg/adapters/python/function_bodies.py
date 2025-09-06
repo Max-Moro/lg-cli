@@ -5,7 +5,7 @@ from typing import Optional
 
 from ..context import ProcessingContext
 from ..optimizations import FunctionBodyOptimizer
-from ..tree_sitter_support import Node, TreeSitterDocument
+from ..tree_sitter_support import Node
 
 
 def remove_function_body_with_definition(
@@ -35,7 +35,7 @@ def remove_function_body_with_definition(
         _remove_after_colon(root_optimizer, context, func_def, body_node, func_type, placeholder_style)
     else:
         # Есть docstring, используем логику с preservation
-        _remove_function_body_preserve_docstring(docstring_node, context, body_node, func_type, placeholder_style)
+        _remove_function_body_preserve_docstring(root_optimizer, context, docstring_node, body_node, func_type, placeholder_style)
 
 def _remove_after_colon(
         root_optimizer: FunctionBodyOptimizer,
@@ -63,46 +63,21 @@ def _remove_after_colon(
     removal_start = absolute_colon_pos + 1  # После ':'
     removal_end = body_end_byte
 
-    # Подсчитываем строки
-    removal_start_line = _get_line_number_for_byte(context.doc, removal_start)
-    body_end_line = context.doc.get_line_range(body_node)[1]
-    lines_removed = body_end_line - removal_start_line + 1
-
-    # Создаем плейсхолдер
-    if func_type == "method":
-        placeholder = context.placeholder_gen.create_method_placeholder(
-            lines_removed=lines_removed,
-            bytes_removed=removal_end - removal_start,
-            style=placeholder_style
-        )
-        context.metrics.mark_method_removed()
-    else:
-        placeholder = context.placeholder_gen.create_function_placeholder(
-            lines_removed=lines_removed,
-            bytes_removed=removal_end - removal_start,
-            style=placeholder_style
-        )
-        context.metrics.mark_function_removed()
-
-    # Добавляем правку
-    context.editor.add_replacement(
-        removal_start, removal_end, f"\n    {placeholder}",
-        type=f"{func_type}_body_removal_simple",
-        is_placeholder=True,
-        lines_removed=lines_removed
+    # Используем общий helper
+    return root_optimizer.apply_function_body_removal(
+        context=context,
+        start_byte=removal_start,
+        end_byte=removal_end,
+        func_type=func_type,
+        placeholder_style=placeholder_style,
+        replacement_type=f"{func_type}_body_removal_simple",
+        placeholder_prefix="\n    "
     )
 
-    context.metrics.add_lines_saved(lines_removed)
-    bytes_saved = removal_end - removal_start - len(f"\n    {placeholder}".encode('utf-8'))
-    if bytes_saved > 0:
-        context.metrics.add_bytes_saved(bytes_saved)
-    context.metrics.mark_placeholder_inserted()
-
-    return None
-
 def _remove_function_body_preserve_docstring(
-        docstring_node: Node,
+        root_optimizer: FunctionBodyOptimizer,
         context: ProcessingContext,
+        docstring_node: Node,
         body_node: Node,
         func_type: str,
         placeholder_style: str
@@ -125,8 +100,8 @@ def _remove_function_body_preserve_docstring(
     removal_start = next_statement_start
     removal_end = body_end_byte
 
-    # Подсчитываем статистику
-    removal_start_line = _get_line_number_for_byte(context.doc, removal_start)
+    # Проверяем, есть ли что удалять
+    removal_start_line = context.doc.get_line_number_for_byte(removal_start)
     body_end_line = context.doc.get_line_range(body_node)[1]
     lines_removed = max(0, body_end_line - removal_start_line + 1)
 
@@ -134,37 +109,16 @@ def _remove_function_body_preserve_docstring(
         # Нечего удалять после docstring
         return None
 
-    # Создаем плейсхолдер
-    if func_type == "method":
-        placeholder = context.placeholder_gen.create_method_placeholder(
-            lines_removed=lines_removed,
-            bytes_removed=removal_end - removal_start,
-            style=placeholder_style
-        )
-        context.metrics.mark_method_removed()
-    else:
-        placeholder = context.placeholder_gen.create_function_placeholder(
-            lines_removed=lines_removed,
-            bytes_removed=removal_end - removal_start,
-            style=placeholder_style
-        )
-        context.metrics.mark_function_removed()
-
-    # Добавляем правку (заменяем код после docstring на плейсхолдер)
-    context.editor.add_replacement(
-        removal_start, removal_end, f"\n    {placeholder}",
-        type=f"{func_type}_body_removal_preserve_docstring",
-        is_placeholder=True,
-        lines_removed=lines_removed
+    # Используем общий helper
+    return root_optimizer.apply_function_body_removal(
+        context=context,
+        start_byte=removal_start,
+        end_byte=removal_end,
+        func_type=func_type,
+        placeholder_style=placeholder_style,
+        replacement_type=f"{func_type}_body_removal_preserve_docstring",
+        placeholder_prefix="\n    "
     )
-
-    context.metrics.add_lines_saved(lines_removed)
-    bytes_saved = removal_end - removal_start - len(f"\n    {placeholder}".encode('utf-8'))
-    if bytes_saved > 0:
-        context.metrics.add_bytes_saved(bytes_saved)
-    context.metrics.mark_placeholder_inserted()
-
-    return None
 
 
 def _find_next_statement_after_docstring(body_node: Node, docstring_node: Node) -> Optional[int]:
@@ -182,24 +136,9 @@ def _find_next_statement_after_docstring(body_node: Node, docstring_node: Node) 
     return None
 
 
-def _get_line_number_for_byte(doc: TreeSitterDocument, byte_offset: int) -> int:
-    """
-    Получает номер строки (0-based) для байтового смещения.
-    """
-    # Простая реализация - подсчитываем переводы строк до этого байта
-    text_before = doc.text_bytes[:byte_offset]
-    return text_before.count(b'\n')
-
-
 def _find_docstring_in_body(body_node: Node) -> Optional[Node]:
     """
     Находит docstring в теле функции (первый expression_statement со string).
-
-    Args:
-        body_node: Узел тела функции
-
-    Returns:
-        Узел docstring или None если не найден
     """
     # Ищем первый statement в теле
     for child in body_node.children:

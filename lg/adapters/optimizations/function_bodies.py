@@ -93,8 +93,42 @@ class FunctionBodyOptimizer:
         Удаляет тело функции/метода с автоматическим учетом метрик.
         """
         start_byte, end_byte = context.doc.get_node_range(body_node)
-        start_line, end_line = context.doc.get_line_range(body_node)
-        lines_count = end_line - start_line + 1
+        
+        FunctionBodyOptimizer.apply_function_body_removal(
+            context=context,
+            start_byte=start_byte,
+            end_byte=end_byte,
+            func_type=func_type,
+            placeholder_style=placeholder_style,
+            replacement_type=f"{func_type}_body_removal"
+        )
+
+    @staticmethod
+    def apply_function_body_removal(
+            context: ProcessingContext,
+            start_byte: int,
+            end_byte: int,
+            func_type: str,
+            placeholder_style: str,
+            replacement_type: str = None,
+            placeholder_prefix: str = ""
+    ) -> None:
+        """
+        Общий helper для применения удаления тела функции с placeholder'ами и метриками.
+        
+        Args:
+            context: Контекст обработки
+            start_byte: Начальная позиция для удаления
+            end_byte: Конечная позиция для удаления
+            func_type: Тип функции ("function" или "method")
+            placeholder_style: Стиль placeholder'а
+            replacement_type: Тип правки для editor'а
+            placeholder_prefix: Префикс для placeholder'а (например "\n    ")
+        """
+        # Вычисляем количество строк
+        start_line = context.doc.get_line_number_for_byte(start_byte)
+        end_line = context.doc.get_line_number_for_byte(end_byte)
+        lines_count = max(0, end_line - start_line + 1)
 
         # Создаем плейсхолдер в зависимости от типа
         if func_type == "method":
@@ -112,16 +146,22 @@ class FunctionBodyOptimizer:
             )
             context.metrics.mark_function_removed()
 
+        # Применяем префикс к placeholder'у если нужно
+        final_placeholder = placeholder_prefix + placeholder
+
         # Добавляем правку
         context.editor.add_replacement(
-            start_byte, end_byte, placeholder,
-            type=f"{func_type}_body_removal",
+            start_byte, end_byte, final_placeholder,
+            type=replacement_type or f"{func_type}_body_removal",
             is_placeholder=True,
             lines_removed=lines_count
         )
 
+        # Обновляем метрики
         context.metrics.add_lines_saved(lines_count)
-        context.metrics.add_bytes_saved(end_byte - start_byte - len(placeholder.encode('utf-8')))
+        bytes_saved = end_byte - start_byte - len(final_placeholder.encode('utf-8'))
+        if bytes_saved > 0:
+            context.metrics.add_bytes_saved(bytes_saved)
         context.metrics.mark_placeholder_inserted()
 
     @staticmethod
