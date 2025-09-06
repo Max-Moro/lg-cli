@@ -73,26 +73,14 @@ class FunctionBodyOptimizer:
                 # Determine type (method vs function)
                 func_type = "method" if body_type == "method_body" or self.is_method(body_node) else "function"
                 
-                # Check if adapter has enhanced function removal capability
-                if func_def and hasattr(self.adapter, 'hook__remove_function_body_with_definition'):
-                    # Use adapter-specific logic with function_definition
-                    self.adapter.hook__remove_function_body_with_definition(
-                        root_optimizer=self,
-                        context=context,
-                        func_def=func_def,
-                        body_node=body_node,
-                        func_type=func_type,
-                        placeholder_style=self.adapter.cfg.placeholders.style
-                    )
-                else:
-                    # Fallback to standard adapter-specific hook
-                    self.adapter.hook__remove_function_body(
-                        root_optimizer=self,
-                        context=context,
-                        body_node=body_node,
-                        func_type=func_type,
-                        placeholder_style=self.adapter.cfg.placeholders.style
-                    )
+                self.adapter.hook__remove_function_body(
+                    root_optimizer=self,
+                    context=context,
+                    func_def=func_def, # Use adapter-specific logic with function_definition
+                    body_node=body_node,
+                    func_type=func_type,
+                    placeholder_style=self.adapter.cfg.placeholders.style
+                )
 
     @staticmethod
     def remove_function_body(

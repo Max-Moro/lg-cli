@@ -6,7 +6,7 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from typing import Dict, List, Tuple, Any, TypeVar
+from typing import Dict, List, Tuple, Any, TypeVar, Optional
 
 from .base import BaseAdapter
 from .code_model import CodeCfg
@@ -150,6 +150,7 @@ class CodeAdapter(BaseAdapter[C], ABC):
             self,
             root_optimizer: FunctionBodyOptimizer,
             context: ProcessingContext,
+            func_def: Optional[Node],
             body_node: Node,
             func_type: str,
             placeholder_style,
