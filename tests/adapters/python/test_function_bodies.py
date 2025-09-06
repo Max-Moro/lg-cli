@@ -211,3 +211,213 @@ def complex():
         assert "result = self.value" not in result
         
         assert meta.get("code.removed.methods", 0) > 0
+
+
+class TestPythonDocstringPreservation:
+    """Test preservation of docstrings when stripping function bodies."""
+    
+    def test_function_with_docstring_preserved(self):
+        """Test that function docstrings are preserved when bodies are stripped."""
+        code = '''def calculate_sum(a, b):
+    """Calculate the sum of two numbers.
+    
+    Args:
+        a (int): First number
+        b (int): Second number
+        
+    Returns:
+        int: Sum of a and b
+    """
+    # This is a comment
+    result = a + b
+    print(f"Sum: {result}")
+    return result
+'''
+        
+        adapter = PythonAdapter()
+        adapter._cfg = PythonCfg(strip_function_bodies=True)
+        
+        result, meta = adapter.process(lctx_py(code))
+        
+        # Function signature should be preserved
+        assert "def calculate_sum(a, b):" in result
+        
+        # Docstring should be preserved completely
+        assert '"""Calculate the sum of two numbers.' in result
+        assert 'Args:' in result
+        assert 'Returns:' in result
+        
+        # Function body should be removed
+        assert "result = a + b" not in result
+        assert "print(f" not in result
+        assert "return result" not in result
+        
+        # Should have placeholder for removed body
+        assert "# … " in result or "… " in result
+        
+        # Should report function removal
+        assert meta.get("code.removed.functions", 0) > 0
+    
+    def test_method_with_docstring_preserved(self):
+        """Test that method docstrings are preserved when bodies are stripped."""
+        code = '''class Calculator:
+    def multiply(self, a, b):
+        """Multiply two numbers together.
+        
+        This method performs multiplication operation.
+        """
+        temp = a * b
+        self.history.append(f"multiply({a}, {b}) = {temp}")
+        return temp
+'''
+        
+        adapter = PythonAdapter()
+        adapter._cfg = PythonCfg(strip_function_bodies=True)
+        
+        result, meta = adapter.process(lctx_py(code))
+        
+        # Method signature should be preserved
+        assert "def multiply(self, a, b):" in result
+        
+        # Docstring should be preserved
+        assert '"""Multiply two numbers together.' in result
+        assert 'This method performs multiplication operation.' in result
+        
+        # Method body should be removed
+        assert "temp = a * b" not in result
+        assert "self.history.append" not in result
+        assert "return temp" not in result
+        
+        # Should have placeholder for removed body
+        assert "# … " in result or "… " in result
+        
+        # Should report method removal
+        assert meta.get("code.removed.methods", 0) > 0
+    
+    def test_function_without_docstring_full_removal(self):
+        """Test that functions without docstrings have bodies fully removed."""
+        code = '''def simple_function():
+    # Just a comment, no docstring
+    x = 1
+    y = 2
+    return x + y
+'''
+        
+        adapter = PythonAdapter()
+        adapter._cfg = PythonCfg(strip_function_bodies=True)
+        
+        result, meta = adapter.process(lctx_py(code))
+        
+        # Function signature should be preserved
+        assert "def simple_function():" in result
+        
+        # Everything else should be removed
+        assert "# Just a comment" not in result
+        assert "x = 1" not in result
+        assert "return x + y" not in result
+        
+        # Should have placeholder
+        assert "# … " in result or "… " in result
+        
+        assert meta.get("code.removed.functions", 0) > 0
+    
+    def test_different_docstring_formats(self):
+        """Test preservation of different docstring formats."""
+        code = '''def func1():
+    """Single line docstring."""
+    return "result1"
+
+def func2():
+    """
+    Multi-line docstring
+    with additional details.
+    """
+    return "result2"
+
+def func3():
+    'Single quotes docstring.'
+    return "result3"
+'''
+        
+        adapter = PythonAdapter()
+        adapter._cfg = PythonCfg(strip_function_bodies=True)
+        
+        result, meta = adapter.process(lctx_py(code))
+        
+        # All function signatures should be preserved
+        assert "def func1():" in result
+        assert "def func2():" in result  
+        assert "def func3():" in result
+        
+        # All docstrings should be preserved
+        assert '"""Single line docstring."""' in result
+        assert '"""' in result and 'Multi-line docstring' in result
+        assert "'Single quotes docstring.'" in result
+        
+        # All function bodies should be removed
+        assert 'return "result1"' not in result
+        assert 'return "result2"' not in result
+        assert 'return "result3"' not in result
+        
+        assert meta.get("code.removed.functions", 0) == 3
+    
+    def test_mixed_functions_with_without_docstrings(self):
+        """Test mixed functions - some with docstrings, some without."""
+        code = '''def documented_function():
+    """This function has documentation."""
+    complex_logic = True
+    if complex_logic:
+        return "documented"
+    return "fallback"
+
+def undocumented_function():
+    # No docstring here
+    simple_return = "undocumented"
+    return simple_return
+'''
+        
+        adapter = PythonAdapter()
+        adapter._cfg = PythonCfg(strip_function_bodies=True)
+        
+        result, meta = adapter.process(lctx_py(code))
+        
+        # Both function signatures should be preserved
+        assert "def documented_function():" in result
+        assert "def undocumented_function():" in result
+        
+        # Only the docstring should be preserved
+        assert '"""This function has documentation."""' in result
+        assert "# No docstring here" not in result
+        
+        # All logic should be removed
+        assert "complex_logic = True" not in result
+        assert "simple_return" not in result
+        assert 'return "documented"' not in result
+        assert 'return "undocumented"' not in result
+        
+        # Should have placeholders
+        assert "# … " in result or "… " in result
+        
+        assert meta.get("code.removed.functions", 0) == 2
+    
+    def test_docstring_only_function(self):
+        """Test function that contains only a docstring."""
+        code = '''def docstring_only():
+    """This function only has a docstring and nothing else."""
+    pass
+'''
+        
+        adapter = PythonAdapter()
+        adapter._cfg = PythonCfg(strip_function_bodies=True)
+        
+        result, meta = adapter.process(lctx_py(code))
+        
+        # Function should be preserved
+        assert "def docstring_only():" in result
+        
+        # Docstring should be preserved
+        assert '"""This function only has a docstring and nothing else."""' in result
+        
+        # pass statement should be removed (after docstring)
+        # The function should either keep the docstring only, or add minimal placeholder
+        assert "pass" not in result or "# … " in result

@@ -50,11 +50,19 @@ class FunctionBodyOptimizer:
                     # Determine type (method vs function)
                     func_type = "method" if capture_name == "method_body" or context.is_method(node) else "function"
                     
-                    context.remove_function_body(
-                        node, 
-                        func_type=func_type,
-                        placeholder_style=self.adapter.cfg.placeholders.style
-                    )
+                    # For Python adapter, preserve docstrings when stripping function bodies
+                    if self.adapter.name == "python":
+                        context.remove_function_body_preserve_docstring(
+                            node, 
+                            func_type=func_type,
+                            placeholder_style=self.adapter.cfg.placeholders.style
+                        )
+                    else:
+                        context.remove_function_body(
+                            node, 
+                            func_type=func_type,
+                            placeholder_style=self.adapter.cfg.placeholders.style
+                        )
 
     def should_strip_function_body(
         self, 
