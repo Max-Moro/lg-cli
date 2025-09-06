@@ -155,9 +155,10 @@ class ImportOptimizer:
         """
         if not local_imports:
             return
-        
+
         for imp in local_imports:
-            context.remove_import(
+            self.remove_import(
+                context,
                 imp.node,
                 import_type="local_import",
                 placeholder_style=self.adapter.cfg.placeholders.style
@@ -195,11 +196,86 @@ class ImportOptimizer:
                 if len(group) <= 2:  # Don't summarize small groups
                     continue
                 
-                # Use context method for group removal
-                context.remove_consecutive_imports(
-                    group, group_type, self.adapter.cfg.placeholders.style
+                self.remove_consecutive_imports(
+                    context, group, group_type, self.adapter.cfg.placeholders.style
                 )
-    
+
+    @staticmethod
+    def remove_import(
+            context: ProcessingContext,
+            import_node: Node,
+            import_type: str = "import",
+            placeholder_style: str = "inline"
+    ) -> bool:
+        """
+        Удаляет импорт с автоматическим учетом метрик.
+        """
+        start_byte, end_byte = context.doc.get_node_range(import_node)
+        start_line, end_line = context.doc.get_line_range(import_node)
+        lines_count = end_line - start_line + 1
+
+        placeholder = context.placeholder_gen.create_import_placeholder(
+            count=1, style=placeholder_style
+        )
+
+        context.editor.add_replacement(
+            start_byte, end_byte, placeholder,
+            type=f"{import_type}_removal",
+            is_placeholder=True,
+            lines_removed=lines_count
+        )
+
+        context.metrics.mark_import_removed()
+        context.metrics.add_lines_saved(lines_count)
+        context.metrics.add_bytes_saved(end_byte - start_byte - len(placeholder.encode('utf-8')))
+        context.metrics.mark_placeholder_inserted()
+
+        return True
+
+    @staticmethod
+    def remove_consecutive_imports(
+            context: ProcessingContext,
+            import_ranges: list,
+            group_type: str,
+            placeholder_style: str = "inline"
+    ) -> None:
+        """
+        Удаляет группу последовательных импортов с единым плейсхолдером.
+        """
+        if not import_ranges:
+            return
+
+        # Получаем диапазон всей группы
+        start_byte = import_ranges[0][0]
+        end_byte = import_ranges[-1][1]
+
+        # Создаем суммарный плейсхолдер
+        count = len(import_ranges)
+        summary = f"… {count} {group_type} imports"
+
+        if placeholder_style == "block":
+            placeholder = context.placeholder_gen.create_custom_placeholder(
+                summary, {}, style="block"
+            )
+        else:
+            placeholder = f"# {summary}"
+
+        total_lines = sum(imp[2].line_count for imp in import_ranges)
+
+        context.editor.add_replacement(
+            start_byte, end_byte, placeholder,
+            type="import_summarization",
+            is_placeholder=True,
+            lines_removed=total_lines
+        )
+
+        # Обновляем метрики
+        for _ in import_ranges:
+            context.metrics.mark_import_removed()
+
+        context.metrics.add_lines_saved(total_lines)
+        context.metrics.mark_placeholder_inserted()
+
     @staticmethod
     def _find_consecutive_import_groups(import_ranges: List) -> List[List]:
         """

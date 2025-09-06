@@ -29,7 +29,7 @@ class PublicApiOptimizer:
             context: Processing context with document and editor
         """
         # Find all functions and methods
-        functions = context.query("functions")
+        functions = context.doc.query("functions")
         private_ranges = []
         
         for node, capture_name in functions:
@@ -44,16 +44,16 @@ class PublicApiOptimizer:
                 if capture_name == "method_name":
                     # Method removed if private/protected
                     if not is_public:
-                        start_byte, end_byte = context.get_node_range(function_def)
+                        start_byte, end_byte = context.doc.get_node_range(function_def)
                         private_ranges.append((start_byte, end_byte, function_def))
                 else:  # function_name
                     # Top-level function removed if not exported
                     if not is_exported:
-                        start_byte, end_byte = context.get_node_range(function_def)
+                        start_byte, end_byte = context.doc.get_node_range(function_def)
                         private_ranges.append((start_byte, end_byte, function_def))
         
         # Also check classes
-        classes = context.query("classes")
+        classes = context.doc.query("classes")
         for node, capture_name in classes:
             if capture_name == "class_name":
                 class_def = node.parent
@@ -62,19 +62,19 @@ class PublicApiOptimizer:
                 
                 # For top-level classes, export is primary consideration
                 if not is_exported:
-                    start_byte, end_byte = context.get_node_range(class_def)
+                    start_byte, end_byte = context.doc.get_node_range(class_def)
                     private_ranges.append((start_byte, end_byte, class_def))
         
         # Check interfaces (TypeScript/similar languages)
         try:
-            interfaces = context.query("interfaces")
+            interfaces = context.doc.query("interfaces")
             for node, capture_name in interfaces:
                 if capture_name == "interface_name":
                     interface_def = node.parent
                     is_exported = self.adapter.is_exported_element(interface_def, context)
 
                     if not is_exported:
-                        start_byte, end_byte = context.get_node_range(interface_def)
+                        start_byte, end_byte = context.doc.get_node_range(interface_def)
                         private_ranges.append((start_byte, end_byte, interface_def))
         except Exception:
             # Some languages don't have interfaces query
@@ -82,14 +82,14 @@ class PublicApiOptimizer:
         
         # Check type aliases (TypeScript/similar languages)
         try:
-            types = context.query("types")
+            types = context.doc.query("types")
             for node, capture_name in types:
                 if capture_name == "type_name":
                     type_def = node.parent
                     is_exported = self.adapter.is_exported_element(type_def, context)
 
                     if not is_exported:
-                        start_byte, end_byte = context.get_node_range(type_def)
+                        start_byte, end_byte = context.doc.get_node_range(type_def)
                         private_ranges.append((start_byte, end_byte, type_def))
         except Exception:
             # Some languages don't have types query
@@ -100,7 +100,7 @@ class PublicApiOptimizer:
         
         # Remove private elements with placeholders
         for start_byte, end_byte, element in private_ranges:
-            start_line, end_line = context.get_line_range(element)
+            start_line, end_line = context.doc.get_line_range(element)
             lines_count = end_line - start_line + 1
             
             placeholder = context.placeholder_gen.create_custom_placeholder(

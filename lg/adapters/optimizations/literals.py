@@ -46,11 +46,11 @@ class LiteralOptimizer:
             config = strip_config
 
         # Get all docstrings to exclude them from processing
-        comments = context.query("comments")
+        comments = context.doc.query("comments")
         docstring_nodes = {node for node, capture_name in comments if capture_name == "docstring"}
 
         # Get all literals from code
-        literals = context.query("literals")
+        literals = context.doc.query("literals")
 
         for node, capture_name in literals:
             # Skip docstrings - they should not be processed as literals
@@ -75,8 +75,8 @@ class LiteralOptimizer:
             config: Literal processing configuration
             context: Processing context
         """
-        node_text = context.get_node_text(node)
-        start_line, end_line = context.get_line_range(node)
+        node_text = context.doc.get_node_text(node)
+        start_line, end_line = context.doc.get_line_range(node)
         lines_count = end_line - start_line + 1
         bytes_count = len(node_text.encode('utf-8'))
 
@@ -107,7 +107,7 @@ class LiteralOptimizer:
                 replacement_text = self._create_size_based_placeholder(literal_type, bytes_count)
 
         if should_trim and replacement_text:
-            start_byte, end_byte = context.get_node_range(node)
+            start_byte, end_byte = context.doc.get_node_range(node)
 
             context.editor.add_replacement(
                 start_byte, end_byte, replacement_text,
@@ -256,7 +256,7 @@ class LiteralOptimizer:
 
         for child in node.children:
             if child.type not in ('[', ']', ',') and count < max_elements:
-                element_text = context.get_node_text(child).strip()
+                element_text = context.doc.get_node_text(child).strip()
                 # Truncate long elements
                 if len(element_text) > 50:
                     element_text = element_text[:47] + "..."
@@ -272,7 +272,7 @@ class LiteralOptimizer:
 
         for child in node.children:
             if ('pair' in child.type or 'property' in child.type) and count < max_properties:
-                prop_text = context.get_node_text(child).strip()
+                prop_text = context.doc.get_node_text(child).strip()
                 # Truncate long properties
                 if len(prop_text) > 50:
                     prop_text = prop_text[:47] + "..."

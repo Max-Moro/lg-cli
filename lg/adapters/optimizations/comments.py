@@ -9,6 +9,7 @@ from typing import Tuple
 
 from ..code_model import CommentConfig
 from ..context import ProcessingContext
+from ..tree_sitter_support import Node
 
 
 class CommentOptimizer:
@@ -37,23 +38,68 @@ class CommentOptimizer:
             return
         
         # Find comments in the code
-        comments = context.query("comments")
+        comments = context.doc.query("comments")
 
         for node, capture_name in comments:
-            comment_text = context.get_node_text(node)
-            
+            comment_text = context.doc.get_node_text(node)
+
             should_remove, replacement = self._should_process_comment(
                 policy, capture_name, comment_text, context
             )
-            
+
             if should_remove:
-                context.remove_comment(
+                self.remove_comment(
+                    context,
                     node,
                     comment_type=capture_name,
                     replacement=replacement,
                     placeholder_style=self.adapter.cfg.placeholders.style
                 )
-    
+
+    @staticmethod
+    def remove_comment(
+            context: ProcessingContext,
+            comment_node: Node,
+            comment_type: str = "comment",
+            replacement: str = None,
+            placeholder_style: str = "inline"
+    ) -> bool:
+        """
+        Удаляет комментарий с автоматическим учетом метрик.
+
+        Args:
+            context: Контекст обработки с доступом к документу
+            comment_node: Узел комментария для удаления
+            comment_type: Тип комментария ("comment", "docstring")
+            replacement: Кастомная замена (если None, используется плейсхолдер)
+            placeholder_style: Стиль плейсхолдера
+        """
+        start_byte, end_byte = context.doc.get_node_range(comment_node)
+        start_line, end_line = context.doc.get_line_range(comment_node)
+        lines_count = end_line - start_line + 1
+
+        if replacement is None:
+            replacement = context.placeholder_gen.create_comment_placeholder(
+                comment_type, style=placeholder_style
+            )
+            context.metrics.mark_placeholder_inserted()
+
+        context.editor.add_replacement(
+            start_byte, end_byte, replacement,
+            type=f"{comment_type}_removal",
+            is_placeholder=bool(replacement),
+            lines_removed=lines_count
+        )
+
+        context.metrics.mark_comment_removed()
+        if replacement:
+            context.metrics.add_lines_saved(lines_count)
+            bytes_saved = end_byte - start_byte - len(replacement.encode('utf-8'))
+            if bytes_saved > 0:
+                context.metrics.add_bytes_saved(bytes_saved)
+
+        return True
+
     def _should_process_comment(
         self, 
         policy, 
@@ -211,7 +257,8 @@ class CommentOptimizer:
         
         return False, ""
     
-    def _is_jsdoc_comment(self, comment_text: str) -> bool:
+    @staticmethod
+    def _is_jsdoc_comment(comment_text: str) -> bool:
         """
         Check if a comment is a JSDoc comment (TypeScript/JavaScript documentation).
         
@@ -224,7 +271,8 @@ class CommentOptimizer:
         # JSDoc comments start with /** (not just /*)
         return comment_text.strip().startswith('/**')
 
-    def _extract_first_sentence(self, text: str) -> str:
+    @staticmethod
+    def _extract_first_sentence(text: str) -> str:
         """
         Extract the first sentence from comment text.
         

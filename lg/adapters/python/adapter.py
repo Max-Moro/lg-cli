@@ -226,11 +226,11 @@ class PythonAdapter(CodeAdapter[PythonCfg]):
         # Ищем дочерний узел с именем функции/класса/метода
         for child in node.children:
             if child.type == "identifier":
-                return context.get_node_text(child)
+                return context.doc.get_node_text(child)
         
         # Для некоторых типов узлов имя может быть в поле name
         name_node = node.child_by_field_name("name")
         if name_node:
-            return context.get_node_text(name_node)
+            return context.doc.get_node_text(name_node)
         
         return None

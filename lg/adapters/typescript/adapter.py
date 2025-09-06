@@ -12,7 +12,7 @@ from tree_sitter import Language
 from ..code_base import CodeAdapter
 from ..code_model import CodeCfg
 from ..context import ProcessingContext, LightweightContext
-from ..optimizations import FunctionBodyOptimizer, FieldsClassifier, ImportClassifier, ImportAnalyzer
+from ..optimizations import FieldsClassifier, ImportClassifier, ImportAnalyzer
 from ..tree_sitter_support import TreeSitterDocument, Node
 
 
@@ -108,12 +108,12 @@ class TypeScriptAdapter(CodeAdapter[TypeScriptCfg]):
         - Элементы с модификатором 'public' или без модификатора - публичные
         """
         # Debug: добавим отладочную информацию
-        node_text = context.get_node_text(node)
+        node_text = context.doc.get_node_text(node)
         
         # Ищем модификаторы доступа среди дочерних узлов и в тексте
         for child in node.children:
             if child.type == "accessibility_modifier":
-                modifier_text = context.get_node_text(child)
+                modifier_text = context.doc.get_node_text(child)
                 if modifier_text in ("private", "protected"):
                     return False
                 elif modifier_text == "public":
@@ -142,7 +142,7 @@ class TypeScriptAdapter(CodeAdapter[TypeScriptCfg]):
             return False
         
         # Проверяем, что это top-level элемент с export
-        node_text = context.get_node_text(node)
+        node_text = context.doc.get_node_text(node)
         
         # Простая проверка: элемент экспортируется если непосредственно перед ним стоит export
         if node_text.strip().startswith("export "):
@@ -164,7 +164,7 @@ class TypeScriptAdapter(CodeAdapter[TypeScriptCfg]):
         Проверяет наличие 'export' в исходной строке элемента.
         Это fallback для случаев, когда Tree-sitter не правильно парсит export.
         """
-        start_line, _ = context.get_line_range(node)
+        start_line, _ = context.doc.get_line_range(node)
         lines = context.doc.text.split('\n')
         
         if start_line < len(lines):
@@ -228,20 +228,20 @@ class TypeScriptAdapter(CodeAdapter[TypeScriptCfg]):
         """
         try:
             # Ищем все export statements
-            exports = context.query("exports")
+            exports = context.doc.query("exports")
             export_count = len(exports)
             
             # Ищем re-export statements (export ... from ...)
             reexport_count = 0
             for node, capture_name in exports:
-                node_text = context.get_node_text(node)
+                node_text = context.doc.get_node_text(node)
                 if ' from ' in node_text:
                     reexport_count += 1
             
             # Также ищем обычные объявления (functions, classes, interfaces)
-            functions = context.query("functions")
-            classes = context.query("classes")
-            interfaces = context.query("interfaces")
+            functions = context.doc.query("functions")
+            classes = context.doc.query("classes")
+            interfaces = context.doc.query("interfaces")
             
             declaration_count = len(functions) + len(classes) + len(interfaces)
             

@@ -35,12 +35,12 @@ class FunctionBodyOptimizer:
             return
         
         # Find all function bodies and strip them
-        functions = context.query("functions")
+        functions = context.doc.query("functions")
         
         for node, capture_name in functions:
             # Support both function_body and method_body
             if capture_name in ("function_body", "method_body"):
-                start_line, end_line = context.get_line_range(node)
+                start_line, end_line = context.doc.get_line_range(node)
                 lines_count = end_line - start_line + 1
                 
                 # Check if this body should be stripped
@@ -48,21 +48,77 @@ class FunctionBodyOptimizer:
                 
                 if should_strip:
                     # Determine type (method vs function)
-                    func_type = "method" if capture_name == "method_body" or context.is_method(node) else "function"
+                    func_type = "method" if capture_name == "method_body" or self.is_method(node) else "function"
                     
                     # For Python adapter, preserve docstrings when stripping function bodies
                     if self.adapter.name == "python":
-                        context.remove_function_body_preserve_docstring(
+                        self.adapter.remove_function_body_preserve_docstring(
                             node, 
                             func_type=func_type,
                             placeholder_style=self.adapter.cfg.placeholders.style
                         )
                     else:
-                        context.remove_function_body(
+                        self.remove_function_body(
+                            context,
                             node, 
                             func_type=func_type,
                             placeholder_style=self.adapter.cfg.placeholders.style
                         )
+
+    @staticmethod
+    def remove_function_body(
+            context: ProcessingContext,
+            body_node: Node,
+            func_type: str = "function",
+            placeholder_style: str = "inline"
+    ) -> None:
+        """
+        Удаляет тело функции/метода с автоматическим учетом метрик.
+        """
+        start_byte, end_byte = context.doc.get_node_range(body_node)
+        start_line, end_line = context.doc.get_line_range(body_node)
+        lines_count = end_line - start_line + 1
+
+        # Создаем плейсхолдер в зависимости от типа
+        if func_type == "method":
+            placeholder = context.placeholder_gen.create_method_placeholder(
+                lines_removed=lines_count,
+                bytes_removed=end_byte - start_byte,
+                style=placeholder_style
+            )
+            context.metrics.mark_method_removed()
+        else:
+            placeholder = context.placeholder_gen.create_function_placeholder(
+                lines_removed=lines_count,
+                bytes_removed=end_byte - start_byte,
+                style=placeholder_style
+            )
+            context.metrics.mark_function_removed()
+
+        # Добавляем правку
+        context.editor.add_replacement(
+            start_byte, end_byte, placeholder,
+            type=f"{func_type}_body_removal",
+            is_placeholder=True,
+            lines_removed=lines_count
+        )
+
+        context.metrics.add_lines_saved(lines_count)
+        context.metrics.add_bytes_saved(end_byte - start_byte - len(placeholder.encode('utf-8')))
+        context.metrics.mark_placeholder_inserted()
+
+    @staticmethod
+    def is_method(function_body_node: Node) -> bool:
+        """
+        Определяет, является ли узел function_body методом класса.
+        Проходит вверх по дереву в поисках class_definition или class_declaration.
+        """
+        current = function_body_node.parent
+        while current:
+            if current.type in ("class_definition", "class_declaration"):
+                return True
+            current = current.parent
+        return False
 
     def should_strip_function_body(
         self, 

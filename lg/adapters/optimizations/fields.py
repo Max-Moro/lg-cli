@@ -75,7 +75,7 @@ class FieldOptimizer:
             context: Processing context
         """
         # Find constructors using language-specific queries
-        constructors = context.query("constructors")
+        constructors = context.doc.query("constructors")
         
         for node, capture_name in constructors:
             if capture_name == "constructor_body":
@@ -101,8 +101,8 @@ class FieldOptimizer:
     def _process_property_accessors(self, context: ProcessingContext, classifier: FieldsClassifier) -> None:
         """Process @property or get/set methods."""
         # Process getters
-        getters = context.query("getters") if "getters" in context.doc.get_query_definitions() else []
-        properties = context.query("properties") if "properties" in context.doc.get_query_definitions() else []
+        getters = context.doc.query("getters") if "getters" in context.doc.get_query_definitions() else []
+        properties = context.doc.query("properties") if "properties" in context.doc.get_query_definitions() else []
         
         # Combine Python @property and TypeScript get methods
         all_getters = list(getters) + list(properties)
@@ -115,7 +115,7 @@ class FieldOptimizer:
                     self._strip_getter_body(node, context)
         
         # Process setters
-        setters = context.query("setters") if "setters" in context.doc.get_query_definitions() else []
+        setters = context.doc.query("setters") if "setters" in context.doc.get_query_definitions() else []
         
         for node, capture_name in setters:
             if capture_name in ("setter_body",):
@@ -126,7 +126,7 @@ class FieldOptimizer:
     
     def _process_simple_accessors(self, context: ProcessingContext, classifier: FieldsClassifier) -> None:
         """Process simple get_/set_ methods."""
-        simple_accessors = context.query("simple_getters_setters") if "simple_getters_setters" in context.doc.get_query_definitions() else []
+        simple_accessors = context.doc.query("simple_getters_setters") if "simple_getters_setters" in context.doc.get_query_definitions() else []
         
         for node, capture_name in simple_accessors:
             if capture_name == "method_body":
@@ -149,8 +149,8 @@ class FieldOptimizer:
     
     def _strip_constructor_body(self, body_node, context: ProcessingContext) -> None:
         """Strip trivial constructor body."""
-        start_byte, end_byte = context.get_node_range(body_node)
-        start_line, end_line = context.get_line_range(body_node)
+        start_byte, end_byte = context.doc.get_node_range(body_node)
+        start_line, end_line = context.doc.get_line_range(body_node)
         lines_count = end_line - start_line + 1
         
         # Create constructor-specific placeholder
@@ -175,8 +175,8 @@ class FieldOptimizer:
     
     def _strip_getter_body(self, body_node, context: ProcessingContext) -> None:
         """Strip trivial getter body."""
-        start_byte, end_byte = context.get_node_range(body_node)
-        start_line, end_line = context.get_line_range(body_node)
+        start_byte, end_byte = context.doc.get_node_range(body_node)
+        start_line, end_line = context.doc.get_line_range(body_node)
         lines_count = end_line - start_line + 1
         
         # Create getter-specific placeholder
@@ -201,8 +201,8 @@ class FieldOptimizer:
     
     def _strip_setter_body(self, body_node, context: ProcessingContext) -> None:
         """Strip trivial setter body."""
-        start_byte, end_byte = context.get_node_range(body_node)
-        start_line, end_line = context.get_line_range(body_node)
+        start_byte, end_byte = context.doc.get_node_range(body_node)
+        start_line, end_line = context.doc.get_line_range(body_node)
         lines_count = end_line - start_line + 1
         
         # Create setter-specific placeholder
