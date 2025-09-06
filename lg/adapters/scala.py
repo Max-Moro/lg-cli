@@ -15,12 +15,6 @@ class ScalaAdapter(CodeAdapter[CodeCfg]):
     name = "scala"
     extensions = {".scala"}
 
-    def lang_flag__is_oop(self) -> bool:
-        return True  # Scala поддерживает ООП
-
-    def lang_flag__with_access_modifiers(self) -> bool:
-        return True  # Scala имеет модификаторы доступа
-
     def get_comment_style(self) -> tuple[str, tuple[str, str]]:
         """Scala использует C-style комментарии."""
         return "//", ("/*", "*/")

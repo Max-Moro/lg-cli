@@ -15,12 +15,6 @@ class JavaAdapter(CodeAdapter[CodeCfg]):
     name = "java"
     extensions = {".java"}
 
-    def lang_flag__is_oop(self) -> bool:
-        return True
-
-    def lang_flag__with_access_modifiers(self) -> bool:
-        return True
-
     def get_comment_style(self) -> tuple[str, tuple[str, str]]:
         """Java использует C-style комментарии."""
         return "//", ("/*", "*/")

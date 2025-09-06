@@ -33,16 +33,6 @@ class CodeAdapter(BaseAdapter[C], ABC):
     """
 
     @abstractmethod
-    def lang_flag__is_oop(self) -> bool:
-        """В языке есть как функции, так и методы классов."""
-        pass
-
-    @abstractmethod
-    def lang_flag__with_access_modifiers(self) -> bool:
-        """В языке есть модификаторы доступа."""
-        pass
-
-    @abstractmethod
     def get_comment_style(self) -> Tuple[str, tuple[str, str]]:
         """Cтиль комментариев для языка (однострочный, многострочный)."""
         pass

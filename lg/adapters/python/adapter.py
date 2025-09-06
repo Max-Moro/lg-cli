@@ -52,12 +52,6 @@ class PythonAdapter(CodeAdapter[PythonCfg]):
     name = "python"
     extensions = {".py"}
 
-    def lang_flag__is_oop(self) -> bool:
-        return True
-
-    def lang_flag__with_access_modifiers(self) -> bool:
-        return False
-
     def get_comment_style(self) -> tuple[str, tuple[str, str]]:
         return "#", ('"""', '"""')
 
