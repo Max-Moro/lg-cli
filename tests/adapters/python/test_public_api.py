@@ -1,14 +1,13 @@
 """
-Tests for public API filtering functionality (M4).
+Tests for public API filtering in Python adapter.
 """
 
 from lg.adapters.python import PythonAdapter, PythonCfg
-from lg.adapters.typescript import TypeScriptAdapter, TypeScriptCfg
 from lg.adapters.code_model import FunctionBodyConfig
-from .conftest import lctx_py, lctx_ts
+from .conftest import create_python_context
 
 
-class TestPublicAPIFilteringPython:
+class TestPythonPublicAPIFiltering:
     """Test public API filtering for Python code."""
     
     def test_public_api_only_filters_private_methods(self):
@@ -36,7 +35,7 @@ class TestPublicAPIFilteringPython:
         adapter = PythonAdapter()
         adapter._cfg = PythonCfg(public_api_only=True)
         
-        result, meta = adapter.process(lctx_py(raw_text=code))
+        result, meta = adapter.process(create_python_context(code))
         
         # Public methods should be preserved
         assert "def add(self, a, b):" in result
@@ -68,7 +67,7 @@ def __very_private():
         adapter = PythonAdapter()
         adapter._cfg = PythonCfg(public_api_only=True)
         
-        result, meta = adapter.process(lctx_py(raw_text=code))
+        result, meta = adapter.process(create_python_context(code))
         
         # Public function should be preserved
         assert "def public_function():" in result
@@ -98,7 +97,7 @@ def _private_function():
         function_config = FunctionBodyConfig(mode="public_only")
         adapter._cfg = PythonCfg(strip_function_bodies=function_config)
         
-        result, meta = adapter.process(lctx_py(raw_text=code))
+        result, meta = adapter.process(create_python_context(code))
         
         # Public function body should be stripped
         assert "def public_function():" in result
@@ -130,7 +129,7 @@ def _private_function():
         function_config = FunctionBodyConfig(mode="non_public")
         adapter._cfg = PythonCfg(strip_function_bodies=function_config)
         
-        result, meta = adapter.process(lctx_py(raw_text=code))
+        result, meta = adapter.process(create_python_context(code))
         
         # Public function body should be preserved
         assert "def public_function():" in result
@@ -144,120 +143,8 @@ def _private_function():
         assert meta.get("code.removed.functions", 0) > 0
 
 
-class TestPublicAPIFilteringTypeScript:
-    """Test public API filtering for TypeScript code."""
-    
-    def test_public_api_only_with_access_modifiers(self):
-        """Test public API filtering with TypeScript access modifiers."""
-        code = '''export class UserService {
-    public getName(): string {
-        return this.name;
-    }
-    
-    private validateUser(user: any): boolean {
-        return user.id > 0;
-    }
-    
-    protected processUser(user: any): void {
-        this.validateUser(user);
-    }
-    
-    getUsers(): Promise<User[]> {
-        // No modifier = public by default
-        return this.fetchUsers();
-    }
-}
-'''
-        
-        adapter = TypeScriptAdapter()
-        adapter._cfg = TypeScriptCfg(public_api_only=True)
-        
-        result, meta = adapter.process(lctx_ts(raw_text=code))
-        
-        # Public methods should be preserved
-        assert "public getName():" in result
-        assert "getUsers():" in result  # No modifier = public
-        
-        # Private/protected methods should be removed
-        assert "private validateUser" not in result
-        assert "protected processUser" not in result
-        
-        assert meta.get("code.removed.private_elements", 0) > 0
-    
-    def test_exported_elements_are_public(self):
-        """Test that exported elements are considered public."""
-        code = '''class InternalClass {
-    method() {
-        return "internal";
-    }
-}
-
-export class PublicClass {
-    method() {
-        return "public";
-    }
-}
-
-export function exportedFunction() {
-    return "exported";
-}
-
-function internalFunction() {
-    return "internal";
-}
-'''
-        
-        adapter = TypeScriptAdapter()
-        adapter._cfg = TypeScriptCfg(public_api_only=True)
-        
-        result, meta = adapter.process(lctx_ts(raw_text=code))
-        
-        # Exported elements should be preserved
-        assert "export class PublicClass" in result
-        assert "export function exportedFunction" in result
-        
-        # Non-exported elements should be removed
-        assert "class InternalClass" not in result
-        assert "function internalFunction" not in result
-        
-        assert meta.get("code.removed.private_elements", 0) > 0
-    
-    def test_public_only_method_stripping(self):
-        """Test public_only mode for TypeScript method body stripping."""
-        code = '''export class Calculator {
-    public add(a: number, b: number): number {
-        const result = a + b;
-        console.log("Adding", a, b);
-        return result;
-    }
-    
-    private multiply(a: number, b: number): number {
-        const result = a * b;
-        console.log("Multiplying", a, b);
-        return result;
-    }
-}
-'''
-        
-        adapter = TypeScriptAdapter()
-        function_config = FunctionBodyConfig(mode="public_only")
-        adapter._cfg = TypeScriptCfg(strip_function_bodies=function_config)
-        
-        result, meta = adapter.process(lctx_ts(raw_text=code))
-        
-        # Public method body should be stripped
-        assert "public add(a: number, b: number): number" in result
-        assert ("/* … method omitted" in result or "// … method omitted" in result or 
-                "/* … body omitted" in result or "// … body omitted" in result)
-        assert "const result = a + b;" not in result
-        
-        # Private method body should be preserved (it's not public)
-        assert "private multiply(a: number, b: number): number" in result
-        assert "const result = a * b;" in result
-
-
-class TestPublicAPIFilteringEdgeCases:
-    """Test edge cases for public API filtering."""
+class TestPythonPublicAPIEdgeCases:
+    """Test edge cases for Python public API filtering."""
     
     def test_empty_class(self):
         """Test handling of empty classes."""
@@ -268,7 +155,7 @@ class TestPublicAPIFilteringEdgeCases:
         adapter = PythonAdapter()
         adapter._cfg = PythonCfg(public_api_only=True)
         
-        result, meta = adapter.process(lctx_py(raw_text=code))
+        result, meta = adapter.process(create_python_context(code))
         
         # Empty public class should be preserved
         assert "class EmptyClass:" in result
@@ -294,7 +181,7 @@ class TestPublicAPIFilteringEdgeCases:
         adapter = PythonAdapter()
         adapter._cfg = PythonCfg(public_api_only=True)
         
-        result, meta = adapter.process(lctx_py(raw_text=code))
+        result, meta = adapter.process(create_python_context(code))
         
         # Public elements should be preserved
         assert "def public_method(self):" in result
@@ -318,7 +205,7 @@ import sys
         adapter = PythonAdapter()
         adapter._cfg = PythonCfg(public_api_only=True)
         
-        result, meta = adapter.process(lctx_py(raw_text=code))
+        result, meta = adapter.process(create_python_context(code))
         
         # Should be preserved since there are no private elements to filter
         assert "PI = 3.14159" in result
@@ -343,7 +230,7 @@ def _private_function():
             comment_policy="keep_doc"
         )
         
-        result, meta = adapter.process(lctx_py(raw_text=code))
+        result, meta = adapter.process(create_python_context(code))
         
         # Public function and its docstring should be preserved
         assert "def public_function():" in result

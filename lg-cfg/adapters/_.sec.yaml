@@ -13,18 +13,19 @@ src-tests:
     mode: allow
     allow:
       - "/tests/adapters/"
-    children:
-      tests:
-        mode: block
-        children:
-          adapters:
-            mode: block
-            block:
-              - "test_literal_trimming.py"
-              - "test_complex_comment_policy.py"
-              - "test_import_optimization.py"
-              - "test_public_api_filtering.py"
-              - "test_field_optimization.py"
+      - "/tests/conftest.py"
+#    children:
+#      tests:
+#        mode: block
+#        children:
+#          adapters:
+#            mode: block
+#            block:
+#              - "test_literal_trimming.py"
+#              - "test_complex_comment_policy.py"
+#              - "test_import_optimization.py"
+#              - "test_public_api_filtering.py"
+#              - "test_field_optimization.py"
 
 src-without:
   extensions: [".py", ".toml"]

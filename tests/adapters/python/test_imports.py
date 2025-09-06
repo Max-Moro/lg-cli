@@ -1,19 +1,18 @@
 """
-Tests for import optimization implementation (M3).
+Tests for import optimization in Python adapter.
 """
 
-from lg.adapters.code_model import ImportConfig
+from lg.adapters.python import PythonAdapter, PythonCfg
 from lg.adapters.python.imports import PythonImportClassifier, PythonImportAnalyzer
-from lg.adapters.python.adapter import PythonAdapter, PythonCfg, PythonDocument
-from lg.adapters.typescript.imports import TypeScriptImportClassifier, TypeScriptImportAnalyzer
-from lg.adapters.typescript.adapter import TypeScriptAdapter, TypeScriptCfg, TypeScriptDocument
-from tests.conftest import lctx_py, lctx_ts
+from lg.adapters.python.adapter import PythonDocument
+from lg.adapters.code_model import ImportConfig
+from .conftest import create_python_context
 
 
-class TestImportClassifier:
-    """Test import classification logic."""
+class TestPythonImportClassifier:
+    """Test import classification logic for Python."""
     
-    def test_python_external_classification(self):
+    def test_external_classification(self):
         """Test classification of Python external packages."""
         classifier = PythonImportClassifier()
         
@@ -31,22 +30,6 @@ class TestImportClassifier:
         assert classifier.is_external("MyModule") is False  # PascalCase
         assert classifier.is_external("app.models.user") is False  # Deep local
     
-    def test_typescript_external_classification(self):
-        """Test classification of TypeScript/JavaScript external packages."""
-        classifier = TypeScriptImportClassifier()
-        
-        # External packages
-        assert classifier.is_external("react") is True
-        assert classifier.is_external("@angular/core") is True
-        assert classifier.is_external("lodash") is True
-        assert classifier.is_external("express") is True
-        
-        # Local imports
-        assert classifier.is_external("./component") is False
-        assert classifier.is_external("../utils") is False
-        assert classifier.is_external("src/services") is False
-        assert classifier.is_external("components/Button") is False
-    
     def test_custom_patterns(self):
         """Test custom external patterns."""
         patterns = [r"^myorg-.*", r"^@mycompany/.*"]
@@ -58,10 +41,10 @@ class TestImportClassifier:
         assert classifier.is_external("./local") is False
 
 
-class TestImportAnalyzer:
-    """Test import analysis functionality."""
+class TestPythonImportAnalyzer:
+    """Test import analysis functionality for Python."""
     
-    def test_python_import_parsing(self):
+    def test_import_parsing(self):
         """Test parsing Python import statements."""
 
         code = '''import os
@@ -86,30 +69,6 @@ from .relative import something
         assert "pathlib" in import_modules or "Path" in str(imports)  # Could be parsed differently
         assert "myapp.utils" in import_modules
     
-    def test_typescript_import_parsing(self):
-        """Test parsing TypeScript import statements."""
-
-        code = '''import React from 'react';
-import { Component, OnInit } from '@angular/core';
-import * as fs from 'fs';
-import './styles.css';
-import { helper } from '../utils/helper';
-'''
-        
-        doc = TypeScriptDocument(code, "ts")
-        classifier = TypeScriptImportClassifier()
-        analyzer = TypeScriptImportAnalyzer(classifier)
-        imports = analyzer.analyze_imports(doc)
-        
-        # Should find all imports
-        assert len(imports) >= 4
-        
-        # Check specific imports
-        import_modules = [imp.module_name for imp in imports]
-        assert "react" in import_modules
-        assert "@angular/core" in import_modules
-        assert "fs" in import_modules
-    
     def test_import_grouping(self):
         """Test grouping imports by external vs local."""
 
@@ -131,7 +90,7 @@ from .utils import helper
         assert len(grouped["local"]) >= 2    # myapp.*, .utils
 
 
-class TestImportOptimizationPython:
+class TestPythonImportOptimization:
     """Test import optimization for Python code."""
     
     def test_keep_all_policy(self):
@@ -150,7 +109,7 @@ def main():
         import_config = ImportConfig(policy="keep_all")
         adapter._cfg = PythonCfg(imports=import_config)
         
-        result, meta = adapter.process(lctx_py(raw_text=code))
+        result, meta = adapter.process(create_python_context(code))
         
         # All imports should be preserved
         assert "import os" in result
@@ -176,7 +135,7 @@ def main():
         import_config = ImportConfig(policy="external_only")
         adapter._cfg = PythonCfg(imports=import_config)
         
-        result, meta = adapter.process(lctx_py(raw_text=code))
+        result, meta = adapter.process(create_python_context(code))
         
         # External imports should be preserved
         assert "import os" in result
@@ -207,7 +166,7 @@ def main():
         )
         adapter._cfg = PythonCfg(imports=import_config)
         
-        result, meta = adapter.process(lctx_py(raw_text=code))
+        result, meta = adapter.process(create_python_context(code))
         
         # Should contain summarization placeholders
         assert "external imports" in result or meta["code.removed.imports"] > 0
@@ -215,60 +174,8 @@ def main():
         assert len(result) < len(code)
 
 
-class TestImportOptimizationTypeScript:
-    """Test import optimization for TypeScript code."""
-    
-    def test_external_only_policy(self):
-        """Test external_only policy for TypeScript."""
-        code = '''import React from 'react';
-import { Component } from '@angular/core';
-import { helper } from './utils/helper';
-import '../styles.css';
-
-export class MyComponent {
-}
-'''
-        
-        adapter = TypeScriptAdapter()
-        import_config = ImportConfig(policy="external_only")
-        adapter._cfg = TypeScriptCfg(imports=import_config)
-        
-        result, meta = adapter.process(lctx_ts(raw_text=code))
-        
-        # External imports should be preserved
-        assert "react" in result
-        assert "@angular/core" in result
-        
-        # Local imports should be processed
-        assert meta["code.removed.imports"] > 0 or "// … 1 imports omitted" in result
-    
-    def test_summarize_long_imports(self):
-        """Test summarization of many TypeScript imports."""
-        imports = []
-        for i in range(12):
-            imports.append(f"import module{i} from 'package{i}';")
-        
-        code = '\n'.join(imports) + '''
-
-export class MyClass {
-}
-'''
-        
-        adapter = TypeScriptAdapter()
-        import_config = ImportConfig(
-            policy="summarize_long",
-            max_items_before_summary=5
-        )
-        adapter._cfg = TypeScriptCfg(imports=import_config)
-        
-        result, meta = adapter.process(lctx_ts(raw_text=code))
-        
-        # Should be summarized
-        assert "external imports" in result or meta["code.removed.imports"] > 0
-
-
-class TestImportOptimizationEdgeCases:
-    """Test edge cases for import optimization."""
+class TestPythonImportEdgeCases:
+    """Test edge cases for Python import optimization."""
     
     def test_no_imports(self):
         """Test processing file without imports."""
@@ -280,7 +187,7 @@ class TestImportOptimizationEdgeCases:
         import_config = ImportConfig(policy="external_only")
         adapter._cfg = PythonCfg(imports=import_config)
         
-        result, meta = adapter.process(lctx_py(raw_text=code))
+        result, meta = adapter.process(create_python_context(code))
         
         assert result == code  # Should be unchanged
         assert meta.get("code.removed.imports", 0) == 0
@@ -303,7 +210,7 @@ def main():
         )
         adapter._cfg = PythonCfg(imports=import_config)
         
-        result, meta = adapter.process(lctx_py(raw_text=code))
+        result, meta = adapter.process(create_python_context(code))
         
         # Should preserve os, numpy, and myapp (due to custom pattern)
         assert "import os" in result
@@ -327,10 +234,11 @@ def main():
         
         # Test inline style
         adapter._cfg.placeholders.style = "inline"
-        result, meta = adapter.process(lctx_py(raw_text=code))
+        result, meta = adapter.process(create_python_context(code))
         assert "# … 1 imports omitted" in result
         
         # Test block style
         adapter._cfg.placeholders.style = "block"
-        result, meta = adapter.process(lctx_py(raw_text=code))
+        result, meta = adapter.process(create_python_context(code))
+        # For Python, block style might still use # comments
         assert "imports omitted" in result  # Should still contain the message
