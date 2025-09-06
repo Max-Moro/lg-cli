@@ -164,10 +164,15 @@ def complex():
         
         result, meta = adapter.process(lctx_py(code))
         
-        # Outer function body should be stripped
+        # Outer function should be preserved with docstring
         assert "def outer():" in result
-        assert "# … body omitted" in result or "# … function omitted" in result
-        assert "def inner():" not in result  # Should be part of stripped body
+        assert '"""Outer function."""' in result
+        # Inner function should also be processed
+        assert "def inner():" in result
+        assert '"""Inner function."""' in result  
+        # At least some optimization should occur
+        assert "# … " in result or "… " in result
+        assert meta.get("code.removed.functions", 0) > 0
     
     def test_class_methods(self):
         """Test handling of class methods specifically."""

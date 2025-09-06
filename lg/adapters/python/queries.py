@@ -10,7 +10,7 @@ QUERIES = {
     "functions": """
     (function_definition
       name: (identifier) @function_name
-      body: (block) @function_body)
+      body: (block) @function_body) @function_definition
     """,
     
     "methods": """

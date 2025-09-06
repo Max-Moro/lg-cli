@@ -231,7 +231,27 @@ class PythonAdapter(CodeAdapter[PythonCfg]):
 
     # == ХУКИ, которые использует Python адаптер ==
 
+    def hook__remove_function_body_with_definition(
+        self,
+        root_optimizer,
+        context,
+        func_def,
+        body_node,
+        func_type: str,
+        placeholder_style: str
+    ) -> None:
+        """Хук для кастомизации удаления тел функций с использованием function_definition."""
+        from .function_bodies import remove_function_body_with_definition
+        remove_function_body_with_definition(
+            root_optimizer=root_optimizer,
+            context=context,
+            func_def=func_def,
+            body_node=body_node,
+            func_type=func_type,
+            placeholder_style=placeholder_style
+        )
+
     def hook__remove_function_body(self, *args, **kwargs) -> None:
-        """Хук для кастомизации удаления тел функций."""
+        """Хук для кастомизации удаления тел функций (fallback)."""
         from .function_bodies import remove_function_body_preserve_docstring
         remove_function_body_preserve_docstring(*args, **kwargs)

@@ -37,23 +37,59 @@ class FunctionBodyOptimizer:
         # Find all function bodies and strip them
         functions = context.doc.query("functions")
         
+        # Group captures by function_definition
+        function_groups = {}
         for node, capture_name in functions:
-            # Support both function_body and method_body
-            if capture_name in ("function_body", "method_body"):
-                start_line, end_line = context.doc.get_line_range(node)
-                lines_count = end_line - start_line + 1
+            if capture_name == "function_definition":
+                function_groups[node] = {"definition": node}
+            elif capture_name in ("function_body", "method_body"):
+                # Find corresponding function_definition
+                func_def = self._find_function_definition_for_body(node, [n for n, c in functions if c == "function_definition"])
+                if func_def:
+                    if func_def not in function_groups:
+                        function_groups[func_def] = {"definition": func_def}
+                    function_groups[func_def]["body"] = node
+                    function_groups[func_def]["body_type"] = capture_name
+                else:
+                    # Fallback for standalone body
+                    function_groups[node] = {"body": node, "body_type": capture_name}
+
+        # Process each function group
+        for func_data in function_groups.values():
+            if "body" not in func_data:
+                continue  # Skip if no body found
                 
-                # Check if this body should be stripped
-                should_strip = self.should_strip_function_body(node, lines_count, cfg, context)
+            body_node = func_data["body"]
+            body_type = func_data.get("body_type", "function_body")
+            func_def = func_data.get("definition")
+            
+            start_line, end_line = context.doc.get_line_range(body_node)
+            lines_count = end_line - start_line + 1
+            
+            # Check if this body should be stripped
+            should_strip = self.should_strip_function_body(body_node, lines_count, cfg, context)
+            
+            if should_strip:
+                # Determine type (method vs function)
+                func_type = "method" if body_type == "method_body" or self.is_method(body_node) else "function"
                 
-                if should_strip:
-                    # Determine type (method vs function)
-                    func_type = "method" if capture_name == "method_body" or self.is_method(node) else "function"
-                    
+                # Check if adapter has enhanced function removal capability
+                if func_def and hasattr(self.adapter, 'hook__remove_function_body_with_definition'):
+                    # Use adapter-specific logic with function_definition
+                    self.adapter.hook__remove_function_body_with_definition(
+                        root_optimizer=self,
+                        context=context,
+                        func_def=func_def,
+                        body_node=body_node,
+                        func_type=func_type,
+                        placeholder_style=self.adapter.cfg.placeholders.style
+                    )
+                else:
+                    # Fallback to standard adapter-specific hook
                     self.adapter.hook__remove_function_body(
                         root_optimizer=self,
                         context=context,
-                        body_node=node,
+                        body_node=body_node,
                         func_type=func_type,
                         placeholder_style=self.adapter.cfg.placeholders.style
                     )
@@ -167,6 +203,26 @@ class FunctionBodyOptimizer:
         
         return False
     
+    @staticmethod 
+    def _find_function_definition_for_body(body_node: Node, function_definitions: list) -> Optional[Node]:
+        """
+        Find the function_definition that contains the given body_node.
+        
+        Args:
+            body_node: The body node to find parent for
+            function_definitions: List of function_definition nodes
+            
+        Returns:
+            Function definition that contains the body, or None
+        """
+        for func_def in function_definitions:
+            # Check if body_node is within func_def range
+            if (func_def.start_byte <= body_node.start_byte and 
+                body_node.end_byte <= func_def.end_byte):
+                return func_def
+        return None
+
+
     @staticmethod
     def _find_function_definition(body_node: Node) -> Optional[Node]:
         """
