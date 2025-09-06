@@ -12,7 +12,9 @@ from tree_sitter import Tree, Node, Parser, Query, Language, QueryCursor
 
 
 class TreeSitterDocument(ABC):
-    """Wrapper for Tree-sitter parsed document with query system."""
+    """
+    Wrapper for Tree-sitter parsed document with query system.
+    """
 
     def __init__(self, text: str, ext: str):
         self.text = text
@@ -63,25 +65,43 @@ class TreeSitterDocument(ABC):
             raise RuntimeError("Document not parsed")
         return self.tree.root_node
 
+    def has_query(self, query_name: str) -> bool:
+        """
+        Check if a named query is supported by this language.
+
+        Args:
+            query_name: Name of the query to check
+
+        Returns:
+            True if query is supported, False otherwise
+        """
+        query_definitions = self.get_query_definitions()
+        return query_name in query_definitions
+
     def query(self, query_name: str) -> List[Tuple[Node, str]]:
         """
         Execute a named query on the document.
+        Raises exceptions for unsupported queries or execution failures.
 
         Args:
             query_name: Name of the query to execute
-            
+
         Returns:
             List of (node, capture_name) tuples
+
+        Raises:
+            ValueError: If query is not defined for this language
+            RuntimeError: If document is not parsed or query execution fails
         """
-        if not self.tree:
-            raise RuntimeError("Document not parsed")
+        root_node = self.root_node
             
+        # Check if query exists for this language
+        query_definitions = self.get_query_definitions()
+        if query_name not in query_definitions:
+            raise ValueError(f"Unknown query: {query_name}")
+        
         # Get or create cached query
         if query_name not in self._query_cache:
-            query_definitions = self.get_query_definitions()
-            if query_name not in query_definitions:
-                raise ValueError(f"Unknown query: {query_name}")
-            
             query_string = query_definitions[query_name]
             self._query_cache[query_name] = Query(self.get_language(), query_string)
         
@@ -89,21 +109,32 @@ class TreeSitterDocument(ABC):
         
         # Execute query and collect results
         results = []
-        try:
-            cursor = QueryCursor(query)
-            
-            # Use matches to get pattern matches with capture info
-            matches = cursor.matches(self.root_node)
-            for pattern_index, captures in matches:
-                for capture_name, nodes in captures.items():
-                    for node in nodes:
-                        results.append((node, capture_name))
-                        
-        except Exception as e:
-            # Re-raise exception instead of silently failing
-            raise RuntimeError(f"Query execution failed for '{query_name}': {e}") from e
+        cursor = QueryCursor(query)
+        
+        # Use matches to get pattern matches with capture info
+        matches = cursor.matches(root_node)
+        for pattern_index, captures in matches:
+            for capture_name, nodes in captures.items():
+                for node in nodes:
+                    results.append((node, capture_name))
         
         return results
+
+    def query_opt(self, query_name: str) -> List[Tuple[Node, str]]:
+        """
+        Safely execute a named query on the document.
+        Returns empty list if query is not supported by this language.
+
+        Args:
+            query_name: Name of the query to execute
+            
+        Returns:
+            List of (node, capture_name) tuples, or empty list if query not supported
+        """
+        if not self.has_query(query_name):
+            return []
+
+        return self.query(query_name)
 
     def find_nodes_by_type(self, node_type: str, start_node: Optional[Node] = None) -> List[Node]:
         """

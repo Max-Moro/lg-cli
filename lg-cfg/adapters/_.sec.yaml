@@ -5,15 +5,6 @@ src:
     mode: allow
     allow:
       - "/lg/adapters/"
-    children:
-      lg:
-        mode: block
-        children:
-          adapters:
-            mode: block
-            block:
-              - "/typescript/"
-
 
 src-tests:
   extensions: [".py"]
@@ -23,16 +14,6 @@ src-tests:
     allow:
       - "/tests/adapters/"
       - "/tests/conftest.py"
-    children:
-      tests:
-        mode: block
-        children:
-          adapters:
-            mode: block
-            block:
-              - "/typescript/"
-              - "/test_infrastructure.py"
-              - "/python/test_literals.py"
 
 src-without:
   extensions: [".py", ".toml"]

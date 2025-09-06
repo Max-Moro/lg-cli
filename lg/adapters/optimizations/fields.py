@@ -101,8 +101,8 @@ class FieldOptimizer:
     def _process_property_accessors(self, context: ProcessingContext, classifier: FieldsClassifier) -> None:
         """Process @property or get/set methods."""
         # Process getters
-        getters = context.doc.query("getters") if "getters" in context.doc.get_query_definitions() else []
-        properties = context.doc.query("properties") if "properties" in context.doc.get_query_definitions() else []
+        getters = context.doc.query_opt("getters")
+        properties = context.doc.query_opt("properties")
         
         # Combine Python @property and TypeScript get methods
         all_getters = list(getters) + list(properties)
@@ -115,7 +115,7 @@ class FieldOptimizer:
                     self._strip_getter_body(node, context)
         
         # Process setters
-        setters = context.doc.query("setters") if "setters" in context.doc.get_query_definitions() else []
+        setters = context.doc.query_opt("setters")
         
         for node, capture_name in setters:
             if capture_name in ("setter_body",):
@@ -126,7 +126,7 @@ class FieldOptimizer:
     
     def _process_simple_accessors(self, context: ProcessingContext, classifier: FieldsClassifier) -> None:
         """Process simple get_/set_ methods."""
-        simple_accessors = context.doc.query("simple_getters_setters") if "simple_getters_setters" in context.doc.get_query_definitions() else []
+        simple_accessors = context.doc.query_opt("simple_getters_setters")
         
         for node, capture_name in simple_accessors:
             if capture_name == "method_body":
