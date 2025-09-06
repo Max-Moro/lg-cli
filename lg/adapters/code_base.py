@@ -47,6 +47,10 @@ class CodeAdapter(BaseAdapter[C], ABC):
         """Cтиль комментариев для языка (однострочный, многострочный)."""
         pass
 
+    def is_documentation_comment(self, comment_text: str) -> bool:
+        """Является ли этот комментарий частью системы документирования."""
+        return False
+
     @abstractmethod
     def create_document(self, text: str, ext: str) -> TreeSitterDocument:
         """Create a parsed Tree-sitter document."""

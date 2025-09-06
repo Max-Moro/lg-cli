@@ -131,13 +131,7 @@ class CommentOptimizer:
                 return True, placeholder
             elif policy == "keep_doc":
                 # Remove regular comments, keep docstrings
-                if capture_name == "comment":
-                    # For TypeScript/JavaScript, check if this is a JSDoc comment
-                    if self.adapter.name in ("typescript", "javascript"):
-                        if self._is_jsdoc_comment(comment_text):
-                            return False, ""  # Keep JSDoc comments
-                    
-                    # For all languages, remove regular comments
+                if capture_name == "comment" and not self.adapter.is_documentation_comment(comment_text):
                     placeholder = context.placeholder_gen.create_comment_placeholder(
                         capture_name, style=self.adapter.cfg.placeholders.style
                     )
@@ -230,7 +224,7 @@ class CommentOptimizer:
             return True, placeholder
         
         elif base_policy == "keep_doc":
-            if capture_name == "comment":
+            if capture_name == "comment" and not self.adapter.is_documentation_comment(comment_text):
                 placeholder = context.placeholder_gen.create_comment_placeholder(
                     capture_name, style=self.adapter.cfg.placeholders.style
                 )
@@ -256,20 +250,6 @@ class CommentOptimizer:
                 return True, placeholder
         
         return False, ""
-    
-    @staticmethod
-    def _is_jsdoc_comment(comment_text: str) -> bool:
-        """
-        Check if a comment is a JSDoc comment (TypeScript/JavaScript documentation).
-        
-        Args:
-            comment_text: The comment text to check
-            
-        Returns:
-            True if this is a JSDoc comment that should be preserved
-        """
-        # JSDoc comments start with /** (not just /*)
-        return comment_text.strip().startswith('/**')
 
     @staticmethod
     def _extract_first_sentence(text: str) -> str:
