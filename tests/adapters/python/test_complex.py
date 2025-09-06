@@ -3,10 +3,9 @@ Complex integration tests for Python adapter.
 Tests combining multiple optimization types and edge cases.
 """
 
-import pytest
+from lg.adapters.code_model import LiteralConfig, FieldConfig
 from lg.adapters.python import PythonAdapter, PythonCfg
-from lg.adapters.code_model import FunctionBodyConfig, CommentConfig, ImportConfig, LiteralConfig, FieldConfig
-from .conftest import create_python_context, assert_golden_match
+from .conftest import assert_golden_match, lctx_py, lctx
 
 
 class TestPythonComplexIntegration:
@@ -35,7 +34,7 @@ class TestPythonComplexIntegration:
             }
         })
 
-        result, meta = adapter.process(create_python_context(python_code_sample))
+        result, meta = adapter.process(lctx_py(python_code_sample))
 
         # Verify multiple optimizations occurred
         assert meta.get("code.removed.functions", 0) >= 0
@@ -80,7 +79,7 @@ def process_data():
             strip_function_bodies=True
         )
         
-        result, meta = adapter.process(create_python_context(code))
+        result, meta = adapter.process(lctx_py(code))
         
         # Array should be trimmed
         assert ("... and" in result and "more]" in result) or meta.get("code.removed.literals", 0) > 0
@@ -112,20 +111,17 @@ def process_data():
         ]
 
         for i, content in enumerate(trivial_cases):
-            ctx = create_python_context(content)
-            ctx.file_path = ctx.file_path.with_name("__init__.py")
+            ctx = lctx(content, "__init__.py")
             should_skip = adapter.should_skip(ctx)
             assert should_skip, f"Should skip trivial __init__.py: {repr(content)}"
 
         # Только комментарии — НЕ тривиальный
-        comment_only_ctx = create_python_context("# Comment only")
-        comment_only_ctx.file_path = comment_only_ctx.file_path.with_name("__init__.py")
+        comment_only_ctx = lctx("# Comment only", "__init__.py")
         assert not adapter.should_skip(comment_only_ctx), "Comment-only __init__.py must NOT be considered trivial"
 
         # Нетривиальный: есть «настоящее» содержимое
         non_trivial = "from .module import something\nvalue = 42"
-        non_trivial_ctx = create_python_context(non_trivial)
-        non_trivial_ctx.file_path = non_trivial_ctx.file_path.with_name("__init__.py")
+        non_trivial_ctx = lctx(non_trivial, "__init__.py")
         should_not_skip = adapter.should_skip(non_trivial_ctx)
         assert not should_not_skip, "Should not skip non-trivial __init__.py"
 
@@ -138,7 +134,7 @@ def process_data():
         malformed_code = "def incomplete_function("
         
         # Should not crash, even with syntax errors
-        result, meta = adapter.process(create_python_context(malformed_code))
+        result, meta = adapter.process(lctx_py(malformed_code))
         
         # Should have processed something
         assert meta["_adapter"] == "python"
@@ -153,7 +149,7 @@ def process_data():
             strip_literals=True
         )
         
-        result, meta = adapter.process(create_python_context(python_code_sample))
+        result, meta = adapter.process(lctx_py(python_code_sample))
         
         # Check required metadata fields
         required_fields = [
@@ -230,7 +226,7 @@ def process_data():
             fields=FieldConfig(strip_trivial_constructors=True)  # Strip trivial constructors
         )
         
-        result, meta = adapter.process(create_python_context(code))
+        result, meta = adapter.process(lctx_py(code))
         
         # Public methods should be preserved but bodies stripped
         assert "def add(self, a, b):" in result

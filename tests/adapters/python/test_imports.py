@@ -6,7 +6,7 @@ from lg.adapters.python import PythonAdapter, PythonCfg
 from lg.adapters.python.imports import PythonImportClassifier, PythonImportAnalyzer
 from lg.adapters.python.adapter import PythonDocument
 from lg.adapters.code_model import ImportConfig
-from .conftest import create_python_context
+from .conftest import lctx_py
 
 
 class TestPythonImportClassifier:
@@ -109,7 +109,7 @@ def main():
         import_config = ImportConfig(policy="keep_all")
         adapter._cfg = PythonCfg(imports=import_config)
         
-        result, meta = adapter.process(create_python_context(code))
+        result, meta = adapter.process(lctx_py(code))
         
         # All imports should be preserved
         assert "import os" in result
@@ -135,7 +135,7 @@ def main():
         import_config = ImportConfig(policy="external_only")
         adapter._cfg = PythonCfg(imports=import_config)
         
-        result, meta = adapter.process(create_python_context(code))
+        result, meta = adapter.process(lctx_py(code))
         
         # External imports should be preserved
         assert "import os" in result
@@ -166,7 +166,7 @@ def main():
         )
         adapter._cfg = PythonCfg(imports=import_config)
         
-        result, meta = adapter.process(create_python_context(code))
+        result, meta = adapter.process(lctx_py(code))
         
         # Should contain summarization placeholders
         assert "external imports" in result or meta["code.removed.imports"] > 0
@@ -187,7 +187,7 @@ class TestPythonImportEdgeCases:
         import_config = ImportConfig(policy="external_only")
         adapter._cfg = PythonCfg(imports=import_config)
         
-        result, meta = adapter.process(create_python_context(code))
+        result, meta = adapter.process(lctx_py(code))
         
         assert result == code  # Should be unchanged
         assert meta.get("code.removed.imports", 0) == 0
@@ -210,7 +210,7 @@ def main():
         )
         adapter._cfg = PythonCfg(imports=import_config)
         
-        result, meta = adapter.process(create_python_context(code))
+        result, meta = adapter.process(lctx_py(code))
         
         # Should preserve os, numpy, and myapp (due to custom pattern)
         assert "import os" in result
@@ -234,11 +234,11 @@ def main():
         
         # Test inline style
         adapter._cfg.placeholders.style = "inline"
-        result, meta = adapter.process(create_python_context(code))
+        result, meta = adapter.process(lctx_py(code))
         assert "# … 1 imports omitted" in result
         
         # Test block style
         adapter._cfg.placeholders.style = "block"
-        result, meta = adapter.process(create_python_context(code))
+        result, meta = adapter.process(lctx_py(code))
         # For Python, block style might still use # comments
         assert "imports omitted" in result  # Should still contain the message

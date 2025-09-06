@@ -4,7 +4,7 @@ Tests for field optimization in Python adapter.
 
 from lg.adapters.python import PythonAdapter, PythonCfg
 from lg.adapters.code_model import FieldConfig, LiteralConfig
-from .conftest import create_python_context
+from .conftest import lctx_py
 
 
 class TestPythonFieldOptimization:
@@ -27,7 +27,7 @@ class User:
         field_config = FieldConfig(strip_trivial_constructors=True)
         adapter._cfg = PythonCfg(fields=field_config)
         
-        result, meta = adapter.process(create_python_context(code))
+        result, meta = adapter.process(lctx_py(code))
         
         # Constructor should be stripped
         assert "# … trivial constructor omitted" in result or "… trivial constructor omitted" in result
@@ -52,7 +52,7 @@ class User:
         field_config = FieldConfig(strip_trivial_constructors=True)
         adapter._cfg = PythonCfg(fields=field_config)
         
-        result, meta = adapter.process(create_python_context(code))
+        result, meta = adapter.process(lctx_py(code))
         
         # Non-trivial constructor should be preserved
         assert "self.name = name.strip().lower()" in result
@@ -86,7 +86,7 @@ class User:
         field_config = FieldConfig(strip_trivial_accessors=True)
         adapter._cfg = PythonCfg(fields=field_config)
         
-        result, meta = adapter.process(create_python_context(code))
+        result, meta = adapter.process(lctx_py(code))
         
         # Trivial getter and setter should be stripped
         assert "# … trivial getter omitted" in result or "… trivial getter omitted" in result
@@ -119,7 +119,7 @@ class User:
         field_config = FieldConfig(strip_trivial_accessors=True)
         adapter._cfg = PythonCfg(fields=field_config)
         
-        result, meta = adapter.process(create_python_context(code))
+        result, meta = adapter.process(lctx_py(code))
         
         # Trivial accessors should be stripped
         assert ("# … trivial getter omitted" in result or "… trivial getter omitted" in result or
@@ -147,7 +147,7 @@ class User:
         )
         adapter._cfg = PythonCfg(fields=field_config)
         
-        result, meta = adapter.process(create_python_context(code))
+        result, meta = adapter.process(lctx_py(code))
         
         # Nothing should be stripped
         assert "self.name = name" in result
@@ -171,7 +171,7 @@ class User:
         field_config = FieldConfig(strip_trivial_constructors=True)
         adapter._cfg = PythonCfg(fields=field_config)
         
-        result, meta = adapter.process(create_python_context(code))
+        result, meta = adapter.process(lctx_py(code))
         
         # Empty constructor should be considered trivial
         assert meta.get("code.removed.constructors", 0) >= 0  # May or may not strip empty constructors
@@ -192,7 +192,7 @@ global_var = 42
         )
         adapter._cfg = PythonCfg(fields=field_config)
         
-        result, meta = adapter.process(create_python_context(code))
+        result, meta = adapter.process(lctx_py(code))
         
         # Should process without errors
         assert "def standalone_function():" in result
@@ -235,7 +235,7 @@ class User:
         )
         adapter._cfg = PythonCfg(fields=field_config, strip_literals=literal_config)
         
-        result, meta = adapter.process(create_python_context(code))
+        result, meta = adapter.process(lctx_py(code))
         
         # Should strip trivial parts but preserve complex ones
         assert ("… trivial constructor omitted" in result or 

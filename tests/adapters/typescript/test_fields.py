@@ -4,7 +4,7 @@ Tests for field optimization in TypeScript adapter.
 
 from lg.adapters.typescript import TypeScriptAdapter, TypeScriptCfg
 from lg.adapters.code_model import FieldConfig
-from .conftest import create_typescript_context
+from .conftest import lctx_ts
 
 
 class TestTypeScriptFieldOptimization:
@@ -32,7 +32,7 @@ class User {
         field_config = FieldConfig(strip_trivial_constructors=True)
         adapter._cfg = TypeScriptCfg(fields=field_config)
         
-        result, meta = adapter.process(create_typescript_context(code))
+        result, meta = adapter.process(lctx_ts(code))
         
         # Constructor should be stripped
         assert ("/* … trivial constructor omitted" in result or 
@@ -61,7 +61,7 @@ class User {
         field_config = FieldConfig(strip_trivial_constructors=True)
         adapter._cfg = TypeScriptCfg(fields=field_config)
         
-        result, meta = adapter.process(create_typescript_context(code))
+        result, meta = adapter.process(lctx_ts(code))
         
         # Non-trivial constructor should be preserved
         assert "this.name = name.trim().toLowerCase();" in result
@@ -92,7 +92,7 @@ class User {
         field_config = FieldConfig(strip_trivial_accessors=True)
         adapter._cfg = TypeScriptCfg(fields=field_config)
         
-        result, meta = adapter.process(create_typescript_context(code))
+        result, meta = adapter.process(lctx_ts(code))
         
         # Trivial accessors should be stripped
         assert ("/* … trivial getter omitted" in result or 
@@ -129,7 +129,7 @@ class User {
         field_config = FieldConfig(strip_trivial_accessors=True)
         adapter._cfg = TypeScriptCfg(fields=field_config)
         
-        result, meta = adapter.process(create_typescript_context(code))
+        result, meta = adapter.process(lctx_ts(code))
         
         # Trivial accessors should be stripped
         assert ("// … trivial getter omitted" in result or 
@@ -158,7 +158,7 @@ class User {
         field_config = FieldConfig(strip_trivial_constructors=True)
         adapter._cfg = TypeScriptCfg(fields=field_config)
         
-        result, meta = adapter.process(create_typescript_context(code))
+        result, meta = adapter.process(lctx_ts(code))
         
         # Empty constructor should be considered trivial
         assert meta.get("code.removed.constructors", 0) >= 0  # May or may not strip empty constructors
@@ -184,7 +184,7 @@ interface User {
         )
         adapter._cfg = TypeScriptCfg(fields=field_config)
         
-        result, meta = adapter.process(create_typescript_context(code))
+        result, meta = adapter.process(lctx_ts(code))
         
         # Should process without errors
         assert "function standaloneFunction(): string" in result
@@ -232,7 +232,7 @@ class User {
         )
         adapter._cfg = TypeScriptCfg(fields=field_config)
         
-        result, meta = adapter.process(create_typescript_context(code))
+        result, meta = adapter.process(lctx_ts(code))
         
         # Should strip trivial parts but preserve complex ones
         assert ("… trivial constructor omitted" in result or 
@@ -265,7 +265,7 @@ class User {
         field_config = FieldConfig(strip_trivial_constructors=True)
         adapter._cfg = TypeScriptCfg(fields=field_config)
         
-        result, meta = adapter.process(create_typescript_context(code))
+        result, meta = adapter.process(lctx_ts(code))
         
         # Parameter properties should be preserved (they're part of constructor signature)
         assert "public name: string," in result

@@ -6,8 +6,7 @@ import pytest
 from pathlib import Path
 
 from lg.adapters.typescript import TypeScriptAdapter, TypeScriptCfg
-from lg.adapters.code_model import FunctionBodyConfig, CommentConfig, ImportConfig, LiteralConfig, FieldConfig
-from tests.conftest import lctx_ts, lctx
+from tests.conftest import lctx_ts, lctx # noqa: F401
 
 
 @pytest.fixture
@@ -119,11 +118,6 @@ def typescript_config_simple() -> TypeScriptCfg:
         public_api_only=True,
         strip_function_bodies=True
     )
-
-
-def create_typescript_context(raw_text: str, filename: str = "test.ts", group_size: int = 1, mixed: bool = False):
-    """Helper to create TypeScript LightweightContext."""
-    return lctx(raw_text=raw_text, filename=filename, group_size=group_size, mixed=mixed)
 
 
 def assert_golden_match(result: str, golden_file: Path, update_golden: bool = False):

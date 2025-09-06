@@ -4,7 +4,7 @@ Tests for public API filtering in Python adapter.
 
 from lg.adapters.python import PythonAdapter, PythonCfg
 from lg.adapters.code_model import FunctionBodyConfig
-from .conftest import create_python_context
+from .conftest import lctx_py
 
 
 class TestPythonPublicAPIFiltering:
@@ -35,7 +35,7 @@ class TestPythonPublicAPIFiltering:
         adapter = PythonAdapter()
         adapter._cfg = PythonCfg(public_api_only=True)
         
-        result, meta = adapter.process(create_python_context(code))
+        result, meta = adapter.process(lctx_py(code))
         
         # Public methods should be preserved
         assert "def add(self, a, b):" in result
@@ -67,7 +67,7 @@ def __very_private():
         adapter = PythonAdapter()
         adapter._cfg = PythonCfg(public_api_only=True)
         
-        result, meta = adapter.process(create_python_context(code))
+        result, meta = adapter.process(lctx_py(code))
         
         # Public function should be preserved
         assert "def public_function():" in result
@@ -97,7 +97,7 @@ def _private_function():
         function_config = FunctionBodyConfig(mode="public_only")
         adapter._cfg = PythonCfg(strip_function_bodies=function_config)
         
-        result, meta = adapter.process(create_python_context(code))
+        result, meta = adapter.process(lctx_py(code))
         
         # Public function body should be stripped
         assert "def public_function():" in result
@@ -129,7 +129,7 @@ def _private_function():
         function_config = FunctionBodyConfig(mode="non_public")
         adapter._cfg = PythonCfg(strip_function_bodies=function_config)
         
-        result, meta = adapter.process(create_python_context(code))
+        result, meta = adapter.process(lctx_py(code))
         
         # Public function body should be preserved
         assert "def public_function():" in result
@@ -155,7 +155,7 @@ class TestPythonPublicAPIEdgeCases:
         adapter = PythonAdapter()
         adapter._cfg = PythonCfg(public_api_only=True)
         
-        result, meta = adapter.process(create_python_context(code))
+        result, meta = adapter.process(lctx_py(code))
         
         # Empty public class should be preserved
         assert "class EmptyClass:" in result
@@ -181,7 +181,7 @@ class TestPythonPublicAPIEdgeCases:
         adapter = PythonAdapter()
         adapter._cfg = PythonCfg(public_api_only=True)
         
-        result, meta = adapter.process(create_python_context(code))
+        result, meta = adapter.process(lctx_py(code))
         
         # Public elements should be preserved
         assert "def public_method(self):" in result
@@ -205,7 +205,7 @@ import sys
         adapter = PythonAdapter()
         adapter._cfg = PythonCfg(public_api_only=True)
         
-        result, meta = adapter.process(create_python_context(code))
+        result, meta = adapter.process(lctx_py(code))
         
         # Should be preserved since there are no private elements to filter
         assert "PI = 3.14159" in result
@@ -230,7 +230,7 @@ def _private_function():
             comment_policy="keep_doc"
         )
         
-        result, meta = adapter.process(create_python_context(code))
+        result, meta = adapter.process(lctx_py(code))
         
         # Public function and its docstring should be preserved
         assert "def public_function():" in result

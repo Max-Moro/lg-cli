@@ -6,8 +6,8 @@ import pytest
 from pathlib import Path
 
 from lg.adapters.python import PythonAdapter, PythonCfg
-from lg.adapters.code_model import FunctionBodyConfig, CommentConfig, ImportConfig, LiteralConfig, FieldConfig
-from tests.conftest import lctx_py
+from lg.adapters.code_model import FunctionBodyConfig, CommentConfig
+from tests.conftest import lctx_py, lctx # noqa: F401
 
 
 @pytest.fixture
@@ -84,11 +84,6 @@ def python_config_advanced() -> PythonCfg:
             max_length=100
         )
     )
-
-
-def create_python_context(raw_text: str, group_size: int = 1, mixed: bool = False):
-    """Helper to create Python LightweightContext."""
-    return lctx_py(raw_text=raw_text, group_size=group_size, mixed=mixed)
 
 
 def assert_golden_match(result: str, golden_file: Path, update_golden: bool = False):

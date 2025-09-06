@@ -4,7 +4,7 @@ Tests for public API filtering in TypeScript adapter.
 
 from lg.adapters.typescript import TypeScriptAdapter, TypeScriptCfg
 from lg.adapters.code_model import FunctionBodyConfig
-from .conftest import create_typescript_context
+from .conftest import lctx_ts
 
 
 class TestTypeScriptPublicAPIFiltering:
@@ -35,7 +35,7 @@ class TestTypeScriptPublicAPIFiltering:
         adapter = TypeScriptAdapter()
         adapter._cfg = TypeScriptCfg(public_api_only=True)
         
-        result, meta = adapter.process(create_typescript_context(code))
+        result, meta = adapter.process(lctx_ts(code))
         
         # Public methods should be preserved
         assert "public getName():" in result
@@ -73,7 +73,7 @@ function internalFunction() {
         adapter = TypeScriptAdapter()
         adapter._cfg = TypeScriptCfg(public_api_only=True)
         
-        result, meta = adapter.process(create_typescript_context(code))
+        result, meta = adapter.process(lctx_ts(code))
         
         # Exported elements should be preserved
         assert "export class PublicClass" in result
@@ -106,7 +106,7 @@ function internalFunction() {
         function_config = FunctionBodyConfig(mode="public_only")
         adapter._cfg = TypeScriptCfg(strip_function_bodies=function_config)
         
-        result, meta = adapter.process(create_typescript_context(code))
+        result, meta = adapter.process(lctx_ts(code))
         
         # Public method body should be stripped
         assert "public add(a: number, b: number): number" in result
@@ -131,7 +131,7 @@ class TestTypeScriptPublicAPIEdgeCases:
         adapter = TypeScriptAdapter()
         adapter._cfg = TypeScriptCfg(public_api_only=True)
         
-        result, meta = adapter.process(create_typescript_context(code))
+        result, meta = adapter.process(lctx_ts(code))
         
         # Empty public interface should be preserved
         assert "export interface EmptyInterface {" in result
@@ -160,7 +160,7 @@ class TestTypeScriptPublicAPIEdgeCases:
         adapter = TypeScriptAdapter()
         adapter._cfg = TypeScriptCfg(public_api_only=True)
         
-        result, meta = adapter.process(create_typescript_context(code))
+        result, meta = adapter.process(lctx_ts(code))
         
         # Public elements should be preserved
         assert "public publicMethod():" in result
@@ -186,7 +186,7 @@ export type User = {
         adapter = TypeScriptAdapter()
         adapter._cfg = TypeScriptCfg(public_api_only=True)
         
-        result, meta = adapter.process(create_typescript_context(code))
+        result, meta = adapter.process(lctx_ts(code))
         
         # Should be preserved since there are no private elements to filter
         assert "export const PI = 3.14159;" in result
@@ -215,7 +215,7 @@ export type PublicType = {
         adapter = TypeScriptAdapter()
         adapter._cfg = TypeScriptCfg(public_api_only=True)
         
-        result, meta = adapter.process(create_typescript_context(code))
+        result, meta = adapter.process(lctx_ts(code))
         
         # Exported types should be preserved
         assert "export interface PublicInterface {" in result
@@ -246,7 +246,7 @@ function privateFunction(): string {
             comment_policy="keep_all"
         )
         
-        result, meta = adapter.process(create_typescript_context(code))
+        result, meta = adapter.process(lctx_ts(code))
         
         # Public function and its comment should be preserved
         assert "export function publicFunction():" in result

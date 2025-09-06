@@ -4,7 +4,7 @@ Tests for function body optimization in Python adapter.
 
 from lg.adapters.python import PythonAdapter, PythonCfg
 from lg.adapters.code_model import FunctionBodyConfig
-from .conftest import create_python_context, python_code_sample, assert_golden_match
+from .conftest import lctx_py, python_code_sample, assert_golden_match
 
 
 class TestPythonFunctionBodyOptimization:
@@ -15,7 +15,7 @@ class TestPythonFunctionBodyOptimization:
         adapter = PythonAdapter()
         adapter._cfg = PythonCfg(strip_function_bodies=True)
         
-        result, meta = adapter.process(create_python_context(python_code_sample))
+        result, meta = adapter.process(lctx_py(python_code_sample))
         
         # Check that functions were processed
         assert meta["code.removed.functions"] > 0
@@ -36,7 +36,7 @@ class TestPythonFunctionBodyOptimization:
             )
         )
         
-        result, meta = adapter.process(create_python_context(python_code_sample))
+        result, meta = adapter.process(lctx_py(python_code_sample))
         
         # Should have fewer removals than basic test
         golden_file = tmp_path / "python_large_only_strip.golden"
@@ -47,7 +47,7 @@ class TestPythonFunctionBodyOptimization:
         adapter = PythonAdapter()
         adapter._cfg = PythonCfg(strip_function_bodies=False)
         
-        result, meta = adapter.process(create_python_context(python_code_sample))
+        result, meta = adapter.process(lctx_py(python_code_sample))
         
         # No functions should be removed
         assert meta.get("code.removed.functions", 0) == 0
@@ -75,7 +75,7 @@ def _private_function():
         function_config = FunctionBodyConfig(mode="public_only")
         adapter._cfg = PythonCfg(strip_function_bodies=function_config)
         
-        result, meta = adapter.process(create_python_context(code))
+        result, meta = adapter.process(lctx_py(code))
         
         # Public function body should be stripped
         assert "def public_function():" in result
@@ -107,7 +107,7 @@ def _private_function():
         function_config = FunctionBodyConfig(mode="non_public")
         adapter._cfg = PythonCfg(strip_function_bodies=function_config)
         
-        result, meta = adapter.process(create_python_context(code))
+        result, meta = adapter.process(lctx_py(code))
         
         # Public function body should be preserved
         assert "def public_function():" in result
@@ -137,7 +137,7 @@ def complex():
         adapter = PythonAdapter()
         adapter._cfg = PythonCfg(strip_function_bodies=True)
         
-        result, meta = adapter.process(create_python_context(code))
+        result, meta = adapter.process(lctx_py(code))
         
         # Single-line function should not be stripped (important for arrow-like functions)
         assert "def simple(): return 42" in result
@@ -162,7 +162,7 @@ def complex():
         adapter = PythonAdapter()
         adapter._cfg = PythonCfg(strip_function_bodies=True)
         
-        result, meta = adapter.process(create_python_context(code))
+        result, meta = adapter.process(lctx_py(code))
         
         # Outer function body should be stripped
         assert "def outer():" in result
@@ -189,7 +189,7 @@ def complex():
         adapter = PythonAdapter()
         adapter._cfg = PythonCfg(strip_function_bodies=True)
         
-        result, meta = adapter.process(create_python_context(code))
+        result, meta = adapter.process(lctx_py(code))
         
         # All method bodies should be stripped
         assert "def __init__(self):" in result

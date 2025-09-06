@@ -3,10 +3,9 @@ Complex integration tests for TypeScript adapter.
 Tests combining multiple optimization types and edge cases.
 """
 
-import pytest
+from lg.adapters.code_model import ImportConfig, LiteralConfig, FieldConfig
 from lg.adapters.typescript import TypeScriptAdapter, TypeScriptCfg
-from lg.adapters.code_model import FunctionBodyConfig, CommentConfig, ImportConfig, LiteralConfig, FieldConfig
-from .conftest import create_typescript_context, assert_golden_match
+from .conftest import lctx_ts, lctx, assert_golden_match
 
 
 class TestTypeScriptComplexIntegration:
@@ -35,7 +34,7 @@ class TestTypeScriptComplexIntegration:
             }
         })
 
-        result, meta = adapter.process(create_typescript_context(typescript_code_sample))
+        result, meta = adapter.process(lctx_ts(typescript_code_sample))
 
         # Verify multiple optimizations occurred
         assert meta.get("code.removed.functions", 0) >= 0
@@ -60,7 +59,7 @@ class TestTypeScriptComplexIntegration:
         adapter._cfg = TypeScriptCfg(skip_barrel_files=True)
         
         # Test obvious barrel file (index.ts)
-        index_ctx = create_typescript_context(
+        index_ctx = lctx(
             typescript_barrel_file_sample, 
             filename="index.ts"
         )
@@ -68,7 +67,7 @@ class TestTypeScriptComplexIntegration:
         assert adapter.should_skip(index_ctx) == True
         
         # Test content-based barrel file detection
-        barrel_ctx = create_typescript_context(
+        barrel_ctx = lctx(
             typescript_barrel_file_sample,
             filename="exports.ts"  # Not index.ts to test content-based detection
         )
@@ -76,7 +75,7 @@ class TestTypeScriptComplexIntegration:
         assert adapter.should_skip(barrel_ctx) == True
 
         # Test regular TypeScript file
-        regular_ctx = create_typescript_context(
+        regular_ctx = lctx(
             typescript_non_barrel_file_sample,
             filename="user.component.ts"
         )
@@ -143,7 +142,7 @@ export class UserService {
             )
         )
         
-        result, meta = adapter.process(create_typescript_context(code))
+        result, meta = adapter.process(lctx_ts(code))
         
         # Public methods should be preserved but bodies stripped
         assert "export class UserService" in result
@@ -218,7 +217,7 @@ export class PublicService {
             strip_literals=LiteralConfig(max_object_properties=2)
         )
         
-        result, meta = adapter.process(create_typescript_context(code))
+        result, meta = adapter.process(lctx_ts(code))
         
         # Public interfaces and types should be preserved
         assert "export interface PublicUser" in result
@@ -241,7 +240,7 @@ export class PublicService {
         malformed_code = "function incomplete(: string"
         
         # Should not crash, even with syntax errors
-        result, meta = adapter.process(create_typescript_context(malformed_code))
+        result, meta = adapter.process(lctx_ts(malformed_code))
         
         # Should have processed something
         assert meta["_adapter"] == "typescript"
@@ -257,7 +256,7 @@ export class PublicService {
             public_api_only=True
         )
         
-        result, meta = adapter.process(create_typescript_context(typescript_code_sample))
+        result, meta = adapter.process(lctx_ts(typescript_code_sample))
         
         # Check required metadata fields
         required_fields = [
@@ -333,14 +332,14 @@ export const UserComponent: React.FC<Props> = ({ name, age }) => {
         adapter._cfg = TypeScriptCfg(strip_function_bodies=True)
         
         # Test .tsx file
-        tsx_result, tsx_meta = adapter.process(create_typescript_context(tsx_code, filename="component.tsx"))
+        tsx_result, tsx_meta = adapter.process(lctx(tsx_code, filename="component.tsx"))
         
         # Should handle JSX syntax
         assert "React.FC<Props>" in tsx_result
         assert "export const UserComponent" in tsx_result
         
         # Test .ts file with same adapter
-        ts_result, ts_meta = adapter.process(create_typescript_context(tsx_code, filename="component.ts"))
+        ts_result, ts_meta = adapter.process(lctx(tsx_code, filename="component.ts"))
         
         # Both should be processed by the same adapter
         assert tsx_meta["_adapter"] == "typescript"

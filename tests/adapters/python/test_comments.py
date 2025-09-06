@@ -4,7 +4,7 @@ Tests for comment policy implementation in Python adapter.
 
 from lg.adapters.python import PythonAdapter, PythonCfg
 from lg.adapters.code_model import CommentConfig
-from .conftest import create_python_context
+from .conftest import lctx_py
 
 
 class TestPythonCommentPolicyBasic:
@@ -24,7 +24,7 @@ def hello():
         adapter = PythonAdapter()
         adapter._cfg = PythonCfg(comment_policy="keep_all")
         
-        result, meta = adapter.process(create_python_context(code))
+        result, meta = adapter.process(lctx_py(code))
         
         # Should preserve all comments
         assert '"""Module docstring."""' in result
@@ -47,7 +47,7 @@ def hello():
         adapter = PythonAdapter()
         adapter._cfg = PythonCfg(comment_policy="strip_all")
         
-        result, meta = adapter.process(create_python_context(code))
+        result, meta = adapter.process(lctx_py(code))
         
         # Should remove all comments but add placeholders
         assert "# … comment omitted" in result or "# … docstring omitted" in result
@@ -67,7 +67,7 @@ def hello():
         adapter = PythonAdapter()
         adapter._cfg = PythonCfg(comment_policy="keep_doc")
         
-        result, meta = adapter.process(create_python_context(code))
+        result, meta = adapter.process(lctx_py(code))
         
         # Should preserve docstrings
         assert '"""Module docstring."""' in result
@@ -87,7 +87,7 @@ def hello():
         adapter = PythonAdapter()
         adapter._cfg = PythonCfg(comment_policy="keep_first_sentence")
         
-        result, meta = adapter.process(create_python_context(code))
+        result, meta = adapter.process(lctx_py(code))
         
         # Should truncate to first sentence
         assert '"""This is the first sentence."""' in result
@@ -118,7 +118,7 @@ def hello():
         )
         adapter._cfg = PythonCfg(comment_policy=comment_config)
         
-        result, meta = adapter.process(create_python_context(code))
+        result, meta = adapter.process(lctx_py(code))
         
         # Should preserve TODO and FIXME comments
         assert "# TODO: Implement this feature" in result
@@ -147,7 +147,7 @@ def hello():
         )
         adapter._cfg = PythonCfg(comment_policy=comment_config)
         
-        result, meta = adapter.process(create_python_context(code))
+        result, meta = adapter.process(lctx_py(code))
         
         # Should remove copyright and license comments
         assert "# … comment omitted" in result
@@ -175,7 +175,7 @@ def hello():
         )
         adapter._cfg = PythonCfg(comment_policy=comment_config)
         
-        result, meta = adapter.process(create_python_context(code))
+        result, meta = adapter.process(lctx_py(code))
         
         # Should contain truncated comments with "..."
         assert "..." in result
@@ -195,7 +195,7 @@ class TestPythonCommentEdgeCases:
         adapter = PythonAdapter()
         adapter._cfg = PythonCfg(comment_policy="strip_all")
 
-        result, meta = adapter.process(create_python_context(""))
+        result, meta = adapter.process(lctx_py(""))
 
         assert result == ""
         assert meta.get("code.removed.comments", 0) == 0
@@ -210,7 +210,7 @@ def hello():
         adapter = PythonAdapter()
         adapter._cfg = PythonCfg(comment_policy="strip_all")
 
-        result, meta = adapter.process(create_python_context(code))
+        result, meta = adapter.process(lctx_py(code))
 
         assert result == code  # Should be unchanged
         assert meta.get("code.removed.comments", 0) == 0
@@ -227,11 +227,11 @@ def hello():
         adapter._cfg = PythonCfg(comment_policy="strip_all")
         adapter._cfg.placeholders.style = "inline"
         
-        result, meta = adapter.process(create_python_context(code))
+        result, meta = adapter.process(lctx_py(code))
         assert "# … comment omitted" in result
         
         # Test block style
         adapter._cfg.placeholders.style = "block"
-        result, meta = adapter.process(create_python_context(code))
+        result, meta = adapter.process(lctx_py(code))
         # For Python, block style might still use # comments
         assert "comment omitted" in result

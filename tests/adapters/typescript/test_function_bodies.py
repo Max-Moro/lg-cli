@@ -4,7 +4,7 @@ Tests for function body optimization in TypeScript adapter.
 
 from lg.adapters.typescript import TypeScriptAdapter, TypeScriptCfg
 from lg.adapters.code_model import FunctionBodyConfig
-from .conftest import create_typescript_context, typescript_code_sample, assert_golden_match
+from .conftest import lctx_ts, typescript_code_sample, assert_golden_match
 
 
 class TestTypeScriptFunctionBodyOptimization:
@@ -15,7 +15,7 @@ class TestTypeScriptFunctionBodyOptimization:
         adapter = TypeScriptAdapter()
         adapter._cfg = TypeScriptCfg(strip_function_bodies=True)
         
-        result, meta = adapter.process(create_typescript_context(typescript_code_sample))
+        result, meta = adapter.process(lctx_ts(typescript_code_sample))
         
         # Check that functions were processed
         assert meta["code.removed.functions"] >= 0  # May not find arrow functions in sample
@@ -38,7 +38,7 @@ class TestTypeScriptFunctionBodyOptimization:
             )
         )
         
-        result, meta = adapter.process(create_typescript_context(typescript_code_sample))
+        result, meta = adapter.process(lctx_ts(typescript_code_sample))
         
         # Should have fewer removals than basic test
         golden_file = tmp_path / "typescript_large_only_strip.golden"
@@ -66,7 +66,7 @@ const multiline = (users) => {
         adapter = TypeScriptAdapter()
         adapter._cfg = TypeScriptCfg(strip_function_bodies=True)
         
-        result, meta = adapter.process(create_typescript_context(arrow_code))
+        result, meta = adapter.process(lctx_ts(arrow_code))
         
         # If some were stripped, check placeholders
         assert ("… body omitted" in result)
@@ -76,7 +76,11 @@ const multiline = (users) => {
         
         # Count placeholders to verify stripping occurred
         placeholder_count = result.count("… body omitted")
-        
+
+        # Arrow functions signatures preserved
+        assert "const complex = (a, b) =>" in result
+        assert "const multiline = (users) =>" in result
+
         # We expect 2 multiline arrow functions to be stripped
         expected_stripped = 2
         assert meta.get("code.removed.functions", 0) == placeholder_count == expected_stripped
@@ -110,7 +114,7 @@ export class Calculator {
         adapter = TypeScriptAdapter()
         adapter._cfg = TypeScriptCfg(strip_function_bodies=True)
         
-        result, meta = adapter.process(create_typescript_context(class_code))
+        result, meta = adapter.process(lctx_ts(class_code))
         
         # Class structure should be preserved
         assert "export class Calculator {" in result
@@ -130,7 +134,7 @@ export class Calculator {
         adapter = TypeScriptAdapter()
         adapter._cfg = TypeScriptCfg(strip_function_bodies=False)
         
-        result, meta = adapter.process(create_typescript_context(code))
+        result, meta = adapter.process(lctx_ts(code))
         
         # Should be nearly identical to original
         assert "return 42;" in result
@@ -158,7 +162,7 @@ export class Calculator {
         function_config = FunctionBodyConfig(mode="public_only")
         adapter._cfg = TypeScriptCfg(strip_function_bodies=function_config)
         
-        result, meta = adapter.process(create_typescript_context(code))
+        result, meta = adapter.process(lctx_ts(code))
         
         # Public method body should be stripped
         assert "public add(a: number, b: number): number" in result
@@ -188,7 +192,7 @@ function complex(): number {
         adapter = TypeScriptAdapter()
         adapter._cfg = TypeScriptCfg(strip_function_bodies=True)
         
-        result, meta = adapter.process(create_typescript_context(code))
+        result, meta = adapter.process(lctx_ts(code))
         
         # Single-line function should not be stripped (important for simple functions)
         assert "function simple() { return 42; }" in result
@@ -214,7 +218,7 @@ function complex(): number {
         adapter = TypeScriptAdapter()
         adapter._cfg = TypeScriptCfg(strip_function_bodies=True)
         
-        result, meta = adapter.process(create_typescript_context(code))
+        result, meta = adapter.process(lctx_ts(code))
         
         # Outer function body should be stripped
         assert "function outer(): string" in result
@@ -245,7 +249,7 @@ function processUser(user: User): UserResponse {
         adapter = TypeScriptAdapter()
         adapter._cfg = TypeScriptCfg(strip_function_bodies=True)
         
-        result, meta = adapter.process(create_typescript_context(code))
+        result, meta = adapter.process(lctx_ts(code))
         
         # Interfaces and types should be preserved
         assert "interface User {" in result

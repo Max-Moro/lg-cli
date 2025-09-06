@@ -4,7 +4,7 @@ Tests for comment policy implementation in TypeScript adapter.
 
 from lg.adapters.typescript import TypeScriptAdapter, TypeScriptCfg
 from lg.adapters.code_model import CommentConfig
-from .conftest import create_typescript_context
+from .conftest import lctx_ts
 
 
 class TestTypeScriptCommentPolicyBasic:
@@ -28,7 +28,7 @@ function greet(user: User) {
         adapter = TypeScriptAdapter()
         adapter._cfg = TypeScriptCfg(comment_policy="keep_all")
         
-        result, meta = adapter.process(create_typescript_context(code))
+        result, meta = adapter.process(lctx_ts(code))
         
         # Should preserve all comments
         assert "// This is a comment" in result
@@ -55,7 +55,7 @@ function greet(user: User) {
         adapter = TypeScriptAdapter()
         adapter._cfg = TypeScriptCfg(comment_policy="strip_all")
         
-        result, meta = adapter.process(create_typescript_context(code))
+        result, meta = adapter.process(lctx_ts(code))
         
         # Should remove all comments but add placeholders
         assert "// … comment omitted" in result
@@ -88,7 +88,7 @@ function greet(user: User) {
         )
         adapter._cfg = TypeScriptCfg(comment_policy=comment_config)
         
-        result, meta = adapter.process(create_typescript_context(code))
+        result, meta = adapter.process(lctx_ts(code))
         
         # Should preserve TODO and FIXME comments
         assert "// TODO: Implement this interface" in result
@@ -116,7 +116,7 @@ function greet(user: User) {
         )
         adapter._cfg = TypeScriptCfg(comment_policy=comment_config)
         
-        result, meta = adapter.process(create_typescript_context(code))
+        result, meta = adapter.process(lctx_ts(code))
         
         # Should contain truncated comment
         assert "..." in result
@@ -140,7 +140,7 @@ interface User {
         )
         adapter._cfg = TypeScriptCfg(comment_policy=comment_config)
         
-        result, meta = adapter.process(create_typescript_context(code))
+        result, meta = adapter.process(lctx_ts(code))
         
         # Should remove copyright header
         assert "/* … comment omitted */" in result or "// … comment omitted" in result
@@ -158,7 +158,7 @@ class TestTypeScriptCommentEdgeCases:
         adapter = TypeScriptAdapter()
         adapter._cfg = TypeScriptCfg(comment_policy="strip_all")
 
-        result, meta = adapter.process(create_typescript_context(""))
+        result, meta = adapter.process(lctx_ts(""))
 
         assert result == ""
         assert meta.get("code.removed.comments", 0) == 0
@@ -176,7 +176,7 @@ function greet(user: User) {
         adapter = TypeScriptAdapter()
         adapter._cfg = TypeScriptCfg(comment_policy="strip_all")
 
-        result, meta = adapter.process(create_typescript_context(code))
+        result, meta = adapter.process(lctx_ts(code))
 
         assert result == code  # Should be unchanged
         assert meta.get("code.removed.comments", 0) == 0
@@ -194,11 +194,11 @@ function test() {
         adapter._cfg = TypeScriptCfg(comment_policy="strip_all")
         adapter._cfg.placeholders.style = "inline"
         
-        result, meta = adapter.process(create_typescript_context(code))
+        result, meta = adapter.process(lctx_ts(code))
         assert "// … comment omitted" in result
         
         # Test block style
         adapter._cfg.placeholders.style = "block"
-        result, meta = adapter.process(create_typescript_context(code))
+        result, meta = adapter.process(lctx_ts(code))
         # For TypeScript, block style uses /* */ comments
         assert "comment omitted" in result

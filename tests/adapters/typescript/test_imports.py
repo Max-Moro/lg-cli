@@ -6,7 +6,7 @@ from lg.adapters.typescript import TypeScriptAdapter, TypeScriptCfg
 from lg.adapters.typescript.imports import TypeScriptImportClassifier, TypeScriptImportAnalyzer
 from lg.adapters.typescript.adapter import TypeScriptDocument
 from lg.adapters.code_model import ImportConfig
-from .conftest import create_typescript_context
+from .conftest import lctx_ts
 
 
 class TestTypeScriptImportClassifier:
@@ -105,7 +105,7 @@ export class MyComponent {
         import_config = ImportConfig(policy="keep_all")
         adapter._cfg = TypeScriptCfg(imports=import_config)
         
-        result, meta = adapter.process(create_typescript_context(code))
+        result, meta = adapter.process(lctx_ts(code))
         
         # All imports should be preserved
         assert "import React from 'react';" in result
@@ -129,7 +129,7 @@ export class MyComponent {
         import_config = ImportConfig(policy="external_only")
         adapter._cfg = TypeScriptCfg(imports=import_config)
         
-        result, meta = adapter.process(create_typescript_context(code))
+        result, meta = adapter.process(lctx_ts(code))
         
         # External imports should be preserved
         assert "react" in result
@@ -157,7 +157,7 @@ export class MyClass {
         )
         adapter._cfg = TypeScriptCfg(imports=import_config)
         
-        result, meta = adapter.process(create_typescript_context(code))
+        result, meta = adapter.process(lctx_ts(code))
         
         # Should be summarized
         assert "external imports" in result or meta["code.removed.imports"] > 0
@@ -179,7 +179,7 @@ class TestTypeScriptImportEdgeCases:
         import_config = ImportConfig(policy="external_only")
         adapter._cfg = TypeScriptCfg(imports=import_config)
         
-        result, meta = adapter.process(create_typescript_context(code))
+        result, meta = adapter.process(lctx_ts(code))
         
         assert result == code  # Should be unchanged
         assert meta.get("code.removed.imports", 0) == 0
@@ -202,7 +202,7 @@ export class MyComponent {
         )
         adapter._cfg = TypeScriptCfg(imports=import_config)
         
-        result, meta = adapter.process(create_typescript_context(code))
+        result, meta = adapter.process(lctx_ts(code))
         
         # Should preserve fs and React
         assert "import * as fs from 'fs';" in result
@@ -225,12 +225,12 @@ export class MyClass {
         
         # Test inline style
         adapter._cfg.placeholders.style = "inline"
-        result, meta = adapter.process(create_typescript_context(code))
+        result, meta = adapter.process(lctx_ts(code))
         assert "// … 1 imports omitted" in result
         
         # Test block style
         adapter._cfg.placeholders.style = "block"
-        result, meta = adapter.process(create_typescript_context(code))
+        result, meta = adapter.process(lctx_ts(code))
         # For TypeScript, block style uses /* */ comments
         assert "imports omitted" in result  # Should still contain the message
     
@@ -248,7 +248,7 @@ export class UserComponent {
         import_config = ImportConfig(policy="external_only")
         adapter._cfg = TypeScriptCfg(imports=import_config)
         
-        result, meta = adapter.process(create_typescript_context(code))
+        result, meta = adapter.process(lctx_ts(code))
         
         # External imports should be preserved (including type-only)
         assert "@angular/core" in result

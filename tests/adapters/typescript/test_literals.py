@@ -4,7 +4,7 @@ Tests for literal trimming in TypeScript adapter.
 
 from lg.adapters.typescript import TypeScriptAdapter, TypeScriptCfg
 from lg.adapters.code_model import LiteralConfig
-from .conftest import create_typescript_context
+from .conftest import lctx_ts
 
 
 class TestTypeScriptLiteralTrimming:
@@ -26,7 +26,7 @@ function getMessage(): string {
         literal_config = LiteralConfig(max_string_length=40)
         adapter._cfg = TypeScriptCfg(strip_literals=literal_config)
         
-        result, meta = adapter.process(create_typescript_context(code))
+        result, meta = adapter.process(lctx_ts(code))
         
         # Short string should be preserved
         assert 'const shortMsg = "Hello";' in result
@@ -57,7 +57,7 @@ function formatMessage(): string {
         literal_config = LiteralConfig(max_literal_lines=3)
         adapter._cfg = TypeScriptCfg(strip_literals=literal_config)
         
-        result, meta = adapter.process(create_typescript_context(code))
+        result, meta = adapter.process(lctx_ts(code))
         
         # Short template should be preserved
         assert "const shortTemplate = `Hello ${name}`;" in result
@@ -86,7 +86,7 @@ function getItems(): string[] {
         literal_config = LiteralConfig(max_array_elements=6)
         adapter._cfg = TypeScriptCfg(strip_literals=literal_config)
         
-        result, meta = adapter.process(create_typescript_context(code))
+        result, meta = adapter.process(lctx_ts(code))
         
         # Small array should be preserved
         assert "const small: number[] = [1, 2, 3];" in result
@@ -128,7 +128,7 @@ function getConfig(): Config {
         literal_config = LiteralConfig(max_object_properties=4)
         adapter._cfg = TypeScriptCfg(strip_literals=literal_config)
         
-        result, meta = adapter.process(create_typescript_context(code))
+        result, meta = adapter.process(lctx_ts(code))
         
         # Small object should be preserved
         assert 'const smallConfig = { debug: true, version: "1.0" };' in result
@@ -156,7 +156,7 @@ const emptyObject: {} = {};
         )
         adapter._cfg = TypeScriptCfg(strip_literals=literal_config)
         
-        result, meta = adapter.process(create_typescript_context(code))
+        result, meta = adapter.process(lctx_ts(code))
         
         # Empty literals should be preserved (they're within limits)
         assert 'const emptyString = "";' in result
@@ -187,7 +187,7 @@ const nested = {
         literal_config = LiteralConfig(max_literal_lines=3)
         adapter._cfg = TypeScriptCfg(strip_literals=literal_config)
         
-        result, meta = adapter.process(create_typescript_context(code))
+        result, meta = adapter.process(lctx_ts(code))
         
         # Nested structure should be trimmed due to line count
         assert "// ... object data" in result or meta.get("code.removed.literals", 0) > 0
@@ -217,7 +217,7 @@ const config: AppConfig = {
         literal_config = LiteralConfig(max_array_elements=3, max_object_properties=3)
         adapter._cfg = TypeScriptCfg(strip_literals=literal_config)
         
-        result, meta = adapter.process(create_typescript_context(code))
+        result, meta = adapter.process(lctx_ts(code))
         
         # Type annotations should be preserved
         assert "const users: User[] =" in result
@@ -249,7 +249,7 @@ class UserService {
         literal_config = LiteralConfig(max_string_length=10)
         adapter._cfg = TypeScriptCfg(strip_literals=literal_config)
         
-        result, meta = adapter.process(create_typescript_context(code))
+        result, meta = adapter.process(lctx_ts(code))
         
         # Code should be mostly unchanged (except possible function body stripping)
         assert "interface User {" in result
@@ -283,7 +283,7 @@ function processData(): string[] {
             strip_function_bodies=True
         )
         
-        result, meta = adapter.process(create_typescript_context(code))
+        result, meta = adapter.process(lctx_ts(code))
         
         # Array should be trimmed
         assert ("... and" in result and "more]" in result) or meta.get("code.removed.literals", 0) > 0

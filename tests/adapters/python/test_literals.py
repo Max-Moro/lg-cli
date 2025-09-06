@@ -4,7 +4,7 @@ Tests for literal trimming in Python adapter.
 
 from lg.adapters.python import PythonAdapter, PythonCfg
 from lg.adapters.code_model import LiteralConfig
-from .conftest import create_python_context
+from .conftest import lctx_py
 
 
 class TestPythonLiteralTrimming:
@@ -27,7 +27,7 @@ def process_data():
         literal_config = LiteralConfig(max_string_length=50)
         adapter._cfg = PythonCfg(strip_literals=literal_config)
         
-        result, meta = adapter.process(create_python_context(code))
+        result, meta = adapter.process(lctx_py(code))
         
         # Short string should be preserved
         assert 'message = "Hello world"' in result
@@ -61,7 +61,7 @@ def get_items():
         literal_config = LiteralConfig(max_array_elements=8)
         adapter._cfg = PythonCfg(strip_literals=literal_config)
         
-        result, meta = adapter.process(create_python_context(code))
+        result, meta = adapter.process(lctx_py(code))
         
         # Small list should be preserved
         assert "small_list = [1, 2, 3]" in result
@@ -99,7 +99,7 @@ def get_config():
         literal_config = LiteralConfig(max_object_properties=5)
         adapter._cfg = PythonCfg(strip_literals=literal_config)
         
-        result, meta = adapter.process(create_python_context(code))
+        result, meta = adapter.process(lctx_py(code))
         
         # Small dict should be preserved
         assert 'small_dict = {"a": 1, "b": 2}' in result
@@ -131,7 +131,7 @@ def get_text():
         literal_config = LiteralConfig(max_literal_lines=3)
         adapter._cfg = PythonCfg(strip_literals=literal_config)
         
-        result, meta = adapter.process(create_python_context(code))
+        result, meta = adapter.process(lctx_py(code))
         
         # Single line should be preserved
         assert 'single = "one line"' in result
@@ -157,7 +157,7 @@ def process():
         literal_config = LiteralConfig(collapse_threshold=100)  # 100 bytes
         adapter._cfg = PythonCfg(strip_literals=literal_config)
         
-        result, meta = adapter.process(create_python_context(code))
+        result, meta = adapter.process(lctx_py(code))
         
         # Small data should be preserved
         assert 'small = "small"' in result
@@ -183,7 +183,7 @@ config = {"debug": True, "version": "1.0"}
         )
         adapter._cfg = PythonCfg(strip_literals=literal_config)
         
-        result, meta = adapter.process(create_python_context(code))
+        result, meta = adapter.process(lctx_py(code))
         
         # All literals should be preserved
         assert 'message = "This is a reasonable length message"' in result
@@ -213,7 +213,7 @@ empty_dict = {}
         )
         adapter._cfg = PythonCfg(strip_literals=literal_config)
         
-        result, meta = adapter.process(create_python_context(code))
+        result, meta = adapter.process(lctx_py(code))
         
         # Empty literals should be preserved (they're within limits)
         assert 'empty_string = ""' in result
@@ -244,7 +244,7 @@ nested = {
         literal_config = LiteralConfig(max_literal_lines=3)
         adapter._cfg = PythonCfg(strip_literals=literal_config)
         
-        result, meta = adapter.process(create_python_context(code))
+        result, meta = adapter.process(lctx_py(code))
         
         # Nested structure should be trimmed due to line count
         assert "# ... object data" in result or meta.get("code.removed.literals", 0) > 0
@@ -264,7 +264,7 @@ and should be trimmed"""
         literal_config = LiteralConfig(max_string_length=30)
         adapter._cfg = PythonCfg(strip_literals=literal_config)
         
-        result, meta = adapter.process(create_python_context(code))
+        result, meta = adapter.process(lctx_py(code))
         
         # All long strings should be trimmed, preserving quote style
         trimmed_count = 0
@@ -293,7 +293,7 @@ def hello():
         literal_config = LiteralConfig(max_string_length=1)
         adapter._cfg = PythonCfg(strip_literals=literal_config)
 
-        result, meta = adapter.process(create_python_context(code))
+        result, meta = adapter.process(lctx_py(code))
 
         assert 'Module docstring.' in result
         assert 'Function docstring.' in result
