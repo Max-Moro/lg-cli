@@ -149,3 +149,16 @@ class CodeAdapter(BaseAdapter[C], ABC):
         # Обработка полей (конструкторы, геттеры, сеттеры)
         field_optimizer = FieldOptimizer(self)
         field_optimizer.apply(context)
+
+    # ============= ХУКИ для вклинивания в процесс оптимизации ===========
+
+    def hook__remove_function_body(
+            self,
+            root_optimizer: FunctionBodyOptimizer,
+            context: ProcessingContext,
+            body_node: Node,
+            func_type: str,
+            placeholder_style,
+    ) -> None:
+        """Хук для кастомизации удаления тел функций."""
+        root_optimizer.remove_function_body(context, body_node, func_type, placeholder_style)

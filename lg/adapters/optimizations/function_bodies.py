@@ -50,27 +50,20 @@ class FunctionBodyOptimizer:
                     # Determine type (method vs function)
                     func_type = "method" if capture_name == "method_body" or self.is_method(node) else "function"
                     
-                    # For Python adapter, preserve docstrings when stripping function bodies
-                    if self.adapter.name == "python":
-                        self.adapter.remove_function_body_preserve_docstring(
-                            node, 
-                            func_type=func_type,
-                            placeholder_style=self.adapter.cfg.placeholders.style
-                        )
-                    else:
-                        self.remove_function_body(
-                            context,
-                            node, 
-                            func_type=func_type,
-                            placeholder_style=self.adapter.cfg.placeholders.style
-                        )
+                    self.adapter.hook__remove_function_body(
+                        root_optimizer=self,
+                        context=context,
+                        body_node=node,
+                        func_type=func_type,
+                        placeholder_style=self.adapter.cfg.placeholders.style
+                    )
 
     @staticmethod
     def remove_function_body(
             context: ProcessingContext,
             body_node: Node,
-            func_type: str = "function",
-            placeholder_style: str = "inline"
+            func_type: str,
+            placeholder_style
     ) -> None:
         """
         Удаляет тело функции/метода с автоматическим учетом метрик.

@@ -159,21 +159,28 @@ class TreeSitterDocument(ABC):
             else:
                 visited_children = True
 
+    @property
+    def text_bytes(self):
+        return self._text_bytes
+
     def get_node_text(self, node: Node) -> str:
         """Get text content for a node."""
         start_byte = node.start_byte
         end_byte = node.end_byte
         return self._text_bytes[start_byte:end_byte].decode('utf-8')
 
-    def get_node_range(self, node: Node) -> Tuple[int, int]:
+    @staticmethod
+    def get_node_range(node: Node) -> Tuple[int, int]:
         """Get byte range for a node."""
         return node.start_byte, node.end_byte
 
-    def get_line_range(self, node: Node) -> Tuple[int, int]:
+    @staticmethod
+    def get_line_range(node: Node) -> Tuple[int, int]:
         """Get line range (0-based) for a node."""
         return node.start_point[0], node.end_point[0]
 
-    def get_parent_of_type(self, node: Node, node_type: str) -> Optional[Node]:
+    @staticmethod
+    def get_parent_of_type(node: Node, node_type: str) -> Optional[Node]:
         """
         Find the first parent of a specific type.
         
@@ -191,7 +198,8 @@ class TreeSitterDocument(ABC):
             current = current.parent
         return None
 
-    def get_children_by_type(self, node: Node, node_type: str) -> List[Node]:
+    @staticmethod
+    def get_children_by_type(node: Node, node_type: str) -> List[Node]:
         """
         Get direct children of a specific type.
         
@@ -213,4 +221,3 @@ class TreeSitterDocument(ABC):
     def get_errors(self) -> List[Node]:
         """Get all error nodes in the tree."""
         return self.find_nodes_by_type("ERROR")
-

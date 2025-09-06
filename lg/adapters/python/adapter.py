@@ -115,13 +115,13 @@ class PythonAdapter(CodeAdapter[PythonCfg]):
         # Выделяем строки без пустых и без комментариев для классификации
         non_comment_lines = []
         for ln in lines:
-            s = ln.strip()
-            if not s:
+            ln = ln.strip()
+            if not ln:
                 continue
-            if s.startswith("#"):
+            if ln.startswith("#"):
                 # Комментарии не учитываем в классификации (они не делают файл тривиальным)
                 continue
-            non_comment_lines.append(s)
+            non_comment_lines.append(ln)
 
         # Если в файле есть только комментарии — НЕ тривиальный
         if not non_comment_lines:
@@ -144,31 +144,31 @@ class PythonAdapter(CodeAdapter[PythonCfg]):
         in_import_paren = False
         in_all_list = False
 
-        for s in non_comment_lines:
+        for ln in non_comment_lines:
             if in_import_paren:
                 # Продолжаем, пока не закроется группа импорта
-                if ")" in s:
+                if ")" in ln:
                     in_import_paren = False
                 continue
 
             if in_all_list:
                 # Разрешаем многострочный список в __all__
-                if "]" in s:
+                if "]" in ln:
                     in_all_list = False
                 continue
 
-            if is_pass_or_ellipsis(s):
+            if is_pass_or_ellipsis(ln):
                 continue
 
-            if is_relative_from_import(s):
+            if is_relative_from_import(ln):
                 # Разрешаем многострочные импорты с '('
-                if s.endswith("(") or s.endswith("\\") or "(" in s and ")" not in s:
+                if ln.endswith("(") or ln.endswith("\\") or "(" in ln and ")" not in ln:
                     in_import_paren = True
                 continue
 
-            if is_all_assign_start(s):
+            if is_all_assign_start(ln):
                 # Разрешаем многострочный __all__ = [
-                if "[" in s and "]" not in s:
+                if "[" in ln and "]" not in ln:
                     in_all_list = True
                 continue
 
@@ -234,3 +234,10 @@ class PythonAdapter(CodeAdapter[PythonCfg]):
             return context.doc.get_node_text(name_node)
         
         return None
+
+    # == ХУКИ, которые использует Python адаптер ==
+
+    def hook__remove_function_body(self, *args, **kwargs) -> None:
+        """Хук для кастомизации удаления тел функций."""
+        from .function_bodies import remove_function_body_preserve_docstring
+        remove_function_body_preserve_docstring(*args, **kwargs)
