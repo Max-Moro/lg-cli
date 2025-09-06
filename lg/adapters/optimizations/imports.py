@@ -114,7 +114,7 @@ class ImportOptimizer:
         Args:
             context: Processing context with document and editor
         """
-        config = self.adapter.cfg.import_config
+        config = self.adapter.cfg.imports
         
         # If policy is keep_all, nothing to do
         if config.policy == "keep_all":
@@ -177,7 +177,7 @@ class ImportOptimizer:
         """
         # Process each group separately
         for group_type, imports in grouped_imports.items():
-            if not imports or len(imports) <= self.adapter.cfg.import_config.max_items_before_summary:
+            if not imports or len(imports) <= self.adapter.cfg.imports.max_items_before_summary:
                 continue
             
             # Group consecutive imports for summarization

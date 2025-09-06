@@ -148,7 +148,7 @@ def main():
         
         adapter = PythonAdapter()
         import_config = ImportConfig(policy="keep_all")
-        adapter._cfg = PythonCfg(import_config=import_config)
+        adapter._cfg = PythonCfg(imports=import_config)
         
         result, meta = adapter.process(lctx_py(raw_text=code))
         
@@ -174,7 +174,7 @@ def main():
         
         adapter = PythonAdapter()
         import_config = ImportConfig(policy="external_only")
-        adapter._cfg = PythonCfg(import_config=import_config)
+        adapter._cfg = PythonCfg(imports=import_config)
         
         result, meta = adapter.process(lctx_py(raw_text=code))
         
@@ -205,7 +205,7 @@ def main():
             policy="summarize_long",
             max_items_before_summary=5  # Lower threshold for testing
         )
-        adapter._cfg = PythonCfg(import_config=import_config)
+        adapter._cfg = PythonCfg(imports=import_config)
         
         result, meta = adapter.process(lctx_py(raw_text=code))
         
@@ -231,7 +231,7 @@ export class MyComponent {
         
         adapter = TypeScriptAdapter()
         import_config = ImportConfig(policy="external_only")
-        adapter._cfg = TypeScriptCfg(import_config=import_config)
+        adapter._cfg = TypeScriptCfg(imports=import_config)
         
         result, meta = adapter.process(lctx_ts(raw_text=code))
         
@@ -259,7 +259,7 @@ export class MyClass {
             policy="summarize_long",
             max_items_before_summary=5
         )
-        adapter._cfg = TypeScriptCfg(import_config=import_config)
+        adapter._cfg = TypeScriptCfg(imports=import_config)
         
         result, meta = adapter.process(lctx_ts(raw_text=code))
         
@@ -278,7 +278,7 @@ class TestImportOptimizationEdgeCases:
         
         adapter = PythonAdapter()
         import_config = ImportConfig(policy="external_only")
-        adapter._cfg = PythonCfg(import_config=import_config)
+        adapter._cfg = PythonCfg(imports=import_config)
         
         result, meta = adapter.process(lctx_py(raw_text=code))
         
@@ -301,7 +301,7 @@ def main():
             policy="external_only",
             external_only_patterns=["^myapp.*"]  # Treat myapp as external
         )
-        adapter._cfg = PythonCfg(import_config=import_config)
+        adapter._cfg = PythonCfg(imports=import_config)
         
         result, meta = adapter.process(lctx_py(raw_text=code))
         
@@ -323,7 +323,7 @@ def main():
         
         adapter = PythonAdapter()
         import_config = ImportConfig(policy="external_only")
-        adapter._cfg = PythonCfg(import_config=import_config)
+        adapter._cfg = PythonCfg(imports=import_config)
         
         # Test inline style
         adapter._cfg.placeholders.style = "inline"

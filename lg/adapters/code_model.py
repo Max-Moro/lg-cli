@@ -89,22 +89,22 @@ class CodeCfg:
     comment_policy: Union[CommentPolicy, CommentConfig] = "keep_all"
     
     # Дополнительные оптимизации
-    import_config: ImportConfig = field(default_factory=ImportConfig)
-    literal_config: LiteralConfig = field(default_factory=LiteralConfig)
-    field_config: FieldConfig = field(default_factory=FieldConfig)
-    
+    strip_literals: Union[bool, LiteralConfig] = False
+    imports: ImportConfig = field(default_factory=ImportConfig)
+    fields: FieldConfig = field(default_factory=FieldConfig)
+
     # Система плейсхолдеров
     placeholders: PlaceholderConfig = field(default_factory=PlaceholderConfig)
-    
+
     # Бюджетирование
     budget: Optional[BudgetConfig] = None
-    
+
     def general_load(self, d: Optional[Dict[str, Any]]):
         """Загрузка универсальной части конфигурации из словаря YAML."""
 
         # Парсинг основных полей
         self.public_api_only = bool(d.get("public_api_only", False))
-        
+
         # strip_function_bodies: bool | dict
         sfb = d.get("strip_function_bodies", False)
         if isinstance(sfb, bool):
@@ -116,7 +116,20 @@ class CodeCfg:
                 except_patterns=list(sfb.get("except_patterns", [])),
                 keep_annotated=list(sfb.get("keep_annotated", []))
             )
-        
+
+        # strip_literals: bool | dict (аналогично strip_function_bodies)
+        sl = d.get("strip_literals", False)
+        if isinstance(sl, bool):
+            self.strip_literals = sl
+        elif isinstance(sl, dict):
+            self.strip_literals = LiteralConfig(
+                max_string_length=int(sl.get("max_string_length", 200)),
+                max_array_elements=int(sl.get("max_array_elements", 20)),
+                max_object_properties=int(sl.get("max_object_properties", 15)),
+                max_literal_lines=int(sl.get("max_literal_lines", 10)),
+                collapse_threshold=int(sl.get("collapse_threshold", 100))
+            )
+
         # comment_policy: str | dict
         cp = d.get("comment_policy", "keep_all")
         if isinstance(cp, str):
@@ -128,40 +141,30 @@ class CodeCfg:
                 keep_annotations=list(cp.get("keep_annotations", [])),
                 strip_patterns=list(cp.get("strip_patterns", []))
             )
-        
+
         # Вложенные конфиги
-        if "import_config" in d:
-            ic = d["import_config"]
-            self.import_config = ImportConfig(
+        if "imports" in d:
+            ic = d["imports"]
+            self.imports = ImportConfig(
                 policy=ic.get("policy", "keep_all"),
                 max_items_before_summary=int(ic.get("max_items_before_summary", 10)),
                 external_only_patterns=list(ic.get("external_only_patterns", []))
             )
-        
-        if "literal_config" in d:
-            lc = d["literal_config"]
-            self.literal_config = LiteralConfig(
-                max_string_length=int(lc.get("max_string_length", 200)),
-                max_array_elements=int(lc.get("max_array_elements", 20)),
-                max_object_properties=int(lc.get("max_object_properties", 15)),
-                max_literal_lines=int(lc.get("max_literal_lines", 10)),
-                collapse_threshold=int(lc.get("collapse_threshold", 100))
-            )
-        
-        if "field_config" in d:
-            fc = d["field_config"]
-            self.field_config = FieldConfig(
+
+        if "fields" in d:
+            fc = d["fields"]
+            self.fields = FieldConfig(
                 strip_trivial_constructors=bool(fc.get("strip_trivial_constructors", False)),
                 strip_trivial_accessors=bool(fc.get("strip_trivial_accessors", False))
             )
-        
+
         if "placeholders" in d:
             pc = d["placeholders"]
             self.placeholders = PlaceholderConfig(
                 mode=pc.get("mode", "summary"),
                 style=pc.get("style", "auto")
             )
-        
+
         if "budget" in d:
             bc = d["budget"]
             self.budget = BudgetConfig(
@@ -170,11 +173,3 @@ class CodeCfg:
                     "imports", "types", "public_methods", "fields", "private_methods", "docs"
                 ]))
             )
-        
-        # Язык-специфичные расширения
-        excluded_keys = {
-            "public_api_only", "strip_function_bodies", "comment_policy",
-            "import_config", "literal_config", "field_config", "placeholders", "budget"
-        }
-        self.lang_specific = {k: v for k, v in d.items() if k not in excluded_keys}
-

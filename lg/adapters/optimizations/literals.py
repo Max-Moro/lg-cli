@@ -7,6 +7,7 @@ from __future__ import annotations
 
 from typing import Tuple, Optional
 
+from ..code_model import LiteralConfig
 from ..context import ProcessingContext
 from ..tree_sitter_support import Node
 
@@ -30,7 +31,19 @@ class LiteralOptimizer:
         Args:
             context: Processing context with document and editor
         """
-        config = self.adapter.cfg.literal_config
+        strip_config = self.adapter.cfg.strip_literals
+
+        # Если отключено - ничего не делаем
+        if not strip_config:
+            return
+
+        # Получаем конфигурацию
+        if isinstance(strip_config, bool):
+            # Используем дефолтные настройки при strip_literals: true
+            config = LiteralConfig()
+        else:
+            # Используем кастомную конфигурацию
+            config = strip_config
 
         # Get all docstrings to exclude them from processing
         comments = context.query("comments")

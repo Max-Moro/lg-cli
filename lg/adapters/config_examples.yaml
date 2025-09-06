@@ -70,9 +70,6 @@ typescript_app:
     literal_config:
       max_string_length: 100
       max_object_properties: 12
-    lang_specific:
-      keep_jsx_props: true
-      interface_bodies: "signature_only"
 
 # ==================== JAVA ====================
 
@@ -87,9 +84,6 @@ java_enterprise:
       keep_annotations: ["@param", "@return", "@throws", "@since", "@deprecated"]
     field_config:
       strip_trivial_accessors: true  # убираем геттеры/сеттеры
-    lang_specific:
-      keep_annotations: ["@Service", "@Component", "@RestController", "@Entity"]
-      lombok_aware: true  # понимание Lombok аннотаций
 
 # ==================== C/C++ ====================
 
@@ -100,10 +94,6 @@ cpp_headers:
     public_api_only: true
     strip_function_bodies: true  # в заголовках обычно только объявления
     comment_policy: "keep_doc"
-    lang_specific:
-      header_mode: "declarations_only"
-      macro_policy: "keep_defines"
-      template_instantiations: "signature_only"
 
 # Исходники - сжатые
 cpp_sources:
@@ -116,9 +106,6 @@ cpp_sources:
     literal_config:
       max_string_length: 30
       max_array_elements: 5
-    lang_specific:
-      keep_main: true
-      inline_functions: "body_only"
 
 # ==================== SCALA ====================
 
@@ -129,11 +116,6 @@ scala_lib:
     public_api_only: true
     strip_function_bodies: true
     comment_policy: "keep_doc"
-    lang_specific:
-      keep_given_using: true     # implicit/given/using сигнатуры
-      case_class_policy: "signature_only"
-      trait_bodies: "signature_only"
-      object_bodies: "public_only"
 
 # ==================== АДРЕСНЫЕ ОВЕРРАЙДЫ ====================
 

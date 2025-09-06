@@ -26,7 +26,7 @@ def process_data():
         
         adapter = PythonAdapter()
         literal_config = LiteralConfig(max_string_length=50)
-        adapter._cfg = PythonCfg(literal_config=literal_config)
+        adapter._cfg = PythonCfg(strip_literals=literal_config)
         
         result, meta = adapter.process(lctx_py(raw_text=code))
         
@@ -60,7 +60,7 @@ def get_items():
         
         adapter = PythonAdapter()
         literal_config = LiteralConfig(max_array_elements=8)
-        adapter._cfg = PythonCfg(literal_config=literal_config)
+        adapter._cfg = PythonCfg(strip_literals=literal_config)
         
         result, meta = adapter.process(lctx_py(raw_text=code))
         
@@ -98,7 +98,7 @@ def get_config():
         
         adapter = PythonAdapter()
         literal_config = LiteralConfig(max_object_properties=5)
-        adapter._cfg = PythonCfg(literal_config=literal_config)
+        adapter._cfg = PythonCfg(strip_literals=literal_config)
         
         result, meta = adapter.process(lctx_py(raw_text=code))
         
@@ -130,7 +130,7 @@ def get_text():
         
         adapter = PythonAdapter()
         literal_config = LiteralConfig(max_literal_lines=3)
-        adapter._cfg = PythonCfg(literal_config=literal_config)
+        adapter._cfg = PythonCfg(strip_literals=literal_config)
         
         result, meta = adapter.process(lctx_py(raw_text=code))
         
@@ -156,7 +156,7 @@ def process():
         
         adapter = PythonAdapter()
         literal_config = LiteralConfig(collapse_threshold=100)  # 100 bytes
-        adapter._cfg = PythonCfg(literal_config=literal_config)
+        adapter._cfg = PythonCfg(strip_literals=literal_config)
         
         result, meta = adapter.process(lctx_py(raw_text=code))
         
@@ -182,7 +182,7 @@ config = {"debug": True, "version": "1.0"}
             max_literal_lines=5,
             collapse_threshold=1000
         )
-        adapter._cfg = PythonCfg(literal_config=literal_config)
+        adapter._cfg = PythonCfg(strip_literals=literal_config)
         
         result, meta = adapter.process(lctx_py(raw_text=code))
         
@@ -212,7 +212,7 @@ function getMessage(): string {
         
         adapter = TypeScriptAdapter()
         literal_config = LiteralConfig(max_string_length=40)
-        adapter._cfg = TypeScriptCfg(literal_config=literal_config)
+        adapter._cfg = TypeScriptCfg(strip_literals=literal_config)
         
         result, meta = adapter.process(lctx_ts(raw_text=code))
         
@@ -243,7 +243,7 @@ function formatMessage(): string {
         
         adapter = TypeScriptAdapter()
         literal_config = LiteralConfig(max_literal_lines=3)
-        adapter._cfg = TypeScriptCfg(literal_config=literal_config)
+        adapter._cfg = TypeScriptCfg(strip_literals=literal_config)
         
         result, meta = adapter.process(lctx_ts(raw_text=code))
         
@@ -272,7 +272,7 @@ function getItems(): string[] {
         
         adapter = TypeScriptAdapter()
         literal_config = LiteralConfig(max_array_elements=6)
-        adapter._cfg = TypeScriptCfg(literal_config=literal_config)
+        adapter._cfg = TypeScriptCfg(strip_literals=literal_config)
         
         result, meta = adapter.process(lctx_ts(raw_text=code))
         
@@ -314,7 +314,7 @@ function getConfig(): Config {
         
         adapter = TypeScriptAdapter()
         literal_config = LiteralConfig(max_object_properties=4)
-        adapter._cfg = TypeScriptCfg(literal_config=literal_config)
+        adapter._cfg = TypeScriptCfg(strip_literals=literal_config)
         
         result, meta = adapter.process(lctx_ts(raw_text=code))
         
@@ -342,7 +342,7 @@ empty_dict = {}
             max_array_elements=5,
             max_object_properties=3
         )
-        adapter._cfg = PythonCfg(literal_config=literal_config)
+        adapter._cfg = PythonCfg(strip_literals=literal_config)
         
         result, meta = adapter.process(lctx_py(raw_text=code))
         
@@ -373,7 +373,7 @@ nested = {
         
         adapter = PythonAdapter()
         literal_config = LiteralConfig(max_literal_lines=3)
-        adapter._cfg = PythonCfg(literal_config=literal_config)
+        adapter._cfg = PythonCfg(strip_literals=literal_config)
         
         result, meta = adapter.process(lctx_py(raw_text=code))
         
@@ -393,7 +393,7 @@ and should be trimmed"""
         
         adapter = PythonAdapter()
         literal_config = LiteralConfig(max_string_length=30)
-        adapter._cfg = PythonCfg(literal_config=literal_config)
+        adapter._cfg = PythonCfg(strip_literals=literal_config)
         
         result, meta = adapter.process(lctx_py(raw_text=code))
         
@@ -422,7 +422,7 @@ class Calculator:
         
         adapter = PythonAdapter()
         literal_config = LiteralConfig(max_string_length=10)
-        adapter._cfg = PythonCfg(literal_config=literal_config)
+        adapter._cfg = PythonCfg(strip_literals=literal_config)
         
         result, meta = adapter.process(lctx_py(raw_text=code))
         
@@ -452,7 +452,7 @@ def process_data():
         adapter = PythonAdapter()
         literal_config = LiteralConfig(max_array_elements=5)
         adapter._cfg = PythonCfg(
-            literal_config=literal_config,
+            strip_literals=literal_config,
             strip_function_bodies=True
         )
         
@@ -485,7 +485,7 @@ def hello():
 '''
         adapter = PythonAdapter()
         literal_config = LiteralConfig(max_string_length=1)
-        adapter._cfg = PythonCfg(literal_config=literal_config)
+        adapter._cfg = PythonCfg(strip_literals=literal_config)
 
         result, meta = adapter.process(lctx_py(raw_text=code))
 

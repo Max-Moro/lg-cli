@@ -53,7 +53,7 @@ class FieldOptimizer:
         Args:
             context: Processing context with document and editor
         """
-        config = self.adapter.cfg.field_config
+        config = self.adapter.cfg.fields
 
         classifier: Optional[FieldsClassifier] = None
         if config.strip_trivial_constructors or config.strip_trivial_accessors:

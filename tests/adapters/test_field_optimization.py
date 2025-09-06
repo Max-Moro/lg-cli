@@ -26,7 +26,7 @@ class User:
         
         adapter = PythonAdapter()
         field_config = FieldConfig(strip_trivial_constructors=True)
-        adapter._cfg = PythonCfg(field_config=field_config)
+        adapter._cfg = PythonCfg(fields=field_config)
         
         result, meta = adapter.process(lctx_py(raw_text=code))
         
@@ -51,7 +51,7 @@ class User:
         
         adapter = PythonAdapter()
         field_config = FieldConfig(strip_trivial_constructors=True)
-        adapter._cfg = PythonCfg(field_config=field_config)
+        adapter._cfg = PythonCfg(fields=field_config)
         
         result, meta = adapter.process(lctx_py(raw_text=code))
         
@@ -85,7 +85,7 @@ class User:
         
         adapter = PythonAdapter()
         field_config = FieldConfig(strip_trivial_accessors=True)
-        adapter._cfg = PythonCfg(field_config=field_config)
+        adapter._cfg = PythonCfg(fields=field_config)
         
         result, meta = adapter.process(lctx_py(raw_text=code))
         
@@ -118,7 +118,7 @@ class User:
         
         adapter = PythonAdapter()
         field_config = FieldConfig(strip_trivial_accessors=True)
-        adapter._cfg = PythonCfg(field_config=field_config)
+        adapter._cfg = PythonCfg(fields=field_config)
         
         result, meta = adapter.process(lctx_py(raw_text=code))
         
@@ -146,7 +146,7 @@ class User:
             strip_trivial_constructors=False,
             strip_trivial_accessors=False
         )
-        adapter._cfg = PythonCfg(field_config=field_config)
+        adapter._cfg = PythonCfg(fields=field_config)
         
         result, meta = adapter.process(lctx_py(raw_text=code))
         
@@ -180,7 +180,7 @@ class User {
         
         adapter = TypeScriptAdapter()
         field_config = FieldConfig(strip_trivial_constructors=True)
-        adapter._cfg = TypeScriptCfg(field_config=field_config)
+        adapter._cfg = TypeScriptCfg(fields=field_config)
         
         result, meta = adapter.process(lctx_ts(raw_text=code))
         
@@ -209,7 +209,7 @@ class User {
         
         adapter = TypeScriptAdapter()
         field_config = FieldConfig(strip_trivial_constructors=True)
-        adapter._cfg = TypeScriptCfg(field_config=field_config)
+        adapter._cfg = TypeScriptCfg(fields=field_config)
         
         result, meta = adapter.process(lctx_ts(raw_text=code))
         
@@ -240,7 +240,7 @@ class User {
         
         adapter = TypeScriptAdapter()
         field_config = FieldConfig(strip_trivial_accessors=True)
-        adapter._cfg = TypeScriptCfg(field_config=field_config)
+        adapter._cfg = TypeScriptCfg(fields=field_config)
         
         result, meta = adapter.process(lctx_ts(raw_text=code))
         
@@ -277,7 +277,7 @@ class User {
         
         adapter = TypeScriptAdapter()
         field_config = FieldConfig(strip_trivial_accessors=True)
-        adapter._cfg = TypeScriptCfg(field_config=field_config)
+        adapter._cfg = TypeScriptCfg(fields=field_config)
         
         result, meta = adapter.process(lctx_ts(raw_text=code))
         
@@ -304,7 +304,7 @@ class User:
         
         adapter = PythonAdapter()
         field_config = FieldConfig(strip_trivial_constructors=True)
-        adapter._cfg = PythonCfg(field_config=field_config)
+        adapter._cfg = PythonCfg(fields=field_config)
         
         result, meta = adapter.process(lctx_py(raw_text=python_code))
         
@@ -325,7 +325,7 @@ global_var = 42
             strip_trivial_constructors=True,
             strip_trivial_accessors=True
         )
-        adapter._cfg = PythonCfg(field_config=field_config)
+        adapter._cfg = PythonCfg(fields=field_config)
         
         result, meta = adapter.process(lctx_py(raw_text=code))
         
@@ -369,7 +369,7 @@ class User:
             max_literal_lines=50,
             collapse_threshold=1000  # Увеличиваем чтобы тестовый объект не заменялся
         )
-        adapter._cfg = PythonCfg(field_config=field_config, literal_config=literal_config)
+        adapter._cfg = PythonCfg(fields=field_config, strip_literals=literal_config)
         
         result, meta = adapter.process(lctx_py(raw_text=code))
         

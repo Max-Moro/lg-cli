@@ -142,8 +142,9 @@ class CodeAdapter(BaseAdapter[C], ABC):
         import_optimizer.apply(context)
         
         # Обработка литералов
-        literal_optimizer = LiteralOptimizer(self)
-        literal_optimizer.apply(context)
+        if self.cfg.strip_literals:
+            literal_optimizer = LiteralOptimizer(self)
+            literal_optimizer.apply(context)
         
         # Обработка полей (конструкторы, геттеры, сеттеры)
         field_optimizer = FieldOptimizer(self)
