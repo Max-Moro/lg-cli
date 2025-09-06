@@ -98,43 +98,6 @@ class TypeScriptAdapter(CodeAdapter[TypeScriptCfg]):
         # Можно добавить другие эвристики пропуска для TypeScript
         return False
 
-    def hook__strip_function_bodies(self, context: ProcessingContext, root_optimizer: FunctionBodyOptimizer) -> None:
-        """Хук для обработки стрелочных функций."""
-        self._strip_arrow_functions(context, root_optimizer)
-
-    def _strip_arrow_functions(self, context: ProcessingContext, root_optimizer: FunctionBodyOptimizer) -> None:
-        """Обработка стрелочных функций."""
-        cfg = self.cfg.strip_function_bodies
-        if not cfg:
-            return
-        
-        # Ищем стрелочные функции отдельно через re-query
-        arrow_functions = [n for n, c in context.query("functions") if n.type == "arrow_function"]
-        
-        for node in arrow_functions:
-            # Найти тело стрелочной функции
-            body_node = None
-            for child in node.children:
-                if child.type in ("statement_block", "expression"):
-                    body_node = child
-                    break
-            
-            if not body_node:
-                continue
-                
-            start_line, end_line = context.get_line_range(body_node)
-            lines_count = end_line - start_line + 1
-            
-            # Только стрипим многострочные стрелочные функции
-            should_strip = lines_count > 1 and root_optimizer.should_strip_function_body(node, lines_count, cfg, context)
-            
-            if should_strip:
-                context.remove_function_body(
-                    body_node,
-                    func_type="function",
-                    placeholder_style=self.cfg.placeholders.style
-                )
-
     def is_public_element(self, node: Node, context: ProcessingContext) -> bool:
         """
         Определяет публичность элемента TypeScript по модификаторам доступа.

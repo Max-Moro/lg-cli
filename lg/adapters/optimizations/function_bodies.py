@@ -55,10 +55,7 @@ class FunctionBodyOptimizer:
                         func_type=func_type,
                         placeholder_style=self.adapter.cfg.placeholders.style
                     )
-        
-        # Give adapter a chance to handle language-specific cases (e.g., arrow functions)
-        self.adapter.hook__strip_function_bodies(context, self)
-    
+
     def should_strip_function_body(
         self, 
         body_node: Node, 

@@ -78,10 +78,19 @@ const multiline = (users) => {
         
         result, meta = adapter.process(lctx_ts(raw_text=arrow_code))
         
-        # Should only strip multiline arrow functions
-        assert 'const simple = () => "hello";' in result  # Single line preserved
-        assert ("/* … function omitted" in result or "// … body omitted" in result)  # Multiline functions stripped
+        # If some were stripped, check placeholders
+        assert ("… body omitted" in result)
         
+        # Should only strip multiline arrow functions (complex and multiline)
+        assert 'const simple = () => "hello";' in result  # Single line preserved
+        
+        # Count placeholders to verify stripping occurred
+        placeholder_count = result.count("… body omitted")
+        
+        # We expect 2 multiline arrow functions to be stripped
+        expected_stripped = 2
+        assert meta.get("code.removed.functions", 0) == placeholder_count == expected_stripped
+
         golden_file = tmp_path / "typescript_arrow_functions.golden"
         assert_golden_match(result, golden_file)
     

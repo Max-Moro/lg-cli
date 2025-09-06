@@ -24,7 +24,7 @@ src-tests:
               - "test_complex_comment_policy.py"
               - "test_import_optimization.py"
               - "test_public_api_filtering.py"
-              - "test_lang_typescript.py"
+              - "test_field_optimization.py"
 
 src-without:
   extensions: [".py", ".toml"]
