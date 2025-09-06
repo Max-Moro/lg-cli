@@ -8,6 +8,12 @@ __pycache__/
 env/
 venv/
 
+# Test / coverage
+.pytest_cache/
+.coverage
+coverage.*
+htmlcov/
+
 # Pyproject
 .eggs/
 *.egg-info/
