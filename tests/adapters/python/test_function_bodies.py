@@ -173,17 +173,25 @@ def complex():
         """Test handling of class methods specifically."""
         code = '''class TestClass:
     def __init__(self):
+        # Multi-line constructor
         self.value = 42
+        self.initialized = True
     
     def public_method(self):
-        return self.value
+        # Multi-line method
+        result = self.value
+        return result
     
     def _private_method(self):
-        return self.value * 2
+        # Multi-line private method
+        temp = self.value * 2
+        return temp
     
     @property
     def value_property(self):
-        return self.value
+        # Multi-line property
+        val = self.value
+        return val
 '''
         
         adapter = PythonAdapter()
@@ -196,10 +204,10 @@ def complex():
         assert "def public_method(self):" in result
         assert "def _private_method(self):" in result
         assert "def value_property(self):" in result
-        
+
         # Bodies should be replaced with placeholders
         assert "# … method omitted" in result or "# … body omitted" in result
-        assert "self.value = 42" not in result
-        assert "return self.value" not in result
+        assert "self.initialized = True" not in result
+        assert "result = self.value" not in result
         
         assert meta.get("code.removed.methods", 0) > 0

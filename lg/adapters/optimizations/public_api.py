@@ -65,6 +65,36 @@ class PublicApiOptimizer:
                     start_byte, end_byte = context.get_node_range(class_def)
                     private_ranges.append((start_byte, end_byte, class_def))
         
+        # Check interfaces (TypeScript/similar languages)
+        try:
+            interfaces = context.query("interfaces")
+            for node, capture_name in interfaces:
+                if capture_name == "interface_name":
+                    interface_def = node.parent
+                    is_exported = self.adapter.is_exported_element(interface_def, context)
+
+                    if not is_exported:
+                        start_byte, end_byte = context.get_node_range(interface_def)
+                        private_ranges.append((start_byte, end_byte, interface_def))
+        except Exception:
+            # Some languages don't have interfaces query
+            pass
+        
+        # Check type aliases (TypeScript/similar languages)
+        try:
+            types = context.query("types")
+            for node, capture_name in types:
+                if capture_name == "type_name":
+                    type_def = node.parent
+                    is_exported = self.adapter.is_exported_element(type_def, context)
+
+                    if not is_exported:
+                        start_byte, end_byte = context.get_node_range(type_def)
+                        private_ranges.append((start_byte, end_byte, type_def))
+        except Exception:
+            # Some languages don't have types query
+            pass
+        
         # Sort by position (reverse order for safe removal)
         private_ranges.sort(key=lambda x: x[0], reverse=True)
         

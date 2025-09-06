@@ -48,8 +48,14 @@ QUERIES = {
     # Interface definitions
     "interfaces": """
     (interface_declaration
-      name: (type_identifier) @interface_name
-      body: (object_type) @interface_body)
+      name: (type_identifier) @interface_name)
+    """,
+    
+    # Type definitions  
+    "types": """
+    (type_alias_declaration
+      name: (type_identifier) @type_name
+      value: (_) @type_value)
     """,
     
     # Variable declarations
@@ -98,6 +104,8 @@ QUERIES = {
     (array) @array
     
     (object) @object
+    
+    (object_type) @object
     """,
     
     # Constructors and field-related methods

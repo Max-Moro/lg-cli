@@ -86,6 +86,12 @@ class CommentOptimizer:
             elif policy == "keep_doc":
                 # Remove regular comments, keep docstrings
                 if capture_name == "comment":
+                    # For TypeScript/JavaScript, check if this is a JSDoc comment
+                    if self.adapter.name in ("typescript", "javascript"):
+                        if self._is_jsdoc_comment(comment_text):
+                            return False, ""  # Keep JSDoc comments
+                    
+                    # For all languages, remove regular comments
                     placeholder = context.placeholder_gen.create_comment_placeholder(
                         capture_name, style=self.adapter.cfg.placeholders.style
                     )
@@ -98,12 +104,15 @@ class CommentOptimizer:
                     first_sentence = self._extract_first_sentence(comment_text)
                     if first_sentence != comment_text:
                         return True, first_sentence
+                    return False, ""
                 # Regular comments get removed
                 elif capture_name == "comment":
                     placeholder = context.placeholder_gen.create_comment_placeholder(
                         capture_name, style=self.adapter.cfg.placeholders.style
                     )
                     return True, placeholder
+                else:
+                    return False, ""
         
         # Complex policy (CommentConfig object)
         elif hasattr(policy, 'policy'):
@@ -202,6 +211,19 @@ class CommentOptimizer:
         
         return False, ""
     
+    def _is_jsdoc_comment(self, comment_text: str) -> bool:
+        """
+        Check if a comment is a JSDoc comment (TypeScript/JavaScript documentation).
+        
+        Args:
+            comment_text: The comment text to check
+            
+        Returns:
+            True if this is a JSDoc comment that should be preserved
+        """
+        # JSDoc comments start with /** (not just /*)
+        return comment_text.strip().startswith('/**')
+
     def _extract_first_sentence(self, text: str) -> str:
         """
         Extract the first sentence from comment text.

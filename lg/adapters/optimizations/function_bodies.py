@@ -78,6 +78,7 @@ class FunctionBodyOptimizer:
         if isinstance(cfg, bool):
             # For boolean True, apply smart logic:
             # don't strip single-line bodies (important for arrow functions)
+            # But allow override for complex config modes
             if cfg and lines_count <= 1:
                 return False
             return cfg

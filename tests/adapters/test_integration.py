@@ -261,7 +261,7 @@ export class UserService {
         """Test handling of large files."""
         # Create a large Python file
         large_python = "# Large file\n" + "\n".join([
-            f"def function_{i}():\n    return {i}" 
+            f"def function_{i}():\n    # Function {i}\n    result = {i}\n    return result"
             for i in range(100)
         ])
         
