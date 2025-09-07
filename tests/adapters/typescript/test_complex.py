@@ -50,8 +50,7 @@ class TestTypeScriptComplexIntegration:
         assert "interface User" in result
 
         # Golden file test
-        golden_file = tmp_path / "typescript_full_pipeline.golden"
-        assert_golden_match(result, golden_file)
+        assert_golden_match(result, "python_full_pipeline")
 
     def test_barrel_file_detection_comprehensive(self, typescript_barrel_file_sample, typescript_non_barrel_file_sample):
         """Test comprehensive barrel file detection."""

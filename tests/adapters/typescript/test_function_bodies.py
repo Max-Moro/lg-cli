@@ -10,7 +10,7 @@ from .conftest import lctx_ts, typescript_code_sample, assert_golden_match
 class TestTypeScriptFunctionBodyOptimization:
     """Test function body stripping for TypeScript code."""
     
-    def test_basic_function_stripping(self, typescript_code_sample, tmp_path):
+    def test_basic_function_stripping(self, typescript_code_sample):
         """Test basic function body stripping."""
         adapter = TypeScriptAdapter()
         adapter._cfg = TypeScriptCfg(strip_function_bodies=True)
@@ -25,10 +25,9 @@ class TestTypeScriptFunctionBodyOptimization:
                 "// … body omitted" in result)
         
         # Golden file test
-        golden_file = tmp_path / "typescript_basic_strip.golden"
-        assert_golden_match(result, golden_file)
+        assert_golden_match(result, "typescript_basic_strip")
     
-    def test_large_only_method_stripping(self, typescript_code_sample, tmp_path):
+    def test_large_only_method_stripping(self, typescript_code_sample):
         """Test stripping only large methods."""
         adapter = TypeScriptAdapter()
         adapter._cfg = TypeScriptCfg(
@@ -41,10 +40,9 @@ class TestTypeScriptFunctionBodyOptimization:
         result, meta = adapter.process(lctx_ts(typescript_code_sample))
         
         # Should have fewer removals than basic test
-        golden_file = tmp_path / "typescript_large_only_strip.golden"
-        assert_golden_match(result, golden_file)
+        assert_golden_match(result, "typescript_large_only_strip")
     
-    def test_arrow_function_handling(self, tmp_path):
+    def test_arrow_function_handling(self):
         """Test handling of arrow functions."""
         arrow_code = '''
 const simple = () => "hello";
@@ -85,10 +83,9 @@ const multiline = (users) => {
         expected_stripped = 2
         assert meta.get("code.removed.functions", 0) == placeholder_count == expected_stripped
 
-        golden_file = tmp_path / "typescript_arrow_functions.golden"
-        assert_golden_match(result, golden_file)
+        assert_golden_match(result, "typescript_arrow_functions")
     
-    def test_class_method_preservation(self, tmp_path):
+    def test_class_method_preservation(self):
         """Test that class structure is preserved while stripping method bodies."""
         class_code = '''
 export class Calculator {
@@ -124,8 +121,7 @@ export class Calculator {
         assert "add(a: number, b: number): number" in result
         assert "getHistory(): string[]" in result
         
-        golden_file = tmp_path / "typescript_class_methods.golden"
-        assert_golden_match(result, golden_file)
+        assert_golden_match(result, "typescript_class_methods")
     
     def test_no_stripping_preserves_original(self):
         """Test that disabling stripping preserves original code."""

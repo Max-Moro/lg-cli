@@ -14,6 +14,16 @@ src-tests:
     allow:
       - "/tests/adapters/"
       - "/tests/conftest.py"
+    children:
+      tests:
+        mode: block
+        children:
+          adapters:
+            mode: allow
+            allow:
+              - "conftest.py"
+              - "*/test_complex.py"
+              - "*/test_function_bodies.py"
 
 src-without:
   extensions: [".py", ".toml"]

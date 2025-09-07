@@ -3,11 +3,11 @@ Shared fixtures and utilities for Python adapter tests.
 """
 
 import pytest
-from pathlib import Path
 
-from lg.adapters.python import PythonAdapter, PythonCfg
 from lg.adapters.code_model import FunctionBodyConfig, CommentConfig
-from tests.conftest import lctx_py, lctx # noqa: F401
+from lg.adapters.python import PythonAdapter, PythonCfg
+from tests.conftest import lctx_py, lctx  # noqa: F401
+from ..golden_utils import assert_golden_match  # noqa: F401
 
 
 @pytest.fixture
@@ -84,22 +84,3 @@ def python_config_advanced() -> PythonCfg:
             max_length=100
         )
     )
-
-
-def assert_golden_match(result: str, golden_file: Path, update_golden: bool = False):
-    """
-    Assert that result matches golden file content.
-    
-    Args:
-        result: Actual result string
-        golden_file: Path to golden file
-        update_golden: If True, update golden file with result
-    """
-    if update_golden or not golden_file.exists():
-        golden_file.parent.mkdir(parents=True, exist_ok=True)
-        golden_file.write_text(result, encoding='utf-8')
-        if update_golden:
-            pytest.skip(f"Updated golden file: {golden_file}")
-    
-    expected = golden_file.read_text(encoding='utf-8')
-    assert result == expected, f"Result doesn't match golden file: {golden_file}"

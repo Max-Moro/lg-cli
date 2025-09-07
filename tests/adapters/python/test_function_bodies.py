@@ -10,7 +10,7 @@ from .conftest import lctx_py, python_code_sample, assert_golden_match
 class TestPythonFunctionBodyOptimization:
     """Test function body stripping for Python code."""
     
-    def test_basic_function_stripping(self, python_code_sample, tmp_path):
+    def test_basic_function_stripping(self, python_code_sample):
         """Test basic function body stripping."""
         adapter = PythonAdapter()
         adapter._cfg = PythonCfg(strip_function_bodies=True)
@@ -23,10 +23,9 @@ class TestPythonFunctionBodyOptimization:
         assert "# … method omitted" in result or "# … body omitted" in result
         
         # Golden file test
-        golden_file = tmp_path / "python_basic_strip.golden"
-        assert_golden_match(result, golden_file)
+        assert_golden_match(result, "python_basic_strip")
     
-    def test_large_only_function_stripping(self, python_code_sample, tmp_path):
+    def test_large_only_function_stripping(self, python_code_sample):
         """Test stripping only large functions."""
         adapter = PythonAdapter()
         adapter._cfg = PythonCfg(
@@ -39,8 +38,7 @@ class TestPythonFunctionBodyOptimization:
         result, meta = adapter.process(lctx_py(python_code_sample))
         
         # Should have fewer removals than basic test
-        golden_file = tmp_path / "python_large_only_strip.golden"
-        assert_golden_match(result, golden_file)
+        assert_golden_match(result, "python_large_only_strip")
     
     def test_no_stripping(self, python_code_sample):
         """Test with stripping disabled."""

@@ -11,7 +11,7 @@ from .conftest import assert_golden_match, lctx_py, lctx
 class TestPythonComplexIntegration:
     """Complex integration tests for Python adapter."""
 
-    def test_full_optimization_pipeline(self, python_code_sample, tmp_path):
+    def test_full_optimization_pipeline(self, python_code_sample):
         """Test complete Python adapter pipeline with all optimizations."""
         adapter = PythonAdapter()
         adapter._cfg = PythonCfg.from_dict({
@@ -53,8 +53,7 @@ class TestPythonComplexIntegration:
         assert '"""A simple calculator class."""' in result
 
         # Golden file test
-        golden_file = tmp_path / "python_full_pipeline.golden"
-        assert_golden_match(result, golden_file)
+        assert_golden_match(result, "python_full_pipeline")
 
     def test_combined_literal_and_function_trimming(self):
         """Test combining literal trimming with function body stripping."""
