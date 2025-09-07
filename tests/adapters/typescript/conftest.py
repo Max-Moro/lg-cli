@@ -6,16 +6,7 @@ import pytest
 
 from lg.adapters.typescript import TypeScriptAdapter, TypeScriptCfg
 from tests.conftest import lctx_ts, lctx  # noqa: F401
-from ..golden_utils import (  # noqa: F401
-    assert_golden_match,
-    assert_golden_match_function_bodies,
-    assert_golden_match_complex,
-    assert_golden_match_comments,
-    assert_golden_match_literals,
-    assert_golden_match_imports,
-    assert_golden_match_public_api,
-    assert_golden_match_fields
-)
+from ..golden_utils import assert_golden_match # noqa: F401
 
 
 @pytest.fixture

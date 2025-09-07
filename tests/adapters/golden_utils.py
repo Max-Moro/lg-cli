@@ -13,10 +13,10 @@ import pytest
 def _get_language_extension(language: str) -> str:
     """
     Возвращает языковое расширение файла для заданного языка.
-    
+
     Args:
         language: Название языка ("python", "typescript", etc.)
-        
+
     Returns:
         str: Расширение файла с точкой (".py", ".ts", etc.)
     """
@@ -48,53 +48,53 @@ def _get_language_extension(language: str) -> str:
         "toml": ".toml",
         "markdown": ".md"
     }
-    
+
     return extension_map.get(language, ".txt")
 
 
 def assert_golden_match(
-    result: str, 
-    golden_name: str, 
+    result: str,
     optimization_type: str,
+    golden_name: str,
     language: Optional[str] = None,
     update_golden: Optional[bool] = None
 ) -> None:
     """
     Универсальная функция для сравнения результатов с golden-файлами.
-    
+
     Args:
         result: Фактический результат для сравнения
-        golden_name: Имя golden-файла (без расширения)
         optimization_type: Тип оптимизации ("function_bodies", "complex", "comments", etc.)
-        language: Язык адаптера ("python", "typescript", etc.). 
+        golden_name: Имя golden-файла (без расширения)
+        language: Язык адаптера ("python", "typescript", etc.).
                  Если не указан, определяется автоматически из контекста теста
-        update_golden: Флаг обновления golden-файла. 
+        update_golden: Флаг обновления golden-файла.
                       Если None, берется из переменной окружения PYTEST_UPDATE_GOLDENS
-    
+
     Raises:
         AssertionError: Если результат не совпадает с эталоном
     """
     # Определяем язык автоматически, если не указан
     if language is None:
         language = _detect_language_from_test_context()
-    
+
     # Определяем флаг обновления
     if update_golden is None:
         update_golden = os.getenv("PYTEST_UPDATE_GOLDENS") == "1"
-    
+
     # Формируем путь к golden-файлу
     golden_file = _get_golden_file_path(language, optimization_type, golden_name)
-    
+
     # Нормализуем результат для стабильности
     normalized_result = _normalize_result(result)
-    
+
     # Логика сравнения/обновления
     if update_golden or not golden_file.exists():
         golden_file.parent.mkdir(parents=True, exist_ok=True)
         golden_file.write_text(normalized_result, encoding='utf-8')
         if update_golden:
             pytest.skip(f"Updated golden file: {golden_file}")
-    
+
     expected = golden_file.read_text(encoding='utf-8')
     if normalized_result != expected:
         # Создаем информативное сообщение об ошибке
@@ -308,39 +308,3 @@ def list_golden_files(language: Optional[str] = None, optimization_type: Optiona
                                 result.extend(opt_dir.glob(f"*{extension}"))
     
     return result
-
-
-# Удобные функции для конкретных типов оптимизации
-def assert_golden_match_function_bodies(result: str, golden_name: str, language: Optional[str] = None, update_golden: Optional[bool] = None) -> None:
-    """Специализированная функция для тестов оптимизации тел функций."""
-    assert_golden_match(result, golden_name, "function_bodies", language, update_golden)
-
-
-def assert_golden_match_complex(result: str, golden_name: str, language: Optional[str] = None, update_golden: Optional[bool] = None) -> None:
-    """Специализированная функция для комплексных тестов."""
-    assert_golden_match(result, golden_name, "complex", language, update_golden)
-
-
-def assert_golden_match_comments(result: str, golden_name: str, language: Optional[str] = None, update_golden: Optional[bool] = None) -> None:
-    """Специализированная функция для тестов обработки комментариев."""
-    assert_golden_match(result, golden_name, "comments", language, update_golden)
-
-
-def assert_golden_match_literals(result: str, golden_name: str, language: Optional[str] = None, update_golden: Optional[bool] = None) -> None:
-    """Специализированная функция для тестов обработки литералов."""
-    assert_golden_match(result, golden_name, "literals", language, update_golden)
-
-
-def assert_golden_match_imports(result: str, golden_name: str, language: Optional[str] = None, update_golden: Optional[bool] = None) -> None:
-    """Специализированная функция для тестов обработки импортов."""
-    assert_golden_match(result, golden_name, "imports", language, update_golden)
-
-
-def assert_golden_match_public_api(result: str, golden_name: str, language: Optional[str] = None, update_golden: Optional[bool] = None) -> None:
-    """Специализированная функция для тестов публичного API."""
-    assert_golden_match(result, golden_name, "public_api", language, update_golden)
-
-
-def assert_golden_match_fields(result: str, golden_name: str, language: Optional[str] = None, update_golden: Optional[bool] = None) -> None:
-    """Специализированная функция для тестов обработки полей."""
-    assert_golden_match(result, golden_name, "fields", language, update_golden)

@@ -5,7 +5,7 @@ Tests combining multiple optimization types and edge cases.
 
 from lg.adapters.code_model import ImportConfig, LiteralConfig, FieldConfig
 from lg.adapters.typescript import TypeScriptAdapter, TypeScriptCfg
-from .conftest import lctx_ts, lctx, assert_golden_match_complex
+from .conftest import lctx_ts, lctx, assert_golden_match
 
 
 class TestTypeScriptComplexIntegration:
@@ -50,7 +50,7 @@ class TestTypeScriptComplexIntegration:
         assert "interface User" in result
 
         # Golden file test
-        assert_golden_match_complex(result, "full_pipeline")
+        assert_golden_match(result, "complex", "full_pipeline")
 
     def test_barrel_file_detection_comprehensive(self, barrel_file_sample, non_barrel_file_sample):
         """Test comprehensive barrel file detection."""
