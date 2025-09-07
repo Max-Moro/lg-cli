@@ -29,90 +29,74 @@ DEFAULT_PYTHON_CMD=".venv/Scripts/python.exe"
 # Use environment variable if set, otherwise use default
 PYTHON_CMD="${PYTHON_CMD:-$DEFAULT_PYTHON_CMD}"
 PYTEST_ARGS="${PYTEST_ARGS:-}"
+VERBOSE=0
 
-# Color output
-RED='\033[0;31m'
-GREEN='\033[0;32m'
-YELLOW='\033[1;33m'
-BLUE='\033[0;34m'
-BOLD='\033[1m'
-NC='\033[0m' # No Color
+# ------------- pretty printing -------------
+bold()   { printf '\033[1m%s\033[0m' "$*"; }
+green()  { printf '\033[32m%s\033[0m' "$*"; }
+yellow() { printf '\033[33m%s\033[0m' "$*"; }
+red()    { printf '\033[31m%s\033[0m' "$*"; }
+
+# ------------- logging -------------
+log()      { echo "[$(date +%H:%M:%S)] $*"; }
+vlog()     { [[ ${VERBOSE:-0} -eq 1 ]] && echo "[$(date +%H:%M:%S)] $*"; }
 
 # === Functions ===
 
 show_help() {
-    cat << EOF
-${BOLD}Golden Files Update Script${NC}
+  cat <<EOF
+$(bold "update_goldens.sh") — updates golden files for language adapter tests
 
-${BOLD}DESCRIPTION:${NC}
-    Updates golden files for language adapter tests. Golden files store expected
-    test output for regression testing of code transformations.
+$(bold "Usage:")
+  $(basename "$0") [LANGUAGE] [OPTIONS]
 
-${BOLD}USAGE:${NC}
-    $0 [LANGUAGE] [OPTIONS]
+$(bold "Arguments:")
+  LANGUAGE        Language adapter to update (python, typescript, etc.)
+                  If not specified, updates all languages
 
-${BOLD}ARGUMENTS:${NC}
-    LANGUAGE        Language adapter to update (python, typescript, etc.)
-                    If not specified, updates all languages
+$(bold "Options:")
+  -h, --help      Show this help message
+  --list          List available languages and their golden files
+  --check         Check which golden files are missing (don't update)
+  --dry-run       Show what would be updated without actually updating
+  -v, --verbose   Verbose output
 
-${BOLD}OPTIONS:${NC}
-    -h, --help      Show this help message
-    --list          List available languages and their golden files
-    --check         Check which golden files are missing (don't update)
-    --dry-run       Show what would be updated without actually updating
+$(bold "Environment Variables:")
+  PYTHON_CMD      Python command to use (default: .venv/Scripts/python.exe)
+  PYTEST_ARGS     Additional arguments to pass to pytest
 
-${BOLD}ENVIRONMENT VARIABLES:${NC}
-    PYTHON_CMD      Python command to use (default: .venv/Scripts/python.exe)
-    PYTEST_ARGS     Additional arguments to pass to pytest
+$(bold "Examples:")
+  # Update all golden files
+  $0
 
-${BOLD}EXAMPLES:${NC}
-    # Update all golden files
-    $0
+  # Update only Python golden files
+  $0 python
 
-    # Update only Python golden files
-    $0 python
+  # Update with verbose output
+  PYTEST_ARGS="-v" $0 typescript
 
-    # Update with verbose output
-    PYTEST_ARGS="-v" $0 typescript
+  # List available languages
+  $0 --list
 
-    # List available languages
-    $0 --list
+  # Check missing golden files
+  $0 --check
 
-    # Check missing golden files
-    $0 --check
+  # Dry run for Python language
+  $0 python --dry-run
 
-    # Dry run for Python language
-    $0 python --dry-run
-
-${BOLD}NOTES:${NC}
-    - Run from project root directory
-    - Ensure virtual environment is activated
-    - Review changes before committing updated golden files
-    - Golden files should be committed to version control
-
+$(bold "Notes:")
+  - Run from project root directory
+  - Ensure virtual environment is activated
+  - Review changes before committing updated golden files
+  - Golden files should be committed to version control
 EOF
 }
 
-log_info() {
-    echo -e "${BLUE}[INFO]${NC} $1"
-}
-
-log_success() {
-    echo -e "${GREEN}[SUCCESS]${NC} $1"
-}
-
-log_warning() {
-    echo -e "${YELLOW}[WARNING]${NC} $1"
-}
-
-log_error() {
-    echo -e "${RED}[ERROR]${NC} $1"
-}
 
 # Check if we're in the project root
 check_project_root() {
     if [[ ! -f "pyproject.toml" ]]; then
-        log_error "Must be run from project root (directory containing pyproject.toml)"
+        echo "$(red "Error:") Must be run from project root (directory containing pyproject.toml)"
         exit 1
     fi
 }
@@ -120,15 +104,15 @@ check_project_root() {
 # Check if Python command is available
 check_python() {
     if ! command -v "$PYTHON_CMD" >/dev/null 2>&1; then
-        log_error "Python command not found: $PYTHON_CMD"
-        log_info "Set PYTHON_CMD environment variable or ensure virtual environment is activated"
+        echo "$(red "Error:") Python command not found: $PYTHON_CMD"
+        echo "Set PYTHON_CMD environment variable or ensure virtual environment is activated"
         exit 1
     fi
 }
 
 # List available languages
 list_languages() {
-    log_info "Available language adapters:"
+    echo "Available language adapters:"
     if [[ -d "tests/adapters" ]]; then
         for lang_dir in tests/adapters/*/; do
             if [[ -d "$lang_dir" && ! "$(basename "$lang_dir")" =~ ^(__pycache__|\..*) ]]; then
@@ -137,22 +121,22 @@ list_languages() {
                     goldens_dir="$lang_dir/goldens"
                     if [[ -d "$goldens_dir" ]]; then
                         golden_count=$(find "$goldens_dir" -name "*.golden" | wc -l)
-                        echo -e "  ${GREEN}$lang_name${NC} (${golden_count} golden files)"
+                        echo "  $(green "$lang_name") (${golden_count} golden files)"
                     else
-                        echo -e "  ${YELLOW}$lang_name${NC} (no goldens directory)"
+                        echo "  $(yellow "$lang_name") (no goldens directory)"
                     fi
                 fi
             fi
         done
     else
-        log_error "tests/adapters directory not found"
+        echo "$(red "Error:") tests/adapters directory not found"
         exit 1
     fi
 }
 
 # Check missing golden files
 check_missing() {
-    log_info "Checking for missing golden files..."
+    echo "Checking for missing golden files..."
     
     local missing_found=false
     
@@ -163,22 +147,22 @@ check_missing() {
                 goldens_dir="$lang_dir/goldens"
                 
                 # Run tests without updating to see which would fail
-                log_info "Checking $lang_name..."
+                echo "• Checking $lang_name..."
                 if ! $PYTHON_CMD -m pytest "tests/adapters/$lang_name" -x -q --tb=no >/dev/null 2>&1; then
-                    log_warning "Some golden files may be missing for $lang_name"
+                    echo "  $(yellow "Warning:") Some golden files may be missing for $lang_name"
                     missing_found=true
                 else
-                    log_success "$lang_name golden files are up to date"
+                    echo "  $(green "OK") $lang_name golden files are up to date"
                 fi
             fi
         fi
     done
     
     if [[ "$missing_found" == "true" ]]; then
-        log_info "Run without --check to update missing golden files"
+        echo "Run without --check to update missing golden files"
         exit 1
     else
-        log_success "All golden files are present and up to date"
+        echo "$(green "All golden files are present and up to date")"
     fi
 }
 
@@ -190,20 +174,20 @@ update_language() {
     local test_path="tests/adapters/$language"
     
     if [[ ! -d "$test_path" ]]; then
-        log_error "Language adapter directory not found: $test_path"
+        echo "$(red "Error:") Language adapter directory not found: $test_path"
         exit 1
     fi
     
     if [[ ! -f "$test_path/conftest.py" ]]; then
-        log_error "conftest.py not found in $test_path"
+        echo "$(red "Error:") conftest.py not found in $test_path"
         exit 1
     fi
     
-    log_info "Updating golden files for $language..."
+    echo "$(bold "Language: $language")"
     
     if [[ "$dry_run" == "true" ]]; then
-        log_info "DRY RUN: Would update golden files for $language"
-        log_info "Command: PYTEST_UPDATE_GOLDENS=1 $PYTHON_CMD -m pytest \"$test_path\" $PYTEST_ARGS"
+        echo "$(green "Dry-run:") Would update golden files for $language"
+        echo "Command: PYTEST_UPDATE_GOLDENS=1 $PYTHON_CMD -m pytest \"$test_path\" $PYTEST_ARGS"
         return 0
     fi
     
@@ -211,12 +195,21 @@ update_language() {
     mkdir -p "$test_path/goldens"
     
     # Run tests with golden update flag
+    echo "• Updating golden files for $(bold "$language")..."
+    if [[ $VERBOSE -eq 1 ]]; then
+        set -x
+    fi
+    
     if PYTEST_UPDATE_GOLDENS=1 $PYTHON_CMD -m pytest "$test_path" $PYTEST_ARGS; then
         local golden_count=$(find "$test_path/goldens" -name "*.golden" 2>/dev/null | wc -l)
-        log_success "Updated golden files for $language ($golden_count files)"
+        echo "  $(green "OK") Updated golden files for $language ($golden_count files)"
     else
-        log_error "Failed to update golden files for $language"
+        echo "  $(red "Failed:") Failed to update golden files for $language"
         exit 1
+    fi
+    
+    if [[ $VERBOSE -eq 1 ]]; then
+        { set +x; } 2>/dev/null
     fi
 }
 
@@ -224,7 +217,8 @@ update_language() {
 update_all() {
     local dry_run="${1:-false}"
     
-    log_info "Updating golden files for all languages..."
+    echo "$(bold "Updating golden files for all languages")"
+    echo
     
     local languages=()
     for lang_dir in tests/adapters/*/; do
@@ -237,17 +231,37 @@ update_all() {
     done
     
     if [[ ${#languages[@]} -eq 0 ]]; then
-        log_error "No language adapters found"
+        echo "$(red "Error:") No language adapters found"
         exit 1
     fi
     
+    if [[ "$dry_run" == "true" ]]; then
+        echo "$(bold "Plan:")"
+        for language in "${languages[@]}"; do
+            echo "  - $language"
+        done
+        echo
+        echo "$(green "Dry-run") done."
+        return 0
+    fi
+    
+    local ok=0
     for language in "${languages[@]}"; do
         update_language "$language" "$dry_run"
+        local rc=$?
+        if [[ $rc -ne 0 ]]; then
+            ok=1
+        fi
     done
     
-    if [[ "$dry_run" == "false" ]]; then
-        log_success "Updated golden files for all languages: ${languages[*]}"
+    if [[ $ok -ne 0 ]]; then
+        echo
+        echo "$(red "One or more language updates failed.")"
+        exit 3
     fi
+    
+    echo
+    echo "$(green "All golden files updated successfully for languages:") ${languages[*]}"
 }
 
 # === Main Logic ===
@@ -258,6 +272,8 @@ main() {
     
     local language=""
     local dry_run=false
+    
+    if [[ $# -eq 0 ]]; then show_help; exit 1; fi
     
     # Parse arguments
     while [[ $# -gt 0 ]]; do
@@ -279,16 +295,18 @@ main() {
                 dry_run=true
                 shift
                 ;;
+            -v|--verbose)
+                VERBOSE=1
+                shift
+                ;;
             -*)
-                log_error "Unknown option: $1"
-                echo "Use --help for usage information"
-                exit 1
+                echo "$(red "Unknown option") $1"; show_help; exit 1
                 ;;
             *)
                 if [[ -z "$language" ]]; then
                     language="$1"
                 else
-                    log_error "Multiple languages specified: $language and $1"
+                    echo "$(red "Multiple languages specified:") $language and $1"
                     exit 1
                 fi
                 shift
@@ -308,10 +326,10 @@ main() {
     
     if [[ "$dry_run" == "false" ]]; then
         echo
-        log_info "Golden files updated successfully!"
-        log_info "Review the changes and commit the updated golden files:"
-        echo -e "  ${BOLD}git add tests/adapters/*/goldens/*.golden${NC}"
-        echo -e "  ${BOLD}git commit -m \"Update golden files for language adapters\"${NC}"
+        echo "$(green "Golden files updated successfully!")"
+        echo "Review the changes and commit the updated golden files:"
+        echo "  $(bold "git add tests/adapters/*/goldens/*.golden")"
+        echo "  $(bold "git commit -m \"Update golden files for language adapters\"")"
     fi
 }
 

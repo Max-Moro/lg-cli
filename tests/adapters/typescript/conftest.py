@@ -10,7 +10,7 @@ from ..golden_utils import assert_golden_match  # noqa: F401
 
 
 @pytest.fixture
-def typescript_adapter():
+def adapter():
     """Basic TypeScript adapter instance."""
     adapter = TypeScriptAdapter()
     adapter._cfg = TypeScriptCfg()
@@ -18,7 +18,7 @@ def typescript_adapter():
 
 
 @pytest.fixture
-def typescript_code_sample():
+def code_sample():
     """Sample TypeScript code for testing."""
     return '''// TypeScript module
 import { Component } from '@angular/core';
@@ -68,7 +68,7 @@ export { UserService, User };
 
 
 @pytest.fixture
-def typescript_barrel_file_sample():
+def barrel_file_sample():
     """Sample TypeScript barrel file for testing."""
     return '''// Barrel file example
 export { ComponentA } from './components/ComponentA';
@@ -84,7 +84,7 @@ export type { User, UserResponse } from './types';
 
 
 @pytest.fixture
-def typescript_non_barrel_file_sample():
+def non_barrel_file_sample():
     """Sample TypeScript non-barrel file for testing."""
     return '''// Regular TypeScript module
 import { Component } from '@angular/core';
@@ -112,7 +112,7 @@ export default UserComponent;
 
 
 @pytest.fixture
-def typescript_config_simple() -> TypeScriptCfg:
+def config_simple() -> TypeScriptCfg:
     """Simple TypeScript configuration."""
     return TypeScriptCfg(
         public_api_only=True,

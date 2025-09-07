@@ -11,7 +11,7 @@ from ..golden_utils import assert_golden_match  # noqa: F401
 
 
 @pytest.fixture
-def python_adapter():
+def adapter():
     """Basic Python adapter instance."""
     adapter = PythonAdapter()
     adapter._cfg = PythonCfg()
@@ -19,7 +19,7 @@ def python_adapter():
 
 
 @pytest.fixture
-def python_code_sample():
+def code_sample():
     """Sample Python code for testing."""
     return '''"""Module docstring."""
 
@@ -63,7 +63,7 @@ if __name__ == "__main__":
 
 
 @pytest.fixture
-def python_config_simple() -> PythonCfg:
+def config_simple() -> PythonCfg:
     """Simple Python configuration."""
     return PythonCfg(
         strip_function_bodies=True,
@@ -72,7 +72,7 @@ def python_config_simple() -> PythonCfg:
 
 
 @pytest.fixture
-def python_config_advanced() -> PythonCfg:
+def config_advanced() -> PythonCfg:
     """Advanced Python configuration."""
     return PythonCfg(
         strip_function_bodies=FunctionBodyConfig(

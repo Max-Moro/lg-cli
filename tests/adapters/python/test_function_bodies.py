@@ -4,18 +4,18 @@ Tests for function body optimization in Python adapter.
 
 from lg.adapters.python import PythonAdapter, PythonCfg
 from lg.adapters.code_model import FunctionBodyConfig
-from .conftest import lctx_py, python_code_sample, assert_golden_match
+from .conftest import lctx_py, code_sample, assert_golden_match
 
 
 class TestPythonFunctionBodyOptimization:
     """Test function body stripping for Python code."""
     
-    def test_basic_function_stripping(self, python_code_sample):
+    def test_basic_function_stripping(self, code_sample):
         """Test basic function body stripping."""
         adapter = PythonAdapter()
         adapter._cfg = PythonCfg(strip_function_bodies=True)
         
-        result, meta = adapter.process(lctx_py(python_code_sample))
+        result, meta = adapter.process(lctx_py(code_sample))
         
         # Check that functions were processed
         assert meta["code.removed.functions"] > 0
@@ -23,9 +23,9 @@ class TestPythonFunctionBodyOptimization:
         assert "# … method omitted" in result or "# … body omitted" in result
         
         # Golden file test
-        assert_golden_match(result, "python_basic_strip")
+        assert_golden_match(result, "basic_strip")
     
-    def test_large_only_function_stripping(self, python_code_sample):
+    def test_large_only_function_stripping(self, code_sample):
         """Test stripping only large functions."""
         adapter = PythonAdapter()
         adapter._cfg = PythonCfg(
@@ -35,17 +35,17 @@ class TestPythonFunctionBodyOptimization:
             )
         )
         
-        result, meta = adapter.process(lctx_py(python_code_sample))
+        result, meta = adapter.process(lctx_py(code_sample))
         
         # Should have fewer removals than basic test
-        assert_golden_match(result, "python_large_only_strip")
+        assert_golden_match(result, "large_only_strip")
     
-    def test_no_stripping(self, python_code_sample):
+    def test_no_stripping(self, code_sample):
         """Test with stripping disabled."""
         adapter = PythonAdapter()
         adapter._cfg = PythonCfg(strip_function_bodies=False)
         
-        result, meta = adapter.process(lctx_py(python_code_sample))
+        result, meta = adapter.process(lctx_py(code_sample))
         
         # No functions should be removed
         assert meta.get("code.removed.functions", 0) == 0

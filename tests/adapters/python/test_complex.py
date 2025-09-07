@@ -11,7 +11,7 @@ from .conftest import assert_golden_match, lctx_py, lctx
 class TestPythonComplexIntegration:
     """Complex integration tests for Python adapter."""
 
-    def test_full_optimization_pipeline(self, python_code_sample):
+    def test_full_optimization_pipeline(self, code_sample):
         """Test complete Python adapter pipeline with all optimizations."""
         adapter = PythonAdapter()
         adapter._cfg = PythonCfg.from_dict({
@@ -34,7 +34,7 @@ class TestPythonComplexIntegration:
             }
         })
 
-        result, meta = adapter.process(lctx_py(python_code_sample))
+        result, meta = adapter.process(lctx_py(code_sample))
 
         # Verify multiple optimizations occurred
         assert meta.get("code.removed.functions", 0) >= 0
@@ -53,7 +53,7 @@ class TestPythonComplexIntegration:
         assert '"""A simple calculator class."""' in result
 
         # Golden file test
-        assert_golden_match(result, "python_full_pipeline")
+        assert_golden_match(result, "full_pipeline")
 
     def test_combined_literal_and_function_trimming(self):
         """Test combining literal trimming with function body stripping."""
@@ -139,7 +139,7 @@ def process_data():
         assert meta["_adapter"] == "python"
         assert isinstance(result, str)
 
-    def test_metadata_collection_comprehensive(self, python_code_sample):
+    def test_metadata_collection_comprehensive(self, code_sample):
         """Test comprehensive metadata collection."""
         adapter = PythonAdapter()
         adapter._cfg = PythonCfg(
@@ -148,7 +148,7 @@ def process_data():
             strip_literals=True
         )
         
-        result, meta = adapter.process(lctx_py(python_code_sample))
+        result, meta = adapter.process(lctx_py(code_sample))
         
         # Check required metadata fields
         required_fields = [

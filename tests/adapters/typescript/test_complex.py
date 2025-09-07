@@ -11,7 +11,7 @@ from .conftest import lctx_ts, lctx, assert_golden_match
 class TestTypeScriptComplexIntegration:
     """Complex integration tests for TypeScript adapter."""
 
-    def test_full_optimization_pipeline(self, typescript_code_sample, tmp_path):
+    def test_full_optimization_pipeline(self, code_sample, tmp_path):
         """Test complete TypeScript adapter pipeline with all optimizations."""
         adapter = TypeScriptAdapter()
         adapter._cfg = TypeScriptCfg.from_dict({
@@ -34,7 +34,7 @@ class TestTypeScriptComplexIntegration:
             }
         })
 
-        result, meta = adapter.process(lctx_ts(typescript_code_sample))
+        result, meta = adapter.process(lctx_ts(code_sample))
 
         # Verify multiple optimizations occurred
         assert meta.get("code.removed.functions", 0) >= 0
@@ -50,16 +50,16 @@ class TestTypeScriptComplexIntegration:
         assert "interface User" in result
 
         # Golden file test
-        assert_golden_match(result, "python_full_pipeline")
+        assert_golden_match(result, "full_pipeline")
 
-    def test_barrel_file_detection_comprehensive(self, typescript_barrel_file_sample, typescript_non_barrel_file_sample):
+    def test_barrel_file_detection_comprehensive(self, barrel_file_sample, non_barrel_file_sample):
         """Test comprehensive barrel file detection."""
         adapter = TypeScriptAdapter()
         adapter._cfg = TypeScriptCfg(skip_barrel_files=True)
         
         # Test obvious barrel file (index.ts)
         index_ctx = lctx(
-            typescript_barrel_file_sample, 
+            barrel_file_sample,
             filename="index.ts"
         )
         assert adapter._is_barrel_file(index_ctx) == True
@@ -67,7 +67,7 @@ class TestTypeScriptComplexIntegration:
         
         # Test content-based barrel file detection
         barrel_ctx = lctx(
-            typescript_barrel_file_sample,
+            barrel_file_sample,
             filename="exports.ts"  # Not index.ts to test content-based detection
         )
         assert adapter._is_barrel_file(barrel_ctx) == True
@@ -75,7 +75,7 @@ class TestTypeScriptComplexIntegration:
 
         # Test regular TypeScript file
         regular_ctx = lctx(
-            typescript_non_barrel_file_sample,
+            non_barrel_file_sample,
             filename="user.component.ts"
         )
         assert adapter._is_barrel_file(regular_ctx) == False
@@ -245,7 +245,7 @@ export class PublicService {
         assert meta["_adapter"] == "typescript"
         assert isinstance(result, str)
 
-    def test_metadata_collection_comprehensive(self, typescript_code_sample):
+    def test_metadata_collection_comprehensive(self, code_sample):
         """Test comprehensive metadata collection for TypeScript."""
         adapter = TypeScriptAdapter()
         adapter._cfg = TypeScriptCfg(
@@ -255,7 +255,7 @@ export class PublicService {
             public_api_only=True
         )
         
-        result, meta = adapter.process(lctx_ts(typescript_code_sample))
+        result, meta = adapter.process(lctx_ts(code_sample))
         
         # Check required metadata fields
         required_fields = [
