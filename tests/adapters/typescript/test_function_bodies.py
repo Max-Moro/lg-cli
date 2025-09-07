@@ -4,18 +4,18 @@ Tests for function body optimization in TypeScript adapter.
 
 from lg.adapters.typescript import TypeScriptAdapter, TypeScriptCfg
 from lg.adapters.code_model import FunctionBodyConfig
-from .conftest import lctx_ts, code_sample, assert_golden_match
+from .conftest import lctx_ts, do_function_bodies, assert_golden_match
 
 
 class TestTypeScriptFunctionBodyOptimization:
     """Test function body stripping for TypeScript code."""
     
-    def test_basic_function_stripping(self, code_sample):
+    def test_basic_function_stripping(self, do_function_bodies):
         """Test basic function body stripping."""
         adapter = TypeScriptAdapter()
         adapter._cfg = TypeScriptCfg(strip_function_bodies=True)
         
-        result, meta = adapter.process(lctx_ts(code_sample))
+        result, meta = adapter.process(lctx_ts(do_function_bodies))
         
         # Check that functions were processed
         assert meta["code.removed.functions"] >= 0  # May not find arrow functions in sample
@@ -27,7 +27,7 @@ class TestTypeScriptFunctionBodyOptimization:
         # Golden file test
         assert_golden_match(result, "function_bodies", "basic_strip")
     
-    def test_large_only_method_stripping(self, code_sample):
+    def test_large_only_method_stripping(self, do_function_bodies):
         """Test stripping only large methods."""
         adapter = TypeScriptAdapter()
         adapter._cfg = TypeScriptCfg(
@@ -37,7 +37,7 @@ class TestTypeScriptFunctionBodyOptimization:
             )
         )
         
-        result, meta = adapter.process(lctx_ts(code_sample))
+        result, meta = adapter.process(lctx_ts(do_function_bodies))
         
         # Should have fewer removals than basic test
         assert_golden_match(result, "function_bodies", "large_only_strip")

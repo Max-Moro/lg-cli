@@ -5,14 +5,6 @@ src:
     mode: allow
     allow:
       - "/lg/adapters/"
-    children:
-      lg:
-        mode: block
-        children:
-          adapters:
-            mode: block
-            block:
-              - "/typescript/"
 
 src-tests:
   extensions: [".py"]
@@ -27,12 +19,10 @@ src-tests:
         mode: block
         children:
           adapters:
-            mode: allow
-            allow:
-              - "conftest.py"
-              - "/python/goldens/"
-              - "/python/test_complex.py"
-              - "/python/test_function_bodies.py"
+            mode: block
+            block:
+              - "/test_infrastructure.py"
+              - "/test_integration.py"
 
 src-without:
   extensions: [".py", ".toml"]
@@ -58,11 +48,12 @@ src-without:
           - "/manifest/builder.py"
           - "/scaffold.py"
 
-docs-tree-sitter:
+docs-golden-utils:
   extensions: [".md"]
+  markdown:
+    max_heading_level: 3
+    strip_single_h1: true
   filters:
     mode: allow
     allow:
-      - "/lg-cfg/adapters/gen/TREE_SITTER_README.md"
-  markdown:
-    max_heading_level: 2
+      - "/tests/adapters/golden_utils.md"

@@ -18,9 +18,9 @@ def adapter():
 
 
 @pytest.fixture
-def code_sample():
-    """Sample TypeScript code for testing."""
-    return load_sample_code("code_sample")
+def do_function_bodies():
+    """Sample TypeScript code for testing function body optimization."""
+    return load_sample_code("function_bodies")
 
 
 @pytest.fixture
@@ -34,11 +34,10 @@ def non_barrel_file_sample():
     """Sample TypeScript non-barrel file for testing."""
     return load_sample_code("non_barrel_file_sample")
 
-
-@pytest.fixture
-def config_simple() -> TypeScriptCfg:
-    """Simple TypeScript configuration."""
-    return TypeScriptCfg(
-        public_api_only=True,
-        strip_function_bodies=True
-    )
+# TODO начальные фикстуры для других типов оптимизаций и для комплексных прогонов
+# - do_comments
+# - do_literals
+# - do_imports
+# - do_public_api
+# - do_fields
+# - do_complex

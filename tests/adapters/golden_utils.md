@@ -19,7 +19,7 @@ tests/adapters/
 ├── python/
 │   ├── goldens/                 # Данные для Python тестов
 │   │   ├── do/                  # Входные данные (исходный код)
-│   │   │   └── code_sample.py
+│   │   │   └── function_bodies.py
 │   │   ├── function_bodies/     # Результаты оптимизации тел функций
 │   │   │   ├── basic_strip.py
 │   │   │   └── large_only_strip.py
@@ -35,7 +35,7 @@ tests/adapters/
 ├── typescript/
 │   ├── goldens/                # Данные для TypeScript тестов
 │   │   ├── do/                  # Входные данные (исходный код)
-│   │   │   ├── code_sample.ts
+│   │   │   ├── function_bodies.ts
 │   │   │   ├── barrel_file_sample.ts
 │   │   │   └── non_barrel_file_sample.ts
 │   │   ├── function_bodies/     # Результаты оптимизации тел функций
@@ -56,11 +56,11 @@ tests/adapters/
 ```python
 from ..golden_utils import assert_golden_match, load_sample_code
 
-def test_function_body_optimization(self, code_sample):
+def test_function_body_optimization(self, do_function_bodies):
     adapter = PythonAdapter()
     adapter._cfg = PythonCfg(strip_function_bodies=True)
     
-    result, meta = adapter.process(lctx_py(code_sample))
+    result, meta = adapter.process(lctx_py(do_function_bodies))
     
     # Сравнение с golden-файлом в поддиректории function_bodies/
     assert_golden_match(result, "function_bodies", "basic_strip")
@@ -71,7 +71,7 @@ def test_function_body_optimization(self, code_sample):
 ```python
 def test_with_custom_input():
     # Загрузка входных данных из do/
-    sample_code = load_sample_code("code_sample")
+    do_function_bodies = load_sample_code("function_bodies")
     
     adapter = PythonAdapter()
     adapter._cfg = PythonCfg(strip_function_bodies=True)
@@ -287,7 +287,7 @@ git commit -m "Update golden file after optimization improvement"
 
 - Создавайте переиспользуемые входные файлы в `do/`
 - Используйте `load_sample_code()` вместо хардкода в fixtures
-- Именуйте входные файлы описательно: `code_sample`, `barrel_file_sample`, `complex_class_sample`
+- Именуйте входные файлы описательно: `function_bodies`, `barrel_file_sample`, `complex_class_sample`
 
 ### Контроль версий
 
@@ -297,6 +297,7 @@ git commit -m "Update golden file after optimization improvement"
 - При merge conflicts в golden-файлах регенерируйте их через скрипт
 - Новая команда для коммита: `git add tests/adapters/*/goldens/**/*`
 
+<!-- lg:omit:start -->
 ### CI/CD
 
 В CI/CD убедитесь что:
@@ -344,11 +345,11 @@ assert_golden_match(result, "function_bodies", "test_name", language="python")
 ```python
 # Проверьте что файл существует
 from pathlib import Path
-sample_path = Path("tests/adapters/python/goldens/do/code_sample.py")
+sample_path = Path("tests/adapters/python/goldens/do/function_bodies.py")
 assert sample_path.exists(), f"Sample file not found: {sample_path}"
 
 # Или явно укажите язык
-sample_code = load_sample_code("code_sample", language="python")
+do_function_bodies = load_sample_code("function_bodies", language="python")
 ```
 
 ### Encoding проблемы
@@ -373,8 +374,8 @@ Golden-файлы сохраняются в UTF-8. При проблемах с 
    from ..golden_utils import assert_golden_match, load_sample_code
    
    @pytest.fixture
-   def code_sample():
-       return load_sample_code("code_sample")
+   def do_function_bodies():
+       return load_sample_code("function_bodies")
    ```
 
 3. Добавьте расширение в `golden_utils.py`:
@@ -387,7 +388,7 @@ Golden-файлы сохраняются в UTF-8. При проблемах с 
 
 4. Создайте входные файлы в `do/`:
    ```bash
-   echo "// New language sample" > tests/adapters/new_language/goldens/do/code_sample.newlang
+   echo "// New language sample" > tests/adapters/new_language/goldens/do/function_bodies.newlang
    ```
 
 5. Скрипт `update_goldens.sh` автоматически обнаружит новый язык
@@ -459,3 +460,4 @@ golden_dir = get_golden_dir("python", "function_bodies")
 - Интуитивная структура файлов
 
 Эта обновленная система делает процесс разработки и поддержки golden-тестов значительно более удобным и организованным!
+<!-- lg:omit:end -->
