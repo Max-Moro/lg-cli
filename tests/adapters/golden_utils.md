@@ -1,6 +1,6 @@
 # Golden Tests System for Language Adapters
 
-Эта система предоставляет единообразное тестирование языковых адаптеров с использованием golden-файлов (эталонных файлов).
+Эта система предоставляет единообразное тестирование языковых адаптеров с использованием golden-файлов (эталонных файлов). Система организована по типам оптимизации и использует языковые расширения файлов для лучшей поддержки IDE.
 
 ## Что такое Golden Tests
 
@@ -17,16 +17,36 @@ Golden tests (snapshot tests, approval tests) — это техника тест
 tests/adapters/
 ├── golden_utils.py              # Универсальная система golden-тестов
 ├── python/
-│   ├── goldens/                 # Эталонные файлы для Python
-│   │   ├── python_basic_strip.golden
-│   │   └── python_full_pipeline.golden
+│   ├── goldens/                 # Данные для Python тестов
+│   │   ├── do/                  # Входные данные (исходный код)
+│   │   │   └── code_sample.py
+│   │   ├── function_bodies/     # Результаты оптимизации тел функций
+│   │   │   ├── basic_strip.py
+│   │   │   └── large_only_strip.py
+│   │   ├── complex/             # Комплексные тесты
+│   │   │   └── full_pipeline.py
+│   │   ├── comments/            # Тесты обработки комментариев
+│   │   ├── literals/            # Тесты обработки литералов
+│   │   ├── imports/             # Тесты обработки импортов
+│   │   ├── public_api/          # Тесты публичного API
+│   │   └── fields/              # Тесты обработки полей
 │   ├── conftest.py             # Fixtures и утилиты для Python тестов
 │   └── test_*.py               # Тесты Python адаптера
 ├── typescript/
-│   ├── goldens/                # Эталонные файлы для TypeScript
+│   ├── goldens/                # Данные для TypeScript тестов
+│   │   ├── do/                  # Входные данные (исходный код)
+│   │   │   ├── code_sample.ts
+│   │   │   ├── barrel_file_sample.ts
+│   │   │   └── non_barrel_file_sample.ts
+│   │   ├── function_bodies/     # Результаты оптимизации тел функций
+│   │   │   ├── basic_strip.ts
+│   │   │   ├── arrow_functions.ts
+│   │   │   └── class_methods.ts
+│   │   └── complex/             # Комплексные тесты
+│   │       └── full_pipeline.ts
 │   ├── conftest.py             # Fixtures и утилиты для TS тестов  
 │   └── test_*.py               # Тесты TypeScript адаптера
-└── README.md                   # Этот файл
+└── golden_utils.md             # Этот файл
 ```
 
 ## Использование в тестах
@@ -34,37 +54,82 @@ tests/adapters/
 ### Базовое использование
 
 ```python
-from ..golden_utils import assert_golden_match
+from ..golden_utils import assert_golden_match, load_sample_code
 
-def test_my_optimization(self, sample_code):
+def test_function_body_optimization(self, code_sample):
+    adapter = PythonAdapter()
+    adapter._cfg = PythonCfg(strip_function_bodies=True)
+    
+    result, meta = adapter.process(lctx_py(code_sample))
+    
+    # Сравнение с golden-файлом в поддиректории function_bodies/
+    assert_golden_match(result, "function_bodies", "basic_strip")
+```
+
+### Использование с входными данными
+
+```python
+def test_with_custom_input():
+    # Загрузка входных данных из do/
+    sample_code = load_sample_code("code_sample")
+    
     adapter = PythonAdapter()
     adapter._cfg = PythonCfg(strip_function_bodies=True)
     
     result, meta = adapter.process(lctx_py(sample_code))
     
-    # Автоматическое определение языка и создание/сравнение golden-файла
-    assert_golden_match(result, "test_name")
+    # Результат сохраняется в function_bodies/custom_test.py
+    assert_golden_match(result, "function_bodies", "custom_test")
+```
+
+### Разные типы оптимизации
+
+```python
+# Тесты тел функций
+assert_golden_match(result, "function_bodies", "basic_strip")
+assert_golden_match(result, "function_bodies", "large_only_strip")
+
+# Комплексные тесты
+assert_golden_match(result, "complex", "full_pipeline")
+
+# Тесты комментариев
+assert_golden_match(result, "comments", "strip_all")
+assert_golden_match(result, "comments", "keep_doc")
+
+# Тесты литералов
+assert_golden_match(result, "literals", "trim_arrays")
+
+# Тесты импортов
+assert_golden_match(result, "imports", "external_only")
+
+# Тесты публичного API
+assert_golden_match(result, "public_api", "strip_private")
+
+# Тесты полей
+assert_golden_match(result, "fields", "trivial_constructors")
 ```
 
 ### Расширенное использование
 
 ```python
 # Явное указание языка
-assert_golden_match(result, "test_name", language="python")
+assert_golden_match(result, "function_bodies", "test_name", language="typescript")
 
 # Принудительное обновление (обычно не нужно в тестах)
-assert_golden_match(result, "test_name", update_golden=True)
+assert_golden_match(result, "function_bodies", "test_name", update_golden=True)
 ```
 
 ## Создание и обновление golden-файлов
 
 ### Автоматическое создание
 
-При первом запуске теста golden-файл создается автоматически:
+При первом запуске теста golden-файл создается автоматически в соответствующей поддиректории:
 
 ```bash
 .venv/Scripts/python.exe -m pytest tests/adapters/python/test_function_bodies.py::test_new_feature -v
 ```
+
+Файл будет создан в `tests/adapters/python/goldens/function_bodies/new_feature.py`
 
 ### Обновление через переменную окружения
 
@@ -101,12 +166,38 @@ PYTEST_UPDATE_GOLDENS=1 .venv/Scripts/python.exe -m pytest tests/adapters/python
 PYTEST_ARGS="-v --tb=short" ./scripts/update_goldens.sh python
 ```
 
+### Структура результирующих файлов
+
+Golden-файлы теперь сохраняются с языковыми расширениями в поддиректориях по типу оптимизации:
+
+- **Python**: `.py` файлы в `tests/adapters/python/goldens/<optimization_type>/`
+- **TypeScript**: `.ts` файлы в `tests/adapters/typescript/goldens/<optimization_type>/`
+- **JavaScript**: `.js` файлы в `tests/adapters/javascript/goldens/<optimization_type>/`
+
+Это обеспечивает корректную подсветку синтаксиса в IDE и упрощает ручной анализ.
+
 ## Workflow разработки
 
-### 1. Написание нового теста
+### 1. Подготовка входных данных
+
+Если нужны новые входные данные, создайте файл в `do/`:
+
+```bash
+# Создать новый входной файл
+cat > tests/adapters/python/goldens/do/custom_sample.py << 'EOF'
+# Custom test code
+def example_function():
+    return "test"
+EOF
+```
+
+### 2. Написание нового теста
 
 ```python
-def test_new_optimization(self, sample_code):
+def test_new_optimization(self):
+    # Загружаем входные данные
+    sample_code = load_sample_code("custom_sample")
+    
     adapter = PythonAdapter()
     adapter._cfg = PythonCfg(new_optimization=True)
     
@@ -116,30 +207,31 @@ def test_new_optimization(self, sample_code):
     assert "expected_marker" in result
     assert meta.get("optimization.applied", 0) > 0
     
-    # Golden test
-    assert_golden_match(result, "new_optimization")
+    # Golden test с указанием типа оптимизации
+    assert_golden_match(result, "function_bodies", "new_optimization")
 ```
 
-### 2. Первый запуск
+### 3. Первый запуск
 
 ```bash
 .venv/Scripts/python.exe -m pytest tests/adapters/python/test_new.py::test_new_optimization -v
 ```
 
-Golden-файл будет создан автоматически.
+Golden-файл будет создан автоматически в `tests/adapters/python/goldens/function_bodies/new_optimization.py`
 
-### 3. Проверка и коммит
+### 4. Проверка и коммит
 
 ```bash
-# Просмотреть созданный golden-файл
-cat tests/adapters/python/goldens/new_optimization.golden
+# Просмотреть созданный golden-файл (с подсветкой синтаксиса!)
+cat tests/adapters/python/goldens/function_bodies/new_optimization.py
 
-# Закоммитить в репозиторий
-git add tests/adapters/python/goldens/new_optimization.golden
+# Закоммитить входные и выходные данные
+git add tests/adapters/python/goldens/do/custom_sample.py
+git add tests/adapters/python/goldens/function_bodies/new_optimization.py
 git commit -m "Add golden test for new optimization"
 ```
 
-### 4. При изменениях в коде
+### 5. При изменениях в коде
 
 Если тест падает с ошибкой golden test:
 
@@ -151,18 +243,31 @@ git commit -m "Add golden test for new optimization"
 PYTEST_UPDATE_GOLDENS=1 .venv/Scripts/python.exe -m pytest tests/adapters/python/test_new.py::test_new_optimization -v
 
 # Проверить изменения и закоммитить
-git diff tests/adapters/python/goldens/new_optimization.golden
-git add tests/adapters/python/goldens/new_optimization.golden  
+git diff tests/adapters/python/goldens/function_bodies/new_optimization.py
+git add tests/adapters/python/goldens/function_bodies/new_optimization.py
 git commit -m "Update golden file after optimization improvement"
 ```
 
 ## Best Practices
 
+### Организация по типам оптимизации
+
+**Используйте правильные поддиректории:**
+- `function_bodies/` - для тестов оптимизации тел функций и методов
+- `comments/` - для тестов обработки комментариев
+- `literals/` - для тестов оптимизации литералов
+- `imports/` - для тестов обработки импортов
+- `public_api/` - для тестов фильтрации публичного API
+- `fields/` - для тестов обработки полей и конструкторов
+- `complex/` - для комплексных тестов с несколькими типами оптимизации
+
 ### Именование golden-файлов
 
-- Используйте описательные имена: `python_basic_strip`, `typescript_class_methods`
+- Используйте описательные имена: `basic_strip`, `large_only_strip`, `full_pipeline`
 - Избегайте слишком длинных имен
 - Используйте snake_case
+- НЕ дублируйте язык в имени (используется расширение файла)
+- НЕ дублируйте тип оптимизации в имени (используется поддиректория)
 
 ### Детерминизм
 
@@ -178,11 +283,19 @@ git commit -m "Update golden file after optimization improvement"
 - Для больших результатов рассмотрите разбиение на несколько тестов
 - Очень большие golden-файлы затрудняют review
 
+### Управление входными данными
+
+- Создавайте переиспользуемые входные файлы в `do/`
+- Используйте `load_sample_code()` вместо хардкода в fixtures
+- Именуйте входные файлы описательно: `code_sample`, `barrel_file_sample`, `complex_class_sample`
+
 ### Контроль версий
 
-- **Обязательно** коммитьте golden-файлы в репозиторий
+- **Обязательно** коммитьте golden-файлы и входные данные в репозиторий
+- Коммитьте как `do/` (входные), так и результирующие файлы
 - Включите изменения golden-файлов в review процесс
-- При merge conflicts в golden-файлах регенерируйте их
+- При merge conflicts в golden-файлах регенерируйте их через скрипт
+- Новая команда для коммита: `git add tests/adapters/*/goldens/**/*`
 
 ### CI/CD
 
@@ -213,7 +326,29 @@ git commit -m "Update golden file after optimization improvement"
 
 ```python
 # Явно укажите язык
-assert_golden_match(result, "test_name", language="python")
+assert_golden_match(result, "function_bodies", "test_name", language="python")
+```
+
+### Ошибки с поддиректориями
+
+Если тест падает с ошибкой о несуществующей директории:
+
+1. Убедитесь что используете правильный `optimization_type`
+2. Проверьте что директория создается автоматически при первом запуске
+3. Используйте существующие типы: `function_bodies`, `complex`, `comments`, `literals`, `imports`, `public_api`, `fields`
+
+### Проблемы с загрузкой входных данных
+
+Если `load_sample_code()` не находит файл:
+
+```python
+# Проверьте что файл существует
+from pathlib import Path
+sample_path = Path("tests/adapters/python/goldens/do/code_sample.py")
+assert sample_path.exists(), f"Sample file not found: {sample_path}"
+
+# Или явно укажите язык
+sample_code = load_sample_code("code_sample", language="python")
 ```
 
 ### Encoding проблемы
@@ -228,21 +363,99 @@ Golden-файлы сохраняются в UTF-8. При проблемах с 
 
 ### Добавление нового языка
 
-1. Создайте директорию `tests/adapters/new_language/`
-2. Добавьте `conftest.py` с импортом:
-   ```python
-   from ..golden_utils import assert_golden_match
+1. Создайте структуру директорий:
+   ```bash
+   mkdir -p tests/adapters/new_language/goldens/{do,function_bodies,complex,comments,literals,imports,public_api,fields}
    ```
-3. Создайте директорию `goldens/`
-4. Скрипт `update_goldens.sh` автоматически обнаружит новый язык
+
+2. Добавьте `conftest.py` с импортами:
+   ```python
+   from ..golden_utils import assert_golden_match, load_sample_code
+   
+   @pytest.fixture
+   def code_sample():
+       return load_sample_code("code_sample")
+   ```
+
+3. Добавьте расширение в `golden_utils.py`:
+   ```python
+   extension_map = {
+       # ... существующие языки ...
+       "new_language": ".newlang"
+   }
+   ```
+
+4. Создайте входные файлы в `do/`:
+   ```bash
+   echo "// New language sample" > tests/adapters/new_language/goldens/do/code_sample.newlang
+   ```
+
+5. Скрипт `update_goldens.sh` автоматически обнаружит новый язык
+
+### Добавление нового типа оптимизации
+
+1. Создайте поддиректорию для всех языков:
+   ```bash
+   mkdir -p tests/adapters/{python,typescript}/goldens/new_optimization_type
+   ```
+
+2. Используйте в тестах:
+   ```python
+   assert_golden_match(result, "new_optimization_type", "test_name")
+   ```
 
 ### Кастомизация golden-файлов
 
 Для специфичных требований можно расширить `golden_utils.py`:
 
 ```python
-def assert_golden_match_custom(result, name, normalizer=None):
+def assert_golden_match_custom(result, optimization_type, name, normalizer=None):
     if normalizer:
         result = normalizer(result)
-    assert_golden_match(result, name)
+    assert_golden_match(result, optimization_type, name)
 ```
+
+### Утилиты для работы с данными
+
+Новые функции для работы с golden-системой:
+
+```python
+# Список всех входных файлов
+from tests.adapters.golden_utils import list_sample_files
+samples = list_sample_files("python")
+
+# Список всех golden-файлов
+golden_files = list_golden_files("python", "function_bodies")
+
+# Получение директорий
+golden_dir = get_golden_dir("python", "function_bodies")
+```
+
+## Преимущества обновленной системы
+
+### 🎯 Организация по типам оптимизации
+- Четкое разделение тестов по функциональности
+- Легкий поиск специфичных тестов
+- Масштабируемость при добавлении новых типов оптимизации
+
+### 💻 IDE-поддержка
+- Корректная подсветка синтаксиса в golden-файлах
+- Автодополнение и анализ кода работают в образцах
+- Навигация по коду в входных и выходных файлах
+
+### 📁 Централизованные входные данные
+- Все тестовые данные в одном месте (`do/`)
+- Переиспользование данных между тестами
+- Отсутствие дублирования хардкода в fixtures
+
+### 🔄 Упрощенное управление
+- Единый API для всех типов тестов
+- Автоматическое создание поддиректорий
+- Улучшенные скрипты для обновления
+
+### 🚀 Лучший developer experience
+- Более информативные сообщения об ошибках
+- Простое добавление новых языков и типов оптимизации
+- Интуитивная структура файлов
+
+Эта обновленная система делает процесс разработки и поддержки golden-тестов значительно более удобным и организованным!

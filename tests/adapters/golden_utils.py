@@ -281,9 +281,9 @@ def list_golden_files(language: Optional[str] = None, optimization_type: Optiona
                 extension = _get_language_extension(language)
                 result.extend(opt_dir.glob(f"*{extension}"))
         else:
-            # Все типы оптимизации для языка
+            # Все типы оптимизации для языка (исключаем do/)
             for opt_dir in base_golden_dir.iterdir():
-                if opt_dir.is_dir():
+                if opt_dir.is_dir() and opt_dir.name != "do":
                     extension = _get_language_extension(language)
                     result.extend(opt_dir.glob(f"*{extension}"))
     else:
@@ -301,10 +301,99 @@ def list_golden_files(language: Optional[str] = None, optimization_type: Optiona
                             extension = _get_language_extension(lang_name)
                             result.extend(opt_dir.glob(f"*{extension}"))
                     else:
-                        # Все типы оптимизации для всех языков
+                        # Все типы оптимизации для всех языков (исключаем do/)
                         for opt_dir in goldens_dir.iterdir():
-                            if opt_dir.is_dir():
+                            if opt_dir.is_dir() and opt_dir.name != "do":
                                 extension = _get_language_extension(lang_name)
                                 result.extend(opt_dir.glob(f"*{extension}"))
+    
+    return result
+
+
+def load_sample_code(sample_name: str, language: Optional[str] = None) -> str:
+    """
+    Загружает исходный код из файла в директории goldens/do/.
+    
+    Args:
+        sample_name: Имя файла с образцом (без расширения)
+        language: Язык адаптера. Если не указан, определяется автоматически
+        
+    Returns:
+        str: Содержимое файла с исходным кодом
+        
+    Raises:
+        FileNotFoundError: Если файл не найден
+    """
+    if language is None:
+        language = _detect_language_from_test_context()
+    
+    sample_file = _get_sample_file_path(language, sample_name)
+    
+    if not sample_file.exists():
+        raise FileNotFoundError(
+            f"Sample file not found: {sample_file}\n"
+            f"Expected location: tests/adapters/{language}/goldens/do/{sample_name}"
+            f"{_get_language_extension(language)}"
+        )
+    
+    return sample_file.read_text(encoding='utf-8')
+
+
+def _get_sample_file_path(language: str, sample_name: str) -> Path:
+    """
+    Формирует путь к файлу с исходным кодом для заданного языка и имени.
+    
+    Args:
+        language: Имя языка ("python", "typescript", etc.)
+        sample_name: Имя файла без расширения
+        
+    Returns:
+        Path к файлу с исходным кодом
+    """
+    # Находим корень проекта (где есть pyproject.toml)
+    current = Path(__file__)
+    while current.parent != current:
+        if (current / "pyproject.toml").exists():
+            break
+        current = current.parent
+    else:
+        # Fallback: от текущего файла вверх
+        current = Path(__file__).parent.parent.parent
+    
+    # Получаем языковое расширение
+    extension = _get_language_extension(language)
+    
+    sample_dir = current / "tests" / "adapters" / language / "goldens" / "do"
+    return sample_dir / f"{sample_name}{extension}"
+
+
+def list_sample_files(language: Optional[str] = None) -> list[Path]:
+    """
+    Возвращает список всех файлов с исходными данными для языка или всех языков.
+    
+    Args:
+        language: Имя языка или None для всех языков
+        
+    Returns:
+        Список путей к файлам с исходными данными
+    """
+    result = []
+    
+    if language:
+        # Конкретный язык
+        sample_dir = _get_sample_file_path(language, "dummy").parent
+        if sample_dir.exists():
+            extension = _get_language_extension(language)
+            result.extend(sample_dir.glob(f"*{extension}"))
+    else:
+        # Все языки
+        adapters_dir = Path(__file__).parent
+        for lang_dir in adapters_dir.iterdir():
+            if lang_dir.is_dir() and not lang_dir.name.startswith(("_", ".")):
+                lang_name = lang_dir.name
+                sample_dir = lang_dir / "goldens" / "do"
+                if sample_dir.exists():
+                    extension = _get_language_extension(lang_name)
+                    result.extend(sample_dir.glob(f"*{extension}"))
     
     return result
