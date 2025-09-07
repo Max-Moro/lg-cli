@@ -191,9 +191,9 @@ class PlaceholderGenerator:
     ) -> str:
         """Create a placeholder for a removed function body."""
         if style == "inline" or style == "auto":
-            return f"{self.single_line_comment} … body omitted (−{lines_removed})"
+            return f"{self.single_line_comment} … body omitted ({lines_removed})"
         elif style == "block":
-            return f"{self.multi_line_start} … body omitted (−{lines_removed}) {self.multi_line_end}"
+            return f"{self.multi_line_start} … body omitted ({lines_removed}) {self.multi_line_end}"
         else:
             return ""
     
@@ -205,9 +205,9 @@ class PlaceholderGenerator:
     ) -> str:
         """Create a placeholder for a removed method body."""
         if style == "inline" or style == "auto":
-            return f"{self.single_line_comment} … method omitted (−{lines_removed})"
+            return f"{self.single_line_comment} … method omitted ({lines_removed})"
         elif style == "block":
-            return f"{self.multi_line_start} … method omitted (−{lines_removed}) {self.multi_line_end}"
+            return f"{self.multi_line_start} … method omitted ({lines_removed}) {self.multi_line_end}"
         else:
             return ""
     
@@ -252,7 +252,7 @@ class PlaceholderGenerator:
             content = f"… {count} {comment_type}s omitted"
             
         if lines_removed > 0:
-            content += f" (−{lines_removed})"
+            content += f" ({lines_removed})"
             
         if style == "inline" or style == "auto":
             return f"{self.single_line_comment} {content}"
@@ -269,11 +269,11 @@ class PlaceholderGenerator:
     ) -> str:
         """Create a placeholder for processed docstrings."""
         if policy == "strip_all":
-            content = f"… docstring omitted (−{lines_removed})"
+            content = f"… docstring omitted ({lines_removed})"
         elif policy == "keep_first_sentence":
-            content = f"… docstring truncated (−{lines_removed})"
+            content = f"… docstring truncated ({lines_removed})"
         else:
-            content = f"… docstring processed (−{lines_removed})"
+            content = f"… docstring processed ({lines_removed})"
             
         if style == "inline" or style == "auto":
             return f"{self.single_line_comment} {content}"
