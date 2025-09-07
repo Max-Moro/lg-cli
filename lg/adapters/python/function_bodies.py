@@ -63,7 +63,10 @@ def _remove_after_colon(
     removal_start = absolute_colon_pos + 1  # После ':'
     removal_end = body_end_byte
 
-    # Используем общий helper
+    # Определяем правильный отступ на основе типа функции
+    indent_prefix = _get_indent_prefix(func_type)
+
+    # Используем общий helper с правильным форматированием
     return root_optimizer.apply_function_body_removal(
         context=context,
         start_byte=removal_start,
@@ -71,7 +74,7 @@ def _remove_after_colon(
         func_type=func_type,
         placeholder_style=placeholder_style,
         replacement_type=f"{func_type}_body_removal_simple",
-        placeholder_prefix="\n    "
+        placeholder_prefix=indent_prefix
     )
 
 def _remove_function_body_preserve_docstring(
@@ -88,16 +91,16 @@ def _remove_function_body_preserve_docstring(
     # Есть docstring - удаляем только часть после него
     body_start_byte, body_end_byte = context.doc.get_node_range(body_node)
 
-    # Найдём первый символ после docstring (обычно перевод строки)
-    # Нужно найти следующий statement после docstring
-    next_statement_start = _find_next_statement_after_docstring(body_node, docstring_node)
-
-    if next_statement_start is None or next_statement_start >= body_end_byte:
+    # Найдём позицию для начала удаления - сразу после docstring
+    docstring_end_byte = docstring_node.end_byte
+    
+    # Проверяем, есть ли код после docstring
+    if docstring_end_byte >= body_end_byte:
         # Нет кода после docstring - оставляем только docstring
         return None
 
-    # Вычисляем что удаляем (от начала следующего statement до конца тела)
-    removal_start = next_statement_start
+    # Вычисляем что удаляем (от конца docstring до конца тела)
+    removal_start = docstring_end_byte
     removal_end = body_end_byte
 
     # Проверяем, есть ли что удалять
@@ -109,7 +112,10 @@ def _remove_function_body_preserve_docstring(
         # Нечего удалять после docstring
         return None
 
-    # Используем общий helper
+    # Определяем правильный отступ на основе типа функции
+    indent_prefix = _get_indent_prefix(func_type)
+
+    # Используем общий helper с правильным форматированием
     return root_optimizer.apply_function_body_removal(
         context=context,
         start_byte=removal_start,
@@ -117,23 +123,24 @@ def _remove_function_body_preserve_docstring(
         func_type=func_type,
         placeholder_style=placeholder_style,
         replacement_type=f"{func_type}_body_removal_preserve_docstring",
-        placeholder_prefix="\n    "
+        placeholder_prefix=indent_prefix
     )
 
 
-def _find_next_statement_after_docstring(body_node: Node, docstring_node: Node) -> Optional[int]:
+def _get_indent_prefix(func_type: str) -> str:
     """
-    Находит начальный байт следующего statement после docstring.
+    Определяет правильный отступ для плейсхолдера на основе типа функции.
+    
+    Args:
+        func_type: Тип функции ("method" или "function")
+        
+    Returns:
+        Строка с правильным отступом для плейсхолдера
     """
-    docstring_found = False
-    for child in body_node.children:
-        if docstring_found:
-            # Нашли следующий statement после docstring
-            return child.start_byte
-        if child == docstring_node:
-            docstring_found = True
-
-    return None
+    if func_type == "method":
+        return "\n        "  # Метод класса: 8 пробелов
+    else:
+        return "\n    "      # Функция верхнего уровня: 4 пробела
 
 
 def _find_docstring_in_body(body_node: Node) -> Optional[Node]:

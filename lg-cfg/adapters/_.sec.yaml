@@ -5,6 +5,14 @@ src:
     mode: allow
     allow:
       - "/lg/adapters/"
+    children:
+      lg:
+        mode: block
+        children:
+          adapters:
+            mode: block
+            block:
+              - "/typescript/"
 
 src-tests:
   extensions: [".py"]
@@ -22,8 +30,9 @@ src-tests:
             mode: allow
             allow:
               - "conftest.py"
-              - "*/test_complex.py"
-              - "*/test_function_bodies.py"
+              - "/python/goldens/"
+              - "/python/test_complex.py"
+              - "/python/test_function_bodies.py"
 
 src-without:
   extensions: [".py", ".toml"]
