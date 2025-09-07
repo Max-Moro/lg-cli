@@ -4,7 +4,7 @@ Tests for function body optimization in Python adapter.
 
 from lg.adapters.python import PythonAdapter, PythonCfg
 from lg.adapters.code_model import FunctionBodyConfig
-from .conftest import lctx_py, code_sample, assert_golden_match
+from .conftest import lctx_py, code_sample, assert_golden_match_function_bodies
 
 
 class TestPythonFunctionBodyOptimization:
@@ -23,7 +23,7 @@ class TestPythonFunctionBodyOptimization:
         assert "# … method omitted" in result or "# … body omitted" in result
         
         # Golden file test
-        assert_golden_match(result, "basic_strip")
+        assert_golden_match_function_bodies(result, "basic_strip")
     
     def test_large_only_function_stripping(self, code_sample):
         """Test stripping only large functions."""
@@ -38,7 +38,7 @@ class TestPythonFunctionBodyOptimization:
         result, meta = adapter.process(lctx_py(code_sample))
         
         # Should have fewer removals than basic test
-        assert_golden_match(result, "large_only_strip")
+        assert_golden_match_function_bodies(result, "large_only_strip")
     
     def test_no_stripping(self, code_sample):
         """Test with stripping disabled."""

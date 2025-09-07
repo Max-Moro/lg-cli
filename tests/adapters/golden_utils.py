@@ -10,9 +10,52 @@ from typing import Optional
 import pytest
 
 
+def _get_language_extension(language: str) -> str:
+    """
+    Возвращает языковое расширение файла для заданного языка.
+    
+    Args:
+        language: Название языка ("python", "typescript", etc.)
+        
+    Returns:
+        str: Расширение файла с точкой (".py", ".ts", etc.)
+    """
+    extension_map = {
+        "python": ".py",
+        "typescript": ".ts",
+        "javascript": ".js",
+        "java": ".java",
+        "csharp": ".cs",
+        "cpp": ".cpp",
+        "c": ".c",
+        "go": ".go",
+        "rust": ".rs",
+        "swift": ".swift",
+        "kotlin": ".kt",
+        "scala": ".scala",
+        "php": ".php",
+        "ruby": ".rb",
+        "perl": ".pl",
+        "shell": ".sh",
+        "powershell": ".ps1",
+        "html": ".html",
+        "css": ".css",
+        "scss": ".scss",
+        "sass": ".sass",
+        "xml": ".xml",
+        "json": ".json",
+        "yaml": ".yaml",
+        "toml": ".toml",
+        "markdown": ".md"
+    }
+    
+    return extension_map.get(language, ".txt")
+
+
 def assert_golden_match(
     result: str, 
     golden_name: str, 
+    optimization_type: str,
     language: Optional[str] = None,
     update_golden: Optional[bool] = None
 ) -> None:
@@ -21,7 +64,8 @@ def assert_golden_match(
     
     Args:
         result: Фактический результат для сравнения
-        golden_name: Имя golden-файла (без расширения .golden)
+        golden_name: Имя golden-файла (без расширения)
+        optimization_type: Тип оптимизации ("function_bodies", "complex", "comments", etc.)
         language: Язык адаптера ("python", "typescript", etc.). 
                  Если не указан, определяется автоматически из контекста теста
         update_golden: Флаг обновления golden-файла. 
@@ -39,7 +83,7 @@ def assert_golden_match(
         update_golden = os.getenv("PYTEST_UPDATE_GOLDENS") == "1"
     
     # Формируем путь к golden-файлу
-    golden_file = _get_golden_file_path(language, golden_name)
+    golden_file = _get_golden_file_path(language, optimization_type, golden_name)
     
     # Нормализуем результат для стабильности
     normalized_result = _normalize_result(result)
@@ -100,12 +144,13 @@ def _detect_language_from_test_context() -> str:
     )
 
 
-def _get_golden_file_path(language: str, golden_name: str) -> Path:
+def _get_golden_file_path(language: str, optimization_type: str, golden_name: str) -> Path:
     """
-    Формирует путь к golden-файлу для заданного языка и имени.
+    Формирует путь к golden-файлу для заданного языка, типа оптимизации и имени.
     
     Args:
         language: Имя языка ("python", "typescript", etc.)
+        optimization_type: Тип оптимизации ("function_bodies", "complex", "comments", etc.)
         golden_name: Имя файла без расширения
         
     Returns:
@@ -121,8 +166,11 @@ def _get_golden_file_path(language: str, golden_name: str) -> Path:
         # Fallback: от текущего файла вверх
         current = Path(__file__).parent.parent.parent
     
-    golden_dir = current / "tests" / "adapters" / language / "goldens"
-    return golden_dir / f"{golden_name}.golden"
+    # Получаем языковое расширение
+    extension = _get_language_extension(language)
+    
+    golden_dir = current / "tests" / "adapters" / language / "goldens" / optimization_type
+    return golden_dir / f"{golden_name}{extension}"
 
 
 def _normalize_result(result: str) -> str:
@@ -180,43 +228,119 @@ def _create_diff_message(expected: str, actual: str, golden_file: Path) -> str:
     )
 
 
-def get_golden_dir(language: str) -> Path:
+def get_golden_dir(language: str, optimization_type: Optional[str] = None) -> Path:
     """
-    Получает директорию для golden-файлов заданного языка.
+    Получает директорию для golden-файлов заданного языка и типа оптимизации.
     Может быть полезно для внешних скриптов.
     
     Args:
         language: Имя языка
+        optimization_type: Тип оптимизации. Если None, возвращает базовую директорию goldens
         
     Returns:
         Path к директории с golden-файлами
     """
-    return _get_golden_file_path(language, "dummy").parent
+    if optimization_type is None:
+        # Возвращаем базовую директорию goldens
+        current = Path(__file__)
+        while current.parent != current:
+            if (current / "pyproject.toml").exists():
+                break
+            current = current.parent
+        else:
+            current = Path(__file__).parent.parent.parent
+        return current / "tests" / "adapters" / language / "goldens"
+    else:
+        return _get_golden_file_path(language, optimization_type, "dummy").parent
 
 
-def list_golden_files(language: Optional[str] = None) -> list[Path]:
+def list_golden_files(language: Optional[str] = None, optimization_type: Optional[str] = None) -> list[Path]:
     """
-    Возвращает список всех golden-файлов для языка или всех языков.
+    Возвращает список всех golden-файлов для языка и/или типа оптимизации.
     
     Args:
         language: Имя языка или None для всех языков
+        optimization_type: Тип оптимизации или None для всех типов
         
     Returns:
         Список путей к golden-файлам
     """
-    if language:
-        golden_dir = get_golden_dir(language)
-        if golden_dir.exists():
-            return list(golden_dir.glob("*.golden"))
-        return []
-    
-    # Все языки
     result = []
-    adapters_dir = Path(__file__).parent
-    for lang_dir in adapters_dir.iterdir():
-        if lang_dir.is_dir() and not lang_dir.name.startswith(("_", ".")):
-            goldens_dir = lang_dir / "goldens"
-            if goldens_dir.exists():
-                result.extend(goldens_dir.glob("*.golden"))
+    
+    if language:
+        # Конкретный язык
+        base_golden_dir = get_golden_dir(language)
+        if not base_golden_dir.exists():
+            return []
+            
+        if optimization_type:
+            # Конкретный тип оптимизации
+            opt_dir = base_golden_dir / optimization_type
+            if opt_dir.exists():
+                # Ищем файлы с языковыми расширениями
+                extension = _get_language_extension(language)
+                result.extend(opt_dir.glob(f"*{extension}"))
+        else:
+            # Все типы оптимизации для языка
+            for opt_dir in base_golden_dir.iterdir():
+                if opt_dir.is_dir():
+                    extension = _get_language_extension(language)
+                    result.extend(opt_dir.glob(f"*{extension}"))
+    else:
+        # Все языки
+        adapters_dir = Path(__file__).parent
+        for lang_dir in adapters_dir.iterdir():
+            if lang_dir.is_dir() and not lang_dir.name.startswith(("_", ".")):
+                lang_name = lang_dir.name
+                goldens_dir = lang_dir / "goldens"
+                if goldens_dir.exists():
+                    if optimization_type:
+                        # Конкретный тип оптимизации для всех языков
+                        opt_dir = goldens_dir / optimization_type
+                        if opt_dir.exists():
+                            extension = _get_language_extension(lang_name)
+                            result.extend(opt_dir.glob(f"*{extension}"))
+                    else:
+                        # Все типы оптимизации для всех языков
+                        for opt_dir in goldens_dir.iterdir():
+                            if opt_dir.is_dir():
+                                extension = _get_language_extension(lang_name)
+                                result.extend(opt_dir.glob(f"*{extension}"))
     
     return result
+
+
+# Удобные функции для конкретных типов оптимизации
+def assert_golden_match_function_bodies(result: str, golden_name: str, language: Optional[str] = None, update_golden: Optional[bool] = None) -> None:
+    """Специализированная функция для тестов оптимизации тел функций."""
+    assert_golden_match(result, golden_name, "function_bodies", language, update_golden)
+
+
+def assert_golden_match_complex(result: str, golden_name: str, language: Optional[str] = None, update_golden: Optional[bool] = None) -> None:
+    """Специализированная функция для комплексных тестов."""
+    assert_golden_match(result, golden_name, "complex", language, update_golden)
+
+
+def assert_golden_match_comments(result: str, golden_name: str, language: Optional[str] = None, update_golden: Optional[bool] = None) -> None:
+    """Специализированная функция для тестов обработки комментариев."""
+    assert_golden_match(result, golden_name, "comments", language, update_golden)
+
+
+def assert_golden_match_literals(result: str, golden_name: str, language: Optional[str] = None, update_golden: Optional[bool] = None) -> None:
+    """Специализированная функция для тестов обработки литералов."""
+    assert_golden_match(result, golden_name, "literals", language, update_golden)
+
+
+def assert_golden_match_imports(result: str, golden_name: str, language: Optional[str] = None, update_golden: Optional[bool] = None) -> None:
+    """Специализированная функция для тестов обработки импортов."""
+    assert_golden_match(result, golden_name, "imports", language, update_golden)
+
+
+def assert_golden_match_public_api(result: str, golden_name: str, language: Optional[str] = None, update_golden: Optional[bool] = None) -> None:
+    """Специализированная функция для тестов публичного API."""
+    assert_golden_match(result, golden_name, "public_api", language, update_golden)
+
+
+def assert_golden_match_fields(result: str, golden_name: str, language: Optional[str] = None, update_golden: Optional[bool] = None) -> None:
+    """Специализированная функция для тестов обработки полей."""
+    assert_golden_match(result, golden_name, "fields", language, update_golden)

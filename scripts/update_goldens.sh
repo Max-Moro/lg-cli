@@ -120,7 +120,23 @@ list_languages() {
                 if [[ "$lang_name" != "__pycache__" && -f "$lang_dir/conftest.py" ]]; then
                     goldens_dir="$lang_dir/goldens"
                     if [[ -d "$goldens_dir" ]]; then
-                        golden_count=$(find "$goldens_dir" -name "*.golden" | wc -l)
+                        # Подсчитываем файлы с языковыми расширениями во всех поддиректориях
+                        golden_count=0
+                        case "$lang_name" in
+                            python)
+                                golden_count=$(find "$goldens_dir" -name "*.py" | wc -l)
+                                ;;
+                            typescript)
+                                golden_count=$(find "$goldens_dir" -name "*.ts" -o -name "*.tsx" | wc -l)
+                                ;;
+                            javascript)
+                                golden_count=$(find "$goldens_dir" -name "*.js" -o -name "*.jsx" | wc -l)
+                                ;;
+                            *)
+                                # Fallback: ищем файлы с расширением .golden (старый формат)
+                                golden_count=$(find "$goldens_dir" -name "*.golden" | wc -l)
+                                ;;
+                        esac
                         echo "  $(green "$lang_name") (${golden_count} golden files)"
                     else
                         echo "  $(yellow "$lang_name") (no goldens directory)"
@@ -201,7 +217,23 @@ update_language() {
     fi
     
     if PYTEST_UPDATE_GOLDENS=1 $PYTHON_CMD -m pytest "$test_path" $PYTEST_ARGS; then
-        local golden_count=$(find "$test_path/goldens" -name "*.golden" 2>/dev/null | wc -l)
+        # Подсчитываем файлы с языковыми расширениями во всех поддиректориях
+        local golden_count=0
+        case "$language" in
+            python)
+                golden_count=$(find "$test_path/goldens" -name "*.py" 2>/dev/null | wc -l)
+                ;;
+            typescript)
+                golden_count=$(find "$test_path/goldens" -name "*.ts" -o -name "*.tsx" 2>/dev/null | wc -l)
+                ;;
+            javascript)
+                golden_count=$(find "$test_path/goldens" -name "*.js" -o -name "*.jsx" 2>/dev/null | wc -l)
+                ;;
+            *)
+                # Fallback: ищем файлы с расширением .golden (старый формат)
+                golden_count=$(find "$test_path/goldens" -name "*.golden" 2>/dev/null | wc -l)
+                ;;
+        esac
         echo "  $(green "OK") Updated golden files for $language ($golden_count files)"
     else
         echo "  $(red "Failed:") Failed to update golden files for $language"
@@ -328,7 +360,7 @@ main() {
         echo
         echo "$(green "Golden files updated successfully!")"
         echo "Review the changes and commit the updated golden files:"
-        echo "  $(bold "git add tests/adapters/*/goldens/*.golden")"
+        echo "  $(bold "git add tests/adapters/*/goldens/**/*")"
         echo "  $(bold "git commit -m \"Update golden files for language adapters\"")"
     fi
 }

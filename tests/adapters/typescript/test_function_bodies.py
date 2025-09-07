@@ -4,7 +4,7 @@ Tests for function body optimization in TypeScript adapter.
 
 from lg.adapters.typescript import TypeScriptAdapter, TypeScriptCfg
 from lg.adapters.code_model import FunctionBodyConfig
-from .conftest import lctx_ts, code_sample, assert_golden_match
+from .conftest import lctx_ts, code_sample, assert_golden_match_function_bodies
 
 
 class TestTypeScriptFunctionBodyOptimization:
@@ -25,7 +25,7 @@ class TestTypeScriptFunctionBodyOptimization:
                 "// … body omitted" in result)
         
         # Golden file test
-        assert_golden_match(result, "basic_strip")
+        assert_golden_match_function_bodies(result, "basic_strip")
     
     def test_large_only_method_stripping(self, code_sample):
         """Test stripping only large methods."""
@@ -40,7 +40,7 @@ class TestTypeScriptFunctionBodyOptimization:
         result, meta = adapter.process(lctx_ts(code_sample))
         
         # Should have fewer removals than basic test
-        assert_golden_match(result, "large_only_strip")
+        assert_golden_match_function_bodies(result, "large_only_strip")
     
     def test_arrow_function_handling(self):
         """Test handling of arrow functions."""
@@ -83,7 +83,7 @@ const multiline = (users) => {
         expected_stripped = 2
         assert meta.get("code.removed.functions", 0) == placeholder_count == expected_stripped
 
-        assert_golden_match(result, "arrow_functions")
+        assert_golden_match_function_bodies(result, "arrow_functions")
     
     def test_class_method_preservation(self):
         """Test that class structure is preserved while stripping method bodies."""
@@ -121,7 +121,7 @@ export class Calculator {
         assert "add(a: number, b: number): number" in result
         assert "getHistory(): string[]" in result
         
-        assert_golden_match(result, "class_methods")
+        assert_golden_match_function_bodies(result, "class_methods")
     
     def test_no_stripping_preserves_original(self):
         """Test that disabling stripping preserves original code."""

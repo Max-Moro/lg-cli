@@ -5,7 +5,7 @@ Tests combining multiple optimization types and edge cases.
 
 from lg.adapters.code_model import LiteralConfig, FieldConfig
 from lg.adapters.python import PythonAdapter, PythonCfg
-from .conftest import assert_golden_match, lctx_py, lctx
+from .conftest import assert_golden_match_complex, lctx_py, lctx
 
 
 class TestPythonComplexIntegration:
@@ -53,7 +53,7 @@ class TestPythonComplexIntegration:
         assert '"""A simple calculator class."""' in result
 
         # Golden file test
-        assert_golden_match(result, "full_pipeline")
+        assert_golden_match_complex(result, "full_pipeline")
 
     def test_combined_literal_and_function_trimming(self):
         """Test combining literal trimming with function body stripping."""
