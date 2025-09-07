@@ -8,6 +8,10 @@ ${src-short}
 
 ---
 
+${tpl:adapters/gen/TREE_SITTER_README_TRIM}
+
+---
+
 # Работа по текущей итерации
 
 На данным момент мы ведем разработку языковых адаптеров.
@@ -18,15 +22,11 @@ ${tpl:adapters/state}
 
 ## Исходный код функционального блока «Языковые адаптеры»
 
-${adapters/_/src}
-
-## Golden Tests System for Language Adapters
-
-${adapters/_/docs-golden-utils}
+${adapters/_/src__comments}
 
 ## Unit-tests
 
-${adapters/_/src-tests}
+${adapters/_/src-tests__comments}
 
 # Описание текущей задачи
 
