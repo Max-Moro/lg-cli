@@ -13,33 +13,33 @@ interface User {
 class Calculator {
     private history: string[] = [];
     
-    constructor(name: string = "default") // … method omitted (4)
+    constructor(name: string = "default") // … method body omitted (4 lines)
     
-    public add(a: number, b: number): number // … method omitted (6)
+    public add(a: number, b: number): number // … method body omitted (6 lines)
     
-    public multiply(a: number, b: number): number // … method omitted (5)
+    public multiply(a: number, b: number): number // … method body omitted (5 lines)
     
-    public getHistory(): string[] // … method omitted (3)
+    public getHistory(): string[] // … method body omitted (3 lines)
     
-    private validateInput(value: number): boolean // … method omitted (11)
+    private validateInput(value: number): boolean // … method body omitted (11 lines)
 }
 
-export function processUserData(users: User[]): { valid: User[], invalid: User[] } // … body omitted (13)
+export function processUserData(users: User[]): { valid: User[], invalid: User[] } // … function body omitted (13 lines)
 
 // Arrow functions for testing different function types
 const simpleArrow = () => "simple";
 
-const complexArrow = (data: string[]) => // … body omitted (8);
+const complexArrow = (data: string[]) => // … function body omitted (8 lines);
 
-const asyncArrow = async (url: string): Promise<any> => // … body omitted (15);
+const asyncArrow = async (url: string): Promise<any> => // … function body omitted (15 lines);
 
 // Function with multiple overloads
 function overloadedFunction(value: string): string;
 function overloadedFunction(value: number): number;
-function overloadedFunction(value: string | number): string | number // … body omitted (7)
+function overloadedFunction(value: string | number): string | number // … function body omitted (7 lines)
 
 // Generic function
-function processArray<T>(items: T[], processor: (item: T) => T): T[] // … body omitted (14)
+function processArray<T>(items: T[], processor: (item: T) => T): T[] // … function body omitted (14 lines)
 
 // Default export function
-export default function main(): void // … body omitted (13)
+export default function main(): void // … function body omitted (13 lines)

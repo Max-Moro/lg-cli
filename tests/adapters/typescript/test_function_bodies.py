@@ -18,11 +18,10 @@ class TestTypeScriptFunctionBodyOptimization:
         result, meta = adapter.process(lctx_ts(do_function_bodies))
         
         # Check that functions were processed
-        assert meta["code.removed.functions"] >= 0  # May not find arrow functions in sample
-        assert meta["code.removed.methods"] > 0
-        assert ("/* … method omitted" in result or "/* … function omitted" in result or 
-                "// … method omitted" in result or "// … function omitted" in result or
-                "// … body omitted" in result)
+        assert meta["code.removed.function_bodies"] >= 0  # May not find arrow functions in sample
+        assert meta["code.removed.method_bodies"] > 0
+        assert "// … method body omitted" in result
+        assert "// … function body omitted" in result
         
         # Golden file test
         assert_golden_match(result, "function_bodies", "basic_strip")
@@ -66,14 +65,11 @@ const multiline = (users) => {
         
         result, meta = adapter.process(lctx_ts(arrow_code))
         
-        # If some were stripped, check placeholders
-        assert ("… body omitted" in result)
-        
         # Should only strip multiline arrow functions (complex and multiline)
         assert 'const simple = () => "hello";' in result  # Single line preserved
         
         # Count placeholders to verify stripping occurred
-        placeholder_count = result.count("… body omitted")
+        placeholder_count = result.count("// … function body omitted")
 
         # Arrow functions signatures preserved
         assert "const complex = (a, b) =>" in result
@@ -81,7 +77,7 @@ const multiline = (users) => {
 
         # We expect 2 multiline arrow functions to be stripped
         expected_stripped = 2
-        assert meta.get("code.removed.functions", 0) == placeholder_count == expected_stripped
+        assert meta.get("code.removed.function_bodies", 0) == placeholder_count == expected_stripped
 
         assert_golden_match(result, "function_bodies", "arrow_functions")
     
@@ -134,8 +130,8 @@ export class Calculator {
         
         # Should be nearly identical to original
         assert "return 42;" in result
-        assert meta.get("code.removed.functions", 0) == 0
-        assert meta.get("code.removed.methods", 0) == 0
+        assert meta.get("code.removed.function_bodies", 0) == 0
+        assert meta.get("code.removed.method_bodies", 0) == 0
 
     def test_public_only_method_stripping(self):
         """Test public_only mode for TypeScript method body stripping."""
@@ -162,8 +158,7 @@ export class Calculator {
         
         # Public method body should be stripped
         assert "public add(a: number, b: number): number" in result
-        assert ("/* … method omitted" in result or "// … method omitted" in result or 
-                "/* … body omitted" in result or "// … body omitted" in result)
+        assert "// … method body omitted" in result
         assert "const result = a + b;" not in result
         
         # Private method body should be preserved (it's not public)
@@ -195,8 +190,7 @@ function complex(): number {
         
         # Multi-line function should be stripped
         assert "function complex(): number" in result
-        assert ("/* … body omitted" in result or "// … body omitted" in result or 
-                "/* … function omitted" in result or "// … function omitted" in result)
+        assert "// … function body omitted" in result
         assert "const x = 1;" not in result
     
     def test_nested_functions(self):
@@ -218,8 +212,7 @@ function complex(): number {
         
         # Outer function body should be stripped
         assert "function outer(): string" in result
-        assert ("/* … body omitted" in result or "// … body omitted" in result or 
-                "/* … function omitted" in result or "// … function omitted" in result)
+        assert "// … function body omitted" in result
         assert "function inner():" not in result  # Should be part of stripped body
     
     def test_interface_and_type_preservation(self):
@@ -255,6 +248,5 @@ function processUser(user: User): UserResponse {
         
         # Function body should be stripped
         assert "function processUser(user: User): UserResponse" in result
-        assert ("/* … body omitted" in result or "// … body omitted" in result or 
-                "/* … function omitted" in result or "// … function omitted" in result)
-        assert "return {" not in result or "… " in result
+        assert "// … function body omitted" in result
+        assert "return {" not in result

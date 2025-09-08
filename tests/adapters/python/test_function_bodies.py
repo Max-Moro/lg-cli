@@ -18,9 +18,10 @@ class TestPythonFunctionBodyOptimization:
         result, meta = adapter.process(lctx_py(do_function_bodies))
         
         # Check that functions were processed
-        assert meta["code.removed.functions"] > 0
-        assert meta["code.removed.methods"] > 0
-        assert "# … method omitted" in result or "# … body omitted" in result
+        assert meta["code.removed.function_bodies"] > 0
+        assert meta["code.removed.method_bodies"] > 0
+        assert "# … method body omitted" in result
+        assert "# … function body omitted" in result
         
         # Golden file test
         assert_golden_match(result, "function_bodies", "basic_strip")
@@ -48,8 +49,8 @@ class TestPythonFunctionBodyOptimization:
         result, meta = adapter.process(lctx_py(do_function_bodies))
         
         # No functions should be removed
-        assert meta.get("code.removed.functions", 0) == 0
-        assert meta.get("code.removed.methods", 0) == 0
+        assert meta.get("code.removed.function_bodies", 0) == 0
+        assert meta.get("code.removed.method_bodies", 0) == 0
         # Result should be close to original (may have minor whitespace changes)
         assert "def add(self, a: int, b: int) -> int:" in result
         assert "result = a + b" in result
@@ -77,14 +78,14 @@ def _private_function():
         
         # Public function body should be stripped
         assert "def public_function():" in result
-        assert "# … body omitted" in result or "# … function omitted" in result
+        assert "# … function body omitted" in result
         assert "x = 1" not in result
         
         # Private function body should be preserved (it's not public)
         assert "def _private_function():" in result
         assert "a = 10" in result
         
-        assert meta.get("code.removed.functions", 0) > 0
+        assert meta.get("code.removed.function_bodies", 0) > 0
     
     def test_non_public_function_stripping(self):
         """Test non_public mode for function body stripping."""
@@ -113,10 +114,10 @@ def _private_function():
         
         # Private function body should be stripped
         assert "def _private_function():" in result
-        assert "# … body omitted" in result or "# … function omitted" in result
+        assert "# … function body omitted" in result
         assert "a = 10" not in result
         
-        assert meta.get("code.removed.functions", 0) > 0
+        assert meta.get("code.removed.function_bodies", 0) > 0
 
 
 class TestPythonFunctionBodyEdgeCases:
@@ -142,7 +143,7 @@ def complex():
         
         # Multi-line function should be stripped
         assert "def complex():" in result
-        assert "# … body omitted" in result or "# … function omitted" in result
+        assert "# … function body omitted" in result
         assert "x = 1" not in result
     
     def test_nested_functions(self):
@@ -169,8 +170,8 @@ def complex():
         assert "def inner():" in result
         assert '"""Inner function."""' in result  
         # At least some optimization should occur
-        assert "# … " in result or "… " in result
-        assert meta.get("code.removed.functions", 0) > 0
+        assert "# … function body omitted" in result
+        assert meta.get("code.removed.function_bodies", 0) > 0
     
     def test_class_methods(self):
         """Test handling of class methods specifically."""
@@ -209,11 +210,11 @@ def complex():
         assert "def value_property(self):" in result
 
         # Bodies should be replaced with placeholders
-        assert "# … method omitted" in result or "# … body omitted" in result
+        assert "# … method body omitted" in result
         assert "self.initialized = True" not in result
         assert "result = self.value" not in result
         
-        assert meta.get("code.removed.methods", 0) > 0
+        assert meta.get("code.removed.method_bodies", 0) > 0
 
 
 class TestPythonDocstringPreservation:
@@ -256,10 +257,10 @@ class TestPythonDocstringPreservation:
         assert "return result" not in result
         
         # Should have placeholder for removed body
-        assert "# … " in result or "… " in result
+        assert "# … function body omitted" in result
         
         # Should report function removal
-        assert meta.get("code.removed.functions", 0) > 0
+        assert meta.get("code.removed.function_bodies", 0) > 0
     
     def test_method_with_docstring_preserved(self):
         """Test that method docstrings are preserved when bodies are stripped."""
@@ -292,10 +293,10 @@ class TestPythonDocstringPreservation:
         assert "return temp" not in result
         
         # Should have placeholder for removed body
-        assert "# … " in result or "… " in result
-        
+        assert "# … method body omitted" in result
+
         # Should report method removal
-        assert meta.get("code.removed.methods", 0) > 0
+        assert meta.get("code.removed.method_bodies", 0) > 0
     
     def test_function_without_docstring_full_removal(self):
         """Test that functions without docstrings have bodies fully removed."""
@@ -320,9 +321,9 @@ class TestPythonDocstringPreservation:
         assert "return x + y" not in result
         
         # Should have placeholder
-        assert "# … " in result or "… " in result
+        assert "# … function body omitted" in result
         
-        assert meta.get("code.removed.functions", 0) > 0
+        assert meta.get("code.removed.function_bodies", 0) > 0
     
     def test_different_docstring_formats(self):
         """Test preservation of different docstring formats."""
@@ -362,7 +363,7 @@ def func3():
         assert 'return "result2"' not in result
         assert 'return "result3"' not in result
         
-        assert meta.get("code.removed.functions", 0) == 3
+        assert meta.get("code.removed.function_bodies", 0) == 3
     
     def test_mixed_functions_with_without_docstrings(self):
         """Test mixed functions - some with docstrings, some without."""
@@ -399,9 +400,9 @@ def undocumented_function():
         assert 'return "undocumented"' not in result
         
         # Should have placeholders
-        assert "# … " in result or "… " in result
+        assert "# … function body omitted" in result
         
-        assert meta.get("code.removed.functions", 0) == 2
+        assert meta.get("code.removed.function_bodies", 0) == 2
     
     def test_docstring_only_function(self):
         """Test function that contains only a docstring."""
@@ -422,5 +423,6 @@ def undocumented_function():
         assert '"""This function only has a docstring and nothing else."""' in result
         
         # pass statement should be removed (after docstring)
-        # The function should either keep the docstring only, or add minimal placeholder
-        assert "pass" not in result or "# … " in result
+        # The function should either keep the docstring only, and add minimal placeholder
+        assert "pass" not in result
+        assert "# … function body omitted" in result

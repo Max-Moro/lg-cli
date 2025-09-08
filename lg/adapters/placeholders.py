@@ -24,7 +24,7 @@ class PlaceholderSpec:
     end_line: int
     
     # Тип плейсхолдера
-    placeholder_type: str  # "function", "method", "import", "comment", "literal", etc.
+    placeholder_type: str  # "function_body", "method_body", "import", "comment", "literal", etc.
 
     # Выравнивание плейсхолдера (табуляция)
     placeholder_prefix: str
@@ -55,6 +55,9 @@ class PlaceholderSpec:
         - Соседние или пересекающиеся позиции (с небольшим зазором)
         """
         if self.placeholder_type != other.placeholder_type:
+            return False
+
+        if self.placeholder_type in ["function_body", "method_body"]:
             return False
         
         # Проверяем близость позиций (до 2 строк разрыва)
@@ -187,13 +190,13 @@ class PlaceholderManager:
         bytes_removed = spec.bytes_removed
         
         # Базовые шаблоны для разных типов
-        if ptype == "function":
+        if ptype == "function_body":
             if lines > 1:
                 return f"… function body omitted ({lines} lines)"
             else:
                 return "… function body omitted"
         
-        elif ptype == "method":
+        elif ptype == "method_body":
             if lines > 1:
                 return f"… method body omitted ({lines} lines)"
             else:

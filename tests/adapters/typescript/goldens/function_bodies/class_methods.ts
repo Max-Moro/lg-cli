@@ -2,9 +2,9 @@
 export class Calculator {
     private history: string[] = [];
     
-    constructor(name: string) // … method omitted (4)
+    constructor(name: string) // … method body omitted (4 lines)
     
-    add(a: number, b: number): number // … method omitted (5)
+    add(a: number, b: number): number // … method body omitted (5 lines)
     
-    getHistory(): string[] // … method omitted (3)
+    getHistory(): string[] // … method body omitted (3 lines)
 }

@@ -56,13 +56,13 @@ class MetricsCollector:
         """Отметить вставку плейсхолдера."""
         self.increment("code.placeholders")
     
-    def mark_function_removed(self) -> None:
-        """Отметить удаление функции."""
-        self.increment("code.removed.functions")
+    def mark_function_body_removed(self) -> None:
+        """Отметить удаление тела функции."""
+        self.increment("code.removed.function_bodies")
     
-    def mark_method_removed(self) -> None:
-        """Отметить удаление метода."""
-        self.increment("code.removed.methods")
+    def mark_method_body_removed(self) -> None:
+        """Отметить удаление тела метода."""
+        self.increment("code.removed.method_bodies")
     
     def mark_comment_removed(self) -> None:
         """Отметить удаление комментария."""

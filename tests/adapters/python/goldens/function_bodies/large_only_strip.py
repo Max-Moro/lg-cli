@@ -9,15 +9,15 @@ class Calculator:
     
     def __init__(self, name: str = "default"):
         """Initialize calculator."""
-        # … method omitted (3)
+        # … method body omitted (3 lines)
     
     def add(self, a: int, b: int) -> int:
         """Add two numbers."""
-        # … method omitted (4)
+        # … method body omitted (4 lines)
     
     def multiply(self, a: int, b: int) -> int:
         """Multiply two numbers."""
-        # … method omitted (4)
+        # … method body omitted (4 lines)
     
     def get_history(self) -> List[str]:
         """Get calculation history."""
@@ -25,7 +25,7 @@ class Calculator:
 
 def main():
     """Main function."""
-    # … body omitted (4)
+    # … function body omitted (4 lines)
     
 if __name__ == "__main__":
     main()

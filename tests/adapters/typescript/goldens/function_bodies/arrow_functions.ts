@@ -1,6 +1,6 @@
 
 const simple = () => "hello";
 
-const complex = (a, b) => // … body omitted (5);
+const complex = (a, b) => // … function body omitted (5 lines);
 
-const multiline = (users) => // … body omitted (6);
+const multiline = (users) => // … function body omitted (6 lines);
