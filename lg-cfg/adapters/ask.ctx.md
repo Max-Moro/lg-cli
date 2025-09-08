@@ -22,11 +22,11 @@ ${tpl:adapters/state}
 
 ## Исходный код функционального блока «Языковые адаптеры»
 
-${adapters/_/src__literals}
+${adapters/_/src__imports}
 
 ## Unit-tests
 
-${adapters/_/src-tests__literals}
+${adapters/_/src-tests__imports}
 
 # Описание текущей задачи
 

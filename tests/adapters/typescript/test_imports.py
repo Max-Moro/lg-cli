@@ -3,8 +3,6 @@ Tests for import optimization in TypeScript adapter.
 """
 
 from lg.adapters.typescript import TypeScriptAdapter, TypeScriptCfg
-from lg.adapters.typescript.imports import TypeScriptImportClassifier, TypeScriptImportAnalyzer
-from lg.adapters.typescript.adapter import TypeScriptDocument
 from lg.adapters.code_model import ImportConfig
 from .conftest import lctx_ts, do_imports, assert_golden_match
 
@@ -15,7 +13,7 @@ class TestTypeScriptImportOptimization:
     def test_keep_all_imports(self, do_imports):
         """Test keeping all imports (default policy)."""
         adapter = TypeScriptAdapter()
-        adapter._cfg = TypeScriptCfg(import_config=ImportConfig(policy="keep_all"))
+        adapter._cfg = TypeScriptCfg(imports=ImportConfig(policy="keep_all"))
         
         result, meta = adapter.process(lctx_ts(do_imports))
         
@@ -30,7 +28,7 @@ class TestTypeScriptImportOptimization:
     def test_external_only_imports(self, do_imports):
         """Test keeping only external imports."""
         adapter = TypeScriptAdapter()
-        adapter._cfg = TypeScriptCfg(import_config=ImportConfig(policy="external_only"))
+        adapter._cfg = TypeScriptCfg(imports=ImportConfig(policy="external_only"))
         
         result, meta = adapter.process(lctx_ts(do_imports))
         
@@ -50,7 +48,7 @@ class TestTypeScriptImportOptimization:
     def test_summarize_long_imports(self, do_imports):
         """Test summarizing long import lists."""
         adapter = TypeScriptAdapter()
-        adapter._cfg = TypeScriptCfg(import_config=ImportConfig(
+        adapter._cfg = TypeScriptCfg(imports=ImportConfig(
             policy="summarize_long",
             max_line_length=80,
             max_imports_per_line=3
@@ -75,7 +73,7 @@ class TestTypeScriptImportOptimization:
         )
         
         adapter = TypeScriptAdapter()
-        adapter._cfg = TypeScriptCfg(import_config=import_config)
+        adapter._cfg = TypeScriptCfg(imports=import_config)
         
         result, meta = adapter.process(lctx_ts(do_imports))
         
@@ -114,7 +112,7 @@ import * as API from '../api';
 '''
         
         adapter = TypeScriptAdapter()
-        adapter._cfg = TypeScriptCfg(import_config=ImportConfig(policy="external_only"))
+        adapter._cfg = TypeScriptCfg(imports=ImportConfig(policy="external_only"))
         
         result, meta = adapter.process(lctx_ts(code))
         
@@ -157,7 +155,7 @@ export * from './utilities';
 '''
         
         adapter = TypeScriptAdapter()
-        adapter._cfg = TypeScriptCfg(import_config=ImportConfig(
+        adapter._cfg = TypeScriptCfg(imports=ImportConfig(
             policy="external_only",
             preserve_types=True,
             keep_namespace_imports=True
@@ -196,7 +194,7 @@ import * as Icons from 'icon-library';
 '''
         
         adapter = TypeScriptAdapter()
-        adapter._cfg = TypeScriptCfg(import_config=ImportConfig(policy="external_only"))
+        adapter._cfg = TypeScriptCfg(imports=ImportConfig(policy="external_only"))
         
         result, meta = adapter.process(lctx_ts(code))
         
@@ -227,7 +225,7 @@ import('./theme-loader').then(theme => theme.apply());
 '''
         
         adapter = TypeScriptAdapter()
-        adapter._cfg = TypeScriptCfg(import_config=ImportConfig(policy="external_only"))
+        adapter._cfg = TypeScriptCfg(imports=ImportConfig(policy="external_only"))
         
         result, meta = adapter.process(lctx_ts(code))
         
@@ -258,7 +256,7 @@ import packageJson from 'package/package.json' assert { type: 'json' };
 '''
         
         adapter = TypeScriptAdapter()
-        adapter._cfg = TypeScriptCfg(import_config=ImportConfig(policy="external_only"))
+        adapter._cfg = TypeScriptCfg(imports=ImportConfig(policy="external_only"))
         
         result, meta = adapter.process(lctx_ts(code))
         
