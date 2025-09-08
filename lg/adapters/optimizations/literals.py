@@ -108,29 +108,24 @@ class LiteralOptimizer:
         if not should_trim:
             if config.max_literal_lines is not None and lines_count > config.max_literal_lines:
                 should_trim = True
-                replacement_text = context.placeholder_gen.create_literal_placeholder(
-                    literal_type, bytes_count, style="inline"
-                )
+                replacement_text = None  # Use auto placeholder
             elif config.collapse_threshold is not None and bytes_count > config.collapse_threshold:
                 should_trim = True
-                replacement_text = context.placeholder_gen.create_literal_placeholder(
-                    literal_type, bytes_count, style="inline"
+                replacement_text = None  # Use auto placeholder
+
+        if should_trim:
+            if replacement_text is None:
+                # Используем новое простое API для автоматических плейсхолдеров
+                context.add_literal_placeholder(node, literal_type=literal_type)
+            else:
+                # Кастомная замена (например, укороченная строка)
+                start_byte, end_byte = context.doc.get_node_range(node)
+                context.editor.add_replacement(
+                    start_byte, end_byte, replacement_text,
+                    type=f"{literal_type}_trimming",
+                    is_placeholder=False
                 )
-
-        if should_trim and replacement_text:
-            start_byte, end_byte = context.doc.get_node_range(node)
-
-            context.editor.add_replacement(
-                start_byte, end_byte, replacement_text,
-                type=f"{literal_type}_trimming",
-                is_placeholder=True,
-                lines_removed=lines_count
-            )
-
-            context.metrics.mark_literal_removed()
-            context.metrics.add_lines_saved(lines_count)
-            context.metrics.add_bytes_saved(bytes_count - len(replacement_text.encode('utf-8')))
-            context.metrics.mark_placeholder_inserted()
+                context.metrics.mark_literal_removed()
     
     def _should_trim_string(
             self,
@@ -157,11 +152,8 @@ class LiteralOptimizer:
 
         # Check collapse threshold first (если задан)
         if config.collapse_threshold is not None and byte_count > config.collapse_threshold:
-            # Replace with comment placeholder
-            replacement = context.placeholder_gen.create_literal_placeholder(
-                "string", byte_count, style="inline"
-            )
-            return True, replacement
+            # Replace with comment placeholder (None means use auto placeholder)
+            return True, None
         
         # Check max length (если задан)
         if config.max_string_length is not None and len(inner_text) > config.max_string_length:
@@ -199,10 +191,7 @@ class LiteralOptimizer:
         # Check max elements (если задан)
         if config.max_array_elements is not None and elements_count > config.max_array_elements:
             # Use comment placeholder for arrays exceeding limits
-            replacement = context.placeholder_gen.create_literal_placeholder(
-                "array", len(text.encode('utf-8')), style="inline"
-            )
-            return True, replacement
+            return True, None
 
         return False, None
     
@@ -233,10 +222,7 @@ class LiteralOptimizer:
         # Check max properties (если задан)
         if config.max_object_properties is not None and properties_count > config.max_object_properties:
             # Use comment placeholder for objects exceeding limits
-            replacement = context.placeholder_gen.create_literal_placeholder(
-                "object", len(text.encode('utf-8')), style="inline"
-            )
-            return True, replacement
+            return True, None
 
         return False, None
     

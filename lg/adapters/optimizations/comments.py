@@ -54,8 +54,7 @@ class CommentOptimizer:
                     context,
                     node,
                     comment_type=capture_name,
-                    replacement=replacement,
-                    placeholder_style=self.adapter.cfg.placeholders.style
+                    replacement=replacement
                 )
 
     @staticmethod
@@ -63,8 +62,7 @@ class CommentOptimizer:
             context: ProcessingContext,
             comment_node: Node,
             comment_type: str = "comment",
-            replacement: str = None,
-            placeholder_style: str = "inline"
+            replacement: str = None
     ) -> bool:
         """
         Удаляет комментарий с автоматическим учетом метрик.
@@ -74,31 +72,19 @@ class CommentOptimizer:
             comment_node: Узел комментария для удаления
             comment_type: Тип комментария ("comment", "docstring")
             replacement: Кастомная замена (если None, используется плейсхолдер)
-            placeholder_style: Стиль плейсхолдера
         """
-        start_byte, end_byte = context.doc.get_node_range(comment_node)
-        start_line, end_line = context.doc.get_line_range(comment_node)
-        lines_count = end_line - start_line + 1
-
         if replacement is None:
-            replacement = context.placeholder_gen.create_comment_placeholder(
-                comment_type, style=placeholder_style
+            # Используем новое простое API для плейсхолдеров
+            context.add_comment_placeholder(comment_node)
+        else:
+            # Кастомная замена
+            start_byte, end_byte = context.doc.get_node_range(comment_node)
+            context.editor.add_replacement(
+                start_byte, end_byte, replacement,
+                type=f"{comment_type}_removal",
+                is_placeholder=False
             )
-            context.metrics.mark_placeholder_inserted()
-
-        context.editor.add_replacement(
-            start_byte, end_byte, replacement,
-            type=f"{comment_type}_removal",
-            is_placeholder=bool(replacement),
-            lines_removed=lines_count
-        )
-
-        context.metrics.mark_comment_removed()
-        if replacement:
-            context.metrics.add_lines_saved(lines_count)
-            bytes_saved = end_byte - start_byte - len(replacement.encode('utf-8'))
-            if bytes_saved > 0:
-                context.metrics.add_bytes_saved(bytes_saved)
+            context.metrics.mark_comment_removed()
 
         return True
 
@@ -126,18 +112,12 @@ class CommentOptimizer:
             if policy == "keep_all":
                 return False, ""
             elif policy == "strip_all":
-                # Remove all comments with placeholder
-                placeholder = context.placeholder_gen.create_comment_placeholder(
-                    capture_name, style=self.adapter.cfg.placeholders.style
-                )
-                return True, placeholder
+                # Remove all comments with placeholder (None means use default placeholder)
+                return True, None
             elif policy == "keep_doc":
                 # Remove regular comments, keep docstrings
                 if capture_name == "comment" and not self.adapter.is_documentation_comment(comment_text):
-                    placeholder = context.placeholder_gen.create_comment_placeholder(
-                        capture_name, style=self.adapter.cfg.placeholders.style
-                    )
-                    return True, placeholder
+                    return True, None
                 else:
                     return False, ""
             elif policy == "keep_first_sentence":
@@ -149,10 +129,7 @@ class CommentOptimizer:
                     return False, ""
                 else:
                     # Regular comments get removed with placeholder
-                    placeholder = context.placeholder_gen.create_comment_placeholder(
-                        capture_name, style=self.adapter.cfg.placeholders.style
-                    )
-                    return True, placeholder
+                    return True, None
         
         # Complex policy (CommentConfig object)
         elif hasattr(policy, 'policy'):
@@ -184,10 +161,7 @@ class CommentOptimizer:
         for pattern in policy.strip_patterns:
             try:
                 if re.search(pattern, comment_text, re.IGNORECASE):
-                    placeholder = context.placeholder_gen.create_comment_placeholder(
-                        capture_name, style=self.adapter.cfg.placeholders.style
-                    )
-                    return True, placeholder
+                    return True, None  # Use default placeholder
             except re.error:
                 # Ignore invalid regex patterns
                 continue
@@ -216,17 +190,11 @@ class CommentOptimizer:
             return False, ""
         
         elif base_policy == "strip_all":
-            placeholder = context.placeholder_gen.create_comment_placeholder(
-                capture_name, style=self.adapter.cfg.placeholders.style
-            )
-            return True, placeholder
+            return True, None  # Use default placeholder
         
         elif base_policy == "keep_doc":
             if capture_name == "comment" and not self.adapter.is_documentation_comment(comment_text):
-                placeholder = context.placeholder_gen.create_comment_placeholder(
-                    capture_name, style=self.adapter.cfg.placeholders.style
-                )
-                return True, placeholder
+                return True, None  # Use default placeholder
             else:  # docstring
                 if policy.max_length is not None and len(comment_text) > policy.max_length:
                     truncated = self.adapter.hook__smart_truncate_comment(self, comment_text, policy.max_length)
@@ -243,10 +211,7 @@ class CommentOptimizer:
                     return True, first_sentence
             else:
                 # Regular comments get removed with placeholder
-                placeholder = context.placeholder_gen.create_comment_placeholder(
-                    capture_name, style=self.adapter.cfg.placeholders.style
-                )
-                return True, placeholder
+                return True, None  # Use default placeholder
         
         return False, ""
 

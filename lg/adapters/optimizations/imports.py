@@ -166,33 +166,10 @@ class ImportOptimizer:
     
     def _remove_import(self, context: ProcessingContext, import_info: ImportInfo, reason: str) -> None:
         """Remove an import and add appropriate placeholder."""
-        start_byte, end_byte = context.doc.get_node_range(import_info.node)
-        start_line, end_line = context.doc.get_line_range(import_info.node)
-        lines_count = end_line - start_line + 1
-        
         count = len(import_info.imported_items)
-        style = self.adapter.cfg.placeholders.style
-
-        # Create appropriate placeholder
-        placeholder = context.placeholder_gen.create_import_placeholder(
-            count=count,
-            bytes_removed=end_byte - start_byte,
-            style=style
-        )
         
-        # Apply the edit
-        context.editor.add_replacement(
-            start_byte, end_byte, placeholder,
-            type=f"{reason}_removal",
-            is_placeholder=True,
-            lines_removed=lines_count
-        )
-        
-        # Update metrics
-        context.metrics.mark_import_removed()
-        context.metrics.add_lines_saved(lines_count)
-        context.metrics.add_bytes_saved(end_byte - start_byte - len(placeholder.encode('utf-8')))
-        context.metrics.mark_placeholder_inserted()
+        # Используем новое простое API
+        context.add_import_placeholder(import_info.node, count=count)
     
 # Export the classes that will be used by language adapters
 __all__ = [

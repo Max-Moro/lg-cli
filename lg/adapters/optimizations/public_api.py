@@ -96,21 +96,10 @@ class PublicApiOptimizer:
         # Remove private elements with placeholders
         for start_byte, end_byte, element in private_ranges:
             start_line, end_line = context.doc.get_line_range(element)
-            lines_count = end_line - start_line + 1
             
-            placeholder = context.placeholder_gen.create_custom_placeholder(
-                "… private element omitted (−{lines})",
-                {"lines": lines_count},
-                style=self.adapter.cfg.placeholders.style
-            )
-            
-            context.editor.add_replacement(
-                start_byte, end_byte, placeholder,
-                type="private_element_removal",
-                is_placeholder=True,
-                lines_removed=lines_count
+            context.add_custom_placeholder(
+                start_byte, end_byte, start_line, end_line,
+                placeholder_type="private_element"
             )
             
             context.metrics.increment("code.removed.private_elements")
-            context.metrics.add_lines_saved(lines_count)
-            context.metrics.mark_placeholder_inserted()

@@ -79,30 +79,23 @@ class FunctionBodyOptimizer:
                     context=context,
                     func_def=func_def, # Use adapter-specific logic with function_definition
                     body_node=body_node,
-                    func_type=func_type,
-                    placeholder_style=self.adapter.cfg.placeholders.style
+                    func_type=func_type
                 )
 
     @staticmethod
     def remove_function_body(
             context: ProcessingContext,
             body_node: Node,
-            func_type: str,
-            placeholder_style
+            func_type: str
     ) -> None:
         """
         Удаляет тело функции/метода с автоматическим учетом метрик.
         """
-        start_byte, end_byte = context.doc.get_node_range(body_node)
-        
-        FunctionBodyOptimizer.apply_function_body_removal(
-            context=context,
-            start_byte=start_byte,
-            end_byte=end_byte,
-            func_type=func_type,
-            placeholder_style=placeholder_style,
-            replacement_type=f"{func_type}_body_removal"
-        )
+        # Используем новое простое API
+        if func_type == "method":
+            context.add_method_placeholder(body_node)
+        else:
+            context.add_function_placeholder(body_node)
 
     @staticmethod
     def apply_function_body_removal(

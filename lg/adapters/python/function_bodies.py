@@ -13,8 +13,7 @@ def remove_function_body_with_definition(
         context: ProcessingContext,
         func_def: Node,
         body_node: Node,
-        func_type: str,
-        placeholder_style: str
+        func_type: str
 ) -> None:
     """
     Удаление тел функций с использованием function_definition.
@@ -32,18 +31,17 @@ def remove_function_body_with_definition(
 
     if docstring_node is None:
         # Нет docstring - удаляем всё после ':'
-        _remove_after_colon(root_optimizer, context, func_def, body_node, func_type, placeholder_style)
+        _remove_after_colon(root_optimizer, context, func_def, body_node, func_type)
     else:
         # Есть docstring, используем логику с preservation
-        _remove_function_body_preserve_docstring(root_optimizer, context, docstring_node, body_node, func_type, placeholder_style)
+        _remove_function_body_preserve_docstring(root_optimizer, context, docstring_node, body_node, func_type)
 
 def _remove_after_colon(
         root_optimizer: FunctionBodyOptimizer,
         context: ProcessingContext,
         func_def: Node,
         body_node: Node,
-        func_type: str,
-        placeholder_style: str
+        func_type: str
 ) -> None:
     """Удаление всего после ':' в function_definition."""
     # Найдем позицию ':' в function_definition
@@ -63,27 +61,18 @@ def _remove_after_colon(
     removal_start = absolute_colon_pos + 1  # После ':'
     removal_end = body_end_byte
 
-    # Определяем правильный отступ на основе типа функции
-    indent_prefix = _get_indent_prefix(func_type)
-
-    # Используем общий helper с правильным форматированием
-    return root_optimizer.apply_function_body_removal(
-        context=context,
-        start_byte=removal_start,
-        end_byte=removal_end,
-        func_type=func_type,
-        placeholder_style=placeholder_style,
-        replacement_type=f"{func_type}_body_removal_simple",
-        placeholder_prefix=indent_prefix
-    )
+    # Используем новое простое API
+    if func_type == "method":
+        context.add_method_placeholder(body_node)
+    else:
+        context.add_function_placeholder(body_node)
 
 def _remove_function_body_preserve_docstring(
         root_optimizer: FunctionBodyOptimizer,
         context: ProcessingContext,
         docstring_node: Node,
         body_node: Node,
-        func_type: str,
-        placeholder_style: str
+        func_type: str
 ) -> None:
     """
     Удаляет тело функции/метода, сохраняя docstring, если он есть.
@@ -112,19 +101,11 @@ def _remove_function_body_preserve_docstring(
         # Нечего удалять после docstring
         return None
 
-    # Определяем правильный отступ на основе типа функции
-    indent_prefix = _get_indent_prefix(func_type)
-
-    # Используем общий helper с правильным форматированием
-    return root_optimizer.apply_function_body_removal(
-        context=context,
-        start_byte=removal_start,
-        end_byte=removal_end,
-        func_type=func_type,
-        placeholder_style=placeholder_style,
-        replacement_type=f"{func_type}_body_removal_preserve_docstring",
-        placeholder_prefix=indent_prefix
-    )
+    # Используем новое простое API - добавляем плейсхолдер для всего узла
+    if func_type == "method":
+        context.add_method_placeholder(body_node)
+    else:
+        context.add_function_placeholder(body_node)
 
 
 def _get_indent_prefix(func_type: str) -> str:
