@@ -1,31 +1,47 @@
-// TypeScript module
-import { Component } from '@angular/core';
-import { Observable } from 'rxjs';
+/**
+ * TypeScript module for testing function body optimization.
+ */
+
+import { Observable } from "rxjs";
 
 interface User {
     id: number;
     name: string;
-    email?: string;
+    email: string;
 }
 
-class UserService {
-    private users: User[] = [];
+class Calculator {
+    private history: string[] = [];
     
-    constructor(private apiUrl: string) {
-        this.apiUrl = apiUrl;
+    constructor(name: string = "default") // … method omitted (4)
+    
+    public add(a: number, b: number): number // … method omitted (6)
+    
+    public multiply(a: number, b: number): number // … method omitted (5)
+    
+    public getHistory(): string[] {
+        return [...this.history];
     }
     
-    getUsers(): Observable<User[]> // … method omitted (8)
-    
-    addUser(user: User): Promise<User> // … method omitted (7)
-    
-    private validateUser(user: User): boolean {
-        return user.name.length > 0 && user.id > 0;
-    }
+    private validateInput(value: number): boolean // … method omitted (11)
 }
 
-const createService = (url: string) => {
-    return new UserService(url);
-};
+export function processUserData(users: User[]): { valid: User[], invalid: User[] } // … body omitted (13)
 
-export { UserService, User };
+// Arrow functions for testing different function types
+const simpleArrow = () => "simple";
+
+const complexArrow = (data: string[]) => // … body omitted (8);
+
+const asyncArrow = async (url: string): Promise<any> => // … body omitted (15);
+
+// Function with multiple overloads
+function overloadedFunction(value: string): string;
+function overloadedFunction(value: number): number;
+function overloadedFunction(value: string | number): string | number // … body omitted (7)
+
+// Generic function
+function processArray<T>(items: T[], processor: (item: T) => T): T[] // … body omitted (14)
+
+// Default export function
+export default function main(): void // … body omitted (13)
