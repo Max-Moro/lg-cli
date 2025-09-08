@@ -11,7 +11,6 @@ from typing import Dict, List, Tuple, Any, TypeVar, Optional
 from .base import BaseAdapter
 from .code_model import CodeCfg
 from .context import ProcessingContext, LightweightContext
-from .tree_sitter_support import TreeSitterDocument, Node
 from .optimizations import (
     PublicApiOptimizer,
     FunctionBodyOptimizer,
@@ -20,9 +19,10 @@ from .optimizations import (
     LiteralOptimizer,
     FieldOptimizer,
     FieldsClassifier,
-    ImportAnalyzer,
+    TreeSitterImportAnalyzer,
     ImportClassifier
 )
+from .tree_sitter_support import TreeSitterDocument, Node
 
 C = TypeVar("C", bound=CodeCfg)
 
@@ -43,7 +43,7 @@ class CodeAdapter(BaseAdapter[C], ABC):
         pass
 
     @abstractmethod
-    def create_import_analyzer(self, classifier: ImportClassifier) -> ImportAnalyzer:
+    def create_import_analyzer(self, classifier: ImportClassifier) -> TreeSitterImportAnalyzer:
         """Создает языко-специфичный анализатор импортов. Должен быть переопределен наследниками."""
         pass
 

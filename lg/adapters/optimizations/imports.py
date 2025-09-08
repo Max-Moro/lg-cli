@@ -1,6 +1,6 @@
 """
-Import optimization.
-Processes import statements according to policy.
+Tree-sitter based import optimization system.
+Clean architecture with proper AST-based analysis.
 """
 
 from __future__ import annotations
@@ -16,62 +16,66 @@ from ..tree_sitter_support import TreeSitterDocument, Node
 
 @dataclass
 class ImportInfo:
-    """Information about an import statement."""
-    node: Node
-    import_type: str  # "import", "import_from", etc.
-    module_name: str
-    imported_items: List[str]  # What is being imported (functions, classes, etc.)
-    is_external: bool
-    alias: Optional[str] = None
+    """Information about a single import statement."""
+    node: Node                      # Tree-sitter node for the import
+    import_type: str               # "import", "import_from", "export", etc.
+    module_name: str               # Module being imported from
+    imported_items: List[str]      # List of imported names/aliases
+    is_external: bool              # External vs local classification
+    is_wildcard: bool = False      # True for "import *" or "export *"
+    aliases: Dict[str, str] = None # name -> alias mapping
     start_byte: int = 0
     end_byte: int = 0
     line_count: int = 1
 
+    def __post_init__(self):
+        if self.aliases is None:
+            self.aliases = {}
+
 
 class ImportClassifier(ABC):
-    """Abstract base class for import classification."""
+    """Abstract base for import classification (external vs local)."""
 
     @abstractmethod
     def is_external(self, module_name: str, project_root: Optional[Path] = None) -> bool:
-        """
-        Determine if a module is external (third-party) or local.
-
-        Args:
-            module_name: The module being imported
-            project_root: Optional project root for better local detection
-
-        Returns:
-            True if module is external, False if local
-        """
+        """Determine if a module is external (third-party) or local."""
         pass
 
 
-class ImportAnalyzer(ABC):
-    """Abstract base class for import analysis."""
+class TreeSitterImportAnalyzer(ABC):
+    """
+    Base Tree-sitter based import analyzer.
+    Uses AST structure instead of regex parsing.
+    """
 
     def __init__(self, classifier: ImportClassifier):
         self.classifier = classifier
 
     def analyze_imports(self, doc: TreeSitterDocument) -> List[ImportInfo]:
         """
-        Analyze all imports in a document.
-
+        Analyze all imports in a document using Tree-sitter queries.
+        
         Returns:
-            List of ImportInfo objects with detailed information
+            List of ImportInfo objects with detailed analysis
         """
-        imports = doc.query("imports")
         results = []
-
-        for node, capture_name in imports:
-            import_info = self._parse_import_node(doc, node, capture_name)
+        
+        # Get imports through Tree-sitter queries
+        import_nodes = doc.query("imports")
+        
+        for node, capture_name in import_nodes:
+            import_info = self._parse_import_from_ast(doc, node, capture_name)
             if import_info:
                 results.append(import_info)
-
+        
         return results
 
     @abstractmethod
-    def _parse_import_node(self, doc: TreeSitterDocument, node: Node, import_type: str) -> Optional[ImportInfo]:
-        """Parse a single import node into ImportInfo. Language-specific implementation."""
+    def _parse_import_from_ast(self, doc: TreeSitterDocument, node: Node, import_type: str) -> Optional[ImportInfo]:
+        """
+        Parse import node using Tree-sitter AST structure.
+        Language-specific implementation.
+        """
         pass
 
     @staticmethod
@@ -90,20 +94,19 @@ class ImportAnalyzer(ABC):
 
         return groups
 
-    @staticmethod
-    def should_summarize(imports: List[ImportInfo], max_items: int) -> bool:
-        """Check if import list should be summarized."""
-        return len(imports) > max_items
 
 class ImportOptimizer:
-    """Handles import processing optimization."""
+    """
+    Tree-sitter based import processor.
+    Handles all import optimization policies.
+    """
     
     def __init__(self, adapter):
         """
-        Initialize with parent adapter for language-specific checks.
+        Initialize with parent adapter for language-specific operations.
         
         Args:
-            adapter: Parent CodeAdapter instance for language-specific methods
+            adapter: Parent CodeAdapter instance
         """
         from ..code_base import CodeAdapter
         self.adapter = cast(CodeAdapter, adapter)
@@ -121,11 +124,11 @@ class ImportOptimizer:
         if config.policy == "keep_all":
             return
         
-        # Language adapters must provide their implementations
+        # Get language-specific analyzer
         classifier = self.adapter.create_import_classifier(config.external_only_patterns)
         analyzer = self.adapter.create_import_analyzer(classifier)
         
-        # Analyze all imports
+        # Analyze all imports using Tree-sitter
         imports = analyzer.analyze_imports(context.doc)
         if not imports:
             return
@@ -133,180 +136,83 @@ class ImportOptimizer:
         # Group by type
         grouped = analyzer.group_imports(imports)
         
+        # Apply policy-specific processing
         if config.policy == "external_only":
-            # Remove local imports, keep external
             self._process_external_only(grouped["local"], context)
-        
         elif config.policy == "summarize_long":
-            # Summarize long import lists
-            if analyzer.should_summarize(imports, config.max_items_before_summary):
-                self._process_summarize_long(grouped, context)
+            self._process_summarize_long(imports, context)
     
-    def _process_external_only(
-        self,
-        local_imports: List,
-        context: ProcessingContext
-    ) -> None:
-        """
-        Remove local imports, keeping only external ones.
-        
-        Args:
-            local_imports: List of local import objects
-            context: Processing context
-        """
-        if not local_imports:
-            return
-
+    def _process_external_only(self, local_imports: List[ImportInfo], context: ProcessingContext) -> None:
+        """Remove local imports, keeping only external ones."""
         for imp in local_imports:
-            self.remove_import(
-                context,
-                imp.node,
-                import_type="local_import",
-                placeholder_style=self.adapter.cfg.placeholders.style
-            )
+            self._remove_import(context, imp, "local_import")
     
-    def _process_summarize_long(
-        self,
-        grouped_imports: Dict[str, List],
-        context: ProcessingContext,
-    ) -> None:
-        """
-        Summarize long import lists into placeholders.
+    def _process_summarize_long(self, imports: List[ImportInfo], context: ProcessingContext) -> None:
+        """Summarize imports with too many items."""
+        max_items = self.adapter.cfg.imports.max_items_before_summary
         
-        Args:
-            grouped_imports: Dictionary of import groups by type
-            context: Processing context
-        """
-        # Process each group separately
-        for group_type, imports in grouped_imports.items():
-            if not imports or len(imports) <= self.adapter.cfg.imports.max_items_before_summary:
-                continue
-            
-            # Group consecutive imports for summarization
-            import_ranges = []
-            for imp in imports:
-                import_ranges.append((imp.start_byte, imp.end_byte, imp))
-            
-            # Sort by position in file
-            import_ranges.sort(key=lambda x: x[0])
-            
-            # Find groups of consecutive imports
-            groups = self._find_consecutive_import_groups(import_ranges)
-            
-            for group in groups:
-                if len(group) <= 2:  # Don't summarize small groups
-                    continue
-                
-                self.remove_consecutive_imports(
-                    context, group, group_type, self.adapter.cfg.placeholders.style
-                )
-
-    @staticmethod
-    def remove_import(
-            context: ProcessingContext,
-            import_node: Node,
-            import_type: str = "import",
-            placeholder_style: str = "inline"
-    ) -> bool:
-        """
-        Удаляет импорт с автоматическим учетом метрик.
-        """
-        start_byte, end_byte = context.doc.get_node_range(import_node)
-        start_line, end_line = context.doc.get_line_range(import_node)
+        for imp in imports:
+            if len(imp.imported_items) > max_items:
+                self._remove_import(context, imp, f"long_{imp.import_type}")
+    
+    def _remove_import(self, context: ProcessingContext, import_info: ImportInfo, reason: str) -> None:
+        """Remove an import and add appropriate placeholder."""
+        start_byte, end_byte = context.doc.get_node_range(import_info.node)
+        start_line, end_line = context.doc.get_line_range(import_info.node)
         lines_count = end_line - start_line + 1
-
-        placeholder = context.placeholder_gen.create_import_placeholder(
-            count=1, style=placeholder_style
-        )
-
+        
+        # Create appropriate placeholder
+        if reason.startswith("long_"):
+            placeholder = self._create_long_import_placeholder(import_info, lines_count)
+        elif reason == "local_import":
+            placeholder = self._create_local_import_placeholder(import_info)
+        else:
+            placeholder = f"# … {reason} omitted"
+        
+        # Apply the edit
         context.editor.add_replacement(
             start_byte, end_byte, placeholder,
-            type=f"{import_type}_removal",
+            type=f"{reason}_removal",
             is_placeholder=True,
             lines_removed=lines_count
         )
-
+        
+        # Update metrics
         context.metrics.mark_import_removed()
         context.metrics.add_lines_saved(lines_count)
         context.metrics.add_bytes_saved(end_byte - start_byte - len(placeholder.encode('utf-8')))
         context.metrics.mark_placeholder_inserted()
-
-        return True
-
-    @staticmethod
-    def remove_consecutive_imports(
-            context: ProcessingContext,
-            import_ranges: list,
-            group_type: str,
-            placeholder_style: str = "inline"
-    ) -> None:
-        """
-        Удаляет группу последовательных импортов с единым плейсхолдером.
-        """
-        if not import_ranges:
-            return
-
-        # Получаем диапазон всей группы
-        start_byte = import_ranges[0][0]
-        end_byte = import_ranges[-1][1]
-
-        # Создаем суммарный плейсхолдер
-        count = len(import_ranges)
-        summary = f"… {count} {group_type} imports"
-
-        if placeholder_style == "block":
-            placeholder = context.placeholder_gen.create_custom_placeholder(
-                summary, {}, style="block"
-            )
+    
+    def _create_long_import_placeholder(self, import_info: ImportInfo, lines_count: int) -> str:
+        """Create placeholder for long import."""
+        count = len(import_info.imported_items)
+        style = self.adapter.cfg.placeholders.style
+        
+        if style == "inline" or style == "auto":
+            return f"{self.adapter.get_comment_style()[0]} … {count} imports omitted"
+        elif style == "block":
+            multi_start, multi_end = self.adapter.get_comment_style()[1]
+            return f"{multi_start} … {count} imports omitted {multi_end}"
         else:
-            placeholder = f"# {summary}"
-
-        total_lines = sum(imp[2].line_count for imp in import_ranges)
-
-        context.editor.add_replacement(
-            start_byte, end_byte, placeholder,
-            type="import_summarization",
-            is_placeholder=True,
-            lines_removed=total_lines
-        )
-
-        # Обновляем метрики
-        for _ in import_ranges:
-            context.metrics.mark_import_removed()
-
-        context.metrics.add_lines_saved(total_lines)
-        context.metrics.mark_placeholder_inserted()
-
-    @staticmethod
-    def _find_consecutive_import_groups(import_ranges: List) -> List[List]:
-        """
-        Find groups of consecutive imports for summarization.
+            return ""
+    
+    def _create_local_import_placeholder(self, import_info: ImportInfo) -> str:
+        """Create placeholder for removed local import."""
+        style = self.adapter.cfg.placeholders.style
         
-        Args:
-            import_ranges: List of (start_byte, end_byte, import_info) tuples
-            
-        Returns:
-            List of groups, where each group is a list of consecutive imports
-        """
-        if not import_ranges:
-            return []
-        
-        groups = []
-        current_group = [import_ranges[0]]
-        
-        for i in range(1, len(import_ranges)):
-            prev_end = current_group[-1][1]
-            curr_start = import_ranges[i][0]
-            
-            # If between imports there's little space (only whitespace/newlines), consider consecutive
-            if curr_start - prev_end < 50:  # Heuristic: 50 bytes
-                current_group.append(import_ranges[i])
-            else:
-                if len(current_group) > 1:
-                    groups.append(current_group)
-                current_group = [import_ranges[i]]
-        
-        if len(current_group) > 1:
-            groups.append(current_group)
-        
-        return groups
+        if style == "inline" or style == "auto":
+            return f"{self.adapter.get_comment_style()[0]} … 1 imports omitted"
+        elif style == "block":
+            multi_start, multi_end = self.adapter.get_comment_style()[1]
+            return f"{multi_start} … 1 imports omitted {multi_end}"
+        else:
+            return ""
+
+
+# Export the classes that will be used by language adapters
+__all__ = [
+    "ImportInfo",
+    "ImportClassifier", 
+    "TreeSitterImportAnalyzer",
+    "ImportOptimizer"
+]
