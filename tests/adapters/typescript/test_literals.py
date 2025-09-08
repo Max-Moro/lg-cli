@@ -23,7 +23,7 @@ class TestTypeScriptLiteralOptimization:
         
         # Long strings should be trimmed
         assert meta.get("code.removed.literals", 0) > 0
-        assert "… string trimmed" in result or "…" in result
+        assert "This is an extremely long message that contains a..." in result or "…" in result
         
         assert_golden_match(result, "literals", "string_trimming")
     
@@ -40,7 +40,7 @@ class TestTypeScriptLiteralOptimization:
         
         # Large arrays should be trimmed
         assert meta.get("code.removed.literals", 0) > 0
-        assert "… array trimmed" in result or "…" in result
+        assert "… array data omitted" in result or "…" in result
         
         assert_golden_match(result, "literals", "array_limiting")
     
@@ -57,7 +57,7 @@ class TestTypeScriptLiteralOptimization:
         
         # Large objects should be trimmed
         assert meta.get("code.removed.literals", 0) > 0
-        assert "… object trimmed" in result or "…" in result
+        assert "… object data omitted" in result or "…" in result
         
         assert_golden_match(result, "literals", "object_limiting")
     

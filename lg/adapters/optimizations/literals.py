@@ -40,8 +40,14 @@ class LiteralOptimizer:
 
         # Получаем конфигурацию
         if isinstance(strip_config, bool):
-            # Используем дефолтные настройки при strip_literals: true
-            config = LiteralConfig()
+            # При strip_literals: true создаем конфиг с разумными дефолтами
+            config = LiteralConfig(
+                max_string_length=200,
+                max_array_elements=20,
+                max_object_properties=15,
+                max_literal_lines=10,
+                collapse_threshold=100
+            )
         else:
             # Используем кастомную конфигурацию
             config = strip_config
@@ -87,25 +93,25 @@ class LiteralOptimizer:
         # Check different trimming conditions
         if literal_type == "string":
             should_trim, replacement_text = self._should_trim_string(
-                node_text, config.max_string_length, config.collapse_threshold, bytes_count, context
+                node_text, config, bytes_count, context
             )
         elif literal_type == "array":
             should_trim, replacement_text = self._should_trim_array(
-                node, node_text, config.max_array_elements, config.max_literal_lines, lines_count, context
+                node, node_text, config, lines_count, context
             )
         elif literal_type == "object":
             should_trim, replacement_text = self._should_trim_object(
-                node, node_text, config.max_object_properties, config.max_literal_lines, lines_count, context
+                node, node_text, config, lines_count, context
             )
 
-        # Check general conditions
+        # Check general conditions only if not already marked for trimming
         if not should_trim:
-            if lines_count > config.max_literal_lines:
+            if config.max_literal_lines is not None and lines_count > config.max_literal_lines:
                 should_trim = True
                 replacement_text = context.placeholder_gen.create_literal_placeholder(
                     literal_type, bytes_count, style="inline"
                 )
-            elif bytes_count > config.collapse_threshold:
+            elif config.collapse_threshold is not None and bytes_count > config.collapse_threshold:
                 should_trim = True
                 replacement_text = context.placeholder_gen.create_literal_placeholder(
                     literal_type, bytes_count, style="inline"
@@ -129,8 +135,7 @@ class LiteralOptimizer:
     def _should_trim_string(
             self,
             text: str,
-            max_length: int,
-            collapse_threshold: int,
+            config,
             byte_count: int,
             context: ProcessingContext
     ) -> Tuple[bool, Optional[str]]:
@@ -139,8 +144,7 @@ class LiteralOptimizer:
         
         Args:
             text: String literal text
-            max_length: Maximum allowed string length
-            collapse_threshold: Byte threshold for collapsing
+            config: Literal configuration
             byte_count: Actual byte count of string
             context: Processing context
             
@@ -151,16 +155,18 @@ class LiteralOptimizer:
         quote_char = text[0] if text and text[0] in ('"', "'", '`') else '"'
         inner_text = text.strip(quote_char)
 
-        # Prioritize collapse over truncation for large data
-        if byte_count > collapse_threshold:
+        # Check collapse threshold first (если задан)
+        if config.collapse_threshold is not None and byte_count > config.collapse_threshold:
             # Replace with comment placeholder
             replacement = context.placeholder_gen.create_literal_placeholder(
                 "string", byte_count, style="inline"
             )
             return True, replacement
-        elif len(inner_text) > max_length:
+        
+        # Check max length (если задан)
+        if config.max_string_length is not None and len(inner_text) > config.max_string_length:
             # Truncate to max length only for smaller strings
-            truncated = inner_text[:max_length].rstrip()
+            truncated = inner_text[:config.max_string_length].rstrip()
             replacement = f'{quote_char}{truncated}...{quote_char}'
             return True, replacement
 
@@ -170,8 +176,7 @@ class LiteralOptimizer:
             self,
             node: Node,
             text: str,
-            max_elements: int,
-            max_lines: int,
+            config,
             lines_count: int,
             context: ProcessingContext
     ) -> Tuple[bool, Optional[str]]:
@@ -181,8 +186,7 @@ class LiteralOptimizer:
         Args:
             node: Tree-sitter node for array
             text: Array literal text
-            max_elements: Maximum number of elements to show
-            max_lines: Maximum lines before collapsing
+            config: Literal configuration
             lines_count: Actual line count
             context: Processing context
             
@@ -192,7 +196,8 @@ class LiteralOptimizer:
         # Count array elements through Tree-sitter
         elements_count = self._count_array_elements(node, context)
 
-        if elements_count > max_elements or lines_count > max_lines:
+        # Check max elements (если задан)
+        if config.max_array_elements is not None and elements_count > config.max_array_elements:
             # Use comment placeholder for arrays exceeding limits
             replacement = context.placeholder_gen.create_literal_placeholder(
                 "array", len(text.encode('utf-8')), style="inline"
@@ -205,8 +210,7 @@ class LiteralOptimizer:
             self,
             node: Node,
             text: str,
-            max_properties: int,
-            max_lines: int,
+            config,
             lines_count: int,
             context: ProcessingContext
     ) -> Tuple[bool, Optional[str]]:
@@ -216,8 +220,7 @@ class LiteralOptimizer:
         Args:
             node: Tree-sitter node for object
             text: Object literal text
-            max_properties: Maximum number of properties to show
-            max_lines: Maximum lines before collapsing
+            config: Literal configuration
             lines_count: Actual line count
             context: Processing context
             
@@ -227,7 +230,8 @@ class LiteralOptimizer:
         # Count object properties
         properties_count = self._count_object_properties(node, context)
 
-        if properties_count > max_properties or lines_count > max_lines:
+        # Check max properties (если задан)
+        if config.max_object_properties is not None and properties_count > config.max_object_properties:
             # Use comment placeholder for objects exceeding limits
             replacement = context.placeholder_gen.create_literal_placeholder(
                 "object", len(text.encode('utf-8')), style="inline"

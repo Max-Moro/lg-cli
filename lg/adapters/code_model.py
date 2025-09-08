@@ -47,11 +47,11 @@ class ImportConfig:
 @dataclass
 class LiteralConfig:
     """Конфигурация обработки литералов данных."""
-    max_string_length: int = 200
-    max_array_elements: int = 20
-    max_object_properties: int = 15
-    max_literal_lines: int = 10
-    collapse_threshold: int = 100  # байт, после которых включается collapse
+    max_string_length: Optional[int] = None
+    max_array_elements: Optional[int] = None
+    max_object_properties: Optional[int] = None
+    max_literal_lines: Optional[int] = None
+    collapse_threshold: Optional[int] = None  # байт, после которых включается collapse
 
 
 @dataclass
@@ -123,11 +123,11 @@ class CodeCfg:
             self.strip_literals = sl
         elif isinstance(sl, dict):
             self.strip_literals = LiteralConfig(
-                max_string_length=int(sl.get("max_string_length", 200)),
-                max_array_elements=int(sl.get("max_array_elements", 20)),
-                max_object_properties=int(sl.get("max_object_properties", 15)),
-                max_literal_lines=int(sl.get("max_literal_lines", 10)),
-                collapse_threshold=int(sl.get("collapse_threshold", 100))
+                max_string_length=int(sl["max_string_length"]) if "max_string_length" in sl else None,
+                max_array_elements=int(sl["max_array_elements"]) if "max_array_elements" in sl else None,
+                max_object_properties=int(sl["max_object_properties"]) if "max_object_properties" in sl else None,
+                max_literal_lines=int(sl["max_literal_lines"]) if "max_literal_lines" in sl else None,
+                collapse_threshold=int(sl["collapse_threshold"]) if "collapse_threshold" in sl else None
             )
 
         # comment_policy: str | dict

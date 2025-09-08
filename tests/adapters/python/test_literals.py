@@ -53,10 +53,7 @@ class TestPythonLiteralOptimization:
     
     def test_array_element_limiting(self, do_literals):
         """Test array element count limiting."""
-        literal_config = LiteralConfig(
-            max_array_elements=5,
-            max_string_length=1000  # Don't trim strings for this test
-        )
+        literal_config = LiteralConfig(max_array_elements=5)
         
         adapter = PythonAdapter()
         adapter._cfg = PythonCfg(strip_literals=literal_config)
@@ -72,11 +69,7 @@ class TestPythonLiteralOptimization:
     
     def test_object_property_limiting(self, do_literals):
         """Test object property count limiting."""
-        literal_config = LiteralConfig(
-            max_object_properties=3,
-            max_string_length=1000,  # Don't trim strings
-            max_array_elements=100   # Don't trim arrays
-        )
+        literal_config = LiteralConfig(max_object_properties=3)
         
         adapter = PythonAdapter()
         adapter._cfg = PythonCfg(strip_literals=literal_config)
@@ -92,12 +85,7 @@ class TestPythonLiteralOptimization:
     
     def test_multiline_literal_limiting(self, do_literals):
         """Test multiline literal limiting.""" 
-        literal_config = LiteralConfig(
-            max_literal_lines=5,
-            max_string_length=1000,
-            max_array_elements=100,
-            max_object_properties=100
-        )
+        literal_config = LiteralConfig(max_literal_lines=5)
         
         adapter = PythonAdapter()
         adapter._cfg = PythonCfg(strip_literals=literal_config)
@@ -112,13 +100,7 @@ class TestPythonLiteralOptimization:
     
     def test_size_based_collapsing(self, do_literals):
         """Test size-based literal collapsing."""
-        literal_config = LiteralConfig(
-            collapse_threshold=200,  # Small threshold to trigger collapsing
-            max_string_length=10000,
-            max_array_elements=1000,
-            max_object_properties=1000,
-            max_literal_lines=1000
-        )
+        literal_config = LiteralConfig(collapse_threshold=200)
         
         adapter = PythonAdapter()
         adapter._cfg = PythonCfg(strip_literals=literal_config)
@@ -172,7 +154,7 @@ config = {"debug": True, "level": 1}
         # Docstring should be preserved
         assert '"""This is a very long docstring' in result
         # Regular string should be trimmed
-        assert "This is a very long regular string that should be processed..." in result or "… string data" in result
+        assert "This is a very long regular string that should be..." in result or "… string data" in result
 
 
 class TestPythonLiteralEdgeCases:
