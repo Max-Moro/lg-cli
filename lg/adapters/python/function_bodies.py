@@ -24,7 +24,6 @@ def remove_function_body_with_definition(
         func_def: Узел function_definition
         body_node: Узел тела функции
         func_type: Тип функции ("function" или "method")
-        placeholder_style: Стиль плейсхолдера
     """
     # Ищем docstring в теле функции
     docstring_node = _find_docstring_in_body(body_node)
@@ -50,7 +49,7 @@ def _remove_after_colon(
 
     if colon_pos == -1:
         # Fallback к стандартной логике
-        return root_optimizer.remove_function_body(context, body_node, func_type, placeholder_style)
+        return root_optimizer.remove_function_body(context, body_node, func_type)
 
     # Вычисляем абсолютную позицию ':'
     func_start = func_def.start_byte
@@ -61,11 +60,17 @@ def _remove_after_colon(
     removal_start = absolute_colon_pos + 1  # После ':'
     removal_end = body_end_byte
 
-    # Используем новое простое API
-    if func_type == "method":
-        context.add_method_placeholder(body_node)
-    else:
-        context.add_function_placeholder(body_node)
+    # Определяем правильный отступ на основе типа функции
+    indent_prefix = _get_indent_prefix(func_type)
+
+    # Используем общий helper с правильным форматированием
+    return root_optimizer.apply_function_body_removal(
+        context=context,
+        start_byte=removal_start,
+        end_byte=removal_end,
+        func_type=func_type,
+        placeholder_prefix=indent_prefix
+    )
 
 def _remove_function_body_preserve_docstring(
         root_optimizer: FunctionBodyOptimizer,
@@ -101,11 +106,17 @@ def _remove_function_body_preserve_docstring(
         # Нечего удалять после docstring
         return None
 
-    # Используем новое простое API - добавляем плейсхолдер для всего узла
-    if func_type == "method":
-        context.add_method_placeholder(body_node)
-    else:
-        context.add_function_placeholder(body_node)
+    # Определяем правильный отступ на основе типа функции
+    indent_prefix = _get_indent_prefix(func_type)
+
+    # Используем общий helper с правильным форматированием
+    return root_optimizer.apply_function_body_removal(
+        context=context,
+        start_byte=removal_start,
+        end_byte=removal_end,
+        func_type=func_type,
+        placeholder_prefix=indent_prefix
+    )
 
 
 def _get_indent_prefix(func_type: str) -> str:

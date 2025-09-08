@@ -91,11 +91,14 @@ class FunctionBodyOptimizer:
         """
         Удаляет тело функции/метода с автоматическим учетом метрик.
         """
-        # Используем новое простое API
-        if func_type == "method":
-            context.add_method_placeholder(body_node)
-        else:
-            context.add_function_placeholder(body_node)
+        start_byte, end_byte = context.doc.get_node_range(body_node)
+
+        FunctionBodyOptimizer.apply_function_body_removal(
+            context=context,
+            start_byte=start_byte,
+            end_byte=end_byte,
+            func_type=func_type,
+        )
 
     @staticmethod
     def apply_function_body_removal(
@@ -103,8 +106,6 @@ class FunctionBodyOptimizer:
             start_byte: int,
             end_byte: int,
             func_type: str,
-            placeholder_style: str,
-            replacement_type: str = None,
             placeholder_prefix: str = ""
     ) -> None:
         """
@@ -115,48 +116,24 @@ class FunctionBodyOptimizer:
             start_byte: Начальная позиция для удаления
             end_byte: Конечная позиция для удаления
             func_type: Тип функции ("function" или "method")
-            placeholder_style: Стиль placeholder'а
-            replacement_type: Тип правки для editor'а
             placeholder_prefix: Префикс для placeholder'а (например "\n    ")
         """
-        # Вычисляем количество строк
+
+        """
+        Удаляет тело функции/метода с автоматическим учетом метрик.
+        """
         start_line = context.doc.get_line_number_for_byte(start_byte)
         end_line = context.doc.get_line_number_for_byte(end_byte)
-        lines_count = max(0, end_line - start_line + 1)
 
-        # Создаем плейсхолдер в зависимости от типа
-        if func_type == "method":
-            placeholder = context.placeholder_gen.create_method_placeholder(
-                lines_removed=lines_count,
-                bytes_removed=end_byte - start_byte,
-                style=placeholder_style
-            )
-            context.metrics.mark_method_removed()
-        else:
-            placeholder = context.placeholder_gen.create_function_placeholder(
-                lines_removed=lines_count,
-                bytes_removed=end_byte - start_byte,
-                style=placeholder_style
-            )
-            context.metrics.mark_function_removed()
-
-        # Применяем префикс к placeholder'у если нужно
-        final_placeholder = placeholder_prefix + placeholder
-
-        # Добавляем правку
-        context.editor.add_replacement(
-            start_byte, end_byte, final_placeholder,
-            type=replacement_type or f"{func_type}_body_removal",
-            is_placeholder=True,
-            lines_removed=lines_count
+        context.add_custom_placeholder(
+            start_byte, end_byte, start_line, end_line,
+            placeholder_type=func_type,
+            placeholder_prefix=placeholder_prefix
         )
-
-        # Обновляем метрики
-        context.metrics.add_lines_saved(lines_count)
-        bytes_saved = end_byte - start_byte - len(final_placeholder.encode('utf-8'))
-        if bytes_saved > 0:
-            context.metrics.add_bytes_saved(bytes_saved)
-        context.metrics.mark_placeholder_inserted()
+        if func_type == "method":
+            context.metrics.mark_function_removed()
+        else:
+            context.metrics.mark_method_removed()
 
     @staticmethod
     def is_method(function_body_node: Node) -> bool:

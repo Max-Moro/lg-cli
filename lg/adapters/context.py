@@ -87,19 +87,7 @@ class ProcessingContext(LightState):
         self.placeholders = placeholders
         self.metrics = MetricsCollector()
 
-    # ============= Удобное API для плейсхолдеров =============
-    
-    def add_function_placeholder(self, node: Node) -> None:
-        """Добавить плейсхолдер для функции."""
-        self.placeholders.add_function_placeholder(node, self.doc)
-        self.metrics.mark_function_removed()
-        self.metrics.mark_placeholder_inserted()
-    
-    def add_method_placeholder(self, node: Node) -> None:
-        """Добавить плейсхолдер для метода."""
-        self.placeholders.add_method_placeholder(node, self.doc)
-        self.metrics.mark_method_removed()
-        self.metrics.mark_placeholder_inserted()
+    # ============= API для плейсхолдеров =============
     
     def add_comment_placeholder(self, node: Node, count: int = 1) -> None:
         """Добавить плейсхолдер для комментария."""
@@ -120,10 +108,10 @@ class ProcessingContext(LightState):
         self.metrics.mark_placeholder_inserted()
     
     def add_custom_placeholder(self, start_byte: int, end_byte: int, start_line: int, end_line: int, 
-                             placeholder_type: str) -> None:
+                             placeholder_type: str, placeholder_prefix: str = "") -> None:
         """Добавить кастомный плейсхолдер."""
         self.placeholders.add_custom_placeholder(
-            start_byte, end_byte, start_line, end_line, placeholder_type
+            start_byte, end_byte, start_line, end_line, placeholder_type, placeholder_prefix
         )
         self.metrics.mark_placeholder_inserted()
     

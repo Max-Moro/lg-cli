@@ -143,11 +143,10 @@ class CodeAdapter(BaseAdapter[C], ABC):
             context: ProcessingContext,
             func_def: Optional[Node],
             body_node: Node,
-            func_type: str,
-            placeholder_style,
+            func_type: str
     ) -> None:
         """Хук для кастомизации удаления тел функций."""
-        root_optimizer.remove_function_body(context, body_node, func_type, placeholder_style)
+        root_optimizer.remove_function_body(context, body_node, func_type)
 
     def get_comment_style(self) -> Tuple[str, tuple[str, str]]:
         """Cтиль комментариев для языка (однострочный, многострочный)."""

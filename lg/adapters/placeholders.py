@@ -25,6 +25,9 @@ class PlaceholderSpec:
     
     # Тип плейсхолдера
     placeholder_type: str  # "function", "method", "import", "comment", "literal", etc.
+
+    # Выравнивание плейсхолдера (табуляция)
+    placeholder_prefix: str
     
     # Метрики
     lines_removed: int = 0
@@ -78,6 +81,7 @@ class PlaceholderSpec:
             start_line=start_line,
             end_line=end_line,
             placeholder_type=self.placeholder_type,
+            placeholder_prefix=self.placeholder_prefix,
             lines_removed=self.lines_removed + other.lines_removed,
             bytes_removed=self.bytes_removed + other.bytes_removed,
             count=self.count + other.count,
@@ -132,7 +136,7 @@ class PlaceholderManager:
         self._add_placeholder(spec)
     
     def add_custom_placeholder(self, start_byte: int, end_byte: int, start_line: int, end_line: int,
-                             placeholder_type: str, count: int = 1) -> None:
+                             placeholder_type: str, placeholder_prefix: str = "", count: int = 1) -> None:
         """Добавить кастомный плейсхолдер с явными координатами."""
         spec = PlaceholderSpec(
             start_byte=start_byte,
@@ -140,6 +144,7 @@ class PlaceholderManager:
             start_line=start_line,
             end_line=end_line,
             placeholder_type=placeholder_type,
+            placeholder_prefix=placeholder_prefix,
             count=count,
         )
         self._add_placeholder(spec)
@@ -157,6 +162,7 @@ class PlaceholderManager:
             start_line=start_line,
             end_line=end_line,
             placeholder_type=placeholder_type,
+            placeholder_prefix="",
             count=count,
         )
     
@@ -176,7 +182,7 @@ class PlaceholderManager:
     
     def _generate_placeholder_text(self, spec: PlaceholderSpec) -> str:
         """Генерировать текст плейсхолдера на основе типа и стиля."""
-        content = self._get_placeholder_content(spec)
+        content = spec.placeholder_prefix + self._get_placeholder_content(spec)
         
         # Определяем финальный стиль
         final_style = self._resolve_style(spec)
