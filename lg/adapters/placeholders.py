@@ -102,23 +102,13 @@ class PlaceholderManager:
     Предоставляет унифицированное API и обрабатывает коллапсирование.
     """
     
-    def __init__(self, comment_style: CommentStyle, placeholder_style: str = "auto"):
+    def __init__(self, comment_style: CommentStyle, placeholder_style: str):
         self.comment_style = comment_style
         self.placeholder_style = placeholder_style
         self.placeholders: List[PlaceholderSpec] = []
         self._pending_edits: List[Tuple[PlaceholderSpec, str]] = []  # (spec, replacement_text)
     
     # ============= Простое API для добавления плейсхолдеров =============
-    
-    def add_function_placeholder(self, node: Node, doc) -> None:
-        """Добавить плейсхолдер для функции."""
-        spec = self._create_spec_from_node(node, doc, "function")
-        self._add_placeholder(spec)
-    
-    def add_method_placeholder(self, node: Node, doc) -> None:
-        """Добавить плейсхолдер для метода."""
-        spec = self._create_spec_from_node(node, doc, "method")
-        self._add_placeholder(spec)
     
     def add_comment_placeholder(self, node: Node, doc, count: int = 1) -> None:
         """Добавить плейсхолдер для комментария."""
@@ -182,18 +172,12 @@ class PlaceholderManager:
     
     def _generate_placeholder_text(self, spec: PlaceholderSpec) -> str:
         """Генерировать текст плейсхолдера на основе типа и стиля."""
-        content = spec.placeholder_prefix + self._get_placeholder_content(spec)
+        content = self._get_placeholder_content(spec)
         
-        # Определяем финальный стиль
-        final_style = self._resolve_style(spec)
-        
-        if final_style == "inline":
-            return f"{self.comment_style.single_line} {content}"
-        elif final_style == "block":
-            return f"{self.comment_style.multi_line_start} {content} {self.comment_style.multi_line_end}"
-        else:
-            # Fallback to inline
-            return f"{self.comment_style.single_line} {content}"
+        if self.placeholder_style == "inline":
+            return f"{spec.placeholder_prefix}{self.comment_style.single_line} {content}"
+        else: # self.placeholder_style == "block"
+            return f"{spec.placeholder_prefix}{self.comment_style.multi_line_start} {content} {self.comment_style.multi_line_end}"
     
     def _get_placeholder_content(self, spec: PlaceholderSpec) -> str:
         """Сгенерировать содержимое плейсхолдера на основе типа и метрик."""
@@ -241,22 +225,6 @@ class PlaceholderManager:
                 return f"… {ptype} omitted ({lines} lines)"
             else:
                 return f"… {ptype} omitted"
-    
-    def _resolve_style(self, spec: PlaceholderSpec) -> str:
-        """Определить финальный стиль плейсхолдера."""
-        if self.placeholder_style in ("inline", "block"):
-            return self.placeholder_style
-        
-        elif self.placeholder_style == "auto":
-            # Автоматический выбор стиля на основе размера
-            if spec.lines_removed <= 3:
-                return "inline"
-            else:
-                return "block"
-        
-        else:
-            # Fallback
-            return "inline"
     
     # ============= Коллапсирование и финализация =============
     
@@ -368,8 +336,7 @@ class PlaceholderManager:
 
 # ============= Фабричные функции =============
 
-def create_placeholder_manager(comment_style_tuple: Tuple[str, Tuple[str, str]], 
-                             placeholder_style: str = "auto") -> PlaceholderManager:
+def create_placeholder_manager(comment_style_tuple: Tuple[str, Tuple[str, str]], placeholder_style: str) -> PlaceholderManager:
     """
     Создать PlaceholderManager из кортежа стиля комментариев.
     

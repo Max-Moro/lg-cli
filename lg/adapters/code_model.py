@@ -15,7 +15,7 @@ FunctionBodyStrip = Literal["none", "all", "public_only", "non_public", "large_o
 CommentPolicy = Literal["keep_all", "strip_all", "keep_doc", "keep_first_sentence"]
 ImportPolicy = Literal["keep_all", "strip_all", "strip_external", "strip_local"]
 LiteralPolicy = Literal["keep_all", "truncate", "collapse"]
-PlaceholderStyle = Literal["auto", "inline", "block", "none"]
+PlaceholderStyle = Literal["inline", "block", "none"]
 
 
 @dataclass
@@ -75,7 +75,7 @@ class BudgetConfig:
 class PlaceholderConfig:
     """Конфигурация плейсхолдеров для удаленного кода."""
     mode: Literal["summary", "none"] = "summary"
-    style: PlaceholderStyle = "auto"
+    style: PlaceholderStyle = "inline"
 
 
 @dataclass
@@ -164,7 +164,7 @@ class CodeCfg:
             pc = d["placeholders"]
             self.placeholders = PlaceholderConfig(
                 mode=pc.get("mode", "summary"),
-                style=pc.get("style", "auto")
+                style=pc.get("style", "inline")
             )
 
         if "budget" in d:
