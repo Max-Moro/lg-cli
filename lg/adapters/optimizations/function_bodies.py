@@ -5,7 +5,7 @@ Removes or minimizes function/method bodies based on configuration.
 
 from __future__ import annotations
 
-from typing import Optional
+from typing import Optional, cast
 
 from ..context import ProcessingContext
 from ..tree_sitter_support import Node
@@ -21,7 +21,8 @@ class FunctionBodyOptimizer:
         Args:
             adapter: Parent CodeAdapter instance for language-specific methods
         """
-        self.adapter = adapter
+        from ..code_base import CodeAdapter
+        self.adapter = cast(CodeAdapter, adapter)
     
     def apply(self, context: ProcessingContext) -> None:
         """

@@ -15,9 +15,5 @@ class JavaAdapter(CodeAdapter[CodeCfg]):
     name = "java"
     extensions = {".java"}
 
-    def get_comment_style(self) -> tuple[str, tuple[str, str]]:
-        """Java использует C-style комментарии."""
-        return "//", ("/*", "*/")
-
     def create_document(self, text: str, ext: str):
         raise NotImplementedError("Java adapter will be implemented in M7")

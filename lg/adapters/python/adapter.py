@@ -12,7 +12,7 @@ from tree_sitter import Language
 from ..code_base import CodeAdapter
 from ..code_model import CodeCfg
 from ..context import ProcessingContext, LightweightContext
-from ..optimizations import FieldsClassifier, ImportClassifier, ImportAnalyzer
+from ..optimizations import FieldsClassifier, ImportClassifier, ImportAnalyzer, CommentOptimizer
 from ..tree_sitter_support import TreeSitterDocument, Node
 
 
@@ -51,9 +51,6 @@ class PythonAdapter(CodeAdapter[PythonCfg]):
 
     name = "python"
     extensions = {".py"}
-
-    def get_comment_style(self) -> tuple[str, tuple[str, str]]:
-        return "#", ('"""', '"""')
 
     def create_document(self, text: str, ext: str) -> TreeSitterDocument:
         return PythonDocument(text, ext)
@@ -232,6 +229,15 @@ class PythonAdapter(CodeAdapter[PythonCfg]):
     # == ХУКИ, которые использует Python адаптер ==
 
     def hook__remove_function_body(self, *args, **kwargs) -> None:
-        """Хук для кастомизации удаления тел функций (fallback)."""
         from .function_bodies import remove_function_body_with_definition
         remove_function_body_with_definition(*args, **kwargs)
+
+    def get_comment_style(self) -> tuple[str, tuple[str, str]]:
+        return "#", ('"""', '"""')
+
+    def is_documentation_comment(self, comment_text: str) -> bool:
+        return False # Используется явный захват в `QUERIES["comments"]` — capture_name == "docstring"
+
+    def hook__extract_first_sentence(self, root_optimizer: CommentOptimizer, text: str) -> str:
+        from .comments import extract_first_sentence
+        return extract_first_sentence(text)

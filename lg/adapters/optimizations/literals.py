@@ -5,7 +5,7 @@ Processes and trims literal data (strings, arrays, objects).
 
 from __future__ import annotations
 
-from typing import Tuple, Optional
+from typing import Tuple, Optional, cast
 
 from ..code_model import LiteralConfig
 from ..context import ProcessingContext
@@ -22,7 +22,8 @@ class LiteralOptimizer:
         Args:
             adapter: Parent CodeAdapter instance for language-specific methods
         """
-        self.adapter = adapter
+        from ..code_base import CodeAdapter
+        self.adapter = cast(CodeAdapter, adapter)
     
     def apply(self, context: ProcessingContext) -> None:
         """

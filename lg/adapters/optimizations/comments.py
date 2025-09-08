@@ -5,7 +5,7 @@ Processes comments and docstrings according to policy.
 
 from __future__ import annotations
 
-from typing import Tuple
+from typing import Tuple, cast
 
 from ..code_model import CommentConfig
 from ..context import ProcessingContext
@@ -22,7 +22,8 @@ class CommentOptimizer:
         Args:
             adapter: Parent CodeAdapter instance for language-specific methods
         """
-        self.adapter = adapter
+        from ..code_base import CodeAdapter
+        self.adapter = cast(CodeAdapter, adapter)
     
     def apply(self, context: ProcessingContext) -> None:
         """
@@ -139,20 +140,18 @@ class CommentOptimizer:
                 else:
                     return False, ""
             elif policy == "keep_first_sentence":
-                # For docstrings, keep first sentence only
-                if capture_name == "docstring":
-                    first_sentence = self._extract_first_sentence(comment_text)
+                # For documentation comments (JSDoc, etc.), keep first sentence only
+                if capture_name == "docstring" or self.adapter.is_documentation_comment(comment_text):
+                    first_sentence = self.adapter.hook__extract_first_sentence(self, comment_text)
                     if first_sentence != comment_text:
                         return True, first_sentence
                     return False, ""
-                # Regular comments get removed
-                elif capture_name == "comment":
+                else:
+                    # Regular comments get removed with placeholder
                     placeholder = context.placeholder_gen.create_comment_placeholder(
                         capture_name, style=self.adapter.cfg.placeholders.style
                     )
                     return True, placeholder
-                else:
-                    return False, ""
         
         # Complex policy (CommentConfig object)
         elif hasattr(policy, 'policy'):
@@ -236,14 +235,15 @@ class CommentOptimizer:
                 return False, ""
         
         elif base_policy == "keep_first_sentence":
-            if capture_name == "docstring":
-                first_sentence = self._extract_first_sentence(comment_text)
+            if capture_name == "docstring" or self.adapter.is_documentation_comment(comment_text):
+                first_sentence = self.adapter.hook__extract_first_sentence(self, comment_text)
                 # Apply max_length to extracted sentence
                 if policy.max_length is not None and len(first_sentence) > policy.max_length:
                     first_sentence = first_sentence[:policy.max_length].rstrip() + "..."
                 if first_sentence != comment_text:
                     return True, first_sentence
-            elif capture_name == "comment":
+            else:
+                # Regular comments get removed with placeholder
                 placeholder = context.placeholder_gen.create_comment_placeholder(
                     capture_name, style=self.adapter.cfg.placeholders.style
                 )
@@ -252,31 +252,54 @@ class CommentOptimizer:
         return False, ""
 
     @staticmethod
-    def _extract_first_sentence(text: str) -> str:
+    def extract_first_sentence(text: str) -> str:
         """
         Extract the first sentence from comment text.
-        
+
         Args:
             text: Comment text to process
-            
+
         Returns:
             First sentence with appropriate punctuation
         """
-        # Remove quotes for Python docstrings
-        clean_text = text.strip('"\'')
-        
-        # Find first sentence (ends with . ! ?)
         import re
-        sentences = re.split(r'[.!?]+', clean_text)
-        if sentences and sentences[0].strip():
-            first = sentences[0].strip()
-            # Restore quotes if this is Python docstring
-            if text.startswith('"""') or text.startswith("'''"):
-                return f'"""{first}."""'
-            elif text.startswith('"') or text.startswith("'"):
-                quote = text[0]
-                return f'{quote}{first}.{quote}'
-            else:
+
+        # Handle JSDoc comments (/** ... */)
+        if text.strip().startswith('/**'):
+            # Extract content between /** and */
+            match = re.match(r'/\*\*\s*(.*?)\s*\*/', text, re.DOTALL)
+            if match:
+                content = match.group(1)
+                # Remove leading * from each line
+                lines = content.split('\n')
+                clean_lines = []
+                for line in lines:
+                    clean_line = re.sub(r'^\s*\*\s?', '', line)
+                    if clean_line.strip():
+                        clean_lines.append(clean_line)
+
+                if clean_lines:
+                    # Find first sentence in the cleaned content
+                    full_text = ' '.join(clean_lines)
+                    sentences = re.split(r'[.!?]+', full_text)
+                    if sentences and sentences[0].strip():
+                        first = sentences[0].strip()
+                        return f'/**\n * {first}.\n */'
+
+            return text  # Fallback if parsing fails
+
+        # Handle regular comments
+        else:
+            # Remove comment markers and find first sentence
+            clean_text = text.strip()
+            if clean_text.startswith('//'):
+                clean_text = clean_text[2:].strip()
+            elif clean_text.startswith('/*') and clean_text.endswith('*/'):
+                clean_text = clean_text[2:-2].strip()
+
+            sentences = re.split(r'[.!?]+', clean_text)
+            if sentences and sentences[0].strip():
+                first = sentences[0].strip()
                 return f"{first}."
-        
+
         return text  # Fallback to original text

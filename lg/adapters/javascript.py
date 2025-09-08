@@ -15,8 +15,5 @@ class JavaScriptAdapter(CodeAdapter[CodeCfg]):
     name = "javascript"
     extensions = {".js", ".jsx"}
 
-    def get_comment_style(self) -> tuple[str, tuple[str, str]]:
-        return "//", ("/*", "*/")
-
     def create_document(self, text: str, ext: str):
         raise NotImplementedError("JavaScript adapter will be implemented in M7")

@@ -33,15 +33,6 @@ class CodeAdapter(BaseAdapter[C], ABC):
     """
 
     @abstractmethod
-    def get_comment_style(self) -> Tuple[str, tuple[str, str]]:
-        """Cтиль комментариев для языка (однострочный, многострочный)."""
-        pass
-
-    def is_documentation_comment(self, comment_text: str) -> bool:
-        """Является ли этот комментарий частью системы документирования."""
-        return False
-
-    @abstractmethod
     def create_document(self, text: str, ext: str) -> TreeSitterDocument:
         """Create a parsed Tree-sitter document."""
         pass
@@ -157,3 +148,15 @@ class CodeAdapter(BaseAdapter[C], ABC):
     ) -> None:
         """Хук для кастомизации удаления тел функций."""
         root_optimizer.remove_function_body(context, body_node, func_type, placeholder_style)
+
+    def get_comment_style(self) -> Tuple[str, tuple[str, str]]:
+        """Cтиль комментариев для языка (однострочный, многострочный)."""
+        return "//", ("/*", "*/")
+
+    def is_documentation_comment(self, comment_text: str) -> bool:
+        """Является ли этот комментарий частью системы документирования."""
+        return comment_text.strip().startswith('/**')
+
+    def hook__extract_first_sentence(self, root_optimizer: CommentOptimizer, text: str) -> str:
+        """Хук для извлечения первого предложение из текста комментария."""
+        return root_optimizer.extract_first_sentence(text)

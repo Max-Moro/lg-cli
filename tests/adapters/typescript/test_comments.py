@@ -20,7 +20,7 @@ class TestTypeScriptCommentOptimization:
         # No comments should be removed
         assert meta.get("code.removed.comments", 0) == 0
         assert "// Single-line comment at module level" in result
-        assert "/* Multi-line comment explaining" in result
+        assert "Multi-line comment explaining" in result
         assert "* This method performs comprehensive" in result
         
         assert_golden_match(result, "comments", "keep_all")

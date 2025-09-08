@@ -59,13 +59,6 @@ class TypeScriptAdapter(CodeAdapter[TypeScriptCfg]):
     name = "typescript"
     extensions = {".ts", ".tsx"}
 
-    def get_comment_style(self) -> tuple[str, tuple[str, str]]:
-        return "//", ("/*", "*/")
-
-    def is_documentation_comment(self, comment_text: str) -> bool:
-        # JSDoc comments start with /** (not just /*)
-        return comment_text.strip().startswith('/**')
-
     def create_document(self, text: str, ext: str) -> TreeSitterDocument:
         return TypeScriptDocument(text, ext)
 

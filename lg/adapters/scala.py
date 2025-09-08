@@ -15,9 +15,5 @@ class ScalaAdapter(CodeAdapter[CodeCfg]):
     name = "scala"
     extensions = {".scala"}
 
-    def get_comment_style(self) -> tuple[str, tuple[str, str]]:
-        """Scala использует C-style комментарии."""
-        return "//", ("/*", "*/")
-
     def create_document(self, text: str, ext: str):
         raise NotImplementedError("Scala adapter will be implemented in M7")

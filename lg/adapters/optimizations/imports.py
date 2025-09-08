@@ -8,7 +8,7 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, cast
 
 from ..context import ProcessingContext
 from ..tree_sitter_support import TreeSitterDocument, Node
@@ -105,7 +105,8 @@ class ImportOptimizer:
         Args:
             adapter: Parent CodeAdapter instance for language-specific methods
         """
-        self.adapter = adapter
+        from ..code_base import CodeAdapter
+        self.adapter = cast(CodeAdapter, adapter)
     
     def apply(self, context: ProcessingContext) -> None:
         """

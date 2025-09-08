@@ -5,6 +5,8 @@ Filters code to show only public/exported elements.
 
 from __future__ import annotations
 
+from typing import cast
+
 from ..context import ProcessingContext
 
 
@@ -18,7 +20,8 @@ class PublicApiOptimizer:
         Args:
             adapter: Parent CodeAdapter instance for language-specific methods
         """
-        self.adapter = adapter
+        from ..code_base import CodeAdapter
+        self.adapter = cast(CodeAdapter, adapter)
     
     def apply(self, context: ProcessingContext) -> None:
         """

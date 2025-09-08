@@ -15,9 +15,5 @@ class CppAdapter(CodeAdapter[CodeCfg]):
     name = "cpp"
     extensions = {".cpp", ".cxx", ".cc", ".c", ".h", ".hpp", ".hxx"}
 
-    def get_comment_style(self) -> tuple[str, tuple[str, str]]:
-        """C/C++ использует C-style комментарии."""
-        return "//", ("/*", "*/")
-
     def create_document(self, text: str, ext: str):
         raise NotImplementedError("C/C++ adapter will be implemented in M7")
