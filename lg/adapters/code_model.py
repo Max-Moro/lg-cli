@@ -13,7 +13,7 @@ from typing import Dict, List, Optional, Literal, Union, Any
 VisibilityLevel = Literal["public", "protected", "private", "internal", "exported"]
 FunctionBodyStrip = Literal["none", "all", "public_only", "non_public", "large_only"]
 CommentPolicy = Literal["keep_all", "strip_all", "keep_doc", "keep_first_sentence"]
-ImportPolicy = Literal["keep_all", "external_only", "summarize_long"]
+ImportPolicy = Literal["keep_all", "strip_all", "strip_external", "strip_local"]
 LiteralPolicy = Literal["keep_all", "truncate", "collapse"]
 PlaceholderStyle = Literal["auto", "inline", "block", "none"]
 
@@ -40,6 +40,7 @@ class CommentConfig:
 class ImportConfig:
     """Конфигурация обработки импортов."""
     policy: ImportPolicy = "keep_all"
+    summarize_long: bool = False  # включить суммаризацию длинных списков импортов
     max_items_before_summary: int = 10  # количество импортов, после которого включается суммаризация
     external_only_patterns: List[str] = field(default_factory=list)  # regex для определения внешних пакетов
 
@@ -147,6 +148,7 @@ class CodeCfg:
             ic = d["imports"]
             self.imports = ImportConfig(
                 policy=ic.get("policy", "keep_all"),
+                summarize_long=bool(ic.get("summarize_long", False)),
                 max_items_before_summary=int(ic.get("max_items_before_summary", 10)),
                 external_only_patterns=list(ic.get("external_only_patterns", []))
             )

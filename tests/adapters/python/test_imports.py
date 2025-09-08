@@ -128,9 +128,9 @@ class TestPythonImportOptimization:
         
         assert_golden_match(result, "imports", "keep_all")
     
-    def test_external_only_imports(self, do_imports):
-        """Test keeping only external imports."""
-        import_config = ImportConfig(policy="external_only")
+    def test_strip_local_imports(self, do_imports):
+        """Test stripping local imports (keeping external)."""
+        import_config = ImportConfig(policy="strip_local")
         
         adapter = PythonAdapter()
         adapter._cfg = PythonCfg(imports=import_config)
@@ -147,12 +147,53 @@ class TestPythonImportOptimization:
         # Local imports should be removed or replaced with placeholders
         assert "from .utils import helper_function" not in result or "# … " in result
         
-        assert_golden_match(result, "imports", "external_only")
+        assert_golden_match(result, "imports", "strip_local")
+    
+    def test_strip_external_imports(self, do_imports):
+        """Test stripping external imports (keeping local)."""
+        import_config = ImportConfig(policy="strip_external")
+        
+        adapter = PythonAdapter()
+        adapter._cfg = PythonCfg(imports=import_config)
+        
+        result, meta = adapter.process(lctx_py(do_imports))
+        
+        # External imports should be removed
+        assert meta.get("code.removed.imports", 0) > 0
+        
+        # Local imports should be preserved
+        assert "from .utils import helper_function" in result
+        assert "from .models import User, Post, Comment" in result
+        
+        # External imports should be removed or replaced with placeholders
+        assert ("import os" not in result or "# … " in result) and ("import numpy as np" not in result or "# … " in result)
+        
+        assert_golden_match(result, "imports", "strip_external")
+    
+    def test_strip_all_imports(self, do_imports):
+        """Test stripping all imports."""
+        import_config = ImportConfig(policy="strip_all")
+        
+        adapter = PythonAdapter()
+        adapter._cfg = PythonCfg(imports=import_config)
+        
+        result, meta = adapter.process(lctx_py(do_imports))
+        
+        # All imports should be removed
+        assert meta.get("code.removed.imports", 0) > 0
+        
+        # No imports should remain (except possibly placeholders)
+        lines = [line.strip() for line in result.split('\n') if line.strip()]
+        import_lines = [line for line in lines if line.startswith(('import ', 'from ')) and '# … ' not in line]
+        assert len(import_lines) == 0 or all('# … ' in line for line in import_lines)
+        
+        assert_golden_match(result, "imports", "strip_all")
     
     def test_summarize_long_imports(self, do_imports):
         """Test summarizing long import lists."""
         import_config = ImportConfig(
-            policy="summarize_long",
+            policy="keep_all",
+            summarize_long=True,
             max_items_before_summary=5  # Low threshold to trigger summarization
         )
         
@@ -176,7 +217,7 @@ from .local import function  # Relative import
 '''
         
         import_config = ImportConfig(
-            policy="external_only",
+            policy="strip_local",
             external_only_patterns=["^mycompany\..*"]
         )
         
@@ -201,7 +242,8 @@ from collections import defaultdict, Counter, deque
 '''
         
         import_config = ImportConfig(
-            policy="summarize_long",
+            policy="keep_all",
+            summarize_long=True,
             max_items_before_summary=3
         )
         
@@ -226,7 +268,7 @@ if TYPE_CHECKING:
     from typing import Optional
 '''
         
-        import_config = ImportConfig(policy="external_only")
+        import_config = ImportConfig(policy="strip_local")
         
         adapter = PythonAdapter()
         adapter._cfg = PythonCfg(imports=import_config)
@@ -249,7 +291,7 @@ from .utils import *
 from typing import *
 '''
         
-        import_config = ImportConfig(policy="external_only")
+        import_config = ImportConfig(policy="strip_local")
         
         adapter = PythonAdapter()
         adapter._cfg = PythonCfg(imports=import_config)
@@ -271,7 +313,7 @@ from sklearn.model_selection import train_test_split as tts
 from .helpers import process_data as process
 '''
         
-        import_config = ImportConfig(policy="external_only")
+        import_config = ImportConfig(policy="strip_local")
         
         adapter = PythonAdapter()
         adapter._cfg = PythonCfg(imports=import_config)
@@ -292,7 +334,7 @@ from local.project.deeply.nested import utility
 import external.library.with.deep.structure
 '''
         
-        import_config = ImportConfig(policy="external_only")
+        import_config = ImportConfig(policy="strip_local")
         
         adapter = PythonAdapter()
         adapter._cfg = PythonCfg(imports=import_config)
@@ -321,7 +363,8 @@ from rest_framework.decorators import (
 '''
         
         import_config = ImportConfig(
-            policy="summarize_long",
+            policy="keep_all",
+            summarize_long=True,
             max_items_before_summary=3
         )
         
@@ -337,3 +380,35 @@ from rest_framework.decorators import (
         # Short imports should be preserved
         assert "import os" in result
         assert "import sys" in result
+    
+    def test_strip_local_with_summarize_long(self):
+        """Test combining strip_local policy with summarize_long option."""
+        code = '''import os
+import sys
+from collections import defaultdict, Counter, deque, OrderedDict, ChainMap
+from .utils import func1, func2, func3, func4, func5, func6
+from .models import Model1, Model2, Model3
+'''
+        
+        import_config = ImportConfig(
+            policy="strip_local",
+            summarize_long=True,
+            max_items_before_summary=3
+        )
+        
+        adapter = PythonAdapter()
+        adapter._cfg = PythonCfg(imports=import_config)
+        
+        result, meta = adapter.process(lctx_py(code))
+        
+        # Local imports should be stripped regardless of length
+        assert "from .utils import" not in result or "# … " in result
+        assert "from .models import" not in result or "# … " in result
+        
+        # External imports should remain but long ones should be summarized
+        assert "import os" in result
+        assert "import sys" in result
+        # Long external import should be summarized
+        collections_line = [line for line in result.split('\n') if 'collections' in line]
+        if collections_line:
+            assert "# … " in collections_line[0] or len(collections_line[0].split(',')) <= 3

@@ -120,8 +120,8 @@ class ImportOptimizer:
         """
         config = self.adapter.cfg.imports
         
-        # If policy is keep_all, nothing to do
-        if config.policy == "keep_all":
+        # If policy is keep_all, nothing to do (except maybe summarize_long)
+        if config.policy == "keep_all" and not config.summarize_long:
             return
         
         # Get language-specific analyzer
@@ -137,12 +137,31 @@ class ImportOptimizer:
         grouped = analyzer.group_imports(imports)
         
         # Apply policy-specific processing
-        if config.policy == "external_only":
-            self._process_external_only(grouped["local"], context)
-        elif config.policy == "summarize_long":
-            self._process_summarize_long(imports, context)
+        if config.policy == "strip_all":
+            self._process_strip_all(imports, context)
+        elif config.policy == "strip_external":
+            self._process_strip_external(grouped["external"], context)
+        elif config.policy == "strip_local":
+            self._process_strip_local(grouped["local"], context)
+        
+        # Apply summarize_long if enabled (works in addition to policies)
+        if config.summarize_long:
+            # Re-analyze remaining imports after policy processing
+            remaining_imports = analyzer.analyze_imports(context.doc)
+            if remaining_imports:
+                self._process_summarize_long(remaining_imports, context)
     
-    def _process_external_only(self, local_imports: List[ImportInfo], context: ProcessingContext) -> None:
+    def _process_strip_all(self, imports: List[ImportInfo], context: ProcessingContext) -> None:
+        """Remove all imports."""
+        for imp in imports:
+            self._remove_import(context, imp, "import")
+    
+    def _process_strip_external(self, external_imports: List[ImportInfo], context: ProcessingContext) -> None:
+        """Remove external imports, keeping only local ones."""
+        for imp in external_imports:
+            self._remove_import(context, imp, "external_import")
+    
+    def _process_strip_local(self, local_imports: List[ImportInfo], context: ProcessingContext) -> None:
         """Remove local imports, keeping only external ones."""
         for imp in local_imports:
             self._remove_import(context, imp, "local_import")

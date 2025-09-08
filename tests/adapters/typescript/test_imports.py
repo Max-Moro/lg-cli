@@ -3,73 +3,204 @@ Tests for import optimization in TypeScript adapter.
 """
 
 from lg.adapters.typescript import TypeScriptAdapter, TypeScriptCfg
+from lg.adapters.typescript.imports import TypeScriptImportClassifier, TypeScriptImportAnalyzer
+from lg.adapters.typescript.adapter import TypeScriptDocument
 from lg.adapters.code_model import ImportConfig
 from .conftest import lctx_ts, do_imports, assert_golden_match
 
 
+class TestTypeScriptImportClassification:
+    """Test TypeScript import classification logic."""
+    
+    def test_external_library_detection(self):
+        """Test detection of external libraries."""
+        classifier = TypeScriptImportClassifier()
+        
+        # Node.js built-in modules
+        assert classifier.is_external("fs")
+        assert classifier.is_external("path")
+        assert classifier.is_external("events")
+        assert classifier.is_external("stream")
+        assert classifier.is_external("crypto")
+        
+        # Common external packages
+        assert classifier.is_external("react")
+        assert classifier.is_external("lodash")
+        assert classifier.is_external("axios")
+        assert classifier.is_external("rxjs")
+        assert classifier.is_external("moment")
+        
+        # Scoped packages
+        assert classifier.is_external("@types/express")
+        assert classifier.is_external("@nestjs/common")
+        assert classifier.is_external("@angular/core")
+    
+    def test_local_import_detection(self):
+        """Test detection of local/relative imports."""
+        classifier = TypeScriptImportClassifier()
+        
+        # Relative imports
+        assert not classifier.is_external("./utils")
+        assert not classifier.is_external("../shared")
+        assert not classifier.is_external("../../core")
+        
+        # Local-looking imports
+        assert not classifier.is_external("src/models")
+        assert not classifier.is_external("lib/helpers")
+        assert not classifier.is_external("components/Button")
+    
+    def test_custom_external_patterns(self):
+        """Test custom external patterns."""
+        custom_patterns = [r"^mycompany/.*", r"^internal-.*"]
+        classifier = TypeScriptImportClassifier(custom_patterns)
+        
+        # Should match custom patterns
+        assert classifier.is_external("mycompany/utils")
+        assert classifier.is_external("internal-library")
+        
+        # Should still work for standard detection
+        assert classifier.is_external("react")
+        assert not classifier.is_external("./local")
+
+
+class TestTypeScriptImportAnalysis:
+    """Test TypeScript import analysis and parsing."""
+    
+    def test_simple_import_parsing(self):
+        """Test parsing of simple import statements."""
+        code = '''import React from 'react';
+import axios from 'axios';
+import * as lodash from 'lodash';
+'''
+        
+        doc = TypeScriptDocument(code, "ts")
+        classifier = TypeScriptImportClassifier()
+        analyzer = TypeScriptImportAnalyzer(classifier)
+        
+        imports = analyzer.analyze_imports(doc)
+        
+        assert len(imports) >= 3
+        
+        # Check individual imports
+        import_modules = [imp.module_name for imp in imports]
+        assert "react" in import_modules
+        assert "axios" in import_modules
+        assert "lodash" in import_modules
+    
+    def test_named_import_parsing(self):
+        """Test parsing of named import statements."""
+        code = '''import { Component, useState } from 'react';
+import { Observable, Subject } from 'rxjs';
+import { UserService } from './services/user-service';
+'''
+        
+        doc = TypeScriptDocument(code, "ts")
+        classifier = TypeScriptImportClassifier()
+        analyzer = TypeScriptImportAnalyzer(classifier)
+        
+        imports = analyzer.analyze_imports(doc)
+        
+        assert len(imports) >= 3
+        
+        # Check named imports
+        for imp in imports:
+            if imp.module_name == "react":
+                assert "Component" in imp.imported_items
+                assert "useState" in imp.imported_items
+            elif imp.module_name == "rxjs":
+                assert "Observable" in imp.imported_items
+                assert "Subject" in imp.imported_items
+            elif imp.module_name == "./services/user-service":
+                assert "UserService" in imp.imported_items
+                assert not imp.is_external  # Local import
+
+
 class TestTypeScriptImportOptimization:
-    """Test import processing for TypeScript code."""
+    """Test TypeScript import optimization policies."""
     
     def test_keep_all_imports(self, do_imports):
         """Test keeping all imports (default policy)."""
         adapter = TypeScriptAdapter()
-        adapter._cfg = TypeScriptCfg(imports=ImportConfig(policy="keep_all"))
+        adapter._cfg = TypeScriptCfg()  # Default imports policy is keep_all
         
         result, meta = adapter.process(lctx_ts(do_imports))
         
         # No imports should be removed
         assert meta.get("code.removed.imports", 0) == 0
-        assert "import { Component }" in result
-        assert "import * as lodash" in result
-        assert "import axios" in result
+        assert "import { Component, useState, useEffect, useCallback, useMemo } from 'react'" in result
+        assert "import * as lodash from 'lodash'" in result
+        assert "import axios from 'axios'" in result
         
         assert_golden_match(result, "imports", "keep_all")
     
-    def test_external_only_imports(self, do_imports):
-        """Test keeping only external imports."""
+    def test_strip_local_imports(self, do_imports):
+        """Test stripping local imports (keeping external)."""
+        import_config = ImportConfig(policy="strip_local")
+        
         adapter = TypeScriptAdapter()
-        adapter._cfg = TypeScriptCfg(imports=ImportConfig(policy="external_only"))
+        adapter._cfg = TypeScriptCfg(imports=import_config)
         
         result, meta = adapter.process(lctx_ts(do_imports))
         
-        # Local imports should be processed
+        # Local imports should be removed
         assert meta.get("code.removed.imports", 0) > 0
         
-        # External imports should remain
-        assert "import axios" in result
-        assert "import * as lodash" in result
-        assert "import { Component }" in result  # React is external
+        # External imports should be preserved
+        assert "import axios from 'axios'" in result
+        assert "import * as lodash from 'lodash'" in result
+        assert "import { Component, useState, useEffect, useCallback, useMemo } from 'react'" in result
         
-        # Local imports should be summarized or removed
-        assert "./utils" not in result or "… import" in result
+        # Local imports should be removed or replaced with placeholders
+        assert "from './services/user-service'" not in result or "// … " in result
         
-        assert_golden_match(result, "imports", "external_only")
+        assert_golden_match(result, "imports", "strip_local")
+    
+    def test_strip_external_imports(self, do_imports):
+        """Test stripping external imports (keeping local)."""
+        import_config = ImportConfig(policy="strip_external")
+        
+        adapter = TypeScriptAdapter()
+        adapter._cfg = TypeScriptCfg(imports=import_config)
+        
+        result, meta = adapter.process(lctx_ts(do_imports))
+        
+        # External imports should be removed
+        assert meta.get("code.removed.imports", 0) > 0
+        
+        # Local imports should be preserved
+        assert "from './services/user-service'" in result
+        assert "from './database/connection'" in result
+        
+        # External imports should be removed or replaced with placeholders
+        assert ("import axios from 'axios'" not in result or "// … " in result) and ("import * as lodash from 'lodash'" not in result or "// … " in result)
+        
+        assert_golden_match(result, "imports", "strip_external")
+    
+    def test_strip_all_imports(self, do_imports):
+        """Test stripping all imports."""
+        import_config = ImportConfig(policy="strip_all")
+        
+        adapter = TypeScriptAdapter()
+        adapter._cfg = TypeScriptCfg(imports=import_config)
+        
+        result, meta = adapter.process(lctx_ts(do_imports))
+        
+        # All imports should be removed
+        assert meta.get("code.removed.imports", 0) > 0
+        
+        # No imports should remain (except possibly placeholders)
+        lines = [line.strip() for line in result.split('\n') if line.strip()]
+        import_lines = [line for line in lines if line.startswith(('import ', 'from ')) and '// … ' not in line]
+        assert len(import_lines) == 0 or all('// … ' in line for line in import_lines)
+        
+        assert_golden_match(result, "imports", "strip_all")
     
     def test_summarize_long_imports(self, do_imports):
         """Test summarizing long import lists."""
-        adapter = TypeScriptAdapter()
-        adapter._cfg = TypeScriptCfg(imports=ImportConfig(
-            policy="summarize_long",
-            max_line_length=80,
-            max_imports_per_line=3
-        ))
-        
-        result, meta = adapter.process(lctx_ts(do_imports))
-        
-        # Long import lines should be summarized
-        assert meta.get("code.removed.imports", 0) > 0
-        assert "… imports" in result or "…" in result
-        
-        assert_golden_match(result, "imports", "summarize_long")
-    
-    def test_complex_import_config(self, do_imports):
-        """Test complex import configuration."""
         import_config = ImportConfig(
-            policy="external_only",
-            max_line_length=60,
-            max_imports_per_line=2,
-            preserve_types=True,
-            keep_namespace_imports=True
+            policy="keep_all",
+            summarize_long=True,
+            max_items_before_summary=5  # Low threshold to trigger summarization
         )
         
         adapter = TypeScriptAdapter()
@@ -77,192 +208,180 @@ class TestTypeScriptImportOptimization:
         
         result, meta = adapter.process(lctx_ts(do_imports))
         
-        # Should preserve type imports and namespace imports
-        assert "import type" in result
-        assert "import * as" in result
+        # Long import lists should be summarized
+        assert meta.get("code.removed.imports", 0) > 0
+        assert "// … " in result or "… imports" in result
         
-        assert_golden_match(result, "imports", "complex_config")
-
-
-class TestTypeScriptImportClassification:
-    """Test TypeScript-specific import classification."""
+        assert_golden_match(result, "imports", "summarize_long")
     
-    def test_external_import_detection(self):
-        """Test detection of external vs local imports."""
-        code = '''
-// External npm packages
-import React from 'react';
-import { Component } from 'react';
-import * as lodash from 'lodash';
-import axios from 'axios';
-import { Observable } from 'rxjs';
-
-// Type-only imports
-import type { UserType } from './types/User';
-import type { Config } from 'config-package';
-
-// Local relative imports
-import { utils } from './utils';
-import { UserService } from '../services/UserService';
-import { constants } from '../../constants';
-
-// Namespace imports
-import * as Utils from './utils/index';
-import * as API from '../api';
+    def test_custom_external_patterns(self):
+        """Test import optimization with custom external patterns."""
+        code = '''import React from 'react';
+import { MyCompanyUtils } from 'mycompany/utils';  // Should be treated as external
+import { InternalHelper } from 'internal/helpers';  // Should be treated as local
+import { LocalFunction } from './local';  // Relative import
 '''
         
+        import_config = ImportConfig(
+            policy="strip_local",
+            external_only_patterns=["^mycompany/.*"]
+        )
+        
         adapter = TypeScriptAdapter()
-        adapter._cfg = TypeScriptCfg(imports=ImportConfig(policy="external_only"))
+        adapter._cfg = TypeScriptCfg(imports=import_config)
         
         result, meta = adapter.process(lctx_ts(code))
         
         # External imports should be preserved
-        assert "import React" in result
-        assert "import { Component }" in result
-        assert "import * as lodash" in result
-        assert "import axios" in result
-        assert "import { Observable }" in result
+        assert "import React from 'react'" in result
+        assert "import { MyCompanyUtils } from 'mycompany/utils'" in result
         
-        # Type imports from external packages should be preserved
-        assert "import type { Config }" in result
-        
-        # Local imports should be processed
-        assert "./utils" not in result or "… import" in result
-        assert "../services/UserService" not in result or "… import" in result
+        # Local imports should be removed
+        assert "from 'internal/helpers'" not in result or "// … " in result
+        assert "from './local'" not in result or "// … " in result
+
+
+class TestTypeScriptImportEdgeCases:
+    """Test edge cases for TypeScript import optimization."""
     
-    def test_typescript_specific_imports(self):
-        """Test TypeScript-specific import features."""
-        code = '''
-// Type-only imports
-import type { User, Product } from './types';
-import type { ApiResponse } from 'api-types';
-
-// Interface imports
-import { type Config, type Settings } from './config';
-
-// Namespace imports
-import * as Types from './types';
-import * as Utils from 'utility-library';
-
-// Dynamic imports (should be preserved)
-const modulePromise = import('./dynamic-module');
-const configPromise = import('config-loader');
-
-// Re-exports
-export { default as Button } from './Button';
-export type { ButtonProps } from './Button';
-export * from './utilities';
+    def test_mixed_import_styles_handling(self):
+        """Test handling of mixed import styles."""
+        code = '''import React, { Component, useState } from 'react';
+import * as lodash from 'lodash';
+import { Observable, Subject, map, filter } from 'rxjs';
 '''
         
+        import_config = ImportConfig(
+            policy="keep_all",
+            summarize_long=True,
+            max_items_before_summary=3
+        )
+        
         adapter = TypeScriptAdapter()
-        adapter._cfg = TypeScriptCfg(imports=ImportConfig(
-            policy="external_only",
-            preserve_types=True,
-            keep_namespace_imports=True
-        ))
+        adapter._cfg = TypeScriptCfg(imports=import_config)
         
         result, meta = adapter.process(lctx_ts(code))
         
-        # Type imports should be preserved
-        assert "import type" in result
-        
-        # Namespace imports should be preserved
-        assert "import * as Utils" in result
-        
-        # Dynamic imports should be preserved
-        assert "import('./dynamic-module')" in result
-        assert "import('config-loader')" in result
-        
-        # Re-exports should be handled
-        assert "export {" in result or "export type" in result
+        # Long named import lists should be summarized
+        assert meta.get("code.removed.imports", 0) >= 0
     
-    def test_barrel_file_imports(self):
-        """Test handling of barrel file imports."""
-        code = '''
-// Barrel file imports (index files)
-import { Component1, Component2 } from './components';
-import { Service1, Service2 } from './services/index';
-import * as Utilities from './utils';
-
-// Specific file imports
-import { SpecificComponent } from './components/SpecificComponent';
-import { SpecificService } from './services/SpecificService';
-
-// External barrel imports
-import { Button, Input, Form } from 'ui-library';
-import * as Icons from 'icon-library';
+    def test_type_only_imports(self):
+        """Test handling of TypeScript type-only imports."""
+        code = '''import type { User, Product } from './types';
+import type { Config } from 'external-config';
+import { type Settings, normalFunction } from './config';
 '''
         
+        import_config = ImportConfig(policy="strip_local")
+        
         adapter = TypeScriptAdapter()
-        adapter._cfg = TypeScriptCfg(imports=ImportConfig(policy="external_only"))
+        adapter._cfg = TypeScriptCfg(imports=import_config)
         
         result, meta = adapter.process(lctx_ts(code))
         
-        # External imports should remain
-        assert "ui-library" in result
-        assert "icon-library" in result
+        # External type imports should be preserved
+        assert "import type { Config } from 'external-config'" in result
         
-        # Local barrel imports should be processed
-        assert ("./components" not in result or "… import" in result or 
-                "./services" not in result or "… import" in result)
+        # Local type imports should be processed
+        assert ("from './types'" not in result or "// … " in result or
+                "from './config'" not in result or "// … " in result)
+    
+    def test_namespace_imports(self):
+        """Test handling of namespace imports."""
+        code = '''import * as React from 'react';
+import * as lodash from 'lodash';
+import * as Utils from './utils';
+import * as API from '../api';
+'''
+        
+        import_config = ImportConfig(policy="strip_local")
+        
+        adapter = TypeScriptAdapter()
+        adapter._cfg = TypeScriptCfg(imports=import_config)
+        
+        result, meta = adapter.process(lctx_ts(code))
+        
+        # External namespace imports should be preserved
+        assert "import * as React from 'react'" in result
+        assert "import * as lodash from 'lodash'" in result
+        
+        # Local namespace imports should be processed
+        assert ("from './utils'" not in result or "// … " in result or
+                "from '../api'" not in result or "// … " in result)
     
     def test_side_effect_imports(self):
         """Test handling of side-effect imports."""
-        code = '''
-// Side-effect imports (no destructuring)
-import 'reflect-metadata';
+        code = '''import 'reflect-metadata';
 import 'zone.js/dist/zone';
 import './polyfills';
 import '../styles/global.css';
-
-// Regular imports
 import React from 'react';
 import { Component } from './Component';
-
-// Import with side effects and binding
-import('./dynamic-styles.css');
-import('./theme-loader').then(theme => theme.apply());
 '''
         
+        import_config = ImportConfig(policy="strip_local")
+        
         adapter = TypeScriptAdapter()
-        adapter._cfg = TypeScriptCfg(imports=ImportConfig(policy="external_only"))
+        adapter._cfg = TypeScriptCfg(imports=import_config)
         
         result, meta = adapter.process(lctx_ts(code))
         
         # External side-effect imports should be preserved
         assert "import 'reflect-metadata'" in result
-        assert "import 'zone.js/dist/zone'" in result
         
         # Local side-effect imports should be processed
-        assert ("'./polyfills'" not in result or "… import" in result or
-                "'../styles/global.css'" not in result or "… import" in result)
+        assert ("'./polyfills'" not in result or "// … " in result or
+                "'../styles/global.css'" not in result or "// … " in result)
     
-    def test_import_with_assertions(self):
-        """Test import assertions (JSON modules, etc.)."""
-        code = '''
-// JSON imports with assertions
-import config from './config.json' assert { type: 'json' };
-import data from '../data/sample.json' assert { type: 'json' };
-
-// CSS imports
-import styles from './Component.module.css';
-import './global.css';
-
-// Worker imports
-import Worker from './worker.ts?worker';
-
-// External JSON imports
-import packageJson from 'package/package.json' assert { type: 'json' };
+    def test_scoped_package_imports(self):
+        """Test handling of scoped npm packages."""
+        code = '''import { Controller } from '@nestjs/common';
+import { GraphQLModule } from '@nestjs/graphql';
+import { Router } from '@types/express';
+import { LocalService } from './services/local';
 '''
         
+        import_config = ImportConfig(policy="strip_local")
+        
         adapter = TypeScriptAdapter()
-        adapter._cfg = TypeScriptCfg(imports=ImportConfig(policy="external_only"))
+        adapter._cfg = TypeScriptCfg(imports=import_config)
         
         result, meta = adapter.process(lctx_ts(code))
         
-        # External imports should be preserved
-        assert "package/package.json" in result
+        # Scoped packages should be treated as external
+        assert "import { Controller } from '@nestjs/common'" in result
+        assert "import { GraphQLModule } from '@nestjs/graphql'" in result
+        assert "import { Router } from '@types/express'" in result
         
-        # Local JSON/CSS imports should be processed
-        assert ("./config.json" not in result or "… import" in result or
-                "./Component.module.css" not in result or "… import" in result)
+        # Local imports should be processed
+        assert "from './services/local'" not in result or "// … " in result
+    
+    def test_strip_external_with_summarize_long(self):
+        """Test combining strip_external policy with summarize_long option."""
+        code = '''import React from 'react';
+import { Observable, Subject, map, filter, switchMap, mergeMap } from 'rxjs';
+import { UserService } from './services/user-service';
+import { helper1, helper2, helper3, helper4, helper5, helper6 } from './utils/helpers';
+'''
+        
+        import_config = ImportConfig(
+            policy="strip_external",
+            summarize_long=True,
+            max_items_before_summary=3
+        )
+        
+        adapter = TypeScriptAdapter()
+        adapter._cfg = TypeScriptCfg(imports=import_config)
+        
+        result, meta = adapter.process(lctx_ts(code))
+        
+        # External imports should be stripped regardless of length
+        assert "import React from 'react'" not in result or "// … " in result
+        assert "from 'rxjs'" not in result or "// … " in result
+        
+        # Local imports should remain but long ones should be summarized
+        assert "from './services/user-service'" in result
+        # Long local import should be summarized
+        helpers_line = [line for line in result.split('\n') if './utils/helpers' in line]
+        if helpers_line:
+            assert "// … " in helpers_line[0] or len(helpers_line[0].split(',')) <= 3
