@@ -131,9 +131,9 @@ class FunctionBodyOptimizer:
             placeholder_prefix=placeholder_prefix
         )
         if func_type == "method":
-            context.metrics.mark_function_removed()
-        else:
             context.metrics.mark_method_removed()
+        else:
+            context.metrics.mark_function_removed()
 
     @staticmethod
     def is_method(function_body_node: Node) -> bool:

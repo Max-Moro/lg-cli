@@ -91,12 +91,12 @@ class CodeAdapter(BaseAdapter[C], ABC):
         # Применяем оптимизации
         self._apply_optimizations(context)
 
-        # Применяем все изменения
-        result_text, edit_stats = context.editor.apply_edits()
-
-        # Получаем финальные метрики
+        # Финализируем плейсхолдеры (добавляем их в редактор)
         final_metrics = context.finalize()
         
+        # Применяем все изменения, включая плейсхолдеры
+        result_text, edit_stats = context.editor.apply_edits()
+
         # Объединяем статистики из редактора и контекста
         final_metrics.update(edit_stats)
         final_metrics["_adapter"] = self.name
