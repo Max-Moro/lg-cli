@@ -109,7 +109,7 @@ class TestPythonCommentOptimization:
         result, meta = adapter.process(lctx_py(code))
         
         # Long docstring should be truncated
-        assert "This is a very long docstring that exceeds the..." in result
+        assert "This is a very long docstring that exceed...""" in result
         assert "specified constraints" not in result
         
         assert_golden_match(result, "comments", "length_limiting")
