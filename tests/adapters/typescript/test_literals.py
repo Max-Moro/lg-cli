@@ -22,7 +22,7 @@ class TestTypeScriptLiteralOptimization:
         result, meta = adapter.process(lctx_ts(do_literals))
         
         # Long strings should be trimmed
-        assert meta.get("code.removed.literal_data", 0) > 0
+        assert meta.get("code.removed.literals", 0) > 0
         assert "… string trimmed" in result or "…" in result
         
         assert_golden_match(result, "literals", "string_trimming")
@@ -39,7 +39,7 @@ class TestTypeScriptLiteralOptimization:
         result, meta = adapter.process(lctx_ts(do_literals))
         
         # Large arrays should be trimmed
-        assert meta.get("code.removed.literal_data", 0) > 0
+        assert meta.get("code.removed.literals", 0) > 0
         assert "… array trimmed" in result or "…" in result
         
         assert_golden_match(result, "literals", "array_limiting")
@@ -56,7 +56,7 @@ class TestTypeScriptLiteralOptimization:
         result, meta = adapter.process(lctx_ts(do_literals))
         
         # Large objects should be trimmed
-        assert meta.get("code.removed.literal_data", 0) > 0
+        assert meta.get("code.removed.literals", 0) > 0
         assert "… object trimmed" in result or "…" in result
         
         assert_golden_match(result, "literals", "object_limiting")
@@ -73,7 +73,7 @@ class TestTypeScriptLiteralOptimization:
         result, meta = adapter.process(lctx_ts(do_literals))
         
         # Long multiline literals should be trimmed
-        assert meta.get("code.removed.literal_data", 0) > 0
+        assert meta.get("code.removed.literals", 0) > 0
         
         assert_golden_match(result, "literals", "multiline_limiting")
     
@@ -89,7 +89,7 @@ class TestTypeScriptLiteralOptimization:
         result, meta = adapter.process(lctx_ts(do_literals))
         
         # Large literals should be collapsed
-        assert meta.get("code.removed.literal_data", 0) > 0
+        assert meta.get("code.removed.literals", 0) > 0
         
         assert_golden_match(result, "literals", "collapse_threshold")
     
@@ -109,7 +109,7 @@ class TestTypeScriptLiteralOptimization:
         result, meta = adapter.process(lctx_ts(do_literals))
         
         # Multiple types of literals should be optimized
-        assert meta.get("code.removed.literal_data", 0) > 0
+        assert meta.get("code.removed.literals", 0) > 0
         
         assert_golden_match(result, "literals", "combined_limits")
 
@@ -150,7 +150,7 @@ const complexTemplate = `
         result, meta = adapter.process(lctx_ts(code))
         
         # Long template literals should be trimmed
-        assert meta.get("code.removed.literal_data", 0) > 0
+        assert meta.get("code.removed.literals", 0) > 0
         assert "shortTemplate" in result  # Short ones should remain
     
     def test_regex_literals(self):
@@ -234,7 +234,7 @@ const apiResponse = {
         result, meta = adapter.process(lctx_ts(code))
         
         # Complex nested structures should be trimmed
-        assert meta.get("code.removed.literal_data", 0) > 0
+        assert meta.get("code.removed.literals", 0) > 0
     
     def test_type_annotations_with_literals(self):
         """Test literals in type annotations and interfaces."""
