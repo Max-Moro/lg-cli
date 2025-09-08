@@ -199,7 +199,7 @@ class CommentOptimizer:
                     # Check max_length for preserved comments
                     if policy.max_length is not None and len(comment_text) > policy.max_length:
                         # Truncate comment with proper closing
-                        truncated = self._smart_truncate_comment(comment_text, policy.max_length)
+                        truncated = self.adapter.hook__smart_truncate_comment(self, comment_text, policy.max_length)
                         return True, truncated
                     return False, ""  # Keep as is
             except re.error:
@@ -211,7 +211,7 @@ class CommentOptimizer:
         if base_policy == "keep_all":
             # Check max_length even for keep_all
             if policy.max_length is not None and len(comment_text) > policy.max_length:
-                truncated = self._smart_truncate_comment(comment_text, policy.max_length)
+                truncated = self.adapter.hook__smart_truncate_comment(self, comment_text, policy.max_length)
                 return True, truncated
             return False, ""
         
@@ -229,7 +229,7 @@ class CommentOptimizer:
                 return True, placeholder
             else:  # docstring
                 if policy.max_length is not None and len(comment_text) > policy.max_length:
-                    truncated = self._smart_truncate_comment(comment_text, policy.max_length)
+                    truncated = self.adapter.hook__smart_truncate_comment(self, comment_text, policy.max_length)
                     return True, truncated
                 return False, ""
         
@@ -238,7 +238,7 @@ class CommentOptimizer:
                 first_sentence = self.adapter.hook__extract_first_sentence(self, comment_text)
                 # Apply max_length to extracted sentence
                 if policy.max_length is not None and len(first_sentence) > policy.max_length:
-                    first_sentence = self._smart_truncate_comment(first_sentence, policy.max_length)
+                    first_sentence = self.adapter.hook__smart_truncate_comment(self, first_sentence, policy.max_length)
                 if first_sentence != comment_text:
                     return True, first_sentence
             else:
@@ -249,86 +249,6 @@ class CommentOptimizer:
                 return True, placeholder
         
         return False, ""
-
-    @staticmethod
-    def _smart_truncate_comment(comment_text: str, max_length: int) -> str:
-        """
-        Intelligently truncate a comment while preserving proper closing tags.
-        
-        Args:
-            comment_text: Original comment text
-            max_length: Maximum allowed length
-            
-        Returns:
-            Properly truncated comment with correct closing tags
-        """
-        if len(comment_text) <= max_length:
-            return comment_text
-        
-        # Python docstring patterns (triple quotes)
-        if comment_text.startswith('"""'):
-            # Find a good truncation point that leaves room for closing quotes
-            truncate_to = max_length - 6  # Reserve space for '..."""'
-            if truncate_to < 5:  # Minimum meaningful content
-                return '"""..."""'
-            
-            truncated = comment_text[:truncate_to].rstrip()
-            return f'{truncated}..."""'
-        
-        elif comment_text.startswith("'''"):
-            # Single quote Python docstring
-            truncate_to = max_length - 6  # Reserve space for "...'''"
-            if truncate_to < 5:
-                return "'''...'''"
-            
-            truncated = comment_text[:truncate_to].rstrip()
-            return f"{truncated}...'''"
-        
-        # JSDoc/TypeScript style comments (/** ... */)
-        elif comment_text.strip().startswith('/**'):
-            # Reserve space for ' ... */'
-            truncate_to = max_length - 6
-            if truncate_to < 6:  # Minimum for "/** */"
-                return "/** ... */"
-            
-            truncated = comment_text[:truncate_to].rstrip()
-            
-            # If the truncated text ends with a newline followed by spaces and *, 
-            # we need to be careful to preserve the structure
-            if truncated.endswith('\n'):
-                return f"{truncated} ... */"
-            else:
-                return f"{truncated} ... */"
-        
-        # Regular multiline comment (/* ... */)
-        elif comment_text.startswith('/*') and comment_text.rstrip().endswith('*/'):
-            # Reserve space for ' ... */'
-            truncate_to = max_length - 6
-            if truncate_to < 4:  # Minimum for "/* */"
-                return "/* ... */"
-            
-            truncated = comment_text[:truncate_to].rstrip()
-            return f"{truncated} ... */"
-        
-        # Single line comments (# or //)
-        elif comment_text.startswith('#') or comment_text.startswith('//'):
-            # Simple truncation with ellipsis
-            truncate_to = max_length - 3  # Reserve space for '...'
-            if truncate_to < 2:
-                prefix = '#' if comment_text.startswith('#') else '//'
-                return f"{prefix}..."
-            
-            truncated = comment_text[:truncate_to].rstrip()
-            return f"{truncated}..."
-        
-        # Fallback: simple truncation
-        else:
-            truncate_to = max_length - 3
-            if truncate_to < 1:
-                return "..."
-            
-            truncated = comment_text[:truncate_to].rstrip()
-            return f"{truncated}..."
 
     @staticmethod
     def extract_first_sentence(text: str) -> str:
@@ -382,3 +302,63 @@ class CommentOptimizer:
                 return f"{first}."
 
         return text  # Fallback to original text
+
+    @staticmethod
+    def smart_truncate_comment(comment_text: str, max_length: int) -> str:
+        """
+        Intelligently truncate a comment while preserving proper closing tags.
+        
+        Args:
+            comment_text: Original comment text
+            max_length: Maximum allowed length
+            
+        Returns:
+            Properly truncated comment with correct closing tags
+        """
+        if len(comment_text) <= max_length:
+            return comment_text
+
+        # JSDoc/TypeScript style comments (/** ... */)
+        if comment_text.strip().startswith('/**'):
+            # Reserve space for ' … */'
+            truncate_to = max_length - 4
+            if truncate_to < 4:  # Minimum for "/** */"
+                return "/** … */"
+            
+            truncated = comment_text[:truncate_to].rstrip()
+            
+            # If the truncated text ends with a newline followed by spaces and *, 
+            # we need to be careful to preserve the structure
+            if truncated.endswith('\n'):
+                return f"{truncated} … */"
+            else:
+                return f"{truncated} … */"
+        
+        # Regular multiline comment (/* … */)
+        elif comment_text.startswith('/*') and comment_text.rstrip().endswith('*/'):
+            # Reserve space for ' … */'
+            truncate_to = max_length - 4
+            if truncate_to < 2:  # Minimum for "/* */"
+                return "/* … */"
+            
+            truncated = comment_text[:truncate_to].rstrip()
+            return f"{truncated} … */"
+        
+        # Single line comments
+        elif comment_text.startswith('//'):
+            # Simple truncation with ellipsis
+            truncate_to = max_length - 1  # Reserve space for '…'
+            if truncate_to < 0:
+                return f"//…"
+            
+            truncated = comment_text[:truncate_to].rstrip()
+            return f"{truncated}…"
+        
+        # Fallback: simple truncation
+        else:
+            truncate_to = max_length - 1
+            if truncate_to < 0:
+                return "…"
+            
+            truncated = comment_text[:truncate_to].rstrip()
+            return f"{truncated}…"

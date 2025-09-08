@@ -241,3 +241,7 @@ class PythonAdapter(CodeAdapter[PythonCfg]):
     def hook__extract_first_sentence(self, root_optimizer: CommentOptimizer, text: str) -> str:
         from .comments import extract_first_sentence
         return extract_first_sentence(text)
+
+    def hook__smart_truncate_comment(self, root_optimizer: CommentOptimizer, comment_text: str, max_length: int) -> str:
+        from .comments import smart_truncate_comment
+        return smart_truncate_comment(comment_text, max_length)

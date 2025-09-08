@@ -160,3 +160,7 @@ class CodeAdapter(BaseAdapter[C], ABC):
     def hook__extract_first_sentence(self, root_optimizer: CommentOptimizer, text: str) -> str:
         """Хук для извлечения первого предложение из текста комментария."""
         return root_optimizer.extract_first_sentence(text)
+
+    def hook__smart_truncate_comment(self, root_optimizer: CommentOptimizer, comment_text: str, max_length: int) -> str:
+        """Хук для корректного закрытия многострочных комментариев и докстрингов после обрезания."""
+        return root_optimizer.smart_truncate_comment(comment_text, max_length)

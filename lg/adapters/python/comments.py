@@ -68,3 +68,55 @@ def extract_first_sentence(text: str) -> str:
             return f"{first}."
 
     return text  # Fallback to original text
+
+def smart_truncate_comment(comment_text: str, max_length: int) -> str:
+    """
+    Intelligently truncate a comment while preserving proper closing tags.
+
+    Args:
+        comment_text: Original comment text
+        max_length: Maximum allowed length
+
+    Returns:
+        Properly truncated comment with correct closing tags
+    """
+    if len(comment_text) <= max_length:
+        return comment_text
+
+    # Python docstring patterns (triple quotes)
+    if comment_text.startswith('"""'):
+        # Find a good truncation point that leaves room for closing quotes
+        truncate_to = max_length - 4  # Reserve space for '…"""'
+        if truncate_to < 3:  # Minimum meaningful content
+            return '"""…"""'
+
+        truncated = comment_text[:truncate_to].rstrip()
+        return f'{truncated}…"""'
+
+    elif comment_text.startswith("'''"):
+        # Single quote Python docstring
+        truncate_to = max_length - 4  # Reserve space for "…'''"
+        if truncate_to < 3:
+            return "'''…'''"
+
+        truncated = comment_text[:truncate_to].rstrip()
+        return f"{truncated}…'''"
+
+    # Single line comments
+    elif comment_text.startswith('#'):
+        # Simple truncation with ellipsis
+        truncate_to = max_length - 1  # Reserve space for '…'
+        if truncate_to < 0:
+            return f"#…"
+
+        truncated = comment_text[:truncate_to].rstrip()
+        return f"{truncated}…"
+
+    # Fallback: simple truncation
+    else:
+        truncate_to = max_length - 1
+        if truncate_to < 0:
+            return "…"
+
+        truncated = comment_text[:truncate_to].rstrip()
+        return f"{truncated}…"
