@@ -17,7 +17,7 @@ class TestTypeScriptLiteralOptimization:
         )
         
         adapter = TypeScriptAdapter()
-        adapter._cfg = TypeScriptCfg(literal_config=literal_config)
+        adapter._cfg = TypeScriptCfg(strip_literals=literal_config)
         
         result, meta = adapter.process(lctx_ts(do_literals))
         
@@ -34,7 +34,7 @@ class TestTypeScriptLiteralOptimization:
         )
         
         adapter = TypeScriptAdapter()
-        adapter._cfg = TypeScriptCfg(literal_config=literal_config)
+        adapter._cfg = TypeScriptCfg(strip_literals=literal_config)
         
         result, meta = adapter.process(lctx_ts(do_literals))
         
@@ -51,7 +51,7 @@ class TestTypeScriptLiteralOptimization:
         )
         
         adapter = TypeScriptAdapter()
-        adapter._cfg = TypeScriptCfg(literal_config=literal_config)
+        adapter._cfg = TypeScriptCfg(strip_literals=literal_config)
         
         result, meta = adapter.process(lctx_ts(do_literals))
         
@@ -68,7 +68,7 @@ class TestTypeScriptLiteralOptimization:
         )
         
         adapter = TypeScriptAdapter()
-        adapter._cfg = TypeScriptCfg(literal_config=literal_config)
+        adapter._cfg = TypeScriptCfg(strip_literals=literal_config)
         
         result, meta = adapter.process(lctx_ts(do_literals))
         
@@ -84,7 +84,7 @@ class TestTypeScriptLiteralOptimization:
         )
         
         adapter = TypeScriptAdapter()
-        adapter._cfg = TypeScriptCfg(literal_config=literal_config)
+        adapter._cfg = TypeScriptCfg(strip_literals=literal_config)
         
         result, meta = adapter.process(lctx_ts(do_literals))
         
@@ -104,7 +104,7 @@ class TestTypeScriptLiteralOptimization:
         )
         
         adapter = TypeScriptAdapter()
-        adapter._cfg = TypeScriptCfg(literal_config=literal_config)
+        adapter._cfg = TypeScriptCfg(strip_literals=literal_config)
         
         result, meta = adapter.process(lctx_ts(do_literals))
         
@@ -145,7 +145,7 @@ const complexTemplate = `
         )
         
         adapter = TypeScriptAdapter()
-        adapter._cfg = TypeScriptCfg(literal_config=literal_config)
+        adapter._cfg = TypeScriptCfg(strip_literals=literal_config)
         
         result, meta = adapter.process(lctx_ts(code))
         
@@ -169,7 +169,7 @@ const urlRegex = /^https?:\\/\\/(www\\.)?[-a-zA-Z0-9@:%._\\+~#=]{1,256}\\.[a-zA-
         )
         
         adapter = TypeScriptAdapter()
-        adapter._cfg = TypeScriptCfg(literal_config=literal_config)
+        adapter._cfg = TypeScriptCfg(strip_literals=literal_config)
         
         result, meta = adapter.process(lctx_ts(code))
         
@@ -229,7 +229,7 @@ const apiResponse = {
         )
         
         adapter = TypeScriptAdapter()
-        adapter._cfg = TypeScriptCfg(literal_config=literal_config)
+        adapter._cfg = TypeScriptCfg(strip_literals=literal_config)
         
         result, meta = adapter.process(lctx_ts(code))
         
@@ -273,7 +273,7 @@ type Language = "en" | "es" | "fr" | "de" | "ja" | "zh";
         )
         
         adapter = TypeScriptAdapter()
-        adapter._cfg = TypeScriptCfg(literal_config=literal_config)
+        adapter._cfg = TypeScriptCfg(strip_literals=literal_config)
         
         result, meta = adapter.process(lctx_ts(code))
         
@@ -316,7 +316,7 @@ const statusMessages = {
         )
         
         adapter = TypeScriptAdapter()
-        adapter._cfg = TypeScriptCfg(literal_config=literal_config)
+        adapter._cfg = TypeScriptCfg(strip_literals=literal_config)
         
         result, meta = adapter.process(lctx_ts(code))
         
