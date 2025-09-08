@@ -6,7 +6,7 @@ Provides safe text manipulation while preserving formatting and structure.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import List, Tuple, Dict, Any
+from typing import List, Tuple, Dict, Any, Optional
 
 
 @dataclass
@@ -147,7 +147,158 @@ class RangeEditor:
         except UnicodeDecodeError as e:
             raise ValueError(f"Failed to decode result text: {e}")
         
+        # Post-process: collapse consecutive comment placeholders
+        result_text = self._collapse_comment_placeholders(result_text)
+        
         return result_text, stats
+    
+    def _collapse_comment_placeholders(self, text: str) -> str:
+        """
+        Collapse consecutive comment placeholders into single consolidated placeholders.
+        
+        This prevents having multiple consecutive lines like:
+        # … comment omitted
+        # … comment omitted  
+        # … comment omitted
+        
+        Instead, we get:
+        # … 3 comments omitted
+        
+        Args:
+            text: Text content to process
+            
+        Returns:
+            Text with collapsed placeholders
+        """
+        import re
+        
+        lines = text.split('\n')
+        result_lines = []
+        i = 0
+        
+        while i < len(lines):
+            line = lines[i]
+            
+            # Check if this line is a comment placeholder
+            placeholder_match = self._match_comment_placeholder(line)
+            
+            if placeholder_match:
+                # Found a placeholder - collect consecutive ones
+                indent, comment_style, placeholder_type = placeholder_match
+                consecutive_placeholders = [line]
+                consecutive_count = 1
+                j = i + 1
+                
+                # Look ahead for more consecutive placeholders of the same type
+                while j < len(lines):
+                    next_line = lines[j]
+                    
+                    # Skip empty lines - they don't break the sequence
+                    if not next_line.strip():
+                        consecutive_placeholders.append(next_line)
+                        j += 1
+                        continue
+                    
+                    # Check if next line is the same type of placeholder
+                    next_match = self._match_comment_placeholder(next_line)
+                    if (next_match and 
+                        next_match[0] == indent and  # Same indentation
+                        next_match[1] == comment_style and  # Same comment style
+                        next_match[2] == placeholder_type):  # Same placeholder type
+                        
+                        consecutive_placeholders.append(next_line)
+                        consecutive_count += 1
+                        j += 1
+                    else:
+                        break
+                
+                # If we found multiple consecutive placeholders, collapse them
+                if consecutive_count > 1:
+                    # Create collapsed placeholder
+                    collapsed = self._create_collapsed_placeholder(
+                        indent, comment_style, placeholder_type, consecutive_count
+                    )
+                    result_lines.append(collapsed)
+                    
+                    # Skip empty lines at the end of the sequence
+                    while (j > i + 1 and 
+                           j <= len(consecutive_placeholders) + i and
+                           not consecutive_placeholders[j - i - 1].strip()):
+                        j -= 1
+                    
+                    i = j
+                else:
+                    # Single placeholder - keep as is
+                    result_lines.append(line)
+                    i += 1
+            else:
+                # Not a placeholder - keep as is
+                result_lines.append(line)
+                i += 1
+        
+        return '\n'.join(result_lines)
+    
+    def _match_comment_placeholder(self, line: str) -> Optional[Tuple[str, str, str]]:
+        """
+        Check if a line contains a comment placeholder and extract its components.
+        
+        Returns:
+            Tuple of (indent, comment_style, placeholder_type) or None
+            where:
+            - indent: leading whitespace
+            - comment_style: '#', '//', or '/*'  
+            - placeholder_type: 'comment', 'docstring', etc.
+        """
+        import re
+        
+        # Pattern for various comment placeholder styles
+        patterns = [
+            # Python style: # … comment omitted, # … docstring omitted
+            (r'^(\s*)(#)\s*…\s*(\w+)\s+omitted(?:\s*\(\d+\))?', '#'),
+            # TypeScript single-line: // … comment omitted
+            (r'^(\s*)(//)\s*…\s*(\w+)\s+omitted(?:\s*\(\d+\))?', '//'),
+            # TypeScript multi-line: /* … comment omitted */
+            (r'^(\s*)(/\*)\s*…\s*(\w+)\s+omitted(?:\s*\(\d+\))?\s*\*/', '/*'),
+        ]
+        
+        for pattern, style in patterns:
+            match = re.match(pattern, line)
+            if match:
+                indent = match.group(1)
+                comment_prefix = match.group(2)
+                placeholder_type = match.group(3)
+                return (indent, style, placeholder_type)
+        
+        return None
+    
+    def _create_collapsed_placeholder(
+        self, 
+        indent: str, 
+        comment_style: str, 
+        placeholder_type: str, 
+        count: int
+    ) -> str:
+        """
+        Create a collapsed placeholder for multiple consecutive placeholders.
+        
+        Args:
+            indent: Leading whitespace to preserve
+            comment_style: Style of comment ('#', '//', '/*')
+            placeholder_type: Type of placeholder ('comment', 'docstring', etc.)
+            count: Number of placeholders being collapsed
+            
+        Returns:
+            Formatted collapsed placeholder string
+        """
+        if comment_style == '#':
+            return f"{indent}# … {count} {placeholder_type}s omitted"
+        elif comment_style == '//':
+            return f"{indent}// … {count} {placeholder_type}s omitted"
+        elif comment_style == '/*':
+            return f"{indent}/* … {count} {placeholder_type}s omitted */"
+        else:
+            # Fallback to single-line style
+            return f"{indent}# … {count} {placeholder_type}s omitted"
     
     def get_edit_summary(self) -> Dict[str, Any]:
         """Get summary of planned edits without applying them."""
