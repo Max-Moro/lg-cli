@@ -365,6 +365,7 @@ class PlaceholderGenerator:
     def create_import_placeholder(
         self,
         count: int,
+        bytes_removed: int,
         style: str = "inline"
     ) -> str:
         """Create a placeholder for summarized imports."""

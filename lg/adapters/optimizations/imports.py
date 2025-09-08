@@ -138,11 +138,11 @@ class ImportOptimizer:
         
         # Apply policy-specific processing
         if config.policy == "strip_all":
-            self._process_strip_all(imports, context)
+            self._process_strip(imports, context, "import")
         elif config.policy == "strip_external":
-            self._process_strip_external(grouped["external"], context)
+            self._process_strip(grouped["external"], context, "external_import")
         elif config.policy == "strip_local":
-            self._process_strip_local(grouped["local"], context)
+            self._process_strip(grouped["local"], context, "local_import")
         
         # Apply summarize_long if enabled (works in addition to policies)
         if config.summarize_long:
@@ -151,20 +151,10 @@ class ImportOptimizer:
             if remaining_imports:
                 self._process_summarize_long(remaining_imports, context)
     
-    def _process_strip_all(self, imports: List[ImportInfo], context: ProcessingContext) -> None:
-        """Remove all imports."""
+    def _process_strip(self, imports: List[ImportInfo], context: ProcessingContext, type: str) -> None:
+        """Remove specified imports."""
         for imp in imports:
-            self._remove_import(context, imp, "import")
-    
-    def _process_strip_external(self, external_imports: List[ImportInfo], context: ProcessingContext) -> None:
-        """Remove external imports, keeping only local ones."""
-        for imp in external_imports:
-            self._remove_import(context, imp, "external_import")
-    
-    def _process_strip_local(self, local_imports: List[ImportInfo], context: ProcessingContext) -> None:
-        """Remove local imports, keeping only external ones."""
-        for imp in local_imports:
-            self._remove_import(context, imp, "local_import")
+            self._remove_import(context, imp, reason=type)
     
     def _process_summarize_long(self, imports: List[ImportInfo], context: ProcessingContext) -> None:
         """Summarize imports with too many items."""
@@ -172,7 +162,7 @@ class ImportOptimizer:
         
         for imp in imports:
             if len(imp.imported_items) > max_items:
-                self._remove_import(context, imp, f"long_{imp.import_type}")
+                self._remove_import(context, imp, reason=f"long_{imp.import_type}")
     
     def _remove_import(self, context: ProcessingContext, import_info: ImportInfo, reason: str) -> None:
         """Remove an import and add appropriate placeholder."""
@@ -180,13 +170,15 @@ class ImportOptimizer:
         start_line, end_line = context.doc.get_line_range(import_info.node)
         lines_count = end_line - start_line + 1
         
+        count = len(import_info.imported_items)
+        style = self.adapter.cfg.placeholders.style
+
         # Create appropriate placeholder
-        if reason.startswith("long_"):
-            placeholder = self._create_long_import_placeholder(import_info, lines_count)
-        elif reason == "local_import":
-            placeholder = self._create_local_import_placeholder(import_info)
-        else:
-            placeholder = f"# … {reason} omitted"
+        placeholder = context.placeholder_gen.create_import_placeholder(
+            count=count,
+            bytes_removed=end_byte - start_byte,
+            style=style
+        )
         
         # Apply the edit
         context.editor.add_replacement(
@@ -202,32 +194,6 @@ class ImportOptimizer:
         context.metrics.add_bytes_saved(end_byte - start_byte - len(placeholder.encode('utf-8')))
         context.metrics.mark_placeholder_inserted()
     
-    def _create_long_import_placeholder(self, import_info: ImportInfo, lines_count: int) -> str:
-        """Create placeholder for long import."""
-        count = len(import_info.imported_items)
-        style = self.adapter.cfg.placeholders.style
-        
-        if style == "inline" or style == "auto":
-            return f"{self.adapter.get_comment_style()[0]} … {count} imports omitted"
-        elif style == "block":
-            multi_start, multi_end = self.adapter.get_comment_style()[1]
-            return f"{multi_start} … {count} imports omitted {multi_end}"
-        else:
-            return ""
-    
-    def _create_local_import_placeholder(self, import_info: ImportInfo) -> str:
-        """Create placeholder for removed local import."""
-        style = self.adapter.cfg.placeholders.style
-        
-        if style == "inline" or style == "auto":
-            return f"{self.adapter.get_comment_style()[0]} … 1 imports omitted"
-        elif style == "block":
-            multi_start, multi_end = self.adapter.get_comment_style()[1]
-            return f"{multi_start} … 1 imports omitted {multi_end}"
-        else:
-            return ""
-
-
 # Export the classes that will be used by language adapters
 __all__ = [
     "ImportInfo",
