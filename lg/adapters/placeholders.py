@@ -6,8 +6,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Dict, List, Optional, Tuple, Any
-from pathlib import Path
+from typing import Dict, List, Tuple, Any
 
 from .tree_sitter_support import Node
 
@@ -32,13 +31,7 @@ class PlaceholderSpec:
     bytes_removed: int = 0
     count: int = 1  # Количество элементов (для импортов, комментариев)
     
-    # Дополнительные метаданные
-    metadata: Dict[str, Any] = None
-    
     def __post_init__(self):
-        if self.metadata is None:
-            self.metadata = {}
-        
         # Вычисляем метрики если не переданы
         if self.lines_removed == 0:
             self.lines_removed = max(0, self.end_line - self.start_line + 1)
@@ -48,9 +41,9 @@ class PlaceholderSpec:
     @property
     def position_key(self) -> Tuple[int, int]:
         """Ключ для сортировки по позиции."""
-        return (self.start_line, self.start_byte)
+        return self.start_line, self.start_byte
     
-    def can_merge_with(self, other: 'PlaceholderSpec') -> bool:
+    def can_merge_with(self, other: PlaceholderSpec) -> bool:
         """
         Проверяет, можно ли объединить этот плейсхолдер с другим.
         
@@ -68,7 +61,7 @@ class PlaceholderSpec:
         
         return False
     
-    def merge_with(self, other: 'PlaceholderSpec') -> 'PlaceholderSpec':
+    def merge_with(self, other: PlaceholderSpec) -> PlaceholderSpec:
         """Создает объединенный плейсхолдер."""
         if not self.can_merge_with(other):
             raise ValueError("Cannot merge incompatible placeholders")
@@ -79,10 +72,6 @@ class PlaceholderSpec:
         start_line = min(self.start_line, other.start_line)
         end_line = max(self.end_line, other.end_line)
         
-        # Суммируем метрики
-        merged_metadata = dict(self.metadata)
-        merged_metadata.update(other.metadata)
-        
         return PlaceholderSpec(
             start_byte=start_byte,
             end_byte=end_byte,
@@ -92,7 +81,6 @@ class PlaceholderSpec:
             lines_removed=self.lines_removed + other.lines_removed,
             bytes_removed=self.bytes_removed + other.bytes_removed,
             count=self.count + other.count,
-            metadata=merged_metadata
         )
 
 
@@ -118,33 +106,33 @@ class PlaceholderManager:
     
     # ============= Простое API для добавления плейсхолдеров =============
     
-    def add_function_placeholder(self, node: Node, doc, **kwargs) -> None:
+    def add_function_placeholder(self, node: Node, doc) -> None:
         """Добавить плейсхолдер для функции."""
-        spec = self._create_spec_from_node(node, doc, "function", **kwargs)
+        spec = self._create_spec_from_node(node, doc, "function")
         self._add_placeholder(spec)
     
-    def add_method_placeholder(self, node: Node, doc, **kwargs) -> None:
+    def add_method_placeholder(self, node: Node, doc) -> None:
         """Добавить плейсхолдер для метода."""
-        spec = self._create_spec_from_node(node, doc, "method", **kwargs)
+        spec = self._create_spec_from_node(node, doc, "method")
         self._add_placeholder(spec)
     
-    def add_comment_placeholder(self, node: Node, doc, count: int = 1, **kwargs) -> None:
+    def add_comment_placeholder(self, node: Node, doc, count: int = 1) -> None:
         """Добавить плейсхолдер для комментария."""
-        spec = self._create_spec_from_node(node, doc, "comment", count=count, **kwargs)
+        spec = self._create_spec_from_node(node, doc, "comment", count=count)
         self._add_placeholder(spec)
     
-    def add_import_placeholder(self, node: Node, doc, count: int = 1, **kwargs) -> None:
+    def add_import_placeholder(self, node: Node, doc, count: int = 1) -> None:
         """Добавить плейсхолдер для импорта."""
-        spec = self._create_spec_from_node(node, doc, "import", count=count, **kwargs)
+        spec = self._create_spec_from_node(node, doc, "import", count=count)
         self._add_placeholder(spec)
     
-    def add_literal_placeholder(self, node: Node, doc, literal_type: str = "literal", **kwargs) -> None:
+    def add_literal_placeholder(self, node: Node, doc, literal_type: str = "literal") -> None:
         """Добавить плейсхолдер для литерала."""
-        spec = self._create_spec_from_node(node, doc, literal_type, **kwargs)
+        spec = self._create_spec_from_node(node, doc, literal_type)
         self._add_placeholder(spec)
     
-    def add_custom_placeholder(self, start_byte: int, end_byte: int, start_line: int, end_line: int, 
-                             placeholder_type: str, **kwargs) -> None:
+    def add_custom_placeholder(self, start_byte: int, end_byte: int, start_line: int, end_line: int,
+                             placeholder_type: str, count: int = 1) -> None:
         """Добавить кастомный плейсхолдер с явными координатами."""
         spec = PlaceholderSpec(
             start_byte=start_byte,
@@ -152,13 +140,13 @@ class PlaceholderManager:
             start_line=start_line,
             end_line=end_line,
             placeholder_type=placeholder_type,
-            **kwargs
+            count=count,
         )
         self._add_placeholder(spec)
     
     # ============= Внутренние методы =============
     
-    def _create_spec_from_node(self, node: Node, doc, placeholder_type: str, **kwargs) -> PlaceholderSpec:
+    def _create_spec_from_node(self, node: Node, doc, placeholder_type: str, count: int = 1) -> PlaceholderSpec:
         """Создать PlaceholderSpec из Tree-sitter узла."""
         start_byte, end_byte = doc.get_node_range(node)
         start_line, end_line = doc.get_line_range(node)
@@ -169,7 +157,7 @@ class PlaceholderManager:
             start_line=start_line,
             end_line=end_line,
             placeholder_type=placeholder_type,
-            **kwargs
+            count=count,
         )
     
     def _add_placeholder(self, spec: PlaceholderSpec) -> None:

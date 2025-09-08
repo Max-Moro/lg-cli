@@ -138,11 +138,11 @@ class ImportOptimizer:
         
         # Apply policy-specific processing
         if config.policy == "strip_all":
-            self._process_strip(imports, context, "import")
+            self._process_strip(imports, context)
         elif config.policy == "strip_external":
-            self._process_strip(grouped["external"], context, "external_import")
+            self._process_strip(grouped["external"], context)
         elif config.policy == "strip_local":
-            self._process_strip(grouped["local"], context, "local_import")
+            self._process_strip(grouped["local"], context)
         
         # Apply summarize_long if enabled (works in addition to policies)
         if config.summarize_long:
@@ -151,10 +151,10 @@ class ImportOptimizer:
             if remaining_imports:
                 self._process_summarize_long(remaining_imports, context)
     
-    def _process_strip(self, imports: List[ImportInfo], context: ProcessingContext, type: str) -> None:
+    def _process_strip(self, imports: List[ImportInfo], context: ProcessingContext) -> None:
         """Remove specified imports."""
         for imp in imports:
-            self._remove_import(context, imp, reason=type)
+            self._remove_import(context, imp)
     
     def _process_summarize_long(self, imports: List[ImportInfo], context: ProcessingContext) -> None:
         """Summarize imports with too many items."""
@@ -162,9 +162,10 @@ class ImportOptimizer:
         
         for imp in imports:
             if len(imp.imported_items) > max_items:
-                self._remove_import(context, imp, reason=f"long_{imp.import_type}")
+                self._remove_import(context, imp)
     
-    def _remove_import(self, context: ProcessingContext, import_info: ImportInfo, reason: str) -> None:
+    @staticmethod
+    def _remove_import(context: ProcessingContext, import_info: ImportInfo) -> None:
         """Remove an import and add appropriate placeholder."""
         count = len(import_info.imported_items)
         

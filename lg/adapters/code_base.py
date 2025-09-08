@@ -85,7 +85,7 @@ class CodeAdapter(BaseAdapter[C], ABC):
         Основной метод обработки кода.
         Применяет все конфигурированные оптимизации.
         """
-        # Получаем полноценный контекст из облегченного (ленивая инициализация)
+        # Получаем полноценный контекст из облегченного
         context = lightweight_ctx.get_full_context(self)
 
         # Применяем оптимизации
@@ -95,7 +95,7 @@ class CodeAdapter(BaseAdapter[C], ABC):
         result_text, edit_stats = context.editor.apply_edits()
 
         # Получаем финальные метрики
-        final_metrics = context.finalize(lightweight_ctx)
+        final_metrics = context.finalize()
         
         # Объединяем статистики из редактора и контекста
         final_metrics.update(edit_stats)
