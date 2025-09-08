@@ -50,6 +50,41 @@ class Edit:
         return len(self.replacement) == 0
 
 
+@dataclass
+class PlaceholderInfo:
+    """Information about a parsed placeholder."""
+    indent: str                    # Leading whitespace
+    comment_style: str            # '#', '//', or '/*'
+    placeholder_type: str         # 'comment', 'import', 'function', 'method', 'literal'
+    count: int = 1               # Number of items (for aggregation)
+    lines: Optional[int] = None   # Number of lines removed
+    bytes: Optional[int] = None   # Number of bytes removed
+    unit: Optional[str] = None    # Unit of measurement ('bytes', 'lines', etc.)
+    
+    def can_aggregate_with(self, other: 'PlaceholderInfo') -> bool:
+        """Check if this placeholder can be aggregated with another."""
+        return (
+            self.indent == other.indent and
+            self.comment_style == other.comment_style and
+            self.placeholder_type == other.placeholder_type
+        )
+    
+    def aggregate_with(self, other: 'PlaceholderInfo') -> 'PlaceholderInfo':
+        """Create a new aggregated placeholder."""
+        if not self.can_aggregate_with(other):
+            raise ValueError("Cannot aggregate incompatible placeholders")
+        
+        return PlaceholderInfo(
+            indent=self.indent,
+            comment_style=self.comment_style,
+            placeholder_type=self.placeholder_type,
+            count=self.count + other.count,
+            lines=(self.lines or 0) + (other.lines or 0) if self.lines or other.lines else None,
+            bytes=(self.bytes or 0) + (other.bytes or 0) if self.bytes or other.bytes else None,
+            unit=self.unit or other.unit
+        )
+
+
 class RangeEditor:
     """
     Safe range-based text editor that applies multiple edits while preserving structure.
@@ -147,16 +182,17 @@ class RangeEditor:
         except UnicodeDecodeError as e:
             raise ValueError(f"Failed to decode result text: {e}")
         
-        # Post-process: collapse consecutive comment placeholders
-        result_text = self._collapse_comment_placeholders(result_text)
+        # Post-process: collapse consecutive placeholders
+        result_text = self._collapse_placeholders(result_text)
         
         return result_text, stats
     
-    def _collapse_comment_placeholders(self, text: str) -> str:
+    def _collapse_placeholders(self, text: str) -> str:
         """
-        Collapse consecutive comment placeholders into single consolidated placeholders.
+        Collapse consecutive placeholders into single consolidated placeholders.
         
-        This prevents having multiple consecutive lines like:
+        This handles all types of placeholders (comments, imports, functions, etc.) and prevents
+        having multiple consecutive lines like:
         # … comment omitted
         # … comment omitted  
         # … comment omitted
@@ -164,14 +200,18 @@ class RangeEditor:
         Instead, we get:
         # … 3 comments omitted
         
+        Also aggregates numerical values:
+        # … 5 imports omitted
+        # … 6 imports omitted
+        becomes:
+        # … 11 imports omitted
+        
         Args:
             text: Text content to process
             
         Returns:
             Text with collapsed placeholders
         """
-        import re
-        
         lines = text.split('\n')
         result_lines = []
         i = 0
@@ -179,14 +219,12 @@ class RangeEditor:
         while i < len(lines):
             line = lines[i]
             
-            # Check if this line is a comment placeholder
-            placeholder_match = self._match_comment_placeholder(line)
+            # Check if this line is any type of placeholder
+            placeholder_info = self._match_placeholder(line)
             
-            if placeholder_match:
+            if placeholder_info:
                 # Found a placeholder - collect consecutive ones
-                indent, comment_style, placeholder_type = placeholder_match
-                consecutive_placeholders = [line]
-                consecutive_count = 1
+                consecutive_placeholders = [placeholder_info]
                 j = i + 1
                 
                 # Look ahead for more consecutive placeholders of the same type
@@ -195,36 +233,27 @@ class RangeEditor:
                     
                     # Skip empty lines - they don't break the sequence
                     if not next_line.strip():
-                        consecutive_placeholders.append(next_line)
                         j += 1
                         continue
                     
-                    # Check if next line is the same type of placeholder
-                    next_match = self._match_comment_placeholder(next_line)
-                    if (next_match and 
-                        next_match[0] == indent and  # Same indentation
-                        next_match[1] == comment_style and  # Same comment style
-                        next_match[2] == placeholder_type):  # Same placeholder type
-                        
-                        consecutive_placeholders.append(next_line)
-                        consecutive_count += 1
+                    # Check if next line is a compatible placeholder
+                    next_placeholder = self._match_placeholder(next_line)
+                    if next_placeholder and placeholder_info.can_aggregate_with(next_placeholder):
+                        consecutive_placeholders.append(next_placeholder)
                         j += 1
                     else:
                         break
                 
                 # If we found multiple consecutive placeholders, collapse them
-                if consecutive_count > 1:
-                    # Create collapsed placeholder
-                    collapsed = self._create_collapsed_placeholder(
-                        indent, comment_style, placeholder_type, consecutive_count
-                    )
-                    result_lines.append(collapsed)
+                if len(consecutive_placeholders) > 1:
+                    # Aggregate all placeholder info
+                    aggregated_info = consecutive_placeholders[0]
+                    for ph in consecutive_placeholders[1:]:
+                        aggregated_info = aggregated_info.aggregate_with(ph)
                     
-                    # Skip empty lines at the end of the sequence
-                    while (j > i + 1 and 
-                           j <= len(consecutive_placeholders) + i and
-                           not consecutive_placeholders[j - i - 1].strip()):
-                        j -= 1
+                    # Create collapsed placeholder
+                    collapsed = self._create_collapsed_placeholder_from_info(aggregated_info)
+                    result_lines.append(collapsed)
                     
                     i = j
                 else:
@@ -238,67 +267,180 @@ class RangeEditor:
         
         return '\n'.join(result_lines)
     
-    def _match_comment_placeholder(self, line: str) -> Optional[Tuple[str, str, str]]:
+    def _match_placeholder(self, line: str) -> Optional[PlaceholderInfo]:
         """
-        Check if a line contains a comment placeholder and extract its components.
+        Check if a line contains any type of placeholder and extract its components.
+        
+        Handles various placeholder formats:
+        - # … comment omitted
+        - # … 5 imports omitted  
+        - # … body omitted (15)
+        - # … string data omitted (256 bytes)
         
         Returns:
-            Tuple of (indent, comment_style, placeholder_type) or None
-            where:
-            - indent: leading whitespace
-            - comment_style: '#', '//', or '/*'  
-            - placeholder_type: 'comment', 'docstring', etc.
+            PlaceholderInfo object or None if no placeholder found
         """
         import re
         
-        # Pattern for various comment placeholder styles
+        # Comprehensive patterns for all placeholder types
         patterns = [
-            # Python style: # … comment omitted, # … docstring omitted
-            (r'^(\s*)(#)\s*…\s*(\w+)\s+omitted(?:\s*\(\d+\))?', '#'),
-            # TypeScript single-line: // … comment omitted
-            (r'^(\s*)(//)\s*…\s*(\w+)\s+omitted(?:\s*\(\d+\))?', '//'),
-            # TypeScript multi-line: /* … comment omitted */
-            (r'^(\s*)(/\*)\s*…\s*(\w+)\s+omitted(?:\s*\(\d+\))?\s*\*/', '/*'),
+            # Pattern 1: Simple format - # … TYPE omitted
+            (r'^(\s*)(#|//|/\*)\s*…\s*(\w+)\s+omitted(?:\s*\*/)?$', 'simple'),
+            
+            # Pattern 2: Count format - # … N TYPE omitted (imports)  
+            (r'^(\s*)(#|//|/\*)\s*…\s*(\d+)\s+(\w+)\s+omitted(?:\s*\*/)?$', 'count_before'),
+            
+            # Pattern 3: Lines format - # … TYPE omitted (N)
+            (r'^(\s*)(#|//|/\*)\s*…\s*(\w+)\s+omitted\s*\((\d+)\)(?:\s*\*/)?$', 'lines_after'),
+            
+            # Pattern 4: Data format - # … TYPE data omitted (N bytes)
+            (r'^(\s*)(#|//|/\*)\s*…\s*(\w+)\s+data\s+omitted\s*\((\d+)\s+(\w+)\)(?:\s*\*/)?$', 'data_with_unit'),
+            
+            # Pattern 5: Multiple count format - # … N TYPEs omitted (plural)
+            (r'^(\s*)(#|//|/\*)\s*…\s*(\d+)\s+(\w+)s\s+omitted(?:\s*\*/)?$', 'plural_count'),
         ]
         
-        for pattern, style in patterns:
+        for pattern, format_type in patterns:
             match = re.match(pattern, line)
             if match:
-                indent = match.group(1)
-                comment_prefix = match.group(2)
-                placeholder_type = match.group(3)
-                return (indent, style, placeholder_type)
+                return self._parse_placeholder_match(match, format_type)
         
         return None
     
-    def _create_collapsed_placeholder(
-        self, 
-        indent: str, 
-        comment_style: str, 
-        placeholder_type: str, 
-        count: int
-    ) -> str:
+    def _parse_placeholder_match(self, match, format_type: str) -> PlaceholderInfo:
+        """Parse a regex match into PlaceholderInfo based on format type."""
+        indent = match.group(1)
+        comment_prefix = match.group(2)
+        
+        # Determine comment style
+        if comment_prefix == '#':
+            comment_style = '#'
+        elif comment_prefix == '//':
+            comment_style = '//'
+        elif comment_prefix.startswith('/*'):
+            comment_style = '/*'
+        else:
+            comment_style = comment_prefix
+        
+        if format_type == 'simple':
+            # # … comment omitted
+            placeholder_type = match.group(3)
+            return PlaceholderInfo(
+                indent=indent,
+                comment_style=comment_style,
+                placeholder_type=placeholder_type,
+                count=1
+            )
+        
+        elif format_type == 'count_before':
+            # # … 5 imports omitted
+            count = int(match.group(3))
+            placeholder_type = match.group(4)
+            return PlaceholderInfo(
+                indent=indent,
+                comment_style=comment_style,
+                placeholder_type=placeholder_type,
+                count=count
+            )
+        
+        elif format_type == 'lines_after':
+            # # … body omitted (15)
+            placeholder_type = match.group(3)
+            lines = int(match.group(4))
+            return PlaceholderInfo(
+                indent=indent,
+                comment_style=comment_style,
+                placeholder_type=placeholder_type,
+                count=1,
+                lines=lines
+            )
+        
+        elif format_type == 'data_with_unit':
+            # # … string data omitted (256 bytes)
+            placeholder_type = match.group(3)
+            amount = int(match.group(4))
+            unit = match.group(5)
+            return PlaceholderInfo(
+                indent=indent,
+                comment_style=comment_style,
+                placeholder_type=placeholder_type,
+                count=1,
+                bytes=amount if unit == 'bytes' else None,
+                lines=amount if unit == 'lines' else None,
+                unit=unit
+            )
+        
+        elif format_type == 'plural_count':
+            # # … 3 comments omitted
+            count = int(match.group(3))
+            placeholder_type = match.group(4)  # Singular form (comment, not comments)
+            return PlaceholderInfo(
+                indent=indent,
+                comment_style=comment_style,
+                placeholder_type=placeholder_type,
+                count=count
+            )
+        
+        # Fallback
+        return PlaceholderInfo(
+            indent=indent,
+            comment_style=comment_style,
+            placeholder_type='unknown',
+            count=1
+        )
+    
+    def _create_collapsed_placeholder_from_info(self, info: PlaceholderInfo) -> str:
         """
-        Create a collapsed placeholder for multiple consecutive placeholders.
+        Create a collapsed placeholder from PlaceholderInfo.
+        
+        Handles various aggregation formats:
+        - Simple count: # … 3 comments omitted
+        - Import aggregation: # … 11 imports omitted
+        - Lines aggregation: # … body omitted (25 lines)
+        - Bytes aggregation: # … string data omitted (512 bytes)
         
         Args:
-            indent: Leading whitespace to preserve
-            comment_style: Style of comment ('#', '//', '/*')
-            placeholder_type: Type of placeholder ('comment', 'docstring', etc.)
-            count: Number of placeholders being collapsed
+            info: PlaceholderInfo containing aggregated data
             
         Returns:
             Formatted collapsed placeholder string
         """
-        if comment_style == '#':
-            return f"{indent}# … {count} {placeholder_type}s omitted"
-        elif comment_style == '//':
-            return f"{indent}// … {count} {placeholder_type}s omitted"
-        elif comment_style == '/*':
-            return f"{indent}/* … {count} {placeholder_type}s omitted */"
+        # Choose the appropriate format based on placeholder type and available data
+        if info.placeholder_type == 'import' or info.count > 1:
+            # For imports and multiple items, show count before type
+            content = f"… {info.count} {info.placeholder_type}s omitted"
+        elif info.lines and info.bytes:
+            # Both lines and bytes available (rare case)
+            content = f"… {info.placeholder_type} omitted ({info.lines} lines, {info.bytes} bytes)"
+        elif info.lines:
+            # Lines available
+            if info.count > 1:
+                content = f"… {info.count} {info.placeholder_type}s omitted ({info.lines} lines total)"
+            else:
+                content = f"… {info.placeholder_type} omitted ({info.lines} lines)"
+        elif info.bytes:
+            # Bytes available (for data/literals)
+            if info.unit:
+                content = f"… {info.placeholder_type} data omitted ({info.bytes} {info.unit})"
+            else:
+                content = f"… {info.placeholder_type} omitted ({info.bytes} bytes)"
+        else:
+            # Simple format
+            if info.count > 1:
+                content = f"… {info.count} {info.placeholder_type}s omitted"
+            else:
+                content = f"… {info.placeholder_type} omitted"
+        
+        # Format with comment style
+        if info.comment_style == '#':
+            return f"{info.indent}# {content}"
+        elif info.comment_style == '//':
+            return f"{info.indent}// {content}"
+        elif info.comment_style == '/*':
+            return f"{info.indent}/* {content} */"
         else:
             # Fallback to single-line style
-            return f"{indent}# … {count} {placeholder_type}s omitted"
+            return f"{info.indent}# {content}"
     
     def get_edit_summary(self) -> Dict[str, Any]:
         """Get summary of planned edits without applying them."""

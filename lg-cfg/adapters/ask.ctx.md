@@ -24,10 +24,6 @@ ${tpl:adapters/state}
 
 ${adapters/_/src__imports}
 
-## Unit-tests
-
-${adapters/_/src-tests__imports}
-
 # Описание текущей задачи
 
 Ничего пока делать не нужно. Просто подтверди, что ты дочитал досюда.
