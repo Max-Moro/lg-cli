@@ -5,6 +5,7 @@ Processes comments and docstrings according to policy.
 
 from __future__ import annotations
 
+import re
 from typing import Tuple, cast
 
 from ..code_model import CommentConfig
@@ -178,8 +179,7 @@ class CommentOptimizer:
         Returns:
             Tuple of (should_remove, replacement_text)
         """
-        import re
-        
+
         # Check for forced removal patterns
         for pattern in policy.strip_patterns:
             try:
@@ -259,12 +259,21 @@ class CommentOptimizer:
             text: Comment text to process
 
         Returns:
-            First sentence with appropriate punctuation
+            First sentence with appropriate punctuation and formatting
         """
-        import re
 
-        # Handle JSDoc comments (/** ... */)
+        # Handle JSDoc comments (/** ... */) with proper indentation
         if text.strip().startswith('/**'):
+            # Extract the original indentation by looking at the first line
+            lines = text.split('\n')
+            if len(lines) > 1:
+                # Get indentation from the second line (first content line)
+                second_line = lines[1] if len(lines) > 1 else ''
+                indent_match = re.match(r'^(\s*)\*', second_line)
+                base_indent = indent_match.group(1) if indent_match else '     '
+            else:
+                base_indent = '     '  # Default JSDoc indentation
+
             # Extract content between /** and */
             match = re.match(r'/\*\*\s*(.*?)\s*\*/', text, re.DOTALL)
             if match:
@@ -283,23 +292,30 @@ class CommentOptimizer:
                     sentences = re.split(r'[.!?]+', full_text)
                     if sentences and sentences[0].strip():
                         first = sentences[0].strip()
-                        return f'/**\n * {first}.\n */'
+                        # Return with proper JSDoc formatting and indentation
+                        return f'/**\n{base_indent}* {first}.\n{base_indent}*/'
 
             return text  # Fallback if parsing fails
 
-        # Handle regular comments
-        else:
+        # Handle regular single-line comments
+        elif text.startswith('//'):
             # Remove comment markers and find first sentence
-            clean_text = text.strip()
-            if clean_text.startswith('//'):
-                clean_text = clean_text[2:].strip()
-            elif clean_text.startswith('/*') and clean_text.endswith('*/'):
-                clean_text = clean_text[2:-2].strip()
-
+            clean_text = text[2:].strip()
             sentences = re.split(r'[.!?]+', clean_text)
             if sentences and sentences[0].strip():
                 first = sentences[0].strip()
-                return f"{first}."
+                return f"// {first}."
+
+        # Handle regular multiline comments (/* ... */)
+        elif text.startswith('/*') and text.rstrip().endswith('*/'):
+            # Extract content between /* and */
+            match = re.match(r'/\*\s*(.*?)\s*\*/', text, re.DOTALL)
+            if match:
+                content = match.group(1)
+                sentences = re.split(r'[.!?]+', content)
+                if sentences and sentences[0].strip():
+                    first = sentences[0].strip()
+                    return f"/* {first}. */"
 
         return text  # Fallback to original text
 
@@ -320,20 +336,25 @@ class CommentOptimizer:
 
         # JSDoc/TypeScript style comments (/** ... */)
         if comment_text.strip().startswith('/**'):
-            # Reserve space for ' … */'
-            truncate_to = max_length - 4
-            if truncate_to < 4:  # Minimum for "/** */"
-                return "/** … */"
-            
-            truncated = comment_text[:truncate_to].rstrip()
-            
-            # If the truncated text ends with a newline followed by spaces and *, 
-            # we need to be careful to preserve the structure
-            if truncated.endswith('\n'):
-                return f"{truncated} … */"
+            # Preserve indentation from original
+            lines = comment_text.split('\n')
+            if len(lines) > 1:
+                second_line = lines[1] if len(lines) > 1 else ''
+                indent_match = re.match(r'^(\s*)\*', second_line)
+                base_indent = indent_match.group(1) if indent_match else '     '
             else:
-                return f"{truncated} … */"
-        
+                base_indent = '     '
+
+            # Reserve space for closing with proper indentation
+            closing = f'\n{base_indent}*/'
+            truncate_to = max_length - len(closing) - 1  # -1 for ellipsis
+
+            if truncate_to < 4:  # Minimum for "/**"
+                return f"/**\n{base_indent}* …\n{base_indent}*/"
+
+            truncated = comment_text[:truncate_to].rstrip()
+            return f"{truncated}…{closing}"
+
         # Regular multiline comment (/* … */)
         elif comment_text.startswith('/*') and comment_text.rstrip().endswith('*/'):
             # Reserve space for ' … */'
