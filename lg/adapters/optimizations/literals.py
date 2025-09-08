@@ -87,7 +87,7 @@ class LiteralOptimizer:
         # Check different trimming conditions
         if literal_type == "string":
             should_trim, replacement_text = self._should_trim_string(
-                node_text, config.max_string_length, config.collapse_threshold, bytes_count
+                node_text, config.max_string_length, config.collapse_threshold, bytes_count, context
             )
         elif literal_type == "array":
             should_trim, replacement_text = self._should_trim_array(
@@ -102,10 +102,14 @@ class LiteralOptimizer:
         if not should_trim:
             if lines_count > config.max_literal_lines:
                 should_trim = True
-                replacement_text = self._create_multiline_literal_placeholder(literal_type, lines_count)
+                replacement_text = context.placeholder_gen.create_literal_placeholder(
+                    literal_type, bytes_count, style="inline"
+                )
             elif bytes_count > config.collapse_threshold:
                 should_trim = True
-                replacement_text = self._create_size_based_placeholder(literal_type, bytes_count)
+                replacement_text = context.placeholder_gen.create_literal_placeholder(
+                    literal_type, bytes_count, style="inline"
+                )
 
         if should_trim and replacement_text:
             start_byte, end_byte = context.doc.get_node_range(node)
@@ -127,7 +131,8 @@ class LiteralOptimizer:
             text: str,
             max_length: int,
             collapse_threshold: int,
-            byte_count: int
+            byte_count: int,
+            context: ProcessingContext
     ) -> Tuple[bool, Optional[str]]:
         """
         Check if string literal should be trimmed.
@@ -137,6 +142,7 @@ class LiteralOptimizer:
             max_length: Maximum allowed string length
             collapse_threshold: Byte threshold for collapsing
             byte_count: Actual byte count of string
+            context: Processing context
             
         Returns:
             Tuple of (should_trim, replacement_text)
@@ -145,14 +151,17 @@ class LiteralOptimizer:
         quote_char = text[0] if text and text[0] in ('"', "'", '`') else '"'
         inner_text = text.strip(quote_char)
 
-        if len(inner_text) > max_length:
-            # Truncate to max length
+        # Prioritize collapse over truncation for large data
+        if byte_count > collapse_threshold:
+            # Replace with comment placeholder
+            replacement = context.placeholder_gen.create_literal_placeholder(
+                "string", byte_count, style="inline"
+            )
+            return True, replacement
+        elif len(inner_text) > max_length:
+            # Truncate to max length only for smaller strings
             truncated = inner_text[:max_length].rstrip()
             replacement = f'{quote_char}{truncated}...{quote_char}'
-            return True, replacement
-        elif byte_count > collapse_threshold:
-            # Replace with placeholder on size threshold
-            replacement = f'{quote_char}... ({byte_count} bytes){quote_char}'
             return True, replacement
 
         return False, None
@@ -183,14 +192,11 @@ class LiteralOptimizer:
         # Count array elements through Tree-sitter
         elements_count = self._count_array_elements(node, context)
 
-        if elements_count > max_elements:
-            # Show only first few elements
-            preview_elements = self._get_array_preview(node, min(3, max_elements), context)
-            replacement = f"[{preview_elements}, ... and {elements_count - len(preview_elements.split(','))} more]"
-            return True, replacement
-        elif lines_count > max_lines:
-            # Collapse multiline array
-            replacement = f"[... {elements_count} elements]"
+        if elements_count > max_elements or lines_count > max_lines:
+            # Use comment placeholder for arrays exceeding limits
+            replacement = context.placeholder_gen.create_literal_placeholder(
+                "array", len(text.encode('utf-8')), style="inline"
+            )
             return True, replacement
 
         return False, None
@@ -221,14 +227,11 @@ class LiteralOptimizer:
         # Count object properties
         properties_count = self._count_object_properties(node, context)
 
-        if properties_count > max_properties:
-            # Show only first few properties
-            preview_props = self._get_object_preview(node, min(3, max_properties), context)
-            replacement = f"{{{preview_props}, ... and {properties_count - len(preview_props.split(','))} more}}"
-            return True, replacement
-        elif lines_count > max_lines:
-            # Collapse multiline object
-            replacement = f"{{... {properties_count} properties}}"
+        if properties_count > max_properties or lines_count > max_lines:
+            # Use comment placeholder for objects exceeding limits
+            replacement = context.placeholder_gen.create_literal_placeholder(
+                "object", len(text.encode('utf-8')), style="inline"
+            )
             return True, replacement
 
         return False, None
@@ -250,44 +253,4 @@ class LiteralOptimizer:
                 properties += 1
         return properties
     
-    def _get_array_preview(self, node: Node, max_elements: int, context: ProcessingContext) -> str:
-        """Get preview of first array elements."""
-        elements = []
-        count = 0
-
-        for child in node.children:
-            if child.type not in ('[', ']', ',') and count < max_elements:
-                element_text = context.doc.get_node_text(child).strip()
-                # Truncate long elements
-                if len(element_text) > 50:
-                    element_text = element_text[:47] + "..."
-                elements.append(element_text)
-                count += 1
-
-        return ", ".join(elements)
     
-    def _get_object_preview(self, node: Node, max_properties: int, context: ProcessingContext) -> str:
-        """Get preview of first object properties."""
-        properties = []
-        count = 0
-
-        for child in node.children:
-            if ('pair' in child.type or 'property' in child.type) and count < max_properties:
-                prop_text = context.doc.get_node_text(child).strip()
-                # Truncate long properties
-                if len(prop_text) > 50:
-                    prop_text = prop_text[:47] + "..."
-                properties.append(prop_text)
-                count += 1
-
-        return ", ".join(properties)
-    
-    def _create_multiline_literal_placeholder(self, literal_type: str, lines_count: int) -> str:
-        """Create placeholder for multiline literal."""
-        comment_start, _ = self.adapter.get_comment_style()
-        return f"{comment_start} ... {literal_type} data ({lines_count} lines)"
-    
-    def _create_size_based_placeholder(self, literal_type: str, byte_count: int) -> str:
-        """Create placeholder based on size."""
-        comment_start, _ = self.adapter.get_comment_style()
-        return f"{comment_start} ... {literal_type} data ({byte_count} bytes)"
