@@ -7,6 +7,7 @@ from __future__ import annotations
 
 from typing import cast
 
+from ..code_structure_utils import collect_function_like_nodes
 from ..context import ProcessingContext
 
 
@@ -31,27 +32,32 @@ class PublicApiOptimizer:
         Args:
             context: Processing context with document and editor
         """
-        # Find all functions and methods
+        # Find all functions and methods using universal structure analysis
         functions = context.doc.query("functions")
         private_elements = []  # List of (element_node, element_type)
         
-        for node, capture_name in functions:
-            if capture_name in ("function_name", "method_name"):
-                function_def = node.parent
-                # Check element visibility using adapter's language-specific logic
-                is_public = self.adapter.is_public_element(function_def, context.doc)
-                is_exported = self.adapter.is_exported_element(function_def, context.doc)
-                
-                # For methods - consider access modifiers
-                # For top-level functions - check export status  
-                if capture_name == "method_name":
-                    # Method removed if private/protected
-                    if not is_public:
-                        private_elements.append((function_def, "method"))
-                else:  # function_name
-                    # Top-level function removed if not exported
-                    if not is_exported:
-                        private_elements.append((function_def, "function"))
+        # Group function-like captures using universal utilities
+        function_groups = collect_function_like_nodes(functions)
+        
+        for func_def, func_data in function_groups.items():
+            element_type = func_data["type"]
+            
+            # Check element visibility using adapter's language-specific logic
+            is_public = self.adapter.is_public_element(func_def, context.doc)
+            is_exported = self.adapter.is_exported_element(func_def, context.doc)
+            
+            # Universal logic based on element type
+            should_remove = False
+            
+            if element_type == "method":
+                # Method removed if private/protected
+                should_remove = not is_public
+            else:  # function, arrow_function, etc.
+                # Top-level function removed if not exported
+                should_remove = not is_exported
+            
+            if should_remove:
+                private_elements.append((func_def, element_type))
         
         # Also check classes
         classes = context.doc.query("classes")

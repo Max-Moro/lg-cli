@@ -328,18 +328,21 @@ src__public-api:
                 mode: allow
                 allow:
                   - "/public_api.py"
+                  - "/function_bodies.py"
               python:
                 mode: allow
                 allow:
                   - "/adapter.py"
                   - "/queries.py"
                   - "/public_api.py"
+                  - "/function_bodies.py"
               typescript:
                 mode: allow
                 allow:
                   - "/adapter.py"
                   - "/queries.py"
                   - "/public_api.py"
+                  - "/function_bodies.py"
 
 
 src-tests__public-api:
