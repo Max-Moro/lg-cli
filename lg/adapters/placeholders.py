@@ -80,30 +80,35 @@ class PlaceholderSpec:
         Returns:
             True если между плейсхолдерами есть любой код, False если только пустота
         """
-        lines = source_text.split('\n')
+        bytes_data = source_text.encode('utf-8')
 
         # Определяем диапазон между плейсхолдерами
-        if self.end_line < other.start_line:
+        if self.end_byte <= other.start_byte:
             # self идет перед other
-            start_line = self.end_line + 1
-            end_line = other.start_line - 1
-        elif other.end_line < self.start_line:
+            start_byte = self.end_byte
+            end_byte = other.start_byte
+        elif other.end_byte <= self.start_byte:
             # other идет перед self
-            start_line = other.end_line + 1
-            end_line = self.start_line - 1
+            start_byte = other.end_byte
+            end_byte = self.start_byte
         else:
-            # Плейсхолдеры пересекаются или соседние - можно объединять
+            # Плейсхолдеры пересекаются - можно объединять
             return False
 
-        # Консервативный подход: любой непустой контент блокирует объединение
-        for line_num in range(start_line, end_line + 1):
-            if 0 <= line_num < len(lines):
-                line = lines[line_num]
-                stripped = line.strip()
+        # Получаем содержимое между плейсхолдерами в байтах
+        if start_byte >= end_byte:
+            return False
 
-                # Если есть любой непустой контент - блокируем объединение
-                if stripped:
-                    return True
+        try:
+            content_between = bytes_data[start_byte:end_byte].decode('utf-8')
+        except (UnicodeDecodeError, IndexError):
+            # При ошибках декодирования консервативно блокируем объединение
+            return True
+
+        # Консервативный подход: любой непустой контент блокирует объединение
+        stripped = content_between.strip()
+        if stripped:
+            return True
 
         return False
     
