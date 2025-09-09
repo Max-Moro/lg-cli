@@ -89,9 +89,9 @@ class ProcessingContext(LightState):
 
     # ============= API для плейсхолдеров =============
     
-    def add_comment_placeholder(self, node: Node, count: int = 1) -> None:
-        """Добавить плейсхолдер для комментария."""
-        self.placeholders.add_comment_placeholder(node, self.doc, count=count)
+    def add_comment_placeholder(self, node: Node, is_docstring: bool = False, count: int = 1) -> None:
+        """Добавить плейсхолдер для комментария/докстринга."""
+        self.placeholders.add_comment_placeholder(node, self.doc, is_docstring=is_docstring, count=count)
         self.metrics.mark_comment_removed()
         self.metrics.mark_placeholder_inserted()
     

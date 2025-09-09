@@ -49,11 +49,13 @@ class CommentOptimizer:
                 policy, capture_name, comment_text, context
             )
 
+            is_docstring = capture_name == "docstring" or self.adapter.is_documentation_comment(comment_text)
+
             if should_remove:
                 self.remove_comment(
                     context,
                     node,
-                    comment_type=capture_name,
+                    is_docstring=is_docstring,
                     replacement=replacement
                 )
 
@@ -61,7 +63,7 @@ class CommentOptimizer:
     def remove_comment(
             context: ProcessingContext,
             comment_node: Node,
-            comment_type: str = "comment",
+            is_docstring: bool,
             replacement: str = None
     ) -> bool:
         """
@@ -70,18 +72,19 @@ class CommentOptimizer:
         Args:
             context: Контекст обработки с доступом к документу
             comment_node: Узел комментария для удаления
-            comment_type: Тип комментария ("comment", "docstring")
+            is_docstring: Является ли данный комментарий докстрингом
             replacement: Кастомная замена (если None, используется плейсхолдер)
         """
         if replacement is None:
-            # Используем новое простое API для плейсхолдеров
-            context.add_comment_placeholder(comment_node)
+            # Используем API для плейсхолдеров
+            context.add_comment_placeholder(comment_node, is_docstring)
         else:
             # Кастомная замена
+            comment_type = "docstring" if is_docstring else "comment"
             start_byte, end_byte = context.doc.get_node_range(comment_node)
             context.editor.add_replacement(
                 start_byte, end_byte, replacement,
-                type=f"{comment_type}_removal",
+                type=f"{comment_type}_truncated",
                 is_placeholder=False
             )
             context.metrics.mark_comment_removed()

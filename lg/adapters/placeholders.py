@@ -59,7 +59,7 @@ class PlaceholderSpec:
             return False
 
         # Коллапсировать плейсхолдеры можно для импортов, комментариев, функций и методов целиком.
-        # Нельзя коллапсировать плейсхолдеры для литералов, тел функций или методов.
+        # Нельзя коллапсировать плейсхолдеры для литералов, тел функций или методов, докстрингов.
         if self.placeholder_type not in ["import", "comment", "function", "method"]:
             return False
         
@@ -187,9 +187,9 @@ class PlaceholderManager:
     
     # ============= Простое API для добавления плейсхолдеров =============
     
-    def add_comment_placeholder(self, node: Node, doc, count: int = 1) -> None:
-        """Добавить плейсхолдер для комментария."""
-        spec = self._create_spec_from_node(node, doc, "comment", count=count)
+    def add_comment_placeholder(self, node: Node, doc, is_docstring: bool = False, count: int = 1) -> None:
+        """Добавить плейсхолдер для комментария/докстринга."""
+        spec = self._create_spec_from_node(node, doc, "docstring" if is_docstring else "comment", count=count)
         self._add_placeholder(spec)
     
     def add_import_placeholder(self, node: Node, doc, count: int = 1) -> None:
@@ -281,6 +281,9 @@ class PlaceholderManager:
                 return f"… {count} comments omitted"
             else:
                 return "… comment omitted"
+
+        elif ptype == "docstring":
+            return "… docstring omitted"
         
         elif ptype == "import":
             if count > 1:
