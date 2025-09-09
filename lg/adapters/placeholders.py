@@ -52,6 +52,7 @@ class PlaceholderSpec:
         
         Условия объединения:
         - Одинаковый тип плейсхолдера
+        - Подходящие типы
         - Соседние или пересекающиеся позиции (с небольшим зазором)
         """
         if self.placeholder_type != other.placeholder_type:
