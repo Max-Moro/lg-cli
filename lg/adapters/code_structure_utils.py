@@ -33,25 +33,6 @@ def is_method_node(node: Node) -> bool:
     return False
 
 
-def find_function_definition_in_samples(body_node: Node, function_definitions: list[Node]) -> Optional[Node]:
-    """
-    Находит function_definition, которому принадлежит данное тело функции.
-    
-    Args:
-        body_node: Узел тела функции
-        function_definitions: Список всех узлов function_definition
-        
-    Returns:
-        Function definition, содержащий это тело, или None
-    """
-    for func_def in function_definitions:
-        # Проверяем, что body_node находится внутри func_def
-        if (func_def.start_byte <= body_node.start_byte and 
-            body_node.end_byte <= func_def.end_byte):
-            return func_def
-    return None
-
-
 def find_function_definition_in_parents(node: Node) -> Optional[Node]:
     """
     Находит function_definition для данного узла, поднимаясь по дереву.
