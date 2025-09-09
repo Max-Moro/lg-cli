@@ -299,3 +299,78 @@ src-tests__imports:
                   - "/conftest.py"
                   - "/test_imports.py"
                   - "/goldens/do/imports.ts"
+
+# Public API optimization
+
+src__public-api:
+  extensions: [".py"]
+  path_labels: relative
+  filters:
+    mode: allow
+    allow:
+      - "/lg/adapters/"
+    children:
+      lg:
+        mode: block
+        children:
+          adapters:
+            mode: block
+            block:
+#              - "/python/"
+#              - "/typescript/"
+              - "/cpp.py"
+              - "/java.py"
+              - "/javascript.py"
+              - "/markdown.py"
+              - "/scala.py"
+            children:
+              optimizations:
+                mode: allow
+                allow:
+                  - "/public_api.py"
+              python:
+                mode: allow
+                allow:
+                  - "/adapter.py"
+                  - "/queries.py"
+                  - "/public_api.py"
+              typescript:
+                mode: allow
+                allow:
+                  - "/adapter.py"
+                  - "/queries.py"
+                  - "/public_api.py"
+
+
+src-tests__public-api:
+  extensions: [".py", ".ts"]
+  path_labels: relative
+  filters:
+    mode: allow
+    allow:
+      - "/tests/adapters/"
+      - "/tests/conftest.py"
+    children:
+      tests:
+        mode: block
+        children:
+          adapters:
+            mode: block
+            block:
+#              - "/python/"
+#              - "/typescript/"
+              - "/test_infrastructure.py"
+              - "/test_integration.py"
+            children:
+              python:
+                mode: allow
+                allow:
+                  - "/conftest.py"
+                  - "/test_public_api.py"
+                  - "/goldens/do/public_api.py"
+              typescript:
+                mode: allow
+                allow:
+                  - "/conftest.py"
+                  - "/test_public_api.py"
+                  - "/goldens/do/public_api.ts"

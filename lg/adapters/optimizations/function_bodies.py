@@ -187,16 +187,16 @@ class FunctionBodyOptimizer:
                 # Strip bodies only for public functions
                 parent_function = self._find_function_definition(body_node)
                 if parent_function:
-                    is_public = self.adapter.is_public_element(parent_function, context)
-                    is_exported = self.adapter.is_exported_element(parent_function, context)
+                    is_public = self.adapter.is_public_element(parent_function, context.doc)
+                    is_exported = self.adapter.is_exported_element(parent_function, context.doc)
                     return is_public or is_exported
                 return False
             elif cfg.mode == "non_public":
                 # Strip bodies only for private functions
                 parent_function = self._find_function_definition(body_node)
                 if parent_function:
-                    is_public = self.adapter.is_public_element(parent_function, context)
-                    is_exported = self.adapter.is_exported_element(parent_function, context)
+                    is_public = self.adapter.is_public_element(parent_function, context.doc)
+                    is_exported = self.adapter.is_exported_element(parent_function, context.doc)
                     return not (is_public or is_exported)
                 return False
         

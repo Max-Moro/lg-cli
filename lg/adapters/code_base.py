@@ -53,13 +53,13 @@ class CodeAdapter(BaseAdapter[C], ABC):
         pass
 
     @abstractmethod
-    def is_public_element(self, node: Node, context: ProcessingContext) -> bool:
+    def is_public_element(self, node: Node, doc: TreeSitterDocument) -> bool:
         """
         Определяет, является ли элемент кода публичным.
         
         Args:
             node: Узел Tree-sitter для анализа
-            context: Контекст обработки с доступом к документу
+            doc: Tree-sitter документ
             
         Returns:
             True если элемент публичный, False если приватный/защищенный
@@ -67,13 +67,13 @@ class CodeAdapter(BaseAdapter[C], ABC):
         pass
 
     @abstractmethod
-    def is_exported_element(self, node: Node, context: ProcessingContext) -> bool:
+    def is_exported_element(self, node: Node, doc: TreeSitterDocument) -> bool:
         """
         Определяет, экспортируется ли элемент из модуля.
         
         Args:
             node: Узел Tree-sitter для анализа
-            context: Контекст обработки с доступом к документу
+            doc: Tree-sitter документ
             
         Returns:
             True если элемент экспортируется, False если только для внутреннего использования

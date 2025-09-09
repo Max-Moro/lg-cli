@@ -58,9 +58,9 @@ class PlaceholderSpec:
         if self.placeholder_type != other.placeholder_type:
             return False
 
-        # Коллапсировать плейсхолдеры можно для импортов, комментариев, функций и методов целиком.
+        # Коллапсировать плейсхолдеры можно для импортов, комментариев, функций, методов, классов, интерфейсов и типов целиком.
         # Нельзя коллапсировать плейсхолдеры для литералов, тел функций или методов, докстрингов.
-        if self.placeholder_type not in ["import", "comment", "function", "method"]:
+        if self.placeholder_type not in ["import", "comment", "function", "method", "class", "interface", "type"]:
             return False
         
         # Проверяем содержимое между плейсхолдерами
@@ -204,6 +204,31 @@ class PlaceholderManager:
         spec = self._create_spec_from_node(node, doc, literal_type)
         self._add_placeholder(spec)
     
+    def add_function_placeholder(self, node: Node, doc, count: int = 1) -> None:
+        """Добавить плейсхолдер для функции."""
+        spec = self._create_spec_from_node(node, doc, "function", count=count)
+        self._add_placeholder(spec)
+    
+    def add_method_placeholder(self, node: Node, doc, count: int = 1) -> None:
+        """Добавить плейсхолдер для метода."""
+        spec = self._create_spec_from_node(node, doc, "method", count=count)
+        self._add_placeholder(spec)
+    
+    def add_class_placeholder(self, node: Node, doc, count: int = 1) -> None:
+        """Добавить плейсхолдер для класса."""
+        spec = self._create_spec_from_node(node, doc, "class", count=count)
+        self._add_placeholder(spec)
+    
+    def add_interface_placeholder(self, node: Node, doc, count: int = 1) -> None:
+        """Добавить плейсхолдер для интерфейса."""
+        spec = self._create_spec_from_node(node, doc, "interface", count=count)
+        self._add_placeholder(spec)
+    
+    def add_type_placeholder(self, node: Node, doc, count: int = 1) -> None:
+        """Добавить плейсхолдер для типа."""
+        spec = self._create_spec_from_node(node, doc, "type", count=count)
+        self._add_placeholder(spec)
+
     def add_custom_placeholder(self, start_byte: int, end_byte: int, start_line: int, end_line: int,
                              placeholder_type: str, placeholder_prefix: str = "", count: int = 1) -> None:
         """Добавить кастомный плейсхолдер с явными координатами."""
@@ -297,6 +322,36 @@ class PlaceholderManager:
                 return f"… {count} imports omitted"
             else:
                 return "… import omitted"
+        
+        elif ptype == "function":
+            if count > 1:
+                return f"… {count} functions omitted"
+            else:
+                return "… function omitted"
+        
+        elif ptype == "method":
+            if count > 1:
+                return f"… {count} methods omitted"
+            else:
+                return "… method omitted"
+        
+        elif ptype == "class":
+            if count > 1:
+                return f"… {count} classes omitted"
+            else:
+                return "… class omitted"
+        
+        elif ptype == "interface":
+            if count > 1:
+                return f"… {count} interfaces omitted"
+            else:
+                return "… interface omitted"
+        
+        elif ptype == "type":
+            if count > 1:
+                return f"… {count} types omitted"
+            else:
+                return "… type omitted"
         
         elif ptype in ("string", "array", "object", "literal"):
             if bytes_removed > 0:

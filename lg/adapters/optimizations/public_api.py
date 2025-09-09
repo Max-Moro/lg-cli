@@ -33,27 +33,25 @@ class PublicApiOptimizer:
         """
         # Find all functions and methods
         functions = context.doc.query("functions")
-        private_ranges = []
+        private_elements = []  # List of (element_node, element_type)
         
         for node, capture_name in functions:
             if capture_name in ("function_name", "method_name"):
                 function_def = node.parent
                 # Check element visibility using adapter's language-specific logic
-                is_public = self.adapter.is_public_element(function_def, context)
-                is_exported = self.adapter.is_exported_element(function_def, context)
+                is_public = self.adapter.is_public_element(function_def, context.doc)
+                is_exported = self.adapter.is_exported_element(function_def, context.doc)
                 
                 # For methods - consider access modifiers
                 # For top-level functions - check export status  
                 if capture_name == "method_name":
                     # Method removed if private/protected
                     if not is_public:
-                        start_byte, end_byte = context.doc.get_node_range(function_def)
-                        private_ranges.append((start_byte, end_byte, function_def))
+                        private_elements.append((function_def, "method"))
                 else:  # function_name
                     # Top-level function removed if not exported
                     if not is_exported:
-                        start_byte, end_byte = context.doc.get_node_range(function_def)
-                        private_ranges.append((start_byte, end_byte, function_def))
+                        private_elements.append((function_def, "function"))
         
         # Also check classes
         classes = context.doc.query("classes")
@@ -61,45 +59,44 @@ class PublicApiOptimizer:
             if capture_name == "class_name":
                 class_def = node.parent
                 # Check class export status
-                is_exported = self.adapter.is_exported_element(class_def, context)
+                is_exported = self.adapter.is_exported_element(class_def, context.doc)
                 
                 # For top-level classes, export is primary consideration
                 if not is_exported:
-                    start_byte, end_byte = context.doc.get_node_range(class_def)
-                    private_ranges.append((start_byte, end_byte, class_def))
+                    private_elements.append((class_def, "class"))
         
         # Check interfaces (TypeScript/similar languages)
         interfaces = context.doc.query_opt("interfaces")
         for node, capture_name in interfaces:
             if capture_name == "interface_name":
                 interface_def = node.parent
-                is_exported = self.adapter.is_exported_element(interface_def, context)
+                is_exported = self.adapter.is_exported_element(interface_def, context.doc)
 
                 if not is_exported:
-                    start_byte, end_byte = context.doc.get_node_range(interface_def)
-                    private_ranges.append((start_byte, end_byte, interface_def))
+                    private_elements.append((interface_def, "interface"))
         
         # Check type aliases (TypeScript/similar languages)
         types = context.doc.query_opt("types")
         for node, capture_name in types:
             if capture_name == "type_name":
                 type_def = node.parent
-                is_exported = self.adapter.is_exported_element(type_def, context)
+                is_exported = self.adapter.is_exported_element(type_def, context.doc)
 
                 if not is_exported:
-                    start_byte, end_byte = context.doc.get_node_range(type_def)
-                    private_ranges.append((start_byte, end_byte, type_def))
+                    private_elements.append((type_def, "type"))
         
         # Sort by position (reverse order for safe removal)
-        private_ranges.sort(key=lambda x: x[0], reverse=True)
+        private_elements.sort(key=lambda x: context.doc.get_node_range(x[0])[0], reverse=True)
         
-        # Remove private elements with placeholders
-        for start_byte, end_byte, element in private_ranges:
-            start_line, end_line = context.doc.get_line_range(element)
-            
-            context.add_custom_placeholder(
-                start_byte, end_byte, start_line, end_line,
-                placeholder_type="private_element"
-            )
-            
-            context.metrics.increment("code.removed.private_elements")
+        # Remove private elements with appropriate placeholders
+        for element, element_type in private_elements:
+            if element_type == "function":
+                context.add_function_placeholder(element)
+            elif element_type == "method":
+                context.add_method_placeholder(element)
+            elif element_type == "class":
+                context.add_class_placeholder(element)
+            elif element_type == "interface":
+                context.add_interface_placeholder(element)
+            elif element_type == "type":
+                context.add_type_placeholder(element)

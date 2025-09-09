@@ -11,7 +11,7 @@ from tree_sitter import Language
 
 from ..code_base import CodeAdapter
 from ..code_model import CodeCfg
-from ..context import ProcessingContext, LightweightContext
+from ..context import LightweightContext
 from ..optimizations import FieldsClassifier, ImportClassifier, TreeSitterImportAnalyzer
 from ..tree_sitter_support import TreeSitterDocument, Node
 
@@ -89,7 +89,7 @@ class TypeScriptAdapter(CodeAdapter[TypeScriptCfg]):
         # Можно добавить другие эвристики пропуска для TypeScript
         return False
 
-    def is_public_element(self, node: Node, context: ProcessingContext) -> bool:
+    def is_public_element(self, node: Node, doc: TreeSitterDocument) -> bool:
         """
         Определяет публичность элемента TypeScript по модификаторам доступа.
         
@@ -99,12 +99,12 @@ class TypeScriptAdapter(CodeAdapter[TypeScriptCfg]):
         - Элементы с модификатором 'public' или без модификатора - публичные
         """
         # Debug: добавим отладочную информацию
-        node_text = context.doc.get_node_text(node)
+        node_text = doc.get_node_text(node)
         
         # Ищем модификаторы доступа среди дочерних узлов и в тексте
         for child in node.children:
             if child.type == "accessibility_modifier":
-                modifier_text = context.doc.get_node_text(child)
+                modifier_text = doc.get_node_text(child)
                 if modifier_text in ("private", "protected"):
                     return False
                 elif modifier_text == "public":
@@ -119,7 +119,7 @@ class TypeScriptAdapter(CodeAdapter[TypeScriptCfg]):
         # Если модификатор не найден, элемент считается публичным по умолчанию
         return True
 
-    def is_exported_element(self, node: Node, context: ProcessingContext) -> bool:
+    def is_exported_element(self, node: Node, doc: TreeSitterDocument) -> bool:
         """
         Определяет, экспортируется ли элемент TypeScript.
         
@@ -133,7 +133,7 @@ class TypeScriptAdapter(CodeAdapter[TypeScriptCfg]):
             return False
         
         # Проверяем, что это top-level элемент с export
-        node_text = context.doc.get_node_text(node)
+        node_text = doc.get_node_text(node)
         
         # Простая проверка: элемент экспортируется если непосредственно перед ним стоит export
         if node_text.strip().startswith("export "):
@@ -147,16 +147,16 @@ class TypeScriptAdapter(CodeAdapter[TypeScriptCfg]):
             current = current.parent
         
         # Дополнительная проверка через поиск export в начале строки
-        return self._check_export_in_source_line(node, context)
+        return self._check_export_in_source_line(node, doc)
 
     @staticmethod
-    def _check_export_in_source_line(node: Node, context: ProcessingContext) -> bool:
+    def _check_export_in_source_line(node: Node, doc: TreeSitterDocument) -> bool:
         """
         Проверяет наличие 'export' в исходной строке элемента.
         Это fallback для случаев, когда Tree-sitter не правильно парсит export.
         """
-        start_line, _ = context.doc.get_line_range(node)
-        lines = context.doc.text.split('\n')
+        start_line, _ = doc.get_line_range(node)
+        lines = doc.text.split('\n')
         
         if start_line < len(lines):
             line_text = lines[start_line].strip()
@@ -206,33 +206,33 @@ class TypeScriptAdapter(CodeAdapter[TypeScriptCfg]):
         # для более точного анализа структуры файла
         try:
             full_context = lightweight_ctx.get_full_context(self)
-            return self._deep_barrel_file_analysis(full_context)
+            return self._deep_barrel_file_analysis(full_context.doc)
         except Exception:
             # Если Tree-sitter парсинг не удался, полагаемся на текстовую эвристику
             return export_ratio > 0.5
 
     @staticmethod
-    def _deep_barrel_file_analysis(context: ProcessingContext) -> bool:
+    def _deep_barrel_file_analysis(doc: TreeSitterDocument) -> bool:
         """
         Глубокий анализ barrel file через Tree-sitter парсинг.
         Вызывается только в сложных случаях.
         """
         try:
             # Ищем все export statements
-            exports = context.doc.query("exports")
+            exports = doc.query("exports")
             export_count = len(exports)
             
             # Ищем re-export statements (export ... from ...)
             reexport_count = 0
             for node, capture_name in exports:
-                node_text = context.doc.get_node_text(node)
+                node_text = doc.get_node_text(node)
                 if ' from ' in node_text:
                     reexport_count += 1
             
             # Также ищем обычные объявления (functions, classes, interfaces)
-            functions = context.doc.query("functions")
-            classes = context.doc.query("classes")
-            interfaces = context.doc.query("interfaces")
+            functions = doc.query("functions")
+            classes = doc.query("classes")
+            interfaces = doc.query("interfaces")
             
             declaration_count = len(functions) + len(classes) + len(interfaces)
             

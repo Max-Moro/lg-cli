@@ -11,7 +11,7 @@ from tree_sitter import Language
 
 from ..code_base import CodeAdapter
 from ..code_model import CodeCfg
-from ..context import ProcessingContext, LightweightContext
+from ..context import LightweightContext
 from ..optimizations import FieldsClassifier, ImportClassifier, TreeSitterImportAnalyzer, CommentOptimizer
 from ..tree_sitter_support import TreeSitterDocument, Node
 
@@ -169,7 +169,7 @@ class PythonAdapter(CodeAdapter[PythonCfg]):
         # Если добрались сюда — все нетиповые строки допустимы → файл тривиальный
         return True
 
-    def is_public_element(self, node: Node, context: ProcessingContext) -> bool:
+    def is_public_element(self, node: Node, doc: TreeSitterDocument) -> bool:
         """
         Определяет публичность элемента Python по соглашениям об underscore.
         
@@ -180,7 +180,7 @@ class PythonAdapter(CodeAdapter[PythonCfg]):
         - Специальные методы __method__ считаются публичными
         """
         # Получаем имя элемента
-        element_name = self._get_element_name(node, context)
+        element_name = self._get_element_name(node, doc)
         if not element_name:
             return True  # Если имя не найдено, считаем публичным
         
@@ -199,7 +199,7 @@ class PythonAdapter(CodeAdapter[PythonCfg]):
         # Все остальные - публичные
         return True
 
-    def is_exported_element(self, node: Node, context: ProcessingContext) -> bool:
+    def is_exported_element(self, node: Node, doc: TreeSitterDocument) -> bool:
         """
         Определяет, экспортируется ли элемент Python.
         
@@ -207,22 +207,22 @@ class PythonAdapter(CodeAdapter[PythonCfg]):
         Пока упрощенная реализация - считаем все публичные элементы экспортируемыми.
         """
         # TODO: Реализовать проверку __all__ в будущих итерациях
-        return self.is_public_element(node, context)
+        return self.is_public_element(node, doc)
 
     @staticmethod
-    def _get_element_name(node: Node, context: ProcessingContext) -> Optional[str]:
+    def _get_element_name(node: Node, doc: TreeSitterDocument) -> Optional[str]:
         """
         Извлекает имя элемента из узла Tree-sitter.
         """
         # Ищем дочерний узел с именем функции/класса/метода
         for child in node.children:
             if child.type == "identifier":
-                return context.doc.get_node_text(child)
+                return doc.get_node_text(child)
         
         # Для некоторых типов узлов имя может быть в поле name
         name_node = node.child_by_field_name("name")
         if name_node:
-            return context.doc.get_node_text(name_node)
+            return doc.get_node_text(name_node)
         
         return None
 
