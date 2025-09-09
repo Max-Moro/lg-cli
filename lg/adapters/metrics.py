@@ -67,7 +67,12 @@ class MetricsCollector:
         # Маппинг типов элементов в метрики во множественном числе
         element_type_to_metric = {
             "function": "functions",
-            "method": "methods", 
+            "method": "methods",
+            "function_body": "function_bodies",
+            "method_body": "method_bodies",
+            "constructor": "constructors",
+            "getter": "getters",
+            "setter": "setters",
             "class": "classes",
             "interface": "interfaces",
             "type": "types",
@@ -78,8 +83,6 @@ class MetricsCollector:
             "string": "strings",
             "array": "arrays",
             "object": "objects",
-            "function_body": "function_bodies",
-            "method_body": "method_bodies",
         }
         
         metric_name = element_type_to_metric.get(element_type, element_type + "s")

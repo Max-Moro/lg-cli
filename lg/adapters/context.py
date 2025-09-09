@@ -89,21 +89,21 @@ class ProcessingContext(LightState):
 
     # ============= API для плейсхолдеров =============
 
-    def add_placeholder(self, element_type: str, node: Node, count: int = 1) -> None:
+    def add_placeholder(self, element_type: str, start_byte: int, end_byte: int, start_line: int, end_line: int,
+                        placeholder_prefix: str = "", count: int = 1) -> None:
         """Добавить плейсхолдер."""
-        self.placeholders.add_placeholder(element_type, node, self.doc, count=count)
+        self.placeholders.add_placeholder(
+            element_type, start_byte, end_byte, start_line, end_line, placeholder_prefix, count
+        )
         self.metrics.mark_element_removed(element_type, count)
         self.metrics.mark_placeholder_inserted()
 
-    def add_custom_placeholder(self, start_byte: int, end_byte: int, start_line: int, end_line: int,
-                             placeholder_type: str, placeholder_prefix: str = "", count: int = 1) -> None:
-        """Добавить кастомный плейсхолдер."""
-        self.placeholders.add_custom_placeholder(
-            placeholder_type, start_byte, end_byte, start_line, end_line, placeholder_prefix, count
-        )
-        self.metrics.mark_element_removed(placeholder_type, count)
+    def add_placeholder_for_node(self, element_type: str, node: Node, count: int = 1) -> None:
+        """Добавить плейсхолдер ровно по границам ноды."""
+        self.placeholders.add_placeholder_for_node(element_type, node, self.doc, count=count)
+        self.metrics.mark_element_removed(element_type, count)
         self.metrics.mark_placeholder_inserted()
-    
+
     # ============= Метод удаления без плейсхолдера =============
     
     def remove_range(self, start_byte: int, end_byte: int, **metadata) -> None:

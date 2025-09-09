@@ -170,7 +170,7 @@ class ImportOptimizer:
         count = len(import_info.imported_items)
         
         # Используем новое простое API
-        context.add_placeholder("import", import_info.node, count=count)
+        context.add_placeholder_for_node("import", import_info.node, count=count)
     
 # Export the classes that will be used by language adapters
 __all__ = [

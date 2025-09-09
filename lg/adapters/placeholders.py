@@ -189,13 +189,8 @@ class PlaceholderManager:
     
     # ============= Простое API для добавления плейсхолдеров =============
     
-    def add_placeholder(self, placeholder_type: str, node: Node, doc, count: int = 1) -> None:
-        """Добавить плейсхолдер для импорта."""
-        spec = self._create_spec_from_node(node, doc, placeholder_type, count=count)
-        self._add_placeholder(spec)
-
-    def add_custom_placeholder(self, placeholder_type: str, start_byte: int, end_byte: int, start_line: int, end_line: int,
-                             placeholder_prefix: str = "", count: int = 1) -> None:
+    def add_placeholder(self, placeholder_type: str, start_byte: int, end_byte: int, start_line: int, end_line: int,
+                        placeholder_prefix: str = "", count: int = 1) -> None:
         """Добавить кастомный плейсхолдер с явными координатами."""
         spec = PlaceholderSpec(
             start_byte=start_byte,
@@ -206,6 +201,11 @@ class PlaceholderManager:
             placeholder_prefix=placeholder_prefix,
             count=count,
         )
+        self._add_placeholder(spec)
+
+    def add_placeholder_for_node(self, placeholder_type: str, node: Node, doc, count: int = 1) -> None:
+        """Добавить плейсхолдер для импорта."""
+        spec = self._create_spec_from_node(node, doc, placeholder_type, count=count)
         self._add_placeholder(spec)
     
     # ============= Внутренние методы =============

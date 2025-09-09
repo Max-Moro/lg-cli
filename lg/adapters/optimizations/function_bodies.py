@@ -108,15 +108,9 @@ class FunctionBodyOptimizer:
         start_line = context.doc.get_line_number_for_byte(start_byte)
         end_line = context.doc.get_line_number_for_byte(end_byte)
 
-        context.add_custom_placeholder(
-            start_byte, end_byte, start_line, end_line,
-            placeholder_type=func_type + "_body",
+        context.add_placeholder(func_type + "_body", start_byte, end_byte, start_line, end_line,
             placeholder_prefix=placeholder_prefix
         )
-        if func_type == "method":
-            context.metrics.mark_method_body_removed()
-        else:
-            context.metrics.mark_function_body_removed()
 
     def should_strip_function_body(
         self, 

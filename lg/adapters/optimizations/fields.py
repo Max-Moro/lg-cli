@@ -153,39 +153,21 @@ class FieldOptimizer:
         start_byte, end_byte = context.doc.get_node_range(body_node)
         start_line, end_line = context.doc.get_line_range(body_node)
         
-        context.add_custom_placeholder(
-            start_byte, end_byte, start_line, end_line,
-            placeholder_type="constructor"
-        )
-        
-        # Update metrics
-        context.metrics.increment("code.removed.constructors")
+        context.add_placeholder("constructor", start_byte, end_byte, start_line, end_line)
     
     def _strip_getter_body(self, body_node, context: ProcessingContext) -> None:
         """Strip trivial getter body."""
         start_byte, end_byte = context.doc.get_node_range(body_node)
         start_line, end_line = context.doc.get_line_range(body_node)
         
-        context.add_custom_placeholder(
-            start_byte, end_byte, start_line, end_line,
-            placeholder_type="getter"
-        )
-        
-        # Update metrics
-        context.metrics.increment("code.removed.getters")
+        context.add_placeholder("getter", start_byte, end_byte, start_line, end_line)
     
     def _strip_setter_body(self, body_node, context: ProcessingContext) -> None:
         """Strip trivial setter body."""
         start_byte, end_byte = context.doc.get_node_range(body_node)
         start_line, end_line = context.doc.get_line_range(body_node)
         
-        context.add_custom_placeholder(
-            start_byte, end_byte, start_line, end_line,
-            placeholder_type="setter"
-        )
-        
-        # Update metrics
-        context.metrics.increment("code.removed.setters")
+        context.add_placeholder("setter", start_byte, end_byte, start_line, end_line)
     
     @staticmethod
     def _get_method_name(body_node, doc: TreeSitterDocument) -> str:

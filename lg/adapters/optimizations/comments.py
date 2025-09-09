@@ -79,7 +79,7 @@ class CommentOptimizer:
 
         if replacement is None:
             # Используем API для плейсхолдеров
-            context.add_placeholder(element_type, comment_node)
+            context.add_placeholder_for_node(element_type, comment_node)
         else:
             # Кастомная замена
             start_byte, end_byte = context.doc.get_node_range(comment_node)

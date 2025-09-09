@@ -113,7 +113,4 @@ class PublicApiOptimizer:
         end_line = context.doc.get_line_number_for_byte(end_byte)
         
         # Add appropriate placeholder using custom range
-        context.add_custom_placeholder(
-            start_byte, end_byte, start_line, end_line,
-            placeholder_type=element_type
-        )
+        context.add_placeholder(element_type, start_byte, end_byte, start_line, end_line)

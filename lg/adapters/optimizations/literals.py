@@ -116,7 +116,7 @@ class LiteralOptimizer:
         if should_trim:
             if replacement_text is None:
                 # Используем новое простое API для автоматических плейсхолдеров
-                context.add_placeholder(literal_type, node)
+                context.add_placeholder_for_node(literal_type, node)
             else:
                 # Кастомная замена (например, укороченная строка)
                 start_byte, end_byte = context.doc.get_node_range(node)
