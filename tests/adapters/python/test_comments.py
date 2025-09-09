@@ -34,7 +34,7 @@ class TestPythonCommentOptimization:
         
         # Comments should be removed
         assert meta.get("code.removed.comments", 0) > 0
-        assert "# … comment omitted" in result or "… comment omitted" in result
+        assert "# … comment omitted" in result
         
         assert_golden_match(result, "comments", "strip_all")
     
@@ -49,7 +49,7 @@ class TestPythonCommentOptimization:
         assert meta.get("code.removed.comments", 0) > 0
         assert '"""Module docstring with detailed description.' in result
         assert '"""Class with various comment types."""' in result
-        # Regular comments should be replaced with placeholders or removed
+        # Regular comments should be replaced with placeholders
         assert "# This is a regular comment" not in result
         
         assert_golden_match(result, "comments", "keep_doc")
@@ -87,7 +87,8 @@ class TestPythonCommentOptimization:
         assert "TODO:" in result
         assert "FIXME:" in result
         # Should strip WARNING comments
-        assert "WARNING:" not in result or "… comment omitted" in result
+        assert "WARNING:" not in result
+        assert "# … comment omitted" in result
         
         assert_golden_match(result, "comments", "complex_policy")
     

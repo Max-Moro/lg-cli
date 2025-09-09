@@ -34,7 +34,7 @@ class TestTypeScriptCommentOptimization:
         
         # Comments should be removed
         assert meta.get("code.removed.comments", 0) > 0
-        assert "/* … comment omitted" in result or "// … comment omitted" in result
+        assert "// … comment omitted" in result
         
         assert_golden_match(result, "comments", "strip_all")
     
@@ -49,7 +49,7 @@ class TestTypeScriptCommentOptimization:
         assert meta.get("code.removed.comments", 0) > 0
         assert "/**" in result and "Interface with JSDoc documentation" in result
         assert "* Class constructor with detailed JSDoc" in result
-        # Regular comments should be replaced with placeholders or removed
+        # Regular comments should be replaced with placeholders
         assert "// Single-line comment at module level" not in result
         
         assert_golden_match(result, "comments", "keep_doc")
@@ -114,7 +114,8 @@ function processData(data: string): void {
         assert "TODO:" in result
         assert "FIXME:" in result
         # Should strip WARNING comments
-        assert "WARNING:" not in result or "… comment omitted" in result
+        assert "WARNING:" not in result
+        assert "// … comment omitted" in result
         
         assert_golden_match(result, "comments", "complex_policy")
 
