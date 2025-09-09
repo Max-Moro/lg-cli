@@ -189,48 +189,13 @@ class PlaceholderManager:
     
     # ============= Простое API для добавления плейсхолдеров =============
     
-    def add_comment_placeholder(self, node: Node, doc, is_docstring: bool = False, count: int = 1) -> None:
-        """Добавить плейсхолдер для комментария/докстринга."""
-        spec = self._create_spec_from_node(node, doc, "docstring" if is_docstring else "comment", count=count)
-        self._add_placeholder(spec)
-    
-    def add_import_placeholder(self, node: Node, doc, count: int = 1) -> None:
+    def add_placeholder(self, placeholder_type: str, node: Node, doc, count: int = 1) -> None:
         """Добавить плейсхолдер для импорта."""
-        spec = self._create_spec_from_node(node, doc, "import", count=count)
-        self._add_placeholder(spec)
-    
-    def add_literal_placeholder(self, node: Node, doc, literal_type: str = "literal") -> None:
-        """Добавить плейсхолдер для литерала."""
-        spec = self._create_spec_from_node(node, doc, literal_type)
-        self._add_placeholder(spec)
-    
-    def add_function_placeholder(self, node: Node, doc, count: int = 1) -> None:
-        """Добавить плейсхолдер для функции."""
-        spec = self._create_spec_from_node(node, doc, "function", count=count)
-        self._add_placeholder(spec)
-    
-    def add_method_placeholder(self, node: Node, doc, count: int = 1) -> None:
-        """Добавить плейсхолдер для метода."""
-        spec = self._create_spec_from_node(node, doc, "method", count=count)
-        self._add_placeholder(spec)
-    
-    def add_class_placeholder(self, node: Node, doc, count: int = 1) -> None:
-        """Добавить плейсхолдер для класса."""
-        spec = self._create_spec_from_node(node, doc, "class", count=count)
-        self._add_placeholder(spec)
-    
-    def add_interface_placeholder(self, node: Node, doc, count: int = 1) -> None:
-        """Добавить плейсхолдер для интерфейса."""
-        spec = self._create_spec_from_node(node, doc, "interface", count=count)
-        self._add_placeholder(spec)
-    
-    def add_type_placeholder(self, node: Node, doc, count: int = 1) -> None:
-        """Добавить плейсхолдер для типа."""
-        spec = self._create_spec_from_node(node, doc, "type", count=count)
+        spec = self._create_spec_from_node(node, doc, placeholder_type, count=count)
         self._add_placeholder(spec)
 
-    def add_custom_placeholder(self, start_byte: int, end_byte: int, start_line: int, end_line: int,
-                             placeholder_type: str, placeholder_prefix: str = "", count: int = 1) -> None:
+    def add_custom_placeholder(self, placeholder_type: str, start_byte: int, end_byte: int, start_line: int, end_line: int,
+                             placeholder_prefix: str = "", count: int = 1) -> None:
         """Добавить кастомный плейсхолдер с явными координатами."""
         spec = PlaceholderSpec(
             start_byte=start_byte,

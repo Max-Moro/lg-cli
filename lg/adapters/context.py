@@ -88,61 +88,20 @@ class ProcessingContext(LightState):
         self.metrics = MetricsCollector()
 
     # ============= API для плейсхолдеров =============
-    
-    def add_comment_placeholder(self, node: Node, is_docstring: bool = False, count: int = 1) -> None:
-        """Добавить плейсхолдер для комментария/докстринга."""
-        self.placeholders.add_comment_placeholder(node, self.doc, is_docstring=is_docstring, count=count)
-        self.metrics.mark_comment_removed()
+
+    def add_placeholder(self, element_type: str, node: Node, count: int = 1) -> None:
+        """Добавить плейсхолдер."""
+        self.placeholders.add_placeholder(element_type, node, self.doc, count=count)
+        self.metrics.mark_element_removed(element_type, count)
         self.metrics.mark_placeholder_inserted()
-    
-    def add_import_placeholder(self, node: Node, count: int = 1) -> None:
-        """Добавить плейсхолдер для импорта."""
-        self.placeholders.add_import_placeholder(node, self.doc, count=count)
-        self.metrics.mark_import_removed()
-        self.metrics.mark_placeholder_inserted()
-    
-    def add_literal_placeholder(self, node: Node, literal_type: str = "literal") -> None:
-        """Добавить плейсхолдер для литерала."""
-        self.placeholders.add_literal_placeholder(node, self.doc, literal_type=literal_type)
-        self.metrics.mark_literal_removed()
-        self.metrics.mark_placeholder_inserted()
-    
-    def add_function_placeholder(self, node: Node, count: int = 1) -> None:
-        """Добавить плейсхолдер для функции."""
-        self.placeholders.add_function_placeholder(node, self.doc, count=count)
-        self.metrics.increment("code.removed.functions")
-        self.metrics.mark_placeholder_inserted()
-    
-    def add_method_placeholder(self, node: Node, count: int = 1) -> None:
-        """Добавить плейсхолдер для метода."""
-        self.placeholders.add_method_placeholder(node, self.doc, count=count)
-        self.metrics.increment("code.removed.methods")
-        self.metrics.mark_placeholder_inserted()
-    
-    def add_class_placeholder(self, node: Node, count: int = 1) -> None:
-        """Добавить плейсхолдер для класса."""
-        self.placeholders.add_class_placeholder(node, self.doc, count=count)
-        self.metrics.increment("code.removed.classes")
-        self.metrics.mark_placeholder_inserted()
-    
-    def add_interface_placeholder(self, node: Node, count: int = 1) -> None:
-        """Добавить плейсхолдер для интерфейса."""
-        self.placeholders.add_interface_placeholder(node, self.doc, count=count)
-        self.metrics.increment("code.removed.interfaces")
-        self.metrics.mark_placeholder_inserted()
-    
-    def add_type_placeholder(self, node: Node, count: int = 1) -> None:
-        """Добавить плейсхолдер для типа."""
-        self.placeholders.add_type_placeholder(node, self.doc, count=count)
-        self.metrics.increment("code.removed.types")
-        self.metrics.mark_placeholder_inserted()
-    
-    def add_custom_placeholder(self, start_byte: int, end_byte: int, start_line: int, end_line: int, 
-                             placeholder_type: str, placeholder_prefix: str = "") -> None:
+
+    def add_custom_placeholder(self, start_byte: int, end_byte: int, start_line: int, end_line: int,
+                             placeholder_type: str, placeholder_prefix: str = "", count: int = 1) -> None:
         """Добавить кастомный плейсхолдер."""
         self.placeholders.add_custom_placeholder(
-            start_byte, end_byte, start_line, end_line, placeholder_type, placeholder_prefix
+            placeholder_type, start_byte, end_byte, start_line, end_line, placeholder_prefix, count
         )
+        self.metrics.mark_element_removed(placeholder_type, count)
         self.metrics.mark_placeholder_inserted()
     
     # ============= Метод удаления без плейсхолдера =============

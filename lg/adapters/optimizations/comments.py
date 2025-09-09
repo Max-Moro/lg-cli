@@ -75,19 +75,20 @@ class CommentOptimizer:
             is_docstring: Является ли данный комментарий докстрингом
             replacement: Кастомная замена (если None, используется плейсхолдер)
         """
+        element_type = "docstring" if is_docstring else "comment"
+
         if replacement is None:
             # Используем API для плейсхолдеров
-            context.add_comment_placeholder(comment_node, is_docstring)
+            context.add_placeholder(element_type, comment_node)
         else:
             # Кастомная замена
-            comment_type = "docstring" if is_docstring else "comment"
             start_byte, end_byte = context.doc.get_node_range(comment_node)
             context.editor.add_replacement(
                 start_byte, end_byte, replacement,
-                type=f"{comment_type}_truncated",
+                type=f"{element_type}_truncated",
                 is_placeholder=False
             )
-            context.metrics.mark_comment_removed()
+            context.metrics.mark_element_removed(element_type)
 
         return True
 

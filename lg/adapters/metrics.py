@@ -56,31 +56,37 @@ class MetricsCollector:
         """Отметить вставку плейсхолдера."""
         self.increment("code.placeholders")
     
-    def mark_function_body_removed(self) -> None:
-        """Отметить удаление тела функции."""
-        self.increment("code.removed.function_bodies")
-    
-    def mark_method_body_removed(self) -> None:
-        """Отметить удаление тела метода."""
-        self.increment("code.removed.method_bodies")
-    
-    def mark_comment_removed(self) -> None:
-        """Отметить удаление комментария."""
-        self.increment("code.removed.comments")
-    
-    def mark_import_removed(self) -> None:
-        """Отметить удаление импорта."""
-        self.increment("code.removed.imports")
-    
-    def mark_literal_removed(self) -> None:
-        """Отметить удаление литерала."""
-        self.increment("code.removed.literals")
-    
-    def mark_field_trimmed(self) -> None:
-        """Отметить обрезку поля."""
-        self.increment("code.trimmed.fields")
-    
-    def merge(self, other: 'MetricsCollector') -> None:
+    def mark_element_removed(self, element_type: str, count: int = 1) -> None:
+        """
+        Универсальный метод для маркировки удаленных элементов.
+        
+        Args:
+            element_type: Тип элемента (function, method, class, interface, etc.)
+            count: Количество удаленных элементов (по умолчанию 1)
+        """
+        # Маппинг типов элементов в метрики во множественном числе
+        element_type_to_metric = {
+            "function": "functions",
+            "method": "methods", 
+            "class": "classes",
+            "interface": "interfaces",
+            "type": "types",
+            "comment": "comments",
+            "docstring": "docstrings",
+            "import": "imports",
+            "literal": "literals",
+            "string": "strings",
+            "array": "arrays",
+            "object": "objects",
+            "function_body": "function_bodies",
+            "method_body": "method_bodies",
+        }
+        
+        metric_name = element_type_to_metric.get(element_type, element_type + "s")
+        metric_key = f"code.removed.{metric_name}"
+        self.increment(metric_key, count)
+
+    def merge(self, other: MetricsCollector) -> None:
         """Объединить с другим сборщиком метрик."""
         for key, value in other._metrics.items():
             if key in self._metrics and isinstance(self._metrics[key], (int, float)) and isinstance(value, (int, float)):

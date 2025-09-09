@@ -116,7 +116,7 @@ class LiteralOptimizer:
         if should_trim:
             if replacement_text is None:
                 # Используем новое простое API для автоматических плейсхолдеров
-                context.add_literal_placeholder(node, literal_type=literal_type)
+                context.add_placeholder(literal_type, node)
             else:
                 # Кастомная замена (например, укороченная строка)
                 start_byte, end_byte = context.doc.get_node_range(node)
@@ -125,7 +125,7 @@ class LiteralOptimizer:
                     type=f"{literal_type}_trimming",
                     is_placeholder=False
                 )
-                context.metrics.mark_literal_removed()
+                context.metrics.mark_element_removed(literal_type)
     
     def _should_trim_string(
             self,
