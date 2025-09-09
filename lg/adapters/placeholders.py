@@ -27,7 +27,7 @@ class PlaceholderSpec:
     placeholder_type: str  # "function_body", "method_body", "import", "comment", "literal", etc.
 
     # Выравнивание плейсхолдера (табуляция)
-    placeholder_prefix: str
+    placeholder_prefix: str = ""
     
     # Метрики
     lines_removed: int = 0
@@ -46,14 +46,14 @@ class PlaceholderSpec:
         """Ключ для сортировки по позиции."""
         return self.start_line, self.start_byte
     
-    def can_merge_with(self, other: PlaceholderSpec) -> bool:
+    def can_merge_with(self, other: PlaceholderSpec, source_text: str) -> bool:
         """
         Проверяет, можно ли объединить этот плейсхолдер с другим.
         
         Условия объединения:
         - Одинаковый тип плейсхолдера
         - Подходящие типы
-        - Соседние или пересекающиеся позиции (с небольшим зазором)
+        - Отсутствие значимого контента между плейсхолдерами
         """
         if self.placeholder_type != other.placeholder_type:
             return False
@@ -63,16 +63,53 @@ class PlaceholderSpec:
         if self.placeholder_type not in ["import", "comment", "function", "method"]:
             return False
         
-        # Проверяем близость позиций (до 2 строк разрыва)
-        max_gap = 2
-        if other.start_line <= self.end_line + max_gap and other.end_line >= self.start_line - max_gap:
-            return True
+        # Проверяем содержимое между плейсхолдерами
+        return not self._has_significant_content_between(other, source_text)
+
+    def _has_significant_content_between(self, other: PlaceholderSpec, source_text: str) -> bool:
+        """
+        Консервативная проверка значимого контента между плейсхолдерами.
         
+        Использует строгий подход: плейсхолдеры объединяются только если между ними
+        действительно нет никакого кода - только пустые строки, пробелы и табуляции.
+        
+        Args:
+            other: Другой плейсхолдер для сравнения
+            source_text: Исходный текст документа
+            
+        Returns:
+            True если между плейсхолдерами есть любой код, False если только пустота
+        """
+        lines = source_text.split('\n')
+
+        # Определяем диапазон между плейсхолдерами
+        if self.end_line < other.start_line:
+            # self идет перед other
+            start_line = self.end_line + 1
+            end_line = other.start_line - 1
+        elif other.end_line < self.start_line:
+            # other идет перед self
+            start_line = other.end_line + 1
+            end_line = self.start_line - 1
+        else:
+            # Плейсхолдеры пересекаются или соседние - можно объединять
+            return False
+
+        # Консервативный подход: любой непустой контент блокирует объединение
+        for line_num in range(start_line, end_line + 1):
+            if 0 <= line_num < len(lines):
+                line = lines[line_num]
+                stripped = line.strip()
+
+                # Если есть любой непустой контент - блокируем объединение
+                if stripped:
+                    return True
+
         return False
     
-    def merge_with(self, other: PlaceholderSpec) -> PlaceholderSpec:
+    def merge_with(self, other: PlaceholderSpec, source_text) -> PlaceholderSpec:
         """Создает объединенный плейсхолдер."""
-        if not self.can_merge_with(other):
+        if not self.can_merge_with(other, source_text):
             raise ValueError("Cannot merge incompatible placeholders")
         
         # Объединенные границы
@@ -108,7 +145,8 @@ class PlaceholderManager:
     Предоставляет унифицированное API и обрабатывает коллапсирование.
     """
     
-    def __init__(self, comment_style: CommentStyle, placeholder_style: str):
+    def __init__(self, raw_text: str, comment_style: CommentStyle, placeholder_style: str):
+        self.raw_text = raw_text
         self.comment_style = comment_style
         self.placeholder_style = placeholder_style
         self.placeholders: List[PlaceholderSpec] = []
@@ -233,25 +271,25 @@ class PlaceholderManager:
                 return f"… {ptype} omitted"
     
     # ============= Коллапсирование и финализация =============
-    
+
     def finalize_edits(self) -> Tuple[List[Tuple[PlaceholderSpec, str]], Dict[str, Any]]:
         """
         Финализировать все правки с коллапсированием.
-        
+
         Returns:
             (collapsed_edits, stats)
         """
         # Выполняем коллапсирование плейсхолдеров
         collapsed_specs = self._collapse_placeholders()
-        
+
         # Обновляем правки на основе коллапсированных плейсхолдеров
         collapsed_edits = self._update_edits_with_collapsed(collapsed_specs)
-        
+
         # Собираем статистику
         stats = self._calculate_stats(collapsed_edits)
-        
+
         return collapsed_edits, stats
-    
+
     def _collapse_placeholders(self) -> List[PlaceholderSpec]:
         """
         Коллапсировать соседние плейсхолдеры одного типа.
@@ -259,38 +297,38 @@ class PlaceholderManager:
         """
         if not self.placeholders:
             return []
-        
+
         # Сортируем по позиции
         sorted_placeholders = sorted(self.placeholders, key=lambda p: p.position_key)
-        
+
         collapsed = []
         current_group = [sorted_placeholders[0]]
-        
+
         for placeholder in sorted_placeholders[1:]:
             # Проверяем, можно ли объединить с текущей группой
-            if current_group and current_group[-1].can_merge_with(placeholder):
+            if current_group and current_group[-1].can_merge_with(placeholder, self.raw_text):
                 current_group.append(placeholder)
             else:
                 # Финализируем текущую группу
                 collapsed.append(self._merge_group(current_group))
                 current_group = [placeholder]
-        
+
         # Не забываем последнюю группу
         if current_group:
             collapsed.append(self._merge_group(current_group))
-        
+
         return collapsed
-    
+
     def _merge_group(self, group: List[PlaceholderSpec]) -> PlaceholderSpec:
         """Объединить группу плейсхолдеров в один."""
         if len(group) == 1:
             return group[0]
-        
+
         # Последовательно объединяем все плейсхолдеры в группе
         result = group[0]
         for placeholder in group[1:]:
-            result = result.merge_with(placeholder)
-        
+            result = result.merge_with(placeholder, self.raw_text)
+
         return result
     
     def _update_edits_with_collapsed(self, collapsed_specs: List[PlaceholderSpec]) -> List[Tuple[PlaceholderSpec, str]]:
@@ -342,11 +380,12 @@ class PlaceholderManager:
 
 # ============= Фабричные функции =============
 
-def create_placeholder_manager(comment_style_tuple: Tuple[str, Tuple[str, str]], placeholder_style: str) -> PlaceholderManager:
+def create_placeholder_manager(raw_text: str, comment_style_tuple: Tuple[str, Tuple[str, str]], placeholder_style: str) -> PlaceholderManager:
     """
     Создать PlaceholderManager из кортежа стиля комментариев.
     
     Args:
+        raw_text: исходный текст документа
         comment_style_tuple: (single_line, (multi_start, multi_end))
         placeholder_style: Стиль плейсхолдеров
     """
@@ -357,4 +396,4 @@ def create_placeholder_manager(comment_style_tuple: Tuple[str, Tuple[str, str]],
         multi_line_end=multi_end
     )
     
-    return PlaceholderManager(comment_style, placeholder_style)
+    return PlaceholderManager(raw_text, comment_style, placeholder_style)

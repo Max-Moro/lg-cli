@@ -135,7 +135,7 @@ class ProcessingContext(LightState):
         """
         # Финализируем плейсхолдеры и применяем их к редактору
         collapsed_edits, placeholder_stats = self.placeholders.finalize_edits()
-        
+
         # Применяем все плейсхолдеры к редактору
         for spec, replacement_text in collapsed_edits:
             self.editor.add_replacement(
@@ -178,8 +178,9 @@ class ProcessingContext(LightState):
         
         # Создаем PlaceholderManager с настройками из адаптера
         placeholders = create_placeholder_manager(
+            lightweight_ctx.raw_text,
             adapter.get_comment_style(), 
-            adapter.cfg.placeholders.style
+            adapter.cfg.placeholders.style,
         )
         
         return cls(
