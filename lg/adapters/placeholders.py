@@ -72,13 +72,14 @@ class PlaceholderSpec:
         
         Использует строгий подход: плейсхолдеры объединяются только если между ними
         действительно нет никакого кода - только пустые строки, пробелы и табуляции.
-        
+        Также проверяет, что плейсхолдеры имеют одинаковое количество символов от начала строки.
+
         Args:
             other: Другой плейсхолдер для сравнения
             source_text: Исходный текст документа
-            
+
         Returns:
-            True если между плейсхолдерами есть любой код, False если только пустота
+            True если между плейсхолдерами есть любой код или разное количество символов от начала строки, False если только пустота и одинаковые отступы
         """
         bytes_data = source_text.encode('utf-8')
 
@@ -110,7 +111,34 @@ class PlaceholderSpec:
         if stripped:
             return True
 
+        # Проверяем количество символов от начала строки для каждого плейсхолдера
+        self_chars_from_line_start = self._count_chars_from_line_start(self.start_byte, source_text)
+        other_chars_from_line_start = self._count_chars_from_line_start(other.start_byte, source_text)
+
+        if self_chars_from_line_start != other_chars_from_line_start:
+            return True
+
         return False
+
+    def _count_chars_from_line_start(self, byte_position: int, source_text: str) -> int:
+        """
+        Считает количество символов от начала строки до указанной байтовой позиции.
+
+        Args:
+            byte_position: Байтовая позиция в тексте
+            source_text: Исходный текст документа
+
+        Returns:
+            Количество символов от ближайшего '\n' слева до позиции
+        """
+        # Идем влево от позиции и ищем ближайший '\n'
+        for i in range(byte_position - 1, -1, -1):
+            if i < len(source_text) and source_text[i] == '\n':
+                # Нашли '\n', считаем символы от него до позиции
+                return byte_position - i - 1
+
+        # Если '\n' не найден, значит мы в начале файла
+        return byte_position
     
     def merge_with(self, other: PlaceholderSpec, source_text) -> PlaceholderSpec:
         """Создает объединенный плейсхолдер."""
