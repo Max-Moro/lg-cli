@@ -170,6 +170,8 @@ class CommentStyle:
     single_line: str  # "#", "//", etc.
     multi_line_start: str  # "/*", '"""', etc.
     multi_line_end: str   # "*/", '"""', etc.
+    docstring_start: str
+    docstring_end: str
 
 
 class PlaceholderManager:
@@ -251,6 +253,11 @@ class PlaceholderManager:
         """Генерировать текст плейсхолдера на основе типа и стиля."""
         content = self._get_placeholder_content(spec)
         
+        # Для докстрингов всегда используем родное обрамление языка
+        if spec.placeholder_type == "docstring":
+            return f"{spec.placeholder_prefix}{self.comment_style.docstring_start} {content} {self.comment_style.docstring_end}"
+        
+        # Стандартная логика для обычных комментариев
         if self.placeholder_style == "inline":
             return f"{spec.placeholder_prefix}{self.comment_style.single_line} {content}"
         else: # self.placeholder_style == "block"
@@ -416,20 +423,27 @@ class PlaceholderManager:
 
 # ============= Фабричные функции =============
 
-def create_placeholder_manager(raw_text: str, comment_style_tuple: Tuple[str, Tuple[str, str]], placeholder_style: str) -> PlaceholderManager:
+def create_placeholder_manager(
+    raw_text: str, 
+    comment_style_tuple: Tuple[str, Tuple[str, str], Tuple[str, str]],
+    placeholder_style: str
+) -> PlaceholderManager:
     """
     Создать PlaceholderManager из кортежа стиля комментариев.
     
     Args:
         raw_text: исходный текст документа
-        comment_style_tuple: (single_line, (multi_start, multi_end))
+        comment_style_tuple: (single_line, (multi_start, multi_end), (docstring_start, docstring_end))
         placeholder_style: Стиль плейсхолдеров
     """
-    single_line, (multi_start, multi_end) = comment_style_tuple
+    single_line, (multi_start, multi_end), (docstring_start, docstring_end) = comment_style_tuple
+    
     comment_style = CommentStyle(
         single_line=single_line,
         multi_line_start=multi_start,
-        multi_line_end=multi_end
+        multi_line_end=multi_end,
+        docstring_start=docstring_start,
+        docstring_end=docstring_end
     )
     
     return PlaceholderManager(raw_text, comment_style, placeholder_style)

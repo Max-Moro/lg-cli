@@ -1,4 +1,4 @@
-# … docstring omitted
+""" … docstring omitted """
 
 import os
 import sys  # … comment omitted
@@ -6,21 +6,21 @@ from typing import List, Optional  # … comment omitted
 
 
 class CommentedClass:
-    # … docstring omitted
+    """ … docstring omitted """
     
     def __init__(self, name: str):
-        # … docstring omitted
+        """ … docstring omitted """
         # … comment omitted
         self.name = name
         self.data = []  # … comment omitted
     
     def public_method(self) -> str:
-        # … docstring omitted
+        """ … docstring omitted """
         # … comment omitted
         return self.name
     
     def _private_method(self):
-        # … docstring omitted
+        """ … docstring omitted """
         # … 3 comments omitted
         temp = self.name.upper()
         return temp  # … comment omitted
@@ -42,7 +42,7 @@ class CommentedClass:
         return processed.lower()
 
 def standalone_function():
-    # … docstring omitted
+    """ … docstring omitted """
     # … comment omitted
     pass
 
@@ -55,7 +55,7 @@ def undocumented_function():
 
 # … comment omitted
 def function_with_annotations():
-    # … docstring omitted
+    """ … docstring omitted """
     # … comment omitted
     result = "placeholder"
     # … comment omitted

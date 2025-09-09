@@ -232,8 +232,8 @@ class PythonAdapter(CodeAdapter[PythonCfg]):
         from .function_bodies import remove_function_body_with_definition
         remove_function_body_with_definition(*args, **kwargs)
 
-    def get_comment_style(self) -> tuple[str, tuple[str, str]]:
-        return "#", ('"""', '"""')
+    def get_comment_style(self) -> tuple[str, tuple[str, str], tuple[str, str]]:
+        return "#", ('"""', '"""'), ('"""', '"""')
 
     def is_documentation_comment(self, comment_text: str) -> bool:
         return False # Используется явный захват в `QUERIES["comments"]` — capture_name == "docstring"

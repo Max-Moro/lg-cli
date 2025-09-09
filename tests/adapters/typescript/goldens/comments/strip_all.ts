@@ -1,11 +1,11 @@
-// … comment omitted
+/** … docstring omitted */
 
 import { Observable } from 'rxjs';
 
 // … comment omitted
 const MODULE_VERSION = '1.0.0'; // … comment omitted
 
-// … comment omitted
+/** … docstring omitted */
 interface User {
     id: number;        // … comment omitted
     name: string;      // … comment omitted
@@ -18,7 +18,7 @@ interface User {
 }
 
 export class CommentedService {
-    // … comment omitted
+    /** … docstring omitted */
     constructor(
         private config: ServiceConfig,  // … comment omitted
         private logger?: Logger         // … comment omitted
@@ -29,7 +29,7 @@ export class CommentedService {
         // … 2 comments omitted
     }
     
-    // … comment omitted
+    /** … docstring omitted */
     public async processUser(userData: Partial<User>): Promise<User> {
         // … comment omitted
         if (!userData) {
@@ -89,7 +89,7 @@ export class CommentedService {
         };
     }
     
-    // … comment omitted
+    /** … docstring omitted */
     private generateUserId(): number {
         // … comment omitted
         return Math.floor(Math.random() * 1000000);
@@ -111,7 +111,7 @@ export class CommentedService {
     }
 }
 
-// … comment omitted
+/** … docstring omitted */
 export function processString(input: string): string {
     // … comment omitted
     if (!input || typeof input !== 'string') {

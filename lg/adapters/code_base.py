@@ -148,9 +148,9 @@ class CodeAdapter(BaseAdapter[C], ABC):
         """Хук для кастомизации удаления тел функций."""
         root_optimizer.remove_function_body(context, body_node, func_type)
 
-    def get_comment_style(self) -> Tuple[str, tuple[str, str]]:
-        """Cтиль комментариев для языка (однострочный, многострочный)."""
-        return "//", ("/*", "*/")
+    def get_comment_style(self) -> Tuple[str, tuple[str, str], tuple[str, str]]:
+        """Cтиль комментариев для языка (однострочный, многострочный, докстринг)."""
+        return "//", ("/*", "*/"), ('/**', '*/')
 
     def is_documentation_comment(self, comment_text: str) -> bool:
         """Является ли этот комментарий частью системы документирования."""
