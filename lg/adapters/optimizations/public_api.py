@@ -7,7 +7,7 @@ from __future__ import annotations
 
 from typing import cast
 
-from ..code_structure_utils import collect_function_like_nodes
+from ..code_structure_utils import collect_function_like_nodes, get_element_range_with_decorators
 from ..context import ProcessingContext
 
 
@@ -92,17 +92,28 @@ class PublicApiOptimizer:
                     private_elements.append((type_def, "type"))
         
         # Sort by position (reverse order for safe removal)
-        private_elements.sort(key=lambda x: context.doc.get_node_range(x[0])[0], reverse=True)
+        private_elements.sort(key=lambda x: get_element_range_with_decorators(x[0], context.doc)[0], reverse=True)
         
         # Remove private elements with appropriate placeholders
         for element, element_type in private_elements:
-            if element_type == "function":
-                context.add_function_placeholder(element)
-            elif element_type == "method":
-                context.add_method_placeholder(element)
-            elif element_type == "class":
-                context.add_class_placeholder(element)
-            elif element_type == "interface":
-                context.add_interface_placeholder(element)
-            elif element_type == "type":
-                context.add_type_placeholder(element)
+            self._remove_element_with_decorators(context, element, element_type)
+
+    def _remove_element_with_decorators(self, context: ProcessingContext, element, element_type: str) -> None:
+        """
+        Remove element including its decorators/annotations.
+        
+        Args:
+            context: Processing context
+            element: Element node to remove
+            element_type: Type of element for appropriate placeholder
+        """
+        # Get extended range including decorators
+        start_byte, end_byte = get_element_range_with_decorators(element, context.doc)
+        start_line = context.doc.get_line_number_for_byte(start_byte)
+        end_line = context.doc.get_line_number_for_byte(end_byte)
+        
+        # Add appropriate placeholder using custom range
+        context.add_custom_placeholder(
+            start_byte, end_byte, start_line, end_line,
+            placeholder_type=element_type
+        )

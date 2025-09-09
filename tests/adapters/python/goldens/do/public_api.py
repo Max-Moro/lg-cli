@@ -2,6 +2,7 @@
 
 import logging
 from typing import List, Optional
+from functools import lru_cache
 
 # Module-level public variable
 PUBLIC_CONSTANT = "available_to_all"
@@ -76,7 +77,7 @@ class PublicClass:
     def _private_property(self) -> List:
         """Private property accessor."""
         return self._private_data
-    
+
     @staticmethod
     def public_static_method() -> str:
         """Public static method."""
@@ -86,7 +87,13 @@ class PublicClass:
     def _private_static_method() -> str:
         """Private static method."""
         return "Static private"
-    
+
+    @staticmethod
+    @lru_cache(maxsize=64)
+    def _private_cached_static(value: int) -> int:
+        """Private static method with multiple decorators - should remove all decorators."""
+        return value * 3
+
     @classmethod
     def public_class_method(cls) -> 'PublicClass':
         """Public class method."""
@@ -155,3 +162,11 @@ if __name__ == "__main__":
     obj = PublicClass("test")
     print(obj.public_method())
     print(public_function("hello world"))
+
+
+@my_decorator
+class _PrivateDecoratedClass:
+    """Private class with decorator - should be removed completely including @my_decorator."""
+
+    def __init__(self, name: str):
+        self.name = name
