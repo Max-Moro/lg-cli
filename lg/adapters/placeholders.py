@@ -57,7 +57,9 @@ class PlaceholderSpec:
         if self.placeholder_type != other.placeholder_type:
             return False
 
-        if self.placeholder_type in ["function_body", "method_body"]:
+        # Коллапсировать плейсхолдеры можно для импортов, комментариев, функций и методов целиком.
+        # Нельзя коллапсировать плейсхолдеры для литералов, тел функций или методов.
+        if self.placeholder_type not in ["import", "comment", "function", "method"]:
             return False
         
         # Проверяем близость позиций (до 2 строк разрыва)

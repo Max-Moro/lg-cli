@@ -171,7 +171,5 @@ class CodeCfg:
             bc = d["budget"]
             self.budget = BudgetConfig(
                 max_tokens_per_file=bc.get("max_tokens_per_file"),
-                priority_order=list(bc.get("priority_order", [
-                    "imports", "types", "public_methods", "fields", "private_methods", "docs"
-                ]))
+                priority_order=list(bc.get("priority_order", [])) # TODO проработка приоритетов бюджетирование токенов по умолчанию
             )
