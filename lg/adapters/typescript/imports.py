@@ -93,6 +93,7 @@ class TypeScriptImportClassifier(ImportClassifier):
             r'^config[/.]',
             r'^tests?[/.]',
             r'^app[/.]',
+            r'^internal[/.]',
         ]
         
         for pattern in local_patterns:

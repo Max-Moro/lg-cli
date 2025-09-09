@@ -79,7 +79,7 @@ import numpy as np
         # Check individual imports
         import_modules = [imp.module_name for imp in imports]
         assert "os" in import_modules
-        assert "sys" in import_modules or "json" in import_modules  # Mixed import
+        assert "sys" in import_modules
         assert "numpy" in import_modules
     
     def test_from_import_parsing(self):
@@ -144,8 +144,9 @@ class TestPythonImportOptimization:
         assert "import os" in result
         assert "import numpy as np" in result
         
-        # Local imports should be removed or replaced with placeholders
-        assert "from .utils import helper_function" not in result or "# … " in result
+        # Local imports should be replaced with placeholders
+        assert "from .utils import helper_function" not in result
+        assert "# … 12 imports omitted" in result
         
         assert_golden_match(result, "imports", "strip_local")
     
@@ -165,8 +166,11 @@ class TestPythonImportOptimization:
         assert "from .utils import helper_function" in result
         assert "from .models import User, Post, Comment" in result
         
-        # External imports should be removed or replaced with placeholders
-        assert ("import os" not in result or "# … " in result) and ("import numpy as np" not in result or "# … " in result)
+        # External imports should be replaced with placeholders
+        assert "import os" not in result
+        assert "# … 17 imports omitted" in result
+        assert "import numpy as np" not in result
+        assert "# … 13 imports omitted" in result
         
         assert_golden_match(result, "imports", "strip_external")
     
@@ -184,8 +188,8 @@ class TestPythonImportOptimization:
         
         # No imports should remain (except possibly placeholders)
         lines = [line.strip() for line in result.split('\n') if line.strip()]
-        import_lines = [line for line in lines if line.startswith(('import ', 'from ')) and '# … ' not in line]
-        assert len(import_lines) == 0 or all('# … ' in line for line in import_lines)
+        import_lines = [line for line in lines if line.startswith(('import', 'from'))]
+        assert len(import_lines) == 0
         
         assert_golden_match(result, "imports", "strip_all")
     
@@ -203,8 +207,8 @@ class TestPythonImportOptimization:
         result, meta = adapter.process(lctx_py(do_imports))
         
         # Long import lists should be summarized
-        assert meta.get("code.removed.imports", 0) > 0
-        assert "# … " in result or "… imports" in result
+        assert meta.get("code.removed.imports", 0) == 3
+        assert "# … 29 imports omitted" in result
         
         assert_golden_match(result, "imports", "summarize_long")
     
@@ -218,7 +222,7 @@ from .local import function  # Relative import
         
         import_config = ImportConfig(
             policy="strip_local",
-            external_only_patterns=["^mycompany\..*"]
+            external_patterns=["^mycompany\..*"]
         )
         
         adapter = PythonAdapter()
@@ -231,8 +235,9 @@ from .local import function  # Relative import
         assert "import mycompany.utils" in result
         
         # Local imports should be removed
-        assert "from internal.helpers" not in result or "# … " in result
-        assert "from .local" not in result or "# … " in result
+        assert "from internal.helpers" not in result
+        assert "from .local" not in result
+        assert result.count("# … import omitted") == 2
     
     def test_mixed_import_styles_handling(self):
         """Test handling of mixed import styles."""
@@ -253,8 +258,8 @@ from collections import defaultdict, Counter, deque
         result, meta = adapter.process(lctx_py(code))
         
         # Long from-import lists should be summarized
-        assert meta.get("code.removed.imports", 0) > 0
-        assert "# … " in result or "… imports" in result
+        assert meta.get("code.removed.imports", 0) == 1
+        assert "# … 5 imports omitted" in result
     
     def test_conditional_import_preservation(self):
         """Test preservation of conditional imports."""
@@ -303,7 +308,8 @@ from typing import *
         assert "from typing import *" in result
         
         # Local star imports should be removed
-        assert "from .utils import *" not in result or "# … " in result
+        assert "from .utils import *" not in result
+        assert "# … import omitted" in result
     
     def test_aliased_imports(self):
         """Test handling of aliased imports."""
@@ -325,7 +331,8 @@ from .helpers import process_data as process
         assert "train_test_split as tts" in result
         
         # Local aliased imports should be removed
-        assert "from .helpers import process_data as process" not in result or "# … " in result
+        assert "from .helpers import process_data as process" not in result
+        assert "# … import omitted" in result
     
     def test_deeply_nested_modules(self):
         """Test handling of deeply nested module imports."""
@@ -374,8 +381,8 @@ from rest_framework.decorators import (
         result, meta = adapter.process(lctx_py(code))
         
         # Long import groups should be summarized
-        assert meta.get("code.removed.imports", 0) > 0
-        assert "# … " in result or "… imports" in result
+        assert meta.get("code.removed.imports", 0) == 2
+        assert "# … 8 imports omitted" in result
         
         # Short imports should be preserved
         assert "import os" in result
@@ -402,13 +409,12 @@ from .models import Model1, Model2, Model3
         result, meta = adapter.process(lctx_py(code))
         
         # Local imports should be stripped regardless of length
-        assert "from .utils import" not in result or "# … " in result
-        assert "from .models import" not in result or "# … " in result
+        assert "from .utils import" not in result
+        assert "from .models import" not in result
+
         
         # External imports should remain but long ones should be summarized
         assert "import os" in result
         assert "import sys" in result
         # Long external import should be summarized
-        collections_line = [line for line in result.split('\n') if 'collections' in line]
-        if collections_line:
-            assert "# … " in collections_line[0] or len(collections_line[0].split(',')) <= 3
+        assert "# … 20 imports omitted" in result

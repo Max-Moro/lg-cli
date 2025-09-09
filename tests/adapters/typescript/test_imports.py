@@ -150,8 +150,9 @@ class TestTypeScriptImportOptimization:
         assert "import * as lodash from 'lodash'" in result
         assert "import { Component, useState, useEffect, useCallback, useMemo } from 'react'" in result
         
-        # Local imports should be removed or replaced with placeholders
-        assert "from './services/user-service'" not in result or "// … " in result
+        # Local imports should be replaced with placeholders
+        assert "import { ValidationError, NetworkError } from './errors'" not in result
+        assert  "// … 9 imports omitted" in result
         
         assert_golden_match(result, "imports", "strip_local")
     
@@ -171,8 +172,11 @@ class TestTypeScriptImportOptimization:
         assert "from './services/user-service'" in result
         assert "from './database/connection'" in result
         
-        # External imports should be removed or replaced with placeholders
-        assert ("import axios from 'axios'" not in result or "// … " in result) and ("import * as lodash from 'lodash'" not in result or "// … " in result)
+        # External imports should be replaced with placeholders
+        assert "import axios from 'axios'" not in result
+        assert  "// … 16 imports omitted" in result
+        assert "import { Config, Logger } from '@nestjs/common'" not in result
+        assert  "// … 10 imports omitted" in result
         
         assert_golden_match(result, "imports", "strip_external")
     
@@ -190,8 +194,8 @@ class TestTypeScriptImportOptimization:
         
         # No imports should remain (except possibly placeholders)
         lines = [line.strip() for line in result.split('\n') if line.strip()]
-        import_lines = [line for line in lines if line.startswith(('import ', 'from ')) and '// … ' not in line]
-        assert len(import_lines) == 0 or all('// … ' in line for line in import_lines)
+        import_lines = [line for line in lines if line.startswith(('import', 'from'))]
+        assert len(import_lines) == 0
         
         assert_golden_match(result, "imports", "strip_all")
     
@@ -209,8 +213,8 @@ class TestTypeScriptImportOptimization:
         result, meta = adapter.process(lctx_ts(do_imports))
         
         # Long import lists should be summarized
-        assert meta.get("code.removed.imports", 0) > 0
-        assert "// … " in result or "… imports" in result
+        assert meta.get("code.removed.imports", 0) == 6
+        assert  "// … 47 imports omitted" in result
         
         assert_golden_match(result, "imports", "summarize_long")
     
@@ -224,7 +228,7 @@ import { LocalFunction } from './local';  // Relative import
         
         import_config = ImportConfig(
             policy="strip_local",
-            external_only_patterns=["^mycompany/.*"]
+            external_patterns=["^mycompany/.*"]
         )
         
         adapter = TypeScriptAdapter()
@@ -237,8 +241,9 @@ import { LocalFunction } from './local';  // Relative import
         assert "import { MyCompanyUtils } from 'mycompany/utils'" in result
         
         # Local imports should be removed
-        assert "from 'internal/helpers'" not in result or "// … " in result
-        assert "from './local'" not in result or "// … " in result
+        assert "from 'internal/helpers'" not in result
+        assert "from './local'" not in result
+        assert "// … import omitted" in result
 
 
 class TestTypeScriptImportEdgeCases:
@@ -283,8 +288,9 @@ import { type Settings, normalFunction } from './config';
         assert "import type { Config } from 'external-config'" in result
         
         # Local type imports should be processed
-        assert ("from './types'" not in result or "// … " in result or
-                "from './config'" not in result or "// … " in result)
+        assert "from './types'" not in result
+        assert "from './config'" not in result
+        assert "// … 2 imports omitted" in result
     
     def test_namespace_imports(self):
         """Test handling of namespace imports."""
@@ -306,8 +312,9 @@ import * as API from '../api';
         assert "import * as lodash from 'lodash'" in result
         
         # Local namespace imports should be processed
-        assert ("from './utils'" not in result or "// … " in result or
-                "from '../api'" not in result or "// … " in result)
+        assert "from './utils'" not in result
+        assert "from '../api'" not in result
+        assert "// … 2 imports omitted" in result
     
     def test_side_effect_imports(self):
         """Test handling of side-effect imports."""
@@ -330,8 +337,9 @@ import { Component } from './Component';
         assert "import 'reflect-metadata'" in result
         
         # Local side-effect imports should be processed
-        assert ("'./polyfills'" not in result or "// … " in result or
-                "'../styles/global.css'" not in result or "// … " in result)
+        assert "'./polyfills'" not in result
+        assert "'../styles/global.css'" not in result
+        assert "// … import omitted" in result
     
     def test_scoped_package_imports(self):
         """Test handling of scoped npm packages."""
@@ -354,7 +362,8 @@ import { LocalService } from './services/local';
         assert "import { Router } from '@types/express'" in result
         
         # Local imports should be processed
-        assert "from './services/local'" not in result or "// … " in result
+        assert "from './services/local'" not in result
+        assert "// … import omitted" in result
     
     def test_strip_external_with_summarize_long(self):
         """Test combining strip_external policy with summarize_long option."""
@@ -376,12 +385,10 @@ import { helper1, helper2, helper3, helper4, helper5, helper6 } from './utils/he
         result, meta = adapter.process(lctx_ts(code))
         
         # External imports should be stripped regardless of length
-        assert "import React from 'react'" not in result or "// … " in result
-        assert "from 'rxjs'" not in result or "// … " in result
-        
+        assert "import React from 'react'" not in result
+        assert "from 'rxjs'" not in result
+
         # Local imports should remain but long ones should be summarized
         assert "from './services/user-service'" in result
         # Long local import should be summarized
-        helpers_line = [line for line in result.split('\n') if './utils/helpers' in line]
-        if helpers_line:
-            assert "// … " in helpers_line[0] or len(helpers_line[0].split(',')) <= 3
+        assert "// … 6 imports omitted" in result

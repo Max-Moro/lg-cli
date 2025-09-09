@@ -91,6 +91,7 @@ class PythonImportClassifier(ImportClassifier):
             r'^models\.',
             r'^config\.',
             r'^tests?\.',
+            r'^internal?\.',
         ]
         
         for pattern in local_patterns:

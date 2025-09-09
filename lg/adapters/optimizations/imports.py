@@ -125,7 +125,7 @@ class ImportOptimizer:
             return
         
         # Get language-specific analyzer
-        classifier = self.adapter.create_import_classifier(config.external_only_patterns)
+        classifier = self.adapter.create_import_classifier(config.external_patterns)
         analyzer = self.adapter.create_import_analyzer(classifier)
         
         # Analyze all imports using Tree-sitter
