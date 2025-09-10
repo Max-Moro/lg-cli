@@ -21,6 +21,7 @@ from .protocol import PROTOCOL_VERSION
 from .render import render_by_section
 from .run_context import RunContext
 from .stats import get_model_info, compute_stats
+from .tokens.service import TokenService
 from .types import RunOptions, RenderedDocument, ContextSpec, Manifest, ProcessedBlob
 from .vcs import NullVcs
 from .vcs.git import GitVcs
@@ -34,7 +35,10 @@ def _build_run_ctx(options: RunOptions) -> RunContext:
     tool_ver = tool_version()
     cache = Cache(root, enabled=None, fresh=False, tool_version=tool_ver)
     vcs = GitVcs() if (root / ".git").is_dir() else NullVcs()
-    return RunContext(root=root, options=options, cache=cache, vcs=vcs)
+    # Разрешаем модель и создаём единый сервис токенов
+    model_info = get_model_info(root, options.model)
+    token_service = TokenService(encoder_name=model_info.encoder)
+    return RunContext(root=root, options=options, cache=cache, vcs=vcs, token_service=token_service)
 
 
 def _pipeline_common(target: str, run_ctx: RunContext) -> Tuple[ContextSpec, Manifest, list[ProcessedBlob], ComposedDocument]:

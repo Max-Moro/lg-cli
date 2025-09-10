@@ -12,6 +12,7 @@ from .metrics import MetricsCollector
 from .placeholders import PlaceholderManager, create_placeholder_manager
 from .range_edits import RangeEditor
 from .tree_sitter_support import TreeSitterDocument, Node
+from ..tokens.service import TokenService
 
 
 class LightState:
@@ -79,6 +80,9 @@ class ProcessingContext(LightState):
         doc: TreeSitterDocument,
         editor: RangeEditor,
         placeholders: PlaceholderManager,
+        token_service: TokenService,
+        placeholder_min_ratio: float,
+        placeholder_min_abs_if_none: Optional[int],
     ):
         super().__init__(file_path, raw_text, group_size, mixed)
 
@@ -86,6 +90,9 @@ class ProcessingContext(LightState):
         self.editor = editor
         self.placeholders = placeholders
         self.metrics = MetricsCollector()
+        self.token_service = token_service
+        self.placeholder_min_ratio = placeholder_min_ratio
+        self.placeholder_min_abs_if_none = placeholder_min_abs_if_none
 
     # ============= API для плейсхолдеров =============
 
@@ -125,12 +132,40 @@ class ProcessingContext(LightState):
         # Финализируем плейсхолдеры и применяем их к редактору
         collapsed_edits, placeholder_stats = self.placeholders.finalize_edits()
 
+        # Применяем экономическую проверку перед внесением замен
+
         # Применяем все плейсхолдеры к редактору
+        # Текст исходного диапазона нужен для экономической проверки
+        original_bytes = self.raw_text.encode('utf-8')
+
+        min_savings_ratio = self.placeholder_min_ratio
+        min_abs_savings_if_none = self.placeholder_min_abs_if_none
+
         for spec, replacement_text in collapsed_edits:
+            # Получаем исходный текст диапазона
+            src = original_bytes[spec.start_byte:spec.end_byte].decode('utf-8', errors='ignore')
+            repl = replacement_text
+
+            # Определяем флаг "пустой" замены
+            is_none = (repl == "")
+
+            # Применяем проверку целесообразности
+            # Если сервис не задан — применяем вслепую (как раньше)
+            if self.token_service:
+                if not self.token_service.is_economical(
+                    src,
+                    repl,
+                    min_ratio=min_savings_ratio,
+                    replacement_is_none=is_none,
+                    min_abs_savings_if_none=min_abs_savings_if_none,
+                ):
+                    # Пропускаем замену, оставляем оригинал
+                    continue
+
             self.editor.add_replacement(
-                spec.start_byte, spec.end_byte, replacement_text,
+                spec.start_byte, spec.end_byte, repl,
                 type=f"{spec.placeholder_type}_placeholder",
-                is_placeholder=(replacement_text != ""),
+                is_placeholder=(repl != ""),
                 lines_removed=spec.lines_removed
             )
         
@@ -171,6 +206,13 @@ class ProcessingContext(LightState):
             adapter.get_comment_style(), 
             adapter.cfg.placeholders.style,
         )
+        # Сервис токенов передаёт engine при связывании адаптера
+        token_service = getattr(adapter, 'token_service', None)
+
+        # Параметры экономической проверки из конфигурации адаптера
+        ph_cfg = getattr(adapter.cfg, 'placeholders', None)
+        min_ratio = getattr(ph_cfg, 'min_savings_ratio', 2.0) if ph_cfg else 2.0
+        min_abs_if_none = getattr(ph_cfg, 'min_abs_savings_if_none', None) if ph_cfg else None
         
         return cls(
             lightweight_ctx.file_path,
@@ -179,5 +221,8 @@ class ProcessingContext(LightState):
             lightweight_ctx.mixed,
             doc,
             editor,
-            placeholders
+            placeholders,
+            token_service,
+            min_ratio,
+            min_abs_if_none,
         )

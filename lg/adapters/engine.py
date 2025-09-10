@@ -59,6 +59,11 @@ def process_groups(plan: ContextPlan, run_ctx: RunContext) -> List[ProcessedBlob
                 adapter = bound_cache.get(bkey)
                 if adapter is None:
                     adapter = adapter_cls.bind(raw_cfg)
+                    # Пробрасываем сервис токенов в адаптер для дальнейшего использования
+                    try:
+                        setattr(adapter, "token_service", run_ctx.token_service)
+                    except Exception:
+                        pass
                     bound_cache[bkey] = adapter
 
                 raw_text = read_text(fp)

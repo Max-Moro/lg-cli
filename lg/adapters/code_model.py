@@ -69,6 +69,11 @@ class PlaceholderConfig:
     """Конфигурация плейсхолдеров для удаленного кода."""
     mode: Literal["summary", "none"] = "summary"
     style: PlaceholderStyle = "inline"
+    # Порог экономии токенов: savings / placeholder >= min_savings_ratio
+    min_savings_ratio: float = 2.0
+    # Абсолютный порог экономии для стиля style=="none" (полное удаление).
+    # По умолчанию отключено (None).
+    min_abs_savings_if_none: Optional[int] = None
 
 
 @dataclass
@@ -149,7 +154,9 @@ class CodeCfg:
             pc = d["placeholders"]
             self.placeholders = PlaceholderConfig(
                 mode=pc.get("mode", "summary"),
-                style=pc.get("style", "inline")
+                style=pc.get("style", "inline"),
+                min_savings_ratio=float(pc.get("min_savings_ratio", 2.0)),
+                min_abs_savings_if_none=pc.get("min_abs_savings_if_none"),
             )
 
         if "budget" in d:
