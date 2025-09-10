@@ -93,6 +93,23 @@ class PublicApiOptimizer:
                 if not is_exported:
                     private_elements.append((type_def, "type"))
         
+        # Check variable assignments
+        assignments = context.doc.query_opt("assignments")
+        for node, capture_name in assignments:
+            if capture_name == "variable_name":
+                # Get the assignment statement node
+                assignment_def = node.parent
+                if assignment_def:
+                    # Check if variable is public using name-based rules
+                    is_public = self.adapter.is_public_element(assignment_def, context.doc)
+                    is_exported = self.adapter.is_exported_element(assignment_def, context.doc)
+                    
+                    # For top-level variables, check public/exported status
+                    should_remove = not (is_public and is_exported)
+                    
+                    if should_remove:
+                        private_elements.append((assignment_def, "variable"))
+        
         # Sort by position (reverse order for safe removal) 
         # Using analyzer for getting ranges with decorators
         private_elements.sort(key=lambda x: analyzer.get_element_range_with_decorators(x[0])[0], reverse=True)

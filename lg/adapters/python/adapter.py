@@ -220,6 +220,13 @@ class PythonAdapter(CodeAdapter[PythonCfg]):
         """
         Извлекает имя элемента из узла Tree-sitter.
         """
+        # Специальная обработка для assignments
+        if node.type == "assignment":
+            # В assignment левая часть - это имя переменной
+            for child in node.children:
+                if child.type == "identifier":
+                    return doc.get_node_text(child)
+        
         # Ищем дочерний узел с именем функции/класса/метода
         for child in node.children:
             if child.type == "identifier":
