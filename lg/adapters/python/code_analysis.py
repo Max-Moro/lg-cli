@@ -7,7 +7,7 @@ from __future__ import annotations
 
 from typing import List, Optional, Set
 
-from ..code_analysis import CodeAnalyzer, Visibility, ExportStatus, PrivateElement, ElementInfo
+from ..code_analysis import CodeAnalyzer, Visibility, ExportStatus, PrivateElement
 from ..tree_sitter_support import Node
 
 
@@ -184,34 +184,30 @@ class PythonCodeAnalyzer(CodeAnalyzer):
             "decorator",              # Python @decorator
         }
 
-    def collect_language_specific_private_elements(self, context) -> List[PrivateElement]:
+    def collect_language_specific_private_elements(self) -> List[PrivateElement]:
         """
         Собирает Python-специфичные приватные элементы.
         
         Включает обработку переменных/assignments и других Python-специфичных конструкций.
         
-        Args:
-            context: Контекст обработки
-            
         Returns:
             Список Python-специфичных приватных элементов
         """
         private_elements = []
         
         # Собираем assignments (переменные)
-        self._collect_variable_assignments(context, private_elements)
+        self._collect_variable_assignments(private_elements)
         
         return private_elements
     
-    def _collect_variable_assignments(self, context, private_elements: List[PrivateElement]) -> None:
+    def _collect_variable_assignments(self, private_elements: List[PrivateElement]) -> None:
         """
         Собирает Python переменные, которые должны быть удалены в режиме public API.
         
         Args:
-            context: Контекст обработки
             private_elements: Список для добавления приватных элементов
         """
-        assignments = context.doc.query_opt("assignments")
+        assignments = self.doc.query_opt("assignments")
         for node, capture_name in assignments:
             if capture_name == "variable_name":
                 # Получаем узел assignment statement

@@ -365,6 +365,7 @@ src-tests__public-api:
 #              - "/typescript/"
               - "/test_infrastructure.py"
               - "/test_integration.py"
+              - "/golden_utils.py"
             children:
               python:
                 mode: allow

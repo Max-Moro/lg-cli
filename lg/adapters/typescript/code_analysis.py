@@ -216,34 +216,31 @@ class TypeScriptCodeAnalyzer(CodeAnalyzer):
             "decorator_expression",   # TypeScript decorator expressions
         }
 
-    def collect_language_specific_private_elements(self, context) -> List[PrivateElement]:
+    def collect_language_specific_private_elements(self) -> List[PrivateElement]:
         """
         Собирает TypeScript-специфичные приватные элементы.
         
         Включает интерфейсы, типы, пространства имен, енумы, поля классов, импорты и переменные.
         
-        Args:
-            context: Контекст обработки
-            
         Returns:
             Список TypeScript-специфичных приватных элементов
         """
         private_elements = []
         
         # TypeScript-специфичные элементы
-        self._collect_interfaces(context, private_elements)
-        self._collect_types(context, private_elements)
-        self._collect_namespaces(context, private_elements)
-        self._collect_enums(context, private_elements)
-        self._collect_class_members(context, private_elements)
-        self._collect_imports(context, private_elements)
-        self._collect_variables(context, private_elements)
+        self._collect_interfaces(private_elements)
+        self._collect_types(private_elements)
+        self._collect_namespaces(private_elements)
+        self._collect_enums(private_elements)
+        self._collect_class_members(private_elements)
+        self._collect_imports(private_elements)
+        self._collect_variables(private_elements)
         
         return private_elements
     
-    def _collect_interfaces(self, context, private_elements: List[PrivateElement]) -> None:
+    def _collect_interfaces(self, private_elements: List[PrivateElement]) -> None:
         """Собирает неэкспортируемые интерфейсы."""
-        interfaces = context.doc.query_opt("interfaces")
+        interfaces = self.doc.query_opt("interfaces")
         for node, capture_name in interfaces:
             if capture_name == "interface_name":
                 interface_def = node.parent
@@ -252,9 +249,9 @@ class TypeScriptCodeAnalyzer(CodeAnalyzer):
                     if not element_info.should_be_included_in_public_api:
                         private_elements.append(PrivateElement(element_info))
     
-    def _collect_types(self, context, private_elements: List[PrivateElement]) -> None:
+    def _collect_types(self, private_elements: List[PrivateElement]) -> None:
         """Собирает неэкспортируемые алиасы типов."""
-        types = context.doc.query_opt("types")
+        types = self.doc.query_opt("types")
         for node, capture_name in types:
             if capture_name == "type_name":
                 type_def = node.parent
@@ -263,9 +260,9 @@ class TypeScriptCodeAnalyzer(CodeAnalyzer):
                     if not element_info.should_be_included_in_public_api:
                         private_elements.append(PrivateElement(element_info))
     
-    def _collect_namespaces(self, context, private_elements: List[PrivateElement]) -> None:
+    def _collect_namespaces(self, private_elements: List[PrivateElement]) -> None:
         """Собирает неэкспортируемые пространства имен."""
-        namespaces = context.doc.query_opt("namespaces")
+        namespaces = self.doc.query_opt("namespaces")
         for node, capture_name in namespaces:
             if capture_name == "namespace_name":
                 namespace_def = node.parent
@@ -274,9 +271,9 @@ class TypeScriptCodeAnalyzer(CodeAnalyzer):
                     if not element_info.should_be_included_in_public_api:
                         private_elements.append(PrivateElement(element_info))
     
-    def _collect_enums(self, context, private_elements: List[PrivateElement]) -> None:
+    def _collect_enums(self, private_elements: List[PrivateElement]) -> None:
         """Собирает неэкспортируемые енумы."""
-        enums = context.doc.query_opt("enums")
+        enums = self.doc.query_opt("enums")
         for node, capture_name in enums:
             if capture_name == "enum_name":
                 enum_def = node.parent
@@ -285,9 +282,9 @@ class TypeScriptCodeAnalyzer(CodeAnalyzer):
                     if not element_info.should_be_included_in_public_api:
                         private_elements.append(PrivateElement(element_info))
     
-    def _collect_class_members(self, context, private_elements: List[PrivateElement]) -> None:
+    def _collect_class_members(self, private_elements: List[PrivateElement]) -> None:
         """Собирает приватные/защищенные члены классов."""
-        class_fields = context.doc.query_opt("class_fields")
+        class_fields = self.doc.query_opt("class_fields")
         for node, capture_name in class_fields:
             if capture_name in ("field_name", "method_name"):
                 field_def = node.parent
@@ -310,9 +307,9 @@ class TypeScriptCodeAnalyzer(CodeAnalyzer):
                             )
                         private_elements.append(PrivateElement(element_info))
     
-    def _collect_imports(self, context, private_elements: List[PrivateElement]) -> None:
+    def _collect_imports(self, private_elements: List[PrivateElement]) -> None:
         """Собирает не-ре-экспортируемые импорты."""
-        imports = context.doc.query_opt("imports")
+        imports = self.doc.query_opt("imports")
         for node, capture_name in imports:
             if capture_name == "import":
                 # Для режима public API оставляем только импорты, которые ре-экспортируются
@@ -326,9 +323,9 @@ class TypeScriptCodeAnalyzer(CodeAnalyzer):
                 element_info = self.analyze_element(node)
                 private_elements.append(PrivateElement(element_info))
     
-    def _collect_variables(self, context, private_elements: List[PrivateElement]) -> None:
+    def _collect_variables(self, private_elements: List[PrivateElement]) -> None:
         """Собирает неэкспортируемые переменные."""
-        variables = context.doc.query_opt("variables")
+        variables = self.doc.query_opt("variables")
         for node, capture_name in variables:
             if capture_name == "variable_name":
                 variable_def = node.parent.parent  # variable_declarator -> variable_declaration

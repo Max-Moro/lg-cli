@@ -35,7 +35,7 @@ class PublicApiOptimizer:
         code_analyzer = self.adapter.create_code_analyzer(context.doc)
         
         # Собираем все приватные элементы с помощью анализатора
-        private_elements = code_analyzer.collect_private_elements_for_public_api(context)
+        private_elements = code_analyzer.collect_private_elements_for_public_api()
         
         # Сначала вычисляем диапазоны с декораторами для всех элементов
         element_ranges = [

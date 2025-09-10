@@ -134,54 +134,60 @@ class CodeAnalyzer(ABC):
             decorators=decorators
         )
     
-    def collect_elements_by_type(self, query_name: str) -> List[ElementInfo]:
-        """
-        Собирает элементы определенного типа с полным анализом.
-        
-        Args:
-            query_name: Имя Tree-sitter запроса
-            
-        Returns:
-            Список элементов с полной информацией
-        """
-        elements = []
-        captures = self.doc.query_opt(query_name)
-        
-        for node, capture_name in captures:
-            # Для captures с именами, берем родительский узел определения
-            if capture_name.endswith("_name"):
-                definition_node = node.parent
-            else:
-                definition_node = node
-            
-            if definition_node:
-                element_info = self.analyze_element(definition_node)
-                elements.append(element_info)
-        
-        return elements
-    
-    def collect_private_elements_for_public_api(self, context) -> List[PrivateElement]:
+    def collect_private_elements_for_public_api(self) -> List[PrivateElement]:
         """
         Собирает все приватные элементы для удаления в режиме public API.
         
-        Args:
-            context: Контекст обработки
-            
         Returns:
             Список приватных элементов для удаления
         """
         private_elements = []
         
         # Собираем универсальные элементы
-        universal_queries = ["functions", "classes"]
-        for query_name in universal_queries:
-            elements = self.collect_elements_by_type(query_name)
-            for element_info in elements:
-                if not element_info.should_be_included_in_public_api:
-                    private_elements.append(PrivateElement(element_info))
-        
+
+        # TODO Адаптировать старую логику
+        # # Find all functions and methods using language-specific structure analysis
+        # functions = context.doc.query("functions")
+        # private_elements = []  # List of (element_node, element_type)
+        #
+        # # Group function-like captures using language-specific utilities
+        # function_groups = analyzer.collect_function_like_elements(functions)
+        #
+        # for func_def, func_group in function_groups.items():
+        #     element_type = func_group.element_type
+        #
+        #     # Check element visibility using adapter's language-specific logic
+        #     is_public = self.adapter.is_public_element(func_def, context.doc)
+        #     is_exported = self.adapter.is_exported_element(func_def, context.doc)
+        #
+        #     # Universal logic based on element type
+        #     should_remove = False
+        #
+        #     if element_type == "method":
+        #         # Method removed if private/protected
+        #         should_remove = not is_public
+        #     else:  # function, arrow_function, etc.
+        #         # Top-level function removed if not exported
+        #         should_remove = not is_exported
+        #
+        #     if should_remove:
+        #         private_elements.append((func_def, element_type))
+        #
+        # # Also check classes
+        # classes = context.doc.query("classes")
+        # for node, capture_name in classes:
+        #     if capture_name == "class_name":
+        #         class_def = node.parent
+        #         # Check class export status
+        #         is_exported = self.adapter.is_exported_element(class_def, context.doc)
+        #
+        #         # For top-level classes, export is primary consideration
+        #         if not is_exported:
+        #             private_elements.append((class_def, "class"))
+
+
         # Собираем язык-специфичные элементы
-        language_specific_elements = self.collect_language_specific_private_elements(context)
+        language_specific_elements = self.collect_language_specific_private_elements()
         private_elements.extend(language_specific_elements)
         
         return private_elements
@@ -344,7 +350,7 @@ class CodeAnalyzer(ABC):
         pass
     
     @abstractmethod
-    def collect_language_specific_private_elements(self, context) -> List[PrivateElement]:
+    def collect_language_specific_private_elements(self) -> List[PrivateElement]:
         """Собирает язык-специфичные приватные элементы."""
         pass
     

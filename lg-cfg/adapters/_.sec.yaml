@@ -18,7 +18,6 @@ src:
               - "/markdown.py"
               - "/scala.py"
               - "/optimizations/comments.py"
-              - "/optimizations/comments.py"
               - "/placeholders.py"
 
 src-tests:
