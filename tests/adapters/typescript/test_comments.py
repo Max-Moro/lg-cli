@@ -4,15 +4,15 @@ Tests for comment policy implementation in TypeScript adapter.
 
 from lg.adapters.typescript import TypeScriptCfg
 from lg.adapters.code_model import CommentConfig
-from .conftest import lctx_ts, do_comments, assert_golden_match
+from .conftest import lctx_ts, do_comments, assert_golden_match, make_adapter
 
 
 class TestTypeScriptCommentOptimization:
     """Test comment processing for TypeScript code."""
     
-    def test_keep_all_comments(self, adapter, do_comments):
+    def test_keep_all_comments(self, do_comments):
         """Test keeping all comments (default policy)."""
-        adapter._cfg = TypeScriptCfg(comment_policy="keep_all")
+        adapter = make_adapter(TypeScriptCfg(comment_policy="keep_all"))
         
         result, meta = adapter.process(lctx_ts(do_comments))
         
@@ -24,9 +24,9 @@ class TestTypeScriptCommentOptimization:
         
         assert_golden_match(result, "comments", "keep_all")
     
-    def test_strip_all_comments(self, adapter, do_comments):
+    def test_strip_all_comments(self, do_comments):
         """Test stripping all comments."""
-        adapter._cfg = TypeScriptCfg(comment_policy="strip_all")
+        adapter = make_adapter(TypeScriptCfg(comment_policy="strip_all"))
         
         result, meta = adapter.process(lctx_ts(do_comments))
         
@@ -36,9 +36,9 @@ class TestTypeScriptCommentOptimization:
         
         assert_golden_match(result, "comments", "strip_all")
     
-    def test_keep_doc_comments(self, adapter, do_comments):
+    def test_keep_doc_comments(self, do_comments):
         """Test keeping only JSDoc documentation comments."""
-        adapter._cfg = TypeScriptCfg(comment_policy="keep_doc")
+        adapter = make_adapter(TypeScriptCfg(comment_policy="keep_doc"))
         
         result, meta = adapter.process(lctx_ts(do_comments))
         
@@ -51,9 +51,9 @@ class TestTypeScriptCommentOptimization:
         
         assert_golden_match(result, "comments", "keep_doc")
     
-    def test_keep_first_sentence_policy(self, adapter, do_comments):
+    def test_keep_first_sentence_policy(self, do_comments):
         """Test keeping only first sentence of JSDoc comments."""
-        adapter._cfg = TypeScriptCfg(comment_policy="keep_first_sentence")
+        adapter = make_adapter(TypeScriptCfg(comment_policy="keep_first_sentence"))
         
         result, meta = adapter.process(lctx_ts(do_comments))
         
@@ -65,7 +65,7 @@ class TestTypeScriptCommentOptimization:
         
         assert_golden_match(result, "comments", "keep_first_sentence")
     
-    def test_jsdoc_detection(self, adapter):
+    def test_jsdoc_detection(self):
         """Test proper JSDoc comment detection."""
         code = '''
 /**
@@ -79,7 +79,7 @@ function processData(data: string): void {
 }
 '''
         
-        adapter._cfg = TypeScriptCfg(comment_policy="keep_doc")
+        adapter = make_adapter(TypeScriptCfg(comment_policy="keep_doc"))
         
         result, meta = adapter.process(lctx_ts(code))
         
@@ -91,7 +91,7 @@ function processData(data: string): void {
         assert "/* This is a regular multi-line comment */" not in result
         assert "// This is a single-line comment" not in result
     
-    def test_complex_comment_policy(self, adapter, do_comments):
+    def test_complex_comment_policy(self, do_comments):
         """Test complex comment policy with custom configuration."""
         comment_config = CommentConfig(
             policy="keep_doc",
@@ -100,7 +100,7 @@ function processData(data: string): void {
             strip_patterns=["WARNING", "DEPRECATED"]
         )
         
-        adapter._cfg = TypeScriptCfg(comment_policy=comment_config)
+        adapter = make_adapter(TypeScriptCfg(comment_policy=comment_config))
         
         result, meta = adapter.process(lctx_ts(do_comments))
         
@@ -117,7 +117,7 @@ function processData(data: string): void {
 class TestTypeScriptCommentEdgeCases:
     """Test edge cases for TypeScript comment optimization."""
     
-    def test_inline_comments_with_types(self, adapter):
+    def test_inline_comments_with_types(self):
         """Test handling of inline comments with TypeScript types."""
         code = '''
 interface Config {
@@ -133,7 +133,7 @@ const config: Config = {
 };
 '''
         
-        adapter._cfg = TypeScriptCfg(comment_policy="strip_all")
+        adapter = make_adapter(TypeScriptCfg(comment_policy="strip_all"))
         
         result, meta = adapter.process(lctx_ts(code))
         
@@ -142,7 +142,7 @@ const config: Config = {
         assert "// Number of retry attempts" not in result
         assert meta.get("code.removed.comments", 0) > 0
     
-    def test_nested_jsdoc_tags(self, adapter):
+    def test_nested_jsdoc_tags(self):
         """Test handling of complex JSDoc with nested tags."""
         code = '''
 /**
@@ -168,7 +168,7 @@ async function processItems<T>(
 }
 '''
         
-        adapter._cfg = TypeScriptCfg(comment_policy="keep_first_sentence")
+        adapter = make_adapter(TypeScriptCfg(comment_policy="keep_first_sentence"))
         
         result, meta = adapter.process(lctx_ts(code))
         
@@ -178,7 +178,7 @@ async function processItems<T>(
         assert "@template T The type parameter" not in result
         assert "@param {T[]} items" not in result
     
-    def test_comment_preservation_in_interfaces(self, adapter):
+    def test_comment_preservation_in_interfaces(self):
         """Test comment preservation in TypeScript interfaces."""
         code = '''
 /**
@@ -196,7 +196,7 @@ interface User {
 }
 '''
         
-        adapter._cfg = TypeScriptCfg(comment_policy="keep_doc")
+        adapter = make_adapter(TypeScriptCfg(comment_policy="keep_doc"))
         
         result, meta = adapter.process(lctx_ts(code))
         
@@ -208,7 +208,7 @@ interface User {
         # Regular comments should be removed
         assert "// Internal field" not in result
     
-    def test_multiline_comment_styles(self, adapter):
+    def test_multiline_comment_styles(self):
         """Test different multiline comment styles."""
         code = '''
 /*
@@ -227,7 +227,7 @@ function jsdocComment() {}
 function singleLineMulti() {}
 '''
         
-        adapter._cfg = TypeScriptCfg(comment_policy="keep_doc")
+        adapter = make_adapter(TypeScriptCfg(comment_policy="keep_doc"))
         
         result, meta = adapter.process(lctx_ts(code))
         
@@ -238,7 +238,7 @@ function singleLineMulti() {}
         assert "Standard multiline comment" not in result
         assert "Single line multiline comment" not in result
     
-    def test_comment_in_generic_types(self, adapter):
+    def test_comment_in_generic_types(self):
         """Test comments in complex generic type definitions."""
         code = '''
 /**
@@ -254,7 +254,7 @@ type ApiResponse<T> = {
 type UserResponse = ApiResponse<User>;
 '''
         
-        adapter._cfg = TypeScriptCfg(comment_policy="keep_doc")
+        adapter = make_adapter(TypeScriptCfg(comment_policy="keep_doc"))
         
         result, meta = adapter.process(lctx_ts(code))
         

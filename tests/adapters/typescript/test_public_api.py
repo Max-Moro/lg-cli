@@ -2,16 +2,16 @@
 Tests for public API filtering in TypeScript adapter.
 """
 
-from lg.adapters.typescript import TypeScriptAdapter, TypeScriptCfg
-from .conftest import lctx_ts, do_public_api, assert_golden_match
+from lg.adapters.typescript import TypeScriptCfg
+from .conftest import lctx_ts, do_public_api, assert_golden_match, make_adapter
 
 
 class TestTypeScriptPublicApiOptimization:
     """Test public API filtering for TypeScript code."""
     
-    def test_public_api_only_basic(self, adapter, do_public_api):
+    def test_public_api_only_basic(self, do_public_api):
         """Test basic public API filtering."""
-        adapter._cfg = TypeScriptCfg(public_api_only=True)
+        adapter = make_adapter(TypeScriptCfg(public_api_only=True))
         
         result, meta = adapter.process(lctx_ts(do_public_api))
         
@@ -32,7 +32,7 @@ class TestTypeScriptPublicApiOptimization:
         assert_golden_match(result, "public_api", "basic")
 
 
-    def test_export_detection(self, adapter):
+    def test_export_detection(self):
         """Test detection of exported elements."""
         code = '''
 // Exported elements (public API)
@@ -70,7 +70,7 @@ type PrivateType = string | number;
 export default class DefaultClass {}
 '''
         
-        adapter._cfg = TypeScriptCfg(public_api_only=True)
+        adapter = make_adapter(TypeScriptCfg(public_api_only=True))
         
         result, meta = adapter.process(lctx_ts(code))
         
@@ -87,7 +87,7 @@ export default class DefaultClass {}
         assert "function privateFunction" not in result
         assert "interface PrivateInterface" not in result
 
-    def test_namespace_exports(self, adapter):
+    def test_namespace_exports(self):
         """Test namespace and module exports."""
         code = '''
 // Namespace with exports
@@ -116,7 +116,7 @@ namespace InternalUtils {
 }
 '''
         
-        adapter._cfg = TypeScriptCfg(public_api_only=True)
+        adapter = make_adapter(TypeScriptCfg(public_api_only=True))
         
         result, meta = adapter.process(lctx_ts(code))
         
@@ -131,7 +131,7 @@ namespace InternalUtils {
         # Private namespace should be removed
         assert "namespace InternalUtils" not in result
 
-    def test_re_exports(self, adapter):
+    def test_re_exports(self):
         """Test re-export statements."""
         code = '''
 // Re-exports (public API)
@@ -162,7 +162,7 @@ function useInternal(): InternalType {
 }
 '''
         
-        adapter._cfg = TypeScriptCfg(public_api_only=True)
+        adapter = make_adapter(TypeScriptCfg(public_api_only=True))
         
         result, meta = adapter.process(lctx_ts(code))
         
@@ -175,7 +175,7 @@ function useInternal(): InternalType {
         # Private imports should be removed or summarized
         assert "InternalHelper" not in result or "… import" in result
 
-    def test_class_member_visibility(self, adapter):
+    def test_class_member_visibility(self):
         """Test class member visibility in public API."""
         code = '''
 export class PublicClass {
@@ -209,8 +209,8 @@ class PrivateClass {
 }
 '''
         
-        adapter._cfg = TypeScriptCfg(public_api_only=True)
-        
+        adapter = make_adapter(TypeScriptCfg(public_api_only=True))
+
         result, meta = adapter.process(lctx_ts(code))
         
         # Public class should remain with public members
@@ -228,7 +228,7 @@ class PrivateClass {
         # Private class should be removed
         assert "class PrivateClass" not in result
 
-    def test_interface_and_type_exports(self, adapter):
+    def test_interface_and_type_exports(self):
         """Test interface and type definition exports."""
         code = '''
 // Exported types (public API)
@@ -270,7 +270,7 @@ enum InternalPriority {
 }
 '''
         
-        adapter._cfg = TypeScriptCfg(public_api_only=True)
+        adapter = make_adapter(TypeScriptCfg(public_api_only=True))
         
         result, meta = adapter.process(lctx_ts(code))
         

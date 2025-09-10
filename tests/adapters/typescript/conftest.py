@@ -5,17 +5,22 @@ Shared fixtures and utilities for TypeScript adapter tests.
 import pytest
 
 from lg.adapters.typescript import TypeScriptAdapter, TypeScriptCfg
-from tests.conftest import lctx_ts, lctx, token_service  # noqa: F401
-from ..golden_utils import assert_golden_match, load_sample_code # noqa: F401
+from lg.tokens.service import TokenService
+from tests.conftest import lctx_ts, lctx, TokenServiceStub  # noqa: F401
+from ..golden_utils import assert_golden_match, load_sample_code  # noqa: F401
 
 
-@pytest.fixture
-def adapter(token_service):
-    """TypeScript adapter с предустановленным TokenService."""
-    adapter = TypeScriptAdapter()
-    adapter.token_service = token_service
+def make_adapter(cfg: TypeScriptCfg) -> TypeScriptAdapter:
+    """TypeScript adapter с предустановленной заглушкой TokenService."""
+    adapter = TypeScriptAdapter().bind(None, TokenServiceStub())
+    adapter._cfg = cfg
     return adapter
 
+def make_adapter_real(cfg: TypeScriptCfg) -> TypeScriptAdapter:
+    """Если тесты проверяют реальную математику по токенам."""
+    adapter = TypeScriptAdapter().bind(None, TokenService())
+    adapter._cfg = cfg
+    return adapter
 
 @pytest.fixture
 def do_function_bodies():

@@ -3,20 +3,20 @@ Integration tests for adapter system.
 Tests the complete pipeline from configuration to output.
 """
 
-from lg.adapters.python import PythonAdapter, PythonCfg
-from lg.adapters.typescript import TypeScriptAdapter, TypeScriptCfg
+from lg.adapters.python import PythonCfg
+from lg.adapters.typescript import TypeScriptCfg
 from tests.conftest import lctx_py, lctx_ts
-from .typescript.conftest import adapter as ts_adapter
-from .python.conftest import adapter as python_adapter
+from .typescript.conftest import make_adapter as make_ts_adapter
+from .python.conftest import make_adapter as make_python_adapter
 
 
 class TestCrossLanguageIntegration:
     """Integration tests across different language adapters."""
 
-    def test_adapter_consistency(self, python_adapter, ts_adapter):
+    def test_adapter_consistency(self):
         """Test that all adapters follow consistent patterns."""
         # Test Python adapter
-        python_adapter._cfg = PythonCfg(strip_function_bodies=True)
+        python_adapter = make_python_adapter(PythonCfg(strip_function_bodies=True))
         
         python_code = '''def test():
     return "python"
@@ -25,7 +25,7 @@ class TestCrossLanguageIntegration:
         python_result, python_meta = python_adapter.process(lctx_py(raw_text=python_code))
         
         # Test TypeScript adapter
-        ts_adapter._cfg = TypeScriptCfg(strip_function_bodies=True)
+        ts_adapter = make_ts_adapter(TypeScriptCfg(strip_function_bodies=True))
         
         ts_code = '''function test() {
     return "typescript";
@@ -62,11 +62,11 @@ class TestCrossLanguageIntegration:
         assert ts_cfg.comment_policy == "keep_doc"
         assert ts_cfg.public_api_only is False
 
-    def test_placeholder_consistency(self, python_adapter, ts_adapter):
+    def test_placeholder_consistency(self):
         """Test that placeholders are consistent across languages."""
-        python_adapter._cfg = PythonCfg(strip_function_bodies=True)
+        python_adapter = make_python_adapter(PythonCfg(strip_function_bodies=True))
 
-        ts_adapter._cfg = TypeScriptCfg(strip_function_bodies=True)
+        ts_adapter = make_ts_adapter(TypeScriptCfg(strip_function_bodies=True))
         
         python_code = '''def long_function():
     """This function has a long body."""
@@ -100,15 +100,15 @@ class TestCrossLanguageIntegration:
 class TestEndToEndPipeline:
     """End-to-end pipeline tests."""
 
-    def test_error_recovery(self, python_adapter, ts_adapter):
+    def test_error_recovery(self):
         """Test error recovery in pipeline."""
         # Test with malformed code
         malformed_python = "def incomplete("
         malformed_ts = "function incomplete(: string"
         
-        python_adapter._cfg = PythonCfg(strip_function_bodies=True)
+        python_adapter = make_python_adapter(PythonCfg(strip_function_bodies=True))
         
-        ts_adapter._cfg = TypeScriptCfg(strip_function_bodies=True)
+        ts_adapter = make_ts_adapter(TypeScriptCfg(strip_function_bodies=True))
         
         # Should not crash with malformed code
         python_result, python_meta = python_adapter.process(lctx_py(raw_text=malformed_python))
@@ -119,11 +119,11 @@ class TestEndToEndPipeline:
         assert isinstance(ts_result, str)
         assert isinstance(ts_meta, dict)
 
-    def test_empty_file_handling(self, python_adapter, ts_adapter):
+    def test_empty_file_handling(self):
         """Test handling of empty files."""
-        python_adapter._cfg = PythonCfg(strip_function_bodies=True)
+        python_adapter = make_python_adapter(PythonCfg(strip_function_bodies=True))
         
-        ts_adapter._cfg = TypeScriptCfg(strip_function_bodies=True)
+        ts_adapter = make_ts_adapter(TypeScriptCfg(strip_function_bodies=True))
         
         # Test empty files
         python_result, python_meta = python_adapter.process(lctx_py(raw_text=""))
@@ -135,7 +135,7 @@ class TestEndToEndPipeline:
         assert isinstance(python_meta, dict)
         assert isinstance(ts_meta, dict)
 
-    def test_large_file_handling(self, python_adapter, ts_adapter):
+    def test_large_file_handling(self):
         """Test handling of large files."""
         # Create a large Python file
         large_python = "# Large file\n" + "\n".join([
@@ -143,7 +143,7 @@ class TestEndToEndPipeline:
             for i in range(100)
         ])
         
-        python_adapter._cfg = PythonCfg(strip_function_bodies=True)
+        python_adapter = make_python_adapter(PythonCfg(strip_function_bodies=True))
         
         result, meta = python_adapter.process(lctx_py(raw_text=large_python))
         

@@ -6,7 +6,7 @@ from lg.adapters.python import PythonCfg
 from lg.adapters.python.imports import PythonImportClassifier, PythonImportAnalyzer
 from lg.adapters.python.adapter import PythonDocument
 from lg.adapters.code_model import ImportConfig
-from .conftest import lctx_py, do_imports, assert_golden_match
+from .conftest import lctx_py, do_imports, assert_golden_match, make_adapter
 
 
 class TestPythonImportClassification:
@@ -113,9 +113,9 @@ from .utils import helper_function
 class TestPythonImportOptimization:
     """Test Python import optimization policies."""
     
-    def test_keep_all_imports(self, adapter, do_imports):
+    def test_keep_all_imports(self, do_imports):
         """Test keeping all imports (default policy)."""
-        adapter._cfg = PythonCfg()  # Default imports policy is keep_all
+        adapter = make_adapter(PythonCfg())  # Default imports policy is keep_all
         
         result, meta = adapter.process(lctx_py(do_imports))
         
@@ -127,11 +127,11 @@ class TestPythonImportOptimization:
         
         assert_golden_match(result, "imports", "keep_all")
     
-    def test_strip_local_imports(self, adapter, do_imports):
+    def test_strip_local_imports(self, do_imports):
         """Test stripping local imports (keeping external)."""
         import_config = ImportConfig(policy="strip_local")
         
-        adapter._cfg = PythonCfg(imports=import_config)
+        adapter = make_adapter(PythonCfg(imports=import_config))
         
         result, meta = adapter.process(lctx_py(do_imports))
         
@@ -148,11 +148,11 @@ class TestPythonImportOptimization:
         
         assert_golden_match(result, "imports", "strip_local")
     
-    def test_strip_external_imports(self, adapter, do_imports):
+    def test_strip_external_imports(self, do_imports):
         """Test stripping external imports (keeping local)."""
         import_config = ImportConfig(policy="strip_external")
         
-        adapter._cfg = PythonCfg(imports=import_config)
+        adapter = make_adapter(PythonCfg(imports=import_config))
         
         result, meta = adapter.process(lctx_py(do_imports))
         
@@ -171,11 +171,11 @@ class TestPythonImportOptimization:
         
         assert_golden_match(result, "imports", "strip_external")
     
-    def test_strip_all_imports(self, adapter, do_imports):
+    def test_strip_all_imports(self, do_imports):
         """Test stripping all imports."""
         import_config = ImportConfig(policy="strip_all")
         
-        adapter._cfg = PythonCfg(imports=import_config)
+        adapter = make_adapter(PythonCfg(imports=import_config))
         
         result, meta = adapter.process(lctx_py(do_imports))
         
@@ -189,7 +189,7 @@ class TestPythonImportOptimization:
         
         assert_golden_match(result, "imports", "strip_all")
     
-    def test_summarize_long_imports(self, adapter, do_imports):
+    def test_summarize_long_imports(self, do_imports):
         """Test summarizing long import lists."""
         import_config = ImportConfig(
             policy="keep_all",
@@ -197,7 +197,7 @@ class TestPythonImportOptimization:
             max_items_before_summary=5  # Low threshold to trigger summarization
         )
         
-        adapter._cfg = PythonCfg(imports=import_config)
+        adapter = make_adapter(PythonCfg(imports=import_config))
         
         result, meta = adapter.process(lctx_py(do_imports))
         
@@ -207,7 +207,7 @@ class TestPythonImportOptimization:
         
         assert_golden_match(result, "imports", "summarize_long")
     
-    def test_custom_external_patterns(self, adapter):
+    def test_custom_external_patterns(self):
         """Test import optimization with custom external patterns."""
         code = '''import os
 import mycompany.utils  # Should be treated as external
@@ -220,7 +220,7 @@ from .local import function  # Relative import
             external_patterns=["^mycompany\..*"]
         )
         
-        adapter._cfg = PythonCfg(imports=import_config)
+        adapter = make_adapter(PythonCfg(imports=import_config))
         
         result, meta = adapter.process(lctx_py(code))
         
@@ -233,7 +233,7 @@ from .local import function  # Relative import
         assert "from .local" not in result
         assert result.count("# … import omitted") == 2
     
-    def test_mixed_import_styles_handling(self, adapter):
+    def test_mixed_import_styles_handling(self):
         """Test handling of mixed import styles."""
         code = '''import os, sys, json
 from typing import List, Dict, Optional, Union, Any
@@ -246,7 +246,7 @@ from collections import defaultdict, Counter, deque
             max_items_before_summary=3
         )
         
-        adapter._cfg = PythonCfg(imports=import_config)
+        adapter = make_adapter(PythonCfg(imports=import_config))
         
         result, meta = adapter.process(lctx_py(code))
         
@@ -254,7 +254,7 @@ from collections import defaultdict, Counter, deque
         assert meta.get("code.removed.imports", 0) == 5
         assert "# … 5 imports omitted" in result
     
-    def test_conditional_import_preservation(self, adapter):
+    def test_conditional_import_preservation(self):
         """Test preservation of conditional imports."""
         code = '''import os
 try:
@@ -268,7 +268,7 @@ if TYPE_CHECKING:
         
         import_config = ImportConfig(policy="strip_local")
         
-        adapter._cfg = PythonCfg(imports=import_config)
+        adapter = make_adapter(PythonCfg(imports=import_config))
         
         result, meta = adapter.process(lctx_py(code))
         
@@ -281,7 +281,7 @@ if TYPE_CHECKING:
 class TestPythonImportEdgeCases:
     """Test edge cases for Python import optimization."""
     
-    def test_star_imports(self, adapter):
+    def test_star_imports(self):
         """Test handling of star imports."""
         code = '''from os import *
 from .utils import *
@@ -290,7 +290,7 @@ from typing import *
         
         import_config = ImportConfig(policy="strip_local")
         
-        adapter._cfg = PythonCfg(imports=import_config)
+        adapter = make_adapter(PythonCfg(imports=import_config))
         
         result, meta = adapter.process(lctx_py(code))
         
@@ -302,7 +302,7 @@ from typing import *
         assert "from .utils import *" not in result
         assert "# … import omitted" in result
     
-    def test_aliased_imports(self, adapter):
+    def test_aliased_imports(self):
         """Test handling of aliased imports."""
         code = '''import numpy as np
 import pandas as pd
@@ -312,7 +312,7 @@ from .helpers import process_data as process
         
         import_config = ImportConfig(policy="strip_local")
         
-        adapter._cfg = PythonCfg(imports=import_config)
+        adapter = make_adapter(PythonCfg(imports=import_config))
         
         result, meta = adapter.process(lctx_py(code))
         
@@ -324,7 +324,7 @@ from .helpers import process_data as process
         assert "from .helpers import process_data as process" not in result
         assert "# … import omitted" in result
     
-    def test_deeply_nested_modules(self, adapter):
+    def test_deeply_nested_modules(self):
         """Test handling of deeply nested module imports."""
         code = '''from very.deep.nested.module.structure import function
 from local.project.deeply.nested import utility
@@ -333,7 +333,7 @@ import external.library.with.deep.structure
         
         import_config = ImportConfig(policy="strip_local")
         
-        adapter._cfg = PythonCfg(imports=import_config)
+        adapter = make_adapter(PythonCfg(imports=import_config))
         
         result, meta = adapter.process(lctx_py(code))
         
@@ -341,7 +341,7 @@ import external.library.with.deep.structure
         # Exact behavior depends on implementation heuristics
         assert meta.get("code.removed.imports", 0) >= 0
     
-    def test_import_summarization_grouping(self, adapter):
+    def test_import_summarization_grouping(self):
         """Test that import summarization groups consecutive imports."""
         code = '''from django.http import (
     HttpRequest, HttpResponse, JsonResponse, HttpResponseRedirect,
@@ -364,7 +364,7 @@ from rest_framework.decorators import (
             max_items_before_summary=3
         )
         
-        adapter._cfg = PythonCfg(imports=import_config)
+        adapter = make_adapter(PythonCfg(imports=import_config))
         
         result, meta = adapter.process(lctx_py(code))
         
@@ -376,7 +376,7 @@ from rest_framework.decorators import (
         assert "import os" in result
         assert "import sys" in result
     
-    def test_strip_local_with_summarize_long(self, adapter):
+    def test_strip_local_with_summarize_long(self):
         """Test combining strip_local policy with summarize_long option."""
         code = '''import os
 import sys
@@ -391,7 +391,7 @@ from .models import Model1, Model2, Model3
             max_items_before_summary=3
         )
         
-        adapter._cfg = PythonCfg(imports=import_config)
+        adapter = make_adapter(PythonCfg(imports=import_config))
         
         result, meta = adapter.process(lctx_py(code))
         

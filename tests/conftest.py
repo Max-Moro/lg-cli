@@ -10,9 +10,6 @@ import pytest
 from lg.adapters.context import LightweightContext
 from lg.tokens.service import TokenService
 
-# Экспортируем хелперы для использования в других тестах
-__all__ = ["lctx", "lctx_py", "lctx_ts", "lctx_md", "write", "run_cli", "jload", "token_service"]
-
 
 def write(p: Path, text: str) -> Path:
     p.parent.mkdir(parents=True, exist_ok=True)
@@ -118,12 +115,5 @@ class TokenServiceStub(TokenService):
         """Позволяет в тестах делать замену плейсхолдеров всегда."""
         return True
 
-
-@pytest.fixture
-def token_service():
-    return TokenServiceStub()
-
-@pytest.fixture
-def token_service_real():
-    """Если тесты проверяют реальную математику по токенам."""
-    return TokenService()
+# Экспортируем хелперы для использования в других тестах
+__all__ = ["lctx", "lctx_py", "lctx_ts", "lctx_md", "write", "run_cli", "jload", "TokenServiceStub"]

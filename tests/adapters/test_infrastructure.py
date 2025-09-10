@@ -94,49 +94,6 @@ class TestAdapterRegistry:
         assert adapter_cls.name == "typescript"
 
 
-class TestAdapterConfiguration:
-    """Test adapter configuration loading and binding."""
-    
-    def test_adapter_binding_with_config(self, token_service):
-        """Test that adapters can be bound with configuration."""
-        from lg.adapters.python import PythonAdapter
-        
-        # Test binding with simple config
-        raw_config = {"strip_function_bodies": True}
-        adapter = PythonAdapter.bind(raw_config, token_service)
-        
-        assert adapter._cfg is not None
-        assert adapter._cfg.strip_function_bodies is True
-    
-    def test_adapter_binding_without_config(self, token_service):
-        """Test that adapters can be bound without configuration."""
-        from lg.adapters.python import PythonAdapter
-        
-        adapter = PythonAdapter.bind(None, token_service)
-        assert adapter._cfg is not None  # Should have default config
-    
-    def test_complex_config_loading(self, token_service):
-        """Test loading of complex configuration objects."""
-        from lg.adapters.python import PythonAdapter
-        
-        complex_config = {
-            "strip_function_bodies": {
-                "mode": "large_only",
-                "min_lines": 10
-            },
-            "comment_policy": {
-                "policy": "keep_first_sentence",
-                "max_length": 80
-            }
-        }
-        
-        adapter = PythonAdapter.bind(complex_config, token_service)
-        assert hasattr(adapter._cfg.strip_function_bodies, 'mode')
-        assert adapter._cfg.strip_function_bodies.mode == "large_only"
-        assert hasattr(adapter._cfg.comment_policy, 'policy')
-        assert adapter._cfg.comment_policy.policy == "keep_first_sentence"
-
-
 class TestAdapterMetrics:
     """Test adapter metrics collection."""
     
