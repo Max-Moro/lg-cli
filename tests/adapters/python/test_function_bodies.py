@@ -167,10 +167,10 @@ def complex():
         assert "def outer():" in result
         assert '"""Outer function."""' in result
         # Inner function should also be processed
-        assert "def inner():" in result
-        assert '"""Inner function."""' in result  
+        assert "def inner():" not in result
+        assert '"""Inner function."""' not in result
         # At least some optimization should occur
-        assert "# … function body omitted" in result
+        assert "# … function body omitted (7 lines)" in result
         assert meta.get("code.removed.function_bodies", 0) > 0
     
     def test_class_methods(self):
