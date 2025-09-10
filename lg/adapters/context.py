@@ -8,6 +8,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Dict, Any, Optional
 
+from .code_model import PlaceholderConfig
 from .metrics import MetricsCollector
 from .placeholders import PlaceholderManager, create_placeholder_manager
 from .range_edits import RangeEditor
@@ -50,18 +51,19 @@ class LightweightContext(LightState):
         # Для ленивой инициализации полноценного контекста
         self._full_context: Optional['ProcessingContext'] = None
 
-    def get_full_context(self, adapter) -> 'ProcessingContext':
+    def get_full_context(self, adapter, token_service: TokenService) -> 'ProcessingContext':
         """
         Ленивое создание полноценного ProcessingContext при необходимости.
         
         Args:
+            token_service: Сервис подсчёта токенов
             adapter: Языковой адаптер для создания документа и генератора плейсхолдеров
             
         Returns:
             ProcessingContext инициализированный из этого облегченного контекста
         """
         if self._full_context is None:
-            self._full_context = ProcessingContext.from_lightweight(self, adapter)
+            self._full_context = ProcessingContext.from_lightweight(self, adapter, token_service)
         
         return self._full_context
 
@@ -81,8 +83,7 @@ class ProcessingContext(LightState):
         editor: RangeEditor,
         placeholders: PlaceholderManager,
         token_service: TokenService,
-        placeholder_min_ratio: float,
-        placeholder_min_abs_if_none: Optional[int],
+        ph_cfg: PlaceholderConfig
     ):
         super().__init__(file_path, raw_text, group_size, mixed)
 
@@ -91,8 +92,7 @@ class ProcessingContext(LightState):
         self.placeholders = placeholders
         self.metrics = MetricsCollector()
         self.token_service = token_service
-        self.placeholder_min_ratio = placeholder_min_ratio
-        self.placeholder_min_abs_if_none = placeholder_min_abs_if_none
+        self.ph_cfg = ph_cfg
 
     # ============= API для плейсхолдеров =============
 
@@ -138,29 +138,26 @@ class ProcessingContext(LightState):
         # Текст исходного диапазона нужен для экономической проверки
         original_bytes = self.raw_text.encode('utf-8')
 
-        min_savings_ratio = self.placeholder_min_ratio
-        min_abs_savings_if_none = self.placeholder_min_abs_if_none
+        min_savings_ratio = self.ph_cfg.min_savings_ratio
+        min_abs_savings_if_none = self.ph_cfg.min_abs_savings_if_none
 
-        for spec, replacement_text in collapsed_edits:
+        for spec, repl in collapsed_edits:
             # Получаем исходный текст диапазона
             src = original_bytes[spec.start_byte:spec.end_byte].decode('utf-8', errors='ignore')
-            repl = replacement_text
 
             # Определяем флаг "пустой" замены
             is_none = (repl == "")
 
             # Применяем проверку целесообразности
-            # Если сервис не задан — применяем вслепую (как раньше)
-            if self.token_service:
-                if not self.token_service.is_economical(
-                    src,
-                    repl,
-                    min_ratio=min_savings_ratio,
-                    replacement_is_none=is_none,
-                    min_abs_savings_if_none=min_abs_savings_if_none,
-                ):
-                    # Пропускаем замену, оставляем оригинал
-                    continue
+            if not self.token_service.is_economical(
+                src,
+                repl,
+                min_ratio=min_savings_ratio,
+                replacement_is_none=is_none,
+                min_abs_savings_if_none=min_abs_savings_if_none,
+            ):
+                # Пропускаем замену, оставляем оригинал
+                continue
 
             self.editor.add_replacement(
                 spec.start_byte, spec.end_byte, repl,
@@ -174,25 +171,23 @@ class ProcessingContext(LightState):
             if isinstance(value, (int, float)):
                 self.metrics.set(key, value)
         
-        # Добавляем метаданные группы
-        self.metrics.set("_group_size", self.group_size)
-        self.metrics.set("_group_mixed", self.mixed)
-
         return self.metrics.to_dict()
 
     @classmethod 
     def from_lightweight(
         cls,
         lightweight_ctx: LightweightContext,
-        adapter
-    ) -> 'ProcessingContext':
+        adapter,
+        token_service: TokenService
+    ) -> ProcessingContext:
         """
         Создать полноценный ProcessingContext из облегченного контекста.
         
         Args:
             lightweight_ctx: Облегченный контекст с базовой информацией
             adapter: Языковой адаптер для создания компонентов
-            
+            token_service: Cервис подсчёта токенов
+
         Returns:
             Полноценный ProcessingContext
         """
@@ -206,14 +201,7 @@ class ProcessingContext(LightState):
             adapter.get_comment_style(), 
             adapter.cfg.placeholders.style,
         )
-        # Сервис токенов передаёт engine при связывании адаптера
-        token_service = getattr(adapter, 'token_service', None)
 
-        # Параметры экономической проверки из конфигурации адаптера
-        ph_cfg = getattr(adapter.cfg, 'placeholders', None)
-        min_ratio = getattr(ph_cfg, 'min_savings_ratio', 2.0) if ph_cfg else 2.0
-        min_abs_if_none = getattr(ph_cfg, 'min_abs_savings_if_none', None) if ph_cfg else None
-        
         return cls(
             lightweight_ctx.file_path,
             lightweight_ctx.raw_text,
@@ -223,6 +211,5 @@ class ProcessingContext(LightState):
             editor,
             placeholders,
             token_service,
-            min_ratio,
-            min_abs_if_none,
+            adapter.cfg.placeholders,
         )

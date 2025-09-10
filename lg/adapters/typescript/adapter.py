@@ -130,7 +130,7 @@ class TypeScriptAdapter(CodeAdapter[TypeScriptCfg]):
         # Для промежуточных случаев (30-70%) используем ленивую инициализацию Tree-sitter
         # для более точного анализа структуры файла
         try:
-            full_context = lightweight_ctx.get_full_context(self)
+            full_context = lightweight_ctx.get_full_context(self, self.token_service)
             return self._deep_barrel_file_analysis(full_context.doc)
         except Exception:
             # Если Tree-sitter парсинг не удался, полагаемся на текстовую эвристику

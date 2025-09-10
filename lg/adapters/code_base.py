@@ -57,7 +57,7 @@ class CodeAdapter(BaseAdapter[C], ABC):
         Применяет все конфигурированные оптимизации.
         """
         # Получаем полноценный контекст из облегченного
-        context = lightweight_ctx.get_full_context(self)
+        context = lightweight_ctx.get_full_context(self, self.token_service)
 
         # Применяем оптимизации
         self._apply_optimizations(context)

@@ -1,9 +1,9 @@
 from __future__ import annotations
 
-from typing import Any, Generic, Optional, Set, Type, TypeVar, get_args, TYPE_CHECKING
+from typing import Any, Generic, Optional, Set, Type, TypeVar, get_args
 
-if TYPE_CHECKING:
-    from .context import LightweightContext
+from .context import LightweightContext
+from ..tokens.service import TokenService
 
 __all__ = ["BaseAdapter"]
 
@@ -19,6 +19,8 @@ class BaseAdapter(Generic[C]):
     extensions: Set[str] = set()
     #: Храним связанный конфиг (может быть None для «безконфиговых» адаптеров)
     _cfg: Optional[C]
+    # Cервис подсчёта токенов
+    token_service: TokenService
 
     # --- Generic-интроспекция параметра C -----
     @classmethod
@@ -38,13 +40,14 @@ class BaseAdapter(Generic[C]):
 
     # --- Конфигурирование адаптера -------------
     @classmethod
-    def bind(cls: Type[A], raw_cfg: dict | None) -> A:
+    def bind(cls: Type[A], raw_cfg: dict | None, *, token_service: TokenService) -> A:
         """
         Фабрика «связанного» адаптера: создаёт инстанс и применяет cfg.
         Внешний код не видит тип конфигурации — полная инкапсуляция.
         """
         inst = cls()
         inst._cfg = cls._load_cfg(raw_cfg)
+        inst.token_service = token_service
         return inst
 
     @classmethod
