@@ -216,7 +216,7 @@ class PythonCodeAnalyzer(CodeAnalyzer):
                     element_info = self.analyze_element(assignment_def)
                     
                     # Для top-level переменных проверяем публичность и экспорт
-                    if not element_info.should_be_included_in_public_api:
+                    if not element_info.in_public_api:
                         private_elements.append(element_info)
 
     def _is_whitespace_or_comment(self, node: Node) -> bool:

@@ -61,7 +61,7 @@ class ElementInfo:
         return self.export_status == ExportStatus.EXPORTED
     
     @property
-    def should_be_included_in_public_api(self) -> bool:
+    def in_public_api(self) -> bool:
         """Должен ли элемент быть включен в публичное API."""
         if self.is_method:
             return self.is_public
@@ -191,7 +191,7 @@ class CodeAnalyzer(ABC):
                     element_info = self.analyze_element(class_def)
                     
                     # Для top-level классов экспорт - основное условие
-                    if not element_info.should_be_included_in_public_api:
+                    if not element_info.in_public_api:
                         private_elements.append(element_info)
     
     def _collect_interfaces_and_types(self, private_elements: List[ElementInfo]) -> None:
@@ -210,7 +210,7 @@ class CodeAnalyzer(ABC):
                     interface_def = node.parent
                     if interface_def:
                         element_info = self.analyze_element(interface_def)
-                        if not element_info.should_be_included_in_public_api:
+                        if not element_info.in_public_api:
                             private_elements.append(element_info)
         
         # Собираем алиасы типов если поддерживаются
@@ -221,7 +221,7 @@ class CodeAnalyzer(ABC):
                     type_def = node.parent
                     if type_def:
                         element_info = self.analyze_element(type_def)
-                        if not element_info.should_be_included_in_public_api:
+                        if not element_info.in_public_api:
                             private_elements.append(element_info)
     
     # ============= Структурный анализ =============

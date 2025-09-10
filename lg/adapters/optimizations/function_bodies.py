@@ -56,7 +56,7 @@ class FunctionBodyOptimizer:
             lines_count = end_line - start_line + 1
             
             # Check if this body should be stripped
-            should_strip = self.should_strip_function_body(analyzer, body_node, lines_count, cfg)
+            should_strip = self.should_strip_function_body(func_group.element_info.in_public_api, lines_count, cfg)
             
             if should_strip:
                 self.adapter.hook__remove_function_body(
@@ -116,8 +116,7 @@ class FunctionBodyOptimizer:
 
     def should_strip_function_body(
         self, 
-        analyzer,
-        body_node: Node,
+        in_public_api: True,
         lines_count: int,
         cfg
     ) -> bool:
@@ -125,7 +124,7 @@ class FunctionBodyOptimizer:
         Determine if a function body should be stripped based on configuration.
         
         Args:
-            body_node: Tree-sitter node representing function body
+            in_public_api: A function or method is part of a public API
             lines_count: Number of lines in the function body
             cfg: Function body stripping configuration
             
@@ -147,20 +146,12 @@ class FunctionBodyOptimizer:
             elif cfg.mode == "all":
                 return True
             elif cfg.mode == "large_only":
-                return lines_count >= getattr(cfg, 'min_lines', 5)
+                return lines_count >= cfg.min_lines
             elif cfg.mode == "public_only":
                 # Strip bodies only for public functions
-                parent_function = analyzer.find_function_definition_in_parents(body_node)
-                if parent_function:
-                    element_info = analyzer.analyze_element(parent_function)
-                    return element_info.is_public or element_info.is_exported
-                return False
+                return in_public_api
             elif cfg.mode == "non_public":
                 # Strip bodies only for private functions
-                parent_function = analyzer.find_function_definition_in_parents(body_node)
-                if parent_function:
-                    element_info = analyzer.analyze_element(parent_function)
-                    return not (element_info.is_public or element_info.is_exported)
-                return False
+                return not in_public_api
         
         return False

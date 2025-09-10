@@ -252,7 +252,7 @@ class TypeScriptCodeAnalyzer(CodeAnalyzer):
                 namespace_def = node.parent
                 if namespace_def:
                     element_info = self.analyze_element(namespace_def)
-                    if not element_info.should_be_included_in_public_api:
+                    if not element_info.in_public_api:
                         private_elements.append(element_info)
     
     def _collect_enums(self, private_elements: List[ElementInfo]) -> None:
@@ -263,7 +263,7 @@ class TypeScriptCodeAnalyzer(CodeAnalyzer):
                 enum_def = node.parent
                 if enum_def:
                     element_info = self.analyze_element(enum_def)
-                    if not element_info.should_be_included_in_public_api:
+                    if not element_info.in_public_api:
                         private_elements.append(element_info)
     
     def _collect_class_members(self, private_elements: List[ElementInfo]) -> None:
@@ -274,7 +274,7 @@ class TypeScriptCodeAnalyzer(CodeAnalyzer):
                 field_def = node.parent
                 if field_def:
                     element_info = self.analyze_element(field_def)
-                    if not element_info.should_be_included_in_public_api:
+                    if not element_info.in_public_api:
                         # For fields, extend range to include semicolon if present
                         element_type = "field" if capture_name == "field_name" else "method"
                         if element_type == "field":
@@ -317,7 +317,7 @@ class TypeScriptCodeAnalyzer(CodeAnalyzer):
                     element_info = self.analyze_element(variable_def)
                     
                     # Для top-level переменных проверяем публичность и экспорт
-                    if not element_info.should_be_included_in_public_api:
+                    if not element_info.in_public_api:
                         private_elements.append(element_info)
 
     def _check_export_in_source_line(self, node: Node) -> bool:
