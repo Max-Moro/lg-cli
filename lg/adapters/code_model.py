@@ -153,7 +153,7 @@ class CodeCfg:
             self.placeholders = PlaceholderConfig(
                 style=pc.get("style", "inline"),
                 min_savings_ratio=float(pc.get("min_savings_ratio", 2.0)),
-                min_abs_savings_if_none=pc.get("min_abs_savings_if_none"),
+                min_abs_savings_if_none=int(pc.get("min_abs_savings_if_none"), 5),
             )
 
         if "budget" in d:
