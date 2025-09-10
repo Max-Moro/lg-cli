@@ -23,6 +23,7 @@ from .optimizations import (
     ImportClassifier
 )
 from .structure_analysis import CodeStructureAnalyzer
+from .visibility_analysis import VisibilityAnalyzer
 from .tree_sitter_support import TreeSitterDocument, Node
 
 C = TypeVar("C", bound=CodeCfg)
@@ -58,47 +59,9 @@ class CodeAdapter(BaseAdapter[C], ABC):
         """Создает языко-специфичный анализатор структуры кода."""
         pass
 
-    def collect_language_specific_private_elements(self, context: ProcessingContext) -> List[Tuple[Node, str]]:
-        """
-        Собирает язык-специфичные приватные элементы для public API фильтрации.
-        
-        Базовая реализация возвращает пустой список.
-        Языковые адаптеры могут переопределить для добавления специфичных элементов.
-        
-        Args:
-            context: Контекст обработки
-            
-        Returns:
-            Список кортежей (узел, тип_элемента) для удаления
-        """
-        return []
-
     @abstractmethod
-    def is_public_element(self, node: Node, doc: TreeSitterDocument) -> bool:
-        """
-        Определяет, является ли элемент кода публичным.
-        
-        Args:
-            node: Узел Tree-sitter для анализа
-            doc: Tree-sitter документ
-            
-        Returns:
-            True если элемент публичный, False если приватный/защищенный
-        """
-        pass
-
-    @abstractmethod
-    def is_exported_element(self, node: Node, doc: TreeSitterDocument) -> bool:
-        """
-        Определяет, экспортируется ли элемент из модуля.
-        
-        Args:
-            node: Узел Tree-sitter для анализа
-            doc: Tree-sitter документ
-            
-        Returns:
-            True если элемент экспортируется, False если только для внутреннего использования
-        """
+    def create_visibility_analyzer(self, doc: TreeSitterDocument) -> VisibilityAnalyzer:
+        """Создает языко-специфичный анализатор видимости элементов."""
         pass
 
     def process(self, lightweight_ctx: LightweightContext) -> Tuple[str, Dict[str, Any]]:

@@ -5,16 +5,16 @@ TypeScript adapter core: configuration, document and adapter classes.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Dict, Any, List, Optional, Tuple
+from typing import Dict, Any, List, Optional
 
 from tree_sitter import Language
 
 from ..code_base import CodeAdapter
 from ..code_model import CodeCfg
-from ..context import LightweightContext, ProcessingContext
+from ..context import LightweightContext
 from ..optimizations import FieldsClassifier, ImportClassifier, TreeSitterImportAnalyzer
 from ..structure_analysis import CodeStructureAnalyzer
-from ..tree_sitter_support import TreeSitterDocument, Node
+from ..tree_sitter_support import TreeSitterDocument
 
 
 @dataclass
@@ -83,11 +83,11 @@ class TypeScriptAdapter(CodeAdapter[TypeScriptCfg]):
         from .structure_analysis import TypeScriptCodeStructureAnalyzer
         return TypeScriptCodeStructureAnalyzer(doc)
 
-    def collect_language_specific_private_elements(self, context: ProcessingContext) -> List[Tuple[Node, str]]:
-        """Собирает TypeScript-специфичные приватные элементы для public API фильтрации."""
-        from .public_api import TypeScriptPublicApiCollector
-        collector = TypeScriptPublicApiCollector(self)
-        return collector.collect_private_elements(context)
+    def create_visibility_analyzer(self, doc: TreeSitterDocument):
+        """Создает TypeScript-специфичный анализатор видимости элементов."""
+        from .visibility_analysis import TypeScriptVisibilityAnalyzer
+        return TypeScriptVisibilityAnalyzer(doc)
+
 
     def should_skip(self, lightweight_ctx: LightweightContext) -> bool:
         """
@@ -101,82 +101,6 @@ class TypeScriptAdapter(CodeAdapter[TypeScriptCfg]):
         # Можно добавить другие эвристики пропуска для TypeScript
         return False
 
-    def is_public_element(self, node: Node, doc: TreeSitterDocument) -> bool:
-        """
-        Определяет публичность элемента TypeScript по модификаторам доступа.
-        
-        Правила TypeScript:
-        - Элементы с модификатором 'private' - приватные
-        - Элементы с модификатором 'protected' - защищенные (считаем приватными)  
-        - Элементы с модификатором 'public' или без модификатора - публичные
-        """
-        # Debug: добавим отладочную информацию
-        node_text = doc.get_node_text(node)
-        
-        # Ищем модификаторы доступа среди дочерних узлов и в тексте
-        for child in node.children:
-            if child.type == "accessibility_modifier":
-                modifier_text = doc.get_node_text(child)
-                if modifier_text in ("private", "protected"):
-                    return False
-                elif modifier_text == "public":
-                    return True
-        
-        # Fallback: проверяем в тексте узла наличие модификаторов
-        if "private " in node_text or node_text.strip().startswith("private "):
-            return False
-        if "protected " in node_text or node_text.strip().startswith("protected "):
-            return False
-        
-        # Если модификатор не найден, элемент считается публичным по умолчанию
-        return True
-
-    def is_exported_element(self, node: Node, doc: TreeSitterDocument) -> bool:
-        """
-        Определяет, экспортируется ли элемент TypeScript.
-        
-        Правила:
-        - Методы внутри классов НЕ считаются экспортируемыми 
-        - Top-level функции, классы, интерфейсы экспортируются если есть export
-        - Приватные/защищенные методы никогда не экспортируются
-        """
-        # Если это метод внутри класса, он НЕ экспортируется напрямую
-        if node.type == "method_definition":
-            return False
-        
-        # Проверяем, что это top-level элемент с export
-        node_text = doc.get_node_text(node)
-        
-        # Простая проверка: элемент экспортируется если непосредственно перед ним стоит export
-        if node_text.strip().startswith("export "):
-            return True
-        
-        # Проверяем parent для export statement
-        current = node
-        while current and current.type not in ("program", "source_file"):
-            if current.type == "export_statement":
-                return True
-            current = current.parent
-        
-        # Дополнительная проверка через поиск export в начале строки
-        return self._check_export_in_source_line(node, doc)
-
-    @staticmethod
-    def _check_export_in_source_line(node: Node, doc: TreeSitterDocument) -> bool:
-        """
-        Проверяет наличие 'export' в исходной строке элемента.
-        Это fallback для случаев, когда Tree-sitter не правильно парсит export.
-        """
-        start_line, _ = doc.get_line_range(node)
-        lines = doc.text.split('\n')
-        
-        if start_line < len(lines):
-            line_text = lines[start_line].strip()
-            # Простая проверка на наличие export в начале строки
-            if line_text.startswith('export '):
-                return True
-        
-        return False
 
     def _is_barrel_file(self, lightweight_ctx: LightweightContext) -> bool:
         """

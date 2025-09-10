@@ -31,62 +31,25 @@ class PublicApiOptimizer:
         Args:
             context: Processing context with document and editor
         """
-        # Get language-specific structure analyzer
-        analyzer = self.adapter.create_structure_analyzer(context.doc)
+        # Get language-specific visibility analyzer
+        visibility_analyzer = self.adapter.create_visibility_analyzer(context.doc)
         
-        # Find all functions and methods using language-specific structure analysis
-        functions = context.doc.query("functions")
-        private_elements = []  # List of (element_node, element_type)
+        # Collect all private elements using the new analyzer
+        private_elements = visibility_analyzer.collect_all_private_elements(context)
         
-        # Group function-like captures using language-specific utilities
-        function_groups = analyzer.collect_function_like_elements(functions)
-        
-        for func_def, func_group in function_groups.items():
-            element_type = func_group.element_type
-            
-            # Check element visibility using adapter's language-specific logic
-            is_public = self.adapter.is_public_element(func_def, context.doc)
-            is_exported = self.adapter.is_exported_element(func_def, context.doc)
-            
-            # Universal logic based on element type
-            should_remove = False
-            
-            if element_type == "method":
-                # Method removed if private/protected
-                should_remove = not is_public
-            else:  # function, arrow_function, etc.
-                # Top-level function removed if not exported
-                should_remove = not is_exported
-            
-            if should_remove:
-                private_elements.append((func_def, element_type))
-        
-        # Also check classes
-        classes = context.doc.query("classes")
-        for node, capture_name in classes:
-            if capture_name == "class_name":
-                class_def = node.parent
-                # Check class export status
-                is_exported = self.adapter.is_exported_element(class_def, context.doc)
-                
-                # For top-level classes, export is primary consideration
-                if not is_exported:
-                    private_elements.append((class_def, "class"))
-        
-        # Collect language-specific private elements
-        language_specific_elements = self.adapter.collect_language_specific_private_elements(context)
-        private_elements.extend(language_specific_elements)
+        # Get structure analyzer for handling decorators
+        structure_analyzer = self.adapter.create_structure_analyzer(context.doc)
         
         # Sort by position (reverse order for safe removal) 
-        # Using analyzer for getting ranges with decorators
-        private_elements.sort(key=lambda x: analyzer.get_element_range_with_decorators(x[0])[0], reverse=True)
+        # Using structure analyzer for getting ranges with decorators
+        private_elements.sort(key=lambda x: structure_analyzer.get_element_range_with_decorators(x.node)[0], reverse=True)
         
         # Remove private elements with appropriate placeholders
-        for element, element_type in private_elements:
+        for private_element in private_elements:
             # Get extended range including decorators using language-specific logic
-            start_byte, end_byte = analyzer.get_element_range_with_decorators(element)
+            start_byte, end_byte = structure_analyzer.get_element_range_with_decorators(private_element.node)
             start_line = context.doc.get_line_number_for_byte(start_byte)
             end_line = context.doc.get_line_number_for_byte(end_byte)
 
             # Add appropriate placeholder using custom range
-            context.add_placeholder(element_type, start_byte, end_byte, start_line, end_line)
+            context.add_placeholder(private_element.element_type, start_byte, end_byte, start_line, end_line)

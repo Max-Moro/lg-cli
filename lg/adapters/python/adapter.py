@@ -5,16 +5,16 @@ Python adapter core: configuration, document and adapter classes.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Dict, Any, List, Optional, Tuple
+from typing import Dict, Any, List, Optional
 
 from tree_sitter import Language
 
 from ..code_base import CodeAdapter
 from ..code_model import CodeCfg
-from ..context import LightweightContext, ProcessingContext
+from ..context import LightweightContext
 from ..optimizations import FieldsClassifier, ImportClassifier, TreeSitterImportAnalyzer, CommentOptimizer
 from ..structure_analysis import CodeStructureAnalyzer
-from ..tree_sitter_support import TreeSitterDocument, Node
+from ..tree_sitter_support import TreeSitterDocument
 
 
 @dataclass
@@ -76,19 +76,11 @@ class PythonAdapter(CodeAdapter[PythonCfg]):
         from .structure_analysis import PythonCodeStructureAnalyzer
         return PythonCodeStructureAnalyzer(doc)
 
-    def collect_language_specific_private_elements(self, context: ProcessingContext) -> List[Tuple[Node, str]]:
-        """
-        Собирает Python-специфичные приватные элементы для public API фильтрации.
-        
-        В Python обычно достаточно универсальной логики для functions/methods/classes,
-        но можно добавить специфичные проверки для модулей, __all__, и т.д.
-        """
-        # В Python пока используем только универсальную логику
-        # В будущем можно добавить специфичные элементы:
-        # - Проверки __all__ для определения экспортируемых элементов
-        # - Обработку модульных переменных
-        # - Специфичную логику для property/classmethod/staticmethod
-        return []
+    def create_visibility_analyzer(self, doc: TreeSitterDocument):
+        """Создает Python-специфичный анализатор видимости элементов."""
+        from .visibility_analysis import PythonVisibilityAnalyzer
+        return PythonVisibilityAnalyzer(doc)
+
 
     def should_skip(self, lightweight_ctx: LightweightContext) -> bool:
         """
@@ -189,69 +181,6 @@ class PythonAdapter(CodeAdapter[PythonCfg]):
         # Если добрались сюда — все нетиповые строки допустимы → файл тривиальный
         return True
 
-    def is_public_element(self, node: Node, doc: TreeSitterDocument) -> bool:
-        """
-        Определяет публичность элемента Python по соглашениям об underscore.
-        
-        Правила:
-        - Имена, начинающиеся с одного _ считаются "protected" (внутренние)
-        - Имена, начинающиеся с двух __ считаются "private" 
-        - Имена без _ или с trailing _ считаются публичными
-        - Специальные методы __method__ считаются публичными
-        """
-        # Получаем имя элемента
-        element_name = self._get_element_name(node, doc)
-        if not element_name:
-            return True  # Если имя не найдено, считаем публичным
-        
-        # Специальные методы Python (dunder methods) считаются публичными
-        if element_name.startswith("__") and element_name.endswith("__"):
-            return True
-        
-        # Имена с двумя подчеркиваниями в начале - приватные
-        if element_name.startswith("__"):
-            return False
-        
-        # Имена с одним подчеркиванием в начале - защищенные (считаем приватными)
-        if element_name.startswith("_"):
-            return False
-        
-        # Все остальные - публичные
-        return True
-
-    def is_exported_element(self, node: Node, doc: TreeSitterDocument) -> bool:
-        """
-        Определяет, экспортируется ли элемент Python.
-        
-        В Python экспорт определяется через __all__ или по умолчанию все публичные элементы.
-        Пока упрощенная реализация - считаем все публичные элементы экспортируемыми.
-        """
-        # TODO: Реализовать проверку __all__ в будущих итерациях
-        return self.is_public_element(node, doc)
-
-    @staticmethod
-    def _get_element_name(node: Node, doc: TreeSitterDocument) -> Optional[str]:
-        """
-        Извлекает имя элемента из узла Tree-sitter.
-        """
-        # Специальная обработка для assignments
-        if node.type == "assignment":
-            # В assignment левая часть - это имя переменной
-            for child in node.children:
-                if child.type == "identifier":
-                    return doc.get_node_text(child)
-        
-        # Ищем дочерний узел с именем функции/класса/метода
-        for child in node.children:
-            if child.type == "identifier":
-                return doc.get_node_text(child)
-        
-        # Для некоторых типов узлов имя может быть в поле name
-        name_node = node.child_by_field_name("name")
-        if name_node:
-            return doc.get_node_text(name_node)
-        
-        return None
 
     # == ХУКИ, которые использует Python адаптер ==
 
@@ -273,12 +202,3 @@ class PythonAdapter(CodeAdapter[PythonCfg]):
         from .comments import smart_truncate_comment
         return smart_truncate_comment(comment_text, max_length)
 
-    def collect_language_specific_private_elements(self, context: ProcessingContext) -> List[Tuple[Node, str]]:
-        """
-        Собирает Python-специфичные приватные элементы для public API фильтрации.
-        
-        Включает обработку переменных/assignments и других Python-специфичных конструкций.
-        """
-        from .public_api import PythonPublicApiCollector
-        collector = PythonPublicApiCollector(self)
-        return collector.collect_private_elements(context)

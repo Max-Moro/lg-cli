@@ -5,6 +5,18 @@ src:
     mode: allow
     allow:
       - "/lg/adapters/"
+    children:
+      lg:
+        mode: block
+        children:
+          adapters:
+            mode: block
+            block:
+              - "/cpp.py"
+              - "/java.py"
+              - "/javascript.py"
+              - "/markdown.py"
+              - "/scala.py"
 
 src-tests:
   extensions: [".py"]
