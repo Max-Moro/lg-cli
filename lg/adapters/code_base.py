@@ -22,8 +22,7 @@ from .optimizations import (
     TreeSitterImportAnalyzer,
     ImportClassifier
 )
-from .structure_analysis import CodeStructureAnalyzer
-from .visibility_analysis import VisibilityAnalyzer
+from .code_analysis import CodeAnalyzer
 from .tree_sitter_support import TreeSitterDocument, Node
 
 C = TypeVar("C", bound=CodeCfg)
@@ -55,13 +54,8 @@ class CodeAdapter(BaseAdapter[C], ABC):
         pass
 
     @abstractmethod
-    def create_structure_analyzer(self, doc: TreeSitterDocument) -> CodeStructureAnalyzer:
-        """Создает языко-специфичный анализатор структуры кода."""
-        pass
-
-    @abstractmethod
-    def create_visibility_analyzer(self, doc: TreeSitterDocument) -> VisibilityAnalyzer:
-        """Создает языко-специфичный анализатор видимости элементов."""
+    def create_code_analyzer(self, doc: TreeSitterDocument) -> CodeAnalyzer:
+        """Создает языко-специфичный унифицированный анализатор кода."""
         pass
 
     def process(self, lightweight_ctx: LightweightContext) -> Tuple[str, Dict[str, Any]]:

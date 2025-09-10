@@ -17,6 +17,8 @@ src:
               - "/javascript.py"
               - "/markdown.py"
               - "/scala.py"
+              - "/optimizations/comments.py"
+              - "/optimizations/literals.py"
 
 src-tests:
   extensions: [".py"]

@@ -31,23 +31,20 @@ class PublicApiOptimizer:
         Args:
             context: Processing context with document and editor
         """
-        # Get language-specific visibility analyzer
-        visibility_analyzer = self.adapter.create_visibility_analyzer(context.doc)
+        # Get language-specific unified code analyzer
+        code_analyzer = self.adapter.create_code_analyzer(context.doc)
         
-        # Collect all private elements using the new analyzer
-        private_elements = visibility_analyzer.collect_all_private_elements(context)
-        
-        # Get structure analyzer for handling decorators
-        structure_analyzer = self.adapter.create_structure_analyzer(context.doc)
+        # Collect all private elements using the unified analyzer
+        private_elements = code_analyzer.collect_private_elements_for_public_api(context)
         
         # Sort by position (reverse order for safe removal) 
-        # Using structure analyzer for getting ranges with decorators
-        private_elements.sort(key=lambda x: structure_analyzer.get_element_range_with_decorators(x.node)[0], reverse=True)
+        # Using unified analyzer for getting ranges with decorators
+        private_elements.sort(key=lambda x: code_analyzer.get_element_range_with_decorators(x.node)[0], reverse=True)
         
         # Remove private elements with appropriate placeholders
         for private_element in private_elements:
             # Get extended range including decorators using language-specific logic
-            start_byte, end_byte = structure_analyzer.get_element_range_with_decorators(private_element.node)
+            start_byte, end_byte = code_analyzer.get_element_range_with_decorators(private_element.node)
             start_line = context.doc.get_line_number_for_byte(start_byte)
             end_line = context.doc.get_line_number_for_byte(end_byte)
 

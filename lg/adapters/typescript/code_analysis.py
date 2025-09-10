@@ -1,17 +1,82 @@
 """
-TypeScript-specific visibility analysis.
+TypeScript-специфичная реализация унифицированного анализатора кода.
+Объединяет функциональность анализа структуры и видимости для TypeScript.
 """
 
 from __future__ import annotations
 
-from typing import List, Optional
+from typing import List, Optional, Set
 
-from ..visibility_analysis import VisibilityAnalyzer, Visibility, ExportStatus, PrivateElement
+from ..code_analysis import CodeAnalyzer, Visibility, ExportStatus, PrivateElement, ElementInfo
 from ..tree_sitter_support import Node
 
 
-class TypeScriptVisibilityAnalyzer(VisibilityAnalyzer):
-    """TypeScript-specific implementation of visibility analyzer."""
+class TypeScriptCodeAnalyzer(CodeAnalyzer):
+    """TypeScript-специфичная реализация унифицированного анализатора кода."""
+
+    def determine_element_type(self, node: Node) -> str:
+        """
+        Определяет тип элемента TypeScript на основе структуры узла.
+        
+        Args:
+            node: Tree-sitter узел
+            
+        Returns:
+            Строка с типом элемента: "function", "method", "class", "interface", "type"
+        """
+        node_type = node.type
+        
+        # Прямое соответствие типов узлов
+        if node_type == "class_declaration":
+            return "class"
+        elif node_type == "interface_declaration":
+            return "interface"
+        elif node_type == "type_alias_declaration":
+            return "type"
+        elif node_type in ("function_declaration", "arrow_function"):
+            # Определяем функция это или метод по контексту
+            return "method" if self.is_method_context(node) else "function"
+        elif node_type == "method_definition":
+            return "method"
+        elif node_type == "variable_declaration":
+            return "variable"
+        else:
+            # Fallback: пытаемся определить по родительскому контексту
+            if self.is_method_context(node):
+                return "method"
+            else:
+                return "function"
+
+    def extract_element_name(self, node: Node) -> Optional[str]:
+        """
+        Извлекает имя элемента TypeScript из узла Tree-sitter.
+        
+        Args:
+            node: Tree-sitter узел элемента
+            
+        Returns:
+            Имя элемента или None если не найдено
+        """
+        # Специальная обработка для variable_declaration
+        if node.type == "variable_declaration":
+            # Ищем variable_declarator с именем
+            for child in node.children:
+                if child.type == "variable_declarator":
+                    for grandchild in child.children:
+                        if grandchild.type == "identifier":
+                            return self.doc.get_node_text(grandchild)
+        
+        # Ищем дочерний узел с именем функции/класса/метода
+        for child in node.children:
+            if child.type in ("identifier", "type_identifier", "property_identifier"):
+                return self.doc.get_node_text(child)
+        
+        # Для некоторых типов узлов имя может быть в поле name
+        name_node = node.child_by_field_name("name")
+        if name_node:
+            return self.doc.get_node_text(name_node)
+        
+        return None
 
     def determine_visibility(self, node: Node) -> Visibility:
         """
@@ -21,6 +86,12 @@ class TypeScriptVisibilityAnalyzer(VisibilityAnalyzer):
         - Элементы с модификатором 'private' - приватные
         - Элементы с модификатором 'protected' - защищенные  
         - Элементы с модификатором 'public' или без модификатора - публичные
+        
+        Args:
+            node: Tree-sitter узел элемента
+            
+        Returns:
+            Уровень видимости элемента
         """
         node_text = self.doc.get_node_text(node)
         
@@ -52,6 +123,12 @@ class TypeScriptVisibilityAnalyzer(VisibilityAnalyzer):
         - Методы внутри классов НЕ считаются экспортируемыми 
         - Top-level функции, классы, интерфейсы экспортируются если есть export
         - Приватные/защищенные методы никогда не экспортируются
+        
+        Args:
+            node: Tree-sitter узел элемента
+            
+        Returns:
+            Статус экспорта элемента
         """
         # Если это метод внутри класса, он НЕ экспортируется напрямую
         if node.type == "method_definition":
@@ -77,9 +154,15 @@ class TypeScriptVisibilityAnalyzer(VisibilityAnalyzer):
         
         return ExportStatus.NOT_EXPORTED
 
-    def is_method_element(self, node: Node) -> bool:
+    def is_method_context(self, node: Node) -> bool:
         """
         Определяет, является ли узел методом класса TypeScript.
+        
+        Args:
+            node: Tree-sitter узел для анализа
+            
+        Returns:
+            True если узел является методом класса, False если функцией верхнего уровня
         """
         # Проходим вверх по дереву в поисках определения класса
         current = node.parent
@@ -92,36 +175,89 @@ class TypeScriptVisibilityAnalyzer(VisibilityAnalyzer):
             current = current.parent
         return False
 
-    def get_element_type(self, node: Node) -> str:
+    def find_function_definition_in_parents(self, node: Node) -> Optional[Node]:
         """
-        Определяет тип элемента TypeScript на основе структуры узла.
-        """
-        node_type = node.type
+        Находит function_definition для данного узла, поднимаясь по дереву.
         
-        # Прямое соответствие типов узлов
-        if node_type == "class_declaration":
-            return "class"
-        elif node_type == "interface_declaration":
-            return "interface"
-        elif node_type == "type_alias_declaration":
-            return "type"
-        elif node_type in ("function_declaration", "arrow_function"):
-            # Определяем функция это или метод по контексту
-            return "method" if self.is_method_element(node) else "function"
-        elif node_type == "method_definition":
-            return "method"
-        else:
-            # Fallback: пытаемся определить по родительскому контексту
-            if self.is_method_element(node):
-                return "method"
-            else:
-                return "function"
+        Args:
+            node: Узел для поиска родительской функции
+            
+        Returns:
+            Function definition или None если не найден
+        """
+        current = node.parent
+        while current:
+            if current.type in ("function_declaration", "method_definition", "arrow_function"):
+                return current
+            current = current.parent
+        return None
 
-    def _collect_language_specific_elements(self, context) -> List[PrivateElement]:
+    def find_decorators_for_element(self, node: Node) -> List[Node]:
+        """
+        Находит все декораторы/аннотации для элемента кода TypeScript.
+        
+        Args:
+            node: Узел элемента (функция, класс, метод)
+            
+        Returns:
+            Список узлов декораторов в порядке их появления в коде
+        """
+        decorators = []
+        
+        # Режим 1: Проверяем parent на decorated_definition
+        parent = node.parent
+        if parent and parent.type in self.get_decorated_definition_types():
+            # Ищем дочерние узлы-декораторы в wrapped definition
+            for child in parent.children:
+                if child.type in self.get_decorator_types():
+                    decorators.append(child)
+                elif child == node:
+                    # Дошли до самого элемента - прекращаем поиск
+                    break
+        
+        # Режим 2: Ищем декораторы среди предыдущих sibling узлов
+        preceding_decorators = self._find_preceding_decorators(node)
+        
+        # Объединяем результаты, избегая дубликатов
+        all_decorators = decorators + [d for d in preceding_decorators if d not in decorators]
+        
+        return all_decorators
+
+    def get_decorated_definition_types(self) -> Set[str]:
+        """
+        Возвращает типы узлов для wrapped decorated definitions в TypeScript.
+        
+        Returns:
+            Множество типов узлов
+        """
+        return {
+            "decorated_definition",    # TypeScript decorators
+            "decorator_list",         # Alternative naming
+        }
+
+    def get_decorator_types(self) -> Set[str]:
+        """
+        Возвращает типы узлов для отдельных декораторов в TypeScript.
+        
+        Returns:
+            Множество типов узлов
+        """
+        return {
+            "decorator",              # TypeScript @decorator
+            "decorator_expression",   # TypeScript decorator expressions
+        }
+
+    def collect_language_specific_private_elements(self, context) -> List[PrivateElement]:
         """
         Собирает TypeScript-специфичные приватные элементы.
         
         Включает интерфейсы, типы, пространства имен, енумы, поля классов, импорты и переменные.
+        
+        Args:
+            context: Контекст обработки
+            
+        Returns:
+            Список TypeScript-специфичных приватных элементов
         """
         private_elements = []
         
@@ -143,13 +279,9 @@ class TypeScriptVisibilityAnalyzer(VisibilityAnalyzer):
             if capture_name == "interface_name":
                 interface_def = node.parent
                 if interface_def:
-                    visibility_info = self.analyze_element_visibility(interface_def)
-                    if not visibility_info.should_be_included_in_public_api:
-                        private_elements.append(PrivateElement(
-                            node=interface_def,
-                            element_type="interface", 
-                            visibility_info=visibility_info
-                        ))
+                    element_info = self.analyze_element(interface_def)
+                    if not element_info.should_be_included_in_public_api:
+                        private_elements.append(PrivateElement(element_info))
     
     def _collect_types(self, context, private_elements: List[PrivateElement]) -> None:
         """Собирает неэкспортируемые алиасы типов."""
@@ -158,13 +290,9 @@ class TypeScriptVisibilityAnalyzer(VisibilityAnalyzer):
             if capture_name == "type_name":
                 type_def = node.parent
                 if type_def:
-                    visibility_info = self.analyze_element_visibility(type_def)
-                    if not visibility_info.should_be_included_in_public_api:
-                        private_elements.append(PrivateElement(
-                            node=type_def,
-                            element_type="type",
-                            visibility_info=visibility_info
-                        ))
+                    element_info = self.analyze_element(type_def)
+                    if not element_info.should_be_included_in_public_api:
+                        private_elements.append(PrivateElement(element_info))
     
     def _collect_namespaces(self, context, private_elements: List[PrivateElement]) -> None:
         """Собирает неэкспортируемые пространства имен."""
@@ -173,13 +301,9 @@ class TypeScriptVisibilityAnalyzer(VisibilityAnalyzer):
             if capture_name == "namespace_name":
                 namespace_def = node.parent
                 if namespace_def:
-                    visibility_info = self.analyze_element_visibility(namespace_def)
-                    if not visibility_info.should_be_included_in_public_api:
-                        private_elements.append(PrivateElement(
-                            node=namespace_def,
-                            element_type="namespace",
-                            visibility_info=visibility_info
-                        ))
+                    element_info = self.analyze_element(namespace_def)
+                    if not element_info.should_be_included_in_public_api:
+                        private_elements.append(PrivateElement(element_info))
     
     def _collect_enums(self, context, private_elements: List[PrivateElement]) -> None:
         """Собирает неэкспортируемые енумы."""
@@ -188,13 +312,9 @@ class TypeScriptVisibilityAnalyzer(VisibilityAnalyzer):
             if capture_name == "enum_name":
                 enum_def = node.parent
                 if enum_def:
-                    visibility_info = self.analyze_element_visibility(enum_def)
-                    if not visibility_info.should_be_included_in_public_api:
-                        private_elements.append(PrivateElement(
-                            node=enum_def,
-                            element_type="enum",
-                            visibility_info=visibility_info
-                        ))
+                    element_info = self.analyze_element(enum_def)
+                    if not element_info.should_be_included_in_public_api:
+                        private_elements.append(PrivateElement(element_info))
     
     def _collect_class_members(self, context, private_elements: List[PrivateElement]) -> None:
         """Собирает приватные/защищенные члены классов."""
@@ -203,16 +323,23 @@ class TypeScriptVisibilityAnalyzer(VisibilityAnalyzer):
             if capture_name in ("field_name", "method_name"):
                 field_def = node.parent
                 if field_def:
-                    visibility_info = self.analyze_element_visibility(field_def)
-                    if not visibility_info.should_be_included_in_public_api:
-                        element_type = "field" if capture_name == "field_name" else "method"
+                    element_info = self.analyze_element(field_def)
+                    if not element_info.should_be_included_in_public_api:
                         # For fields, extend range to include semicolon if present
-                        element_with_punctuation = self._extend_range_for_semicolon(field_def) if element_type == "field" else field_def
-                        private_elements.append(PrivateElement(
-                            node=element_with_punctuation,
-                            element_type=element_type,
-                            visibility_info=visibility_info
-                        ))
+                        element_type = "field" if capture_name == "field_name" else "method"
+                        if element_type == "field":
+                            element_with_punctuation = self._extend_range_for_semicolon(field_def)
+                            # Create new ElementInfo with extended node
+                            element_info = ElementInfo(
+                                node=element_with_punctuation,
+                                element_type=element_info.element_type,
+                                name=element_info.name,
+                                visibility=element_info.visibility,
+                                export_status=element_info.export_status,
+                                is_method=element_info.is_method,
+                                decorators=element_info.decorators
+                            )
+                        private_elements.append(PrivateElement(element_info))
     
     def _collect_imports(self, context, private_elements: List[PrivateElement]) -> None:
         """Собирает не-ре-экспортируемые импорты."""
@@ -220,8 +347,6 @@ class TypeScriptVisibilityAnalyzer(VisibilityAnalyzer):
         for node, capture_name in imports:
             if capture_name == "import":
                 # Для режима public API оставляем только импорты, которые ре-экспортируются
-                # Для простоты, удаляем все импорты, которые не являются явными ре-экспортами
-                # Это консервативный подход - можно доработать для проверки ре-экспортов
                 import_text = self.doc.get_node_text(node)
                 
                 # Оставляем только side-effect импорты (без именованных импортов)
@@ -229,35 +354,32 @@ class TypeScriptVisibilityAnalyzer(VisibilityAnalyzer):
                     continue  # Оставляем side-effect импорты
                 
                 # Проверяем, ре-экспортируется ли этот импорт где-то еще
-                # Пока удаляем все обычные импорты в режиме public API
-                visibility_info = self.analyze_element_visibility(node)
-                private_elements.append(PrivateElement(
-                    node=node,
-                    element_type="import",
-                    visibility_info=visibility_info
-                ))
+                element_info = self.analyze_element(node)
+                private_elements.append(PrivateElement(element_info))
     
     def _collect_variables(self, context, private_elements: List[PrivateElement]) -> None:
         """Собирает неэкспортируемые переменные."""
-        assignments = context.doc.query_opt("assignments")
-        for node, capture_name in assignments:
+        variables = context.doc.query_opt("variables")
+        for node, capture_name in variables:
             if capture_name == "variable_name":
-                assignment_def = node.parent
-                if assignment_def:
-                    visibility_info = self.analyze_element_visibility(assignment_def)
+                variable_def = node.parent.parent  # variable_declarator -> variable_declaration
+                if variable_def:
+                    element_info = self.analyze_element(variable_def)
                     
                     # Для top-level переменных проверяем публичность и экспорт
-                    if not visibility_info.should_be_included_in_public_api:
-                        private_elements.append(PrivateElement(
-                            node=assignment_def,
-                            element_type="variable",
-                            visibility_info=visibility_info
-                        ))
+                    if not element_info.should_be_included_in_public_api:
+                        private_elements.append(PrivateElement(element_info))
 
     def _check_export_in_source_line(self, node: Node) -> bool:
         """
         Проверяет наличие 'export' в исходной строке элемента.
         Это fallback для случаев, когда Tree-sitter не правильно парсит export.
+        
+        Args:
+            node: Tree-sitter узел элемента
+            
+        Returns:
+            True если найден export в начале строки
         """
         start_line, _ = self.doc.get_line_range(node)
         lines = self.doc.text.split('\n')
@@ -274,8 +396,11 @@ class TypeScriptVisibilityAnalyzer(VisibilityAnalyzer):
         """
         Расширяет диапазон узла для включения завершающей точки с запятой, если она присутствует.
         
-        Это нужно для полей TypeScript где точка с запятой является отдельным sibling узлом.
-        Без включения её, соседние плейсхолдеры полей не могут быть правильно сколлапсированы.
+        Args:
+            node: Tree-sitter узел
+            
+        Returns:
+            Узел с расширенным диапазоном или оригинальный узел
         """
         # Проверяем, есть ли точка с запятой сразу после этого узла
         parent = node.parent
@@ -307,8 +432,12 @@ class TypeScriptVisibilityAnalyzer(VisibilityAnalyzer):
         """
         Создает синтетический node-подобный объект с расширенным диапазоном.
         
-        Это workaround поскольку узлы Tree-sitter неизменяемы.
-        Мы создаем простой объект, который имеет тот же интерфейс для операций с диапазонами.
+        Args:
+            original_node: Оригинальный узел
+            semicolon_node: Узел точки с запятой
+            
+        Returns:
+            Объект с расширенным диапазоном
         """
         class ExtendedRangeNode:
             def __init__(self, start_node, end_node):
@@ -324,3 +453,15 @@ class TypeScriptVisibilityAnalyzer(VisibilityAnalyzer):
                         setattr(self, attr, getattr(start_node, attr))
         
         return ExtendedRangeNode(original_node, semicolon_node)
+
+    def _is_whitespace_or_comment(self, node: Node) -> bool:
+        """
+        Проверяет, является ли узел пробелом или комментарием в TypeScript.
+        
+        Args:
+            node: Tree-sitter узел для проверки
+            
+        Returns:
+            True если узел является пробелом или комментарием
+        """
+        return node.type in ("comment", "line_comment", "block_comment", "newline", "\n", " ", "\t")

@@ -13,7 +13,6 @@ from ..code_base import CodeAdapter
 from ..code_model import CodeCfg
 from ..context import LightweightContext
 from ..optimizations import FieldsClassifier, ImportClassifier, TreeSitterImportAnalyzer, CommentOptimizer
-from ..structure_analysis import CodeStructureAnalyzer
 from ..tree_sitter_support import TreeSitterDocument
 
 
@@ -71,15 +70,10 @@ class PythonAdapter(CodeAdapter[PythonCfg]):
         from .fields import PythonFieldsClassifier
         return PythonFieldsClassifier(doc)
 
-    def create_structure_analyzer(self, doc: TreeSitterDocument) -> CodeStructureAnalyzer:
-        """Создает Python-специфичный анализатор структуры кода."""
-        from .structure_analysis import PythonCodeStructureAnalyzer
-        return PythonCodeStructureAnalyzer(doc)
-
-    def create_visibility_analyzer(self, doc: TreeSitterDocument):
-        """Создает Python-специфичный анализатор видимости элементов."""
-        from .visibility_analysis import PythonVisibilityAnalyzer
-        return PythonVisibilityAnalyzer(doc)
+    def create_code_analyzer(self, doc: TreeSitterDocument):
+        """Создает Python-специфичный унифицированный анализатор кода."""
+        from .code_analysis import PythonCodeAnalyzer
+        return PythonCodeAnalyzer(doc)
 
 
     def should_skip(self, lightweight_ctx: LightweightContext) -> bool:

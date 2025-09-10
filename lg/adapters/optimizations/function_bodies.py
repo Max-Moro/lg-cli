@@ -36,8 +36,8 @@ class FunctionBodyOptimizer:
         if not cfg:
             return
         
-        # Get language-specific structure analyzer
-        analyzer = self.adapter.create_structure_analyzer(context.doc)
+        # Get language-specific unified code analyzer
+        analyzer = self.adapter.create_code_analyzer(context.doc)
         
         # Find all function bodies and strip them using language-specific analysis
         functions = context.doc.query("functions")
