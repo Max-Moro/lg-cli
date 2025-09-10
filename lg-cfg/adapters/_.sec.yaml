@@ -20,6 +20,44 @@ src:
               - "/optimizations/comments.py"
               - "/placeholders.py"
 
+src-budget:
+  extensions: [".py", ".toml"]
+  filters:
+    mode: allow
+    allow:
+      - "/pyproject.toml"
+      - "/lg/"
+    children:
+      lg:
+        mode: block
+        block:
+          - "/migrate/"
+          - "/markdown/"
+          - "diag**"
+          - "scaffold.py"
+          - "/_skeletons/"
+        children:
+          adapters:
+            mode: block
+            block:
+              - "/cpp.py"
+              - "/java.py"
+              - "/javascript.py"
+              - "/markdown.py"
+              - "/scala.py"
+              - "/placeholders.py"
+              - "/optimizations/comments.py"
+              - "/optimizations/imports.py"
+            children:
+              python:
+                mode: allow
+                allow:
+                  - "/adapter.py"
+              typescript:
+                mode: allow
+                allow:
+                  - "/adapter.py"
+
 src-tests:
   extensions: [".py"]
   path_labels: relative
