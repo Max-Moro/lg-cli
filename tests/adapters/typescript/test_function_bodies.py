@@ -2,7 +2,7 @@
 Tests for function body optimization in TypeScript adapter.
 """
 
-from lg.adapters.typescript import TypeScriptAdapter, TypeScriptCfg
+from lg.adapters.typescript import TypeScriptCfg
 from lg.adapters.code_model import FunctionBodyConfig
 from .conftest import lctx_ts, do_function_bodies, assert_golden_match
 
@@ -10,25 +10,23 @@ from .conftest import lctx_ts, do_function_bodies, assert_golden_match
 class TestTypeScriptFunctionBodyOptimization:
     """Test function body stripping for TypeScript code."""
     
-    def test_basic_function_stripping(self, do_function_bodies):
+    def test_basic_function_stripping(self, adapter, do_function_bodies):
         """Test basic function body stripping."""
-        adapter = TypeScriptAdapter()
         adapter._cfg = TypeScriptCfg(strip_function_bodies=True)
         
         result, meta = adapter.process(lctx_ts(do_function_bodies))
         
         # Check that functions were processed
-        # assert meta["code.removed.function_bodies"] >= 0  # May not find arrow functions in sample
-        # assert meta["code.removed.method_bodies"] > 0
-        # assert "// … method body omitted" in result
-        # assert "// … function body omitted" in result
+        assert meta["code.removed.function_bodies"] == 4
+        assert meta["code.removed.method_bodies"] == 4
+        assert "// … method body omitted" in result
+        assert "// … function body omitted" in result
         
         # Golden file test
         assert_golden_match(result, "function_bodies", "basic_strip")
     
-    def test_large_only_method_stripping(self, do_function_bodies):
+    def test_large_only_method_stripping(self, adapter, do_function_bodies):
         """Test stripping only large methods."""
-        adapter = TypeScriptAdapter()
         adapter._cfg = TypeScriptCfg(
             strip_function_bodies=FunctionBodyConfig(
                 mode="large_only",
@@ -41,7 +39,7 @@ class TestTypeScriptFunctionBodyOptimization:
         # Should have fewer removals than basic test
         assert_golden_match(result, "function_bodies", "large_only_strip")
     
-    def test_arrow_function_handling(self):
+    def test_arrow_function_handling(self, adapter):
         """Test handling of arrow functions."""
         arrow_code = '''
 const simple = () => "hello";
@@ -60,7 +58,6 @@ const multiline = (users) => {
 };
 '''
         
-        adapter = TypeScriptAdapter()
         adapter._cfg = TypeScriptCfg(strip_function_bodies=True)
         
         result, meta = adapter.process(lctx_ts(arrow_code))
@@ -81,7 +78,7 @@ const multiline = (users) => {
 
         assert_golden_match(result, "function_bodies", "arrow_functions")
     
-    def test_class_method_preservation(self):
+    def test_class_method_preservation(self, adapter):
         """Test that class structure is preserved while stripping method bodies."""
         class_code = '''
 export class Calculator {
@@ -104,7 +101,6 @@ export class Calculator {
 }
 '''
         
-        adapter = TypeScriptAdapter()
         adapter._cfg = TypeScriptCfg(strip_function_bodies=True)
         
         result, meta = adapter.process(lctx_ts(class_code))
@@ -119,11 +115,10 @@ export class Calculator {
         
         assert_golden_match(result, "function_bodies", "class_methods")
     
-    def test_no_stripping_preserves_original(self):
+    def test_no_stripping_preserves_original(self, adapter):
         """Test that disabling stripping preserves original code."""
         code = "function test() { return 42; }"
         
-        adapter = TypeScriptAdapter()
         adapter._cfg = TypeScriptCfg(strip_function_bodies=False)
         
         result, meta = adapter.process(lctx_ts(code))
@@ -133,7 +128,7 @@ export class Calculator {
         assert meta.get("code.removed.function_bodies", 0) == 0
         assert meta.get("code.removed.method_bodies", 0) == 0
 
-    def test_public_only_method_stripping(self):
+    def test_public_only_method_stripping(self, adapter):
         """Test public_only mode for TypeScript method body stripping."""
         code = '''export class Calculator {
     public add(a: number, b: number): number {
@@ -150,7 +145,6 @@ export class Calculator {
 }
 '''
         
-        adapter = TypeScriptAdapter()
         function_config = FunctionBodyConfig(mode="public_only")
         adapter._cfg = TypeScriptCfg(strip_function_bodies=function_config)
         
@@ -169,7 +163,7 @@ export class Calculator {
 class TestTypeScriptFunctionBodyEdgeCases:
     """Test edge cases for TypeScript function body optimization."""
     
-    def test_single_line_functions(self):
+    def test_single_line_functions(self, adapter):
         """Test that single-line functions are handled correctly."""
         code = '''function simple() { return 42; }
 
@@ -180,7 +174,6 @@ function complex(): number {
 }
 '''
         
-        adapter = TypeScriptAdapter()
         adapter._cfg = TypeScriptCfg(strip_function_bodies=True)
         
         result, meta = adapter.process(lctx_ts(code))
@@ -193,7 +186,7 @@ function complex(): number {
         assert "// … function body omitted" in result
         assert "const x = 1;" not in result
     
-    def test_nested_functions(self):
+    def test_nested_functions(self, adapter):
         """Test handling of nested functions."""
         code = '''function outer(): string {
     function inner(): string {
@@ -205,7 +198,6 @@ function complex(): number {
 }
 '''
         
-        adapter = TypeScriptAdapter()
         adapter._cfg = TypeScriptCfg(strip_function_bodies=True)
         
         result, meta = adapter.process(lctx_ts(code))
@@ -215,7 +207,7 @@ function complex(): number {
         assert "// … function body omitted" in result
         assert "function inner():" not in result  # Should be part of stripped body
     
-    def test_interface_and_type_preservation(self):
+    def test_interface_and_type_preservation(self, adapter):
         """Test that interfaces and types are preserved."""
         code = '''interface User {
     id: number;
@@ -235,7 +227,6 @@ function processUser(user: User): UserResponse {
 }
 '''
         
-        adapter = TypeScriptAdapter()
         adapter._cfg = TypeScriptCfg(strip_function_bodies=True)
         
         result, meta = adapter.process(lctx_ts(code))

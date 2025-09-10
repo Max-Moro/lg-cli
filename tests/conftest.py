@@ -8,9 +8,10 @@ from pathlib import Path
 import pytest
 
 from lg.adapters.context import LightweightContext
+from lg.tokens.service import TokenService
 
 # Экспортируем хелперы для использования в других тестах
-__all__ = ["lctx", "lctx_py", "lctx_ts", "lctx_md", "write", "run_cli", "jload"]
+__all__ = ["lctx", "lctx_py", "lctx_ts", "lctx_md", "write", "run_cli", "jload", "token_service"]
 
 
 def write(p: Path, text: str) -> Path:
@@ -106,3 +107,9 @@ def lctx_md(raw_text: str = "# Test Markdown", group_size: int = 1, mixed: bool 
 
 def jload(s: str):
     return json.loads(s)
+
+
+@pytest.fixture
+def token_service():
+    """Тестовый стаб TokenService с дефолтным энкодером."""
+    return TokenService(encoder_name="cl100k_base")

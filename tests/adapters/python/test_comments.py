@@ -2,7 +2,7 @@
 Tests for comment policy implementation in Python adapter.
 """
 
-from lg.adapters.python import PythonAdapter, PythonCfg
+from lg.adapters.python import PythonCfg
 from lg.adapters.code_model import CommentConfig
 from .conftest import lctx_py, do_comments, assert_golden_match
 
@@ -10,9 +10,8 @@ from .conftest import lctx_py, do_comments, assert_golden_match
 class TestPythonCommentOptimization:
     """Test comment processing for Python code."""
     
-    def test_keep_all_comments(self, do_comments):
+    def test_keep_all_comments(self, adapter, do_comments):
         """Test keeping all comments (default policy)."""
-        adapter = PythonAdapter()
         adapter._cfg = PythonCfg(comment_policy="keep_all")
         
         result, meta = adapter.process(lctx_py(do_comments))
@@ -25,9 +24,8 @@ class TestPythonCommentOptimization:
         
         assert_golden_match(result, "comments", "keep_all")
     
-    def test_strip_all_comments(self, do_comments):
+    def test_strip_all_comments(self, adapter, do_comments):
         """Test stripping all comments."""
-        adapter = PythonAdapter()
         adapter._cfg = PythonCfg(comment_policy="strip_all")
         
         result, meta = adapter.process(lctx_py(do_comments))
@@ -38,9 +36,8 @@ class TestPythonCommentOptimization:
         
         assert_golden_match(result, "comments", "strip_all")
     
-    def test_keep_doc_comments(self, do_comments):
+    def test_keep_doc_comments(self, adapter, do_comments):
         """Test keeping only documentation comments."""
-        adapter = PythonAdapter()
         adapter._cfg = PythonCfg(comment_policy="keep_doc")
         
         result, meta = adapter.process(lctx_py(do_comments))
@@ -54,9 +51,8 @@ class TestPythonCommentOptimization:
         
         assert_golden_match(result, "comments", "keep_doc")
     
-    def test_keep_first_sentence(self, do_comments):
+    def test_keep_first_sentence(self, adapter, do_comments):
         """Test keeping only first sentence of documentation."""
-        adapter = PythonAdapter()
         adapter._cfg = PythonCfg(comment_policy="keep_first_sentence")
         
         result, meta = adapter.process(lctx_py(do_comments))
@@ -69,7 +65,7 @@ class TestPythonCommentOptimization:
         
         assert_golden_match(result, "comments", "keep_first_sentence")
     
-    def test_complex_comment_policy(self, do_comments):
+    def test_complex_comment_policy(self, adapter, do_comments):
         """Test complex comment policy with custom configuration."""
         comment_config = CommentConfig(
             policy="keep_doc",
@@ -78,7 +74,6 @@ class TestPythonCommentOptimization:
             strip_patterns=["WARNING"]
         )
         
-        adapter = PythonAdapter()
         adapter._cfg = PythonCfg(comment_policy=comment_config)
         
         result, meta = adapter.process(lctx_py(do_comments))
@@ -92,7 +87,7 @@ class TestPythonCommentOptimization:
         
         assert_golden_match(result, "comments", "complex_policy")
     
-    def test_comment_length_limiting(self):
+    def test_comment_length_limiting(self, adapter):
         """Test comment length limiting."""
         code = '''def function():
     """This is a very long docstring that exceeds the maximum length limit and should be truncated to fit within the specified constraints for comment processing optimization."""
@@ -104,7 +99,6 @@ class TestPythonCommentOptimization:
             max_length=50
         )
         
-        adapter = PythonAdapter()
         adapter._cfg = PythonCfg(comment_policy=comment_config)
         
         result, meta = adapter.process(lctx_py(code))
@@ -115,7 +109,7 @@ class TestPythonCommentOptimization:
         
         assert_golden_match(result, "comments", "length_limiting")
     
-    def test_annotation_preservation(self):
+    def test_annotation_preservation(self, adapter):
         """Test preservation of specific annotation patterns."""
         code = '''def process():
     # TODO: Implement better error handling
@@ -130,7 +124,6 @@ class TestPythonCommentOptimization:
             keep_annotations=["TODO", "FIXME"]
         )
         
-        adapter = PythonAdapter()
         adapter._cfg = PythonCfg(comment_policy=comment_config)
         
         result, meta = adapter.process(lctx_py(code))
@@ -146,13 +139,12 @@ class TestPythonCommentOptimization:
 class TestPythonCommentEdgeCases:
     """Test edge cases for Python comment optimization."""
     
-    def test_inline_comments(self):
+    def test_inline_comments(self, adapter):
         """Test handling of inline comments."""
         code = '''value = 42  # This is an inline comment
 another = "test"  # Another inline comment
 '''
         
-        adapter = PythonAdapter()
         adapter._cfg = PythonCfg(comment_policy="strip_all")
         
         result, meta = adapter.process(lctx_py(code))
@@ -161,7 +153,7 @@ another = "test"  # Another inline comment
         assert "# This is an inline comment" not in result
         assert meta.get("code.removed.comments", 0) > 0
     
-    def test_multiline_docstrings(self):
+    def test_multiline_docstrings(self, adapter):
         """Test handling of multiline docstrings."""
         code = '''def complex_function():
     """
@@ -179,7 +171,6 @@ another = "test"  # Another inline comment
     return "result"
 '''
         
-        adapter = PythonAdapter()
         adapter._cfg = PythonCfg(comment_policy="keep_first_sentence")
         
         result, meta = adapter.process(lctx_py(code))
@@ -189,7 +180,7 @@ another = "test"  # Another inline comment
         assert "It has multiple paragraphs" not in result
         assert "Args:" not in result
     
-    def test_mixed_comment_types_in_class(self):
+    def test_mixed_comment_types_in_class(self, adapter):
         """Test mixed comment types within a class."""
         code = '''class TestClass:
     """Class docstring."""
@@ -204,7 +195,6 @@ another = "test"  # Another inline comment
         return self.value
 '''
         
-        adapter = PythonAdapter()
         adapter._cfg = PythonCfg(comment_policy="keep_doc")
         
         result, meta = adapter.process(lctx_py(code))

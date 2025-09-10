@@ -2,7 +2,7 @@
 Tests for function body optimization in Python adapter.
 """
 
-from lg.adapters.python import PythonAdapter, PythonCfg
+from lg.adapters.python import PythonCfg
 from lg.adapters.code_model import FunctionBodyConfig
 from .conftest import lctx_py, do_function_bodies, assert_golden_match
 
@@ -10,9 +10,8 @@ from .conftest import lctx_py, do_function_bodies, assert_golden_match
 class TestPythonFunctionBodyOptimization:
     """Test function body stripping for Python code."""
     
-    def test_basic_function_stripping(self, do_function_bodies):
+    def test_basic_function_stripping(self, adapter, do_function_bodies):
         """Test basic function body stripping."""
-        adapter = PythonAdapter()
         adapter._cfg = PythonCfg(strip_function_bodies=True)
         
         result, meta = adapter.process(lctx_py(do_function_bodies))
@@ -26,9 +25,8 @@ class TestPythonFunctionBodyOptimization:
         # Golden file test
         assert_golden_match(result, "function_bodies", "basic_strip")
     
-    def test_large_only_function_stripping(self, do_function_bodies):
+    def test_large_only_function_stripping(self, adapter, do_function_bodies):
         """Test stripping only large functions."""
-        adapter = PythonAdapter()
         adapter._cfg = PythonCfg(
             strip_function_bodies=FunctionBodyConfig(
                 mode="large_only",
@@ -41,9 +39,8 @@ class TestPythonFunctionBodyOptimization:
         # Should have fewer removals than basic test
         assert_golden_match(result, "function_bodies", "large_only_strip")
     
-    def test_no_stripping(self, do_function_bodies):
+    def test_no_stripping(self, adapter, do_function_bodies):
         """Test with stripping disabled."""
-        adapter = PythonAdapter()
         adapter._cfg = PythonCfg(strip_function_bodies=False)
         
         result, meta = adapter.process(lctx_py(do_function_bodies))
@@ -55,7 +52,7 @@ class TestPythonFunctionBodyOptimization:
         assert "def add(self, a: int, b: int) -> int:" in result
         assert "result = a + b" in result
     
-    def test_public_only_function_stripping(self):
+    def test_public_only_function_stripping(self, adapter):
         """Test public_only mode for function body stripping."""
         code = '''def public_function():
     """Public function with body."""
@@ -70,7 +67,6 @@ def _private_function():
     return a * b
 '''
         
-        adapter = PythonAdapter()
         function_config = FunctionBodyConfig(mode="public_only")
         adapter._cfg = PythonCfg(strip_function_bodies=function_config)
         
@@ -87,7 +83,7 @@ def _private_function():
         
         assert meta.get("code.removed.function_bodies", 0) > 0
     
-    def test_non_public_function_stripping(self):
+    def test_non_public_function_stripping(self, adapter):
         """Test non_public mode for function body stripping."""
         code = '''def public_function():
     """Public function with body."""
@@ -102,7 +98,6 @@ def _private_function():
     return a * b
 '''
         
-        adapter = PythonAdapter()
         function_config = FunctionBodyConfig(mode="non_public")
         adapter._cfg = PythonCfg(strip_function_bodies=function_config)
         
@@ -123,7 +118,7 @@ def _private_function():
 class TestPythonFunctionBodyEdgeCases:
     """Test edge cases for Python function body optimization."""
     
-    def test_single_line_functions(self):
+    def test_single_line_functions(self, adapter):
         """Test that single-line functions are handled correctly."""
         code = '''def simple(): return 42
 
@@ -133,7 +128,6 @@ def complex():
     return x + y
 '''
         
-        adapter = PythonAdapter()
         adapter._cfg = PythonCfg(strip_function_bodies=True)
         
         result, meta = adapter.process(lctx_py(code))
@@ -146,7 +140,7 @@ def complex():
         assert "# … function body omitted" in result
         assert "x = 1" not in result
     
-    def test_nested_functions(self):
+    def test_nested_functions(self, adapter):
         """Test handling of nested functions."""
         code = '''def outer():
     """Outer function."""
@@ -158,7 +152,6 @@ def complex():
     return f"outer: {result}"
 '''
         
-        adapter = PythonAdapter()
         adapter._cfg = PythonCfg(strip_function_bodies=True)
         
         result, meta = adapter.process(lctx_py(code))
@@ -173,7 +166,7 @@ def complex():
         assert "# … function body omitted (7 lines)" in result
         assert meta.get("code.removed.function_bodies", 0) > 0
     
-    def test_class_methods(self):
+    def test_class_methods(self, adapter):
         """Test handling of class methods specifically."""
         code = '''class TestClass:
     def __init__(self):
@@ -198,7 +191,6 @@ def complex():
         return val
 '''
         
-        adapter = PythonAdapter()
         adapter._cfg = PythonCfg(strip_function_bodies=True)
         
         result, meta = adapter.process(lctx_py(code))
@@ -220,7 +212,7 @@ def complex():
 class TestPythonDocstringPreservation:
     """Test preservation of docstrings when stripping function bodies."""
     
-    def test_function_with_docstring_preserved(self):
+    def test_function_with_docstring_preserved(self, adapter):
         """Test that function docstrings are preserved when bodies are stripped."""
         code = '''def calculate_sum(a, b):
     """Calculate the sum of two numbers.
@@ -238,7 +230,6 @@ class TestPythonDocstringPreservation:
     return result
 '''
         
-        adapter = PythonAdapter()
         adapter._cfg = PythonCfg(strip_function_bodies=True)
         
         result, meta = adapter.process(lctx_py(code))
@@ -262,7 +253,7 @@ class TestPythonDocstringPreservation:
         # Should report function removal
         assert meta.get("code.removed.function_bodies", 0) > 0
     
-    def test_method_with_docstring_preserved(self):
+    def test_method_with_docstring_preserved(self, adapter):
         """Test that method docstrings are preserved when bodies are stripped."""
         code = '''class Calculator:
     def multiply(self, a, b):
@@ -275,7 +266,6 @@ class TestPythonDocstringPreservation:
         return temp
 '''
         
-        adapter = PythonAdapter()
         adapter._cfg = PythonCfg(strip_function_bodies=True)
         
         result, meta = adapter.process(lctx_py(code))
@@ -298,7 +288,7 @@ class TestPythonDocstringPreservation:
         # Should report method removal
         assert meta.get("code.removed.method_bodies", 0) > 0
     
-    def test_function_without_docstring_full_removal(self):
+    def test_function_without_docstring_full_removal(self, adapter):
         """Test that functions without docstrings have bodies fully removed."""
         code = '''def simple_function():
     # Just a comment, no docstring
@@ -307,7 +297,6 @@ class TestPythonDocstringPreservation:
     return x + y
 '''
         
-        adapter = PythonAdapter()
         adapter._cfg = PythonCfg(strip_function_bodies=True)
         
         result, meta = adapter.process(lctx_py(code))
@@ -325,7 +314,7 @@ class TestPythonDocstringPreservation:
         
         assert meta.get("code.removed.function_bodies", 0) > 0
     
-    def test_different_docstring_formats(self):
+    def test_different_docstring_formats(self, adapter):
         """Test preservation of different docstring formats."""
         code = '''def func1():
     """Single line docstring."""
@@ -343,7 +332,6 @@ def func3():
     return "result3"
 '''
         
-        adapter = PythonAdapter()
         adapter._cfg = PythonCfg(strip_function_bodies=True)
         
         result, meta = adapter.process(lctx_py(code))
@@ -365,7 +353,7 @@ def func3():
         
         assert meta.get("code.removed.function_bodies", 0) == 3
     
-    def test_mixed_functions_with_without_docstrings(self):
+    def test_mixed_functions_with_without_docstrings(self, adapter):
         """Test mixed functions - some with docstrings, some without."""
         code = '''def documented_function():
     """This function has documentation."""
@@ -380,7 +368,6 @@ def undocumented_function():
     return simple_return
 '''
         
-        adapter = PythonAdapter()
         adapter._cfg = PythonCfg(strip_function_bodies=True)
         
         result, meta = adapter.process(lctx_py(code))
@@ -404,14 +391,13 @@ def undocumented_function():
         
         assert meta.get("code.removed.function_bodies", 0) == 2
     
-    def test_docstring_only_function(self):
+    def test_docstring_only_function(self, adapter):
         """Test function that contains only a docstring."""
         code = '''def docstring_only():
     """This function only has a docstring and nothing else."""
     pass
 '''
         
-        adapter = PythonAdapter()
         adapter._cfg = PythonCfg(strip_function_bodies=True)
         
         result, meta = adapter.process(lctx_py(code))

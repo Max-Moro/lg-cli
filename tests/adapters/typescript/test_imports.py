@@ -2,7 +2,7 @@
 Tests for import optimization in TypeScript adapter.
 """
 
-from lg.adapters.typescript import TypeScriptAdapter, TypeScriptCfg
+from lg.adapters.typescript import TypeScriptCfg
 from lg.adapters.typescript.imports import TypeScriptImportClassifier, TypeScriptImportAnalyzer
 from lg.adapters.typescript.adapter import TypeScriptDocument
 from lg.adapters.code_model import ImportConfig
@@ -118,9 +118,8 @@ import { UserService } from './services/user-service';
 class TestTypeScriptImportOptimization:
     """Test TypeScript import optimization policies."""
     
-    def test_keep_all_imports(self, do_imports):
+    def test_keep_all_imports(self, adapter, do_imports):
         """Test keeping all imports (default policy)."""
-        adapter = TypeScriptAdapter()
         adapter._cfg = TypeScriptCfg()  # Default imports policy is keep_all
         
         result, meta = adapter.process(lctx_ts(do_imports))
@@ -133,11 +132,10 @@ class TestTypeScriptImportOptimization:
         
         assert_golden_match(result, "imports", "keep_all")
     
-    def test_strip_local_imports(self, do_imports):
+    def test_strip_local_imports(self, adapter, do_imports):
         """Test stripping local imports (keeping external)."""
         import_config = ImportConfig(policy="strip_local")
         
-        adapter = TypeScriptAdapter()
         adapter._cfg = TypeScriptCfg(imports=import_config)
         
         result, meta = adapter.process(lctx_ts(do_imports))
@@ -156,11 +154,10 @@ class TestTypeScriptImportOptimization:
         
         assert_golden_match(result, "imports", "strip_local")
     
-    def test_strip_external_imports(self, do_imports):
+    def test_strip_external_imports(self, adapter, do_imports):
         """Test stripping external imports (keeping local)."""
         import_config = ImportConfig(policy="strip_external")
         
-        adapter = TypeScriptAdapter()
         adapter._cfg = TypeScriptCfg(imports=import_config)
         
         result, meta = adapter.process(lctx_ts(do_imports))
@@ -180,11 +177,10 @@ class TestTypeScriptImportOptimization:
         
         assert_golden_match(result, "imports", "strip_external")
     
-    def test_strip_all_imports(self, do_imports):
+    def test_strip_all_imports(self, adapter, do_imports):
         """Test stripping all imports."""
         import_config = ImportConfig(policy="strip_all")
         
-        adapter = TypeScriptAdapter()
         adapter._cfg = TypeScriptCfg(imports=import_config)
         
         result, meta = adapter.process(lctx_ts(do_imports))
@@ -199,7 +195,7 @@ class TestTypeScriptImportOptimization:
         
         assert_golden_match(result, "imports", "strip_all")
     
-    def test_summarize_long_imports(self, do_imports):
+    def test_summarize_long_imports(self, adapter, do_imports):
         """Test summarizing long import lists."""
         import_config = ImportConfig(
             policy="keep_all",
@@ -207,7 +203,6 @@ class TestTypeScriptImportOptimization:
             max_items_before_summary=5  # Low threshold to trigger summarization
         )
         
-        adapter = TypeScriptAdapter()
         adapter._cfg = TypeScriptCfg(imports=import_config)
         
         result, meta = adapter.process(lctx_ts(do_imports))
@@ -218,7 +213,7 @@ class TestTypeScriptImportOptimization:
         
         assert_golden_match(result, "imports", "summarize_long")
     
-    def test_custom_external_patterns(self):
+    def test_custom_external_patterns(self, adapter):
         """Test import optimization with custom external patterns."""
         code = '''import React from 'react';
 import { MyCompanyUtils } from 'mycompany/utils';  // Should be treated as external
@@ -231,7 +226,6 @@ import { LocalFunction } from './local';  // Relative import
             external_patterns=["^mycompany/.*"]
         )
         
-        adapter = TypeScriptAdapter()
         adapter._cfg = TypeScriptCfg(imports=import_config)
         
         result, meta = adapter.process(lctx_ts(code))
@@ -249,7 +243,7 @@ import { LocalFunction } from './local';  // Relative import
 class TestTypeScriptImportEdgeCases:
     """Test edge cases for TypeScript import optimization."""
     
-    def test_mixed_import_styles_handling(self):
+    def test_mixed_import_styles_handling(self, adapter):
         """Test handling of mixed import styles."""
         code = '''import React, { Component, useState } from 'react';
 import * as lodash from 'lodash';
@@ -262,7 +256,6 @@ import { Observable, Subject, map, filter } from 'rxjs';
             max_items_before_summary=3
         )
         
-        adapter = TypeScriptAdapter()
         adapter._cfg = TypeScriptCfg(imports=import_config)
         
         result, meta = adapter.process(lctx_ts(code))
@@ -270,7 +263,7 @@ import { Observable, Subject, map, filter } from 'rxjs';
         # Long named import lists should be summarized
         assert meta.get("code.removed.imports", 0) >= 0
     
-    def test_type_only_imports(self):
+    def test_type_only_imports(self, adapter):
         """Test handling of TypeScript type-only imports."""
         code = '''import type { User, Product } from './types';
 import type { Config } from 'external-config';
@@ -279,7 +272,6 @@ import { type Settings, normalFunction } from './config';
         
         import_config = ImportConfig(policy="strip_local")
         
-        adapter = TypeScriptAdapter()
         adapter._cfg = TypeScriptCfg(imports=import_config)
         
         result, meta = adapter.process(lctx_ts(code))
@@ -292,7 +284,7 @@ import { type Settings, normalFunction } from './config';
         assert "from './config'" not in result
         assert "// … 2 imports omitted" in result
     
-    def test_namespace_imports(self):
+    def test_namespace_imports(self, adapter):
         """Test handling of namespace imports."""
         code = '''import * as React from 'react';
 import * as lodash from 'lodash';
@@ -302,7 +294,6 @@ import * as API from '../api';
         
         import_config = ImportConfig(policy="strip_local")
         
-        adapter = TypeScriptAdapter()
         adapter._cfg = TypeScriptCfg(imports=import_config)
         
         result, meta = adapter.process(lctx_ts(code))
@@ -316,7 +307,7 @@ import * as API from '../api';
         assert "from '../api'" not in result
         assert "// … 2 imports omitted" in result
     
-    def test_side_effect_imports(self):
+    def test_side_effect_imports(self, adapter):
         """Test handling of side-effect imports."""
         code = '''import 'reflect-metadata';
 import 'zone.js/dist/zone';
@@ -328,7 +319,6 @@ import { Component } from './Component';
         
         import_config = ImportConfig(policy="strip_local")
         
-        adapter = TypeScriptAdapter()
         adapter._cfg = TypeScriptCfg(imports=import_config)
         
         result, meta = adapter.process(lctx_ts(code))
@@ -341,7 +331,7 @@ import { Component } from './Component';
         assert "'../styles/global.css'" not in result
         assert "// … import omitted" in result
     
-    def test_scoped_package_imports(self):
+    def test_scoped_package_imports(self, adapter):
         """Test handling of scoped npm packages."""
         code = '''import { Controller } from '@nestjs/common';
 import { GraphQLModule } from '@nestjs/graphql';
@@ -351,7 +341,6 @@ import { LocalService } from './services/local';
         
         import_config = ImportConfig(policy="strip_local")
         
-        adapter = TypeScriptAdapter()
         adapter._cfg = TypeScriptCfg(imports=import_config)
         
         result, meta = adapter.process(lctx_ts(code))
@@ -365,7 +354,7 @@ import { LocalService } from './services/local';
         assert "from './services/local'" not in result
         assert "// … import omitted" in result
     
-    def test_strip_external_with_summarize_long(self):
+    def test_strip_external_with_summarize_long(self, adapter):
         """Test combining strip_external policy with summarize_long option."""
         code = '''import React from 'react';
 import { Observable, Subject, map, filter, switchMap, mergeMap } from 'rxjs';
@@ -379,7 +368,6 @@ import { helper1, helper2, helper3, helper4, helper5, helper6 } from './utils/he
             max_items_before_summary=3
         )
         
-        adapter = TypeScriptAdapter()
         adapter._cfg = TypeScriptCfg(imports=import_config)
         
         result, meta = adapter.process(lctx_ts(code))

@@ -1,7 +1,6 @@
 """
 Tests for public API filtering in Python adapter.
 """
-import pytest
 
 from lg.adapters.python import PythonAdapter, PythonCfg
 from .conftest import lctx_py, do_public_api, assert_golden_match
@@ -10,9 +9,8 @@ from .conftest import lctx_py, do_public_api, assert_golden_match
 class TestPythonPublicApiFiltering:
     """Test public API filtering for Python code."""
     
-    def test_basic_public_api_filtering(self, do_public_api):
+    def test_basic_public_api_filtering(self, adapter, do_public_api):
         """Test basic public API filtering."""
-        adapter = PythonAdapter()
         adapter._cfg = PythonCfg(public_api_only=True)
         
         result, meta = adapter.process(lctx_py(do_public_api))
@@ -35,9 +33,8 @@ class TestPythonPublicApiFiltering:
         
         assert_golden_match(result, "public_api", "basic")
 
-    def test_decorator_handling_with_public_api(self, do_public_api):
+    def test_decorator_handling_with_public_api(self, adapter, do_public_api):
         """Test that decorators are properly handled when removing private elements."""
-        adapter = PythonAdapter()
         adapter._cfg = PythonCfg(public_api_only=True)
         
         result, meta = adapter.process(lctx_py(do_public_api))
@@ -85,7 +82,7 @@ class TestPythonPublicApiFiltering:
             # At least one public element should follow @my_decorator
             assert public_class_pos > my_decorator_pos or public_func_pos > my_decorator_pos
 
-    def test_underscore_naming_conventions(self):
+    def test_underscore_naming_conventions(self, adapter):
         """Test Python underscore naming conventions."""
         code = '''
 def public_function():
@@ -124,7 +121,6 @@ _PROTECTED_VAR = "protected"
 __PRIVATE_VAR = "private"
 '''
         
-        adapter = PythonAdapter()
         adapter._cfg = PythonCfg(public_api_only=True)
         
         result, meta = adapter.process(lctx_py(code))
@@ -147,7 +143,7 @@ __PRIVATE_VAR = "private"
         assert "_PROTECTED_VAR = " not in result
         assert "__PRIVATE_VAR = " not in result
     
-    def test_module_level_guard_preservation(self):
+    def test_module_level_guard_preservation(self, adapter):
         """Test that if __name__ == '__main__' is preserved."""
         code = '''
 def public_function():
@@ -161,7 +157,6 @@ if __name__ == "__main__":
     print(public_function())
 '''
         
-        adapter = PythonAdapter()
         adapter._cfg = PythonCfg(public_api_only=True)
         
         result, meta = adapter.process(lctx_py(code))
@@ -179,7 +174,7 @@ if __name__ == "__main__":
 class TestPythonPublicApiEdgeCases:
     """Test edge cases for Python public API filtering."""
     
-    def test_nested_classes_and_functions(self):
+    def test_nested_classes_and_functions(self, adapter):
         """Test nested classes and functions filtering."""
         code = '''
 class PublicOuter:
@@ -203,7 +198,6 @@ def public_outer():
     return inner_function()
 '''
         
-        adapter = PythonAdapter()
         adapter._cfg = PythonCfg(public_api_only=True)
         
         result, meta = adapter.process(lctx_py(code))
@@ -217,7 +211,7 @@ def public_outer():
         assert "def _private_method(self):" not in result
         assert "class _PrivateInner:" not in result
     
-    def test_property_and_descriptor_methods(self):
+    def test_property_and_descriptor_methods(self, adapter):
         """Test property and descriptor methods."""
         code = '''
 class DataClass:
@@ -250,7 +244,6 @@ class DataClass:
         return cls()
 '''
         
-        adapter = PythonAdapter()
         adapter._cfg = PythonCfg(public_api_only=True)
         
         result, meta = adapter.process(lctx_py(code))
@@ -265,7 +258,7 @@ class DataClass:
         assert "def _private_static():" not in result
         assert "def _private_class_method(cls):" not in result
 
-    def test_complex_decorator_scenarios(self):
+    def test_complex_decorator_scenarios(self, adapter):
         """Test complex decorator scenarios to ensure no hanging decorators."""
         code = '''
 @property
@@ -297,7 +290,6 @@ class TestClass:
         return "public"
 '''
         
-        adapter = PythonAdapter()
         adapter._cfg = PythonCfg(public_api_only=True)
         
         result, meta = adapter.process(lctx_py(code))
