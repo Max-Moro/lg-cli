@@ -37,7 +37,7 @@ class PublicApiOptimizer:
         # Собираем все приватные элементы с помощью анализатора
         private_elements = code_analyzer.collect_private_elements_for_public_api(context)
         
-        # Сначала вычисляем диапазоны с декораторами для всех элементов, чтобы не вызывать метод дважды
+        # Сначала вычисляем диапазоны с декораторами для всех элементов
         element_ranges = [
             (code_analyzer.get_element_range_with_decorators(elem.node), elem)
             for elem in private_elements

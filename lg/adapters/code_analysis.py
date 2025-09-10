@@ -246,7 +246,42 @@ class CodeAnalyzer(ABC):
                     )
         
         return function_groups
-    
+
+    def find_decorators_for_element(self, node: Node) -> List[Node]:
+        """
+        Находит все декораторы/аннотации для элемента кода Python.
+
+        Работает в двух режимах:
+        1. Если элемент обернут в decorated_definition - извлекает декораторы из него
+        2. Иначе ищет декораторы среди предыдущих sibling узлов
+
+        Args:
+            node: Узел элемента (функция, класс, метод)
+
+        Returns:
+            Список узлов декораторов в порядке их появления в коде
+        """
+        decorators = []
+
+        # Режим 1: Проверяем parent на decorated_definition
+        parent = node.parent
+        if parent and parent.type in self.get_decorated_definition_types():
+            # Ищем дочерние узлы-декораторы в wrapped definition
+            for child in parent.children:
+                if child.type in self.get_decorator_types():
+                    decorators.append(child)
+                elif child == node:
+                    # Дошли до самого элемента - прекращаем поиск
+                    break
+
+        # Режим 2: Ищем декораторы среди предыдущих sibling узлов
+        preceding_decorators = self._find_preceding_decorators(node)
+
+        # Объединяем результаты, избегая дубликатов
+        all_decorators = decorators + [d for d in preceding_decorators if d not in decorators]
+
+        return all_decorators
+
     def get_element_range_with_decorators(self, node: Node) -> Tuple[int, int]:
         """
         Получает диапазон элемента включая его декораторы/аннотации.
@@ -296,11 +331,6 @@ class CodeAnalyzer(ABC):
     @abstractmethod
     def find_function_definition_in_parents(self, node: Node) -> Optional[Node]:
         """Находит определение функции в родительских узлах."""
-        pass
-    
-    @abstractmethod
-    def find_decorators_for_element(self, node: Node) -> List[Node]:
-        """Находит декораторы для элемента."""
         pass
     
     @abstractmethod
