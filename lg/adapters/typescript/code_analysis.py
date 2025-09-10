@@ -22,7 +22,7 @@ class TypeScriptCodeAnalyzer(CodeAnalyzer):
             node: Tree-sitter узел
             
         Returns:
-            Строка с типом элемента: "function", "method", "class", "interface", "type"
+            Строка с типом элемента: "function", "method", "class", "interface", "type", "enum", "import", "field"
         """
         node_type = node.type
         
@@ -33,11 +33,17 @@ class TypeScriptCodeAnalyzer(CodeAnalyzer):
             return "interface"
         elif node_type == "type_alias_declaration":
             return "type"
+        elif node_type == "enum_declaration":
+            return "enum"
+        elif node_type == "import_statement":
+            return "import"
         elif node_type in ("function_declaration", "arrow_function"):
             # Определяем функция это или метод по контексту
             return "method" if self.is_method_context(node) else "function"
         elif node_type == "method_definition":
             return "method"
+        elif node_type in ("public_field_definition", "field_definition"):
+            return "field"
         elif node_type == "variable_declaration":
             return "variable"
         else:

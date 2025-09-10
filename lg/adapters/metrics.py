@@ -76,6 +76,8 @@ class MetricsCollector:
             "class": "classes",
             "interface": "interfaces",
             "type": "types",
+            "enum": "enums",
+            "field": "fields",
             "comment": "comments",
             "docstring": "docstrings",
             "import": "imports",
