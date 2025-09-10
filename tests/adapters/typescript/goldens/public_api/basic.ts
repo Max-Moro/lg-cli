@@ -33,11 +33,10 @@ export class UserManager {
     public isInitialized: boolean = false;
     
     // Private properties (should be filtered out with public_api_only)
-    // … field omitted;
-    // … field omitted;
+    // … 2 fields omitted
     
     // Protected properties (should be filtered out)
-    // … field omitted;
+    // … field omitted
     
     constructor(apiEndpoint: string = API_ENDPOINT) {
         this.apiEndpoint = apiEndpoint;
@@ -105,7 +104,7 @@ export class UserManager {
     // … 2 methods omitted
     
     // Private property declaration
-    // … field omitted;
+    // … field omitted
 }
 
 // Private class (not exported, should be filtered out)

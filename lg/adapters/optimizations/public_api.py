@@ -122,11 +122,13 @@ class PublicApiOptimizer:
                 if field_def:
                     # Check if field/method is public
                     is_public = self.adapter.is_public_element(field_def, context.doc)
-
+                    
                     # Remove private/protected class members
                     if not is_public:
                         element_type = "field" if capture_name == "field_name" else "method"
-                        private_elements.append((field_def, element_type))
+                        # For fields, extend range to include semicolon if present
+                        element_with_punctuation = self._extend_range_for_semicolon(field_def, context.doc) if element_type == "field" else field_def
+                        private_elements.append((element_with_punctuation, element_type))
 
         # Check imports (remove non-re-exported imports)
         imports = context.doc.query_opt("imports")
@@ -175,3 +177,65 @@ class PublicApiOptimizer:
 
             # Add appropriate placeholder using custom range
             context.add_placeholder(element_type, start_byte, end_byte, start_line, end_line)
+    
+    def _extend_range_for_semicolon(self, node, doc):
+        """
+        Extends node range to include trailing semicolon if present.
+        
+        This is needed for TypeScript fields where the semicolon is a separate sibling node.
+        Without including it, adjacent field placeholders cannot be collapsed properly.
+        
+        Args:
+            node: Tree-sitter node (typically a field definition)
+            doc: TreeSitterDocument instance
+            
+        Returns:
+            Node with potentially extended range, or original node if no semicolon found
+        """
+        # Check if there's a semicolon immediately after this node
+        parent = node.parent
+        if not parent:
+            return node
+        
+        # Find this node's position among siblings
+        siblings = parent.children
+        node_index = None
+        for i, sibling in enumerate(siblings):
+            if sibling == node:
+                node_index = i
+                break
+        
+        if node_index is None:
+            return node
+        
+        # Check if the next sibling is a semicolon
+        if node_index + 1 < len(siblings):
+            next_sibling = siblings[node_index + 1]
+            if (next_sibling.type == ";" or 
+                doc.get_node_text(next_sibling).strip() == ";"):
+                # Create a synthetic range that includes the semicolon
+                return self._create_extended_range_node(node, next_sibling)
+        
+        return node
+    
+    def _create_extended_range_node(self, original_node, semicolon_node):
+        """
+        Creates a synthetic node-like object with extended range.
+        
+        This is a workaround since Tree-sitter nodes are immutable.
+        We create a simple object that has the same interface for range operations.
+        """
+        class ExtendedRangeNode:
+            def __init__(self, start_node, end_node):
+                self.start_byte = start_node.start_byte
+                self.end_byte = end_node.end_byte
+                self.start_point = start_node.start_point
+                self.end_point = end_node.end_point
+                self.type = start_node.type
+                self.parent = start_node.parent
+                # Copy other commonly used attributes
+                for attr in ['children', 'text']:
+                    if hasattr(start_node, attr):
+                        setattr(self, attr, getattr(start_node, attr))
+        
+        return ExtendedRangeNode(original_node, semicolon_node)
