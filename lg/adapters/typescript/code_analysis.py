@@ -7,7 +7,7 @@ from __future__ import annotations
 
 from typing import List, Optional, Set
 
-from ..code_analysis import CodeAnalyzer, Visibility, ExportStatus, PrivateElement, ElementInfo
+from ..code_analysis import CodeAnalyzer, Visibility, ExportStatus, ElementInfo
 from ..tree_sitter_support import Node
 
 
@@ -224,7 +224,7 @@ class TypeScriptCodeAnalyzer(CodeAnalyzer):
             "decorator_expression",   # TypeScript decorator expressions
         }
 
-    def collect_language_specific_private_elements(self) -> List[PrivateElement]:
+    def collect_language_specific_private_elements(self) -> List[ElementInfo]:
         """
         Собирает TypeScript-специфичные приватные элементы.
         
@@ -244,7 +244,7 @@ class TypeScriptCodeAnalyzer(CodeAnalyzer):
         
         return private_elements
     
-    def _collect_namespaces(self, private_elements: List[PrivateElement]) -> None:
+    def _collect_namespaces(self, private_elements: List[ElementInfo]) -> None:
         """Собирает неэкспортируемые пространства имен."""
         namespaces = self.doc.query_opt("namespaces")
         for node, capture_name in namespaces:
@@ -253,9 +253,9 @@ class TypeScriptCodeAnalyzer(CodeAnalyzer):
                 if namespace_def:
                     element_info = self.analyze_element(namespace_def)
                     if not element_info.should_be_included_in_public_api:
-                        private_elements.append(PrivateElement(element_info))
+                        private_elements.append(element_info)
     
-    def _collect_enums(self, private_elements: List[PrivateElement]) -> None:
+    def _collect_enums(self, private_elements: List[ElementInfo]) -> None:
         """Собирает неэкспортируемые енумы."""
         enums = self.doc.query_opt("enums")
         for node, capture_name in enums:
@@ -264,9 +264,9 @@ class TypeScriptCodeAnalyzer(CodeAnalyzer):
                 if enum_def:
                     element_info = self.analyze_element(enum_def)
                     if not element_info.should_be_included_in_public_api:
-                        private_elements.append(PrivateElement(element_info))
+                        private_elements.append(element_info)
     
-    def _collect_class_members(self, private_elements: List[PrivateElement]) -> None:
+    def _collect_class_members(self, private_elements: List[ElementInfo]) -> None:
         """Собирает приватные/защищенные члены классов."""
         class_fields = self.doc.query_opt("class_fields")
         for node, capture_name in class_fields:
@@ -289,9 +289,9 @@ class TypeScriptCodeAnalyzer(CodeAnalyzer):
                                 is_method=element_info.is_method,
                                 decorators=element_info.decorators
                             )
-                        private_elements.append(PrivateElement(element_info))
+                        private_elements.append(element_info)
     
-    def _collect_imports(self, private_elements: List[PrivateElement]) -> None:
+    def _collect_imports(self, private_elements: List[ElementInfo]) -> None:
         """Собирает не-ре-экспортируемые импорты."""
         imports = self.doc.query_opt("imports")
         for node, capture_name in imports:
@@ -305,9 +305,9 @@ class TypeScriptCodeAnalyzer(CodeAnalyzer):
                 
                 # Проверяем, ре-экспортируется ли этот импорт где-то еще
                 element_info = self.analyze_element(node)
-                private_elements.append(PrivateElement(element_info))
+                private_elements.append(element_info)
     
-    def _collect_variables(self, private_elements: List[PrivateElement]) -> None:
+    def _collect_variables(self, private_elements: List[ElementInfo]) -> None:
         """Собирает неэкспортируемые переменные."""
         variables = self.doc.query_opt("variables")
         for node, capture_name in variables:
@@ -318,7 +318,7 @@ class TypeScriptCodeAnalyzer(CodeAnalyzer):
                     
                     # Для top-level переменных проверяем публичность и экспорт
                     if not element_info.should_be_included_in_public_api:
-                        private_elements.append(PrivateElement(element_info))
+                        private_elements.append(element_info)
 
     def _check_export_in_source_line(self, node: Node) -> bool:
         """

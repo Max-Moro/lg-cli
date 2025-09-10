@@ -39,7 +39,7 @@ class PublicApiOptimizer:
         
         # Сначала вычисляем диапазоны с декораторами для всех элементов
         element_ranges = [
-            (code_analyzer.get_element_range_with_decorators(elem.node), elem)
+            (code_analyzer.get_element_range_with_decorators(elem), elem)
             for elem in private_elements
         ]
         

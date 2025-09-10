@@ -7,7 +7,7 @@ from __future__ import annotations
 
 from typing import List, Optional, Set
 
-from ..code_analysis import CodeAnalyzer, Visibility, ExportStatus, PrivateElement
+from ..code_analysis import CodeAnalyzer, Visibility, ExportStatus, ElementInfo
 from ..tree_sitter_support import Node
 
 
@@ -184,7 +184,7 @@ class PythonCodeAnalyzer(CodeAnalyzer):
             "decorator",              # Python @decorator
         }
 
-    def collect_language_specific_private_elements(self) -> List[PrivateElement]:
+    def collect_language_specific_private_elements(self) -> List[ElementInfo]:
         """
         Собирает Python-специфичные приватные элементы.
         
@@ -200,7 +200,7 @@ class PythonCodeAnalyzer(CodeAnalyzer):
         
         return private_elements
     
-    def _collect_variable_assignments(self, private_elements: List[PrivateElement]) -> None:
+    def _collect_variable_assignments(self, private_elements: List[ElementInfo]) -> None:
         """
         Собирает Python переменные, которые должны быть удалены в режиме public API.
         
@@ -217,7 +217,7 @@ class PythonCodeAnalyzer(CodeAnalyzer):
                     
                     # Для top-level переменных проверяем публичность и экспорт
                     if not element_info.should_be_included_in_public_api:
-                        private_elements.append(PrivateElement(element_info))
+                        private_elements.append(element_info)
 
     def _is_whitespace_or_comment(self, node: Node) -> bool:
         """

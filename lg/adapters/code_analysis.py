@@ -77,23 +77,6 @@ class FunctionGroup:
     name_node: Optional[Node] = None
     body_node: Optional[Node] = None
 
-
-@dataclass(frozen=True)
-class PrivateElement:
-    """Информация о приватном элементе для удаления."""
-    element_info: ElementInfo
-    
-    @property
-    def node(self) -> Node:
-        """Convenience property для доступа к узлу."""
-        return self.element_info.node
-    
-    @property
-    def element_type(self) -> str:
-        """Convenience property для доступа к типу."""
-        return self.element_info.element_type
-
-
 # ============= Основной анализатор =============
 
 class CodeAnalyzer(ABC):
@@ -134,7 +117,7 @@ class CodeAnalyzer(ABC):
             decorators=decorators
         )
     
-    def collect_private_elements_for_public_api(self) -> List[PrivateElement]:
+    def collect_private_elements_for_public_api(self) -> List[ElementInfo]:
         """
         Собирает все приватные элементы для удаления в режиме public API.
         
@@ -160,7 +143,7 @@ class CodeAnalyzer(ABC):
     
     # ============= Вспомогательные методы для сбора приватных элементов =============
     
-    def _collect_functions_and_methods(self, private_elements: List[PrivateElement]) -> None:
+    def _collect_functions_and_methods(self, private_elements: List[ElementInfo]) -> None:
         """
         Собирает приватные функции и методы для удаления в режиме public API.
         
@@ -187,9 +170,9 @@ class CodeAnalyzer(ABC):
                 should_remove = not element_info.is_exported
 
             if should_remove:
-                private_elements.append(PrivateElement(element_info))
+                private_elements.append(element_info)
     
-    def _collect_classes(self, private_elements: List[PrivateElement]) -> None:
+    def _collect_classes(self, private_elements: List[ElementInfo]) -> None:
         """
         Собирает неэкспортируемые классы для удаления в режиме public API.
         
@@ -209,9 +192,9 @@ class CodeAnalyzer(ABC):
                     
                     # Для top-level классов экспорт - основное условие
                     if not element_info.should_be_included_in_public_api:
-                        private_elements.append(PrivateElement(element_info))
+                        private_elements.append(element_info)
     
-    def _collect_interfaces_and_types(self, private_elements: List[PrivateElement]) -> None:
+    def _collect_interfaces_and_types(self, private_elements: List[ElementInfo]) -> None:
         """
         Собирает неэкспортируемые интерфейсы и типы для удаления в режиме public API.
         Этот метод применим к языкам с поддержкой типов (например, TypeScript).
@@ -228,7 +211,7 @@ class CodeAnalyzer(ABC):
                     if interface_def:
                         element_info = self.analyze_element(interface_def)
                         if not element_info.should_be_included_in_public_api:
-                            private_elements.append(PrivateElement(element_info))
+                            private_elements.append(element_info)
         
         # Собираем алиасы типов если поддерживаются
         if self.doc.has_query("types"):
@@ -239,7 +222,7 @@ class CodeAnalyzer(ABC):
                     if type_def:
                         element_info = self.analyze_element(type_def)
                         if not element_info.should_be_included_in_public_api:
-                            private_elements.append(PrivateElement(element_info))
+                            private_elements.append(element_info)
     
     # ============= Структурный анализ =============
     
@@ -337,24 +320,22 @@ class CodeAnalyzer(ABC):
 
         return all_decorators
 
-    def get_element_range_with_decorators(self, node: Node) -> Tuple[int, int]:
+    def get_element_range_with_decorators(self, elem: ElementInfo) -> Tuple[int, int]:
         """
         Получает диапазон элемента включая его декораторы/аннотации.
         
         Args:
-            node: Узел элемента
-            
+            elem: Элемент
+
         Returns:
             Tuple (start_byte, end_byte) включая все связанные декораторы
         """
-        decorators = self.find_decorators_for_element(node)
-        
-        if decorators:
-            start_byte = min(decorator.start_byte for decorator in decorators)
-            end_byte = node.end_byte
+        if elem.decorators:
+            start_byte = min(decorator.start_byte for decorator in elem.decorators)
+            end_byte = elem.node.end_byte
             return start_byte, end_byte
         else:
-            return self.doc.get_node_range(node)
+            return self.doc.get_node_range(elem.node)
     
     # ============= Абстрактные методы для реализации в подклассах =============
     
@@ -399,7 +380,7 @@ class CodeAnalyzer(ABC):
         pass
     
     @abstractmethod
-    def collect_language_specific_private_elements(self) -> List[PrivateElement]:
+    def collect_language_specific_private_elements(self) -> List[ElementInfo]:
         """Собирает язык-специфичные приватные элементы."""
         pass
     
@@ -457,7 +438,6 @@ __all__ = [
     "CodeAnalyzer",
     "ElementInfo", 
     "FunctionGroup",
-    "PrivateElement",
     "Visibility",
     "ExportStatus"
 ]
