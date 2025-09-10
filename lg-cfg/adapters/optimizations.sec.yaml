@@ -61,6 +61,7 @@ src-tests__function-bodies:
 #              - "/typescript/"
               - "/test_infrastructure.py"
               - "/test_integration.py"
+              - "/golden_utils.py"
             children:
               python:
                 mode: allow

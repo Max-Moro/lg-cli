@@ -10,14 +10,14 @@ QUERIES = {
     "functions": """
     (function_declaration
       name: (identifier) @function_name
-      body: (statement_block) @function_body)
+      body: (statement_block) @function_body) @function_definition
       
     (method_definition
       name: (property_identifier) @method_name  
-      body: (statement_block) @method_body)
+      body: (statement_block) @method_body) @method_definition
       
     (arrow_function
-      body: (_) @function_body)
+      body: (_) @function_body) @function_definition
     """,
     
     "methods": """

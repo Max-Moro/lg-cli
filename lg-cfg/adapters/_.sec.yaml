@@ -18,7 +18,8 @@ src:
               - "/markdown.py"
               - "/scala.py"
               - "/optimizations/comments.py"
-              - "/optimizations/literals.py"
+              - "/optimizations/comments.py"
+              - "/placeholders.py"
 
 src-tests:
   extensions: [".py"]
@@ -37,6 +38,7 @@ src-tests:
             block:
               - "/test_infrastructure.py"
               - "/test_integration.py"
+              - "/golden_utils.py"
 
 docs-golden-utils:
   extensions: [".md"]
