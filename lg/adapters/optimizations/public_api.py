@@ -31,22 +31,23 @@ class PublicApiOptimizer:
         Args:
             context: Processing context with document and editor
         """
-        # Get language-specific unified code analyzer
+        # Получаем унифицированный анализатор кода для языка
         code_analyzer = self.adapter.create_code_analyzer(context.doc)
         
-        # Collect all private elements using the unified analyzer
+        # Собираем все приватные элементы с помощью анализатора
         private_elements = code_analyzer.collect_private_elements_for_public_api(context)
         
-        # Sort by position (reverse order for safe removal) 
-        # Using unified analyzer for getting ranges with decorators
-        private_elements.sort(key=lambda x: code_analyzer.get_element_range_with_decorators(x.node)[0], reverse=True)
+        # Сначала вычисляем диапазоны с декораторами для всех элементов, чтобы не вызывать метод дважды
+        element_ranges = [
+            (code_analyzer.get_element_range_with_decorators(elem.node), elem)
+            for elem in private_elements
+        ]
         
-        # Remove private elements with appropriate placeholders
-        for private_element in private_elements:
-            # Get extended range including decorators using language-specific logic
-            start_byte, end_byte = code_analyzer.get_element_range_with_decorators(private_element.node)
+        # Сортируем по позиции (в обратном порядке для безопасного удаления)
+        element_ranges.sort(key=lambda x: x[0][0], reverse=True)
+        
+        # Удаляем приватные элементы с соответствующими плейсхолдерами
+        for (start_byte, end_byte), private_element in element_ranges:
             start_line = context.doc.get_line_number_for_byte(start_byte)
             end_line = context.doc.get_line_number_for_byte(end_byte)
-
-            # Add appropriate placeholder using custom range
             context.add_placeholder(private_element.element_type, start_byte, end_byte, start_line, end_line)

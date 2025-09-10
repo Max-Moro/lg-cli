@@ -8,7 +8,6 @@ from __future__ import annotations
 from typing import cast
 
 from ..context import ProcessingContext
-from ..structure_analysis import CodeStructureAnalyzer
 from ..tree_sitter_support import Node
 
 
@@ -51,13 +50,13 @@ class FunctionBodyOptimizer:
                 continue  # Skip if no body found
                 
             body_node = func_group.body_node
-            element_type = func_group.element_type
+            element_type = func_group.element_info.element_type
             
             start_line, end_line = context.doc.get_line_range(body_node)
             lines_count = end_line - start_line + 1
             
             # Check if this body should be stripped
-            should_strip = self.should_strip_function_body(analyzer, body_node, lines_count, cfg, context)
+            should_strip = self.should_strip_function_body(analyzer, body_node, lines_count, cfg)
             
             if should_strip:
                 self.adapter.hook__remove_function_body(
@@ -117,11 +116,10 @@ class FunctionBodyOptimizer:
 
     def should_strip_function_body(
         self, 
-        analyzer: CodeStructureAnalyzer,
+        analyzer,
         body_node: Node,
         lines_count: int,
-        cfg, 
-        context: ProcessingContext
+        cfg
     ) -> bool:
         """
         Determine if a function body should be stripped based on configuration.
@@ -130,7 +128,6 @@ class FunctionBodyOptimizer:
             body_node: Tree-sitter node representing function body
             lines_count: Number of lines in the function body
             cfg: Function body stripping configuration
-            context: Processing context
             
         Returns:
             True if body should be stripped, False otherwise
@@ -155,17 +152,15 @@ class FunctionBodyOptimizer:
                 # Strip bodies only for public functions
                 parent_function = analyzer.find_function_definition_in_parents(body_node)
                 if parent_function:
-                    is_public = self.adapter.is_public_element(parent_function, context.doc)
-                    is_exported = self.adapter.is_exported_element(parent_function, context.doc)
-                    return is_public or is_exported
+                    element_info = analyzer.analyze_element(parent_function)
+                    return element_info.is_public or element_info.is_exported
                 return False
             elif cfg.mode == "non_public":
                 # Strip bodies only for private functions
                 parent_function = analyzer.find_function_definition_in_parents(body_node)
                 if parent_function:
-                    is_public = self.adapter.is_public_element(parent_function, context.doc)
-                    is_exported = self.adapter.is_exported_element(parent_function, context.doc)
-                    return not (is_public or is_exported)
+                    element_info = analyzer.analyze_element(parent_function)
+                    return not (element_info.is_public or element_info.is_exported)
                 return False
         
         return False
