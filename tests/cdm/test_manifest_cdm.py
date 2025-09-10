@@ -10,6 +10,7 @@ from lg.cache.fs_cache import Cache
 from lg.context.resolver import resolve_context
 from lg.manifest.builder import build_manifest
 from lg.run_context import RunContext
+from lg.tokens.service import TokenService
 from lg.types import RunOptions
 from lg.vcs import VcsProvider
 from tests.conftest import write
@@ -21,7 +22,7 @@ def _mk_run_ctx(root: Path) -> RunContext:
     class _NullVcs:
         def changed_files(self, root: Path):  # type: ignore[override]
             return set()
-    return RunContext(root=root, options=RunOptions(), cache=cache, vcs=_NullVcs())  # type: ignore[arg-type]
+    return RunContext(root=root, options=RunOptions(), cache=cache, vcs=_NullVcs(), token_service=TokenService())  # type: ignore[arg-type]
 
 
 class FakeVcs(VcsProvider):

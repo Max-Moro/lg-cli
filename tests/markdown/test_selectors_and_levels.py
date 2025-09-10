@@ -1,6 +1,7 @@
-from lg.adapters.markdown import MarkdownAdapter
 import re
+
 from tests.conftest import lctx_md
+from .conftest import adapter
 
 MD = """\
 # Guide
@@ -23,9 +24,6 @@ Q/A
 old
 """
 
-def _adapter(cfg):
-    return MarkdownAdapter().bind(cfg)  # type: ignore
-
 def test_sections_match_by_slug():
     cfg = {
         "drop": {
@@ -38,7 +36,7 @@ def test_sections_match_by_slug():
         },
         "max_heading_level": None,
     }
-    out, meta = _adapter(cfg).process(lctx_md(raw_text=MD))
+    out, meta = adapter(cfg).process(lctx_md(raw_text=MD))
     # Заголовок "## CLI Options" отсутствует
     assert re.search(r"^##\s+CLI Options\b", out, flags=re.M) is None
     # Плейсхолдер с названием раздела присутствует
@@ -61,7 +59,7 @@ def test_sections_match_by_regex_flags():
         },
         "max_heading_level": None,
     }
-    out, meta = _adapter(cfg).process(lctx_md(raw_text=MD))
+    out, meta = adapter(cfg).process(lctx_md(raw_text=MD))
     # заголовок раздела (## Legacy Notes) отсутствует
     assert re.search(r"^##\s+Legacy Notes\b", out, flags=re.M) is None
     # но плейсхолдер с title вставлен
@@ -80,7 +78,7 @@ def test_sections_match_by_path_only():
         },
         "max_heading_level": None,
     }
-    out, meta = _adapter(cfg).process(lctx_md(raw_text=MD))
+    out, meta = adapter(cfg).process(lctx_md(raw_text=MD))
     assert "### User" not in out
     assert "### Dev" in out
     assert "> *(FAQ user pruned)*" in out
@@ -99,7 +97,7 @@ def test_sections_level_bounds():
         },
         "max_heading_level": None,
     }
-    out, meta = _adapter(cfg).process(lctx_md(raw_text=MD))
+    out, meta = adapter(cfg).process(lctx_md(raw_text=MD))
     # Все H2 (Getting Started, CLI Options, FAQ, Legacy Notes) удалены целиком
     assert "## " not in out
     # остался только корневой H1
@@ -122,7 +120,7 @@ def test_sections_match_plus_path_combo():
         },
         "max_heading_level": None,
     }
-    out, meta = _adapter(cfg).process(lctx_md(raw_text=MD))
+    out, meta = adapter(cfg).process(lctx_md(raw_text=MD))
     assert "### Dev" not in out
     assert "### User" in out
     assert int(meta.get("md.placeholders", 0)) == 1

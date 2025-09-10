@@ -2,6 +2,7 @@ import pytest
 
 from lg.adapters.markdown import MarkdownAdapter
 from lg.markdown.model import MarkdownCfg
+from lg.tokens.service import TokenService
 
 
 def test_markdown_cfg_nested_drop_is_parsed():
@@ -29,8 +30,8 @@ def test_markdown_cfg_nested_drop_is_parsed():
             ],
         },
     }
-    adapter = MarkdownAdapter().bind(raw)  # type: ignore
-    cfg: MarkdownCfg = adapter.cfg  # type: ignore
+    adapter = MarkdownAdapter().bind(raw, TokenService())
+    cfg: MarkdownCfg = adapter.cfg
     assert cfg.max_heading_level == 2
     assert cfg.drop is not None and cfg.drop.frontmatter is True
     assert cfg.drop.placeholder.mode == "summary"
@@ -50,4 +51,4 @@ def test_unknown_extra_key_raises():
         }
     }
     with pytest.raises(ValueError):
-        MarkdownAdapter().bind(bad)  # type: ignore
+        MarkdownAdapter().bind(bad, TokenService())

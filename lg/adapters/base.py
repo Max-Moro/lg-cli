@@ -40,7 +40,7 @@ class BaseAdapter(Generic[C]):
 
     # --- Конфигурирование адаптера -------------
     @classmethod
-    def bind(cls: Type[A], raw_cfg: dict | None, *, token_service: TokenService) -> A:
+    def bind(cls: Type[A], raw_cfg: dict | None, token_service: TokenService) -> A:
         """
         Фабрика «связанного» адаптера: создаёт инстанс и применяет cfg.
         Внешний код не видит тип конфигурации — полная инкапсуляция.

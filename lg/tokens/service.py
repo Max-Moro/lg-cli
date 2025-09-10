@@ -12,6 +12,7 @@ from typing import Tuple
 
 import tiktoken
 
+DEFAULT_ENCODER = "cl100k_base"
 
 @dataclass(frozen=True)
 class TokenService:
@@ -21,7 +22,7 @@ class TokenService:
     Методы работают со строками (UTF-8). Привязки к AST/байтовым диапазонам нет.
     """
 
-    encoder_name: str
+    encoder_name: str = DEFAULT_ENCODER
 
     def __post_init__(self):
         # Ленивая инициализация энкодера при первом обращении
@@ -37,7 +38,7 @@ class TokenService:
                 try:
                     enc = tiktoken.encoding_for_model(self.encoder_name)
                 except Exception:
-                    enc = tiktoken.get_encoding("cl100k_base")
+                    enc = tiktoken.get_encoding(DEFAULT_ENCODER)
             object.__setattr__(self, "_enc", enc)
         return enc
 

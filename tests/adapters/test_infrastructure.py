@@ -1,9 +1,7 @@
 """
 Tests for adapter infrastructure components.
 """
-from lg.adapters.placeholders import PlaceholderManager, create_placeholder_manager
-from lg.adapters.python import PythonAdapter
-from lg.adapters.typescript import TypeScriptAdapter
+
 from lg.adapters.range_edits import RangeEditor
 from lg.adapters.registry import get_adapter_for_path
 from pathlib import Path
@@ -99,25 +97,25 @@ class TestAdapterRegistry:
 class TestAdapterConfiguration:
     """Test adapter configuration loading and binding."""
     
-    def test_adapter_binding_with_config(self):
+    def test_adapter_binding_with_config(self, token_service):
         """Test that adapters can be bound with configuration."""
-        from lg.adapters.python import PythonAdapter, PythonCfg
+        from lg.adapters.python import PythonAdapter
         
         # Test binding with simple config
         raw_config = {"strip_function_bodies": True}
-        adapter = PythonAdapter.bind(raw_config)
+        adapter = PythonAdapter.bind(raw_config, token_service)
         
         assert adapter._cfg is not None
         assert adapter._cfg.strip_function_bodies is True
     
-    def test_adapter_binding_without_config(self):
+    def test_adapter_binding_without_config(self, token_service):
         """Test that adapters can be bound without configuration."""
         from lg.adapters.python import PythonAdapter
         
-        adapter = PythonAdapter.bind(None)
+        adapter = PythonAdapter.bind(None, token_service)
         assert adapter._cfg is not None  # Should have default config
     
-    def test_complex_config_loading(self):
+    def test_complex_config_loading(self, token_service):
         """Test loading of complex configuration objects."""
         from lg.adapters.python import PythonAdapter
         
@@ -132,7 +130,7 @@ class TestAdapterConfiguration:
             }
         }
         
-        adapter = PythonAdapter.bind(complex_config)
+        adapter = PythonAdapter.bind(complex_config, token_service)
         assert hasattr(adapter._cfg.strip_function_bodies, 'mode')
         assert adapter._cfg.strip_function_bodies.mode == "large_only"
         assert hasattr(adapter._cfg.comment_policy, 'policy')

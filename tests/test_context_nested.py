@@ -6,6 +6,7 @@ from lg.cache.fs_cache import Cache
 from lg.config.paths import cfg_root
 from lg.context import resolve_context, compose_context
 from lg.run_context import RunContext
+from lg.tokens.service import TokenService
 from lg.types import RunOptions
 from lg.vcs import NullVcs
 
@@ -28,6 +29,7 @@ def _mk_ctx(root: Path) -> RunContext:
         options=RunOptions(),
         cache=Cache(root, tool_version="0.0.0"),
         vcs=NullVcs(),
+        token_service=TokenService()
     )
 
 def test_context_nested_ok(tmp_path: Path, monkeypatch):
@@ -89,6 +91,7 @@ def test_context_cycle_detection(tmp_path: Path):
         options=RunOptions(),
         cache=Cache(tmp_path, tool_version="0.0.0"),
         vcs=NullVcs(),
+        token_service=TokenService()
     )
 
     with pytest.raises(RuntimeError) as ei:

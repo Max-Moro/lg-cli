@@ -17,10 +17,10 @@ class TestTypeScriptFunctionBodyOptimization:
         result, meta = adapter.process(lctx_ts(do_function_bodies))
         
         # Check that functions were processed
-        assert meta["code.removed.function_bodies"] == 4
-        assert meta["code.removed.method_bodies"] == 4
-        assert "// … method body omitted" in result
-        assert "// … function body omitted" in result
+        assert meta["code.removed.function_bodies"] == 6
+        assert meta["code.removed.method_bodies"] == 5
+        assert "// … method body omitted (11 lines)" in result
+        assert "// … function body omitted (13 lines)" in result
         
         # Golden file test
         assert_golden_match(result, "function_bodies", "basic_strip")

@@ -1,8 +1,9 @@
 import re
+
 import pytest
 
-from lg.adapters.markdown import MarkdownAdapter
 from tests.conftest import lctx_md
+
 
 # Помощник: проверяем только ожидаемые поля, не требуя точного совпадения всех ключей.
 def assert_meta_subset(meta: dict, expected_subset: dict):
@@ -14,8 +15,9 @@ def make_adapter(max_lvl):
     Новый способ конфигурирования: через bind(raw_cfg).
     Передаём сырой dict, поля совпадают с датаклассом MarkdownCfg.
     """
+    from .conftest import adapter
     raw_cfg = {"max_heading_level": max_lvl}
-    return MarkdownAdapter().bind(raw_cfg)
+    return adapter(raw_cfg)
 
 @pytest.mark.parametrize("text, max_lvl, group_size, mixed, expected, expected_meta", [
     # 1) single-file + max_heading_level=3: убираем H1, сдвигаем H2→H3, H3→H4

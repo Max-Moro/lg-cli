@@ -108,8 +108,22 @@ def lctx_md(raw_text: str = "# Test Markdown", group_size: int = 1, mixed: bool 
 def jload(s: str):
     return json.loads(s)
 
+# ==== Фикстуры для энкодинга токенов ====
+
+class TokenServiceStub(TokenService):
+    """Тестовый стаб TokenService с дефолтным энкодером."""
+
+    def is_economical(self, original: str, replacement: str, *, min_ratio: float, replacement_is_none: bool,
+                      min_abs_savings_if_none: int) -> bool:
+        """Позволяет в тестах делать замену плейсхолдеров всегда."""
+        return True
+
 
 @pytest.fixture
 def token_service():
-    """Тестовый стаб TokenService с дефолтным энкодером."""
-    return TokenService(encoder_name="cl100k_base")
+    return TokenServiceStub()
+
+@pytest.fixture
+def token_service_real():
+    """Если тесты проверяют реальную математику по токенам."""
+    return TokenService()

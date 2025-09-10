@@ -8,13 +8,14 @@ from lg.manifest.builder import build_manifest
 from lg.plan.planner import build_plan
 from lg.render.sections import render_by_section
 from lg.run_context import RunContext
+from lg.tokens.service import TokenService
 from lg.types import RunOptions
 from lg.vcs import NullVcs
 
 
 def _mk_run_ctx(root: Path) -> RunContext:
     cache = Cache(root, enabled=None, fresh=False, tool_version="test")
-    return RunContext(root=root, options=RunOptions(), cache=cache, vcs=NullVcs())
+    return RunContext(root=root, options=RunOptions(), cache=cache, vcs=NullVcs(), token_service=TokenService())
 
 
 def test_planner_and_render_for_addressed_sections(monorepo: Path):
