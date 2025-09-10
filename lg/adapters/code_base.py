@@ -22,6 +22,7 @@ from .optimizations import (
     TreeSitterImportAnalyzer,
     ImportClassifier
 )
+from .structure_analysis import CodeStructureAnalyzer
 from .tree_sitter_support import TreeSitterDocument, Node
 
 C = TypeVar("C", bound=CodeCfg)
@@ -50,6 +51,11 @@ class CodeAdapter(BaseAdapter[C], ABC):
     @abstractmethod
     def create_fields_classifier(self, doc: TreeSitterDocument) -> FieldsClassifier:
         """Создает языко-специфичный классификатор конструкторов и полей."""
+        pass
+
+    @abstractmethod
+    def create_structure_analyzer(self, doc: TreeSitterDocument) -> CodeStructureAnalyzer:
+        """Создает языко-специфичный анализатор структуры кода."""
         pass
 
     @abstractmethod

@@ -8,8 +8,8 @@ from __future__ import annotations
 from typing import cast
 
 from ..context import ProcessingContext
+from ..structure_analysis import CodeStructureAnalyzer
 from ..tree_sitter_support import Node
-from ..code_structure_utils import collect_function_like_nodes, find_function_definition_in_parents
 
 
 class FunctionBodyOptimizer:
@@ -36,25 +36,28 @@ class FunctionBodyOptimizer:
         if not cfg:
             return
         
-        # Find all function bodies and strip them using universal utilities
+        # Get language-specific structure analyzer
+        analyzer = self.adapter.create_structure_analyzer(context.doc)
+        
+        # Find all function bodies and strip them using language-specific analysis
         functions = context.doc.query("functions")
         
-        # Group function-like captures using universal utilities
-        function_groups = collect_function_like_nodes(functions)
+        # Group function-like captures using language-specific utilities
+        function_groups = analyzer.collect_function_like_elements(functions)
 
         # Process each function group
-        for func_def, func_data in function_groups.items():
-            if "body" not in func_data:
+        for func_def, func_group in function_groups.items():
+            if func_group.body_node is None:
                 continue  # Skip if no body found
                 
-            body_node = func_data["body"]
-            element_type = func_data["type"]
+            body_node = func_group.body_node
+            element_type = func_group.element_type
             
             start_line, end_line = context.doc.get_line_range(body_node)
             lines_count = end_line - start_line + 1
             
             # Check if this body should be stripped
-            should_strip = self.should_strip_function_body(body_node, lines_count, cfg, context)
+            should_strip = self.should_strip_function_body(analyzer, body_node, lines_count, cfg, context)
             
             if should_strip:
                 self.adapter.hook__remove_function_body(
@@ -114,7 +117,8 @@ class FunctionBodyOptimizer:
 
     def should_strip_function_body(
         self, 
-        body_node: Node, 
+        analyzer: CodeStructureAnalyzer,
+        body_node: Node,
         lines_count: int,
         cfg, 
         context: ProcessingContext
@@ -149,7 +153,7 @@ class FunctionBodyOptimizer:
                 return lines_count >= getattr(cfg, 'min_lines', 5)
             elif cfg.mode == "public_only":
                 # Strip bodies only for public functions
-                parent_function = find_function_definition_in_parents(body_node)
+                parent_function = analyzer.find_function_definition_in_parents(body_node)
                 if parent_function:
                     is_public = self.adapter.is_public_element(parent_function, context.doc)
                     is_exported = self.adapter.is_exported_element(parent_function, context.doc)
@@ -157,7 +161,7 @@ class FunctionBodyOptimizer:
                 return False
             elif cfg.mode == "non_public":
                 # Strip bodies only for private functions
-                parent_function = find_function_definition_in_parents(body_node)
+                parent_function = analyzer.find_function_definition_in_parents(body_node)
                 if parent_function:
                     is_public = self.adapter.is_public_element(parent_function, context.doc)
                     is_exported = self.adapter.is_exported_element(parent_function, context.doc)

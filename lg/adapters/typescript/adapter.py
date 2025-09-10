@@ -13,6 +13,7 @@ from ..code_base import CodeAdapter
 from ..code_model import CodeCfg
 from ..context import LightweightContext
 from ..optimizations import FieldsClassifier, ImportClassifier, TreeSitterImportAnalyzer
+from ..structure_analysis import CodeStructureAnalyzer
 from ..tree_sitter_support import TreeSitterDocument, Node
 
 
@@ -76,6 +77,11 @@ class TypeScriptAdapter(CodeAdapter[TypeScriptCfg]):
         """Создает языко-специфичный классификатор конструкторов и полей."""
         from .fields import TypeScriptFieldsClassifier
         return TypeScriptFieldsClassifier(doc)
+
+    def create_structure_analyzer(self, doc: TreeSitterDocument) -> CodeStructureAnalyzer:
+        """Создает TypeScript-специфичный анализатор структуры кода."""
+        from .structure_analysis import TypeScriptCodeStructureAnalyzer
+        return TypeScriptCodeStructureAnalyzer(doc)
 
     def should_skip(self, lightweight_ctx: LightweightContext) -> bool:
         """

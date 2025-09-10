@@ -84,7 +84,6 @@ class TestPythonPublicApiFiltering:
             # At least one public element should follow @my_decorator
             assert public_class_pos > my_decorator_pos or public_func_pos > my_decorator_pos
 
-    @pytest.mark.skip(reason="Skipping this test for now.")
     def test_underscore_naming_conventions(self):
         """Test Python underscore naming conventions."""
         code = '''

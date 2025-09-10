@@ -7,7 +7,6 @@ from __future__ import annotations
 
 from typing import cast
 
-from ..code_structure_utils import collect_function_like_nodes, get_element_range_with_decorators
 from ..context import ProcessingContext
 
 
@@ -32,15 +31,18 @@ class PublicApiOptimizer:
         Args:
             context: Processing context with document and editor
         """
-        # Find all functions and methods using universal structure analysis
+        # Get language-specific structure analyzer
+        analyzer = self.adapter.create_structure_analyzer(context.doc)
+        
+        # Find all functions and methods using language-specific structure analysis
         functions = context.doc.query("functions")
         private_elements = []  # List of (element_node, element_type)
         
-        # Group function-like captures using universal utilities
-        function_groups = collect_function_like_nodes(functions)
+        # Group function-like captures using language-specific utilities
+        function_groups = analyzer.collect_function_like_elements(functions)
         
-        for func_def, func_data in function_groups.items():
-            element_type = func_data["type"]
+        for func_def, func_group in function_groups.items():
+            element_type = func_group.element_type
             
             # Check element visibility using adapter's language-specific logic
             is_public = self.adapter.is_public_element(func_def, context.doc)
@@ -91,26 +93,16 @@ class PublicApiOptimizer:
                 if not is_exported:
                     private_elements.append((type_def, "type"))
         
-        # Sort by position (reverse order for safe removal)
-        private_elements.sort(key=lambda x: get_element_range_with_decorators(x[0], context.doc)[0], reverse=True)
+        # Sort by position (reverse order for safe removal) 
+        # Using analyzer for getting ranges with decorators
+        private_elements.sort(key=lambda x: analyzer.get_element_range_with_decorators(x[0])[0], reverse=True)
         
         # Remove private elements with appropriate placeholders
         for element, element_type in private_elements:
-            self._remove_element_with_decorators(context, element, element_type)
+            # Get extended range including decorators using language-specific logic
+            start_byte, end_byte = analyzer.get_element_range_with_decorators(element)
+            start_line = context.doc.get_line_number_for_byte(start_byte)
+            end_line = context.doc.get_line_number_for_byte(end_byte)
 
-    def _remove_element_with_decorators(self, context: ProcessingContext, element, element_type: str) -> None:
-        """
-        Remove element including its decorators/annotations.
-        
-        Args:
-            context: Processing context
-            element: Element node to remove
-            element_type: Type of element for appropriate placeholder
-        """
-        # Get extended range including decorators
-        start_byte, end_byte = get_element_range_with_decorators(element, context.doc)
-        start_line = context.doc.get_line_number_for_byte(start_byte)
-        end_line = context.doc.get_line_number_for_byte(end_byte)
-        
-        # Add appropriate placeholder using custom range
-        context.add_placeholder(element_type, start_byte, end_byte, start_line, end_line)
+            # Add appropriate placeholder using custom range
+            context.add_placeholder(element_type, start_byte, end_byte, start_line, end_line)

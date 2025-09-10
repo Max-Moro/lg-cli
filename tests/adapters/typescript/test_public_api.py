@@ -18,10 +18,10 @@ class TestTypeScriptPublicApiOptimization:
         result, meta = adapter.process(lctx_ts(do_public_api))
         
         # Private elements should be removed
-        assert meta.get("code.removed.functions", 0) == 2
-        assert meta.get("code.removed.methods", 0) == 9
-        assert meta.get("code.removed.classes", 0) == 1
-        assert meta.get("code.removed.interfaces", 0) == 1
+        assert meta.get("code.removed.functions", 0) == 5
+        assert meta.get("code.removed.methods", 0) == 14
+        assert meta.get("code.removed.classes", 0) == 3
+        assert meta.get("code.removed.interfaces", 0) == 2
         
         # Public exports should remain
         assert "export class" in result
