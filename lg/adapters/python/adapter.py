@@ -5,13 +5,13 @@ Python adapter core: configuration, document and adapter classes.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Dict, Any, List, Optional
+from typing import Dict, Any, List, Optional, Tuple
 
 from tree_sitter import Language
 
 from ..code_base import CodeAdapter
 from ..code_model import CodeCfg
-from ..context import LightweightContext
+from ..context import LightweightContext, ProcessingContext
 from ..optimizations import FieldsClassifier, ImportClassifier, TreeSitterImportAnalyzer, CommentOptimizer
 from ..structure_analysis import CodeStructureAnalyzer
 from ..tree_sitter_support import TreeSitterDocument, Node
@@ -75,6 +75,20 @@ class PythonAdapter(CodeAdapter[PythonCfg]):
         """Создает Python-специфичный анализатор структуры кода."""
         from .structure_analysis import PythonCodeStructureAnalyzer
         return PythonCodeStructureAnalyzer(doc)
+
+    def collect_language_specific_private_elements(self, context: ProcessingContext) -> List[Tuple[Node, str]]:
+        """
+        Собирает Python-специфичные приватные элементы для public API фильтрации.
+        
+        В Python обычно достаточно универсальной логики для functions/methods/classes,
+        но можно добавить специфичные проверки для модулей, __all__, и т.д.
+        """
+        # В Python пока используем только универсальную логику
+        # В будущем можно добавить специфичные элементы:
+        # - Проверки __all__ для определения экспортируемых элементов
+        # - Обработку модульных переменных
+        # - Специфичную логику для property/classmethod/staticmethod
+        return []
 
     def should_skip(self, lightweight_ctx: LightweightContext) -> bool:
         """
@@ -258,3 +272,13 @@ class PythonAdapter(CodeAdapter[PythonCfg]):
     def hook__smart_truncate_comment(self, root_optimizer: CommentOptimizer, comment_text: str, max_length: int) -> str:
         from .comments import smart_truncate_comment
         return smart_truncate_comment(comment_text, max_length)
+
+    def collect_language_specific_private_elements(self, context: ProcessingContext) -> List[Tuple[Node, str]]:
+        """
+        Собирает Python-специфичные приватные элементы для public API фильтрации.
+        
+        Включает обработку переменных/assignments и других Python-специфичных конструкций.
+        """
+        from .public_api import PythonPublicApiCollector
+        collector = PythonPublicApiCollector(self)
+        return collector.collect_private_elements(context)

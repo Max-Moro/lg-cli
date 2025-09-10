@@ -58,6 +58,21 @@ class CodeAdapter(BaseAdapter[C], ABC):
         """Создает языко-специфичный анализатор структуры кода."""
         pass
 
+    def collect_language_specific_private_elements(self, context: ProcessingContext) -> List[Tuple[Node, str]]:
+        """
+        Собирает язык-специфичные приватные элементы для public API фильтрации.
+        
+        Базовая реализация возвращает пустой список.
+        Языковые адаптеры могут переопределить для добавления специфичных элементов.
+        
+        Args:
+            context: Контекст обработки
+            
+        Returns:
+            Список кортежей (узел, тип_элемента) для удаления
+        """
+        return []
+
     @abstractmethod
     def is_public_element(self, node: Node, doc: TreeSitterDocument) -> bool:
         """

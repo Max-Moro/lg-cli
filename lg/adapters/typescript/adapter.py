@@ -5,13 +5,13 @@ TypeScript adapter core: configuration, document and adapter classes.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Dict, Any, List, Optional
+from typing import Dict, Any, List, Optional, Tuple
 
 from tree_sitter import Language
 
 from ..code_base import CodeAdapter
 from ..code_model import CodeCfg
-from ..context import LightweightContext
+from ..context import LightweightContext, ProcessingContext
 from ..optimizations import FieldsClassifier, ImportClassifier, TreeSitterImportAnalyzer
 from ..structure_analysis import CodeStructureAnalyzer
 from ..tree_sitter_support import TreeSitterDocument, Node
@@ -82,6 +82,12 @@ class TypeScriptAdapter(CodeAdapter[TypeScriptCfg]):
         """Создает TypeScript-специфичный анализатор структуры кода."""
         from .structure_analysis import TypeScriptCodeStructureAnalyzer
         return TypeScriptCodeStructureAnalyzer(doc)
+
+    def collect_language_specific_private_elements(self, context: ProcessingContext) -> List[Tuple[Node, str]]:
+        """Собирает TypeScript-специфичные приватные элементы для public API фильтрации."""
+        from .public_api import TypeScriptPublicApiCollector
+        collector = TypeScriptPublicApiCollector(self)
+        return collector.collect_private_elements(context)
 
     def should_skip(self, lightweight_ctx: LightweightContext) -> bool:
         """
