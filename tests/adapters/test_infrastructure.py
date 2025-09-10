@@ -1,10 +1,10 @@
 """
 Tests for adapter infrastructure components.
 """
-
+from lg.adapters.placeholders import PlaceholderManager, create_placeholder_manager
 from lg.adapters.python import PythonAdapter
 from lg.adapters.typescript import TypeScriptAdapter
-from lg.adapters.range_edits import RangeEditor, PlaceholderGenerator
+from lg.adapters.range_edits import RangeEditor
 from lg.adapters.registry import get_adapter_for_path
 from pathlib import Path
 
@@ -38,25 +38,6 @@ class TestRangeEditorSystem:
         errors = editor.validate_edits()
         assert len(errors) > 0
         assert "exceeds text length" in errors[0]
-    
-    def test_placeholder_generation(self):
-        """Test placeholder generation for different languages."""
-        # Test Python style
-        python_style = PythonAdapter().get_comment_style()
-        python_gen = PlaceholderGenerator(python_style)
-        
-        placeholder = python_gen.create_function_placeholder(5, 100)
-        assert placeholder.startswith("#")
-        assert "5" in placeholder  # Line count
-        
-        # Test TypeScript style
-        ts_style = TypeScriptAdapter().get_comment_style()
-        ts_gen = PlaceholderGenerator(ts_style)
-        
-        placeholder = ts_gen.create_method_placeholder(3, 80, style="block")
-        assert placeholder.startswith("/*")
-        assert placeholder.endswith("*/")
-        assert "3" in placeholder
 
     def test_overlapping_edit_handling(self):
         """Test that overlapping edits are handled correctly (first-wins policy)."""
@@ -176,24 +157,6 @@ class TestAdapterMetrics:
         # Test установка значений
         collector.set("test.value", "hello")
         assert collector.get("test.value") == "hello"
-    
-    def test_metrics_helper_methods(self):
-        """Test helper methods for common metrics."""
-        from lg.adapters.metrics import MetricsCollector
-        
-        collector = MetricsCollector()
-        
-        # Test helper methods
-        collector.mark_function_removed()
-        collector.mark_method_removed()
-        collector.add_lines_saved(10)
-        collector.add_bytes_saved(500)
-        
-        metrics = collector.to_dict()
-        assert metrics["code.removed.functions"] == 1
-        assert metrics["code.removed.methods"] == 1
-        assert metrics["code.lines_saved"] == 10
-        assert metrics["code.bytes_saved"] == 500
     
     def test_metrics_merge(self):
         """Test merging of metrics collectors."""

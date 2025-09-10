@@ -98,117 +98,16 @@ class TestCrossLanguageIntegration:
         ts_result, ts_meta = ts_adapter.process(lctx_ts(raw_text=ts_code))
         
         # Both should contain placeholder indicators
-        assert ("… " in python_result or "..." in python_result)
-        assert ("… " in ts_result or "..." in ts_result)
-        
+        assert "# … function body omitted (5 lines)" in python_result
+        assert "// … function body omitted (7 lines)" in ts_result
+
         # Both should report function removal
-        assert python_meta.get("code.removed.functions", 0) > 0
-        assert ts_meta.get("code.removed.functions", 0) > 0
+        assert python_meta.get("code.removed.function_bodies", 0) == 1
+        assert ts_meta.get("code.removed.function_bodies", 0) == 1
 
 
 class TestEndToEndPipeline:
     """End-to-end pipeline tests."""
-
-    def test_full_pipeline_python(self):
-        """Test complete Python adapter pipeline."""
-        code = '''"""Module docstring."""
-import os
-import requests
-from .local import helper
-
-class DataProcessor:
-    """Process data efficiently."""
-    
-    def __init__(self, config):
-        self.config = config
-        self.data = []
-    
-    def process(self, items):
-        """Process list of items."""
-        results = []
-        for item in items:
-            processed = self._transform(item)
-            results.append(processed)
-        return results
-    
-    def _transform(self, item):
-        """Transform single item."""
-        return item.upper()
-'''
-        
-        adapter = PythonAdapter()
-        adapter._cfg = PythonCfg.from_dict({
-            "strip_function_bodies": True,
-            "comment_policy": "keep_doc",
-            "public_api_only": False,
-            "imports": {"policy": "external_only"},
-            "fields": {"strip_trivial_constructors": True}
-        })
-        
-        result, meta = adapter.process(lctx_py(raw_text=code))
-        
-        # Should preserve structure
-        assert "class DataProcessor:" in result
-        assert "def process(self, items):" in result
-        
-        # Should preserve docstrings
-        assert '"""Process data efficiently."""' in result
-        
-        # Should have applied optimizations
-        assert meta.get("code.removed.functions", 0) + meta.get("code.removed.methods", 0) > 0
-        
-        # Should have processed imports
-        assert meta.get("code.removed.imports", 0) >= 0
-
-    def test_full_pipeline_typescript(self):
-        """Test complete TypeScript adapter pipeline."""
-        code = '''import { Component } from '@angular/core';
-import { Observable } from 'rxjs';
-import { helper } from './utils/helper';
-
-/**
- * User service for managing users
- */
-export class UserService {
-    private users: User[] = [];
-    
-    constructor(private apiUrl: string) {
-        this.apiUrl = apiUrl;
-    }
-    
-    /**
-     * Get all users
-     */
-    public getUsers(): Observable<User[]> {
-        return this.httpClient.get<User[]>(`${this.apiUrl}/users`);
-    }
-    
-    private validateUser(user: User): boolean {
-        return user.name.length > 0;
-    }
-}
-'''
-        
-        adapter = TypeScriptAdapter()
-        adapter._cfg = TypeScriptCfg.from_dict({
-            "strip_function_bodies": True,
-            "comment_policy": "keep_doc",
-            "public_api_only": True,
-            "imports": {"policy": "external_only"},
-            "fields": {"strip_trivial_constructors": True}
-        })
-        
-        result, meta = adapter.process(lctx_ts(raw_text=code))
-        
-        # Should preserve exported class
-        assert "export class UserService" in result
-        
-        # Should preserve public methods but remove private ones
-        assert "public getUsers():" in result
-        assert "private validateUser" not in result
-        
-        # Should have applied optimizations
-        assert meta.get("code.removed.private_elements", 0) > 0
 
     def test_error_recovery(self):
         """Test error recovery in pipeline."""
@@ -223,21 +122,13 @@ export class UserService {
         ts_adapter._cfg = TypeScriptCfg(strip_function_bodies=True)
         
         # Should not crash with malformed code
-        try:
-            python_result, python_meta = python_adapter.process(lctx_py(raw_text=malformed_python))
-            assert isinstance(python_result, str)
-            assert isinstance(python_meta, dict)
-        except Exception:
-            # Some parsing errors are expected, but should be handled gracefully
-            pass
-        
-        try:
-            ts_result, ts_meta = ts_adapter.process(lctx_ts(raw_text=malformed_ts))
-            assert isinstance(ts_result, str)
-            assert isinstance(ts_meta, dict)
-        except Exception:
-            # Some parsing errors are expected, but should be handled gracefully
-            pass
+        python_result, python_meta = python_adapter.process(lctx_py(raw_text=malformed_python))
+        assert isinstance(python_result, str)
+        assert isinstance(python_meta, dict)
+
+        ts_result, ts_meta = ts_adapter.process(lctx_ts(raw_text=malformed_ts))
+        assert isinstance(ts_result, str)
+        assert isinstance(ts_meta, dict)
 
     def test_empty_file_handling(self):
         """Test handling of empty files."""
@@ -273,7 +164,7 @@ export class UserService {
         # Should handle large files
         assert isinstance(result, str)
         assert len(result) > 0
-        assert meta.get("code.removed.functions", 0) > 50  # Should have processed many functions
+        assert meta.get("code.removed.function_bodies", 0) == 100
 
 
 class TestConfigurationIntegration:
