@@ -143,54 +143,103 @@ class CodeAnalyzer(ABC):
         """
         private_elements = []
         
-        # Собираем универсальные элементы
+        # 1. Анализируем функции и методы
+        self._collect_functions_and_methods(private_elements)
+        
+        # 2. Анализируем классы
+        self._collect_classes(private_elements)
+        
+        # 3. Анализируем интерфейсы и типы (если поддерживаются языком)
+        self._collect_interfaces_and_types(private_elements)
 
-        # TODO Адаптировать старую логику
-        # # Find all functions and methods using language-specific structure analysis
-        # functions = context.doc.query("functions")
-        # private_elements = []  # List of (element_node, element_type)
-        #
-        # # Group function-like captures using language-specific utilities
-        # function_groups = analyzer.collect_function_like_elements(functions)
-        #
-        # for func_def, func_group in function_groups.items():
-        #     element_type = func_group.element_type
-        #
-        #     # Check element visibility using adapter's language-specific logic
-        #     is_public = self.adapter.is_public_element(func_def, context.doc)
-        #     is_exported = self.adapter.is_exported_element(func_def, context.doc)
-        #
-        #     # Universal logic based on element type
-        #     should_remove = False
-        #
-        #     if element_type == "method":
-        #         # Method removed if private/protected
-        #         should_remove = not is_public
-        #     else:  # function, arrow_function, etc.
-        #         # Top-level function removed if not exported
-        #         should_remove = not is_exported
-        #
-        #     if should_remove:
-        #         private_elements.append((func_def, element_type))
-        #
-        # # Also check classes
-        # classes = context.doc.query("classes")
-        # for node, capture_name in classes:
-        #     if capture_name == "class_name":
-        #         class_def = node.parent
-        #         # Check class export status
-        #         is_exported = self.adapter.is_exported_element(class_def, context.doc)
-        #
-        #         # For top-level classes, export is primary consideration
-        #         if not is_exported:
-        #             private_elements.append((class_def, "class"))
-
-
-        # Собираем язык-специфичные элементы
+        # 4. Собираем язык-специфичные элементы
         language_specific_elements = self.collect_language_specific_private_elements()
         private_elements.extend(language_specific_elements)
         
         return private_elements
+    
+    # ============= Вспомогательные методы для сбора приватных элементов =============
+    
+    def _collect_functions_and_methods(self, private_elements: List[PrivateElement]) -> None:
+        """
+        Собирает приватные функции и методы для удаления в режиме public API.
+        
+        Args:
+            private_elements: Список для добавления найденных приватных элементов
+        """
+        # Найти все функции и методы используя язык-специфичные запросы
+        functions = self.doc.query("functions")
+        
+        # Группировать function-like захваты используя язык-специфичные утилиты
+        function_groups = self.collect_function_like_elements(functions)
+
+        for func_def, func_group in function_groups.items():
+            element_info = func_group.element_info
+            
+            # Универсальная логика на основе типа элемента
+            should_remove = False
+
+            if element_info.is_method:
+                # Метод удаляется если приватный/защищенный
+                should_remove = not element_info.is_public
+            else:  # function, arrow_function, etc.
+                # Top-level функция удаляется если не экспортируется
+                should_remove = not element_info.is_exported
+
+            if should_remove:
+                private_elements.append(PrivateElement(element_info))
+    
+    def _collect_classes(self, private_elements: List[PrivateElement]) -> None:
+        """
+        Собирает неэкспортируемые классы для удаления в режиме public API.
+        
+        Args:
+            private_elements: Список для добавления найденных приватных элементов
+        """
+        # Проверяем классы только если язык их поддерживает
+        if not self.doc.has_query("classes"):
+            return
+            
+        classes = self.doc.query("classes")
+        for node, capture_name in classes:
+            if capture_name == "class_name":
+                class_def = node.parent
+                if class_def:
+                    element_info = self.analyze_element(class_def)
+                    
+                    # Для top-level классов экспорт - основное условие
+                    if not element_info.should_be_included_in_public_api:
+                        private_elements.append(PrivateElement(element_info))
+    
+    def _collect_interfaces_and_types(self, private_elements: List[PrivateElement]) -> None:
+        """
+        Собирает неэкспортируемые интерфейсы и типы для удаления в режиме public API.
+        Этот метод применим к языкам с поддержкой типов (например, TypeScript).
+        
+        Args:
+            private_elements: Список для добавления найденных приватных элементов
+        """
+        # Собираем интерфейсы если поддерживаются
+        if self.doc.has_query("interfaces"):
+            interfaces = self.doc.query("interfaces")
+            for node, capture_name in interfaces:
+                if capture_name == "interface_name":
+                    interface_def = node.parent
+                    if interface_def:
+                        element_info = self.analyze_element(interface_def)
+                        if not element_info.should_be_included_in_public_api:
+                            private_elements.append(PrivateElement(element_info))
+        
+        # Собираем алиасы типов если поддерживаются
+        if self.doc.has_query("types"):
+            types = self.doc.query("types")
+            for node, capture_name in types:
+                if capture_name == "type_name":
+                    type_def = node.parent
+                    if type_def:
+                        element_info = self.analyze_element(type_def)
+                        if not element_info.should_be_included_in_public_api:
+                            private_elements.append(PrivateElement(element_info))
     
     # ============= Структурный анализ =============
     

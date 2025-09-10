@@ -228,8 +228,6 @@ class TypeScriptCodeAnalyzer(CodeAnalyzer):
         private_elements = []
         
         # TypeScript-специфичные элементы
-        self._collect_interfaces(private_elements)
-        self._collect_types(private_elements)
         self._collect_namespaces(private_elements)
         self._collect_enums(private_elements)
         self._collect_class_members(private_elements)
@@ -237,28 +235,6 @@ class TypeScriptCodeAnalyzer(CodeAnalyzer):
         self._collect_variables(private_elements)
         
         return private_elements
-    
-    def _collect_interfaces(self, private_elements: List[PrivateElement]) -> None:
-        """Собирает неэкспортируемые интерфейсы."""
-        interfaces = self.doc.query_opt("interfaces")
-        for node, capture_name in interfaces:
-            if capture_name == "interface_name":
-                interface_def = node.parent
-                if interface_def:
-                    element_info = self.analyze_element(interface_def)
-                    if not element_info.should_be_included_in_public_api:
-                        private_elements.append(PrivateElement(element_info))
-    
-    def _collect_types(self, private_elements: List[PrivateElement]) -> None:
-        """Собирает неэкспортируемые алиасы типов."""
-        types = self.doc.query_opt("types")
-        for node, capture_name in types:
-            if capture_name == "type_name":
-                type_def = node.parent
-                if type_def:
-                    element_info = self.analyze_element(type_def)
-                    if not element_info.should_be_included_in_public_api:
-                        private_elements.append(PrivateElement(element_info))
     
     def _collect_namespaces(self, private_elements: List[PrivateElement]) -> None:
         """Собирает неэкспортируемые пространства имен."""

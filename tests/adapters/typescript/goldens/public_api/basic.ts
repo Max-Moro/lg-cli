@@ -2,7 +2,7 @@
  * TypeScript module for testing public API filtering.
  */
 
-// … import omitted
+// … function omitted
 
 // Public module-level constants (should be preserved)
 export const PUBLIC_VERSION = '1.0.0';
@@ -33,10 +33,10 @@ export class UserManager {
     public isInitialized: boolean = false;
     
     // Private properties (should be filtered out with public_api_only)
-    // … 2 fields omitted
+    // … 2 methods omitted
     
     // Protected properties (should be filtered out)
-    // … field omitted
+    // … method omitted
     
     constructor(apiEndpoint: string = API_ENDPOINT) {
         this.apiEndpoint = apiEndpoint;
@@ -104,7 +104,7 @@ export class UserManager {
     // … 2 methods omitted
     
     // Private property declaration
-    // … field omitted
+    // … method omitted
 }
 
 // Private class (not exported, should be filtered out)
@@ -136,7 +136,7 @@ export enum UserStatus {
 }
 
 // Private enum (not exported, should be filtered out)
-// … enum omitted (5 lines)
+// … function omitted
 
 // Public functions (should be preserved)
 export function createUserManager(endpoint?: string): UserManager {
@@ -169,7 +169,7 @@ export namespace UserUtils {
 }
 
 // Private namespace (not exported, should be filtered out)
-// … namespace omitted (15 lines)
+// … function omitted
 
 // Default export (should be preserved)
 export default UserManager;
