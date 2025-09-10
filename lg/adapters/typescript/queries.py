@@ -58,12 +58,43 @@ QUERIES = {
       value: (_) @type_value)
     """,
     
+    # Namespace declarations
+    "namespaces": """
+    (internal_module
+      name: (identifier) @namespace_name
+      body: (statement_block) @namespace_body)
+    """,
+    
+    # Enum declarations
+    "enums": """
+    (enum_declaration
+      name: (identifier) @enum_name
+      body: (enum_body) @enum_body)
+    """,
+    
     # Variable declarations
     "variables": """
     (variable_declaration
       (variable_declarator
         name: (identifier) @variable_name
         value: (_)? @variable_value))
+    """,
+    
+    # Class fields/properties
+    "class_fields": """
+    (class_declaration
+      body: (class_body
+        (public_field_definition
+          (accessibility_modifier)? @access_modifier
+          name: (property_identifier) @field_name
+          value: (_)? @field_value)))
+          
+    (class_declaration
+      body: (class_body
+        (method_definition
+          (accessibility_modifier)? @access_modifier
+          name: (property_identifier) @method_name
+          body: (statement_block) @method_body)))
     """,
     
     # Export statements

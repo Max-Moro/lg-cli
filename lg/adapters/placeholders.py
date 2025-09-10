@@ -60,7 +60,7 @@ class PlaceholderSpec:
 
         # Коллапсировать плейсхолдеры можно для импортов, комментариев, функций, методов, классов, интерфейсов и типов целиком.
         # Нельзя коллапсировать плейсхолдеры для литералов, тел функций или методов, докстрингов.
-        if self.placeholder_type not in ["import", "comment", "function", "method", "class", "interface", "type"]:
+        if self.placeholder_type in ["function_body", "method_body", "docstring", "string", "array", "object", "literal"]:
             return False
         
         # Проверяем содержимое между плейсхолдерами

@@ -93,6 +93,58 @@ class PublicApiOptimizer:
                 if not is_exported:
                     private_elements.append((type_def, "type"))
         
+        # Check namespaces (TypeScript)
+        namespaces = context.doc.query_opt("namespaces")
+        for node, capture_name in namespaces:
+            if capture_name == "namespace_name":
+                namespace_def = node.parent
+                is_exported = self.adapter.is_exported_element(namespace_def, context.doc)
+
+                if not is_exported:
+                    private_elements.append((namespace_def, "namespace"))
+        
+        # Check enums (TypeScript)
+        enums = context.doc.query_opt("enums")
+        for node, capture_name in enums:
+            if capture_name == "enum_name":
+                enum_def = node.parent
+                is_exported = self.adapter.is_exported_element(enum_def, context.doc)
+
+                if not is_exported:
+                    private_elements.append((enum_def, "enum"))
+
+        # Check class fields and methods (TypeScript)
+        class_fields = context.doc.query_opt("class_fields")
+        for node, capture_name in class_fields:
+            if capture_name in ("field_name", "method_name"):
+                # Get the parent definition node
+                field_def = node.parent
+                if field_def:
+                    # Check if field/method is public
+                    is_public = self.adapter.is_public_element(field_def, context.doc)
+
+                    # Remove private/protected class members
+                    if not is_public:
+                        element_type = "field" if capture_name == "field_name" else "method"
+                        private_elements.append((field_def, element_type))
+
+        # Check imports (remove non-re-exported imports)
+        imports = context.doc.query_opt("imports")
+        for node, capture_name in imports:
+            if capture_name == "import":
+                # For public API mode, only keep imports that are re-exported
+                # For simplicity, remove all imports that are not explicitly re-exported
+                # This is a conservative approach - could be refined to check for re-exports
+                import_text = context.doc.get_node_text(node)
+
+                # Keep only side-effect imports (no named imports)
+                if not any(keyword in import_text for keyword in ["{", "import ", "* as", "from"]):
+                    continue  # Keep side-effect imports
+
+                # Check if this import is re-exported elsewhere
+                # For now, remove all regular imports in public API mode
+                private_elements.append((node, "import"))
+
         # Check variable assignments
         assignments = context.doc.query_opt("assignments")
         for node, capture_name in assignments:
