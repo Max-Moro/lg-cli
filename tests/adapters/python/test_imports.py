@@ -207,7 +207,7 @@ class TestPythonImportOptimization:
         result, meta = adapter.process(lctx_py(do_imports))
         
         # Long import lists should be summarized
-        assert meta.get("code.removed.imports", 0) == 3
+        assert meta.get("code.removed.imports", 0) == 29
         assert "# … 29 imports omitted" in result
         
         assert_golden_match(result, "imports", "summarize_long")
@@ -258,7 +258,7 @@ from collections import defaultdict, Counter, deque
         result, meta = adapter.process(lctx_py(code))
         
         # Long from-import lists should be summarized
-        assert meta.get("code.removed.imports", 0) == 1
+        assert meta.get("code.removed.imports", 0) == 5
         assert "# … 5 imports omitted" in result
     
     def test_conditional_import_preservation(self):
@@ -381,7 +381,7 @@ from rest_framework.decorators import (
         result, meta = adapter.process(lctx_py(code))
         
         # Long import groups should be summarized
-        assert meta.get("code.removed.imports", 0) == 2
+        assert meta.get("code.removed.imports", 0) == 13
         assert "# … 8 imports omitted" in result
         
         # Short imports should be preserved

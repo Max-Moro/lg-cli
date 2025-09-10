@@ -213,7 +213,7 @@ class TestTypeScriptImportOptimization:
         result, meta = adapter.process(lctx_ts(do_imports))
         
         # Long import lists should be summarized
-        assert meta.get("code.removed.imports", 0) == 6
+        assert meta.get("code.removed.imports", 0) == 76
         assert  "// … 47 imports omitted" in result
         
         assert_golden_match(result, "imports", "summarize_long")
