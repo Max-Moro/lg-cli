@@ -8,7 +8,6 @@ from .function_bodies import FunctionBodyOptimizer
 from .comments import CommentOptimizer
 from .imports import ImportOptimizer, TreeSitterImportAnalyzer, ImportClassifier
 from .literals import LiteralOptimizer
-from .fields import FieldOptimizer, FieldsClassifier
 
 __all__ = [
     "PublicApiOptimizer",
@@ -16,8 +15,6 @@ __all__ = [
     "CommentOptimizer",
     "ImportOptimizer",
     "LiteralOptimizer",
-    "FieldOptimizer",
-    "FieldsClassifier",
     "TreeSitterImportAnalyzer",
     "ImportClassifier",
 ]

@@ -12,7 +12,7 @@ from tree_sitter import Language
 from ..code_base import CodeAdapter
 from ..code_model import CodeCfg
 from ..context import LightweightContext
-from ..optimizations import FieldsClassifier, ImportClassifier, TreeSitterImportAnalyzer, CommentOptimizer
+from ..optimizations import ImportClassifier, TreeSitterImportAnalyzer, CommentOptimizer
 from ..tree_sitter_support import TreeSitterDocument
 
 
@@ -65,16 +65,10 @@ class PythonAdapter(CodeAdapter[PythonCfg]):
         from .imports import PythonImportAnalyzer
         return PythonImportAnalyzer(classifier)
 
-    def create_fields_classifier(self, doc: TreeSitterDocument) -> FieldsClassifier:
-        """Создает языко-специфичный классификатор конструкторов и полей."""
-        from .fields import PythonFieldsClassifier
-        return PythonFieldsClassifier(doc)
-
     def create_code_analyzer(self, doc: TreeSitterDocument):
         """Создает Python-специфичный унифицированный анализатор кода."""
         from .code_analysis import PythonCodeAnalyzer
         return PythonCodeAnalyzer(doc)
-
 
     def should_skip(self, lightweight_ctx: LightweightContext) -> bool:
         """

@@ -56,13 +56,6 @@ class LiteralConfig:
 
 
 @dataclass
-class FieldConfig:
-    """Конфигурация обработки полей/свойств."""
-    strip_trivial_constructors: bool = False # пропуск тривиального тела в конструкторах
-    strip_trivial_accessors: bool = False  # геттеры/сеттеры
-
-
-@dataclass
 class BudgetConfig:
     """Бюджетирование токенов на файл."""
     max_tokens_per_file: Optional[int] = None
@@ -92,7 +85,6 @@ class CodeCfg:
     # Дополнительные оптимизации
     strip_literals: Union[bool, LiteralConfig] = False
     imports: ImportConfig = field(default_factory=ImportConfig)
-    fields: FieldConfig = field(default_factory=FieldConfig)
 
     # Система плейсхолдеров
     placeholders: PlaceholderConfig = field(default_factory=PlaceholderConfig)
@@ -151,13 +143,6 @@ class CodeCfg:
                 summarize_long=bool(ic.get("summarize_long", False)),
                 max_items_before_summary=int(ic.get("max_items_before_summary", 10)),
                 external_patterns=list(ic.get("external_only_patterns", []))
-            )
-
-        if "fields" in d:
-            fc = d["fields"]
-            self.fields = FieldConfig(
-                strip_trivial_constructors=bool(fc.get("strip_trivial_constructors", False)),
-                strip_trivial_accessors=bool(fc.get("strip_trivial_accessors", False))
             )
 
         if "placeholders" in d:

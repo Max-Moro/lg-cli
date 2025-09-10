@@ -33,9 +33,6 @@ python_full:
       max_string_length: 50
       max_array_elements: 10
       max_object_properties: 8
-    field_config:
-      strip_trivial_constructors: true
-      strip_trivial_accessors: true
     budget:
       max_tokens_per_file: 2000
       priority_order: ["imports", "classes", "functions", "docs"]
@@ -82,8 +79,6 @@ java_enterprise:
     comment_policy:
       policy: "keep_doc"
       keep_annotations: ["@param", "@return", "@throws", "@since", "@deprecated"]
-    field_config:
-      strip_trivial_accessors: true  # убираем геттеры/сеттеры
 
 # ==================== C/C++ ====================
 
@@ -164,6 +159,4 @@ mixed_project:
         strip_function_bodies: true
         comment_policy: "keep_doc"
       java:
-        field_config:
-          strip_trivial_accessors: true
         strip_function_bodies: true

@@ -12,7 +12,7 @@ from tree_sitter import Language
 from ..code_base import CodeAdapter
 from ..code_model import CodeCfg
 from ..context import LightweightContext
-from ..optimizations import FieldsClassifier, ImportClassifier, TreeSitterImportAnalyzer
+from ..optimizations import ImportClassifier, TreeSitterImportAnalyzer
 from ..tree_sitter_support import TreeSitterDocument
 
 
@@ -71,11 +71,6 @@ class TypeScriptAdapter(CodeAdapter[TypeScriptCfg]):
         """Создает TypeScript-специфичный анализатор импортов."""
         from .imports import TypeScriptImportAnalyzer
         return TypeScriptImportAnalyzer(classifier)
-
-    def create_fields_classifier(self, doc: TreeSitterDocument) -> FieldsClassifier:
-        """Создает языко-специфичный классификатор конструкторов и полей."""
-        from .fields import TypeScriptFieldsClassifier
-        return TypeScriptFieldsClassifier(doc)
 
     def create_code_analyzer(self, doc: TreeSitterDocument):
         """Создает TypeScript-специфичный унифицированный анализатор кода."""

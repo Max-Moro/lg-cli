@@ -17,8 +17,6 @@ from .optimizations import (
     CommentOptimizer,
     ImportOptimizer,
     LiteralOptimizer,
-    FieldOptimizer,
-    FieldsClassifier,
     TreeSitterImportAnalyzer,
     ImportClassifier
 )
@@ -46,11 +44,6 @@ class CodeAdapter(BaseAdapter[C], ABC):
     @abstractmethod
     def create_import_analyzer(self, classifier: ImportClassifier) -> TreeSitterImportAnalyzer:
         """Создает языко-специфичный анализатор импортов. Должен быть переопределен наследниками."""
-        pass
-
-    @abstractmethod
-    def create_fields_classifier(self, doc: TreeSitterDocument) -> FieldsClassifier:
-        """Создает языко-специфичный классификатор конструкторов и полей."""
         pass
 
     @abstractmethod
@@ -108,10 +101,6 @@ class CodeAdapter(BaseAdapter[C], ABC):
         if self.cfg.strip_literals:
             literal_optimizer = LiteralOptimizer(self)
             literal_optimizer.apply(context)
-        
-        # Обработка полей (конструкторы, геттеры, сеттеры)
-        field_optimizer = FieldOptimizer(self)
-        field_optimizer.apply(context)
 
     # ============= ХУКИ для вклинивания в процесс оптимизации ===========
 
