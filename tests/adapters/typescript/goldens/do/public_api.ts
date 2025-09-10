@@ -260,3 +260,135 @@ namespace InternalUtils {
 
 // Default export (should be preserved)
 export default UserManager;
+
+// ============= Examples with TypeScript decorators =============
+
+// Simple decorator examples
+function logged(target: any, propertyKey: string, descriptor: PropertyDescriptor) {
+    const originalMethod = descriptor.value;
+    descriptor.value = function (...args: any[]) {
+        console.log(`Calling ${propertyKey}`);
+        return originalMethod.apply(this, args);
+    };
+}
+
+function validate(target: any, propertyKey: string, descriptor: PropertyDescriptor) {
+    // Validation decorator
+}
+
+@logged
+class PrivateDecoratedClass {
+    /**
+     * Private class with decorator - should be removed completely including @logged.
+     */
+    
+    private data: string = 'private';
+    
+    @validate
+    private processData(): string {
+        return this.data.toUpperCase();
+    }
+}
+
+@logged
+@validate
+export class PublicDecoratedClass {
+    /**
+     * Public class with multiple decorators - should be preserved with decorators.
+     */
+    
+    public data: string = 'public';
+    
+    @logged
+    public processData(): string {
+        return this.data.toUpperCase();
+    }
+    
+    @validate
+    private _internalProcess(): void {
+        // Private method with decorator - should remove method and decorator
+    }
+}
+
+// Decorated functions
+@logged
+function privateDecoratedFunction(data: string): string {
+    /**
+     * Private function with decorator - should remove function and @logged decorator.
+     */
+    return data.toLowerCase();
+}
+
+@logged
+@validate
+export function publicDecoratedFunction(data: string): string {
+    /**
+     * Public function with decorators - should preserve function and decorators.
+     */
+    return data.toUpperCase();
+}
+
+// Interface with decorators (if supported)
+@logged
+interface PrivateDecoratedInterface {
+    /**
+     * Private interface with decorator - should remove interface and decorator.
+     */
+    prop: string;
+}
+
+@validate
+export interface PublicDecoratedInterface {
+    /**
+     * Public interface with decorator - should preserve interface and decorator.
+     */
+    value: number;
+}
+
+// Class with mixed decorated members
+export class MixedDecoratedClass {
+    @logged
+    public publicDecoratedMethod(): void {
+        // Public method with decorator - should preserve both
+    }
+    
+    @logged
+    @validate
+    private _privateDecoratedMethod(): void {
+        // Private method with decorators - should remove method and both decorators
+    }
+    
+    @validate
+    protected protectedDecoratedMethod(): void {
+        // Protected method with decorator - should remove method and decorator
+    }
+}
+
+// Multiple stacked decorators on private elements
+@logged
+@validate
+class PrivateMultiDecoratedClass {
+    /**
+     * Private class with multiple decorators - should remove class and all decorators.
+     */
+    
+    @logged
+    @validate
+    private multiDecoratedMethod(): void {
+        // Multiple decorators on private method
+    }
+}
+
+@logged
+@validate
+export class PublicMultiDecoratedClass {
+    /**
+     * Public class with multiple decorators - should preserve class and all decorators.
+     */
+    
+    @logged
+    @validate
+    public multiDecoratedMethod(): void {
+        // Multiple decorators on public method - should preserve all
+    }
+}

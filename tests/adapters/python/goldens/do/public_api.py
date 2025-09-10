@@ -1,7 +1,6 @@
 """Module for testing public API filtering."""
 
-import logging
-from typing import List, Optional
+from typing import List
 from functools import lru_cache
 
 # Module-level public variable
@@ -163,10 +162,13 @@ if __name__ == "__main__":
     print(obj.public_method())
     print(public_function("hello world"))
 
+def add_repr(cls):
+    cls.__repr__ = lambda self: f"<{cls.__name__} {self.__dict__}>"
+    return cls
 
-@my_decorator
+@add_repr
 class _PrivateDecoratedClass:
-    """Private class with decorator - should be removed completely including @my_decorator."""
+    """Private class with decorator - should be removed completely including @add_repr."""
 
     def __init__(self, name: str):
         self.name = name
