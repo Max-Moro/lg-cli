@@ -58,6 +58,11 @@ class TokenService:
     @property
     def model_info(self) -> ResolvedModel:
         """Ленивая инициализация конфигурации AI-моделей."""
+        if self.root is None:
+            raise RuntimeError(
+                "model_info недоступен для токенайзера без пути: "
+                "токенайзер имеет только энкодер, но не имеет доступа к конфигурации AI-моделей"
+            )
         if self._model_info is None:
             from lg.stats.load import get_model_info
             self._model_info = get_model_info(self.root, self.model_id)

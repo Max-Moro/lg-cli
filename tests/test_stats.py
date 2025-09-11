@@ -160,3 +160,25 @@ def test_prompt_shares_sum_to_100(tmp_path: Path, monkeypatch):
     shares = sum(f.promptShare for f in report.files)
 
     assert 99.9 <= shares <= 100.1
+
+
+def test_tokenizer_without_path_rejects_model_info():
+    """
+    Токенайзер без пути (создаваемый через default_tokenizer) должен
+    выбрасывать RuntimeError при попытке доступа к model_info,
+    поскольку у него нет доступа к конфигурации AI-моделей.
+    """
+    from lg.stats.tokenizer import default_tokenizer
+    
+    tokenizer = default_tokenizer()
+    
+    # Проверяем, что токенайзер создается с root=None
+    assert tokenizer.root is None
+    
+    # Энкодер должен работать нормально
+    assert tokenizer.count_text("test") > 0
+    assert tokenizer.encoder_name is not None
+    
+    # Но model_info должен выбрасывать RuntimeError
+    with pytest.raises(RuntimeError, match="model_info недоступен для токенайзера без пути"):
+        _ = tokenizer.model_info
