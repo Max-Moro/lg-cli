@@ -121,7 +121,6 @@ class CodeAdapter(BaseAdapter[C], ABC):
         import_optimizer.apply(context)
         
         # Обработка литералов
-        # TODO M6: Literal Trimming
         literal_optimizer = LiteralOptimizer(self)
         literal_optimizer.apply(context)
 

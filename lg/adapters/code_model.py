@@ -44,6 +44,12 @@ class ImportConfig:
     external_patterns: List[str] = field(default_factory=list)  # regex для определения внешних пакетов
 
 @dataclass
+class LiteralConfig:
+    """Конфигурация обработки литералов."""
+    max_tokens: Optional[int] = None  # максимальный допустимый размер контента литерала в токенах
+
+
+@dataclass
 class BudgetConfig:
     """Бюджетирование токенов на файл."""
     max_tokens_per_file: Optional[int] = None
@@ -75,6 +81,7 @@ class CodeCfg:
     
     # Дополнительные оптимизации
     imports: ImportConfig = field(default_factory=ImportConfig)
+    literals: LiteralConfig = field(default_factory=LiteralConfig)
 
     # Система плейсхолдеров
     placeholders: PlaceholderConfig = field(default_factory=PlaceholderConfig)
@@ -120,6 +127,12 @@ class CodeCfg:
                 summarize_long=bool(ic.get("summarize_long", False)),
                 max_items_before_summary=int(ic.get("max_items_before_summary", 10)),
                 external_patterns=list(ic.get("external_only_patterns", []))
+            )
+
+        if "literals" in d:
+            lc = d["literals"]
+            self.literals = LiteralConfig(
+                max_tokens=lc.get("max_tokens")
             )
 
         if "placeholders" in d:
