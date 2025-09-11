@@ -212,18 +212,17 @@ src-tests__literals:
 #              - "/typescript/"
               - "/test_infrastructure.py"
               - "/test_integration.py"
+              - "/golden_utils.py"
             children:
               python:
                 mode: allow
                 allow:
                   - "/conftest.py"
-                  - "/test_literals.py"
                   - "/goldens/do/literals.py"
               typescript:
                 mode: allow
                 allow:
                   - "/conftest.py"
-                  - "/test_literals.py"
                   - "/goldens/do/literals.ts"
 
 # Import optimization

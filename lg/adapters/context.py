@@ -50,19 +50,19 @@ class LightweightContext(LightState):
         # Для ленивой инициализации полноценного контекста
         self._full_context: Optional[ProcessingContext] = None
 
-    def get_full_context(self, adapter, token_service: TokenService) -> ProcessingContext:
+    def get_full_context(self, adapter, tokenizer: TokenService) -> ProcessingContext:
         """
         Ленивое создание полноценного ProcessingContext при необходимости.
         
         Args:
-            token_service: Сервис подсчёта токенов
+            tokenizer: Сервис подсчёта токенов
             adapter: Языковой адаптер для создания документа и генератора плейсхолдеров
             
         Returns:
             ProcessingContext инициализированный из этого облегченного контекста
         """
         if self._full_context is None:
-            self._full_context = ProcessingContext.from_lightweight(self, adapter, token_service)
+            self._full_context = ProcessingContext.from_lightweight(self, adapter, tokenizer)
         
         return self._full_context
 
@@ -82,7 +82,7 @@ class ProcessingContext(LightState):
         doc: TreeSitterDocument,
         editor: RangeEditor,
         placeholders: PlaceholderManager,
-        token_service: TokenService,
+        tokenizer: TokenService,
     ):
         super().__init__(file_path, raw_text, group_size, mixed)
 
@@ -90,7 +90,7 @@ class ProcessingContext(LightState):
         self.editor = editor
         self.placeholders = placeholders
         self.metrics = MetricsCollector(adapter_name)
-        self.token_service = token_service
+        self.tokenizer = tokenizer
 
     def add_placeholder(self, element_type: str, start_byte: int, end_byte: int, start_line: int, end_line: int,
                         placeholder_prefix: str = "", count: int = 1) -> None:
@@ -112,7 +112,7 @@ class ProcessingContext(LightState):
         cls,
         lightweight_ctx: LightweightContext,
         adapter,
-        token_service: TokenService
+        tokenizer: TokenService
     ) -> ProcessingContext:
         """
         Создать полноценный ProcessingContext из облегченного контекста.
@@ -120,7 +120,7 @@ class ProcessingContext(LightState):
         Args:
             lightweight_ctx: Облегченный контекст с базовой информацией
             adapter: Языковой адаптер для создания компонентов
-            token_service: Cервис подсчёта токенов
+            tokenizer: Cервис подсчёта токенов
 
         Returns:
             Полноценный ProcessingContext
@@ -145,5 +145,5 @@ class ProcessingContext(LightState):
             doc,
             editor,
             placeholders,
-            token_service,
+            tokenizer,
         )

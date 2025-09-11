@@ -4,10 +4,13 @@ src:
   filters:
     mode: allow
     allow:
-      - "/lg/adapters/"
+      - "/lg/"
     children:
       lg:
-        mode: block
+        mode: allow
+        allow:
+          - "/adapters/"
+          - "/stats/tokenizer.py"
         children:
           adapters:
             mode: block
@@ -17,7 +20,6 @@ src:
               - "/javascript.py"
               - "/markdown.py"
               - "/scala.py"
-              - "/optimizations/comments.py"
               - "/placeholders.py"
 
 src-budget:

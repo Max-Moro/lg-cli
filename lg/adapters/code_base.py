@@ -121,9 +121,9 @@ class CodeAdapter(BaseAdapter[C], ABC):
         import_optimizer.apply(context)
         
         # Обработка литералов
-        if self.cfg.strip_literals:
-            literal_optimizer = LiteralOptimizer(self)
-            literal_optimizer.apply(context)
+        # TODO M6: Literal Trimming
+        literal_optimizer = LiteralOptimizer(self)
+        literal_optimizer.apply(context)
 
     def _finalize_placeholders(self, context: ProcessingContext, ph_cfg: PlaceholderConfig) -> Tuple[str, Dict[str, Any]]:
         """

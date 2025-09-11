@@ -26,7 +26,7 @@ ${adapters/_/src}
 
 ## Unit-tests
 
-${adapters/optimizations/src-tests__public-api}
+${adapters/optimizations/src-tests__literals}
 
 # Описание текущей задачи
 

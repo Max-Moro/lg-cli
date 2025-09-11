@@ -14,7 +14,6 @@ VisibilityLevel = Literal["public", "protected", "private", "internal", "exporte
 FunctionBodyStrip = Literal["none", "all", "public_only", "non_public", "large_only"]
 CommentPolicy = Literal["keep_all", "strip_all", "keep_doc", "keep_first_sentence"]
 ImportPolicy = Literal["keep_all", "strip_all", "strip_external", "strip_local"]
-LiteralPolicy = Literal["keep_all", "truncate", "collapse"]
 PlaceholderStyle = Literal["inline", "block", "none"]
 
 
@@ -43,17 +42,6 @@ class ImportConfig:
     summarize_long: bool = False  # включить суммаризацию длинных списков импортов
     max_items_before_summary: int = 10  # количество импортов, после которого включается суммаризация
     external_patterns: List[str] = field(default_factory=list)  # regex для определения внешних пакетов
-
-
-@dataclass
-class LiteralConfig:
-    """Конфигурация обработки литералов данных."""
-    max_string_length: Optional[int] = None
-    max_array_elements: Optional[int] = None
-    max_object_properties: Optional[int] = None
-    max_literal_lines: Optional[int] = None
-    collapse_threshold: Optional[int] = None  # байт, после которых включается collapse
-
 
 @dataclass
 class BudgetConfig:
@@ -86,7 +74,6 @@ class CodeCfg:
     comment_policy: Union[CommentPolicy, CommentConfig] = "keep_all"
     
     # Дополнительные оптимизации
-    strip_literals: Union[bool, LiteralConfig] = False
     imports: ImportConfig = field(default_factory=ImportConfig)
 
     # Система плейсхолдеров
@@ -111,19 +98,6 @@ class CodeCfg:
                 min_lines=int(sfb.get("min_lines", 5)),
                 except_patterns=list(sfb.get("except_patterns", [])),
                 keep_annotated=list(sfb.get("keep_annotated", []))
-            )
-
-        # strip_literals: bool | dict (аналогично strip_function_bodies)
-        sl = d.get("strip_literals", False)
-        if isinstance(sl, bool):
-            self.strip_literals = sl
-        elif isinstance(sl, dict):
-            self.strip_literals = LiteralConfig(
-                max_string_length=int(sl["max_string_length"]) if "max_string_length" in sl else None,
-                max_array_elements=int(sl["max_array_elements"]) if "max_array_elements" in sl else None,
-                max_object_properties=int(sl["max_object_properties"]) if "max_object_properties" in sl else None,
-                max_literal_lines=int(sl["max_literal_lines"]) if "max_literal_lines" in sl else None,
-                collapse_threshold=int(sl["collapse_threshold"]) if "collapse_threshold" in sl else None
             )
 
         # comment_policy: str | dict
