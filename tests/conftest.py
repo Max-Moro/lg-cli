@@ -8,7 +8,7 @@ from pathlib import Path
 import pytest
 
 from lg.adapters.context import LightweightContext
-from lg.tokens.service import TokenService
+from lg.stats import TokenService
 
 
 def write(p: Path, text: str) -> Path:

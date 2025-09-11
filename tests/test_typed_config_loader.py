@@ -2,7 +2,7 @@ import pytest
 
 from lg.adapters.markdown import MarkdownAdapter
 from lg.markdown.model import MarkdownCfg
-from lg.tokens.service import TokenService
+from lg.stats import TokenService
 
 
 def test_markdown_cfg_nested_drop_is_parsed():

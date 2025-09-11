@@ -20,8 +20,7 @@ from .plan import build_plan
 from .protocol import PROTOCOL_VERSION
 from .render import render_by_section
 from .run_context import RunContext
-from .stats import get_model_info, compute_stats
-from .tokens.service import TokenService
+from .stats import get_model_info, compute_stats, TokenService
 from .types import RunOptions, RenderedDocument, ContextSpec, Manifest, ProcessedBlob
 from .vcs import NullVcs
 from .vcs.git import GitVcs
@@ -38,9 +37,9 @@ def _build_run_ctx(options: RunOptions) -> RunContext:
 
     # Единый сервис токенов
     model_info = get_model_info(root, options.model)
-    token_service = TokenService(encoder_name=model_info.encoder)
+    tokenizer = TokenService(cfg_name=model_info.encoder)
 
-    return RunContext(root=root, options=options, cache=cache, vcs=vcs, token_service=token_service)
+    return RunContext(root=root, options=options, cache=cache, vcs=vcs, tokenizer=tokenizer)
 
 
 def _pipeline_common(target: str, run_ctx: RunContext) -> Tuple[ContextSpec, Manifest, list[ProcessedBlob], ComposedDocument]:
@@ -98,7 +97,7 @@ def run_report(target: str, options: RunOptions) -> RunResultM:
     spec, manifest, blobs, composed = _pipeline_common(target, run_ctx)
 
     model_info = get_model_info(run_ctx.root, options.model)
-    files_rows, totals, ctx_block, enc_name = compute_stats(
+    files_rows, totals, ctx_block = compute_stats(
         blobs=blobs,
         rendered_final_text=composed.text,
         rendered_sections_only_text=composed.sections_only_text,
@@ -106,6 +105,7 @@ def run_report(target: str, options: RunOptions) -> RunResultM:
         spec=spec,
         manifest=manifest,
         model_info=model_info,
+        tokenizer=run_ctx.tokenizer,
         code_fence=options.code_fence,
         cache=run_ctx.cache,
     )
@@ -162,7 +162,7 @@ def run_report(target: str, options: RunOptions) -> RunResultM:
         scope=scope,
         target=target_norm,
         model=model_info.label,
-        encoder=enc_name,
+        encoder=run_ctx.tokenizer.encoder_name(),
         ctxLimit=model_info.ctx_limit,
         total=total_m,
         files=files_m,

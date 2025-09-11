@@ -5,7 +5,7 @@ Shared fixtures and utilities for TypeScript adapter tests.
 import pytest
 
 from lg.adapters.typescript import TypeScriptAdapter, TypeScriptCfg
-from lg.tokens.service import TokenService
+from lg.stats import TokenService
 from tests.conftest import lctx_ts, lctx, TokenServiceStub  # noqa: F401
 from ..golden_utils import assert_golden_match, load_sample_code  # noqa: F401
 

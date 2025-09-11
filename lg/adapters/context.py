@@ -13,7 +13,7 @@ from .metrics import MetricsCollector
 from .placeholders import PlaceholderManager, create_placeholder_manager
 from .range_edits import RangeEditor
 from .tree_sitter_support import TreeSitterDocument, Node
-from ..tokens.service import TokenService
+from ..stats import TokenService
 
 
 class LightState:

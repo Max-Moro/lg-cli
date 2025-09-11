@@ -4,6 +4,19 @@ from lg.engine import run_report
 from lg.types import RunOptions
 
 
+class FakeEnc:
+    def __init__(self, counter):
+        self.counter = counter
+
+    def encode(self, s: str):
+        self.counter["encode"] += 1
+        # простая «токенизация»: длина в символах
+        return list(s)
+
+    @property
+    def name(self):
+        return "fake_enc"
+
 def test_processed_cache_skips_adapter_on_second_run(tmpproj: Path, monkeypatch):
     monkeypatch.chdir(tmpproj)
 
@@ -42,14 +55,6 @@ def test_token_counts_cached_between_runs(tmpproj: Path, monkeypatch):
     import lg.stats as lg_models
     import tiktoken
 
-    class FakeEnc:
-        def __init__(self, counter):
-            self.counter = counter
-        def encode(self, s: str):
-            self.counter["encode"] += 1
-            # простая «токенизация»: длина в символах
-            return list(s)
-
     counter = {"encode": 0}
 
     def fake_get_model_info(_root, selector: str):
@@ -80,13 +85,6 @@ def test_rendered_tokens_cached(tmpproj: Path, monkeypatch):
     from lg.stats import ResolvedModel
     import lg.stats as lg_models
     import tiktoken
-
-    class FakeEnc:
-        def __init__(self, counter):
-            self.counter = counter
-        def encode(self, s: str):
-            self.counter["encode"] += 1
-            return list(s)
 
     counter = {"encode": 0}
 
