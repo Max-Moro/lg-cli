@@ -6,12 +6,12 @@
 const SHORT_MESSAGE = "Hello, World!";
 
 // Long string literal (candidate for trimming)
-const LONG_MESSAGE = `This is an extremely long message...` // … literal string (−64 tokens);
+const LONG_MESSAGE = `This is an extremely long message that…` /* literal string (−63 tokens) */;
 
 // Multi-line template literal with embedded expressions
 const TEMPLATE_WITH_DATA = `
 User Information:
-- Name:...` // … literal string (−59 tokens);
+- Name:…` // literal string (−59 tokens);
 
 interface DataContainer {
     // Small array (should be preserved)
@@ -30,19 +30,28 @@ interface DataContainer {
 export class LiteralDataManager {
     // Class properties with various literal types
     private readonly smallConfig = {
-        debug: true...} // … literal object (−11 tokens);
+    debug: true,
+    "…": "…",
+} // literal object (−4 tokens);
     
     private readonly largeConfig = {
-        database: {...} // … literal object (−239 tokens);
+    "…": "…",
+} // literal object (−236 tokens);
     
     constructor() {
         // Array with many elements (trimming candidate)
         this.supportedLanguages = [
-            "english", "spanish...] // … literal array (−96 tokens);
+    "english",
+    "spanish",
+    "french", "…",
+] // literal array (−86 tokens);
         
         // Set with many elements
         this.allowedExtensions = new Set([
-            ".js", ".ts"...] // … literal array (−56 tokens));
+    ".js",
+    ".ts",
+    ".jsx", "…",
+] // literal array (−48 tokens));
     }
     
     public processData(): DataContainer {
@@ -50,19 +59,26 @@ export class LiteralDataManager {
         const smallArray = ["one", "two", "three"];
         
         const largeArray = [
-            "item_001", ...] // … literal array (−151 tokens);
+    "item_001",
+    "item_002", "…",
+] // literal array (−142 tokens);
         
         const nestedData = {
-            level1:...} // … literal object (−146 tokens);
+    "…": "…",
+} // literal object (−144 tokens);
         
         return {
-            tags: smallArray...} // … literal object (−28 tokens);
+    tags: smallArray,
+    items: largeArray,
+    "…": "…",
+} // literal object (−15 tokens);
     }
     
     public getLongQuery(): string {
         // Very long SQL-like query string
         return `
-            SELECT...` // … literal string (−184 tokens);
+            SELECT 
+                users.id…` // literal string (−180 tokens);
     }
     
     // Properties with literal data
@@ -72,15 +88,18 @@ export class LiteralDataManager {
 
 // Module-level constants with different sizes
 export const SMALL_CONSTANTS = {
-    API_VERSION:...} // … literal object (−10 tokens);
+    API_VERSION: "v1",
+    "…": "…",
+} // literal object (−0 tokens);
 
 export const LARGE_CONSTANTS = {
-    HTTP_STATUS_CODES:...} // … literal object (−451 tokens);
+    "…": "…",
+} // literal object (−450 tokens);
 
 // Helper functions that use literal data
 function getUserName(): string { return "John Doe"; }
 function getUserEmail(): string { return "john.doe@example.com"; }
 function getAccountStatus(): string { return "active"; }
 function getPermissions(): string[] { return ["read", "write", "admin"]; }
-function getLastLogin(): string { return "2024-01-15T10..." // … literal string (−5 tokens); }
+function getLastLogin(): string { return "2024-01-15T10…" /* literal string (−5 tokens) */; }
 function getProfileCompleteness(): number { return 85; }

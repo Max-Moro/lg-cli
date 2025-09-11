@@ -6,12 +6,12 @@ import json
 SHORT_STRING = "hello"
 
 # Long string literal (candidate for trimming)
-LONG_STRING = """This is a very long string...""" # … literal string (−54 tokens)
+LONG_STRING = """This is a very long string that…""" """ literal string (−53 tokens) """
 
 # Multi-line string with data
 DATA_STRING = """
 {
-    "users":...""" # … literal string (−114 tokens)
+    "users": […""" # literal string (−114 tokens)
 
 class DataContainer:
     """Class with various literal types."""
@@ -22,34 +22,44 @@ class DataContainer:
         
         # Large array (candidate for trimming)
         self.large_list = [
-            "item_1",...] # … literal array (−125 tokens)
+    "item_1",
+    "item_2", "…",
+] # literal array (−116 tokens)
         
         # Small dictionary (should be preserved)
-        self.small_dict = {"name": "test", "value...} # … literal object (−2 tokens)
+        self.small_dict = {"name": "test", "value": 42, "…": "…"} """ literal object (−-6 tokens) """
         
         # Large dictionary (candidate for trimming)
         self.large_dict = {
-            "user_id":...} # … literal object (−240 tokens)
+    "user_id": 12345,
+    "…": "…",
+} # literal object (−230 tokens)
 
 def process_data():
     """Function with various literal data."""
     # Multi-line list
     categories = [
-        "Technology", "Science"...] # … literal array (−47 tokens)
+    "Technology",
+    "Science",
+    "Health", "…",
+] # literal array (−39 tokens)
     
     # Nested data structure
     config = {
-        "database":...} # … literal object (−159 tokens)
+    "…": "…",
+} # literal object (−157 tokens)
     
     # Very long single-line string
-    sql_query = "SELECT users.id, users.username,..." # … literal string (−67 tokens)
+    sql_query = "SELECT users.id, users.username, users…" """ literal string (−66 tokens) """
     
     return categories, config, sql_query
 
 # Set literal
-TAGS = [{
-    "python", "javascript"...] # … literal array (−43 tokens)
+TAGS = [
+    , "…",
+] # literal array (−46 tokens)
 
 # Tuple with many elements
 COORDINATES = (
-    (0, 0),...) # … literal tuple (−67 tokens)
+    (0, 0), "…",
+) # literal tuple (−64 tokens)
