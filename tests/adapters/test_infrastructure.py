@@ -101,7 +101,7 @@ class TestAdapterMetrics:
         """Test basic metrics collection."""
         from lg.adapters.metrics import MetricsCollector
         
-        collector = MetricsCollector()
+        collector = MetricsCollector("test")
         
         # Test ленивый инкремент
         collector.increment("test.counter")
@@ -117,11 +117,10 @@ class TestAdapterMetrics:
         """Test merging of metrics collectors."""
         from lg.adapters.metrics import MetricsCollector
         
-        collector1 = MetricsCollector()
+        collector1 = MetricsCollector("python")
         collector1.increment("functions", 2)
-        collector1.set("adapter", "python")
-        
-        collector2 = MetricsCollector()
+
+        collector2 = MetricsCollector("python")
         collector2.increment("functions", 3)
         collector2.increment("methods", 1)
         
@@ -129,7 +128,6 @@ class TestAdapterMetrics:
         
         assert collector1.get("functions") == 5  # 2 + 3
         assert collector1.get("methods") == 1
-        assert collector1.get("adapter") == "python"  # Should be preserved
 
 
 class TestTreeSitterInfrastructure:

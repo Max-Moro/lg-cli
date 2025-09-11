@@ -17,7 +17,7 @@ class TestPythonCommentOptimization:
         result, meta = adapter.process(lctx_py(do_comments))
         
         # No comments should be removed
-        assert meta.get("code.removed.comments", 0) == 0
+        assert meta.get("python.removed.comment", 0) == 0
         assert "# This is a regular comment" in result
         assert "# FIXME: Should use better data structure" in result
         assert '"""Module docstring with detailed description.' in result
@@ -31,7 +31,7 @@ class TestPythonCommentOptimization:
         result, meta = adapter.process(lctx_py(do_comments))
         
         # Comments should be removed
-        assert meta.get("code.removed.comments", 0) > 0
+        assert meta.get("python.removed.comment", 0) == 28
         assert "# … comment omitted" in result
         
         assert_golden_match(result, "comments", "strip_all")
@@ -43,7 +43,7 @@ class TestPythonCommentOptimization:
         result, meta = adapter.process(lctx_py(do_comments))
         
         # Regular comments should be removed, docstrings preserved
-        assert meta.get("code.removed.comments", 0) > 0
+        assert meta.get("python.removed.comment", 0) == 28
         assert '"""Module docstring with detailed description.' in result
         assert '"""Class with various comment types."""' in result
         # Regular comments should be replaced with placeholders
@@ -58,7 +58,7 @@ class TestPythonCommentOptimization:
         result, meta = adapter.process(lctx_py(do_comments))
         
         # Docstrings should be truncated to first sentence
-        assert meta.get("code.removed.comments", 0) > 0
+        assert meta.get("python.removed.comment", 0) == 28
         assert "Module docstring with detailed description." in result
         # But not the full docstring
         assert "This module demonstrates various comment styles" not in result
@@ -151,7 +151,7 @@ another = "test"  # Another inline comment
         
         # Inline comments should be processed
         assert "# This is an inline comment" not in result
-        assert meta.get("code.removed.comments", 0) > 0
+        assert meta.get("python.removed.comment", 0) == 2
     
     def test_multiline_docstrings(self):
         """Test handling of multiline docstrings."""

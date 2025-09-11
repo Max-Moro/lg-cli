@@ -17,8 +17,8 @@ class TestPythonFunctionBodyOptimization:
         result, meta = adapter.process(lctx_py(do_function_bodies))
         
         # Check that functions were processed
-        assert meta["code.removed.function_bodies"] > 0
-        assert meta["code.removed.method_bodies"] > 0
+        assert meta.get("python.removed.function_body", 0) == 1
+        assert meta.get("python.removed.method_body", 0) == 4
         assert "# … method body omitted" in result
         assert "# … function body omitted" in result
         
@@ -46,8 +46,8 @@ class TestPythonFunctionBodyOptimization:
         result, meta = adapter.process(lctx_py(do_function_bodies))
         
         # No functions should be removed
-        assert meta.get("code.removed.function_bodies", 0) == 0
-        assert meta.get("code.removed.method_bodies", 0) == 0
+        assert meta.get("python.removed.function_body", 0) == 0
+        assert meta.get("python.removed.method_bodies", 0) == 0
         # Result should be close to original (may have minor whitespace changes)
         assert "def add(self, a: int, b: int) -> int:" in result
         assert "result = a + b" in result
@@ -81,7 +81,7 @@ def _private_function():
         assert "def _private_function():" in result
         assert "a = 10" in result
         
-        assert meta.get("code.removed.function_bodies", 0) > 0
+        assert meta.get("python.removed.function_body", 0) == 1
     
     def test_non_public_function_stripping(self):
         """Test non_public mode for function body stripping."""
@@ -112,7 +112,7 @@ def _private_function():
         assert "# … function body omitted" in result
         assert "a = 10" not in result
         
-        assert meta.get("code.removed.function_bodies", 0) > 0
+        assert meta.get("python.removed.function_body", 0) == 1
 
 
 class TestPythonFunctionBodyEdgeCases:
@@ -164,7 +164,7 @@ def complex():
         assert '"""Inner function."""' not in result
         # At least some optimization should occur
         assert "# … function body omitted (7 lines)" in result
-        assert meta.get("code.removed.function_bodies", 0) > 0
+        assert meta.get("python.removed.function_body", 0) == 2
     
     def test_class_methods(self):
         """Test handling of class methods specifically."""
@@ -206,7 +206,7 @@ def complex():
         assert "self.initialized = True" not in result
         assert "result = self.value" not in result
         
-        assert meta.get("code.removed.method_bodies", 0) > 0
+        assert meta.get("python.removed.method_body", 0) == 4
 
 
 class TestPythonDocstringPreservation:
@@ -251,7 +251,7 @@ class TestPythonDocstringPreservation:
         assert "# … function body omitted" in result
         
         # Should report function removal
-        assert meta.get("code.removed.function_bodies", 0) > 0
+        assert meta.get("python.removed.function_body", 0) == 1
     
     def test_method_with_docstring_preserved(self):
         """Test that method docstrings are preserved when bodies are stripped."""
@@ -286,7 +286,7 @@ class TestPythonDocstringPreservation:
         assert "# … method body omitted" in result
 
         # Should report method removal
-        assert meta.get("code.removed.method_bodies", 0) > 0
+        assert meta.get("python.removed.method_body", 0) == 1
     
     def test_function_without_docstring_full_removal(self):
         """Test that functions without docstrings have bodies fully removed."""
@@ -312,7 +312,7 @@ class TestPythonDocstringPreservation:
         # Should have placeholder
         assert "# … function body omitted" in result
         
-        assert meta.get("code.removed.function_bodies", 0) > 0
+        assert meta.get("python.removed.function_body", 0) == 1
     
     def test_different_docstring_formats(self):
         """Test preservation of different docstring formats."""
@@ -351,7 +351,7 @@ def func3():
         assert 'return "result2"' not in result
         assert 'return "result3"' not in result
         
-        assert meta.get("code.removed.function_bodies", 0) == 3
+        assert meta.get("python.removed.function_body", 0) == 3
     
     def test_mixed_functions_with_without_docstrings(self):
         """Test mixed functions - some with docstrings, some without."""
@@ -389,7 +389,7 @@ def undocumented_function():
         # Should have placeholders
         assert "# … function body omitted" in result
         
-        assert meta.get("code.removed.function_bodies", 0) == 2
+        assert meta.get("python.removed.function_body", 0) == 2
     
     def test_docstring_only_function(self):
         """Test function that contains only a docstring."""

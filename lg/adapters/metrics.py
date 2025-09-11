@@ -14,15 +14,16 @@ class MetricsCollector:
     Решает проблему необходимости предварительного объявления всех полей.
     """
     
-    def __init__(self):
+    def __init__(self, adapter_name: str):
         self._metrics: Dict[str, Any] = {}
-    
+        self.adapter_name: str = adapter_name
+
     def increment(self, key: str, value: Union[int, float] = 1) -> None:
         """
         Ленивый инкремент - автоматически создает ключ если его нет.
         
         Args:
-            key: Ключ метрики (например, "code.removed.functions")
+            key: Ключ метрики (например, "python.removed.function")
             value: Значение для добавления (по умолчанию 1)
         """
         current = self._metrics.get(key, 0)
@@ -46,15 +47,15 @@ class MetricsCollector:
     
     def add_bytes_saved(self, bytes_count: int) -> None:
         """Метод для учета сэкономленных байт."""
-        self.increment("code.bytes_saved", bytes_count)
+        self.increment(self.adapter_name + ".bytes_saved", bytes_count)
     
     def add_lines_saved(self, lines_count: int) -> None:
         """Метод для учета сэкономленных строк."""
-        self.increment("code.lines_saved", lines_count)
+        self.increment(self.adapter_name + ".lines_saved", lines_count)
     
     def mark_placeholder_inserted(self) -> None:
         """Отметить вставку плейсхолдера."""
-        self.increment("code.placeholders")
+        self.increment(self.adapter_name + ".placeholders")
     
     def mark_element_removed(self, element_type: str, count: int = 1) -> None:
         """
@@ -64,32 +65,7 @@ class MetricsCollector:
             element_type: Тип элемента (function, method, class, interface, etc.)
             count: Количество удаленных элементов (по умолчанию 1)
         """
-        # Маппинг типов элементов в метрики во множественном числе
-        element_type_to_metric = {
-            "function": "functions",
-            "method": "methods",
-            "function_body": "function_bodies",
-            "method_body": "method_bodies",
-            "constructor": "constructors",
-            "getter": "getters",
-            "setter": "setters",
-            "class": "classes",
-            "interface": "interfaces",
-            "type": "types",
-            "enum": "enums",
-            "namespace": "namespaces",
-            "field": "fields",
-            "comment": "comments",
-            "docstring": "docstrings",
-            "import": "imports",
-            "literal": "literals",
-            "string": "strings",
-            "array": "arrays",
-            "object": "objects",
-        }
-        
-        metric_name = element_type_to_metric.get(element_type, element_type + "s")
-        metric_key = f"code.removed.{metric_name}"
+        metric_key = f"{self.adapter_name}.removed.{element_type}"
         self.increment(metric_key, count)
 
     def merge(self, other: MetricsCollector) -> None:

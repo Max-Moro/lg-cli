@@ -17,8 +17,8 @@ class TestTypeScriptFunctionBodyOptimization:
         result, meta = adapter.process(lctx_ts(do_function_bodies))
         
         # Check that functions were processed
-        assert meta["code.removed.function_bodies"] == 6
-        assert meta["code.removed.method_bodies"] == 5
+        assert meta.get("typescript.removed.function_body", 0) == 6
+        assert meta.get("typescript.removed.method_body", 0) == 5
         assert "// … method body omitted (11 lines)" in result
         assert "// … function body omitted (13 lines)" in result
         
@@ -74,7 +74,7 @@ const multiline = (users) => {
 
         # We expect 2 multiline arrow functions to be stripped
         expected_stripped = 2
-        assert meta.get("code.removed.function_bodies", 0) == placeholder_count == expected_stripped
+        assert meta.get("typescript.removed.function_body", 0) == placeholder_count == expected_stripped
 
         assert_golden_match(result, "function_bodies", "arrow_functions")
     
@@ -125,8 +125,8 @@ export class Calculator {
         
         # Should be nearly identical to original
         assert "return 42;" in result
-        assert meta.get("code.removed.function_bodies", 0) == 0
-        assert meta.get("code.removed.method_bodies", 0) == 0
+        assert meta.get("typescript.removed.function_body", 0) == 0
+        assert meta.get("typescript.removed.method_bodies", 0) == 0
 
     def test_public_only_method_stripping(self):
         """Test public_only mode for TypeScript method body stripping."""

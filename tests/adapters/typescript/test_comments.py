@@ -17,7 +17,7 @@ class TestTypeScriptCommentOptimization:
         result, meta = adapter.process(lctx_ts(do_comments))
         
         # No comments should be removed
-        assert meta.get("code.removed.comments", 0) == 0
+        assert meta.get("typescript.removed.comment", 0) == 0
         assert "// Single-line comment at module level" in result
         assert "Multi-line comment explaining" in result
         assert "* This method performs comprehensive" in result
@@ -31,7 +31,7 @@ class TestTypeScriptCommentOptimization:
         result, meta = adapter.process(lctx_ts(do_comments))
         
         # Comments should be removed
-        assert meta.get("code.removed.comments", 0) > 0
+        assert meta.get("typescript.removed.comment", 0) == 67
         assert "// … comment omitted" in result
         
         assert_golden_match(result, "comments", "strip_all")
@@ -43,7 +43,7 @@ class TestTypeScriptCommentOptimization:
         result, meta = adapter.process(lctx_ts(do_comments))
         
         # Regular comments should be removed, JSDoc preserved
-        assert meta.get("code.removed.comments", 0) > 0
+        assert meta.get("typescript.removed.comment", 0) == 67
         assert "/**" in result and "Interface with JSDoc documentation" in result
         assert "* Class constructor with detailed JSDoc" in result
         # Regular comments should be replaced with placeholders
@@ -58,7 +58,7 @@ class TestTypeScriptCommentOptimization:
         result, meta = adapter.process(lctx_ts(do_comments))
         
         # JSDoc should be truncated to first sentence
-        assert meta.get("code.removed.comments", 0) > 0
+        assert meta.get("typescript.removed.comment", 0) == 67
         assert "Interface with JSDoc documentation." in result
         # But not the full documentation
         assert "This should be preserved when keeping documentation" not in result
@@ -140,7 +140,7 @@ const config: Config = {
         # Inline comments should be processed
         assert "// Connection timeout in milliseconds" not in result
         assert "// Number of retry attempts" not in result
-        assert meta.get("code.removed.comments", 0) > 0
+        assert meta.get("typescript.removed.comment", 0) == 6
     
     def test_nested_jsdoc_tags(self):
         """Test handling of complex JSDoc with nested tags."""

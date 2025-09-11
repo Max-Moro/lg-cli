@@ -125,7 +125,7 @@ class TestTypeScriptImportOptimization:
         result, meta = adapter.process(lctx_ts(do_imports))
         
         # No imports should be removed
-        assert meta.get("code.removed.imports", 0) == 0
+        assert meta.get("typescript.removed.imports", 0) == 0
         assert "import { Component, useState, useEffect, useCallback, useMemo } from 'react'" in result
         assert "import * as lodash from 'lodash'" in result
         assert "import axios from 'axios'" in result
@@ -141,7 +141,7 @@ class TestTypeScriptImportOptimization:
         result, meta = adapter.process(lctx_ts(do_imports))
         
         # Local imports should be removed
-        assert meta.get("code.removed.imports", 0) > 0
+        assert meta.get("typescript.removed.import", 0) == 45
         
         # External imports should be preserved
         assert "import axios from 'axios'" in result
@@ -163,7 +163,7 @@ class TestTypeScriptImportOptimization:
         result, meta = adapter.process(lctx_ts(do_imports))
         
         # External imports should be removed
-        assert meta.get("code.removed.imports", 0) > 0
+        assert meta.get("typescript.removed.import", 0) == 87
         
         # Local imports should be preserved
         assert "from './services/user-service'" in result
@@ -186,7 +186,7 @@ class TestTypeScriptImportOptimization:
         result, meta = adapter.process(lctx_ts(do_imports))
         
         # All imports should be removed
-        assert meta.get("code.removed.imports", 0) > 0
+        assert meta.get("typescript.removed.import", 0) == 132
         
         # No imports should remain (except possibly placeholders)
         lines = [line.strip() for line in result.split('\n') if line.strip()]
@@ -208,7 +208,7 @@ class TestTypeScriptImportOptimization:
         result, meta = adapter.process(lctx_ts(do_imports))
         
         # Long import lists should be summarized
-        assert meta.get("code.removed.imports", 0) == 76
+        assert meta.get("typescript.removed.import", 0) == 76
         assert  "// … 47 imports omitted" in result
         
         assert_golden_match(result, "imports", "summarize_long")
@@ -261,7 +261,7 @@ import { Observable, Subject, map, filter } from 'rxjs';
         result, meta = adapter.process(lctx_ts(code))
         
         # Long named import lists should be summarized
-        assert meta.get("code.removed.imports", 0) >= 0
+        assert meta.get("typescript.removed.imports", 0) >= 0
     
     def test_type_only_imports(self):
         """Test handling of TypeScript type-only imports."""

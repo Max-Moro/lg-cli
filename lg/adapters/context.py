@@ -78,6 +78,7 @@ class ProcessingContext(LightState):
         raw_text: str,
         group_size: int,
         mixed: bool,
+        adapter_name: str,
         doc: TreeSitterDocument,
         editor: RangeEditor,
         placeholders: PlaceholderManager,
@@ -88,7 +89,7 @@ class ProcessingContext(LightState):
         self.doc = doc
         self.editor = editor
         self.placeholders = placeholders
-        self.metrics = MetricsCollector()
+        self.metrics = MetricsCollector(adapter_name)
         self.token_service = token_service
 
     def add_placeholder(self, element_type: str, start_byte: int, end_byte: int, start_line: int, end_line: int,
@@ -140,6 +141,7 @@ class ProcessingContext(LightState):
             lightweight_ctx.raw_text,
             lightweight_ctx.group_size,
             lightweight_ctx.mixed,
+            adapter.name,
             doc,
             editor,
             placeholders,

@@ -16,10 +16,10 @@ class TestPythonPublicApiFiltering:
         result, meta = adapter.process(lctx_py(do_public_api))
         
         # Private elements should be removed
-        assert meta.get("code.removed.functions", 0) == 3
-        assert meta.get("code.removed.methods", 0) == 7
-        assert meta.get("code.removed.classes", 0) == 3
-        assert meta.get("code.removed.variables", 0) == 2
+        assert meta.get("python.removed.function", 0) == 3
+        assert meta.get("python.removed.method", 0) == 7
+        assert meta.get("python.removed.class", 0) == 3
+        assert meta.get("python.removed.variable", 0) == 2
 
         # Public elements should be preserved
         assert "def public_function(" in result

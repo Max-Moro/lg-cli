@@ -64,8 +64,8 @@ class TestCrossLanguageIntegration:
         assert "// … function body omitted (7 lines)" in ts_result
 
         # Both should report function removal
-        assert python_meta.get("code.removed.function_bodies", 0) == 1
-        assert ts_meta.get("code.removed.function_bodies", 0) == 1
+        assert python_meta.get("python.removed.function_body", 0) == 1
+        assert ts_meta.get("typescript.removed.function_body", 0) == 1
 
 
 class TestEndToEndPipeline:
@@ -121,7 +121,7 @@ class TestEndToEndPipeline:
         # Should handle large files
         assert isinstance(result, str)
         assert len(result) > 0
-        assert meta.get("code.removed.function_bodies", 0) == 100
+        assert meta.get("python.removed.function_body", 0) == 100
 
 
 class TestConfigurationIntegration:

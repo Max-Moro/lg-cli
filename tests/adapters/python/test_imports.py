@@ -120,7 +120,7 @@ class TestPythonImportOptimization:
         result, meta = adapter.process(lctx_py(do_imports))
         
         # No imports should be removed
-        assert meta.get("code.removed.imports", 0) == 0
+        assert meta.get("python.removed.import", 0) == 0
         assert "import os" in result
         assert "import numpy as np" in result
         assert "from .utils import helper_function" in result
@@ -136,7 +136,7 @@ class TestPythonImportOptimization:
         result, meta = adapter.process(lctx_py(do_imports))
         
         # Local imports should be removed
-        assert meta.get("code.removed.imports", 0) > 0
+        assert meta.get("python.removed.import", 0) == 24
         
         # External imports should be preserved
         assert "import os" in result
@@ -157,7 +157,7 @@ class TestPythonImportOptimization:
         result, meta = adapter.process(lctx_py(do_imports))
         
         # External imports should be removed
-        assert meta.get("code.removed.imports", 0) > 0
+        assert meta.get("python.removed.import", 0) == 58
         
         # Local imports should be preserved
         assert "from .utils import helper_function" in result
@@ -180,7 +180,7 @@ class TestPythonImportOptimization:
         result, meta = adapter.process(lctx_py(do_imports))
         
         # All imports should be removed
-        assert meta.get("code.removed.imports", 0) > 0
+        assert meta.get("python.removed.import", 0) == 82
         
         # No imports should remain (except possibly placeholders)
         lines = [line.strip() for line in result.split('\n') if line.strip()]
@@ -202,7 +202,7 @@ class TestPythonImportOptimization:
         result, meta = adapter.process(lctx_py(do_imports))
         
         # Long import lists should be summarized
-        assert meta.get("code.removed.imports", 0) == 29
+        assert meta.get("python.removed.import", 0) == 29
         assert "# … 29 imports omitted" in result
         
         assert_golden_match(result, "imports", "summarize_long")
@@ -251,7 +251,7 @@ from collections import defaultdict, Counter, deque
         result, meta = adapter.process(lctx_py(code))
         
         # Long from-import lists should be summarized
-        assert meta.get("code.removed.imports", 0) == 5
+        assert meta.get("python.removed.import", 0) == 5
         assert "# … 5 imports omitted" in result
     
     def test_conditional_import_preservation(self):
@@ -339,7 +339,7 @@ import external.library.with.deep.structure
         
         # Classification should work for deeply nested modules
         # Exact behavior depends on implementation heuristics
-        assert meta.get("code.removed.imports", 0) >= 0
+        assert meta.get("python.removed.import", 0) >= 0
     
     def test_import_summarization_grouping(self):
         """Test that import summarization groups consecutive imports."""
@@ -369,7 +369,7 @@ from rest_framework.decorators import (
         result, meta = adapter.process(lctx_py(code))
         
         # Long import groups should be summarized
-        assert meta.get("code.removed.imports", 0) == 13
+        assert meta.get("python.removed.import", 0) == 13
         assert "# … 8 imports omitted" in result
         
         # Short imports should be preserved
