@@ -34,11 +34,7 @@ def _build_run_ctx(options: RunOptions) -> RunContext:
     tool_ver = tool_version()
     cache = Cache(root, enabled=None, fresh=False, tool_version=tool_ver)
     vcs = GitVcs() if (root / ".git").is_dir() else NullVcs()
-
-    # Единый сервис токенов
-    model_info = get_model_info(root, options.model)
-    tokenizer = TokenService(cfg_name=model_info.encoder)
-
+    tokenizer = TokenService(root, options.model)
     return RunContext(root=root, options=options, cache=cache, vcs=vcs, tokenizer=tokenizer)
 
 

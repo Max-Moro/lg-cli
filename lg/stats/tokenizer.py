@@ -1,6 +1,12 @@
 from __future__ import annotations
 
+from pathlib import Path
+from typing import Tuple, Optional
+
+import tiktoken
 from tiktoken import Encoding
+
+from lg.stats import get_model_info
 
 """
 Сервис подсчёта токенов.
@@ -9,14 +15,8 @@ from tiktoken import Encoding
 и предоставляет простое текстовое API без привязки к Tree-sitter.
 """
 
-from dataclasses import dataclass
-from typing import Tuple, cast
-
-import tiktoken
-
 DEFAULT_ENCODER = "cl100k_base"
 
-@dataclass(frozen=True)
 class TokenService:
     """
     Обёртка над tiktoken с единым энкодером.
@@ -24,37 +24,45 @@ class TokenService:
     Методы работают со строками (UTF-8). Привязки к AST/байтовым диапазонам нет.
     """
 
-    cfg_name: str = DEFAULT_ENCODER
-
-    def __post_init__(self):
-        # Ленивая инициализация энкодера при первом обращении
-        object.__setattr__(self, "_enc", None)
+    def __init__(
+            self,
+            root: Optional[Path],
+            model_id: Optional[str],
+            *,
+            encoder: Optional[Encoding] = None
+    ):
+        self.root = root
+        self.model_id = model_id
+        self._enc: Optional[Encoding] = encoder
 
     # ---------------- Internal ---------------- #
-    def _get_encoder(self):
-        enc = getattr(self, "_enc", None)
-        if enc is None:
+    @property
+    def enc(self) -> Encoding:
+        """Ленивая инициализация энкодера."""
+        if self._enc is None:
+            model_info = get_model_info(self.root, self.model_id)
+            self._enc = self._get_encoder(model_info.encoder)
+        return self._enc
+
+    def _get_encoder(self, cfg_name: str) -> Encoding:
+        try:
+            enc = tiktoken.get_encoding(cfg_name)
+        except Exception:
             try:
-                enc = tiktoken.get_encoding(self.cfg_name)
+                enc = tiktoken.encoding_for_model(cfg_name)
             except Exception:
-                try:
-                    enc = tiktoken.encoding_for_model(self.cfg_name)
-                except Exception:
-                    enc = tiktoken.get_encoding(DEFAULT_ENCODER)
-            object.__setattr__(self, "_enc", enc)
+                enc = tiktoken.get_encoding(DEFAULT_ENCODER)
         return enc
 
     # ---------------- Public API ---------------- #
     def encoder_name(self):
-        real_encoder: Encoding = cast(Encoding, self._enc)
-        return real_encoder.name
+        return self.enc.name
 
     def count_text(self, text: str) -> int:
         """Подсчитать токены в тексте."""
         if not text:
             return 0
-        enc = self._get_encoder()
-        return len(enc.encode(text))
+        return len(self.enc.encode(text))
 
     def compare_texts(self, original: str, replacement: str) -> Tuple[int, int, int, float]:
         """
@@ -86,3 +94,10 @@ class TokenService:
         return ratio >= float(min_ratio)
 
 
+def default_tokenizer() -> TokenService:
+    """Быстрое создание сервиса токенизации без обращения к конфигу."""
+    return TokenService(
+        root=None,
+        model_id=None,
+        encoder=tiktoken.get_encoding(DEFAULT_ENCODER)
+    )
