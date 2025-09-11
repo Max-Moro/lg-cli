@@ -20,7 +20,7 @@ from .plan import build_plan
 from .protocol import PROTOCOL_VERSION
 from .render import render_by_section
 from .run_context import RunContext
-from .stats import get_model_info, compute_stats, TokenService
+from .stats import compute_stats, TokenService
 from .types import RunOptions, RenderedDocument, ContextSpec, Manifest, ProcessedBlob
 from .vcs import NullVcs
 from .vcs.git import GitVcs
@@ -91,8 +91,8 @@ def run_report(target: str, options: RunOptions) -> RunResultM:
     """
     run_ctx = _build_run_ctx(options)
     spec, manifest, blobs, composed = _pipeline_common(target, run_ctx)
+    tokenizer = run_ctx.tokenizer
 
-    model_info = get_model_info(run_ctx.root, options.model)
     files_rows, totals, ctx_block = compute_stats(
         blobs=blobs,
         rendered_final_text=composed.text,
@@ -100,8 +100,7 @@ def run_report(target: str, options: RunOptions) -> RunResultM:
         templates_hashes=composed.templates_hashes,
         spec=spec,
         manifest=manifest,
-        model_info=model_info,
-        tokenizer=run_ctx.tokenizer,
+        tokenizer=tokenizer,
         code_fence=options.code_fence,
         cache=run_ctx.cache,
     )
@@ -157,9 +156,9 @@ def run_report(target: str, options: RunOptions) -> RunResultM:
         protocol=PROTOCOL_VERSION,
         scope=scope,
         target=target_norm,
-        model=model_info.label,
-        encoder=run_ctx.tokenizer.encoder_name(),
-        ctxLimit=model_info.ctx_limit,
+        model=tokenizer.model_info.label,
+        encoder=tokenizer.encoder_name,
+        ctxLimit=tokenizer.model_info.ctx_limit,
         total=total_m,
         files=files_m,
         context=context_m,

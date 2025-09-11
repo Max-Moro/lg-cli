@@ -6,7 +6,7 @@ from typing import Tuple, Optional
 import tiktoken
 from tiktoken import Encoding
 
-from lg.stats import get_model_info
+from .model import ResolvedModel
 
 """
 Сервис подсчёта токенов.
@@ -20,8 +20,6 @@ DEFAULT_ENCODER = "cl100k_base"
 class TokenService:
     """
     Обёртка над tiktoken с единым энкодером.
-
-    Методы работают со строками (UTF-8). Привязки к AST/байтовым диапазонам нет.
     """
 
     def __init__(
@@ -34,16 +32,9 @@ class TokenService:
         self.root = root
         self.model_id = model_id
         self._enc: Optional[Encoding] = encoder
+        self._model_info: Optional[ResolvedModel] = None
 
     # ---------------- Internal ---------------- #
-    @property
-    def enc(self) -> Encoding:
-        """Ленивая инициализация энкодера."""
-        if self._enc is None:
-            model_info = get_model_info(self.root, self.model_id)
-            self._enc = self._get_encoder(model_info.encoder)
-        return self._enc
-
     def _get_encoder(self, cfg_name: str) -> Encoding:
         try:
             enc = tiktoken.get_encoding(cfg_name)
@@ -55,6 +46,25 @@ class TokenService:
         return enc
 
     # ---------------- Public API ---------------- #
+    @property
+    def enc(self) -> Encoding:
+        """Ленивая инициализация энкодера."""
+        if self._enc is None:
+            from lg.stats.load import get_model_info
+            self._model_info = get_model_info(self.root, self.model_id)
+            self._enc = self._get_encoder(self._model_info.encoder)
+        return self._enc
+
+    @property
+    def model_info(self) -> ResolvedModel:
+        """Ленивая инициализация конфигурации AI-моделей."""
+        if self._model_info is None:
+            from lg.stats.load import get_model_info
+            self._model_info = get_model_info(self.root, self.model_id)
+            self._enc = self._get_encoder(self._model_info.encoder)
+        return self._model_info
+
+    @property
     def encoder_name(self):
         return self.enc.name
 

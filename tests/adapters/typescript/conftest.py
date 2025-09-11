@@ -5,20 +5,20 @@ Shared fixtures and utilities for TypeScript adapter tests.
 import pytest
 
 from lg.adapters.typescript import TypeScriptAdapter, TypeScriptCfg
-from lg.stats import TokenService
-from tests.conftest import lctx_ts, lctx, TokenServiceStub  # noqa: F401
+from lg.stats.tokenizer import default_tokenizer
+from tests.conftest import lctx_ts, lctx, stub_tokenizer  # noqa: F401
 from ..golden_utils import assert_golden_match, load_sample_code  # noqa: F401
 
 
 def make_adapter(cfg: TypeScriptCfg) -> TypeScriptAdapter:
     """TypeScript adapter с предустановленной заглушкой TokenService."""
-    adapter = TypeScriptAdapter().bind(None, TokenServiceStub())
+    adapter = TypeScriptAdapter().bind(None, stub_tokenizer())
     adapter._cfg = cfg
     return adapter
 
 def make_adapter_real(cfg: TypeScriptCfg) -> TypeScriptAdapter:
     """Если тесты проверяют реальную математику по токенам."""
-    adapter = TypeScriptAdapter().bind(None, TokenService())
+    adapter = TypeScriptAdapter().bind(None, default_tokenizer())
     adapter._cfg = cfg
     return adapter
 

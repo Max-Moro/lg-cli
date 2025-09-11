@@ -2,7 +2,6 @@ from __future__ import annotations
 
 from typing import Dict, List, Tuple
 
-from .model import ResolvedModel
 from .tokenizer import TokenService
 from ..cache.fs_cache import Cache
 from ..types import ContextSpec, FileRow, Totals, ContextBlock, ProcessedBlob, Manifest
@@ -33,7 +32,6 @@ def compute_stats(
     templates_hashes: Dict[str, str],
     spec: ContextSpec,
     manifest: Manifest,
-    model_info: ResolvedModel,
     tokenizer: TokenService,
     code_fence: bool,
     cache: Cache,
@@ -69,6 +67,8 @@ def compute_stats(
     for b in blobs:
         if b.rel_path not in dedup:
             dedup[b.rel_path] = b
+
+    model_info = tokenizer.model_info
 
     for rel, b in dedup.items():
         mult = max(1, mult_by_rel.get(rel, 1))

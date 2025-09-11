@@ -5,20 +5,20 @@ Shared fixtures and utilities for Python adapter tests.
 import pytest
 
 from lg.adapters.python import PythonAdapter, PythonCfg
-from lg.stats import TokenService
-from tests.conftest import lctx_py, lctx, TokenServiceStub  # noqa: F401
+from lg.stats.tokenizer import default_tokenizer
+from tests.conftest import lctx_py, lctx, stub_tokenizer  # noqa: F401
 from ..golden_utils import assert_golden_match, load_sample_code  # noqa: F401
 
 
 def make_adapter(cfg: PythonCfg) -> PythonAdapter:
     """Python adapter с предустановленной заглушкой TokenService."""
-    adapter = PythonAdapter().bind(None, TokenServiceStub())
+    adapter = PythonAdapter().bind(None, stub_tokenizer())
     adapter._cfg = cfg
     return adapter
 
 def make_adapter_real(cfg: PythonCfg) -> PythonAdapter:
     """Если тесты проверяют реальную математику по токенам."""
-    adapter = PythonAdapter().bind(None, TokenService())
+    adapter = PythonAdapter().bind(None, default_tokenizer())
     adapter._cfg = cfg
     return adapter
 

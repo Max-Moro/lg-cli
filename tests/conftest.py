@@ -105,7 +105,7 @@ def lctx_md(raw_text: str = "# Test Markdown", group_size: int = 1, mixed: bool 
 def jload(s: str):
     return json.loads(s)
 
-# ==== Фикстуры для энкодинга токенов ====
+# ==== Заглушки для энкодинга токенов ====
 
 class TokenServiceStub(TokenService):
     """Тестовый стаб TokenService с дефолтным энкодером."""
@@ -115,5 +115,15 @@ class TokenServiceStub(TokenService):
         """Позволяет в тестах делать замену плейсхолдеров всегда."""
         return True
 
+def stub_tokenizer() -> TokenService:
+    """Быстрое создание сервиса токенизации без обращения к конфигу."""
+    import tiktoken
+    from lg.stats.tokenizer import DEFAULT_ENCODER
+    return TokenServiceStub(
+        root=None,
+        model_id=None,
+        encoder=tiktoken.get_encoding(DEFAULT_ENCODER)
+    )
+
 # Экспортируем хелперы для использования в других тестах
-__all__ = ["lctx", "lctx_py", "lctx_ts", "lctx_md", "write", "run_cli", "jload", "TokenServiceStub"]
+__all__ = ["lctx", "lctx_py", "lctx_ts", "lctx_md", "write", "run_cli", "jload", "stub_tokenizer"]

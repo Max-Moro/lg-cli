@@ -51,16 +51,16 @@ def test_token_counts_cached_between_runs(tmpproj: Path, monkeypatch):
     (tmpproj / "x.md").write_text("# T\nbody\n", encoding="utf-8")
 
     # Мокаем get_model_info и tiktoken.get_encoding
-    from lg.stats import ResolvedModel
-    import lg.stats as lg_models
+    from lg.stats.model import ResolvedModel
+    import lg.stats.load as lg_models
     import tiktoken
 
     counter = {"encode": 0}
 
-    def fake_get_model_info(_root, selector: str):
+    def fake_get_model_info(_root, model_id: str):
         # эффективный лимит 32K, энкодер "fake"
         return ResolvedModel(
-            name=selector, base="o3", provider="openai",
+            id=model_id, label="Fake", base="o3", provider="openai",
             encoder="fake", ctx_limit=32_000, plan=None
         )
 
@@ -82,15 +82,15 @@ def test_rendered_tokens_cached(tmpproj: Path, monkeypatch):
     (tmpproj / "README.md").write_text("# A\nZ\n", encoding="utf-8")
 
     # Мокаем get_model_info и tiktoken.get_encoding
-    from lg.stats import ResolvedModel
-    import lg.stats as lg_models
+    from lg.stats.model import ResolvedModel
+    import lg.stats.load as lg_models
     import tiktoken
 
     counter = {"encode": 0}
 
-    def fake_get_model_info(_root, selector: str):
+    def fake_get_model_info(_root, model_id: str):
         return ResolvedModel(
-            name=selector, base="o3", provider="openai",
+            id=model_id, label="Fake", base="o3", provider="openai",
             encoder="fake", ctx_limit=32_000, plan=None
         )
 

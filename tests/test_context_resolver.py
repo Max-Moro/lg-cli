@@ -6,13 +6,13 @@ from lg.cache.fs_cache import Cache
 from lg.config.paths import cfg_root
 from lg.context import list_contexts, resolve_context
 from lg.run_context import RunContext
-from lg.stats import TokenService
+from lg.stats.tokenizer import default_tokenizer
 from lg.types import RunOptions
 from lg.vcs import NullVcs
 
 
 def _ctx(root: Path):
-    return RunContext(root=root, options=RunOptions(), cache=Cache(root, tool_version="0.0.0"), vcs=NullVcs(), tokenizer=TokenService())
+    return RunContext(root=root, options=RunOptions(), cache=Cache(root, tool_version="0.0.0"), vcs=NullVcs(), tokenizer=default_tokenizer())
 
 def _as_counts(spec):
     """Вспомогательно: свернуть section_refs → {ph: multiplicity} и проверить cfg_root=tmpproj/lg-cfg."""
