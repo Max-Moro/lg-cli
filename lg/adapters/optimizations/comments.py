@@ -85,8 +85,7 @@ class CommentOptimizer:
             start_byte, end_byte = context.doc.get_node_range(comment_node)
             context.editor.add_replacement(
                 start_byte, end_byte, replacement,
-                type=f"{element_type}_truncated",
-                is_placeholder=False
+                edit_type=f"{element_type}_truncated",
             )
             context.metrics.mark_element_removed(element_type)
 

@@ -6,9 +6,8 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Dict, Any, Optional
+from typing import Optional
 
-from .code_model import PlaceholderConfig
 from .metrics import MetricsCollector
 from .placeholders import PlaceholderManager, create_placeholder_manager
 from .range_edits import RangeEditor
@@ -49,9 +48,9 @@ class LightweightContext(LightState):
         super().__init__(file_path, raw_text, group_size, mixed)
         
         # Для ленивой инициализации полноценного контекста
-        self._full_context: Optional['ProcessingContext'] = None
+        self._full_context: Optional[ProcessingContext] = None
 
-    def get_full_context(self, adapter, token_service: TokenService) -> 'ProcessingContext':
+    def get_full_context(self, adapter, token_service: TokenService) -> ProcessingContext:
         """
         Ленивое создание полноценного ProcessingContext при необходимости.
         
@@ -83,7 +82,6 @@ class ProcessingContext(LightState):
         editor: RangeEditor,
         placeholders: PlaceholderManager,
         token_service: TokenService,
-        ph_cfg: PlaceholderConfig
     ):
         super().__init__(file_path, raw_text, group_size, mixed)
 
@@ -92,9 +90,6 @@ class ProcessingContext(LightState):
         self.placeholders = placeholders
         self.metrics = MetricsCollector()
         self.token_service = token_service
-        self.ph_cfg = ph_cfg
-
-    # ============= API для плейсхолдеров =============
 
     def add_placeholder(self, element_type: str, start_byte: int, end_byte: int, start_line: int, end_line: int,
                         placeholder_prefix: str = "", count: int = 1) -> None:
@@ -111,69 +106,7 @@ class ProcessingContext(LightState):
         self.metrics.mark_element_removed(element_type, count)
         self.metrics.mark_placeholder_inserted()
 
-    # ============= Метод удаления без плейсхолдера =============
-    
-    def remove_range(self, start_byte: int, end_byte: int, **metadata) -> None:
-        """Удалить диапазон без плейсхолдера."""
-        self.editor.add_deletion(start_byte, end_byte, **metadata)
-    
-    def remove_node(self, node: Node, **metadata) -> None:
-        """Удалить узел без плейсхолдера."""
-        start_byte, end_byte = self.doc.get_node_range(node)
-        self.editor.add_deletion(start_byte, end_byte, **metadata)
-
-    def finalize(self) -> Dict[str, Any]:
-        """
-        Завершить обработку и получить финальные метрики.
-        
-        Returns:
-            Словарь с полными метриками для включения в ProcessedBlob
-        """
-        # Финализируем плейсхолдеры и применяем их к редактору
-        collapsed_edits, placeholder_stats = self.placeholders.finalize_edits()
-
-        # Применяем экономическую проверку перед внесением замен
-
-        # Применяем все плейсхолдеры к редактору
-        # Текст исходного диапазона нужен для экономической проверки
-        original_bytes = self.raw_text.encode('utf-8')
-
-        min_savings_ratio = self.ph_cfg.min_savings_ratio
-        min_abs_savings_if_none = self.ph_cfg.min_abs_savings_if_none
-
-        for spec, repl in collapsed_edits:
-            # Получаем исходный текст диапазона
-            src = original_bytes[spec.start_byte:spec.end_byte].decode('utf-8', errors='ignore')
-
-            # Определяем флаг "пустой" замены
-            is_none = (repl == "")
-
-            # Применяем проверку целесообразности
-            if not self.token_service.is_economical(
-                src,
-                repl,
-                min_ratio=min_savings_ratio,
-                replacement_is_none=is_none,
-                min_abs_savings_if_none=min_abs_savings_if_none,
-            ):
-                # Пропускаем замену, оставляем оригинал
-                continue
-
-            self.editor.add_replacement(
-                spec.start_byte, spec.end_byte, repl,
-                type=f"{spec.placeholder_type}_placeholder",
-                is_placeholder=(repl != ""),
-                lines_removed=spec.lines_removed
-            )
-        
-        # Обновляем метрики из плейсхолдеров
-        for key, value in placeholder_stats.items():
-            if isinstance(value, (int, float)):
-                self.metrics.set(key, value)
-        
-        return self.metrics.to_dict()
-
-    @classmethod 
+    @classmethod
     def from_lightweight(
         cls,
         lightweight_ctx: LightweightContext,
@@ -211,5 +144,4 @@ class ProcessingContext(LightState):
             editor,
             placeholders,
             token_service,
-            adapter.cfg.placeholders,
         )

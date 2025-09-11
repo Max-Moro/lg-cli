@@ -16,8 +16,8 @@ class TestRangeEditorSystem:
         editor = RangeEditor(text)
         
         # Add some edits
-        editor.add_replacement(0, 5, "Hi")  # "Hello" -> "Hi"
-        editor.add_deletion(13, 14)  # Remove newline
+        editor.add_replacement(0, 5, "Hi", None)  # "Hello" -> "Hi"
+        editor.add_deletion(13, 14, None)  # Remove newline
         
         result, stats = editor.apply_edits()
         
@@ -31,7 +31,7 @@ class TestRangeEditorSystem:
         editor = RangeEditor(text)
         
         # Add invalid edit (out of bounds)
-        editor.add_edit(0, 100, "replacement")
+        editor.add_edit(0, 100, "replacement", None)
         
         errors = editor.validate_edits()
         assert len(errors) > 0
@@ -43,8 +43,8 @@ class TestRangeEditorSystem:
         editor = RangeEditor(text)
         
         # Add overlapping edits - first should win
-        editor.add_replacement(0, 5, "Hi")     # "Hello" -> "Hi"
-        editor.add_replacement(2, 7, "Bye")    # Overlaps with first edit
+        editor.add_replacement(0, 5, "Hi", None)     # "Hello" -> "Hi"
+        editor.add_replacement(2, 7, "Bye", None)    # Overlaps with first edit
         
         result, stats = editor.apply_edits()
         

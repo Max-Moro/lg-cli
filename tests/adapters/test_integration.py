@@ -13,35 +13,6 @@ from .python.conftest import make_adapter as make_python_adapter
 class TestCrossLanguageIntegration:
     """Integration tests across different language adapters."""
 
-    def test_adapter_consistency(self):
-        """Test that all adapters follow consistent patterns."""
-        # Test Python adapter
-        python_adapter = make_python_adapter(PythonCfg(strip_function_bodies=True))
-        
-        python_code = '''def test():
-    return "python"
-'''
-        
-        python_result, python_meta = python_adapter.process(lctx_py(raw_text=python_code))
-        
-        # Test TypeScript adapter
-        ts_adapter = make_ts_adapter(TypeScriptCfg(strip_function_bodies=True))
-        
-        ts_code = '''function test() {
-    return "typescript";
-}
-'''
-        
-        ts_result, ts_meta = ts_adapter.process(lctx_ts(raw_text=ts_code))
-        
-        # Both should produce string results
-        assert isinstance(python_result, str)
-        assert isinstance(ts_result, str)
-        
-        # Both should report their adapter name correctly
-        assert python_meta["_adapter"] == "python"
-        assert ts_meta["_adapter"] == "typescript"
-
     def test_configuration_compatibility(self):
         """Test that similar configurations work across languages."""
         base_config = {

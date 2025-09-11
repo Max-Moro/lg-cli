@@ -122,8 +122,7 @@ class LiteralOptimizer:
                 start_byte, end_byte = context.doc.get_node_range(node)
                 context.editor.add_replacement(
                     start_byte, end_byte, replacement_text,
-                    type=f"{literal_type}_trimming",
-                    is_placeholder=False
+                    edit_type=f"{literal_type}_trimming",
                 )
                 context.metrics.mark_element_removed(literal_type)
     

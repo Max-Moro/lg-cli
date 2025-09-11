@@ -37,7 +37,7 @@ class Edit:
     """Represents a single text edit operation."""
     range: TextRange
     replacement: str
-    metadata: Dict[str, Any]
+    type: Optional[str] # Тип для счетчика в метаинформации
     
     @property
     def removes_text(self) -> bool:
@@ -60,7 +60,7 @@ class RangeEditor:
         self.original_bytes = original_text.encode('utf-8')
         self.edits: List[Edit] = []
     
-    def add_edit(self, start_byte: int, end_byte: int, replacement: str, **metadata) -> None:
+    def add_edit(self, start_byte: int, end_byte: int, replacement: str, edit_type: Optional[str]) -> None:
         """Add an edit operation."""
         text_range = TextRange(start_byte, end_byte)
 
@@ -69,16 +69,16 @@ class RangeEditor:
             if text_range.overlaps(existing.range):
                 return
 
-        edit = Edit(text_range, replacement, metadata)
+        edit = Edit(text_range, replacement, edit_type)
         self.edits.append(edit)
-    
-    def add_deletion(self, start_byte: int, end_byte: int, **metadata) -> None:
+
+    def add_deletion(self, start_byte: int, end_byte: int, edit_type: Optional[str]) -> None:
         """Add a deletion operation (empty replacement)."""
-        self.add_edit(start_byte, end_byte, "", **metadata)
-    
-    def add_replacement(self, start_byte: int, end_byte: int, replacement: str, **metadata) -> None:
+        self.add_edit(start_byte, end_byte, "", edit_type)
+
+    def add_replacement(self, start_byte: int, end_byte: int, replacement: str, edit_type: Optional[str]) -> None:
         """Add a replacement operation."""
-        self.add_edit(start_byte, end_byte, replacement, **metadata)
+        self.add_edit(start_byte, end_byte, replacement, edit_type)
     
     def validate_edits(self) -> List[str]:
         """
@@ -133,9 +133,6 @@ class RangeEditor:
             stats["bytes_added"] += len(replacement_bytes)
             stats["lines_removed"] += original_chunk.count(b'\n')
             
-            if edit.metadata.get("is_placeholder", False):
-                stats["placeholders_inserted"] += 1
-            
             # Apply the edit
             result_bytes[edit.range.start_byte:edit.range.end_byte] = replacement_bytes
         
@@ -157,8 +154,8 @@ class RangeEditor:
         
         edit_types = {}
         for edit in self.edits:
-            edit_type = edit.metadata.get("type", "unknown")
-            edit_types[edit_type] = edit_types.get(edit_type, 0) + 1
+            if edit.type:
+                edit_types[edit.type] = edit_types.get(edit.type, 0) + 1
         
         return {
             "total_edits": len(self.edits),
