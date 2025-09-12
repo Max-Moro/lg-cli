@@ -17,7 +17,6 @@ from .optimizations import (
     FunctionBodyOptimizer,
     CommentOptimizer,
     ImportOptimizer,
-    LiteralOptimizer,
     TreeSitterImportAnalyzer,
     ImportClassifier
 )
@@ -121,6 +120,7 @@ class CodeAdapter(BaseAdapter[C], ABC):
         import_optimizer.apply(context)
         
         # Обработка литералов
+        from .optimizations.literals_v2 import LiteralOptimizer
         literal_optimizer = LiteralOptimizer(self)
         literal_optimizer.apply(context)
 
