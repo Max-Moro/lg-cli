@@ -67,7 +67,7 @@ class LiteralOptimizer:
         literal_info = self._analyze_literal_structure(literal_text, capture_name, self.adapter.name)
 
         # Умно урезаем содержимое
-        trimmed_content = self._smart_trim_content(context, literal_info, max_tokens)
+        trimmed_content = self._smart_trim_content(context, literal_info, max_tokens, node)
 
         # Формируем корректную замену
         replacement = f"{literal_info.opening}{trimmed_content}{literal_info.closing}"
@@ -171,14 +171,14 @@ class LiteralOptimizer:
 
         return stripped
 
-    def _smart_trim_content(self, context: ProcessingContext, literal_info: LiteralInfo, max_tokens: int) -> str:
+    def _smart_trim_content(self, context: ProcessingContext, literal_info: LiteralInfo, max_tokens: int, node: Node) -> str:
         """Умно урезает содержимое с учетом структуры литерала."""
         if literal_info.type == "string":
             return self._trim_string_content(context, literal_info, max_tokens)
         elif literal_info.type in ("array", "tuple", "set"):
-            return self._trim_array_content(context, literal_info, max_tokens)
+            return self._trim_array_content(context, literal_info, max_tokens, node)
         elif literal_info.type == "object":
-            return self._trim_object_content(context, literal_info, max_tokens)
+            return self._trim_object_content(context, literal_info, max_tokens, node)
         else:
             return self._trim_simple_content(context, literal_info.content, max_tokens)
 
@@ -195,7 +195,7 @@ class LiteralOptimizer:
         trimmed = self._trim_simple_content(context, content, content_budget)
         return f"{trimmed}…"
 
-    def _trim_array_content(self, context: ProcessingContext, literal_info: LiteralInfo, max_tokens: int) -> str:
+    def _trim_array_content(self, context: ProcessingContext, literal_info: LiteralInfo, max_tokens: int, node: Node) -> str:
         """Урезает массивы/списки с добавлением корректного элемента-заглушки."""
         content = literal_info.content.strip()
 
@@ -222,14 +222,14 @@ class LiteralOptimizer:
             # Используем полный литерал для определения отступов
             full_literal = f"{literal_info.opening}{literal_info.content}{literal_info.closing}"
             element_indent = self._detect_element_indentation(full_literal)
-            base_indent = self._detect_base_indentation(full_literal)
+            base_indent = self._detect_base_indentation_from_context(context, node)
             joined = f",\n{element_indent}".join(included_elements)
             return f"\n{element_indent}{joined}, \"…\",\n{base_indent}"
         else:
             joined = ", ".join(included_elements)
             return f"{joined}, \"…\""
 
-    def _trim_object_content(self, context: ProcessingContext, literal_info: LiteralInfo, max_tokens: int) -> str:
+    def _trim_object_content(self, context: ProcessingContext, literal_info: LiteralInfo, max_tokens: int, node: Node) -> str:
         """Урезает объекты/словари с добавлением корректной заглушки."""
         content = literal_info.content.strip()
 
@@ -251,7 +251,7 @@ class LiteralOptimizer:
                 # Используем полный литерал для определения отступов
                 full_literal = f"{literal_info.opening}{literal_info.content}{literal_info.closing}"
                 element_indent = self._detect_element_indentation(full_literal)
-                base_indent = self._detect_base_indentation(full_literal)
+                base_indent = self._detect_base_indentation_from_context(context, node)
                 return f"\n{element_indent}\"…\": \"…\",\n{base_indent}"
             else:
                 return '"…": "…"'
@@ -261,9 +261,9 @@ class LiteralOptimizer:
             # Используем полный литерал для определения отступов
             full_literal = f"{literal_info.opening}{literal_info.content}{literal_info.closing}"
             element_indent = self._detect_element_indentation(full_literal)
-            base_indent = self._detect_base_indentation(full_literal)
+            base_indent = self._detect_base_indentation_from_context(context, node)
             joined = f",\n{element_indent}".join(included_pairs)
-            return f"\n{element_indent}{joined},\n{element_indent}\"…\": \"…\",\n{base_indent}"
+            return f"\n{element_indent}{joined},\n\"…\": \"…\",\n{base_indent}"
         else:
             joined = ", ".join(included_pairs)
             return f"{joined}, \"…\": \"…\""
@@ -362,19 +362,30 @@ class LiteralOptimizer:
             return ""
 
         # Ищем строку с открывающей скобкой
+        # Сначала ищем строки, которые начинаются с открывающей скобки
         for line in lines:
             stripped = line.strip()
             if stripped.startswith(('[', '{', '(')):
-                # Извлекаем отступ до открывающей скобки
+                # Извлекаем отступ строки
                 base_indent = ""
                 for char in line:
                     if char in ' \t':
                         base_indent += char
                     else:
                         break
-                # Если нашли отступ, используем его, иначе продолжаем поиск
-                if base_indent:
-                    return base_indent
+                return base_indent
+        
+        # Если не нашли, ищем строки, которые содержат открывающую скобку
+        for line in lines:
+            if any(bracket in line for bracket in ['[', '{', '(']):
+                # Извлекаем отступ строки
+                base_indent = ""
+                for char in line:
+                    if char in ' \t':
+                        base_indent += char
+                    else:
+                        break
+                return base_indent
 
         # Если не нашли отступ открывающей скобки, используем отступ закрывающей
         for line in reversed(lines):
@@ -389,6 +400,27 @@ class LiteralOptimizer:
                         break
                 return base_indent
 
+        return ""
+
+    def _detect_base_indentation_from_context(self, context: ProcessingContext, node: Node) -> str:
+        """
+        Определяет базовый отступ литерала из контекста исходного файла.
+        Ищет строку, где начинается литерал, и использует её отступ.
+        """
+        start_line = context.doc.get_line_number_for_byte(node.start_byte)
+        lines = context.raw_text.split('\n')
+        
+        if start_line < len(lines):
+            line = lines[start_line]
+            # Извлекаем отступ строки
+            base_indent = ""
+            for char in line:
+                if char in ' \t':
+                    base_indent += char
+                else:
+                    break
+            return base_indent
+        
         return ""
 
     def _detect_element_indentation(self, literal_text: str) -> str:
