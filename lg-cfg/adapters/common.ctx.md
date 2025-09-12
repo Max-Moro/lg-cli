@@ -16,7 +16,7 @@ ${tpl:adapters/gen/TREE_SITTER_README_TRIM}
 
 На данным момент мы ведем разработку языковых адаптеров.
 
-${tpl:adapters/design}
+${tpl:adapters/gen/design}
 
 ${tpl:adapters/state}
 

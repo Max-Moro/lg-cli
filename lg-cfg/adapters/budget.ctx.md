@@ -4,7 +4,7 @@ ${docs/intro}
 
 ## Исходный код Listing Generator
 
-${adapters/_/src-budget}
+${src-short}
 
 ---
 
@@ -12,10 +12,16 @@ ${adapters/_/src-budget}
 
 На данным момент мы ведем разработку языковых адаптеров.
 
-${tpl:adapters/design}
+${tpl:adapters/gen/design}
 
 ${tpl:adapters/state}
 
-# Описание текущей задачи
+## Исходный код функционального блока «Языковые адаптеры»
+
+${adapters/_/src}
+
+${tpl:adapters/gen/budget}
+
+## Описание текущей задачи
 
 Ничего пока делать не нужно. Просто подтверди, что ты дочитал досюда.
