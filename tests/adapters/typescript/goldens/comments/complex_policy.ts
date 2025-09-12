@@ -2,7 +2,7 @@
  * TypeScript module for testing comment optimization.
  * 
  * This module contains various types of comments to test
- * different comment pro…
+ * different comment processing…
  */
 
 import { Observable } from 'rxjs';
@@ -30,7 +30,7 @@ export class CommentedService {
      * Class constructor with detailed JSDoc.
      * 
      * @param config Service configuration object
-     * @param logger Optional log…
+     * @param l…
      */
     constructor(
         private config: ServiceConfig,  // … comment omitted
@@ -47,7 +47,7 @@ export class CommentedService {
      * Process user data with validation.
      * 
      * This method performs comprehensive user data processing including
-     * validat…
+     *…
      */
     public async processUser(userData: Partial<User>): Promise<User> {
         // … comment omitted

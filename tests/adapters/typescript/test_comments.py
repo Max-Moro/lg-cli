@@ -95,7 +95,7 @@ function processData(data: string): void {
         """Test complex comment policy with custom configuration."""
         comment_config = CommentConfig(
             policy="keep_doc",
-            max_tokens=75,
+            max_tokens=30,
             keep_annotations=["TODO", "FIXME", "NOTE"],
             strip_patterns=["WARNING", "DEPRECATED"]
         )

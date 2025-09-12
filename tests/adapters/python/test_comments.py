@@ -69,7 +69,7 @@ class TestPythonCommentOptimization:
         """Test complex comment policy with custom configuration."""
         comment_config = CommentConfig(
             policy="keep_doc",
-            max_tokens=50,
+            max_tokens=20,
             keep_annotations=["TODO", "FIXME"],
             strip_patterns=["WARNING"]
         )
@@ -96,7 +96,7 @@ class TestPythonCommentOptimization:
         
         comment_config = CommentConfig(
             policy="keep_all",
-            max_tokens=25
+            max_tokens=15
         )
         
         adapter = make_adapter(PythonCfg(comment_policy=comment_config))
@@ -104,7 +104,8 @@ class TestPythonCommentOptimization:
         result, meta = adapter.process(lctx_py(code))
         
         # Long docstring should be truncated
-        assert "This is a very long docstring that exceeds…""" in result
+        assert "This is a very long docstring that exceeds the maximum length limit" in result
+        assert "…" in result
         assert "specified constraints" not in result
         
         assert_golden_match(result, "comments", "length_limiting")

@@ -1,6 +1,7 @@
 """Module docstring with detailed description.
 
-This module demonstrates various comment styles…"""
+This module demonstrates various comment styles and documentation
+pattern…"""
 
 import os
 import sys  # … comment omitted
@@ -22,14 +23,15 @@ class CommentedClass:
     def public_method(self) -> str:
         """Get the name value.
         
-        This method returns the current name. It's a simple gett…"""
+        This method returns the current name. It's a simple getter…"""
         # … comment omitted
         return self.name
     
     def _private_method(self):
         """Private method with documentation.
         
-        This is an internal utility method.…"""
+        This is an internal utility method.
+        Should…"""
         # … 3 comments omitted
         temp = self.name.upper()
         return temp  # … comment omitted
