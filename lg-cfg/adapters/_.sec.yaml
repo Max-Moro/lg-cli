@@ -21,6 +21,8 @@ src:
               - "/markdown.py"
               - "/scala.py"
               - "code_analysis.py"
+              - "python/imports.py"
+              - "typescript/imports.py"
 
 src-budget:
   extensions: [".py", ".toml"]
