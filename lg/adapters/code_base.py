@@ -17,6 +17,7 @@ from .optimizations import (
     FunctionBodyOptimizer,
     CommentOptimizer,
     ImportOptimizer,
+    LiteralOptimizer,
     TreeSitterImportAnalyzer,
     ImportClassifier
 )
@@ -105,22 +106,21 @@ class CodeAdapter(BaseAdapter[C], ABC):
         if self.cfg.public_api_only:
             public_api_optimizer = PublicApiOptimizer(self)
             public_api_optimizer.apply(context)
-        
+
         # Обработка тел функций
         if self.cfg.strip_function_bodies:
             function_body_optimizer = FunctionBodyOptimizer(self)
             function_body_optimizer.apply(context)
-        
+
         # Обработка комментариев
         comment_optimizer = CommentOptimizer(self)
         comment_optimizer.apply(context)
-        
+
         # Обработка импортов
         import_optimizer = ImportOptimizer(self)
         import_optimizer.apply(context)
-        
+
         # Обработка литералов
-        from .optimizations.literals_v2 import LiteralOptimizer
         literal_optimizer = LiteralOptimizer(self)
         literal_optimizer.apply(context)
 

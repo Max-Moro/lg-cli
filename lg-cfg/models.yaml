@@ -1,0 +1,6 @@
+# Пример настроек моделей/планов.
+models:
+  auto:
+    provider: anysphere
+    ctx_limit: 45000
+    encoder: cl100k_base
