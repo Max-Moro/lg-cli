@@ -69,54 +69,102 @@ def extract_first_sentence(text: str) -> str:
 
     return text  # Fallback to original text
 
-def smart_truncate_comment(comment_text: str, max_length: int) -> str:
+
+def _truncate_to_tokens(text: str, max_tokens: int, tokenizer) -> str:
+    """
+    Efficiently truncate text to fit within token budget using binary search.
+    
+    Args:
+        text: Text to truncate
+        max_tokens: Maximum allowed tokens
+        tokenizer: TokenService for counting tokens
+        
+    Returns:
+        Truncated text that fits within token budget
+    """
+    if tokenizer.count_text(text) <= max_tokens:
+        return text
+    
+    # Binary search for optimal truncation point
+    left, right = 0, len(text)
+    best_result = ""
+    
+    while left <= right:
+        mid = (left + right) // 2
+        candidate = text[:mid].rstrip()
+        token_count = tokenizer.count_text(candidate)
+        
+        if token_count <= max_tokens:
+            best_result = candidate
+            left = mid + 1
+        else:
+            right = mid - 1
+    
+    return best_result
+
+def smart_truncate_comment(comment_text: str, max_tokens: int, tokenizer) -> str:
     """
     Intelligently truncate a comment while preserving proper closing tags.
 
     Args:
         comment_text: Original comment text
-        max_length: Maximum allowed length
+        max_tokens: Maximum allowed tokens
+        tokenizer: TokenService for counting tokens
 
     Returns:
         Properly truncated comment with correct closing tags
     """
-    if len(comment_text) <= max_length:
+    if tokenizer.count_text(comment_text) <= max_tokens:
         return comment_text
 
     # Python docstring patterns (triple quotes)
     if comment_text.startswith('"""'):
-        # Find a good truncation point that leaves room for closing quotes
-        truncate_to = max_length - 4  # Reserve space for '…"""'
-        if truncate_to < 3:  # Minimum meaningful content
+        # Reserve space for closing quotes and ellipsis
+        closing = '…"""'
+        closing_tokens = tokenizer.count_text(closing)
+        content_budget = max(1, max_tokens - closing_tokens)
+        
+        if content_budget < 1:
             return '"""…"""'
 
-        truncated = comment_text[:truncate_to].rstrip()
+        # Binary search for optimal truncation point
+        truncated = _truncate_to_tokens(comment_text, content_budget, tokenizer)
         return f'{truncated}…"""'
 
     elif comment_text.startswith("'''"):
         # Single quote Python docstring
-        truncate_to = max_length - 4  # Reserve space for "…'''"
-        if truncate_to < 3:
+        closing = "…'''"
+        closing_tokens = tokenizer.count_text(closing)
+        content_budget = max(1, max_tokens - closing_tokens)
+        
+        if content_budget < 1:
             return "'''…'''"
 
-        truncated = comment_text[:truncate_to].rstrip()
+        # Binary search for optimal truncation point
+        truncated = _truncate_to_tokens(comment_text, content_budget, tokenizer)
         return f"{truncated}…'''"
 
     # Single line comments
     elif comment_text.startswith('#'):
         # Simple truncation with ellipsis
-        truncate_to = max_length - 1  # Reserve space for '…'
-        if truncate_to < 0:
+        ellipsis_tokens = tokenizer.count_text('…')
+        content_budget = max(1, max_tokens - ellipsis_tokens)
+        
+        if content_budget < 1:
             return f"#…"
 
-        truncated = comment_text[:truncate_to].rstrip()
+        # Binary search for optimal truncation point
+        truncated = _truncate_to_tokens(comment_text, content_budget, tokenizer)
         return f"{truncated}…"
 
     # Fallback: simple truncation
     else:
-        truncate_to = max_length - 1
-        if truncate_to < 0:
+        ellipsis_tokens = tokenizer.count_text('…')
+        content_budget = max(1, max_tokens - ellipsis_tokens)
+        
+        if content_budget < 1:
             return "…"
 
-        truncated = comment_text[:truncate_to].rstrip()
+        # Binary search for optimal truncation point
+        truncated = _truncate_to_tokens(comment_text, content_budget, tokenizer)
         return f"{truncated}…"

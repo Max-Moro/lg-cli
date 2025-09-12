@@ -23,7 +23,7 @@ python_full:
       keep_annotated: ["@property", "@classmethod"]
     comment_policy:
       policy: "keep_first_sentence"
-      max_length: 100
+      max_tokens: 50
       keep_annotations: ["TODO", "FIXME", "NOTE"]
     import_config:
       policy: "summarize_long"

@@ -99,11 +99,14 @@ src__comments:
               - "/javascript.py"
               - "/markdown.py"
               - "/scala.py"
+              - "/placeholders.py"
+              - "/code_analysis.py"
             children:
               optimizations:
                 mode: allow
                 allow:
                   - "/comments.py"
+                  - "/literals.py"
               python:
                 mode: allow
                 allow:

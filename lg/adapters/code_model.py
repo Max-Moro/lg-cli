@@ -30,7 +30,7 @@ class FunctionBodyConfig:
 class CommentConfig:
     """Конфигурация обработки комментариев и документации."""
     policy: CommentPolicy = "keep_all"
-    max_length: Optional[int] = None  # максимальная длина сохраняемого комментария
+    max_tokens: Optional[int] = None  # максимальное количество токенов для сохраняемого комментария
     keep_annotations: List[str] = field(default_factory=list)  # regex аннотаций для сохранения
     strip_patterns: List[str] = field(default_factory=list)  # regex паттернов для удаления
 
@@ -114,7 +114,7 @@ class CodeCfg:
         elif isinstance(cp, dict):
             self.comment_policy = CommentConfig(
                 policy=cp.get("policy", "keep_all"),
-                max_length=cp.get("max_length"),
+                max_tokens=cp.get("max_tokens"),
                 keep_annotations=list(cp.get("keep_annotations", [])),
                 strip_patterns=list(cp.get("strip_patterns", []))
             )
