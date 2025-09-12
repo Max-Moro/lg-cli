@@ -219,12 +219,12 @@ class LiteralOptimizer:
 
         # Формируем результат
         if literal_info.is_multiline:
-            # Используем полный литерал для определения отступов
-            full_literal = f"{literal_info.opening}{literal_info.content}{literal_info.closing}"
-            element_indent = self._detect_element_indentation(full_literal)
-            base_indent = self._detect_base_indentation_from_context(context, node)
-            joined = f",\n{element_indent}".join(included_elements)
-            return f"\n{element_indent}{joined}, \"…\",\n{base_indent}"
+            # Определяем правильные отступы из контекста
+            element_indent, base_indent = self._get_base_indentations(context, node, literal_info)
+            # Добавляем отступы к каждому элементу
+            indented_elements = [f"{element_indent}{element}" for element in included_elements]
+            joined = f",\n".join(indented_elements)
+            return f"\n{joined},\n{element_indent}\"…\",\n{base_indent}"
         else:
             joined = ", ".join(included_elements)
             return f"{joined}, \"…\""
@@ -248,22 +248,20 @@ class LiteralOptimizer:
         if not included_pairs:
             # Если не помещается ни одна пара, используем только заглушку
             if literal_info.is_multiline:
-                # Используем полный литерал для определения отступов
-                full_literal = f"{literal_info.opening}{literal_info.content}{literal_info.closing}"
-                element_indent = self._detect_element_indentation(full_literal)
-                base_indent = self._detect_base_indentation_from_context(context, node)
+                # Определяем правильные отступы из контекста
+                element_indent, base_indent = self._get_base_indentations(context, node, literal_info)
                 return f"\n{element_indent}\"…\": \"…\",\n{base_indent}"
             else:
                 return '"…": "…"'
 
         # Формируем результат
         if literal_info.is_multiline:
-            # Используем полный литерал для определения отступов
-            full_literal = f"{literal_info.opening}{literal_info.content}{literal_info.closing}"
-            element_indent = self._detect_element_indentation(full_literal)
-            base_indent = self._detect_base_indentation_from_context(context, node)
-            joined = f",\n{element_indent}".join(included_pairs)
-            return f"\n{element_indent}{joined},\n\"…\": \"…\",\n{base_indent}"
+            # Определяем правильные отступы из контекста
+            element_indent, base_indent = self._get_base_indentations(context, node, literal_info)
+            # Добавляем отступы к каждому элементу
+            indented_pairs = [f"{element_indent}{pair}" for pair in included_pairs]
+            joined = f",\n".join(indented_pairs)
+            return f"\n{joined},\n{element_indent}\"…\": \"…\",\n{base_indent}"
         else:
             joined = ", ".join(included_pairs)
             return f"{joined}, \"…\": \"…\""
@@ -355,73 +353,59 @@ class LiteralOptimizer:
 
         return elements
 
-    def _detect_base_indentation(self, literal_text: str) -> str:
-        """Определяет базовый отступ литерала (отступ открывающей скобки)."""
-        lines = literal_text.split('\n')
-        if len(lines) < 2:
-            return ""
-
-        # Ищем строку с открывающей скобкой
-        # Сначала ищем строки, которые начинаются с открывающей скобки
-        for line in lines:
-            stripped = line.strip()
-            if stripped.startswith(('[', '{', '(')):
-                # Извлекаем отступ строки
-                base_indent = ""
-                for char in line:
-                    if char in ' \t':
-                        base_indent += char
-                    else:
-                        break
-                return base_indent
+    def _get_base_indentations(self, context: ProcessingContext, node: Node, literal_info: LiteralInfo) -> tuple[str, str]:
+        """
+        Определяет правильные отступы для элементов и базовый отступ литерала.
         
-        # Если не нашли, ищем строки, которые содержат открывающую скобку
-        for line in lines:
-            if any(bracket in line for bracket in ['[', '{', '(']):
-                # Извлекаем отступ строки
-                base_indent = ""
-                for char in line:
-                    if char in ' \t':
-                        base_indent += char
-                    else:
-                        break
-                return base_indent
-
-        # Если не нашли отступ открывающей скобки, используем отступ закрывающей
-        for line in reversed(lines):
-            stripped = line.strip()
-            if stripped in (']', '}', ')'):
-                # Извлекаем отступ до закрывающей скобки
-                base_indent = ""
-                for char in line:
-                    if char in ' \t':
-                        base_indent += char
-                    else:
-                        break
-                return base_indent
-
-        return ""
-
-    def _detect_base_indentation_from_context(self, context: ProcessingContext, node: Node) -> str:
+        Returns:
+            Tuple of (element_indent, base_indent)
         """
-        Определяет базовый отступ литерала из контекста исходного файла.
-        Ищет строку, где начинается литерал, и использует её отступ.
-        """
+        # Получаем полный текст литерала из исходного файла
+        start_byte, end_byte = context.doc.get_node_range(node)
+        full_literal_text = context.raw_text[start_byte:end_byte]
+        
+        # Определяем базовый отступ (отступ строки, где начинается литерал)
         start_line = context.doc.get_line_number_for_byte(node.start_byte)
         lines = context.raw_text.split('\n')
-        
+        base_indent = ""
         if start_line < len(lines):
             line = lines[start_line]
-            # Извлекаем отступ строки
-            base_indent = ""
             for char in line:
                 if char in ' \t':
                     base_indent += char
                 else:
                     break
-            return base_indent
         
-        return ""
+        # Определяем отступ элементов внутри литерала
+        element_indent = self._detect_element_indentation_from_full_text(full_literal_text, base_indent)
+        
+        return element_indent, base_indent
+
+    def _detect_element_indentation_from_full_text(self, full_literal_text: str, base_indent: str) -> str:
+        """
+        Определяет отступ элементов внутри литерала из полного текста литерала.
+        """
+        lines = full_literal_text.split('\n')
+        if len(lines) < 2:
+            return "    "  # 4 пробела по умолчанию
+
+        # Ищем первую строку с содержимым элемента (не пустую, не закрывающую скобку)
+        for line in lines[1:]:
+            stripped = line.strip()
+            if stripped and not stripped.startswith(('}', ']', ')')):
+                # Извлекаем leading whitespace
+                element_indent = ""
+                for char in line:
+                    if char in ' \t':
+                        element_indent += char
+                    else:
+                        break
+                # Если нашли отступ, используем его
+                if element_indent:
+                    return element_indent
+
+        # Fallback - добавляем стандартный отступ к базовому
+        return base_indent + "    "
 
     def _detect_element_indentation(self, literal_text: str) -> str:
         """Определяет отступ элементов внутри многострочного литерала."""

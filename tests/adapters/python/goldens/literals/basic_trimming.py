@@ -23,8 +23,9 @@ class DataContainer:
         # Large array (candidate for trimming)
         self.large_list = [
             "item_1",
-            "item_2", "…",
-        ] # literal array (−115 tokens)
+            "item_2",
+            "…",
+        ] # literal array (−114 tokens)
         
         # Small dictionary (should be preserved)
         self.small_dict = {"name": "test", "value": 42, "…": "…"} # literal object (−-6 tokens)
@@ -41,8 +42,9 @@ def process_data():
     categories = [
         "Technology",
         "Science",
-        "Health", "…",
-    ] # literal array (−38 tokens)
+        "Health",
+        "…",
+    ] # literal array (−37 tokens)
     
     # Nested data structure
     config = {
@@ -58,10 +60,12 @@ def process_data():
 TAGS = {
     "python",
     "javascript",
-    "typescript", "…",
-} # literal set (−36 tokens)
+    "typescript",
+    "…",
+} # literal set (−35 tokens)
 
 # Tuple with many elements
 COORDINATES = (
-    (0, 0), "…",
-) # literal tuple (−64 tokens)
+    (0, 0),
+    "…",
+) # literal tuple (−63 tokens)

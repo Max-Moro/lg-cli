@@ -43,15 +43,17 @@ export class LiteralDataManager {
         this.supportedLanguages = [
             "english",
             "spanish",
-            "french", "…",
-        ]; // literal array (−85 tokens)
+            "french",
+            "…",
+        ]; // literal array (−84 tokens)
         
         // Set with many elements
         this.allowedExtensions = new Set([
             ".js",
             ".ts",
-            ".jsx", "…",
-        ]) // literal array (−47 tokens);
+            ".jsx",
+            "…",
+        ]) // literal array (−46 tokens);
     }
     
     public processData(): DataContainer {
@@ -60,8 +62,9 @@ export class LiteralDataManager {
         
         const largeArray = [
             "item_001",
-            "item_002", "…",
-        ]; // literal array (−141 tokens)
+            "item_002",
+            "…",
+        ]; // literal array (−140 tokens)
         
         const nestedData = {
             "…": "…",
@@ -78,7 +81,7 @@ export class LiteralDataManager {
         // Very long SQL-like query string
         return `
             SELECT 
-                users.id…`; // literal string (−180 tokens)
+                use…`; // literal string (−181 tokens)
     }
     
     // Properties with literal data
@@ -101,5 +104,5 @@ function getUserName(): string { return "John Doe"; }
 function getUserEmail(): string { return "john.doe@example.com"; }
 function getAccountStatus(): string { return "active"; }
 function getPermissions(): string[] { return ["read", "write", "admin"]; }
-function getLastLogin(): string { date = "2024-01-15T10…"; /* literal string (−5 tokens) */ return date; }
+function getLastLogin(): string { date = "2024-01-15T1…"; /* literal string (−5 tokens) */ return date; }
 function getProfileCompleteness(): number { return 85; }
