@@ -245,5 +245,5 @@ function getUserName(): string { return "John Doe"; }
 function getUserEmail(): string { return "john.doe@example.com"; }
 function getAccountStatus(): string { return "active"; }
 function getPermissions(): string[] { return ["read", "write", "admin"]; }
-function getLastLogin(): string { return "2024-01-15T10:30:00Z"; }
+function getLastLogin(): string { date = "2024-01-15T10:30:00Z"; return date; }
 function getProfileCompleteness(): number { return 85; }

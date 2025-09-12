@@ -22,9 +22,9 @@ class DataContainer:
         
         # Large array (candidate for trimming)
         self.large_list = [
-        "item_1",
-        "item_2", "…",
-] # literal array (−116 tokens)
+            "item_1",
+            "item_2", "…",
+        ] # literal array (−115 tokens)
         
         # Small dictionary (should be preserved)
         self.small_dict = {"name": "test", "value": 42, "…": "…"} # literal object (−-6 tokens)
@@ -33,21 +33,21 @@ class DataContainer:
         self.large_dict = {
             "user_id": 12345,
             "…": "…",
-} # literal object (−230 tokens)
+        } # literal object (−229 tokens)
 
 def process_data():
     """Function with various literal data."""
     # Multi-line list
     categories = [
-    "Technology",
-    "Science",
-    "Health", "…",
-] # literal array (−39 tokens)
+        "Technology",
+        "Science",
+        "Health", "…",
+    ] # literal array (−38 tokens)
     
     # Nested data structure
     config = {
-            "…": "…",
-} # literal object (−157 tokens)
+        "…": "…",
+    } # literal object (−156 tokens)
     
     # Very long single-line string
     sql_query = "SELECT users.id, users.username, users…" # literal string (−66 tokens)

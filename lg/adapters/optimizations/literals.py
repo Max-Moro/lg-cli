@@ -103,9 +103,8 @@ class LiteralOptimizer:
             if semicolon_idx != -1:
                 semicolon_pos = end_byte + semicolon_idx
         
-        # Определяем базовую табуляцию для многострочных литералов
-        literal_text = context.doc.get_node_text(node)
-        base_indent = self._detect_indentation(literal_text)
+        # Определяем базовую табуляцию из контекста размещения литерала
+        base_indent = self._detect_base_indentation(line_before)
         
         return LiteralContext(
             line_before=line_before,
@@ -116,26 +115,38 @@ class LiteralOptimizer:
             base_indent=base_indent
         )
 
-    def _detect_indentation(self, literal_text: str) -> str:
-        """Определяет базовую табуляцию многострочного литерала."""
+    def _detect_base_indentation(self, line_before: str) -> str:
+        """Определяет базовый отступ литерала из контекста его размещения."""
+        # Извлекаем отступ из строки, где начинается литерал
+        indent = ""
+        for char in line_before:
+            if char in ' \t':
+                indent += char
+            else:
+                break
+        return indent
+
+    def _detect_element_indentation(self, literal_text: str, base_indent: str) -> str:
+        """Определяет отступ элементов внутри многострочного литерала."""
         lines = literal_text.split('\n')
         if len(lines) < 2:
-            return "    "  # Дефолтная табуляция
+            return base_indent + "    "  # Базовый отступ + 4 пробела по умолчанию
         
-        # Ищем первую непустую строку с содержимым
+        # Ищем первую непустую строку с содержимым элемента
         for line in lines[1:]:
             stripped = line.strip()
-            if stripped and not stripped.startswith(('"', "'", "`")):
+            if stripped and not stripped.startswith(('"', "'", "`", "}", "]", ")")):
                 # Извлекаем leading whitespace
-                indent = ""
+                element_indent = ""
                 for char in line:
                     if char in ' \t':
-                        indent += char
+                        element_indent += char
                     else:
                         break
-                return indent if indent else "    "
+                return element_indent if element_indent else base_indent + "    "
         
-        return "    "
+        # Если не нашли элемент, используем базовый отступ + 4 пробела
+        return base_indent + "    "
 
     def _trim_literal(
         self, 
@@ -164,11 +175,14 @@ class LiteralOptimizer:
         # Анализируем структуру литерала
         literal_info = self._analyze_literal_structure(literal_text, capture_name, language)
         
+        # Определяем отступ элементов внутри литерала
+        element_indent = self._detect_element_indentation(literal_text, literal_context.base_indent)
+        
         # Обновляем информацию о табуляции в literal_info
-        literal_info.element_separator = ", " if not literal_info.is_multiline else f",\n{literal_context.base_indent}"
+        literal_info.element_separator = ", " if not literal_info.is_multiline else f",\n{element_indent}"
         
         # Умно урезаем содержимое с учетом структуры
-        trimmed_content = self._smart_trim_content(context, literal_info, max_tokens, literal_context)
+        trimmed_content = self._smart_trim_content(context, literal_info, max_tokens, literal_context, element_indent)
         
         # Формируем корректную замену
         replacement = self._build_replacement(literal_info, trimmed_content)
@@ -332,7 +346,7 @@ class LiteralOptimizer:
         
         return stripped
     
-    def _smart_trim_content(self, context: ProcessingContext, literal_info: LiteralInfo, max_tokens: int, literal_context: LiteralContext) -> str:
+    def _smart_trim_content(self, context: ProcessingContext, literal_info: LiteralInfo, max_tokens: int, literal_context: LiteralContext, element_indent: str) -> str:
         """
         Умно урезает содержимое с учетом структуры литерала.
         
@@ -341,6 +355,7 @@ class LiteralOptimizer:
             literal_info: Информация о структуре литерала
             max_tokens: Максимальный размер в токенах
             literal_context: Контекст размещения литерала
+            element_indent: Отступ для элементов внутри литерала
             
         Returns:
             Урезанное содержимое для корректной замены
@@ -348,9 +363,9 @@ class LiteralOptimizer:
         if literal_info.type == "string":
             return self._trim_string_content(context, literal_info, max_tokens)
         elif literal_info.type in ("array", "tuple", "set"):
-            return self._trim_array_content(context, literal_info, max_tokens, literal_context)
+            return self._trim_array_content(context, literal_info, max_tokens, literal_context, element_indent)
         elif literal_info.type == "object":
-            return self._trim_object_content(context, literal_info, max_tokens, literal_context)
+            return self._trim_object_content(context, literal_info, max_tokens, literal_context, element_indent)
         else:
             # Fallback к простому урезанию
             return self._trim_simple_content(context, literal_info.content, max_tokens)
@@ -368,7 +383,7 @@ class LiteralOptimizer:
         trimmed = self._trim_simple_content(context, content, content_budget)
         return f"{trimmed}…"
     
-    def _trim_array_content(self, context: ProcessingContext, literal_info: LiteralInfo, max_tokens: int, literal_context: LiteralContext) -> str:
+    def _trim_array_content(self, context: ProcessingContext, literal_info: LiteralInfo, max_tokens: int, literal_context: LiteralContext, element_indent: str) -> str:
         """Урезает массивы/списки с добавлением корректного элемента-заглушки."""
         content = literal_info.content.strip()
         
@@ -402,21 +417,19 @@ class LiteralOptimizer:
             first_element = elements[0] if elements else '""'
             trimmed_element = self._trim_simple_content(context, first_element, content_budget - 10)
             if literal_info.is_multiline:
-                base_indent = literal_context.base_indent
-                return f"\n{base_indent}{trimmed_element}, \"…\",\n"
+                return f"\n{element_indent}{trimmed_element}, \"…\",\n{literal_context.base_indent}"
             else:
                 return f"{trimmed_element}, \"…\""
         
         # Формируем результат с корректным форматированием
         if literal_info.is_multiline:
-            base_indent = literal_context.base_indent
-            joined = f",\n{base_indent}".join(included_elements)
-            return f"\n{base_indent}{joined}, \"…\",\n"
+            joined = f",\n{element_indent}".join(included_elements)
+            return f"\n{element_indent}{joined}, \"…\",\n{literal_context.base_indent}"
         else:
             joined = ", ".join(included_elements)
             return f"{joined}, \"…\""
     
-    def _trim_object_content(self, context: ProcessingContext, literal_info: LiteralInfo, max_tokens: int, literal_context: LiteralContext) -> str:
+    def _trim_object_content(self, context: ProcessingContext, literal_info: LiteralInfo, max_tokens: int, literal_context: LiteralContext, element_indent: str) -> str:
         """Урезает объекты/словари с добавлением корректной заглушки."""
         content = literal_info.content.strip()
         
@@ -447,16 +460,14 @@ class LiteralOptimizer:
         if not included_pairs:
             # Если не помещается ни одна пара, используем только заглушку
             if literal_info.is_multiline:
-                base_indent = literal_context.base_indent
-                return f"\n{base_indent}\"…\": \"…\",\n"
+                return f"\n{element_indent}\"…\": \"…\",\n{literal_context.base_indent}"
             else:
                 return '"…": "…"'
         
         # Формируем результат
         if literal_info.is_multiline:
-            base_indent = literal_context.base_indent
-            joined = f",\n{base_indent}".join(included_pairs)
-            return f"\n{base_indent}{joined},\n{base_indent}\"…\": \"…\",\n"
+            joined = f",\n{element_indent}".join(included_pairs)
+            return f"\n{element_indent}{joined},\n{element_indent}\"…\": \"…\",\n{literal_context.base_indent}"
         else:
             joined = ", ".join(included_pairs)
             return f"{joined}, \"…\": \"…\""
