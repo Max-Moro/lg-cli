@@ -7,15 +7,29 @@ from lg.adapters.code_model import LiteralConfig
 from .conftest import lctx_py, do_literals, assert_golden_match, make_adapter_real
 
 
-class TestPythonLiteralOptimization:
+class TestPythonLiteralOptimizationGolden:
     """Test literal data optimization for Python code."""
 
-    def test_basic_literal_trimming(self, do_literals):
-        """Test basic literal trimming with default settings."""
+    def test_basic_literal_trimming_budget_10(self, do_literals):
+        """Test basic literal trimming with 10 tokens budget."""
+        literal_config = LiteralConfig(max_tokens=10)
+
+        adapter = make_adapter_real(PythonCfg(literals=literal_config))
+
+        result, meta = adapter.process(lctx_py(do_literals))
+
+        assert meta.get("python.removed.literal", 0) == 22
+
+        assert_golden_match(result, "literals", "max_tokens_10")
+
+    def test_basic_literal_trimming_budget_20(self, do_literals):
+        """Test basic literal trimming with 20 tokens budget."""
         literal_config = LiteralConfig(max_tokens=20)
 
         adapter = make_adapter_real(PythonCfg(literals=literal_config))
 
         result, meta = adapter.process(lctx_py(do_literals))
 
-        assert_golden_match(result, "literals", "basic_trimming")
+        assert meta.get("python.removed.literal", 0) == 17
+
+        assert_golden_match(result, "literals", "max_tokens_20")

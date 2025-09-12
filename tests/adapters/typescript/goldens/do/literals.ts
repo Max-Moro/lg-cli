@@ -11,7 +11,7 @@ const LONG_MESSAGE = `This is an extremely long message that contains a substant
 // Multi-line template literal with embedded expressions
 const TEMPLATE_WITH_DATA = `
 User Information:
-- Name: ${getUserName()}
+- Name: getUserName()
 - Email: ${getUserEmail()}
 - Registration Date: ${new Date().toISOString()}
 - Account Status: ${getAccountStatus()}

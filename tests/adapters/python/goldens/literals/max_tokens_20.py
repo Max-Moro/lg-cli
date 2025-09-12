@@ -6,13 +6,13 @@ import json
 SHORT_STRING = "hello"
 
 # Long string literal (candidate for trimming)
-LONG_STRING = """This is a very long string that contains a lot of text and might be a candidate…""" # literal string (−43 tokens)
+LONG_STRING = """This is a very long string that contains a lot of text and might be a candidate for trimming when op…""" # literal string (−39 tokens)
 
 # Multi-line string with data
 DATA_STRING = """
 {
     "users": [
-        {"id": 1, "name":…""" # literal string (−103 tokens)
+        {"id": 1, "name": "Alice",…""" # literal string (−100 tokens)
 
 class DataContainer:
     """Class with various literal types."""
@@ -56,7 +56,7 @@ def process_data():
     } # literal object (−156 tokens)
     
     # Very long single-line string
-    sql_query = "SELECT users.id, users.username, users.email, profiles.first_name, profiles.last_name,…" # literal string (−56 tokens)
+    sql_query = "SELECT users.id, users.username, users.email, profiles.first_name, profiles.last_name, pro…" # literal string (−55 tokens)
     
     return categories, config, sql_query
 
