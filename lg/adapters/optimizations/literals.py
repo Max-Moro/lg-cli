@@ -220,7 +220,7 @@ class LiteralOptimizer:
         # Формируем результат
         if literal_info.is_multiline:
             # Определяем правильные отступы из контекста
-            element_indent, base_indent = self._get_base_indentations(context, node, literal_info)
+            element_indent, base_indent = self._get_base_indentations(context, node)
             # Добавляем отступы к каждому элементу
             indented_elements = [f"{element_indent}{element}" for element in included_elements]
             joined = f",\n".join(indented_elements)
@@ -249,7 +249,7 @@ class LiteralOptimizer:
             # Если не помещается ни одна пара, используем только заглушку
             if literal_info.is_multiline:
                 # Определяем правильные отступы из контекста
-                element_indent, base_indent = self._get_base_indentations(context, node, literal_info)
+                element_indent, base_indent = self._get_base_indentations(context, node)
                 return f"\n{element_indent}\"…\": \"…\",\n{base_indent}"
             else:
                 return '"…": "…"'
@@ -257,7 +257,7 @@ class LiteralOptimizer:
         # Формируем результат
         if literal_info.is_multiline:
             # Определяем правильные отступы из контекста
-            element_indent, base_indent = self._get_base_indentations(context, node, literal_info)
+            element_indent, base_indent = self._get_base_indentations(context, node)
             # Добавляем отступы к каждому элементу
             indented_pairs = [f"{element_indent}{pair}" for pair in included_pairs]
             joined = f",\n".join(indented_pairs)
@@ -353,7 +353,7 @@ class LiteralOptimizer:
 
         return elements
 
-    def _get_base_indentations(self, context: ProcessingContext, node: Node, literal_info: LiteralInfo) -> tuple[str, str]:
+    def _get_base_indentations(self, context: ProcessingContext, node: Node) -> tuple[str, str]:
         """
         Определяет правильные отступы для элементов и базовый отступ литерала.
         
@@ -406,30 +406,6 @@ class LiteralOptimizer:
 
         # Fallback - добавляем стандартный отступ к базовому
         return base_indent + "    "
-
-    def _detect_element_indentation(self, literal_text: str) -> str:
-        """Определяет отступ элементов внутри многострочного литерала."""
-        lines = literal_text.split('\n')
-        if len(lines) < 2:
-            return "    "  # 4 пробела по умолчанию
-
-        # Ищем первую непустую строку с содержимым элемента
-        for line in lines[1:]:
-            stripped = line.strip()
-            if stripped and not stripped.startswith(('}', ']', ')')):
-                # Извлекаем leading whitespace
-                element_indent = ""
-                for char in line:
-                    if char in ' \t':
-                        element_indent += char
-                    else:
-                        break
-                # Если нашли отступ, используем его
-                if element_indent:
-                    return element_indent
-
-        # Fallback - используем отступ из контекста или 4 пробела
-        return "    "
 
     def _add_comment(self, context: ProcessingContext, literal_info: LiteralInfo, saved_tokens: int, end_byte: int) -> None:
         """Добавляет комментарий в правильное место."""
