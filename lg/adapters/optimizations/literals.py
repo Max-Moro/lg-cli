@@ -276,6 +276,11 @@ class LiteralOptimizer:
                 content = stripped
                 return LiteralInfo("string", '"', '"', content, is_multiline, language)
         
+        elif capture_name == "set":
+            # Python set literals  
+            content = self._extract_content(literal_text, "{", "}")
+            return LiteralInfo("set", "{", "}", content, is_multiline, language)
+        
         elif capture_name in ("array", "list"):
             # Массивы/списки - проверяем реальные символы
             if stripped.startswith('[') and stripped.endswith(']'):
@@ -285,6 +290,9 @@ class LiteralOptimizer:
                 # Tuple в Python
                 content = self._extract_content(literal_text, "(", ")")
                 return LiteralInfo("tuple", "(", ")", content, is_multiline, language)
+            elif stripped.startswith('{') and stripped.endswith('}'):
+                content = self._extract_content(literal_text, "{", "}")
+                return LiteralInfo("object", "{", "}", content, is_multiline, language)
             else:
                 # Fallback к массиву
                 content = self._extract_content(literal_text, "[", "]")
@@ -302,11 +310,7 @@ class LiteralOptimizer:
                 return LiteralInfo("array", "[", "]", content, is_multiline, language)
             elif stripped.startswith('{') and stripped.endswith('}'):
                 content = self._extract_content(literal_text, "{", "}")
-                # Различаем set и object/dict
-                if language == "python" and self._looks_like_python_set(content):
-                    return LiteralInfo("set", "{", "}", content, is_multiline, language)
-                else:
-                    return LiteralInfo("object", "{", "}", content, is_multiline, language)
+                return LiteralInfo("object", "{", "}", content, is_multiline, language)
             elif stripped.startswith('(') and stripped.endswith(')'):
                 content = self._extract_content(literal_text, "(", ")")
                 return LiteralInfo("tuple", "(", ")", content, is_multiline, language)
@@ -314,16 +318,6 @@ class LiteralOptimizer:
                 content = stripped
                 return LiteralInfo("literal", "", "", content, is_multiline, language)
 
-    def _looks_like_python_set(self, content: str) -> bool:
-        """Определяет, является ли содержимое Python set'ом."""
-        if not content.strip():
-            return False
-        
-        # Простая эвристика: если нет двоеточий, скорее всего это set
-        # Set: "a", "b", "c"  
-        # Dict: "a": "b", "c": "d"
-        return ':' not in content
-    
     def _extract_content(self, literal_text: str, opening: str, closing: str) -> str:
         """
         Извлекает содержимое литерала без открывающих/закрывающих символов.

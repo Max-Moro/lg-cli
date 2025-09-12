@@ -55,9 +55,11 @@ def process_data():
     return categories, config, sql_query
 
 # Set literal
-TAGS = [
-    , "…",
-] # literal array (−46 tokens)
+TAGS = {
+    "python",
+    "javascript",
+    "typescript", "…",
+} # literal set (−36 tokens)
 
 # Tuple with many elements
 COORDINATES = (

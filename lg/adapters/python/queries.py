@@ -58,7 +58,7 @@ QUERIES = {
     
     (dictionary) @object
     
-    (set) @array
+    (set) @set
     
     (tuple) @array
     """,
