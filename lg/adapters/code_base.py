@@ -91,18 +91,6 @@ class CodeAdapter(BaseAdapter[C], ABC):
         # Получаем полноценный контекст из облегченного
         context = lightweight_ctx.get_full_context(self, self.tokenizer)
 
-        # Если включён режим бюджета, сначала выполняем контроллер бюджета.
-        # Он применяет эскалируемые оптимизации «без плейсхолдеров» и доводит текст до лимита.
-        if self.cfg.budget and self.cfg.budget.max_tokens_per_file:
-            from .budget import BudgetController
-            controller = BudgetController(
-                adapter=self,
-                tokenizer=self.tokenizer,
-                cfg_budget=cast(BudgetConfig, self.cfg.budget),
-                cfg=self.cfg
-            )
-            controller.run(context)
-
         # Затем применяем пользовательские оптимизации по конфигу (обычная логика)
         self._apply_optimizations(context, self.cfg)
 
