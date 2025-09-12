@@ -91,6 +91,7 @@ class CodeCfg:
 
     def general_load(self, d: Optional[Dict[str, Any]]):
         """Загрузка универсальной части конфигурации из словаря YAML."""
+        d = d or {}
 
         # Парсинг основных полей
         self.public_api_only = bool(d.get("public_api_only", False))
@@ -110,7 +111,8 @@ class CodeCfg:
         # comment_policy: str | dict
         cp = d.get("comment_policy", "keep_all")
         if isinstance(cp, str):
-            self.comment_policy = cp
+            # Assign as CommentPolicy literal
+            self.comment_policy = cp  # type: ignore[assignment]
         elif isinstance(cp, dict):
             self.comment_policy = CommentConfig(
                 policy=cp.get("policy", "keep_all"),
@@ -140,7 +142,7 @@ class CodeCfg:
             self.placeholders = PlaceholderConfig(
                 style=pc.get("style", "inline"),
                 min_savings_ratio=float(pc.get("min_savings_ratio", 2.0)),
-                min_abs_savings_if_none=int(pc.get("min_abs_savings_if_none"), 5),
+                min_abs_savings_if_none=int(pc.get("min_abs_savings_if_none", 5)),
             )
 
         if "budget" in d:

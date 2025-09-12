@@ -107,6 +107,20 @@ class ProcessingContext(LightState):
         self.metrics.mark_element_removed(element_type, count)
         self.metrics.mark_placeholder_inserted()
 
+    def reseed(self, new_text: str, adapter, placeholder_style: str | None = None) -> None:
+        """
+        Commit-and-reseed utility: replace raw_text, rebuild doc/editor/placeholders.
+        Keeps metrics and tokenizer.
+        """
+        self.raw_text = new_text
+        self.doc = adapter.create_document(new_text, self.file_path.suffix.lstrip("."))
+        self.editor = RangeEditor(new_text)
+        # Recreate placeholder manager with optionally overridden style
+        style = adapter.cfg.placeholders.style
+        if placeholder_style is not None:
+            style = placeholder_style
+        self.placeholders = create_placeholder_manager(new_text, adapter.get_comment_style(), style)
+
     @classmethod
     def from_lightweight(
         cls,
