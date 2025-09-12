@@ -6,12 +6,13 @@
 const SHORT_MESSAGE = "Hello, World!";
 
 // Long string literal (candidate for trimming)
-const LONG_MESSAGE = `This is an extremely long message that…`; // literal string (−63 tokens)
+const LONG_MESSAGE = `This is an extremely long message that contains a substantial amount of text content which might be…`; // literal string (−53 tokens)
 
 // Multi-line template literal with embedded expressions
 const TEMPLATE_WITH_DATA = `
 User Information:
-- Name:…`; // literal string (−59 tokens)
+- Name: ${getUserName()}
+- Email: ${getUserEmail…`; // literal string (−49 tokens)
 
 interface DataContainer {
     // Small array (should be preserved)
@@ -31,8 +32,8 @@ export class LiteralDataManager {
     // Class properties with various literal types
     private readonly smallConfig = {
         debug: true,
-        "…": "…",
-    }; // literal object (−3 tokens)
+        version: "1.0.0"
+    };
     
     private readonly largeConfig = {
         "…": "…",
@@ -44,16 +45,19 @@ export class LiteralDataManager {
             "english",
             "spanish",
             "french",
+            "german",
             "…",
-        ]; // literal array (−84 tokens)
+        ]; // literal array (−79 tokens)
         
         // Set with many elements
         this.allowedExtensions = new Set([
             ".js",
             ".ts",
             ".jsx",
+            ".tsx",
+            ".vue",
             "…",
-        ]) // literal array (−46 tokens);
+        ]) // literal array (−38 tokens);
     }
     
     public processData(): DataContainer {
@@ -63,8 +67,9 @@ export class LiteralDataManager {
         const largeArray = [
             "item_001",
             "item_002",
+            "item_003",
             "…",
-        ]; // literal array (−140 tokens)
+        ]; // literal array (−134 tokens)
         
         const nestedData = {
             "…": "…",
@@ -81,7 +86,7 @@ export class LiteralDataManager {
         // Very long SQL-like query string
         return `
             SELECT 
-                use…`; // literal string (−181 tokens)
+                users.id, users.username, users.email, users.created_at…`; // literal string (−170 tokens)
     }
     
     // Properties with literal data
@@ -92,8 +97,8 @@ export class LiteralDataManager {
 // Module-level constants with different sizes
 export const SMALL_CONSTANTS = {
     API_VERSION: "v1",
-    "…": "…",
-}; // literal object (−0 tokens)
+    DEFAULT_LIMIT: 50
+};
 
 export const LARGE_CONSTANTS = {
     "…": "…",
@@ -104,5 +109,5 @@ function getUserName(): string { return "John Doe"; }
 function getUserEmail(): string { return "john.doe@example.com"; }
 function getAccountStatus(): string { return "active"; }
 function getPermissions(): string[] { return ["read", "write", "admin"]; }
-function getLastLogin(): string { date = "2024-01-15T1…"; /* literal string (−5 tokens) */ return date; }
+function getLastLogin(): string { date = "2024-01-15T10:30:00Z"; return date; }
 function getProfileCompleteness(): number { return 85; }

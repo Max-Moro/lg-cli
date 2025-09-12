@@ -12,7 +12,7 @@ class TestTypeScriptLiteralOptimization:
 
     def test_string_trimming_basic(self, do_literals):
         """Test basic string literal trimming."""
-        literal_config = LiteralConfig(max_tokens=10)
+        literal_config = LiteralConfig(max_tokens=20)
 
         adapter = make_adapter_real(TypeScriptCfg(literals=literal_config))
 

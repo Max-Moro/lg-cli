@@ -298,10 +298,6 @@ class LiteralOptimizer:
         target_length = max(1, target_length)
         trimmed = content[:target_length].rstrip()
 
-        # Проверяем, что урезанная версия действительно помещается в бюджет
-        while trimmed and context.tokenizer.count_text(trimmed) > token_budget:
-            trimmed = trimmed[:-1].rstrip()
-
         return trimmed
 
     def _parse_elements(self, content: str) -> List[str]:

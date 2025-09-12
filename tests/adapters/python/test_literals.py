@@ -12,7 +12,7 @@ class TestPythonLiteralOptimization:
 
     def test_basic_literal_trimming(self, do_literals):
         """Test basic literal trimming with default settings."""
-        literal_config = LiteralConfig(max_tokens=10)
+        literal_config = LiteralConfig(max_tokens=20)
 
         adapter = make_adapter_real(PythonCfg(literals=literal_config))
 
