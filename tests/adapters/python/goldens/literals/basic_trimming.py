@@ -6,7 +6,7 @@ import json
 SHORT_STRING = "hello"
 
 # Long string literal (candidate for trimming)
-LONG_STRING = """This is a very long string that…""" """ literal string (−53 tokens) """
+LONG_STRING = """This is a very long string that…""" # literal string (−53 tokens)
 
 # Multi-line string with data
 DATA_STRING = """
@@ -22,17 +22,17 @@ class DataContainer:
         
         # Large array (candidate for trimming)
         self.large_list = [
-    "item_1",
-    "item_2", "…",
+        "item_1",
+        "item_2", "…",
 ] # literal array (−116 tokens)
         
         # Small dictionary (should be preserved)
-        self.small_dict = {"name": "test", "value": 42, "…": "…"} """ literal object (−-6 tokens) """
+        self.small_dict = {"name": "test", "value": 42, "…": "…"} # literal object (−-6 tokens)
         
         # Large dictionary (candidate for trimming)
         self.large_dict = {
-    "user_id": 12345,
-    "…": "…",
+            "user_id": 12345,
+            "…": "…",
 } # literal object (−230 tokens)
 
 def process_data():
@@ -46,11 +46,11 @@ def process_data():
     
     # Nested data structure
     config = {
-    "…": "…",
+            "…": "…",
 } # literal object (−157 tokens)
     
     # Very long single-line string
-    sql_query = "SELECT users.id, users.username, users…" """ literal string (−66 tokens) """
+    sql_query = "SELECT users.id, users.username, users…" # literal string (−66 tokens)
     
     return categories, config, sql_query
 
