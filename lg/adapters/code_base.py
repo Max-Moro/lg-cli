@@ -6,12 +6,11 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from typing import Dict, List, Tuple, Any, TypeVar, Optional
+from typing import Dict, List, Tuple, Any, TypeVar, Optional, cast
 
 from .base import BaseAdapter
 from .code_analysis import CodeAnalyzer
-from .code_model import CodeCfg, PlaceholderConfig
-from .budget import BudgetController
+from .code_model import CodeCfg, PlaceholderConfig, BudgetConfig
 from .context import ProcessingContext, LightweightContext
 from .optimizations import (
     PublicApiOptimizer,
@@ -94,8 +93,14 @@ class CodeAdapter(BaseAdapter[C], ABC):
 
         # Если включён режим бюджета, сначала выполняем контроллер бюджета.
         # Он применяет эскалируемые оптимизации «без плейсхолдеров» и доводит текст до лимита.
-        if getattr(self.cfg, "budget", None) and getattr(self.cfg.budget, "max_tokens_per_file", None):
-            controller = BudgetController(adapter=self, tokenizer=self.tokenizer, cfg=self.cfg)
+        if self.cfg.budget and self.cfg.budget.max_tokens_per_file:
+            from .budget import BudgetController
+            controller = BudgetController(
+                adapter=self,
+                tokenizer=self.tokenizer,
+                cfg_budget=cast(BudgetConfig, self.cfg.budget),
+                cfg=self.cfg
+            )
             controller.run(context)
 
         # Затем применяем пользовательские оптимизации по конфигу (обычная логика)
