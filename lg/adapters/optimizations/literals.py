@@ -246,34 +246,100 @@ class LiteralOptimizer:
         
         comment_text = f"literal {literal_info.type} (−{saved_tokens} tokens)"
         
-        # Логика выбора места и типа комментария
-        if literal_context.has_immediate_semicolon and literal_context.semicolon_pos:
-            # `;` сразу после литерала - проверяем есть ли ещё код после `;`
-            semicolon_end = literal_context.semicolon_pos + 1
-            text_after_semicolon = context.raw_text[semicolon_end:].split('\n')[0].strip()
-            
-            if not text_after_semicolon:
-                # Нет кода после `;` на той же строке - можем использовать однострочный комментарий
-                insertion_pos = literal_context.semicolon_pos + 1
-                final_comment = f" {single_comment} {comment_text}"
-            else:
-                # Есть код после `;` - используем блочный комментарий сразу после литерала
-                insertion_pos = original_end_byte
-                final_comment = f" {block_open} {comment_text} {block_close}"
-        elif literal_context.is_inline:
-            # Есть значимый код после литерала на той же строке - используем блочный комментарий
-            # чтобы не "закомментировать" остальной код
-            insertion_pos = original_end_byte
-            final_comment = f" {block_open} {comment_text} {block_close}"
-        else:
-            # Литерал заканчивается в конце строки - можем использовать однострочный комментарий
-            insertion_pos = original_end_byte
-            final_comment = f" {single_comment} {comment_text}"
+        # Ищем лучшее место для размещения комментария
+        insertion_pos, final_comment = self._find_best_comment_placement(
+            context, literal_context, comment_text, single_comment, block_open, block_close, original_end_byte
+        )
         
         context.editor.add_replacement(
             insertion_pos, insertion_pos, final_comment,
             edit_type="literal_comment"
         )
+    
+    def _find_best_comment_placement(
+        self, 
+        context: ProcessingContext, 
+        literal_context: LiteralContext, 
+        comment_text: str, 
+        single_comment: str, 
+        block_open: str, 
+        block_close: str, 
+        original_end_byte: int
+    ) -> tuple[int, str]:
+        """Находит лучшее место для размещения комментария, не разрывая операторы."""
+        
+        # Анализируем текст после литерала
+        text_after = context.raw_text[original_end_byte:]
+        line_after = text_after.split('\n')[0]
+        
+        # Ищем естественные границы для размещения комментария
+        best_pos, comment_type = self._find_natural_boundary(
+            context, original_end_byte, line_after, text_after
+        )
+        
+        if comment_type == "single":
+            return best_pos, f" {single_comment} {comment_text}"
+        else:
+            return best_pos, f" {block_open} {comment_text} {block_close}"
+    
+    def _find_natural_boundary(
+        self, 
+        context: ProcessingContext, 
+        original_end_byte: int, 
+        line_after: str, 
+        text_after: str
+    ) -> tuple[int, str]:
+        """Находит естественную границу для размещения комментария."""
+        
+        # 1. Ищем закрывающие скобки/кавычки сразу после литерала
+        bracket_pos = self._find_closing_brackets_after_literal(line_after)
+        if bracket_pos is not None:
+            # Найдена закрывающая скобка - размещаем комментарий после неё
+            insertion_pos = original_end_byte + bracket_pos + 1
+            # Проверяем, есть ли код после скобки
+            text_after_bracket = line_after[bracket_pos + 1:].strip()
+            if text_after_bracket and not text_after_bracket.startswith((';', ',', ')')):
+                return insertion_pos, "block"  # Есть код после - используем блочный
+            else:
+                return insertion_pos, "single"  # Нет кода - используем однострочный
+        
+        # 2. Ищем точку с запятой
+        semicolon_pos = line_after.find(';')
+        if semicolon_pos != -1:
+            insertion_pos = original_end_byte + semicolon_pos + 1
+            # Проверяем, есть ли код после точки с запятой
+            text_after_semicolon = line_after[semicolon_pos + 1:].strip()
+            if text_after_semicolon:
+                return insertion_pos, "block"  # Есть код после - используем блочный
+            else:
+                return insertion_pos, "single"  # Нет кода - используем однострочный
+        
+        # 3. Ищем запятую (для массивов, объектов)
+        comma_pos = line_after.find(',')
+        if comma_pos != -1:
+            insertion_pos = original_end_byte + comma_pos + 1
+            text_after_comma = line_after[comma_pos + 1:].strip()
+            if text_after_comma and not text_after_comma.startswith((']', '}', ')')):
+                return insertion_pos, "block"  # Есть код после - используем блочный
+            else:
+                return insertion_pos, "single"  # Нет кода - используем однострочный
+        
+        # 4. Если ничего не найдено - размещаем сразу после литерала
+        # Проверяем, есть ли значимый код после литерала на той же строке
+        if line_after.strip():
+            return original_end_byte, "block"  # Есть код после - используем блочный
+        else:
+            return original_end_byte, "single"  # Нет кода - используем однострочный
+    
+    def _find_closing_brackets_after_literal(self, line_after: str) -> int | None:
+        """Ищет закрывающие скобки сразу после литерала."""
+        # Ищем закрывающие скобки в начале строки (после литерала)
+        for i, char in enumerate(line_after):
+            if char in '])}':
+                return i
+            elif char not in ' \t':  # Прерываем на первом не-пробельном символе
+                break
+        return None
     
     def _analyze_literal_structure(self, literal_text: str, capture_name: str, language: str) -> LiteralInfo:
         """

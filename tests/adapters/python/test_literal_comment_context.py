@@ -40,7 +40,7 @@ class TestLiteralCommentContext:
         
         # Should use block comment to avoid commenting out the print statement
         assert '""" literal string' in result
-        assert '"""; print(message)' in result
+        assert '""" print(message)' in result
         assert '#' not in result  # Should not use single-line comment
     
     def test_literal_multiple_assignment(self):
@@ -55,7 +55,7 @@ class TestLiteralCommentContext:
         
         # Should use block comment since assignment continues
         assert '""" literal string' in result
-        assert '""", 42' in result
+        assert '""" 42' in result
         assert '#' not in result  # Should not use single-line comment
     
     def test_literal_in_function_call(self):
@@ -70,7 +70,7 @@ class TestLiteralCommentContext:
         
         # Should use block comment since function call continues
         assert '""" literal string' in result
-        assert '""", other_param' in result
+        assert '""" other_param' in result
         assert '#' not in result  # Should not use single-line comment
     
     def test_literal_in_list_comprehension(self):
@@ -100,7 +100,7 @@ class TestLiteralCommentContext:
         
         # Should use block comment since assignment continues
         assert '""" literal string' in result
-        assert '""", "second item"' in result
+        assert '""" "second item"' in result
         assert '#' not in result  # Should not use single-line comment
     
     def test_multiline_literal_end_of_statement(self):

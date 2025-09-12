@@ -51,7 +51,7 @@ export class LiteralDataManager {
             ".js",
             ".ts",
             ".jsx", "…",
-        ] /* literal array (−47 tokens) */);
+        ]) // literal array (−47 tokens);
     }
     
     public processData(): DataContainer {
@@ -101,5 +101,5 @@ function getUserName(): string { return "John Doe"; }
 function getUserEmail(): string { return "john.doe@example.com"; }
 function getAccountStatus(): string { return "active"; }
 function getPermissions(): string[] { return ["read", "write", "admin"]; }
-function getLastLogin(): string { date = "2024-01-15T10…" /* literal string (−5 tokens) */; return date; }
+function getLastLogin(): string { date = "2024-01-15T10…"; /* literal string (−5 tokens) */ return date; }
 function getProfileCompleteness(): number { return 85; }

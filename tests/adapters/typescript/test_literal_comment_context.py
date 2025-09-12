@@ -29,18 +29,18 @@ class TestLiteralCommentContext:
         assert '/* ' not in result  # Should not use block comment
     
     def test_literal_with_code_after(self):
-        """Test literal with other code after it - should use block comment."""
+        """Test literal with other code after it - should place comment after semicolon with block comment."""
         code = 'function getLastLogin(): string { date = "2024-01-15T10:30:00Z"; return date; }'
         
         cfg = TypeScriptCfg()
-        cfg.literals.max_tokens = 5  # Force trimming  
+        cfg.literals.max_tokens = 5  # Force trimming
         adapter = make_adapter(cfg)
         
         result, _ = adapter.process(self._make_context(code))
         
-        # Should use block comment to avoid commenting out the return statement
-        assert '/* literal string' in result
-        assert '*/; return date' in result
+        # Should place comment after semicolon with block comment to avoid commenting out the return statement
+        assert '"; /* literal string' in result
+        assert '*/ return date' in result
         assert '//' not in result  # Should not use single-line comment
     
     def test_literal_at_end_of_line(self):
@@ -59,7 +59,7 @@ class TestLiteralCommentContext:
         assert '/* ' not in result  # Should not use block comment
     
     def test_literal_with_closing_brace(self):
-        """Test literal followed by closing brace - should use block comment."""
+        """Test literal followed by closing brace - should use block comment since there's code after semicolon."""
         code = 'function getDate(): string { return "2024-01-15T10:30:00Z very long timestamp"; }'
         
         cfg = TypeScriptCfg()  
@@ -68,13 +68,13 @@ class TestLiteralCommentContext:
         
         result, _ = adapter.process(self._make_context(code))
         
-        # Should use block comment to preserve closing brace
+        # Should use block comment since there's code (closing brace) after semicolon
         assert '/* literal string' in result
-        assert '*/; }' in result
+        assert '*/ }' in result
         assert '//' not in result  # Should not use single-line comment
     
     def test_literal_with_semicolon_and_more_code(self):
-        """Test literal with semicolon followed by more code - should use block comment to avoid commenting out following code."""
+        """Test literal with semicolon followed by more code - should place comment after semicolon with block comment."""
         code = 'const msg = "this is a very long message that should be trimmed"; console.log(msg);'
         
         cfg = TypeScriptCfg()
@@ -83,9 +83,9 @@ class TestLiteralCommentContext:
         
         result, _ = adapter.process(self._make_context(code))
         
-        # Should use block comment since there's more code after semicolon
-        assert '/* literal string' in result
-        assert '*/; console.log(msg)' in result
+        # Should place comment after semicolon with block comment to avoid commenting out following code
+        assert '"; /* literal string' in result
+        assert '*/ console.log(msg)' in result
         assert '//' not in result  # Should not use single-line comment
     
     def test_literal_with_semicolon_no_more_code(self):
@@ -103,8 +103,26 @@ class TestLiteralCommentContext:
         assert 'literal string' in result
         assert '/* ' not in result  # Should not use block comment
     
+    def test_literal_with_closing_brackets(self):
+        """Test literal with closing brackets (array/object) - should place comment after brackets."""
+        code = '''this.allowedExtensions = new Set([
+    '.js', '.ts', '.jsx', '.tsx', '.vue', '.svelte',
+    '.py', '.java', '.c', '.cpp', '.cs', '.go', '.rs'
+]);'''
+        
+        cfg = TypeScriptCfg()
+        cfg.literals.max_tokens = 5  # Force trimming
+        adapter = make_adapter(cfg)
+        
+        result, _ = adapter.process(self._make_context(code))
+        
+        # Should place comment after closing brackets
+        assert ']) // literal array' in result
+        assert 'literal array' in result
+        assert '/* ' not in result  # Should not use block comment
+    
     def test_multiple_statements_same_line(self):
-        """Test literal in complex single-line statement - should use block comment."""
+        """Test literal in complex single-line statement - should place comment after semicolon with single-line comment."""
         code = 'let a = "very long string that needs trimming", b = 42, c = true;'
         
         cfg = TypeScriptCfg()
@@ -113,13 +131,13 @@ class TestLiteralCommentContext:
         
         result, _ = adapter.process(self._make_context(code))
         
-        # Should use block comment since more code follows
-        assert '/* literal string' in result
-        assert '*/, b = 42' in result
-        assert '//' not in result  # Should not use single-line comment
+        # Should place comment after semicolon with single-line comment since no code follows
+        assert '; // literal string' in result
+        assert 'literal string' in result
+        assert '/* ' not in result  # Should not use block comment
     
     def test_literal_in_function_call(self):
-        """Test literal inside function call - should use block comment."""
+        """Test literal inside function call - should place comment after semicolon with single-line comment."""
         code = 'console.log("this is a very long message that should be trimmed", otherParam);'
         
         cfg = TypeScriptCfg()
@@ -128,10 +146,10 @@ class TestLiteralCommentContext:
         
         result, _ = adapter.process(self._make_context(code))
         
-        # Should use block comment since function call continues
-        assert '/* literal string' in result
-        assert '*/, otherParam' in result
-        assert '//' not in result  # Should not use single-line comment
+        # Should place comment after semicolon with single-line comment since no code follows
+        assert '; // literal string' in result
+        assert 'literal string' in result
+        assert '/* ' not in result  # Should not use block comment
     
     def _make_context(self, code: str):
         """Helper to create LightweightContext for testing."""
