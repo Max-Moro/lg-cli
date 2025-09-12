@@ -92,12 +92,12 @@ class CodeAdapter(BaseAdapter[C], ABC):
         context = lightweight_ctx.get_full_context(self, self.tokenizer)
 
         # Применяем оптимизации
-        self._apply_optimizations(context)
+        self._apply_optimizations(context, self.cfg)
 
         # Финализируем плейсхолдеры
         return self._finalize_placeholders(context, self.cfg.placeholders)
 
-    def _apply_optimizations(self, context: ProcessingContext) -> None:
+    def _apply_optimizations(self, context: ProcessingContext, code_cfg: C) -> None:
         """
         Применение оптимизаций через специализированные модули.
         Каждый модуль отвечает за свой тип оптимизации.
@@ -109,19 +109,19 @@ class CodeAdapter(BaseAdapter[C], ABC):
 
         # Обработка тел функций
         if self.cfg.strip_function_bodies:
-            function_body_optimizer = FunctionBodyOptimizer(self)
+            function_body_optimizer = FunctionBodyOptimizer(code_cfg.strip_function_bodies, self)
             function_body_optimizer.apply(context)
 
         # Обработка комментариев
-        comment_optimizer = CommentOptimizer(self)
+        comment_optimizer = CommentOptimizer(code_cfg.comment_policy, self)
         comment_optimizer.apply(context)
 
         # Обработка импортов
-        import_optimizer = ImportOptimizer(self)
+        import_optimizer = ImportOptimizer(code_cfg.imports, self)
         import_optimizer.apply(context)
 
         # Обработка литералов
-        literal_optimizer = LiteralOptimizer(self)
+        literal_optimizer = LiteralOptimizer(code_cfg.literals, self)
         literal_optimizer.apply(context)
 
     def _finalize_placeholders(self, context: ProcessingContext, ph_cfg: PlaceholderConfig) -> Tuple[str, Dict[str, Any]]:

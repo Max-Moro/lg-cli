@@ -16,9 +16,6 @@ class PublicApiOptimizer:
     def __init__(self, adapter):
         """
         Initialize with parent adapter for language-specific checks.
-        
-        Args:
-            adapter: Parent CodeAdapter instance for language-specific methods
         """
         from ..code_base import CodeAdapter
         self.adapter = cast(CodeAdapter, adapter)

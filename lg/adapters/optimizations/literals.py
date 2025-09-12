@@ -8,6 +8,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import cast, List
 
+from ..code_model import LiteralConfig
 from ..context import ProcessingContext
 from ..tree_sitter_support import Node
 
@@ -33,14 +34,15 @@ class CommentPlacement:
 class LiteralOptimizer:
     """Handles literal data processing optimization with simplified logic."""
 
-    def __init__(self, adapter):
+    def __init__(self, cfg: LiteralConfig, adapter):
         """Initialize with parent adapter for language-specific checks."""
+        self.cfg = cfg
         from ..code_base import CodeAdapter
         self.adapter = cast(CodeAdapter, adapter)
 
     def apply(self, context: ProcessingContext) -> None:
         """Apply literal processing based on configuration."""
-        max_tokens = self.adapter.cfg.literals.max_tokens
+        max_tokens = self.cfg.max_tokens
         if max_tokens is None:
             return  # Оптимизация отключена
 

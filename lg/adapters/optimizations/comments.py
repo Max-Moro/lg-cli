@@ -6,9 +6,9 @@ Processes comments and docstrings according to policy.
 from __future__ import annotations
 
 import re
-from typing import Tuple, cast
+from typing import cast, Tuple, Union
 
-from ..code_model import CommentConfig
+from ..code_model import CommentConfig, CommentPolicy
 from ..context import ProcessingContext
 from ..tree_sitter_support import Node
 
@@ -16,13 +16,11 @@ from ..tree_sitter_support import Node
 class CommentOptimizer:
     """Handles comment processing optimization."""
     
-    def __init__(self, adapter):
+    def __init__(self, cfg: Union[CommentPolicy, CommentConfig], adapter):
         """
         Initialize with parent adapter for language-specific checks.
-        
-        Args:
-            adapter: Parent CodeAdapter instance for language-specific methods
         """
+        self.cfg = cfg
         from ..code_base import CodeAdapter
         self.adapter = cast(CodeAdapter, adapter)
     
@@ -33,10 +31,8 @@ class CommentOptimizer:
         Args:
             context: Processing context with document and editor
         """
-        policy = self.adapter.cfg.comment_policy
-        
         # If policy is keep_all, nothing to do
-        if isinstance(policy, str) and policy == "keep_all":
+        if isinstance(self.cfg, str) and self.cfg == "keep_all":
             return
         
         # Find comments in the code
@@ -46,7 +42,7 @@ class CommentOptimizer:
             comment_text = context.doc.get_node_text(node)
 
             should_remove, replacement = self._should_process_comment(
-                policy, capture_name, comment_text, context
+                capture_name, comment_text, context
             )
 
             is_docstring = capture_name == "docstring" or self.adapter.is_documentation_comment(comment_text)
@@ -93,8 +89,7 @@ class CommentOptimizer:
 
     def _should_process_comment(
         self, 
-        policy, 
-        capture_name: str, 
+        capture_name: str,
         comment_text: str, 
         context: ProcessingContext
     ) -> Tuple[bool, str]:
@@ -102,7 +97,6 @@ class CommentOptimizer:
         Determine how to process a comment based on policy.
         
         Args:
-            policy: Comment processing policy (string or CommentConfig object)
             capture_name: Type of comment (comment, docstring, etc.)
             comment_text: Text content of the comment
             context: Processing context
@@ -111,7 +105,8 @@ class CommentOptimizer:
             Tuple of (should_remove, replacement_text)
         """
         # Simple string policy
-        if isinstance(policy, str):
+        if isinstance(self.cfg, str):
+            policy: str = self.cfg
             if policy == "keep_all":
                 return False, ""
             elif policy == "strip_all":
@@ -135,23 +130,21 @@ class CommentOptimizer:
                     return True, None
         
         # Complex policy (CommentConfig object)
-        elif hasattr(policy, 'policy'):
-            return self._process_complex_comment_policy(policy, capture_name, comment_text, context)
+        elif hasattr(self.cfg, 'policy'):
+            return self._process_complex_comment_policy(capture_name, comment_text, context)
         
         return False, ""
     
     def _process_complex_comment_policy(
         self,
-        policy: CommentConfig,
         capture_name: str,
         comment_text: str,
         context: ProcessingContext
     ) -> Tuple[bool, str]:
         """
-        Process comments using complex policy configuration.
+        Process comments using complex configuration.
         
         Args:
-            policy: CommentConfig object with detailed rules
             capture_name: Type of comment
             comment_text: Comment text content
             context: Processing context
@@ -159,9 +152,10 @@ class CommentOptimizer:
         Returns:
             Tuple of (should_remove, replacement_text)
         """
+        complex_cfg: CommentConfig  = cast(CommentConfig, self.cfg)
 
         # Check for forced removal patterns
-        for pattern in policy.strip_patterns:
+        for pattern in complex_cfg.strip_patterns:
             try:
                 if re.search(pattern, comment_text, re.IGNORECASE):
                     return True, None  # Use default placeholder
@@ -170,13 +164,13 @@ class CommentOptimizer:
                 continue
         
         # Check for preservation patterns
-        for pattern in policy.keep_annotations:
+        for pattern in complex_cfg.keep_annotations:
             try:
                 if re.search(pattern, comment_text, re.IGNORECASE):
                     # Check max_tokens for preserved comments
-                    if policy.max_tokens is not None and context.tokenizer.count_text(comment_text) > policy.max_tokens:
+                    if complex_cfg.max_tokens is not None and context.tokenizer.count_text(comment_text) > complex_cfg.max_tokens:
                         # Truncate comment with proper closing
-                        truncated = self.adapter.hook__smart_truncate_comment(self, comment_text, policy.max_tokens, context.tokenizer)
+                        truncated = self.adapter.hook__smart_truncate_comment(self, comment_text, complex_cfg.max_tokens, context.tokenizer)
                         return True, truncated
                     return False, ""  # Keep as is
             except re.error:
@@ -184,11 +178,11 @@ class CommentOptimizer:
                 continue
         
         # Apply base policy with max_tokens consideration
-        base_policy = policy.policy
+        base_policy = complex_cfg.policy
         if base_policy == "keep_all":
             # Check max_tokens even for keep_all
-            if policy.max_tokens is not None and context.tokenizer.count_text(comment_text) > policy.max_tokens:
-                truncated = self.adapter.hook__smart_truncate_comment(self, comment_text, policy.max_tokens, context.tokenizer)
+            if complex_cfg.max_tokens is not None and context.tokenizer.count_text(comment_text) > complex_cfg.max_tokens:
+                truncated = self.adapter.hook__smart_truncate_comment(self, comment_text, complex_cfg.max_tokens, context.tokenizer)
                 return True, truncated
             return False, ""
         
@@ -199,8 +193,8 @@ class CommentOptimizer:
             if capture_name == "comment" and not self.adapter.is_documentation_comment(comment_text):
                 return True, None  # Use default placeholder
             else:  # docstring
-                if policy.max_tokens is not None and context.tokenizer.count_text(comment_text) > policy.max_tokens:
-                    truncated = self.adapter.hook__smart_truncate_comment(self, comment_text, policy.max_tokens, context.tokenizer)
+                if complex_cfg.max_tokens is not None and context.tokenizer.count_text(comment_text) > complex_cfg.max_tokens:
+                    truncated = self.adapter.hook__smart_truncate_comment(self, comment_text, complex_cfg.max_tokens, context.tokenizer)
                     return True, truncated
                 return False, ""
         
@@ -208,8 +202,8 @@ class CommentOptimizer:
             if capture_name == "docstring" or self.adapter.is_documentation_comment(comment_text):
                 first_sentence = self.adapter.hook__extract_first_sentence(self, comment_text)
                 # Apply max_tokens to extracted sentence
-                if policy.max_tokens is not None and context.tokenizer.count_text(first_sentence) > policy.max_tokens:
-                    first_sentence = self.adapter.hook__smart_truncate_comment(self, first_sentence, policy.max_tokens, context.tokenizer)
+                if complex_cfg.max_tokens is not None and context.tokenizer.count_text(first_sentence) > complex_cfg.max_tokens:
+                    first_sentence = self.adapter.hook__smart_truncate_comment(self, first_sentence, complex_cfg.max_tokens, context.tokenizer)
                 if first_sentence != comment_text:
                     return True, first_sentence
             else:
