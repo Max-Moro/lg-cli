@@ -33,6 +33,8 @@ class LiteralContext:
     semicolon_pos: int = None  # позиция ; в тексте
     is_inline: bool = False  # есть ли значимый код после литерала
     base_indent: str = ""  # базовая табуляция для многострочных литералов
+    immediate_after: str = ""  # текст сразу после литерала (до первого пробела)
+    has_immediate_semicolon: bool = False  # есть ли ; сразу после литерала (без пробелов)
 
 
 class LiteralOptimizer:
@@ -95,7 +97,29 @@ class LiteralOptimizer:
         # Проверяем, есть ли значимый код после литерала на той же строке
         significant_after = line_after.strip()
         
-        # Для языков с ; ищем его позицию
+        # Анализируем что идет сразу после литерала
+        immediate_after = ""
+        for i, char in enumerate(line_after):
+            if char in ' \t':
+                continue  # пропускаем пробелы
+            else:
+                # Берем текст от первого непробельного символа до следующего пробела или конца
+                remaining = line_after[i:]
+                space_idx = None
+                for j, c in enumerate(remaining):
+                    if c in ' \t\n':
+                        space_idx = j
+                        break
+                if space_idx is not None:
+                    immediate_after = remaining[:space_idx]
+                else:
+                    immediate_after = remaining
+                break
+        
+        # Проверяем есть ли ; сразу после литерала (без пробелов)
+        has_immediate_semicolon = immediate_after.startswith(';')
+        
+        # Для языков с ; ищем его позицию (может быть не сразу после литерала)
         has_semicolon = ';' in significant_after
         semicolon_pos = None
         if has_semicolon:
@@ -112,7 +136,9 @@ class LiteralOptimizer:
             has_semicolon=has_semicolon,
             semicolon_pos=semicolon_pos,
             is_inline=bool(significant_after),
-            base_indent=base_indent
+            base_indent=base_indent,
+            immediate_after=immediate_after,
+            has_immediate_semicolon=has_immediate_semicolon
         )
 
     def _detect_base_indentation(self, line_before: str) -> str:
@@ -221,16 +247,26 @@ class LiteralOptimizer:
         comment_text = f"literal {literal_info.type} (−{saved_tokens} tokens)"
         
         # Логика выбора места и типа комментария
-        if literal_context.has_semicolon and literal_context.semicolon_pos:
-            # После точки с запятой - всегда однострочный комментарий
-            insertion_pos = literal_context.semicolon_pos + 1
-            final_comment = f" {single_comment} {comment_text}"
+        if literal_context.has_immediate_semicolon and literal_context.semicolon_pos:
+            # `;` сразу после литерала - проверяем есть ли ещё код после `;`
+            semicolon_end = literal_context.semicolon_pos + 1
+            text_after_semicolon = context.raw_text[semicolon_end:].split('\n')[0].strip()
+            
+            if not text_after_semicolon:
+                # Нет кода после `;` на той же строке - можем использовать однострочный комментарий
+                insertion_pos = literal_context.semicolon_pos + 1
+                final_comment = f" {single_comment} {comment_text}"
+            else:
+                # Есть код после `;` - используем блочный комментарий сразу после литерала
+                insertion_pos = original_end_byte
+                final_comment = f" {block_open} {comment_text} {block_close}"
         elif literal_context.is_inline:
-            # В середине строки - блочный комментарий сразу после литерала
+            # Есть значимый код после литерала на той же строке - используем блочный комментарий
+            # чтобы не "закомментировать" остальной код
             insertion_pos = original_end_byte
             final_comment = f" {block_open} {comment_text} {block_close}"
         else:
-            # Литерал заканчивается на отдельной строке - однострочный комментарий
+            # Литерал заканчивается в конце строки - можем использовать однострочный комментарий
             insertion_pos = original_end_byte
             final_comment = f" {single_comment} {comment_text}"
         
