@@ -20,12 +20,7 @@ src:
               - "/javascript.py"
               - "/markdown.py"
               - "/scala.py"
-              - "/placeholders.py"
               - "code_analysis.py"
-              - "comments.py"
-              - "imports.py"
-              - "/python/"
-              - "/typescript/"
 
 src-budget:
   extensions: [".py", ".toml"]

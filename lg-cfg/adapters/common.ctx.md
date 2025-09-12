@@ -24,10 +24,6 @@ ${tpl:adapters/state}
 
 ${adapters/_/src}
 
-## Unit-tests
-
-${adapters/optimizations/src-tests__literals}
-
 # Описание текущей задачи
 
 Ничего пока делать не нужно. Просто подтверди, что ты дочитал досюда.
