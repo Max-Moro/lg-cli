@@ -15,7 +15,7 @@ from ..tree_sitter_support import TreeSitterDocument, Node
 class TypeScriptImportClassifier(ImportClassifier):
     """TypeScript-specific import classifier."""
     
-    def __init__(self, external_patterns: List[str] = None):
+    def __init__(self, external_patterns: List[str]):
         self.external_patterns = external_patterns or []
         
         # Node.js built-in modules

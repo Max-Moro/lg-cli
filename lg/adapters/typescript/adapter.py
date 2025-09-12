@@ -62,7 +62,7 @@ class TypeScriptAdapter(CodeAdapter[TypeScriptCfg]):
     def create_document(self, text: str, ext: str) -> TreeSitterDocument:
         return TypeScriptDocument(text, ext)
 
-    def create_import_classifier(self, external_patterns: List[str] = None) -> ImportClassifier:
+    def create_import_classifier(self, external_patterns: List[str]) -> ImportClassifier:
         """Создает TypeScript-специфичный классификатор импортов."""
         from .imports import TypeScriptImportClassifier
         return TypeScriptImportClassifier(external_patterns)

@@ -15,8 +15,8 @@ from ..tree_sitter_support import TreeSitterDocument, Node
 class PythonImportClassifier(ImportClassifier):
     """Python-specific import classifier."""
     
-    def __init__(self, external_patterns: List[str] = None):
-        self.external_patterns = external_patterns or []
+    def __init__(self, external_patterns: List[str]):
+        self.external_patterns = external_patterns
         
         # Python standard library modules (comprehensive list)
         self.python_stdlib = {

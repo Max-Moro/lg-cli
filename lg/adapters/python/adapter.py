@@ -55,7 +55,7 @@ class PythonAdapter(CodeAdapter[PythonCfg]):
     def create_document(self, text: str, ext: str) -> TreeSitterDocument:
         return PythonDocument(text, ext)
 
-    def create_import_classifier(self, external_patterns: List[str] = None) -> ImportClassifier:
+    def create_import_classifier(self, external_patterns: List[str]) -> ImportClassifier:
         """Создает Python-специфичный классификатор импортов."""
         from .imports import PythonImportClassifier
         return PythonImportClassifier(external_patterns)

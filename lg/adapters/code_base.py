@@ -38,7 +38,7 @@ class CodeAdapter(BaseAdapter[C], ABC):
         pass
 
     @abstractmethod
-    def create_import_classifier(self, external_patterns: List[str] = None) -> ImportClassifier:
+    def create_import_classifier(self, external_patterns: List[str]) -> ImportClassifier:
         """Создает языко-специфичный классификатор импортов. Должен быть переопределен наследниками."""
         pass
 
