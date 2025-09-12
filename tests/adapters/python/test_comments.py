@@ -69,7 +69,7 @@ class TestPythonCommentOptimization:
         """Test complex comment policy with custom configuration."""
         comment_config = CommentConfig(
             policy="keep_doc",
-            max_length=100,
+            max_tokens=50,
             keep_annotations=["TODO", "FIXME"],
             strip_patterns=["WARNING"]
         )
@@ -96,7 +96,7 @@ class TestPythonCommentOptimization:
         
         comment_config = CommentConfig(
             policy="keep_all",
-            max_length=50
+            max_tokens=25
         )
         
         adapter = make_adapter(PythonCfg(comment_policy=comment_config))

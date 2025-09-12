@@ -180,7 +180,7 @@ class LiteralOptimizer:
         elif literal_info.type == "object":
             return self._trim_object_content(context, literal_info, max_tokens, node)
         else:
-            return self._trim_simple_content(context, literal_info.content, max_tokens)
+            return context.tokenizer.truncate_to_tokens(literal_info.content, max_tokens)
 
     def _trim_string_content(self, context: ProcessingContext, literal_info: LiteralInfo, max_tokens: int) -> str:
         """Урезает строковые литералы."""
@@ -192,7 +192,7 @@ class LiteralOptimizer:
         content_budget = max(1, max_tokens - overhead_tokens)
 
         # Урезаем содержимое до бюджета
-        trimmed = self._trim_simple_content(context, content, content_budget)
+        trimmed = context.tokenizer.truncate_to_tokens(content, content_budget)
         return f"{trimmed}…"
 
     def _trim_array_content(self, context: ProcessingContext, literal_info: LiteralInfo, max_tokens: int, node: Node) -> str:
@@ -214,7 +214,7 @@ class LiteralOptimizer:
         if not included_elements:
             # Если не помещается ни один элемент, берем первый частично
             first_element = elements[0] if elements else '""'
-            trimmed_element = self._trim_simple_content(context, first_element, content_budget - 10)
+            trimmed_element = context.tokenizer.truncate_to_tokens(first_element, content_budget - 10)
             return f"{trimmed_element}, \"…\""
 
         # Формируем результат
@@ -280,25 +280,6 @@ class LiteralOptimizer:
                 break
 
         return included_elements
-
-    def _trim_simple_content(self, context: ProcessingContext, content: str, token_budget: int) -> str:
-        """Простое урезание содержимого по токенам."""
-        if not content:
-            return ""
-
-        current_tokens = context.tokenizer.count_text(content)
-        if current_tokens <= token_budget:
-            return content
-
-        # Простое урезание по символам (более эффективно чем бинарный поиск)
-        ratio = token_budget / current_tokens
-        target_length = int(len(content) * ratio)
-
-        # Урезаем до целевой длины, но не меньше 1 символа
-        target_length = max(1, target_length)
-        trimmed = content[:target_length].rstrip()
-
-        return trimmed
 
     def _parse_elements(self, content: str) -> List[str]:
         """

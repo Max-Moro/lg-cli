@@ -108,6 +108,34 @@ class TokenService:
 
         return ratio >= float(min_ratio)
 
+    def truncate_to_tokens(self, text: str, max_tokens: int) -> str:
+        """
+        Урезает текст до указанного количества токенов используя пропорциональное отношение.
+        
+        Args:
+            text: Исходный текст для урезания
+            max_tokens: Максимальное количество токенов
+            
+        Returns:
+            Урезанный текст, который помещается в указанный лимит токенов
+        """
+        if not text:
+            return ""
+        
+        current_tokens = self.count_text(text)
+        if current_tokens <= max_tokens:
+            return text
+        
+        # Пропорциональное урезание по символам
+        ratio = max_tokens / current_tokens
+        target_length = int(len(text) * ratio)
+        
+        # Урезаем до целевой длины, но не меньше 1 символа
+        target_length = max(1, target_length)
+        trimmed = text[:target_length].rstrip()
+        
+        return trimmed
+
 
 def default_tokenizer() -> TokenService:
     """Быстрое создание сервиса токенизации без обращения к конфигу."""
