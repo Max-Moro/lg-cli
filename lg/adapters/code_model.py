@@ -53,9 +53,7 @@ class LiteralConfig:
 class BudgetConfig:
     """Бюджетирование токенов на файл."""
     max_tokens_per_file: Optional[int] = None
-    priority_order: List[str] = field(default_factory=lambda: [
-        "imports", "types", "public_methods", "fields", "private_methods", "docs"
-    ])
+    priority_order: List[str] = field(default_factory=list)
 
 
 @dataclass

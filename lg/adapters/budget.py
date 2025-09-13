@@ -158,12 +158,9 @@ class BudgetController(Generic[Cc]):
                     effective_cfg.comment_policy = CommentConfig(policy=cast(CommentPolicy, "keep_doc"), max_tokens=chosen_level)
 
             elif step == "imports_local":
-                step_after_text = self._apply_imports(lightweight_ctx, text_current, policy="strip_local", summarize_long=True)
-                # Do not override if already strip_all
-                new_policy = effective_cfg.imports.policy
-                if new_policy != "strip_all":
-                    new_policy = cast(ImportPolicy, "strip_local")
-                effective_cfg.imports = replace(effective_cfg.imports, policy=new_policy, summarize_long=True)
+                # "strip_external" + "strip_local" вместе дают "strip_all"
+                step_after_text = self._apply_imports(lightweight_ctx, text_current, policy="strip_all", summarize_long=True)
+                effective_cfg.imports = replace(effective_cfg.imports, policy="strip_all", summarize_long=True)
 
             elif step == "private_bodies":
                 step_after_text = self._apply_function_bodies(lightweight_ctx, text_current, mode="non_public")
@@ -277,39 +274,40 @@ class BudgetController(Generic[Cc]):
         new_text, _ = ctx.editor.apply_edits()
         return new_text
 
+    def _generate_new_text(self, ctx):
+        for spec in ctx.placeholders.raw_edits():
+            ctx.editor.add_deletion(spec.start_byte, spec.end_byte, None)
+        new_text, _ = ctx.editor.apply_edits()
+        return new_text
+
     def _apply_imports(self, lightweight_ctx, text: str, *, policy: str, summarize_long: bool) -> str:
         ctx = self._make_sandbox_context(lightweight_ctx, text)
         cfg = ImportConfig(policy=cast(ImportPolicy, policy), summarize_long=summarize_long)
         ImportOptimizer(cfg, self.adapter).apply(ctx)
-        new_text, _ = ctx.editor.apply_edits()
-        return new_text
+        return self._generate_new_text(ctx)
 
     def _apply_literals(self, lightweight_ctx, text: str, *, max_tokens: Optional[int]) -> str:
         ctx = self._make_sandbox_context(lightweight_ctx, text)
         cfg = LiteralConfig(max_tokens=max_tokens)
         LiteralOptimizer(cfg, self.adapter).apply(ctx)
-        new_text, _ = ctx.editor.apply_edits()
-        return new_text
+        return self._generate_new_text(ctx)
 
     def _apply_comments(self, lightweight_ctx, text: str, *, policy: str, max_tokens: Optional[int]) -> str:
         ctx = self._make_sandbox_context(lightweight_ctx, text)
         cfg = CommentConfig(policy=cast(CommentPolicy, policy), max_tokens=max_tokens)
         CommentOptimizer(cfg, self.adapter).apply(ctx)
-        new_text, _ = ctx.editor.apply_edits()
-        return new_text
+        return self._generate_new_text(ctx)
 
     def _apply_function_bodies(self, lightweight_ctx, text: str, *, mode: str) -> str:
         ctx = self._make_sandbox_context(lightweight_ctx, text)
         cfg = FunctionBodyConfig(mode=cast(FunctionBodyStrip, mode))
         FunctionBodyOptimizer(cfg, self.adapter).apply(ctx)
-        new_text, _ = ctx.editor.apply_edits()
-        return new_text
+        return self._generate_new_text(ctx)
 
     def _apply_public_api_only(self, lightweight_ctx, text: str) -> str:
         ctx = self._make_sandbox_context(lightweight_ctx, text)
         PublicApiOptimizer(self.adapter).apply(ctx)
-        new_text, _ = ctx.editor.apply_edits()
-        return new_text
+        return self._generate_new_text(ctx)
 
     def _compute_levels_for_limit(self, user_level: Optional[int]) -> List[int]:
         # Start from user's level if provided, then go down powers of two to 32

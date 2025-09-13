@@ -17,10 +17,7 @@ from ..golden_utils import assert_golden_match, load_sample_code
 from tests.conftest import lctx_py
 
 
-# Budgets chosen to gradually trigger more aggressive steps
-#  - very_large: effectively baseline (no budget pressure)
-#  - then progressively lower
-BUDGET_STEPS = [100_000, 3_000, 2_000, 1_200, 800, 500]
+BUDGET_STEPS = [950, 908, 771, 636, 622, 594, 495, 372, 314]
 
 
 @pytest.mark.parametrize("budget", BUDGET_STEPS)
@@ -30,6 +27,7 @@ def test_python_budget_progression_golden(budget: int):
     # Configure adapter with only budget varying
     cfg = PythonCfg()
     cfg.budget = BudgetConfig(max_tokens_per_file=budget)
+    cfg.placeholders.style = "none"
 
     adapter = make_adapter_real(cfg)
 

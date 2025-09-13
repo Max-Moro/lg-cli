@@ -335,6 +335,12 @@ class PlaceholderManager:
     
     # ============= Коллапсирование и финализация =============
 
+    def raw_edits(self) -> List[PlaceholderSpec]:
+        """
+        Возвращаем сырые правки для оценки в системе бюджета.
+        """
+        return [edit for edit, _ in self._pending_edits]
+
     def finalize_edits(self) -> Tuple[List[Tuple[PlaceholderSpec, str]], Dict[str, Any]]:
         """
         Финализировать все правки с коллапсированием.
@@ -342,6 +348,14 @@ class PlaceholderManager:
         Returns:
             (collapsed_edits, stats)
         """
+        if self.placeholder_style == "none":
+            edits = self._pending_edits
+
+            # Собираем статистику
+            stats = self._calculate_stats(edits)
+
+            return edits, stats
+
         # Выполняем коллапсирование плейсхолдеров
         collapsed_specs = self._collapse_placeholders()
 
