@@ -24,6 +24,10 @@ ${tpl:adapters/state}
 
 ${adapters/optimizations/src__comments}
 
+## Unit-tests
+
+${adapters/optimizations/src-tests__comments}
+
 # Описание текущей задачи
 
 Ничего пока делать не нужно. Просто подтверди, что ты дочитал досюда.

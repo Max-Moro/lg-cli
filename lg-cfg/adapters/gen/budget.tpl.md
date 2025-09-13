@@ -91,57 +91,6 @@ python:
 
 ---
 
-## Алгоритм BudgetController (упрощенный псевдокод)
-
-```python
-class BudgetController:
-    def __init__(self, adapter: CodeAdapter, tokenizer: TokenService, cfg_budget: BudgetConfig):
-        self.adapter = adapter
-        self.tokenizer = tokenizer
-        self.cfg_budget = cfg_budget
-
-    def fit_config(self, lightweight_ctx, base_cfg: CodeCfg) -> Tuple[CodeCfg, Dict[str, int]]:
-        # TODO Создание sandbox_context из lightweight_ctx
-
-        # TODO Прогоняем пользовательские конфигурации
-
-        # TODO Быстрый выход, если от пользовательских настроек уже достигли бюджета
-        
-        # TODO Рассчитываем шаги, которые точны более эскалируемые,Ю чем пользовательское начальное состояние
-        order = self._resolve_priority_order()
-
-        for step in order: # Включая подуровни для literals и comments
-            self._apply_step(step, sandbox_context)
-            # промежуточный commit‑and‑reseed
-            new_text, _ = sandbox_context.editor.apply_edits()
-            sandbox_context.raw_text = new_text
-            sandbox_context.doc = self.adapter.create_document(new_text, context.ext)
-            sandbox_context.editor = RangeEditor(new_text)
-
-            tokens = self.tok.count_text(new_text)
-            if tokens <= limit:
-                break
-        
-        return current_cfg, metrics
-```
-
-`_apply_step(step, context)`
-- imports_external: включить/усилить политику импортов для внешних пакетов (strip/summarize)
-- literals: уменьшить потолок для литералов (на уровень уровням, new_text подменяет только при исчерпании уровней или попадании в лимит)
-- comments: удалить недок‑комментарии (на уровень уровням, new_text подменяет только при исчерпании уровней или попадании в лимит)
-- imports_local: применить политику к локальным импортам
-- private_bodies: включить/усилить удаление тел приватных функций/методов
-- public_api_only: включить фильтрацию скрывающую приватные элементы
-- public_bodies: как крайняя мера — удалить тела публичных функций/методов (сигнатуры и докстринги оставляем)
-- docstrings_first_sentence: применить «первое предложение» на докстринги
-
-Важно: реализация шагов в M7 использует уже существующие оптимизаторы; шаг лишь переключает их режимы/параметры в более «жёсткие» значения.
-
-Когда мы проходим по уровням literals и comments, то всегда делаем перерасчет этих оптимизация с базового состояния, не подменяя
-new_text. Иначе локальные бюджеты `max_tokens` будут сравниваться c уже затримленными данными комментариев или литералов, что некорректно. 
-
----
-
 ### Метрики и телеметрия
 
 Каждый файл дополняется метаданными (в `ProcessedBlob.meta` через `MetricsCollector` и/или BudgetController):

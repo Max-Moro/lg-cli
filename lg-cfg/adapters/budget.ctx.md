@@ -20,6 +20,12 @@ ${tpl:adapters/state}
 
 ${adapters/_/src}
 
+## Unit-tests
+
+${adapters/optimizations/src-tests__complex}
+
+---
+
 ${tpl:adapters/gen/budget}
 
 ---
