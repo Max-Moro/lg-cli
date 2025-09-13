@@ -1,0 +1,67 @@
+"""
+Golden tests for Budget System (per-file token budgeting) — Python adapter.
+
+This test renders the same complex sample with progressively tighter
+max_tokens_per_file limits. We assert monotonic shrinkage and snapshot
+each stage to goldens to see how BudgetController escalates steps.
+"""
+
+from __future__ import annotations
+
+import pytest
+
+from lg.adapters.code_model import BudgetConfig
+from lg.adapters.python import PythonCfg
+from .conftest import make_adapter_real
+from ..golden_utils import assert_golden_match, load_sample_code
+from tests.conftest import lctx_py
+
+
+# Budgets chosen to gradually trigger more aggressive steps
+#  - very_large: effectively baseline (no budget pressure)
+#  - then progressively lower
+BUDGET_STEPS = [100_000, 3_000, 2_000, 1_200, 800, 500]
+
+
+@pytest.mark.parametrize("budget", BUDGET_STEPS)
+def test_python_budget_progression_golden(budget: int):
+    code = load_sample_code("budget_complex")
+
+    # Configure adapter with only budget varying
+    cfg = PythonCfg()
+    cfg.budget = BudgetConfig(max_tokens_per_file=budget)
+
+    adapter = make_adapter_real(cfg)
+
+    result, meta = adapter.process(lctx_py(code))
+
+    # Basic sanity on budget metrics presence
+    assert any(k.endswith(".budget.tokens_before") for k in meta.keys())
+    assert any(k.endswith(".budget.tokens_after") for k in meta.keys())
+
+    # Golden snapshot per budget step
+    assert_golden_match(
+        result,
+        optimization_type="budget",
+        golden_name=f"complex_budget_{budget}",
+        language="python",
+    )
+
+
+def test_python_budget_is_monotonic_shrink():
+    """Non-golden functional check: result length should not increase when budget tightens."""
+    code = load_sample_code("budget_complex")
+
+    lengths: list[int] = []
+    for budget in BUDGET_STEPS:
+        cfg = PythonCfg()
+        cfg.budget = BudgetConfig(max_tokens_per_file=budget)
+        adapter = make_adapter_real(cfg)
+        result, _ = adapter.process(lctx_py(code))
+        lengths.append(len(result))
+
+    # Ensure non-increasing sequence as budget tightens
+    for i in range(1, len(lengths)):
+        assert lengths[i] <= lengths[i - 1], (
+            f"Output grew at step {i}: {lengths[i-1]} -> {lengths[i]}"
+        )

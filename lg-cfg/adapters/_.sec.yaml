@@ -10,7 +10,6 @@ src:
         mode: allow
         allow:
           - "/adapters/"
-          - "/stats/tokenizer.py"
         children:
           adapters:
             mode: block
@@ -21,8 +20,10 @@ src:
               - "/markdown.py"
               - "/scala.py"
               - "code_analysis.py"
-              - "python/imports.py"
-              - "typescript/imports.py"
+              - "/python/"
+              - "/typescript/"
+              - "/optimizations/literals.py"
+              - "/placeholders.py"
 
 src-budget:
   extensions: [".py", ".toml"]
