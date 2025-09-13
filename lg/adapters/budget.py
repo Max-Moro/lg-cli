@@ -53,7 +53,7 @@ class BudgetController(Generic[Cc]):
         self.cfg_budget = cfg_budget
 
         # Default escalation order when not overridden by user
-        self.default_order: List[str] = [
+        self.order: List[str] = self.cfg_budget.priority_order or [
             "imports_external",
             "literals",
             "comments",
@@ -116,8 +116,7 @@ class BudgetController(Generic[Cc]):
         last_tokens = tokens_after_user
 
         for step in order:
-            step_before_text = text_current
-            step_after_text = text_current
+            step_after_text = ""
 
             if step == "imports_external":
                 step_after_text = self._apply_imports(lightweight_ctx, text_current, policy="strip_external", summarize_long=True)
@@ -131,10 +130,9 @@ class BudgetController(Generic[Cc]):
                 candidate_text = None
                 chosen_level = base_cfg.literals.max_tokens
                 for lvl in levels:
-                    t = self._apply_literals(lightweight_ctx, literals_baseline, max_tokens=lvl)
-                    candidate_text = t
+                    candidate_text = self._apply_literals(lightweight_ctx, literals_baseline, max_tokens=lvl)
                     chosen_level = lvl
-                    if self.tokenizer.count_text(t) <= limit:
+                    if self.tokenizer.count_text(candidate_text) <= limit:
                         break
                 # Commit candidate only after levels exploration
                 if candidate_text is not None:
@@ -149,10 +147,9 @@ class BudgetController(Generic[Cc]):
                 candidate_text = None
                 chosen_level = self._extract_comment_max_tokens(base_cfg)
                 for lvl in levels:
-                    t = self._apply_comments(lightweight_ctx, comments_baseline, policy="keep_doc", max_tokens=lvl)
-                    candidate_text = t
+                    candidate_text = self._apply_comments(lightweight_ctx, comments_baseline, policy="keep_doc", max_tokens=lvl)
                     chosen_level = lvl
-                    if self.tokenizer.count_text(t) <= limit:
+                    if self.tokenizer.count_text(candidate_text) <= limit:
                         break
                 if candidate_text is not None:
                     step_after_text = candidate_text
@@ -185,14 +182,15 @@ class BudgetController(Generic[Cc]):
                 effective_cfg.public_api_only = True
 
             elif step == "public_bodies":
-                step_after_text = self._apply_function_bodies(lightweight_ctx, text_current, mode="public_only")
+                # "non_public" + "public_only" вместе дают "all", поэтому тут "all", а не "public_only"
+                step_after_text = self._apply_function_bodies(lightweight_ctx, text_current, mode="all")
                 eff_sfb = effective_cfg.strip_function_bodies
                 if isinstance(eff_sfb, bool) and eff_sfb is True:
-                    effective_cfg.strip_function_bodies = FunctionBodyConfig(mode=cast(FunctionBodyStrip, "public_only"))
+                    effective_cfg.strip_function_bodies = FunctionBodyConfig(mode=cast(FunctionBodyStrip, "all"))
                 elif isinstance(eff_sfb, FunctionBodyConfig):
-                    effective_cfg.strip_function_bodies = replace(eff_sfb, mode=cast(FunctionBodyStrip, "public_only"))
+                    effective_cfg.strip_function_bodies = replace(eff_sfb, mode=cast(FunctionBodyStrip, "all"))
                 else:
-                    effective_cfg.strip_function_bodies = FunctionBodyConfig(mode=cast(FunctionBodyStrip, "public_only"))
+                    effective_cfg.strip_function_bodies = FunctionBodyConfig(mode=cast(FunctionBodyStrip, "all"))
 
             elif step == "docstrings_first_sentence":
                 step_after_text = self._apply_comments(lightweight_ctx, text_current, policy="keep_first_sentence", max_tokens=None)
@@ -215,10 +213,6 @@ class BudgetController(Generic[Cc]):
 
     # --------------------- helpers --------------------- #
     def _resolve_priority_order(self, base_cfg: CodeCfg) -> List[str]:
-        # If user provided explicit priority order, use it; else default
-        user_order = (self.cfg_budget.priority_order or []) if self.cfg_budget else []
-        order = list(user_order) if user_order else list(self.default_order)
-
         # Skip steps that are already as-strong-as user settings
         def already_covers(step: str) -> bool:
             if step == "imports_external":
@@ -230,17 +224,17 @@ class BudgetController(Generic[Cc]):
             if step == "public_bodies":
                 sfb = base_cfg.strip_function_bodies
                 if isinstance(sfb, bool):
-                    return False
+                    return bool(sfb)
                 return getattr(sfb, "mode", "none") in ("public_only", "all")
             if step == "private_bodies":
                 sfb = base_cfg.strip_function_bodies
                 if isinstance(sfb, bool):
-                    return False
+                    return bool(sfb)
                 return getattr(sfb, "mode", "none") in ("non_public", "all")
             # For literals/comments we always keep steps, as we may tighten limits
             return False
 
-        return [s for s in order if not already_covers(s)]
+        return [s for s in self.order if not already_covers(s)]
 
     def _make_sandbox_context(self, lightweight_ctx, text: str) -> ProcessingContext:
         # Build ProcessingContext manually to force placeholder style "none"

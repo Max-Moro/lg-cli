@@ -10,7 +10,7 @@ from typing import Dict, List, Tuple, Any, TypeVar, Optional, cast
 
 from .base import BaseAdapter
 from .code_analysis import CodeAnalyzer
-from .code_model import CodeCfg, PlaceholderConfig, BudgetConfig
+from .code_model import CodeCfg, PlaceholderConfig
 from .context import ProcessingContext, LightweightContext
 from .optimizations import (
     PublicApiOptimizer,
@@ -21,7 +21,6 @@ from .optimizations import (
     TreeSitterImportAnalyzer,
     ImportClassifier
 )
-from .budget import BudgetController
 from .tree_sitter_support import TreeSitterDocument, Node
 
 C = TypeVar("C", bound=CodeCfg)
@@ -92,8 +91,9 @@ class CodeAdapter(BaseAdapter[C], ABC):
         # Подбираем эффективный конфиг при активном бюджете (sandbox без плейсхолдеров)
         effective_cfg = self.cfg
         budget_metrics: dict[str, int] | None = None
-        if getattr(self.cfg, "budget", None) and isinstance(self.cfg.budget, BudgetConfig) and self.cfg.budget.max_tokens_per_file:
-            controller = BudgetController(self, self.tokenizer, self.cfg.budget)
+        if self.cfg.budget and self.cfg.budget.max_tokens_per_file:
+            from .budget import BudgetController
+            controller = BudgetController[C](self, self.tokenizer, self.cfg.budget)
             effective_cfg, budget_metrics = controller.fit_config(lightweight_ctx, self.cfg)
 
         # Получаем полноценный контекст из облегченного уже для реального прогона
