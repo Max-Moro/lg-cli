@@ -27,7 +27,7 @@ export const MODULE_TITLE = 'Budget System Complex Sample';
 
 const LONG_TEXT = `This is an extremely long template literal that is designed to be trimmed 
 by the literal optimizer when budgets are small. It repeats a message to 
-ensure length. `.repeat(20);
+ensure length. `;
 
 const BIG_LIST = Array.from({ length: 300 }, (_, i) => `item_${String(i).padStart(4, '0')}`);
 

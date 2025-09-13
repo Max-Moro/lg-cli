@@ -6,8 +6,6 @@ max_tokens_per_file limits. We assert monotonic shrinkage and snapshot
 each stage to goldens to see how BudgetController escalates steps.
 """
 
-from __future__ import annotations
-
 import pytest
 
 from lg.adapters.code_model import BudgetConfig

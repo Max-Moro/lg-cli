@@ -185,7 +185,6 @@ class PlaceholderManager:
         self.comment_style = comment_style
         self.placeholder_style = placeholder_style
         self.placeholders: List[PlaceholderSpec] = []
-        self._pending_edits: List[Tuple[PlaceholderSpec, str]] = []  # (spec, replacement_text)
     
     # ============= Простое API для добавления плейсхолдеров =============
     
@@ -201,12 +200,12 @@ class PlaceholderManager:
             placeholder_prefix=placeholder_prefix,
             count=count,
         )
-        self._add_placeholder(spec)
+        self.placeholders.append(spec)
 
     def add_placeholder_for_node(self, placeholder_type: str, node: Node, doc, count: int = 1) -> None:
         """Добавить плейсхолдер для импорта."""
         spec = self._create_spec_from_node(node, doc, placeholder_type, count=count)
-        self._add_placeholder(spec)
+        self.placeholders.append(spec)
     
     # ============= Внутренние методы =============
     
@@ -224,20 +223,6 @@ class PlaceholderManager:
             placeholder_prefix="",
             count=count,
         )
-    
-    def _add_placeholder(self, spec: PlaceholderSpec) -> None:
-        """Добавить плейсхолдер в список."""
-        # Обрабатываем стиль "none" - полное удаление без плейсхолдера
-        if self.placeholder_style == "none":
-            self._pending_edits.append((spec, ""))
-            return
-        
-        # Генерируем текст плейсхолдера
-        placeholder_text = self._generate_placeholder_text(spec)
-        self._pending_edits.append((spec, placeholder_text))
-        
-        # Добавляем в список для потенциального коллапсирования
-        self.placeholders.append(spec)
     
     def _generate_placeholder_text(self, spec: PlaceholderSpec) -> str:
         """Генерировать текст плейсхолдера на основе типа и стиля."""
@@ -339,7 +324,7 @@ class PlaceholderManager:
         """
         Возвращаем сырые правки для оценки в системе бюджета.
         """
-        return [edit for edit, _ in self._pending_edits]
+        return self.placeholders
 
     def finalize_edits(self) -> Tuple[List[Tuple[PlaceholderSpec, str]], Dict[str, Any]]:
         """
@@ -348,22 +333,17 @@ class PlaceholderManager:
         Returns:
             (collapsed_edits, stats)
         """
-        if self.placeholder_style == "none":
-            edits = self._pending_edits
-
-            # Собираем статистику
-            stats = self._calculate_stats(edits)
-
-            return edits, stats
-
         # Выполняем коллапсирование плейсхолдеров
         collapsed_specs = self._collapse_placeholders()
 
-        # Обновляем правки на основе коллапсированных плейсхолдеров
-        collapsed_edits = self._update_edits_with_collapsed(collapsed_specs)
+        # Генерируем правки на основе коллапсированных плейсхолдеров
+        collapsed_edits = [
+            (spec, self._generate_placeholder_text(spec) if self.placeholder_style != "none" else "")
+            for spec in collapsed_specs
+        ]
 
         # Собираем статистику
-        stats = self._calculate_stats(collapsed_edits)
+        stats = self._calculate_stats(collapsed_specs)
 
         return collapsed_edits, stats
 
@@ -408,45 +388,17 @@ class PlaceholderManager:
 
         return result
     
-    def _update_edits_with_collapsed(self, collapsed_specs: List[PlaceholderSpec]) -> List[Tuple[PlaceholderSpec, str]]:
-        """Обновить список правок на основе коллапсированных плейсхолдеров."""
-        # Создаем карту spec -> replacement_text из оригинальных правок
-        original_map = {id(spec): replacement for spec, replacement in self._pending_edits}
-        
-        updated_edits = []
-        
-        for collapsed_spec in collapsed_specs:
-            # Для коллапсированных плейсхолдеров генерируем новый текст
-            if collapsed_spec.count > 1:  # Это результат объединения
-                replacement_text = self._generate_placeholder_text(collapsed_spec)
-            else:
-                # Пытаемся найти оригинальный текст
-                replacement_text = None
-                for spec, replacement in self._pending_edits:
-                    if (spec.start_byte == collapsed_spec.start_byte and 
-                        spec.end_byte == collapsed_spec.end_byte):
-                        replacement_text = replacement
-                        break
-                
-                # Если не найден, генерируем заново
-                if replacement_text is None:
-                    replacement_text = self._generate_placeholder_text(collapsed_spec)
-            
-            updated_edits.append((collapsed_spec, replacement_text))
-        
-        return updated_edits
-    
-    def _calculate_stats(self, edits: List[Tuple[PlaceholderSpec, str]]) -> Dict[str, Any]:
+    def _calculate_stats(self, specs: List[PlaceholderSpec]) -> Dict[str, Any]:
         """Вычислить статистику плейсхолдеров."""
         stats = {
-            "placeholders_inserted": len(edits),
-            "total_lines_removed": sum(spec.lines_removed for spec, _ in edits),
-            "total_bytes_removed": sum(spec.bytes_removed for spec, _ in edits),
+            "placeholders_inserted": len(specs),
+            "total_lines_removed": sum(spec.lines_removed for spec in specs),
+            "total_bytes_removed": sum(spec.bytes_removed for spec in specs),
             "placeholders_by_type": {}
         }
         
         # Группируем по типам
-        for spec, _ in edits:
+        for spec in specs:
             ptype = spec.placeholder_type
             if ptype not in stats["placeholders_by_type"]:
                 stats["placeholders_by_type"][ptype] = 0

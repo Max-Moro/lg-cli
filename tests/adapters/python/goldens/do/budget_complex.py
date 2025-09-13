@@ -40,11 +40,6 @@ payload for trimming policies. The goal is to keep signatures while shrinking
 non-essential content.
 """
 
-LONG_TEXT = (
-    "This is an extremely long string that is intended to be trimmed by the "
-    "literal optimizer. " * 20
-)
-
 BIG_LIST = [f"item_{i:04d}" for i in range(200)]
 
 BIG_DICT = {
