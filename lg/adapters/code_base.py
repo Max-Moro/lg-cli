@@ -106,10 +106,9 @@ class CodeAdapter(BaseAdapter[C], ABC):
         # Финализируем плейсхолдеры
         text, meta = self._finalize_placeholders(context, effective_cfg.placeholders)
 
-        # Примешиваем метрики бюджета (если были)
+        # Примешиваем метрики бюджета
         if budget_metrics:
-            for k, v in budget_metrics.items():
-                context.metrics.set(k, v)
+            meta.update(budget_metrics)
 
         return text, meta
 
