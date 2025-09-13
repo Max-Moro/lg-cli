@@ -10,9 +10,7 @@
  */
 
 // External imports (most common cases)
-import React, { useEffect, useMemo, useCallback } from 'react';
-import { Observable, Subject, BehaviorSubject } from 'rxjs';
-import * as lodash from 'lodash';
+
 
 // Local imports (treated as local)
 import { User, ApiResponse } from './types';
@@ -26,16 +24,11 @@ import { toTitle } from '../utils/strings';
 export const MODULE_TITLE = 'Budget System Complex Sample';
 
 const LONG_TEXT = `This is an extremely long template literal that is designed to be trimmed 
-by the literal optimizer when budgets are small. It repeats a message to 
-ensure length. `;
+by the literal optimizer when budgets are small. It repeats a message…`; // literal string (−4 tokens)
 
 const BIG_OBJECT = {
-  users: Array.from({ length: 50 }, (_, i) => ({ id: i + 1, name: `User ${i + 1}`, active: i % 2 === 0 })),
-  config: {
-    flags: Object.fromEntries(Array.from({ length: 40 }, (_, i) => [`flag_${i}`, i % 2 === 0])),
-    thresholds: Array.from({ length: 120 }, (_, i) => i)
-  }
-};
+  "…": "…",
+}; // literal object (−90 tokens)
 
 export class PublicService {
   private cache = new Map<string, User>();
