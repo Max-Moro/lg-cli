@@ -21,6 +21,7 @@ from .optimizations import (
     TreeSitterImportAnalyzer,
     ImportClassifier
 )
+from .budget import BudgetController
 from .tree_sitter_support import TreeSitterDocument, Node
 
 C = TypeVar("C", bound=CodeCfg)
@@ -88,14 +89,29 @@ class CodeAdapter(BaseAdapter[C], ABC):
         Основной метод обработки кода.
         Применяет все конфигурированные оптимизации.
         """
-        # Получаем полноценный контекст из облегченного
+        # Подбираем эффективный конфиг при активном бюджете (sandbox без плейсхолдеров)
+        effective_cfg = self.cfg
+        budget_metrics: dict[str, int] | None = None
+        if getattr(self.cfg, "budget", None) and isinstance(self.cfg.budget, BudgetConfig) and self.cfg.budget.max_tokens_per_file:
+            controller = BudgetController(self, self.tokenizer, self.cfg.budget)
+            effective_cfg, budget_metrics = controller.fit_config(lightweight_ctx, self.cfg)
+
+        # Получаем полноценный контекст из облегченного уже для реального прогона
         context = lightweight_ctx.get_full_context(self, self.tokenizer)
 
-        # Затем применяем пользовательские оптимизации по конфигу (обычная логика)
-        self._apply_optimizations(context, self.cfg)
+        # Затем применяем оптимизации по подобранному конфигу
+        # Cast for type-narrowing: effective_cfg matches adapter's config type
+        self._apply_optimizations(context, cast(C, effective_cfg))
 
         # Финализируем плейсхолдеры
-        return self._finalize_placeholders(context, self.cfg.placeholders)
+        text, meta = self._finalize_placeholders(context, effective_cfg.placeholders)
+
+        # Примешиваем метрики бюджета (если были)
+        if budget_metrics:
+            for k, v in budget_metrics.items():
+                context.metrics.set(k, v)
+
+        return text, meta
 
     def _apply_optimizations(self, context: ProcessingContext, code_cfg: C) -> None:
         """
@@ -103,12 +119,12 @@ class CodeAdapter(BaseAdapter[C], ABC):
         Каждый модуль отвечает за свой тип оптимизации.
         """
         # Фильтрация по публичному API
-        if self.cfg.public_api_only:
+        if code_cfg.public_api_only:
             public_api_optimizer = PublicApiOptimizer(self)
             public_api_optimizer.apply(context)
 
         # Обработка тел функций
-        if self.cfg.strip_function_bodies:
+        if code_cfg.strip_function_bodies:
             function_body_optimizer = FunctionBodyOptimizer(code_cfg.strip_function_bodies, self)
             function_body_optimizer.apply(context)
 
