@@ -11,8 +11,7 @@
 
 
 
-import { User, ApiResponse } from './types';
-import { toTitle } from '../utils/strings';
+
 
 /**
  * Module level long documentation that might be truncated under tight budgets.
@@ -22,11 +21,11 @@ import { toTitle } from '../utils/strings';
 export const MODULE_TITLE = 'Budget System Complex Sample';
 
 const LONG_TEXT = `This is an extremely long template literal that is designed to be trimmed 
-by the literal optimizer when budgets are small. It repeats a message…`; // literal string (−4 tokens)
+by the literal optimizer when budgets are small. It repeats a message…`;
 
 const BIG_OBJECT = {
   "…": "…",
-}; // literal object (−90 tokens)
+};
 
 export class PublicService {
   private cache = new Map<string, User>();

@@ -21,14 +21,14 @@
 export const MODULE_TITLE = 'Budget System Complex Sample';
 
 const LONG_TEXT = `This is an extremely long template literal that is designed to be trimmed 
-by the literal optimizer when budgets are small. It repeats a message…`; // literal string (−4 tokens)
+by the literal optimizer when budgets are small. It repeats a message…`;
 
 const BIG_OBJECT = {
   "…": "…",
-}; // literal object (−90 tokens)
+};
 
 export class PublicService {
-  private cache = new Map<string, User>();
+  
 
   /**
    * Public API: gets a user by ID.
@@ -39,9 +39,7 @@ export class PublicService {
   }
 
   
-  private _normalize(u: Partial<User>): User {
-    return { id: u.id!, name: (u.name ?? '').trim(), email: u.email ?? '' } as User;
-  }
+  
 
   /** Long method body to allow function body stripping */
   public process(list: User[]): ApiResponse<User[]> {
@@ -54,20 +52,14 @@ export class PublicService {
   }
 }
 
-class _InternalOnly {
-  
-  public doWork(): void { /* noop */ }
-}
+
 
 export function publicFunction(name: string): string {
   
   return toTitle ? toTitle(name) : name;
 }
 
-function privateFunction(data: string[]): string[] {
-  
-  return data.map(s => s.trim());
-}
+
 
 export default function main(): void {
   const svc = new PublicService();

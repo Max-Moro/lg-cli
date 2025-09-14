@@ -2,26 +2,26 @@
 
 Includes:
 - Many external/local imports
-- Large literals (strings, lists…""" # literal string (−30 tokens)
+- Large literals (strings, lists…"""
+
+# External imports (simulate as external for analyzer)
 
 
-
-
-
-  
-  
+# Local imports (should be local)
+from .utils import helper as local_helper  # type: ignore  # noqa: F401
+from ..core.models import User  # type: ignore  # noqa: F401
 
 
 MODULE_DOC = """
 This module demonstrates a variety of language features to exercise the
 BudgetController escalation sequence. The text here is quite verbose and
-contains enough co…""" # literal string (−41 tokens)
+contains enough co…"""
 
 BIG_LIST = [f"item_{i:04d}" for i in range(200)]
 
 BIG_DICT = {
     "…": "…",
-} # literal object (−90 tokens)
+}
 
 
 def public_function(data: str) -> str:
@@ -30,14 +30,15 @@ def public_function(data: str) -> str:
     This docstring has multiple sentences. When budget is constrained, the
     controller may reduce documentation to the first sentence.
     """
-    
+    # Regular comment that may be removed
     return data.upper()
 
 
 def _private_helper(text: str) -> str:
     """Private helper that should be removed in public_api_only."""
     tmp = text.strip().lower()
-    
+    # Multi-line explanatory comment
+    # describing some internal behavior
     return tmp
 
 

@@ -2,26 +2,26 @@
 
 Includes:
 - Many external/local imports
-- Large literals (strings, lists…""" # literal string (−30 tokens)
+- Large literals (strings, lists…"""
 
 
 
 
 
-  
-  
+from .utils import helper as local_helper  
+from ..core.models import User  
 
 
 MODULE_DOC = """
 This module demonstrates a variety of language features to exercise the
 BudgetController escalation sequence. The text here is quite verbose and
-contains enough co…""" # literal string (−41 tokens)
+contains enough co…"""
 
 BIG_LIST = [f"item_{i:04d}" for i in range(200)]
 
 BIG_DICT = {
     "…": "…",
-} # literal object (−90 tokens)
+}
 
 
 def public_function(data: str) -> str:
@@ -36,6 +36,9 @@ def public_function(data: str) -> str:
 
 def _private_helper(text: str) -> str:
     """Private helper that should be removed in public_api_only."""
+    tmp = text.strip().lower()
+    
+    return tmp
 
 
 class PublicClass:
@@ -54,6 +57,7 @@ class PublicClass:
 
     def _private_method(self, data: List[str]) -> List[str]:
         """Private method not part of public API."""
+        return [d.strip() for d in data]
 
     @property
     def public_property(self) -> str:
@@ -63,6 +67,7 @@ class PublicClass:
     @property
     def _private_property(self) -> Dict[str, Any]:
         """Private property."""
+        return self._cache
 
 
 class _InternalOnly:

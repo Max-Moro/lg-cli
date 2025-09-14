@@ -21,11 +21,11 @@
 export const MODULE_TITLE = 'Budget System Complex Sample';
 
 const LONG_TEXT = `This is an extremely long template literal that is designed to be trimmed 
-by the literal optimizer when budgets are small. It repeats a message…`; // literal string (−4 tokens)
+by the literal optimizer when budgets are small. It repeats a message…`;
 
 const BIG_OBJECT = {
   "…": "…",
-}; // literal object (−90 tokens)
+};
 
 export class PublicService {
   private cache = new Map<string, User>();

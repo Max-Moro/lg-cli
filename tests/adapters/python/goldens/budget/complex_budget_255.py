@@ -1,4 +1,4 @@
-"""Comprehensive sample for Budget System tests (Python).""" # literal string (−30 tokens)
+"""Comprehensive sample for Budget System tests (Python)."""
 
 
 
@@ -11,13 +11,13 @@
 MODULE_DOC = """
 This module demonstrates a variety of language features to exercise the
 BudgetController escalation sequence. The text here is quite verbose and
-contains enough co…""" # literal string (−41 tokens)
+contains enough co…"""
 
 BIG_LIST = [f"item_{i:04d}" for i in range(200)]
 
 BIG_DICT = {
     "…": "…",
-} # literal object (−90 tokens)
+}
 
 
 def public_function(data: str) -> str:
@@ -30,7 +30,7 @@ def public_function(data: str) -> str:
 class PublicClass:
     """Public class exposed to users."""
 
-    def __init__(self, name:
+    def __init__(self, name: str):
 
     def public_method(self, x: int, y: int) -> int:
         """Add two numbers and return the result."""
