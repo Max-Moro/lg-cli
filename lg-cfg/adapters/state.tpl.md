@@ -18,7 +18,9 @@
 
 ### [✓] M7: Budget System
 
-### M8: Rollout на остальные языки
+### [] M8: Code Review
+
+### M9: Rollout на остальные языки
 - [ ] JavaScript
 - [ ] Java
 - [ ] C/C++  
