@@ -8,20 +8,18 @@ class Calculator:
     """A simple calculator class."""
     
     def __init__(self, name: str = "default"):
-        """Initialize calculator."""
-        # … method body omitted (3 lines)
+        self.name = name
+        self.history = []
     
     def add(self, a: int, b: int) -> int:
         """Add two numbers."""
         # … method body omitted (4 lines)
     
     def multiply(self, a: int, b: int) -> int:
-        """Multiply two numbers."""
-        # … method body omitted (4 lines)
+        # … method body omitted (5 lines)
     
     def get_history(self) -> List[str]:
-        """Get calculation history."""
-        return self.history.copy()
+        return self.history.copy() # Get calculation history
 
 def main():
     """Main function."""

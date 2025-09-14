@@ -43,21 +43,19 @@ def _remove_after_colon(
         func_type: str
 ) -> None:
     """Удаление всего после ':' в function_definition."""
-    # Найдем позицию ':' в function_definition
-    func_text = context.doc.get_node_text(func_def)
-    colon_pos = func_text.find(':')
-
-    if colon_pos == -1:
+    # Ищем ':' который идет сразу после parameters узла
+    colon_node = _find_colon_after_parameters(func_def)
+    
+    if colon_node is None:
         # Fallback к стандартной логике
         return root_optimizer.remove_function_body(context, body_node, func_type)
 
-    # Вычисляем абсолютную позицию ':'
-    func_start = func_def.start_byte
-    absolute_colon_pos = func_start + colon_pos
+    # Вычисляем абсолютную позицию ':' после parameters
+    colon_end_byte = colon_node.end_byte
 
     # Удаляем всё от позиции после ':' до конца body
     body_start_byte, body_end_byte = context.doc.get_node_range(body_node)
-    removal_start = absolute_colon_pos + 1  # После ':'
+    removal_start = colon_end_byte  # После ':'
     removal_end = body_end_byte
 
     # Определяем правильный отступ на основе типа функции
@@ -133,6 +131,32 @@ def _get_indent_prefix(func_type: str) -> str:
         return "\n        "  # Метод класса: 8 пробелов
     else:
         return "\n    "      # Функция верхнего уровня: 4 пробела
+
+
+def _find_colon_after_parameters(func_def: Node) -> Optional[Node]:
+    """
+    Находит ':' который идет сразу после parameters узла в function_definition.
+    """
+    # Ищем parameters узел
+    parameters_node = None
+    for child in func_def.children:
+        if child.type == "parameters":
+            parameters_node = child
+            break
+    
+    if parameters_node is None:
+        return None
+    
+    # Ищем ':' который идет сразу после parameters
+    found_parameters = False
+    for child in func_def.children:
+        if child == parameters_node:
+            found_parameters = True
+            continue
+        if found_parameters and child.type == ":":
+            return child
+    
+    return None
 
 
 def _find_docstring_in_body(body_node: Node) -> Optional[Node]:
