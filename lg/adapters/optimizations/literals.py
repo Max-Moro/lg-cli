@@ -85,8 +85,12 @@ class LiteralOptimizer:
             edit_type="literal_trimmed"
         )
 
-        # Добавляем комментарий
-        self._add_comment(context, literal_info, saved_tokens, end_byte)
+        # Проверяем стиль плейсхолдеров из конфигурации адаптера
+        placeholder_style = self.adapter.cfg.placeholders.style
+
+        # Если стиль "none", то комментарий не добавляем
+        if placeholder_style != "none":
+            self._add_comment(context, literal_info, saved_tokens, end_byte)
 
         # Обновляем метрики
         context.metrics.mark_element_removed("literal")
