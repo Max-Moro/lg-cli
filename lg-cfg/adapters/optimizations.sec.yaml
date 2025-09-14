@@ -23,6 +23,8 @@ src__function-bodies:
               - "/javascript.py"
               - "/markdown.py"
               - "/scala.py"
+              - "/placeholders.py"
+              - "/budget.py"
             children:
               optimizations:
                 mode: allow
