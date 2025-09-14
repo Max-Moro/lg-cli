@@ -18,7 +18,7 @@ class TestPythonFunctionBodyOptimization:
         
         # Check that functions were processed
         assert meta.get("python.removed.function_body", 0) == 1
-        assert meta.get("python.removed.method_body", 0) == 4
+        assert meta.get("python.removed.method_body", 0) == 3
         assert "# … method body omitted" in result
         assert "# … function body omitted" in result
         

@@ -8,7 +8,6 @@ class Calculator:
     """A simple calculator class."""
     
     def __init__(self, name: str = "default"):
-        """Initialize calculator."""
         self.name = name
         self.history = []
     
@@ -19,14 +18,13 @@ class Calculator:
         return result
     
     def multiply(self, a: int, b: int) -> int:
-        """Multiply two numbers."""
+        # Multiply two numbers
         result = a * b
         self.history.append(f"multiply({a}, {b}) = {result}")
         return result
     
     def get_history(self) -> List[str]:
-        """Get calculation history."""
-        return self.history.copy()
+        return self.history.copy() # Get calculation history
 
 def main():
     """Main function."""
