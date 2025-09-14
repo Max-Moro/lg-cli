@@ -113,8 +113,8 @@ class FunctionBodyOptimizer:
         )
 
     def should_strip_function_body(
-        self, 
-        in_public_api: True,
+        self,
+        in_public_api: bool,
         lines_count: int,
     ) -> bool:
         """

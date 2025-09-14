@@ -190,12 +190,12 @@ class TreeSitterDocument(ABC):
             else:
                 visited_children = True
 
-    def get_line_number_for_byte(doc, byte_offset: int) -> int:
+    def get_line_number_for_byte(self, byte_offset: int) -> int:
         """
         Получает номер строки (0-based) для байтового смещения.
         """
         # Простая реализация - подсчитываем переводы строк до этого байта
-        text_before = doc._text_bytes[:byte_offset]
+        text_before = self._text_bytes[:byte_offset]
         return text_before.count(b'\n')
 
     def get_node_text(self, node: Node) -> str:

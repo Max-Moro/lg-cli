@@ -5,7 +5,7 @@ TypeScript-специфичная реализация унифицирован�
 
 from __future__ import annotations
 
-from typing import List, Optional, Set
+from typing import List, Optional, Set, cast
 
 from ..code_analysis import CodeAnalyzer, Visibility, ExportStatus, ElementInfo
 from ..tree_sitter_support import Node
@@ -279,9 +279,9 @@ class TypeScriptCodeAnalyzer(CodeAnalyzer):
                         element_type = "field" if capture_name == "field_name" else "method"
                         if element_type == "field":
                             element_with_punctuation = self._extend_range_for_semicolon(field_def)
-                            # Create new ElementInfo with extended node
+                            # Create new ElementInfo with extended node (duck-typed, cast for type checker)
                             element_info = ElementInfo(
-                                node=element_with_punctuation,
+                                node=cast(Node, element_with_punctuation),
                                 element_type=element_info.element_type,
                                 name=element_info.name,
                                 visibility=element_info.visibility,
@@ -296,14 +296,13 @@ class TypeScriptCodeAnalyzer(CodeAnalyzer):
         imports = self.doc.query_opt("imports")
         for node, capture_name in imports:
             if capture_name == "import":
-                # Для режима public API оставляем только импорты, которые ре-экспортируются
+                # В режиме public API side-effect imports нужно СОХРАНИТЬ (они могут менять глобальное состояние)
                 import_text = self.doc.get_node_text(node)
-                
-                # Оставляем только side-effect импорты (без именованных импортов)
-                if not any(keyword in import_text for keyword in ["{", "import ", "* as", "from"]):
-                    continue  # Оставляем side-effect импорты
-                
-                # Проверяем, ре-экспортируется ли этот импорт где-то еще
+                side_effect = ("from" not in import_text) and ("{" not in import_text) and ("* as" not in import_text)
+                if side_effect:
+                    # Не добавляем в private_elements -> не удаляем
+                    continue
+                # Иначе — это обычный импорт; если он не участвует в публичном API напрямую, его можно удалить
                 element_info = self.analyze_element(node)
                 private_elements.append(element_info)
     
@@ -312,8 +311,12 @@ class TypeScriptCodeAnalyzer(CodeAnalyzer):
         variables = self.doc.query_opt("variables")
         for node, capture_name in variables:
             if capture_name == "variable_name":
-                variable_def = node.parent.parent  # variable_declarator -> variable_declaration
-                if variable_def:
+                parent = node.parent
+                if parent and getattr(parent, "parent", None):
+                    variable_def = parent.parent  # variable_declarator -> variable_declaration
+                else:
+                    variable_def = None
+                if variable_def is not None:
                     element_info = self.analyze_element(variable_def)
                     
                     # Для top-level переменных проверяем публичность и экспорт
