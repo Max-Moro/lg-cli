@@ -19,6 +19,8 @@ src:
               - "/javascript.py"
               - "/markdown.py"
               - "/scala.py"
+              - "/placeholders.py"
+              - "/budget.py"
 
 src-budget:
   extensions: [".py", ".toml"]

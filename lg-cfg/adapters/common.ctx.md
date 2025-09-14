@@ -18,8 +18,6 @@ ${tpl:adapters/gen/TREE_SITTER_README_TRIM}
 
 ${tpl:adapters/gen/design}
 
-${tpl:adapters/state}
-
 ## Исходный код функционального блока «Языковые адаптеры»
 
 ${adapters/_/src}
