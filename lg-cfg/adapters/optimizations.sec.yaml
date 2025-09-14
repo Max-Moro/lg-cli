@@ -179,6 +179,7 @@ src__literals:
               - "/javascript.py"
               - "/markdown.py"
               - "/scala.py"
+              - "/code_analysis.py"
             children:
               optimizations:
                 mode: allow
@@ -223,11 +224,13 @@ src-tests__literals:
                 mode: allow
                 allow:
                   - "/conftest.py"
+                  - "/test_literals.py"
                   - "/goldens/do/literals.py"
               typescript:
                 mode: allow
                 allow:
                   - "/conftest.py"
+                  - "/test_literals.py"
                   - "/goldens/do/literals.ts"
 
 # Import optimization
