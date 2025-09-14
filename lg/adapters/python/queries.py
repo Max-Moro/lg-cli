@@ -13,14 +13,6 @@ QUERIES = {
       body: (block) @function_body) @function_definition
     """,
     
-    "methods": """
-    (class_definition
-      body: (block
-        (function_definition
-          name: (identifier) @method_name
-          body: (block) @method_body)))
-    """,
-    
     # Comments and docstrings  
     "comments": """
     (comment) @comment

@@ -20,14 +20,6 @@ QUERIES = {
       body: (_) @function_body) @function_definition
     """,
     
-    "methods": """
-    (class_declaration
-      body: (class_body
-        (method_definition
-          name: (property_identifier) @method_name
-          body: (statement_block) @method_body)))
-    """,
-    
     # Comments
     "comments": """
     (comment) @comment
