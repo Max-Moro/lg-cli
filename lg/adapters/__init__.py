@@ -20,7 +20,7 @@ register_lazy(module=".typescript", class_name="TypeScriptAdapter", extensions=[
 register_lazy(module=".markdown", class_name="MarkdownAdapter", extensions=[".md", ".markdown"])
 
 # Stub adapters for future languages (M7 implementation)
-register_lazy(module=".javascript", class_name="JavaScriptAdapter", extensions=[".js", ".jsx"])
-register_lazy(module=".java", class_name="JavaAdapter", extensions=[".java"])
-register_lazy(module=".cpp", class_name="CppAdapter", extensions=[".cpp", ".cxx", ".cc", ".c", ".h", ".hpp", ".hxx"])
-register_lazy(module=".scala", class_name="ScalaAdapter", extensions=[".scala"])
+# register_lazy(module=".javascript", class_name="JavaScriptAdapter", extensions=[".js", ".jsx"])
+# register_lazy(module=".java", class_name="JavaAdapter", extensions=[".java"])
+# register_lazy(module=".cpp", class_name="CppAdapter", extensions=[".cpp", ".cxx", ".cc", ".c", ".h", ".hpp", ".hxx"])
+# register_lazy(module=".scala", class_name="ScalaAdapter", extensions=[".scala"])
