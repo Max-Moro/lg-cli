@@ -190,13 +190,13 @@ class TreeSitterDocument(ABC):
             else:
                 visited_children = True
 
-    def get_line_number_for_byte(self, byte_offset: int) -> int:
+    def get_line_number(self, char_offset: int) -> int:
         """
-        Получает номер строки (0-based) для байтового смещения.
+        Получает номер строки (0-based) для данного смещения.
         """
-        # Простая реализация - подсчитываем переводы строк до этого байта
-        text_before = self._text_bytes[:byte_offset]
-        return text_before.count(b'\n')
+        # Простая реализация - подсчитываем переводы строк до этой позиции символа
+        text_before = self.text[:char_offset]
+        return text_before.count('\n')
 
     def get_node_text(self, node: Node) -> str:
         """Get text content for a node."""
@@ -204,18 +204,11 @@ class TreeSitterDocument(ABC):
         end_byte = node.end_byte
         return self._text_bytes[start_byte:end_byte].decode('utf-8')
 
-    def get_text_after(self, byte_offset: int) -> str:
-        """Get text content after."""
-        return self._text_bytes[byte_offset:].decode('utf-8')
-
-    def get_text_before(self, byte_offset: int) -> str:
-        """Get text content before."""
-        return self._text_bytes[:byte_offset].decode('utf-8')
-
-    @staticmethod
-    def get_node_range(node: Node) -> Tuple[int, int]:
-        """Get byte range for a node."""
-        return node.start_byte, node.end_byte
+    def get_node_range(self, node: Node) -> Tuple[int, int]:
+        """Get char range for a node."""
+        start_char = self.byte_to_char_position(node.start_byte)
+        end_char = self.byte_to_char_position(node.end_byte)
+        return start_char, end_char
 
     @staticmethod
     def get_line_range(node: Node) -> Tuple[int, int]:
@@ -264,3 +257,27 @@ class TreeSitterDocument(ABC):
     def get_errors(self) -> List[Node]:
         """Get all error nodes in the tree."""
         return self.find_nodes_by_type("ERROR")
+
+    def byte_to_char_position(self, byte_pos: int) -> int:
+        """
+        Конвертирует байтовую позицию в позицию символа в Unicode тексте.
+        """
+        if byte_pos <= 0:
+            return 0
+        if byte_pos >= len(self._text_bytes):
+            return len(self._text_bytes)
+
+        # Декодируем текст до указанной байтовой позиции
+        try:
+            decoded_part = self._text_bytes[:byte_pos].decode('utf-8')
+            return len(decoded_part)
+        except UnicodeDecodeError:
+            # Если не можем декодировать, ищем ближайшую валидную позицию
+            for offset in range(1, 5):
+                if byte_pos - offset >= 0:
+                    try:
+                        decoded_part = self._text_bytes[:byte_pos - offset].decode('utf-8')
+                        return len(decoded_part)
+                    except UnicodeDecodeError:
+                        continue
+        return 0

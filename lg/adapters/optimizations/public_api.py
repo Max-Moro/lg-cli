@@ -44,7 +44,7 @@ class PublicApiOptimizer:
         element_ranges.sort(key=lambda x: x[0][0], reverse=True)
         
         # Удаляем приватные элементы с соответствующими плейсхолдерами
-        for (start_byte, end_byte), private_element in element_ranges:
-            start_line = context.doc.get_line_number_for_byte(start_byte)
-            end_line = context.doc.get_line_number_for_byte(end_byte)
-            context.add_placeholder(private_element.element_type, start_byte, end_byte, start_line, end_line)
+        for (start_char, end_char), private_element in element_ranges:
+            start_line = context.doc.get_line_number(start_char)
+            end_line = context.doc.get_line_number(end_char)
+            context.add_placeholder(private_element.element_type, start_char, end_char, start_line, end_line)

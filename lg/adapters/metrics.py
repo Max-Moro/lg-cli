@@ -45,9 +45,9 @@ class MetricsCollector:
         """Проверить наличие метрики."""
         return key in self._metrics
     
-    def add_bytes_saved(self, bytes_count: int) -> None:
+    def add_chars_saved(self, chars_count: int) -> None:
         """Метод для учета сэкономленных байт."""
-        self.increment(self.adapter_name + ".bytes_saved", bytes_count)
+        self.increment(self.adapter_name + ".chars_saved", chars_count)
     
     def add_lines_saved(self, lines_count: int) -> None:
         """Метод для учета сэкономленных строк."""

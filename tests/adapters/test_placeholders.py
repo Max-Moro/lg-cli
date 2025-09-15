@@ -29,8 +29,8 @@ def test_generate_inline_block_and_docstring_placeholders():
     end = text.find("\n\n")
     pm_inline.add_placeholder(
         placeholder_type="function_body",
-        start_byte=start,
-        end_byte=end,
+        start_char=start,
+        end_char=end,
         start_line=line_of(text, start),
         end_line=line_of(text, end),
     )
@@ -48,8 +48,8 @@ def test_generate_inline_block_and_docstring_placeholders():
     pm_block = make_manager(text, style="block")
     pm_block.add_placeholder(
         placeholder_type="function_body",
-        start_byte=start,
-        end_byte=end,
+        start_char=start,
+        end_char=end,
         start_line=line_of(text, start),
         end_line=line_of(text, end),
     )
@@ -62,8 +62,8 @@ def test_generate_inline_block_and_docstring_placeholders():
     pm_doc = make_manager(text, style="inline")
     pm_doc.add_placeholder(
         placeholder_type="docstring",
-        start_byte=0,
-        end_byte=0,
+        start_char=0,
+        end_char=0,
         start_line=0,
         end_line=0,
     )
@@ -84,8 +84,8 @@ def test_collapse_same_type_with_only_whitespace_between():
     end1 = text.find("\n\n\n")
     pm.add_placeholder(
         placeholder_type="import",
-        start_byte=start1,
-        end_byte=end1,
+        start_char=start1,
+        end_char=end1,
         start_line=line_of(text, start1),
         end_line=line_of(text, end1),
         count=1,
@@ -96,8 +96,8 @@ def test_collapse_same_type_with_only_whitespace_between():
     end2 = len(text)
     pm.add_placeholder(
         placeholder_type="import",
-        start_byte=start2,
-        end_byte=end2,
+        start_char=start2,
+        end_char=end2,
         start_line=line_of(text, start2),
         end_line=line_of(text, end2),
         count=1,
@@ -124,8 +124,8 @@ def test_no_collapse_when_code_between():
     end1 = text.find("\n") + 1
     pm.add_placeholder(
         placeholder_type="import",
-        start_byte=start1,
-        end_byte=end1,
+        start_char=start1,
+        end_char=end1,
         start_line=line_of(text, start1),
         end_line=line_of(text, end1),
     )
@@ -135,8 +135,8 @@ def test_no_collapse_when_code_between():
     end2 = len(text)
     pm.add_placeholder(
         placeholder_type="import",
-        start_byte=start2,
-        end_byte=end2,
+        start_char=start2,
+        end_char=end2,
         start_line=line_of(text, start2),
         end_line=line_of(text, end2),
     )
@@ -209,8 +209,8 @@ def test_overlapping_placeholders_merge_and_aggregate():
     assert len(edits) == 1
     spec, repl = edits[0]
     # Merged range should cover union
-    assert spec.start_byte == min(s1, s2)
-    assert spec.end_byte == max(e1, e2)
+    assert spec.start_char == min(s1, s2)
+    assert spec.end_char == max(e1, e2)
     assert spec.count == 2
     assert stats["placeholders_by_type"]["import"] == 2
 
@@ -234,8 +234,8 @@ def test_placeholder_prefix_is_preserved():
     pm = make_manager(text, style="inline")
     pm.add_placeholder(
         placeholder_type="import",
-        start_byte=0,
-        end_byte=0,
+        start_char=0,
+        end_char=0,
         start_line=0,
         end_line=0,
         placeholder_prefix="    ",
@@ -255,8 +255,8 @@ def test_literal_placeholder_content_includes_bytes_removed():
     # We construct spec directly to ensure large bytes_removed
     pm.placeholders.append(
         PlaceholderSpec(
-            start_byte=start,
-            end_byte=end,
+            start_char=start,
+            end_char=end,
             start_line=0,
             end_line=0,
             placeholder_type="literal",

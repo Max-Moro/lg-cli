@@ -10,7 +10,7 @@ from typing import Optional
 
 from .metrics import MetricsCollector
 from .placeholders import PlaceholderManager, create_placeholder_manager
-from .range_edits import RangeEditor
+from .range_edits import UnicodeRangeEditor
 from .tree_sitter_support import TreeSitterDocument, Node
 from ..stats import TokenService
 
@@ -80,7 +80,7 @@ class ProcessingContext(LightState):
         mixed: bool,
         adapter_name: str,
         doc: TreeSitterDocument,
-        editor: RangeEditor,
+        editor: UnicodeRangeEditor,
         placeholders: PlaceholderManager,
         tokenizer: TokenService,
     ):
@@ -92,11 +92,11 @@ class ProcessingContext(LightState):
         self.metrics = MetricsCollector(adapter_name)
         self.tokenizer = tokenizer
 
-    def add_placeholder(self, element_type: str, start_byte: int, end_byte: int, start_line: int, end_line: int,
+    def add_placeholder(self, element_type: str, start_char: int, end_char: int, start_line: int, end_line: int,
                         placeholder_prefix: str = "", count: int = 1) -> None:
         """Добавить плейсхолдер."""
         self.placeholders.add_placeholder(
-            element_type, start_byte, end_byte, start_line, end_line, placeholder_prefix, count
+            element_type, start_char, end_char, start_line, end_line, placeholder_prefix, count
         )
         self.metrics.mark_element_removed(element_type, count)
         self.metrics.mark_placeholder_inserted()
@@ -127,7 +127,7 @@ class ProcessingContext(LightState):
         """
         # Создаем компоненты для полноценного контекста
         doc = adapter.create_document(lightweight_ctx.raw_text, lightweight_ctx.ext)
-        editor = RangeEditor(lightweight_ctx.raw_text)
+        editor = UnicodeRangeEditor(lightweight_ctx.raw_text)
         
         # Создаем PlaceholderManager с настройками из адаптера
         placeholders = create_placeholder_manager(

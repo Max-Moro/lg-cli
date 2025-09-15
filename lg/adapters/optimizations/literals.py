@@ -27,7 +27,7 @@ class LiteralInfo:
 @dataclass
 class CommentPlacement:
     """Информация о размещении комментария."""
-    position: int
+    char_offset: int
     text: str
 
 
@@ -79,9 +79,9 @@ class LiteralOptimizer:
         saved_tokens = original_tokens - context.tokenizer.count_text(replacement)
 
         # Применяем замену литерала
-        start_byte, end_byte = context.doc.get_node_range(node)
+        start_char, end_char = context.doc.get_node_range(node)
         context.editor.add_replacement(
-            start_byte, end_byte, replacement,
+            start_char, end_char, replacement,
             edit_type="literal_trimmed"
         )
 
@@ -90,11 +90,11 @@ class LiteralOptimizer:
 
         # Если стиль "none", то комментарий не добавляем
         if placeholder_style != "none":
-            self._add_comment(context, literal_info, saved_tokens, end_byte)
+            self._add_comment(context, literal_info, saved_tokens, end_char)
 
         # Обновляем метрики
         context.metrics.mark_element_removed("literal")
-        context.metrics.add_bytes_saved(len(literal_text.encode('utf-8')) - len(replacement.encode('utf-8')))
+        context.metrics.add_chars_saved(len(literal_text) - len(replacement))
 
     def _analyze_literal_structure(self, literal_text: str, capture_name: str, language: str) -> LiteralInfo:
         """Анализирует структуру литерала для умного тримминга."""
@@ -345,9 +345,10 @@ class LiteralOptimizer:
         """
         # Получаем полный текст литерала из исходного файла
         full_literal_text = doc.get_node_text(node)
+        start_char, end_char = doc.get_node_range(node)
         
         # Определяем базовый отступ (отступ строки, где начинается литерал)
-        start_line = doc.get_line_number_for_byte(node.start_byte)
+        start_line = doc.get_line_number(start_char)
         lines = raw_text.split('\n')
         base_indent = ""
         if start_line < len(lines):
@@ -389,7 +390,7 @@ class LiteralOptimizer:
         # Fallback - добавляем стандартный отступ к базовому
         return base_indent + "    "
 
-    def _add_comment(self, context: ProcessingContext, literal_info: LiteralInfo, saved_tokens: int, end_byte: int) -> None:
+    def _add_comment(self, context: ProcessingContext, literal_info: LiteralInfo, saved_tokens: int, end_char: int) -> None:
         """Добавляет комментарий в правильное место."""
         comment_style = self.adapter.get_comment_style()
         single_comment = comment_style[0]
@@ -397,22 +398,22 @@ class LiteralOptimizer:
         comment_text = f"literal {literal_info.type} (−{saved_tokens} tokens)"
 
         # Ищем лучшее место для размещения комментария
-        placement = self._find_comment_placement(context.doc, end_byte, comment_text, single_comment)
+        placement = self._find_comment_placement(context.raw_text, end_char, comment_text, single_comment)
 
         context.editor.add_insertion(
-            placement.position, placement.text,
+            placement.char_offset, placement.text,
             edit_type="literal_comment"
         )
 
-    def _find_comment_placement(self, doc: TreeSitterDocument, end_byte: int, comment_text: str, single_comment: str) -> CommentPlacement:
+    def _find_comment_placement(self, text: str, end_char: int, comment_text: str, single_comment: str) -> CommentPlacement:
         """Находит лучшее место для размещения комментария."""
-        text_after = doc.get_text_after(end_byte)
+        text_after = text[end_char:]
         line_after = text_after.split('\n')[0]
 
         # 1. Ищем закрывающие скобки/кавычки сразу после литерала
         bracket_pos = self._find_closing_brackets_after_literal(line_after)
         if bracket_pos is not None:
-            insertion_pos = end_byte + bracket_pos + 1
+            insertion_pos = end_char + bracket_pos + 1
             text_after_bracket = line_after[bracket_pos + 1:].strip()
             if text_after_bracket and not text_after_bracket.startswith((';', ',', ')')):
                 # Есть код после - используем блочный комментарий
@@ -426,7 +427,7 @@ class LiteralOptimizer:
         # 2. Ищем точку с запятой
         semicolon_pos = line_after.find(';')
         if semicolon_pos != -1:
-            insertion_pos = end_byte + semicolon_pos + 1
+            insertion_pos = end_char + semicolon_pos + 1
             text_after_semicolon = line_after[semicolon_pos + 1:].strip()
             if text_after_semicolon:
                 # Есть код после - используем блочный комментарий
@@ -440,7 +441,7 @@ class LiteralOptimizer:
         # 3. Ищем запятую (для массивов, объектов)
         comma_pos = line_after.find(',')
         if comma_pos != -1:
-            insertion_pos = end_byte + comma_pos + 1
+            insertion_pos = end_char + comma_pos + 1
             text_after_comma = line_after[comma_pos + 1:].strip()
             if text_after_comma and not text_after_comma.startswith((']', '}', ')')):
                 # Есть код после - используем блочный комментарий
@@ -460,7 +461,7 @@ class LiteralOptimizer:
             # Нет кода - используем однострочный
             comment = f" {single_comment} {comment_text}"
 
-        return CommentPlacement(end_byte, comment)
+        return CommentPlacement(end_char, comment)
 
     def _find_closing_brackets_after_literal(self, line_after: str) -> int | None:
         """Ищет закрывающие скобки сразу после литерала."""

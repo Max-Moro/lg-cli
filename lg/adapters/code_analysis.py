@@ -328,12 +328,12 @@ class CodeAnalyzer(ABC):
             elem: Элемент
 
         Returns:
-            Tuple (start_byte, end_byte) включая все связанные декораторы
+            Tuple (start_char, end_char) включая все связанные декораторы
         """
         if elem.decorators:
-            start_byte = min(decorator.start_byte for decorator in elem.decorators)
-            end_byte = elem.node.end_byte
-            return start_byte, end_byte
+            start_char = self.doc.byte_to_char_position(min(decorator.start_byte for decorator in elem.decorators))
+            end_char = self.doc.byte_to_char_position(elem.node.end_byte)
+            return start_char, end_char
         else:
             return self.doc.get_node_range(elem.node)
     

@@ -51,12 +51,12 @@ def _remove_after_colon(
         return root_optimizer.remove_function_body(context, body_node, func_type)
 
     # Вычисляем абсолютную позицию ':' после parameters
-    colon_end_byte = colon_node.end_byte
+    colon_end_char = context.doc.byte_to_char_position(colon_node.end_byte)
 
     # Удаляем всё от позиции после ':' до конца body
-    body_start_byte, body_end_byte = context.doc.get_node_range(body_node)
-    removal_start = colon_end_byte  # После ':'
-    removal_end = body_end_byte
+    body_start_char, body_end_char = context.doc.get_node_range(body_node)
+    removal_start = colon_end_char  # После ':'
+    removal_end = body_end_char
 
     # Определяем правильный отступ на основе типа функции
     indent_prefix = _get_indent_prefix(func_type)
@@ -64,8 +64,8 @@ def _remove_after_colon(
     # Используем общий helper с правильным форматированием
     return root_optimizer.apply_function_body_removal(
         context=context,
-        start_byte=removal_start,
-        end_byte=removal_end,
+        start_char=removal_start,
+        end_char=removal_end,
         func_type=func_type,
         placeholder_prefix=indent_prefix
     )
@@ -81,22 +81,22 @@ def _remove_function_body_preserve_docstring(
     Удаляет тело функции/метода, сохраняя docstring, если он есть.
     """
     # Есть docstring - удаляем только часть после него
-    body_start_byte, body_end_byte = context.doc.get_node_range(body_node)
+    body_start_char, body_end_char = context.doc.get_node_range(body_node)
 
     # Найдём позицию для начала удаления - сразу после docstring
-    docstring_end_byte = docstring_node.end_byte
+    docstring_end_char = context.doc.byte_to_char_position(docstring_node.end_byte)
     
     # Проверяем, есть ли код после docstring
-    if docstring_end_byte >= body_end_byte:
+    if docstring_end_char >= body_end_char:
         # Нет кода после docstring - оставляем только docstring
         return None
 
     # Вычисляем что удаляем (от конца docstring до конца тела)
-    removal_start = docstring_end_byte
-    removal_end = body_end_byte
+    removal_start = docstring_end_char
+    removal_end = body_end_char
 
     # Проверяем, есть ли что удалять
-    removal_start_line = context.doc.get_line_number_for_byte(removal_start)
+    removal_start_line = context.doc.get_line_number(removal_start)
     body_end_line = context.doc.get_line_range(body_node)[1]
     lines_removed = max(0, body_end_line - removal_start_line + 1)
 
@@ -110,8 +110,8 @@ def _remove_function_body_preserve_docstring(
     # Используем общий helper с правильным форматированием
     return root_optimizer.apply_function_body_removal(
         context=context,
-        start_byte=removal_start,
-        end_byte=removal_end,
+        start_char=removal_start,
+        end_char=removal_end,
         func_type=func_type,
         placeholder_prefix=indent_prefix
     )

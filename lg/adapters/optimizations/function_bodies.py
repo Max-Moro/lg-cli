@@ -74,20 +74,20 @@ class FunctionBodyOptimizer:
         """
         Удаляет тело функции/метода с автоматическим учетом метрик.
         """
-        start_byte, end_byte = context.doc.get_node_range(body_node)
+        start_char, end_char = context.doc.get_node_range(body_node)
 
         FunctionBodyOptimizer.apply_function_body_removal(
             context=context,
-            start_byte=start_byte,
-            end_byte=end_byte,
+            start_char=start_char,
+            end_char=end_char,
             func_type=func_type,
         )
 
     @staticmethod
     def apply_function_body_removal(
             context: ProcessingContext,
-            start_byte: int,
-            end_byte: int,
+            start_char: int,
+            end_char: int,
             func_type: str,
             placeholder_prefix: str = ""
     ) -> None:
@@ -96,8 +96,8 @@ class FunctionBodyOptimizer:
         
         Args:
             context: Контекст обработки
-            start_byte: Начальная позиция для удаления
-            end_byte: Конечная позиция для удаления
+            start_char: Начальная позиция для удаления
+            end_char: Конечная позиция для удаления
             func_type: Тип функции ("function" или "method")
             placeholder_prefix: Префикс для placeholder'а (например "\n    ")
         """
@@ -105,10 +105,10 @@ class FunctionBodyOptimizer:
         """
         Удаляет тело функции/метода с автоматическим учетом метрик.
         """
-        start_line = context.doc.get_line_number_for_byte(start_byte)
-        end_line = context.doc.get_line_number_for_byte(end_byte)
+        start_line = context.doc.get_line_number(start_char)
+        end_line = context.doc.get_line_number(end_char)
 
-        context.add_placeholder(func_type + "_body", start_byte, end_byte, start_line, end_line,
+        context.add_placeholder(func_type + "_body", start_char, end_char, start_line, end_line,
             placeholder_prefix=placeholder_prefix
         )
 

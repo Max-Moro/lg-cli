@@ -18,8 +18,8 @@ class PlaceholderSpec:
     Хранит структурированную информацию о плейсхолдере без привязки к конкретному формату.
     """
     # Позиция в файле
-    start_byte: int
-    end_byte: int
+    start_char: int
+    end_char: int
     start_line: int
     end_line: int
     
@@ -31,20 +31,20 @@ class PlaceholderSpec:
     
     # Метрики
     lines_removed: int = 0
-    bytes_removed: int = 0
+    chars_removed: int = 0
     count: int = 1  # Количество элементов (для импортов, комментариев)
     
     def __post_init__(self):
         # Вычисляем метрики если не переданы
         if self.lines_removed == 0:
             self.lines_removed = max(0, self.end_line - self.start_line + 1)
-        if self.bytes_removed == 0:
-            self.bytes_removed = max(0, self.end_byte - self.start_byte)
+        if self.chars_removed == 0:
+            self.chars_removed = max(0, self.end_char - self.start_char)
     
     @property
     def position_key(self) -> Tuple[int, int]:
         """Ключ для сортировки по позиции."""
-        return self.start_line, self.start_byte
+        return self.start_line, self.start_char
     
     def can_merge_with(self, other: PlaceholderSpec, source_text: str) -> bool:
         """
@@ -81,27 +81,26 @@ class PlaceholderSpec:
         Returns:
             True если между плейсхолдерами есть любой код или разное количество символов от начала строки, False если только пустота и одинаковые отступы
         """
-        bytes_data = source_text.encode('utf-8')
 
         # Определяем диапазон между плейсхолдерами
-        if self.end_byte <= other.start_byte:
+        if self.end_char <= other.start_char:
             # self идет перед other
-            start_byte = self.end_byte
-            end_byte = other.start_byte
-        elif other.end_byte <= self.start_byte:
+            start_char = self.end_char
+            end_char = other.start_char
+        elif other.end_char <= self.start_char:
             # other идет перед self
-            start_byte = other.end_byte
-            end_byte = self.start_byte
+            start_char = other.end_char
+            end_char = self.start_char
         else:
             # Плейсхолдеры пересекаются - можно объединять
             return False
 
         # Получаем содержимое между плейсхолдерами в байтах
-        if start_byte >= end_byte:
+        if start_char >= end_char:
             return False
 
         try:
-            content_between = bytes_data[start_byte:end_byte].decode('utf-8')
+            content_between = source_text[start_char:end_char]
         except (UnicodeDecodeError, IndexError):
             # При ошибках декодирования консервативно блокируем объединение
             return True
@@ -112,33 +111,33 @@ class PlaceholderSpec:
             return True
 
         # Проверяем количество символов от начала строки для каждого плейсхолдера
-        self_chars_from_line_start = self._count_chars_from_line_start(self.start_byte, source_text)
-        other_chars_from_line_start = self._count_chars_from_line_start(other.start_byte, source_text)
+        self_chars_from_line_start = self._count_chars_from_line_start(self.start_char, source_text)
+        other_chars_from_line_start = self._count_chars_from_line_start(other.start_char, source_text)
 
         if self_chars_from_line_start != other_chars_from_line_start:
             return True
 
         return False
 
-    def _count_chars_from_line_start(self, byte_position: int, source_text: str) -> int:
+    def _count_chars_from_line_start(self, char_position: int, source_text: str) -> int:
         """
         Считает количество символов от начала строки до указанной байтовой позиции.
 
         Args:
-            byte_position: Байтовая позиция в тексте
+            char_position: Байтовая позиция в тексте
             source_text: Исходный текст документа
 
         Returns:
             Количество символов от ближайшего '\n' слева до позиции
         """
         # Идем влево от позиции и ищем ближайший '\n'
-        for i in range(byte_position - 1, -1, -1):
+        for i in range(char_position - 1, -1, -1):
             if i < len(source_text) and source_text[i] == '\n':
                 # Нашли '\n', считаем символы от него до позиции
-                return byte_position - i - 1
+                return char_position - i - 1
 
         # Если '\n' не найден, значит мы в начале файла
-        return byte_position
+        return char_position
     
     def merge_with(self, other: PlaceholderSpec, source_text) -> PlaceholderSpec:
         """Создает объединенный плейсхолдер."""
@@ -146,20 +145,20 @@ class PlaceholderSpec:
             raise ValueError("Cannot merge incompatible placeholders")
         
         # Объединенные границы
-        start_byte = min(self.start_byte, other.start_byte)
-        end_byte = max(self.end_byte, other.end_byte)
+        start_char = min(self.start_char, other.start_char)
+        end_char = max(self.end_char, other.end_char)
         start_line = min(self.start_line, other.start_line)
         end_line = max(self.end_line, other.end_line)
         
         return PlaceholderSpec(
-            start_byte=start_byte,
-            end_byte=end_byte,
+            start_char=start_char,
+            end_char=end_char,
             start_line=start_line,
             end_line=end_line,
             placeholder_type=self.placeholder_type,
             placeholder_prefix=self.placeholder_prefix,
             lines_removed=self.lines_removed + other.lines_removed,
-            bytes_removed=self.bytes_removed + other.bytes_removed,
+            chars_removed=self.chars_removed + other.chars_removed,
             count=self.count + other.count,
         )
 
@@ -188,12 +187,12 @@ class PlaceholderManager:
     
     # ============= Простое API для добавления плейсхолдеров =============
     
-    def add_placeholder(self, placeholder_type: str, start_byte: int, end_byte: int, start_line: int, end_line: int,
+    def add_placeholder(self, placeholder_type: str, start_char: int, end_char: int, start_line: int, end_line: int,
                         placeholder_prefix: str = "", count: int = 1) -> None:
         """Добавить кастомный плейсхолдер с явными координатами."""
         spec = PlaceholderSpec(
-            start_byte=start_byte,
-            end_byte=end_byte,
+            start_char=start_char,
+            end_char=end_char,
             start_line=start_line,
             end_line=end_line,
             placeholder_type=placeholder_type,
@@ -211,12 +210,12 @@ class PlaceholderManager:
     
     def _create_spec_from_node(self, node: Node, doc, placeholder_type: str, count: int = 1) -> PlaceholderSpec:
         """Создать PlaceholderSpec из Tree-sitter узла."""
-        start_byte, end_byte = doc.get_node_range(node)
+        start_char, end_char = doc.get_node_range(node)
         start_line, end_line = doc.get_line_range(node)
         
         return PlaceholderSpec(
-            start_byte=start_byte,
-            end_byte=end_byte,
+            start_char=start_char,
+            end_char=end_char,
             start_line=start_line,
             end_line=end_line,
             placeholder_type=placeholder_type,
@@ -243,7 +242,7 @@ class PlaceholderManager:
         ptype = spec.placeholder_type
         count = spec.count
         lines = spec.lines_removed
-        bytes_removed = spec.bytes_removed
+        chars_removed = spec.chars_removed
         
         # Базовые шаблоны для разных типов
         if ptype == "function_body":
@@ -304,8 +303,8 @@ class PlaceholderManager:
                 return "… type omitted"
         
         elif ptype in ("string", "array", "object", "literal"):
-            if bytes_removed > 0:
-                return f"… {ptype} data omitted ({bytes_removed} bytes)"
+            if chars_removed > 0:
+                return f"… {ptype} data omitted ({chars_removed} chars)"
             else:
                 return f"… {ptype} omitted"
         
@@ -393,7 +392,7 @@ class PlaceholderManager:
         stats = {
             "placeholders_inserted": len(specs),
             "total_lines_removed": sum(spec.lines_removed for spec in specs),
-            "total_bytes_removed": sum(spec.bytes_removed for spec in specs),
+            "total_chars_removed": sum(spec.chars_removed for spec in specs),
             "placeholders_by_type": {}
         }
         

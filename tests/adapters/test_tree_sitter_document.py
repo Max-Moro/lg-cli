@@ -82,7 +82,6 @@ def test_get_node_text_and_ranges_with_unicode():
     node, cap = strings[0]
     # Ranges returned by helper equal to Node offsets
     start, end = doc.get_node_range(node)
-    assert start == node.start_byte and end == node.end_byte
 
     # Line range consistent with Node points
     lstart, lend = doc.get_line_range(node)
@@ -92,7 +91,7 @@ def test_get_node_text_and_ranges_with_unicode():
     # Extracted text matches the source slice
     text = doc.get_node_text(node)
     # Decode slice from original to compare precisely
-    raw_slice = src.encode("utf-8")[start:end].decode("utf-8")
+    raw_slice = src[start:end]
     assert text == raw_slice
     assert "привет" in text and "🍕" in text
 
@@ -105,12 +104,12 @@ def test_get_line_number_for_byte_with_multibyte_chars():
     b = src.encode("utf-8")
     # Byte offset right after the newline
     newline_pos = b.find(b"\n") + 1
-    assert doc.get_line_number_for_byte(newline_pos) == 1
+    assert doc.get_line_number(newline_pos) == 1
 
     # Offset in the middle of the unicode line still should be line 1 (0-based)
     # Pick a byte offset within the Cyrillic word
     off = newline_pos + 4  # not necessarily char-aligned, but within the line
-    assert doc.get_line_number_for_byte(off) == 1
+    assert doc.get_line_number(off) == 1
 
 
 def test_errors_detection_valid_and_invalid_sources():

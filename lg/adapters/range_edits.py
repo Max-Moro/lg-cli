@@ -10,40 +10,40 @@ from typing import List, Tuple, Dict, Any, Optional
 
 
 @dataclass
-class TextRange:
-    """Represents a range in text by byte offsets."""
-    start_byte: int
-    end_byte: int
+class CharRange:
+    """Represents a range in text by character positions."""
+    start_char: int
+    end_char: int
     
     def __post_init__(self):
-        if self.start_byte > self.end_byte:
-            raise ValueError(f"Invalid range: start_byte ({self.start_byte}) > end_byte ({self.end_byte})")
+        if self.start_char > self.end_char:
+            raise ValueError(f"Invalid range: start_char ({self.start_char}) > end_char ({self.end_char})")
     
     @property
     def length(self) -> int:
-        return self.end_byte - self.start_byte
+        return self.end_char - self.start_char
     
-    def overlaps(self, other: "TextRange") -> bool:
+    def overlaps(self, other: CharRange) -> bool:
         """Check if this range overlaps with another."""
-        return not (self.end_byte <= other.start_byte or other.end_byte <= self.start_byte)
+        return not (self.end_char <= other.start_char or other.end_char <= self.start_char)
     
-    def contains(self, other: "TextRange") -> bool:
+    def contains(self, other: CharRange) -> bool:
         """Check if this range completely contains another."""
-        return self.start_byte <= other.start_byte and other.end_byte <= self.end_byte
+        return self.start_char <= other.start_char and other.end_char <= self.end_char
 
 
 @dataclass
-class Edit:
-    """Represents a single text edit operation."""
-    range: TextRange
+class CharEdit:
+    """Represents a single text edit operation using character positions."""
+    range: CharRange
     replacement: str
     type: Optional[str] # Тип для счетчика в метаинформации
-    is_insertion: bool = False  # True если это операция вставки (range.start_byte == range.end_byte)
+    is_insertion: bool = False  # True если это операция вставки (range.start_char == range.end_char)
     
     @property
     def removes_text(self) -> bool:
         """True if this edit removes text (replacement is shorter than original)."""
-        return len(self.replacement.encode('utf-8')) < self.range.length
+        return len(self.replacement) < self.range.length
     
     @property
     def is_deletion(self) -> bool:
@@ -51,129 +51,61 @@ class Edit:
         return len(self.replacement) == 0
 
 
-class RangeEditor:
+class UnicodeRangeEditor:
     """
-    Safe range-based text editor that applies multiple edits while preserving structure.
+    Unicode-safe range-based text editor that works with character positions.
+    This is the new architecture that avoids UTF-8 boundary issues.
     """
     
     def __init__(self, original_text: str):
         self.original_text = original_text
-        self.original_bytes = original_text.encode('utf-8')
-        self.edits: List[Edit] = []
+        self.edits: List[CharEdit] = []
     
-    def add_edit(self, start_byte: int, end_byte: int, replacement: str, edit_type: Optional[str]) -> None:
-        """Add an edit operation."""
-        text_range = TextRange(start_byte, end_byte)
+    def add_edit(self, start_char: int, end_char: int, replacement: str, edit_type: Optional[str]) -> None:
+        """Add an edit operation using character positions."""
+        char_range = CharRange(start_char, end_char)
 
         # First-wins: если новая правка перекрывается с любой уже добавленной — тихо пропускаем её.
         for existing in self.edits:
-            if text_range.overlaps(existing.range):
+            if char_range.overlaps(existing.range):
                 return
 
-        edit = Edit(text_range, replacement, edit_type)
+        edit = CharEdit(char_range, replacement, edit_type)
         self.edits.append(edit)
 
-    def add_deletion(self, start_byte: int, end_byte: int, edit_type: Optional[str]) -> None:
+    def add_deletion(self, start_char: int, end_char: int, edit_type: Optional[str]) -> None:
         """Add a deletion operation (empty replacement)."""
-        self.add_edit(start_byte, end_byte, "", edit_type)
+        self.add_edit(start_char, end_char, "", edit_type)
 
-    def add_replacement(self, start_byte: int, end_byte: int, replacement: str, edit_type: Optional[str]) -> None:
+    def add_replacement(self, start_char: int, end_char: int, replacement: str, edit_type: Optional[str]) -> None:
         """Add a replacement operation."""
-        self.add_edit(start_byte, end_byte, replacement, edit_type)
-    
-    def add_insertion(self, position_byte: int, content: str, edit_type: Optional[str]) -> None:
+        self.add_edit(start_char, end_char, replacement, edit_type)
+
+    def add_insertion(self, position_char: int, content: str, edit_type: Optional[str]) -> None:
         """
-        Add an insertion operation after the specified position.
+        Add an insertion operation after the specified character position.
         
         Args:
-            position_byte: Byte position after which to insert content
+            position_char: Character position after which to insert content
             content: Content to insert
             edit_type: Type for statistics tracking
         """
-        # Проверяем и корректируем позицию для корректной работы с UTF-8
-        safe_position = self._ensure_utf8_boundary(position_byte)
-        
-        # Для вставки start_byte == end_byte (нулевая длина диапазона)
-        text_range = TextRange(safe_position, safe_position)
+        # Для вставки start_char == end_char (нулевая длина диапазона)
+        char_range = CharRange(position_char, position_char)
         
         # Проверяем перекрытия с существующими правками
-        # Для вставок перекрытие происходит если позиция вставки находится внутри существующего диапазона
         for existing in self.edits:
             if existing.is_insertion:
                 # Две вставки в одной позиции - первая побеждает
-                if existing.range.start_byte == safe_position:
+                if existing.range.start_char == position_char:
                     return
             else:
                 # Вставка перекрывается с заменой/удалением если позиция внутри диапазона
-                if existing.range.start_byte < safe_position < existing.range.end_byte:
+                if existing.range.start_char < position_char < existing.range.end_char:
                     return
         
-        edit = Edit(text_range, content, edit_type, is_insertion=True)
+        edit = CharEdit(char_range, content, edit_type, is_insertion=True)
         self.edits.append(edit)
-    
-    def _ensure_utf8_boundary(self, position_byte: int) -> int:
-        """
-        Обеспечивает, что позиция находится на границе UTF-8 символа.
-        
-        Args:
-            position_byte: Исходная позиция в байтах
-            
-        Returns:
-            Безопасная позиция на границе UTF-8 символа
-        """
-        if position_byte <= 0 or position_byte >= len(self.original_bytes):
-            return position_byte
-        
-        # Проверяем, находится ли позиция на границе UTF-8 символа
-        try:
-            # Пытаемся декодировать символ, начинающийся с этой позиции
-            char_at_pos = self.original_bytes[position_byte:].decode('utf-8')[0]
-            # Если успешно, позиция корректна
-            return position_byte
-        except UnicodeDecodeError:
-            # Позиция в середине UTF-8 символа, ищем ближайшую границу
-            return self._find_nearest_utf8_boundary(position_byte)
-    
-    def _find_nearest_utf8_boundary(self, position_byte: int) -> int:
-        """
-        Находит ближайшую границу UTF-8 символа.
-        
-        Args:
-            position_byte: Позиция в середине UTF-8 символа
-            
-        Returns:
-            Ближайшая безопасная позиция
-        """
-        # Сначала пытаемся найти границу, двигаясь вперед (более естественно для вставки)
-        for offset in range(1, 5):
-            test_pos = position_byte + offset
-            if test_pos >= len(self.original_bytes):
-                break
-            
-            try:
-                # Пытаемся декодировать символ, начинающийся с этой позиции
-                char = self.original_bytes[test_pos:].decode('utf-8')[0]
-                # Если успешно, это граница символа
-                return test_pos
-            except UnicodeDecodeError:
-                continue
-        
-        # Если не нашли границу вперед, ищем назад
-        for offset in range(1, 5):  # UTF-8 символы могут быть до 4 байт
-            test_pos = position_byte - offset
-            if test_pos < 0:
-                continue
-            
-            try:
-                # Пытаемся декодировать символ, начинающийся с этой позиции
-                char = self.original_bytes[test_pos:].decode('utf-8')[0]
-                # Если успешно, это граница символа
-                return test_pos
-            except UnicodeDecodeError:
-                continue
-        
-        # Fallback - возвращаем исходную позицию
-        return position_byte
     
     def validate_edits(self) -> List[str]:
         """
@@ -184,10 +116,10 @@ class RangeEditor:
 
         # Check bounds only
         for i, edit in enumerate(self.edits):
-            if edit.range.start_byte < 0:
-                errors.append(f"Edit {i}: start_byte ({edit.range.start_byte}) is negative")
-            if edit.range.end_byte > len(self.original_bytes):
-                errors.append(f"Edit {i}: end_byte ({edit.range.end_byte}) exceeds text length ({len(self.original_bytes)})")
+            if edit.range.start_char < 0:
+                errors.append(f"Edit {i}: start_char ({edit.range.start_char}) is negative")
+            if edit.range.end_char > len(self.original_text):
+                errors.append(f"Edit {i}: end_char ({edit.range.end_char}) exceeds text length ({len(self.original_text)})")
 
         return errors
     
@@ -207,9 +139,9 @@ class RangeEditor:
             return self.original_text, {"edits_applied": 0, "bytes_removed": 0, "bytes_added": 0}
         
         # Сортируем все правки по позиции (обратный порядок для безопасного применения)
-        sorted_edits = sorted(self.edits, key=lambda e: e.range.start_byte, reverse=True)
+        sorted_edits = sorted(self.edits, key=lambda e: e.range.start_char, reverse=True)
         
-        result_bytes = bytearray(self.original_bytes)
+        result_text = self.original_text
         stats = {
             "edits_applied": len(self.edits),
             "bytes_removed": 0,
@@ -222,35 +154,26 @@ class RangeEditor:
         for edit in sorted_edits:
             if edit.is_insertion:
                 # Для вставки: вставляем контент после указанной позиции
-                replacement_bytes = edit.replacement.encode('utf-8')
-                stats["bytes_added"] += len(replacement_bytes)
-                result_bytes[edit.range.start_byte:edit.range.start_byte] = replacement_bytes
+                result_text = result_text[:edit.range.start_char] + edit.replacement + result_text[edit.range.start_char:]
+                stats["bytes_added"] += len(edit.replacement.encode('utf-8'))
             else:
                 # Для замены/удаления: обычная логика
-                original_chunk = result_bytes[edit.range.start_byte:edit.range.end_byte]
-                replacement_bytes = edit.replacement.encode('utf-8')
+                original_chunk = result_text[edit.range.start_char:edit.range.end_char]
+                result_text = result_text[:edit.range.start_char] + edit.replacement + result_text[edit.range.end_char:]
                 
-                stats["bytes_removed"] += len(original_chunk)
-                stats["bytes_added"] += len(replacement_bytes)
-                stats["lines_removed"] += original_chunk.count(b'\n')
-                
-                result_bytes[edit.range.start_byte:edit.range.end_byte] = replacement_bytes
+                stats["bytes_removed"] += len(original_chunk.encode('utf-8'))
+                stats["bytes_added"] += len(edit.replacement.encode('utf-8'))
+                stats["lines_removed"] += original_chunk.count('\n')
         
         # Calculate net change
         stats["bytes_saved"] = stats["bytes_removed"] - stats["bytes_added"]
         
-        try:
-            result_text = result_bytes.decode('utf-8')
-        except UnicodeDecodeError as e:
-            raise ValueError(f"Failed to decode result text: {e}")
-        
         return result_text, stats
-    
     
     def get_edit_summary(self) -> Dict[str, Any]:
         """Get summary of planned edits without applying them."""
         # Для вставок range.length = 0, поэтому bytes_removed = 0
-        total_bytes_removed = sum(edit.range.length for edit in self.edits if not edit.is_insertion)
+        total_bytes_removed = sum(len(self.original_text[edit.range.start_char:edit.range.end_char].encode('utf-8')) for edit in self.edits if not edit.is_insertion)
         total_bytes_added = sum(len(edit.replacement.encode('utf-8')) for edit in self.edits)
         
         edit_types = {}
@@ -265,5 +188,4 @@ class RangeEditor:
             "net_savings": total_bytes_removed - total_bytes_added,
             "edit_types": edit_types,
         }
-
 

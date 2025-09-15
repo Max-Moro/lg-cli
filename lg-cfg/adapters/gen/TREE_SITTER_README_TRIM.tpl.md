@@ -178,8 +178,8 @@ print(f"Есть изменения: {node.has_changes}")
 print(f"Есть ошибки: {node.has_error}")
 
 # Позиционирование
-print(f"Начальный байт: {node.start_byte}")
-print(f"Конечный байт: {node.end_byte}")
+print(f"Начальный байт: {node.start_char}")
+print(f"Конечный байт: {node.end_char}")
 print(f"Начальная позиция: {node.start_point}")
 print(f"Конечная позиция: {node.end_point}")
 print(f"Байтовый диапазон: {node.byte_range}")

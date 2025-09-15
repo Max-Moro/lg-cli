@@ -196,8 +196,8 @@ print(f"Есть изменения: {node.has_changes}")
 print(f"Есть ошибки: {node.has_error}")
 
 # Позиционирование
-print(f"Начальный байт: {node.start_byte}")
-print(f"Конечный байт: {node.end_byte}")
+print(f"Начальный байт: {node.start_char}")
+print(f"Конечный байт: {node.end_char}")
 print(f"Начальная позиция: {node.start_point}")
 print(f"Конечная позиция: {node.end_point}")
 print(f"Байтовый диапазон: {node.byte_range}")
@@ -603,8 +603,8 @@ for script_node in script_nodes:
     js_ranges = [Range(
         start_point=script_node.start_point,
         end_point=script_node.end_point,
-        start_byte=script_node.start_byte,
-        end_byte=script_node.end_byte
+        start_byte=script_node.start_char,
+        end_byte=script_node.end_char
     )]
     js_parser.included_ranges = js_ranges
     js_tree = js_parser.parse(template_content)

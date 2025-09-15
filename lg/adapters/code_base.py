@@ -145,15 +145,12 @@ class CodeAdapter(BaseAdapter[C], ABC):
         """
         collapsed_edits, placeholder_stats = context.placeholders.finalize_edits()
 
-        # Текст исходного диапазона нужен для экономической проверки
-        original_bytes = context.raw_text.encode('utf-8')
-
         min_savings_ratio = ph_cfg.min_savings_ratio
         min_abs_savings_if_none = ph_cfg.min_abs_savings_if_none
 
         for spec, repl in collapsed_edits:
             # Получаем исходный текст диапазона
-            src = original_bytes[spec.start_byte:spec.end_byte].decode('utf-8', errors='ignore')
+            src = context.raw_text[spec.start_char:spec.end_char]
 
             # Определяем флаг "пустой" замены
             is_none = (repl == "")
@@ -170,7 +167,7 @@ class CodeAdapter(BaseAdapter[C], ABC):
                 continue
 
             # Применяем уместные плейсхолдеры к редактору
-            context.editor.add_replacement(spec.start_byte, spec.end_byte, repl,
+            context.editor.add_replacement(spec.start_char, spec.end_char, repl,
                 # Тип специально не указываем, так как контекст сам собирает метаинформацию по плейсхолдерам
                 edit_type=None
             )
