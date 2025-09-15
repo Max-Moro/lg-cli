@@ -38,6 +38,7 @@ class Edit:
     range: TextRange
     replacement: str
     type: Optional[str] # Тип для счетчика в метаинформации
+    is_insertion: bool = False  # True если это операция вставки (range.start_byte == range.end_byte)
     
     @property
     def removes_text(self) -> bool:
@@ -80,6 +81,33 @@ class RangeEditor:
         """Add a replacement operation."""
         self.add_edit(start_byte, end_byte, replacement, edit_type)
     
+    def add_insertion(self, position_byte: int, content: str, edit_type: Optional[str]) -> None:
+        """
+        Add an insertion operation after the specified position.
+        
+        Args:
+            position_byte: Byte position after which to insert content
+            content: Content to insert
+            edit_type: Type for statistics tracking
+        """
+        # Для вставки start_byte == end_byte (нулевая длина диапазона)
+        text_range = TextRange(position_byte, position_byte)
+        
+        # Проверяем перекрытия с существующими правками
+        # Для вставок перекрытие происходит если позиция вставки находится внутри существующего диапазона
+        for existing in self.edits:
+            if existing.is_insertion:
+                # Две вставки в одной позиции - первая побеждает
+                if existing.range.start_byte == position_byte:
+                    return
+            else:
+                # Вставка перекрывается с заменой/удалением если позиция внутри диапазона
+                if existing.range.start_byte < position_byte < existing.range.end_byte:
+                    return
+        
+        edit = Edit(text_range, content, edit_type, is_insertion=True)
+        self.edits.append(edit)
+    
     def validate_edits(self) -> List[str]:
         """
         Validate that all edits are within bounds.
@@ -111,30 +139,35 @@ class RangeEditor:
         if not self.edits:
             return self.original_text, {"edits_applied": 0, "bytes_removed": 0, "bytes_added": 0}
         
-        # Sort edits by start position (reverse order for safe application)
+        # Сортируем все правки по позиции (обратный порядок для безопасного применения)
         sorted_edits = sorted(self.edits, key=lambda e: e.range.start_byte, reverse=True)
         
-        # Apply edits from end to beginning to maintain byte offsets
         result_bytes = bytearray(self.original_bytes)
         stats = {
-            "edits_applied": len(sorted_edits),
+            "edits_applied": len(self.edits),
             "bytes_removed": 0,
             "bytes_added": 0,
             "lines_removed": 0,
             "placeholders_inserted": 0,
         }
         
+        # Применяем все правки от конца к началу
         for edit in sorted_edits:
-            # Calculate statistics
-            original_chunk = result_bytes[edit.range.start_byte:edit.range.end_byte]
-            replacement_bytes = edit.replacement.encode('utf-8')
-            
-            stats["bytes_removed"] += len(original_chunk)
-            stats["bytes_added"] += len(replacement_bytes)
-            stats["lines_removed"] += original_chunk.count(b'\n')
-            
-            # Apply the edit
-            result_bytes[edit.range.start_byte:edit.range.end_byte] = replacement_bytes
+            if edit.is_insertion:
+                # Для вставки: вставляем контент после указанной позиции
+                replacement_bytes = edit.replacement.encode('utf-8')
+                stats["bytes_added"] += len(replacement_bytes)
+                result_bytes[edit.range.start_byte:edit.range.start_byte] = replacement_bytes
+            else:
+                # Для замены/удаления: обычная логика
+                original_chunk = result_bytes[edit.range.start_byte:edit.range.end_byte]
+                replacement_bytes = edit.replacement.encode('utf-8')
+                
+                stats["bytes_removed"] += len(original_chunk)
+                stats["bytes_added"] += len(replacement_bytes)
+                stats["lines_removed"] += original_chunk.count(b'\n')
+                
+                result_bytes[edit.range.start_byte:edit.range.end_byte] = replacement_bytes
         
         # Calculate net change
         stats["bytes_saved"] = stats["bytes_removed"] - stats["bytes_added"]
@@ -149,7 +182,8 @@ class RangeEditor:
     
     def get_edit_summary(self) -> Dict[str, Any]:
         """Get summary of planned edits without applying them."""
-        total_bytes_removed = sum(edit.range.length for edit in self.edits)
+        # Для вставок range.length = 0, поэтому bytes_removed = 0
+        total_bytes_removed = sum(edit.range.length for edit in self.edits if not edit.is_insertion)
         total_bytes_added = sum(len(edit.replacement.encode('utf-8')) for edit in self.edits)
         
         edit_types = {}

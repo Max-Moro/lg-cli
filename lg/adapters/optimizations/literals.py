@@ -399,8 +399,8 @@ class LiteralOptimizer:
         # Ищем лучшее место для размещения комментария
         placement = self._find_comment_placement(context.doc, end_byte, comment_text, single_comment)
 
-        context.editor.add_replacement(
-            placement.position, placement.position, placement.text,
+        context.editor.add_insertion(
+            placement.position, placement.text,
             edit_type="literal_comment"
         )
 
