@@ -204,6 +204,14 @@ class TreeSitterDocument(ABC):
         end_byte = node.end_byte
         return self._text_bytes[start_byte:end_byte].decode('utf-8')
 
+    def get_text_after(self, byte_offset: int) -> str:
+        """Get text content after."""
+        return self._text_bytes[byte_offset:].decode('utf-8')
+
+    def get_text_before(self, byte_offset: int) -> str:
+        """Get text content before."""
+        return self._text_bytes[:byte_offset].decode('utf-8')
+
     @staticmethod
     def get_node_range(node: Node) -> Tuple[int, int]:
         """Get byte range for a node."""

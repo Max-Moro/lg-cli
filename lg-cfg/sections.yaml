@@ -1,5 +1,17 @@
 src:
   extensions: [".py", ".toml"]
+  python:
+    budget:
+      max_tokens_per_file: 1000
+      priority_order:
+        - "imports_external"
+        - "literals"
+        - "comments"
+        - "imports_local"
+        - "private_bodies"
+        - "public_api_only"
+        - "public_bodies"
+        - "docstrings_first_sentence"
   filters:
     mode: allow
     allow:
@@ -9,24 +21,10 @@ src:
       lg:
         mode: block
         block:
-          - "/stats/"
-          - "/io/"
           - "/markdown/"
           - "/migrate/"
-          - "/cache/"
-          - "/context/"
           - "/_skeletons/"
-          - "/adapters/code_base.py"
-          - "/manifest/builder.py"
-          - "/diag**"
           - "/scaffold.py"
-          - "/adapters/range_edits.py"
-          - "/adapters/typescript/adapter.py"
-          - "/adapters/python/adapter.py"
-          - "/adapters/code_model.py"
-          - "/adapters/python/imports.py"
-          - "/tests/adapters/test_complex_comment_policy.py"
-          - "/tests/adapters/test_public_api_filtering.py"
 
 src-short:
   extensions: [".py", ".toml"]

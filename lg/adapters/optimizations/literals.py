@@ -10,7 +10,7 @@ from typing import cast, List
 
 from ..code_model import LiteralConfig
 from ..context import ProcessingContext
-from ..tree_sitter_support import Node
+from ..tree_sitter_support import Node, TreeSitterDocument
 
 
 @dataclass
@@ -226,7 +226,7 @@ class LiteralOptimizer:
         # Формируем результат
         if literal_info.is_multiline:
             # Определяем правильные отступы из контекста
-            element_indent, base_indent = self._get_base_indentations(context, node)
+            element_indent, base_indent = self._get_base_indentations(context.doc, node, context.raw_text)
             # Добавляем отступы к каждому элементу
             indented_elements = [f"{element_indent}{element}" for element in included_elements]
             joined = f",\n".join(indented_elements)
@@ -255,7 +255,7 @@ class LiteralOptimizer:
             # Если не помещается ни одна пара, используем только заглушку
             if literal_info.is_multiline:
                 # Определяем правильные отступы из контекста
-                element_indent, base_indent = self._get_base_indentations(context, node)
+                element_indent, base_indent = self._get_base_indentations(context.doc, node, context.raw_text)
                 return f"\n{element_indent}\"…\": \"…\",\n{base_indent}"
             else:
                 return '"…": "…"'
@@ -263,7 +263,7 @@ class LiteralOptimizer:
         # Формируем результат
         if literal_info.is_multiline:
             # Определяем правильные отступы из контекста
-            element_indent, base_indent = self._get_base_indentations(context, node)
+            element_indent, base_indent = self._get_base_indentations(context.doc, node, context.raw_text)
             # Добавляем отступы к каждому элементу
             indented_pairs = [f"{element_indent}{pair}" for pair in included_pairs]
             joined = f",\n".join(indented_pairs)
@@ -336,7 +336,7 @@ class LiteralOptimizer:
 
         return elements
 
-    def _get_base_indentations(self, context: ProcessingContext, node: Node) -> tuple[str, str]:
+    def _get_base_indentations(self, doc: TreeSitterDocument, node: Node, raw_text: str) -> tuple[str, str]:
         """
         Определяет правильные отступы для элементов и базовый отступ литерала.
         
@@ -344,12 +344,11 @@ class LiteralOptimizer:
             Tuple of (element_indent, base_indent)
         """
         # Получаем полный текст литерала из исходного файла
-        start_byte, end_byte = context.doc.get_node_range(node)
-        full_literal_text = context.raw_text[start_byte:end_byte]
+        full_literal_text = doc.get_node_text(node)
         
         # Определяем базовый отступ (отступ строки, где начинается литерал)
-        start_line = context.doc.get_line_number_for_byte(node.start_byte)
-        lines = context.raw_text.split('\n')
+        start_line = doc.get_line_number_for_byte(node.start_byte)
+        lines = raw_text.split('\n')
         base_indent = ""
         if start_line < len(lines):
             line = lines[start_line]
@@ -398,16 +397,16 @@ class LiteralOptimizer:
         comment_text = f"literal {literal_info.type} (−{saved_tokens} tokens)"
 
         # Ищем лучшее место для размещения комментария
-        placement = self._find_comment_placement(context, end_byte, comment_text, single_comment)
+        placement = self._find_comment_placement(context.doc, end_byte, comment_text, single_comment)
 
         context.editor.add_replacement(
             placement.position, placement.position, placement.text,
             edit_type="literal_comment"
         )
 
-    def _find_comment_placement(self, context: ProcessingContext, end_byte: int, comment_text: str, single_comment: str) -> CommentPlacement:
+    def _find_comment_placement(self, doc: TreeSitterDocument, end_byte: int, comment_text: str, single_comment: str) -> CommentPlacement:
         """Находит лучшее место для размещения комментария."""
-        text_after = context.raw_text[end_byte:]
+        text_after = doc.get_text_after(end_byte)
         line_after = text_after.split('\n')[0]
 
         # 1. Ищем закрывающие скобки/кавычки сразу после литерала
