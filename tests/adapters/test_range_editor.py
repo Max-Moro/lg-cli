@@ -245,3 +245,38 @@ def test_insertion_edit_summary():
     assert summary["net_savings"] == -13
     assert summary["edit_types"]["insert_adjective"] == 1
     assert summary["edit_types"]["replace_world"] == 1
+
+
+def test_insertion_utf8_boundary_correction():
+    """Test that insertions are corrected to UTF-8 boundaries."""
+    # Создаем текст с Unicode символами
+    text = "Привет мир!"
+    ed = RangeEditor(text)
+    
+    # Пытаемся вставить в середину UTF-8 символа (позиция 1 - середина 'р')
+    # Должно автоматически скорректироваться на границу символа
+    ed.add_insertion(1, "X", edit_type="test_insertion")
+    
+    result, stats = ed.apply_edits()
+    # Результат должен быть валидным UTF-8
+    assert isinstance(result, str)
+    assert stats["edits_applied"] == 1
+    assert stats["bytes_added"] == 1
+
+
+def test_insertion_utf8_complex():
+    """Test insertion with complex UTF-8 sequences."""
+    # Текст с различными Unicode символами
+    text = "Hello 世界 🌍 привет"
+    ed = RangeEditor(text)
+    
+    # Вставляем в разные позиции
+    ed.add_insertion(6, " beautiful ", edit_type="insert_1")  # После "Hello "
+    ed.add_insertion(20, " amazing ", edit_type="insert_2")   # После "世界 "
+    
+    result, stats = ed.apply_edits()
+    assert isinstance(result, str)
+    assert stats["edits_applied"] == 2
+    # Проверяем, что результат содержит ожидаемый контент
+    assert "beautiful" in result
+    assert "amazing" in result

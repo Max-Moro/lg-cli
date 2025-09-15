@@ -90,23 +90,90 @@ class RangeEditor:
             content: Content to insert
             edit_type: Type for statistics tracking
         """
+        # Проверяем и корректируем позицию для корректной работы с UTF-8
+        safe_position = self._ensure_utf8_boundary(position_byte)
+        
         # Для вставки start_byte == end_byte (нулевая длина диапазона)
-        text_range = TextRange(position_byte, position_byte)
+        text_range = TextRange(safe_position, safe_position)
         
         # Проверяем перекрытия с существующими правками
         # Для вставок перекрытие происходит если позиция вставки находится внутри существующего диапазона
         for existing in self.edits:
             if existing.is_insertion:
                 # Две вставки в одной позиции - первая побеждает
-                if existing.range.start_byte == position_byte:
+                if existing.range.start_byte == safe_position:
                     return
             else:
                 # Вставка перекрывается с заменой/удалением если позиция внутри диапазона
-                if existing.range.start_byte < position_byte < existing.range.end_byte:
+                if existing.range.start_byte < safe_position < existing.range.end_byte:
                     return
         
         edit = Edit(text_range, content, edit_type, is_insertion=True)
         self.edits.append(edit)
+    
+    def _ensure_utf8_boundary(self, position_byte: int) -> int:
+        """
+        Обеспечивает, что позиция находится на границе UTF-8 символа.
+        
+        Args:
+            position_byte: Исходная позиция в байтах
+            
+        Returns:
+            Безопасная позиция на границе UTF-8 символа
+        """
+        if position_byte <= 0 or position_byte >= len(self.original_bytes):
+            return position_byte
+        
+        # Проверяем, находится ли позиция на границе UTF-8 символа
+        try:
+            # Пытаемся декодировать символ, начинающийся с этой позиции
+            char_at_pos = self.original_bytes[position_byte:].decode('utf-8')[0]
+            # Если успешно, позиция корректна
+            return position_byte
+        except UnicodeDecodeError:
+            # Позиция в середине UTF-8 символа, ищем ближайшую границу
+            return self._find_nearest_utf8_boundary(position_byte)
+    
+    def _find_nearest_utf8_boundary(self, position_byte: int) -> int:
+        """
+        Находит ближайшую границу UTF-8 символа.
+        
+        Args:
+            position_byte: Позиция в середине UTF-8 символа
+            
+        Returns:
+            Ближайшая безопасная позиция
+        """
+        # Сначала пытаемся найти границу, двигаясь вперед (более естественно для вставки)
+        for offset in range(1, 5):
+            test_pos = position_byte + offset
+            if test_pos >= len(self.original_bytes):
+                break
+            
+            try:
+                # Пытаемся декодировать символ, начинающийся с этой позиции
+                char = self.original_bytes[test_pos:].decode('utf-8')[0]
+                # Если успешно, это граница символа
+                return test_pos
+            except UnicodeDecodeError:
+                continue
+        
+        # Если не нашли границу вперед, ищем назад
+        for offset in range(1, 5):  # UTF-8 символы могут быть до 4 байт
+            test_pos = position_byte - offset
+            if test_pos < 0:
+                continue
+            
+            try:
+                # Пытаемся декодировать символ, начинающийся с этой позиции
+                char = self.original_bytes[test_pos:].decode('utf-8')[0]
+                # Если успешно, это граница символа
+                return test_pos
+            except UnicodeDecodeError:
+                continue
+        
+        # Fallback - возвращаем исходную позицию
+        return position_byte
     
     def validate_edits(self) -> List[str]:
         """
