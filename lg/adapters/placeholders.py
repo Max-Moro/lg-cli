@@ -42,6 +42,15 @@ class PlaceholderSpec:
             self.chars_removed = max(0, self.end_char - self.start_char)
     
     @property
+    def width(self) -> int:
+        """Ширина плейсхолдера в символах."""
+        return self.end_char - self.start_char
+    
+    def overlaps(self, other: PlaceholderSpec) -> bool:
+        """Проверяет, перекрывается ли этот плейсхолдер с другим."""
+        return not (self.end_char <= other.start_char or other.end_char <= self.start_char)
+    
+    @property
     def position_key(self) -> Tuple[int, int]:
         """Ключ для сортировки по позиции."""
         return self.start_line, self.start_char
@@ -199,14 +208,47 @@ class PlaceholderManager:
             placeholder_prefix=placeholder_prefix,
             count=count,
         )
-        self.placeholders.append(spec)
+        
+        self._add_placeholder_with_priority(spec)
 
     def add_placeholder_for_node(self, placeholder_type: str, node: Node, doc, count: int = 1) -> None:
-        """Добавить плейсхолдер для импорта."""
+        """Добавить плейсхолдер для узла."""
         spec = self._create_spec_from_node(node, doc, placeholder_type, count=count)
-        self.placeholders.append(spec)
+        self._add_placeholder_with_priority(spec)
     
     # ============= Внутренние методы =============
+    
+    def _add_placeholder_with_priority(self, spec: PlaceholderSpec) -> None:
+        """
+        Добавить плейсхолдер с применением политики приоритета более широких правок.
+        
+        Args:
+            spec: Спецификация плейсхолдера для добавления
+        """
+        # Новая политика: более широкие плейсхолдеры всегда побеждают
+        new_width = spec.width
+        
+        # Проверяем все существующие плейсхолдеры
+        placeholders_to_remove = []
+        for i, existing in enumerate(self.placeholders):
+            if spec.overlaps(existing):
+                existing_width = existing.width
+                
+                if new_width > existing_width:
+                    # Новый плейсхолдер шире - удаляем существующий
+                    placeholders_to_remove.append(i)
+                elif new_width < existing_width:
+                    # Новый плейсхолдер уже - пропускаем его
+                    return
+                else:
+                    # Одинаковая ширина - первая побеждает (пропускаем новую)
+                    return
+        
+        # Удаляем поглощённые плейсхолдеры (в обратном порядке, чтобы индексы не сбились)
+        for i in reversed(placeholders_to_remove):
+            del self.placeholders[i]
+        
+        self.placeholders.append(spec)
     
     def _create_spec_from_node(self, node: Node, doc, placeholder_type: str, count: int = 1) -> PlaceholderSpec:
         """Создать PlaceholderSpec из Tree-sitter узла."""
