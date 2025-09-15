@@ -4,20 +4,21 @@
  * Contains:
  * - External imports
  * - Local imports
- * - Long comm…
+ * - Long comments and JSDoc
+ * - Big literals (arrays/objects/template strings)
+ * - Public vs private API elements
  */
 
 
 
 
 
-import { User, ApiResponse } from './types';
-import { toTitle } from '../utils/strings';
+
 
 /**
  * Module level long documentation that might be truncated under tight budgets.
  * The text includes several sentences to ensure the comment optimizer has
- * so…
+ * something to work with when switching to keep_first_sentence mode.
  */
 export const MODULE_TITLE = 'Budget System Complex Sample';
 

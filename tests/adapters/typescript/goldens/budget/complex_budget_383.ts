@@ -4,7 +4,9 @@
  * Contains:
  * - External imports
  * - Local imports
- * - Long comm…
+ * - Long comments and JSDoc
+ * - Big literals (arrays/objects/template strings)
+ * - Public vs private API elements
  */
 
 
@@ -16,7 +18,7 @@
 /**
  * Module level long documentation that might be truncated under tight budgets.
  * The text includes several sentences to ensure the comment optimizer has
- * so…
+ * something to work with when switching to keep_first_sentence mode.
  */
 export const MODULE_TITLE = 'Budget System Complex Sample';
 
@@ -39,9 +41,7 @@ export class PublicService {
   }
 
   
-  private _normalize(u: Partial<User>): User {
-    return { id: u.id!, name: (u.name ?? '').trim(), email: u.email ?? '' } as User;
-  }
+  private _normalize(u: Partial<User>): User 
 
   /** Long method body to allow function body stripping */
   public process(list: User[]): ApiResponse<User[]> {
@@ -64,10 +64,7 @@ export function publicFunction(name: string): string {
   return toTitle ? toTitle(name) : name;
 }
 
-function privateFunction(data: string[]): string[] {
-  
-  return data.map(s => s.trim());
-}
+function privateFunction(data: string[]): string[] 
 
 export default function main(): void {
   const svc = new PublicService();

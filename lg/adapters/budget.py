@@ -110,7 +110,6 @@ class BudgetController(Generic[Cc]):
 
         # Baselines for multi-level steps so they re-calc from the same start
         literals_baseline: Optional[str] = None
-        comments_baseline: Optional[str] = None
 
         # Track cumulative savings per step
         last_tokens = tokens_after_user
@@ -141,21 +140,8 @@ class BudgetController(Generic[Cc]):
                     effective_cfg.literals = replace(effective_cfg.literals, max_tokens=chosen_level)
 
             elif step == "comments":
-                if comments_baseline is None:
-                    comments_baseline = text_current
-                levels = self._compute_levels_for_limit(self._extract_comment_max_tokens(base_cfg))
-                candidate_text = None
-                chosen_level = self._extract_comment_max_tokens(base_cfg)
-                for lvl in levels:
-                    candidate_text = self._apply_comments(lightweight_ctx, comments_baseline, policy="keep_doc", max_tokens=lvl)
-                    chosen_level = lvl
-                    if self.tokenizer.count_text(candidate_text) <= limit:
-                        break
-                if candidate_text is not None:
-                    step_after_text = candidate_text
-                    # Update effective cfg comments
-                    # Ensure we keep docs but may add max_tokens limit
-                    effective_cfg.comment_policy = CommentConfig(policy=cast(CommentPolicy, "keep_doc"), max_tokens=chosen_level)
+                step_after_text = self._apply_comments(lightweight_ctx, text_current, policy="keep_doc", max_tokens=None)
+                effective_cfg.comment_policy = CommentConfig(policy=cast(CommentPolicy, "keep_doc"), max_tokens=None)
 
             elif step == "imports_local":
                 # "strip_external" + "strip_local" вместе дают "strip_all"
@@ -228,7 +214,12 @@ class BudgetController(Generic[Cc]):
                 if isinstance(sfb, bool):
                     return bool(sfb)
                 return getattr(sfb, "mode", "none") in ("non_public", "all")
-            # For literals/comments we always keep steps, as we may tighten limits
+            if step == "comments":
+                cp = base_cfg.comment_policy
+                if isinstance(cp, str):
+                    return cp in ("strip_all", "keep_doc", "keep_first_sentence")
+                return getattr(cp, "policy", "keep_all") in ("strip_all", "keep_doc", "keep_first_sentence")
+            # For literals we always keep steps, as we may tighten limits
             return False
 
         return [s for s in self.order if not already_covers(s)]
@@ -328,12 +319,3 @@ class BudgetController(Generic[Cc]):
                 seen.add(lv)
         return uniq or ladder
 
-    @staticmethod
-    def _extract_comment_max_tokens(cfg: CodeCfg) -> Optional[int]:
-        cp = cfg.comment_policy
-        if isinstance(cp, str):
-            return None
-        try:
-            return cast(CommentConfig, cp).max_tokens
-        except Exception:
-            return None

