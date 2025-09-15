@@ -2,14 +2,18 @@
 
 Includes:
 - Many external/local imports
-- Large literals (strings, lists…"""
+- Large literals (strings, lists, dicts)
+- Mixed comments and docstrings
+- Public/private functions, classes, methods
+- If __name__ == '__main__' guard
+"""
+
+# External imports (simulate as external for analyzer)
 
 
-
-
-
-from .utils import helper as local_helper  
-from ..core.models import User  
+# Local imports (should be local)
+from .utils import helper as local_helper  # type: ignore  # noqa: F401
+from ..core.models import User  # type: ignore  # noqa: F401
 
 
 MODULE_DOC = """
@@ -30,14 +34,15 @@ def public_function(data: str) -> str:
     This docstring has multiple sentences. When budget is constrained, the
     controller may reduce documentation to the first sentence.
     """
-    
+    # Regular comment that may be removed
     return data.upper()
 
 
 def _private_helper(text: str) -> str:
     """Private helper that should be removed in public_api_only."""
     tmp = text.strip().lower()
-    
+    # Multi-line explanatory comment
+    # describing some internal behavior
     return tmp
 
 

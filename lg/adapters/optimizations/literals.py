@@ -50,6 +50,10 @@ class LiteralOptimizer:
         literals = context.doc.query("literals")
 
         for node, capture_name in literals:
+            # Пропускаем докстринги - они обрабатываются отдельной логикой комментариев
+            if capture_name == "string" and self.adapter.is_docstring_node(node, context.doc):
+                continue
+                
             literal_text = context.doc.get_node_text(node)
             token_count = context.tokenizer.count_text(literal_text)
 

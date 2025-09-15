@@ -2,14 +2,18 @@
 
 Includes:
 - Many external/local imports
-- Large literals (strings, lists…"""
+- Large literals (strings, lists, dicts)
+- Mixed comments and docstrings
+- Public/private functions, classes, methods
+- If __name__ == '__main__' guard
+"""
 
 
 
 
 
-  
-  
+from .utils import helper as local_helper  
+from ..core.models import User  
 
 
 MODULE_DOC = """
@@ -30,9 +34,15 @@ def public_function(data: str) -> str:
     This docstring has multiple sentences. When budget is constrained, the
     controller may reduce documentation to the first sentence.
     """
+    
+    return data.upper()
 
 
-
+def _private_helper(text: str) -> str:
+    """Private helper that should be removed in public_api_only."""
+    tmp = text.strip().lower()
+    
+    return tmp
 
 
 class PublicClass:
@@ -42,28 +52,54 @@ class PublicClass:
     """
 
     def __init__(self, name: str):
+        self.name = name
+        self._cache: Dict[str, Any] = {}
 
     def public_method(self, x: int, y: int) -> int:
         """Add two numbers and return the result."""
+        return x + y
 
-    
+    def _private_method(self, data: List[str]) -> List[str]:
+        """Private method not part of public API."""
+        return [d.strip() for d in data]
 
     @property
     def public_property(self) -> str:
         """Public property."""
+        return self.name
 
-    
+    @property
+    def _private_property(self) -> Dict[str, Any]:
+        """Private property."""
+        return self._cache
 
 
+class _InternalOnly:
+    """Private class that should not appear in public API view."""
 
+    def work(self) -> None:
+        pass
 
 
 def huge_processing_pipeline(values: List[int]) -> Tuple[int, int, int]:
     """A long body that can be stripped when budgets are tight."""
+    total = 0
+    count = 0
+    maximum = -10**9
+    for v in values:
+        count += 1
+        total += v
+        if v > maximum:
+            maximum = v
+    return total, count, maximum
 
 
 def another_long_function():
     """Another long function body to enable stripping heuristics."""
+    data = [i * i for i in range(500)]
+    s = sum(data)
+    m = max(data)
+    return s, m
 
 
 if __name__ == "__main__":

@@ -89,6 +89,10 @@ class PythonAdapter(CodeAdapter[PythonCfg]):
     def is_documentation_comment(self, comment_text: str) -> bool:
         return False # Используется явный захват в `QUERIES["comments"]` — capture_name == "docstring"
 
+    def is_docstring_node(self, node, doc: TreeSitterDocument) -> bool:
+        from .comments import is_docstring_node
+        return is_docstring_node(node, doc)
+
     def hook__extract_first_sentence(self, root_optimizer: CommentOptimizer, text: str) -> str:
         from .comments import extract_first_sentence
         return extract_first_sentence(text)

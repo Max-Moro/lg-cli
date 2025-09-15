@@ -72,6 +72,10 @@ class CodeAdapter(BaseAdapter[C], ABC):
         """Является ли этот комментарий частью системы документирования."""
         return comment_text.strip().startswith('/**')
 
+    def is_docstring_node(self, node, doc: TreeSitterDocument) -> bool:
+        """Проверяет, является ли узел строки докстрингом."""
+        return False
+
     def hook__extract_first_sentence(self, root_optimizer: CommentOptimizer, text: str) -> str:
         """Хук для извлечения первого предложение из текста комментария."""
         return root_optimizer.extract_first_sentence(text)

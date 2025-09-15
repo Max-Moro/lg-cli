@@ -1,6 +1,7 @@
 """
 Python comment optimization.
 """
+from lg.adapters.tree_sitter_support import TreeSitterDocument
 
 
 def extract_first_sentence(text: str) -> str:
@@ -136,3 +137,27 @@ def smart_truncate_comment(comment_text: str, max_tokens: int, tokenizer) -> str
         # Truncate using tokenizer
         truncated = tokenizer.truncate_to_tokens(comment_text, content_budget)
         return f"{truncated}…"
+
+def is_docstring_node(node, doc: TreeSitterDocument) -> bool:
+    """
+    Проверяет, является ли узел строки докстрингом.
+    
+    В Python докстрингом считается строка, которая является единственным содержимым
+    expression_statement. Это соответствует запросу comments в queries.py.
+
+    Args:
+        node: Узел строки для проверки
+        doc: Документ для анализа контекста
+
+    Returns:
+        True если узел является докстрингом, False иначе
+    """
+    # Проверяем, является ли родительский узел expression_statement
+    # и содержит ли он только эту строку (без других выражений)
+    parent = node.parent
+    if parent and parent.type == "expression_statement":
+        # Если expression_statement содержит только одну строку, это докстринг
+        if len(parent.children) == 1:
+            return True
+    
+    return False
