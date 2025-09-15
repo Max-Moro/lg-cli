@@ -23,7 +23,7 @@ from .code_model import (
     FunctionBodyStrip,
 )
 from .context import ProcessingContext
-from .range_edits import UnicodeRangeEditor
+from .range_edits import RangeEditor
 from .optimizations import (
     ImportOptimizer,
     CommentOptimizer,
@@ -236,7 +236,7 @@ class BudgetController(Generic[Cc]):
     def _make_sandbox_context(self, lightweight_ctx, text: str) -> ProcessingContext:
         # Build ProcessingContext manually to force placeholder style "none"
         doc = self.adapter.create_document(text, lightweight_ctx.ext)
-        editor = UnicodeRangeEditor(text)
+        editor = RangeEditor(text)
         # Construct a placeholder manager directly with style "none"
         from .placeholders import create_placeholder_manager
         placeholders = create_placeholder_manager(text, self.adapter.get_comment_style(), "none")

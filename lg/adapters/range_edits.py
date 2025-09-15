@@ -10,7 +10,7 @@ from typing import List, Tuple, Dict, Any, Optional
 
 
 @dataclass
-class CharRange:
+class TextRange:
     """Represents a range in text by character positions."""
     start_char: int
     end_char: int
@@ -23,19 +23,19 @@ class CharRange:
     def length(self) -> int:
         return self.end_char - self.start_char
     
-    def overlaps(self, other: CharRange) -> bool:
+    def overlaps(self, other: TextRange) -> bool:
         """Check if this range overlaps with another."""
         return not (self.end_char <= other.start_char or other.end_char <= self.start_char)
     
-    def contains(self, other: CharRange) -> bool:
+    def contains(self, other: TextRange) -> bool:
         """Check if this range completely contains another."""
         return self.start_char <= other.start_char and other.end_char <= self.end_char
 
 
 @dataclass
-class CharEdit:
+class Edit:
     """Represents a single text edit operation using character positions."""
-    range: CharRange
+    range: TextRange
     replacement: str
     type: Optional[str] # Тип для счетчика в метаинформации
     is_insertion: bool = False  # True если это операция вставки (range.start_char == range.end_char)
@@ -51,7 +51,7 @@ class CharEdit:
         return len(self.replacement) == 0
 
 
-class UnicodeRangeEditor:
+class RangeEditor:
     """
     Unicode-safe range-based text editor that works with character positions.
     This is the new architecture that avoids UTF-8 boundary issues.
@@ -59,18 +59,18 @@ class UnicodeRangeEditor:
     
     def __init__(self, original_text: str):
         self.original_text = original_text
-        self.edits: List[CharEdit] = []
+        self.edits: List[Edit] = []
     
     def add_edit(self, start_char: int, end_char: int, replacement: str, edit_type: Optional[str]) -> None:
         """Add an edit operation using character positions."""
-        char_range = CharRange(start_char, end_char)
+        char_range = TextRange(start_char, end_char)
 
         # First-wins: если новая правка перекрывается с любой уже добавленной — тихо пропускаем её.
         for existing in self.edits:
             if char_range.overlaps(existing.range):
                 return
 
-        edit = CharEdit(char_range, replacement, edit_type)
+        edit = Edit(char_range, replacement, edit_type)
         self.edits.append(edit)
 
     def add_deletion(self, start_char: int, end_char: int, edit_type: Optional[str]) -> None:
@@ -91,7 +91,7 @@ class UnicodeRangeEditor:
             edit_type: Type for statistics tracking
         """
         # Для вставки start_char == end_char (нулевая длина диапазона)
-        char_range = CharRange(position_char, position_char)
+        char_range = TextRange(position_char, position_char)
         
         # Проверяем перекрытия с существующими правками
         for existing in self.edits:
@@ -104,7 +104,7 @@ class UnicodeRangeEditor:
                 if existing.range.start_char < position_char < existing.range.end_char:
                     return
         
-        edit = CharEdit(char_range, content, edit_type, is_insertion=True)
+        edit = Edit(char_range, content, edit_type, is_insertion=True)
         self.edits.append(edit)
     
     def validate_edits(self) -> List[str]:

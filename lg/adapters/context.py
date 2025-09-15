@@ -10,7 +10,7 @@ from typing import Optional
 
 from .metrics import MetricsCollector
 from .placeholders import PlaceholderManager, create_placeholder_manager
-from .range_edits import UnicodeRangeEditor
+from .range_edits import RangeEditor
 from .tree_sitter_support import TreeSitterDocument, Node
 from ..stats import TokenService
 
@@ -80,7 +80,7 @@ class ProcessingContext(LightState):
         mixed: bool,
         adapter_name: str,
         doc: TreeSitterDocument,
-        editor: UnicodeRangeEditor,
+        editor: RangeEditor,
         placeholders: PlaceholderManager,
         tokenizer: TokenService,
     ):
@@ -127,7 +127,7 @@ class ProcessingContext(LightState):
         """
         # Создаем компоненты для полноценного контекста
         doc = adapter.create_document(lightweight_ctx.raw_text, lightweight_ctx.ext)
-        editor = UnicodeRangeEditor(lightweight_ctx.raw_text)
+        editor = RangeEditor(lightweight_ctx.raw_text)
         
         # Создаем PlaceholderManager с настройками из адаптера
         placeholders = create_placeholder_manager(
