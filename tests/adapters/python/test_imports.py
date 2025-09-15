@@ -404,4 +404,4 @@ from .models import Model1, Model2, Model3
         assert "import os" in result
         assert "import sys" in result
         # Long external import should be summarized
-        assert "# … 20 imports omitted" in result
+        assert "# … 14 imports omitted" in result

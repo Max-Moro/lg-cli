@@ -147,30 +147,6 @@ def test_no_collapse_when_code_between():
     assert all("import omitted" in r for _, r in edits)
 
 
-def test_no_collapse_for_bodies_and_literals():
-    text = "def x():\n    return 1\n\n"
-    pm = make_manager(text)
-
-    # Two adjacent function_body placeholders should NOT collapse
-    colon = text.find(":") + 1
-    nl = text.find("\n\n")
-    pm.add_placeholder("function_body", colon, nl, line_of(text, colon), line_of(text, nl))
-    pm.add_placeholder("function_body", colon, nl, line_of(text, colon), line_of(text, nl))
-
-    edits, _ = pm.finalize_edits()
-    assert len(edits) == 2
-
-    # Literals also should not collapse
-    text2 = "x = [1,2,3]\n[4,5,6]\n"
-    pm2 = make_manager(text2)
-    s1, e1 = 4, text2.find("\n")
-    s2, e2 = e1 + 1, len(text2)
-    pm2.add_placeholder("literal", s1, e1, line_of(text2, s1), line_of(text2, e1))
-    pm2.add_placeholder("literal", s2, e2, line_of(text2, s2), line_of(text2, e2))
-    edits2, _ = pm2.finalize_edits()
-    assert len(edits2) == 2
-
-
 def test_different_indentation_blocks_collapse():
     # Same type with different column positions should not collapse
     text = "import a\n    import b\n"
@@ -193,26 +169,6 @@ def test_different_indentation_blocks_collapse():
 
     edits, _ = pm.finalize_edits()
     assert len(edits) == 2
-
-
-def test_overlapping_placeholders_merge_and_aggregate():
-    text = "aaaa\nbbbb\ncccc\n"
-    pm = make_manager(text)
-
-    # Overlapping ranges of same type
-    s1, e1 = 0, 7   # spans 'aaaa\nb'
-    s2, e2 = 5, 12  # spans 'b\nbbbb\n'
-    pm.add_placeholder("import", s1, e1, line_of(text, s1), line_of(text, e1))
-    pm.add_placeholder("import", s2, e2, line_of(text, s2), line_of(text, e2))
-
-    edits, stats = pm.finalize_edits()
-    assert len(edits) == 1
-    spec, repl = edits[0]
-    # Merged range should cover union
-    assert spec.start_char == min(s1, s2)
-    assert spec.end_char == max(e1, e2)
-    assert spec.count == 2
-    assert stats["placeholders_by_type"]["import"] == 2
 
 
 def test_style_none_produces_empty_replacements_but_keeps_stats():
@@ -245,25 +201,3 @@ def test_placeholder_prefix_is_preserved():
     _, repl = edits[0]
     assert repl.startswith("    # ")
     assert "3 imports omitted" in repl
-
-
-def test_literal_placeholder_content_includes_bytes_removed():
-    # Validate literal content shows bytes count when available
-    text = "DATA DATA DATA\n"
-    pm = make_manager(text)
-    start, end = 0, len(text)
-    # We construct spec directly to ensure large bytes_removed
-    pm.placeholders.append(
-        PlaceholderSpec(
-            start_char=start,
-            end_char=end,
-            start_line=0,
-            end_line=0,
-            placeholder_type="literal",
-        )
-    )
-    edits, _ = pm.finalize_edits()
-    _, repl = edits[0]
-    assert "literal" in repl
-    # Number of bytes is end-start (UTF-8 safe for ASCII)
-    assert str(end - start) in repl

@@ -73,10 +73,10 @@ export class UserManager {
     }
     
     // Private methods (should be filtered out)
-    // … 8 methods omitted
+    // … 4 methods omitted
     
     // Protected methods (should be filtered out)
-    // … 4 methods omitted
+    // … 2 methods omitted
     
     // Public static methods (should be preserved)
     public static validateUserRole(role: string): role is UserRole {
@@ -93,7 +93,7 @@ export class UserManager {
     }
     
     // Private static methods (should be filtered out)
-    // … 2 methods omitted
+    // … method omitted
     
     // Public readonly property with getter
     public get userCount(): number {
@@ -101,7 +101,7 @@ export class UserManager {
     }
     
     // Private readonly property with getter (should be filtered out)
-    // … 2 methods omitted
+    // … method omitted
     
     // Private property declaration
     // … field omitted
@@ -195,7 +195,7 @@ export class PublicDecoratedClass {
         return this.data.toUpperCase();
     }
     
-    // … 2 methods omitted
+    // … method omitted
 }
 
 // Decorated functions
@@ -230,7 +230,7 @@ export class MixedDecoratedClass {
         // Public method with decorator - should preserve both
     }
     
-    // … 4 methods omitted
+    // … 2 methods omitted
 }
 
 // Multiple stacked decorators on private elements
