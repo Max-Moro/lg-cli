@@ -60,7 +60,7 @@ class PlaceholderSpec:
 
         # Коллапсировать плейсхолдеры можно для импортов, комментариев, функций, методов, классов, интерфейсов и типов целиком.
         # Нельзя коллапсировать плейсхолдеры для литералов, тел функций или методов, докстрингов.
-        if self.placeholder_type in ["function_body", "method_body", "docstring", "string", "array", "object", "literal"]:
+        if self.placeholder_type in ["function_body", "method_body", "docstring"]:
             return False
         
         # Проверяем содержимое между плейсхолдерами
@@ -301,12 +301,6 @@ class PlaceholderManager:
                 return f"… {count} types omitted"
             else:
                 return "… type omitted"
-        
-        elif ptype in ("string", "array", "object", "literal"):
-            if chars_removed > 0:
-                return f"… {ptype} data omitted ({chars_removed} chars)"
-            else:
-                return f"… {ptype} omitted"
         
         else:
             # Универсальный шаблон для неизвестных типов

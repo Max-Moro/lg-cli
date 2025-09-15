@@ -65,10 +65,28 @@ class RangeEditor:
         """Add an edit operation using character positions."""
         char_range = TextRange(start_char, end_char)
 
-        # First-wins: если новая правка перекрывается с любой уже добавленной — тихо пропускаем её.
-        for existing in self.edits:
+        # Новая политика: более широкие правки всегда побеждают
+        new_width = char_range.length
+        
+        # Проверяем все существующие правки
+        edits_to_remove = []
+        for i, existing in enumerate(self.edits):
             if char_range.overlaps(existing.range):
-                return
+                existing_width = existing.range.length
+                
+                if new_width > existing_width:
+                    # Новая правка шире - удаляем существующую
+                    edits_to_remove.append(i)
+                elif new_width < existing_width:
+                    # Новая правка уже - пропускаем её
+                    return
+                else:
+                    # Одинаковая ширина - первая побеждает (пропускаем новую)
+                    return
+        
+        # Удаляем поглощённые правки (в обратном порядке, чтобы индексы не сбились)
+        for i in reversed(edits_to_remove):
+            del self.edits[i]
 
         edit = Edit(char_range, replacement, edit_type)
         self.edits.append(edit)
@@ -93,8 +111,11 @@ class RangeEditor:
         # Для вставки start_char == end_char (нулевая длина диапазона)
         char_range = TextRange(position_char, position_char)
         
-        # Проверяем перекрытия с существующими правками
-        for existing in self.edits:
+        # Новая политика: более широкие правки всегда побеждают
+        # Вставка имеет нулевую ширину, поэтому любая не-вставка её поглотит
+        edits_to_remove = []
+        
+        for i, existing in enumerate(self.edits):
             if existing.is_insertion:
                 # Две вставки в одной позиции - первая побеждает
                 if existing.range.start_char == position_char:
@@ -102,7 +123,12 @@ class RangeEditor:
             else:
                 # Вставка перекрывается с заменой/удалением если позиция внутри диапазона
                 if existing.range.start_char < position_char < existing.range.end_char:
+                    # Любая не-вставка шире вставки (нулевая ширина) - поглощает её
                     return
+        
+        # Удаляем поглощённые правки (в обратном порядке, чтобы индексы не сбились)
+        for i in reversed(edits_to_remove):
+            del self.edits[i]
         
         edit = Edit(char_range, content, edit_type, is_insertion=True)
         self.edits.append(edit)
@@ -110,7 +136,7 @@ class RangeEditor:
     def validate_edits(self) -> List[str]:
         """
         Validate that all edits are within bounds.
-        Overlap conflicts отфильтровываются на этапе add_edit (first-wins).
+        Overlap conflicts отфильтровываются на этапе add_edit (width-based policy).
         """
         errors = []
 
