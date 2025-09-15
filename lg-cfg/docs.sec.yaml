@@ -17,3 +17,12 @@ extended:
       - "/docs/"
   markdown:
     max_heading_level: 2
+
+markdown:
+  extensions: [".md"]
+  filters:
+    mode: allow
+    allow:
+      - "/docs/markdown.md"
+  markdown:
+    max_heading_level: 3

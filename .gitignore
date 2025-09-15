@@ -8,6 +8,12 @@ __pycache__/
 env/
 venv/
 
+# Test / coverage
+.pytest_cache/
+.coverage
+coverage.*
+htmlcov/
+
 # Pyproject
 .eggs/
 *.egg-info/
@@ -28,3 +34,6 @@ site/
 
 # Listing Generator
 .lg-cache/
+
+# Note: Golden test files (*.golden) are INTENTIONALLY tracked in git
+# They contain expected test outputs for regression testing

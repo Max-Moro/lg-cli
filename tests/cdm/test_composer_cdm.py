@@ -5,17 +5,18 @@ from pathlib import Path
 import pytest
 
 from lg.cache.fs_cache import Cache
+from lg.config.paths import cfg_root
 from lg.context.composer import compose_context
 from lg.context.resolver import resolve_context
-from lg.config.paths import cfg_root
 from lg.run_context import RunContext
+from lg.stats.tokenizer import default_tokenizer
 from lg.types import RunOptions
 from lg.vcs import NullVcs
 
 
 def _mk_run_ctx(root: Path) -> RunContext:
     cache = Cache(root, enabled=None, fresh=False, tool_version="test")
-    return RunContext(root=root, options=RunOptions(), cache=cache, vcs=NullVcs())
+    return RunContext(root=root, options=RunOptions(), cache=cache, vcs=NullVcs(), tokenizer=default_tokenizer())
 
 
 def test_compose_context_expands_tpl_at_and_builds_hashes(monorepo: Path):

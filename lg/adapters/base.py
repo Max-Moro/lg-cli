@@ -1,7 +1,9 @@
 from __future__ import annotations
 
-from pathlib import Path
-from typing import Any, Generic, Optional, Set, Type, TypeVar, get_args, get_origin
+from typing import Any, Generic, Optional, Set, Type, TypeVar, get_args
+
+from .context import LightweightContext
+from ..stats import TokenService
 
 __all__ = ["BaseAdapter"]
 
@@ -17,6 +19,8 @@ class BaseAdapter(Generic[C]):
     extensions: Set[str] = set()
     #: Храним связанный конфиг (может быть None для «безконфиговых» адаптеров)
     _cfg: Optional[C]
+    # Cервис подсчёта токенов
+    tokenizer: TokenService
 
     # --- Generic-интроспекция параметра C -----
     @classmethod
@@ -25,35 +29,36 @@ class BaseAdapter(Generic[C]):
         Пытается извлечь конкретный тип C из объявления наследника BaseAdapter[C].
         Возвращает None, если адаптер не параметризован конфигом.
         """
-        # Проходим по MRO и смотрим __orig_bases__ у каждого класса
+        # Проходим по MRO и ищем первый конкретный тип конфигурации
         for kls in cls.__mro__:
             for base in getattr(kls, "__orig_bases__", ()) or ():
-                if get_origin(base) is BaseAdapter:
-                    args = get_args(base) or ()
-                    if args:
-                        return args[0]
+                args = get_args(base) or ()
+                if args and not isinstance(args[0], TypeVar):
+                    # Нашли конкретный тип (не TypeVar), возвращаем его
+                    return args[0]
         return None
 
     # --- Конфигурирование адаптера -------------
     @classmethod
-    def bind(cls: Type[A], raw_cfg: dict | None) -> A:
+    def bind(cls: Type[A], raw_cfg: dict | None, tokenizer: TokenService) -> A:
         """
         Фабрика «связанного» адаптера: создаёт инстанс и применяет cfg.
         Внешний код не видит тип конфигурации — полная инкапсуляция.
         """
         inst = cls()
-        inst._cfg = cls.load_cfg(raw_cfg)
+        inst._cfg = cls._load_cfg(raw_cfg)
+        inst.tokenizer = tokenizer
         return inst
 
     @classmethod
-    def load_cfg(cls, raw_cfg: dict | None) -> C:
+    def _load_cfg(cls, raw_cfg: dict | None) -> C:
         """
         Универсальный загрузчик конфигурации для адаптера.
         Поведение по умолчанию:
           • Если у типа конфигурации есть статический метод `from_dict(dict)`,
             используем его (поддержка вложенных структур).
           • Иначе пытаемся вызвать конструктор как **kwargs.
-        Адаптеры могут переопределить этот метод при необходимости.
+        Адаптеры должны использовать дженерик подход, а не переопределять данный метод.
         """
         cfg_type = cls._resolve_cfg_type()
         if cfg_type is None:
@@ -90,15 +95,27 @@ class BaseAdapter(Generic[C]):
         return self._cfg
 
     # --- переопределяемая логика ------------------
-    def should_skip(self, path: Path, text: str) -> bool:
-        """True → файл исключается (языковые эвристики)."""
+    def should_skip(self, lightweight_ctx: 'LightweightContext') -> bool:
+        """
+        True → файл исключается (языковые эвристики).
+        
+        Args:
+            lightweight_ctx: Облегченный контекст с информацией о файле
+            
+        Returns:
+            True если файл должен быть пропущен
+        """
         return False
 
     # --- единый API с метаданными ---
-    def process(self, text: str, group_size: int, mixed: bool) -> tuple[str, dict]:
+    def process(self, lightweight_ctx: 'LightweightContext') -> tuple[str, dict]:
         """
-        Возвращает (content, meta), где meta — произвольный словарь
-        (например: {"removed_comments": 120, "kept_signatures": 34}).
-        Базовая реализация — идентичность текста без метаданных.
+        Обрабатывает файл и возвращает (content, meta).
+        
+        Args:
+            lightweight_ctx: Облегченный контекст с информацией о файле
+            
+        Returns:
+            Tuple из обработанного содержимого и метаданных
         """
-        return text, {}
+        return lightweight_ctx.raw_text, {}

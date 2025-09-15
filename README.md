@@ -118,7 +118,6 @@ core-model-src:
   skip_empty: true
   python:
     skip_trivial_inits: true
-    trivial_init_max_noncomment: 1
   markdown:
     max_heading_level: 3
   filters:
@@ -232,9 +231,9 @@ core:
 
 *Подробнее:* [docs/markdown.md](docs/markdown.md).
 
-#### Python
+#### Языки программирования
 
-Может пропускать тривиальные `__init__.py`, поддерживает удаление тел функций, оставляя только сигнатуры (полезно для «генерик»-кода, редко меняющегося), и сохранять/убирать docstring’и.
+*Подробнее:* [docs/adapters.md](docs/adapters.md).
 
 ---
 

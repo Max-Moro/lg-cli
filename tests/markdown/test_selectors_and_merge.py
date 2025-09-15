@@ -1,4 +1,5 @@
-from lg.adapters.markdown import MarkdownAdapter
+from tests.conftest import lctx_md
+from .conftest import adapter
 
 def test_merge_section_over_marker_prefers_section_placeholder():
     text = """\
@@ -25,7 +26,7 @@ ok
         },
         "max_heading_level": None,
     }
-    out, meta = MarkdownAdapter().bind(cfg).process(text, group_size=1, mixed=False)  # type: ignore
+    out, meta = adapter(cfg).process(lctx_md(text))
     # Должен быть ОДИН placeholder и именно секционного шаблона
     assert out.count("SECTION") == 1
     assert out.count("GEN") == 0
@@ -59,7 +60,7 @@ end
         },
         "max_heading_level": None,
     }
-    out, meta = MarkdownAdapter().bind(cfg).process(text, group_size=1, mixed=False)  # type: ignore
+    out, meta = adapter(cfg).process(lctx_md(text))
     assert out.count("*(PH)*") == 1
     assert "end" in out
     assert int(meta.get("md.placeholders", 0)) == 1
@@ -87,7 +88,7 @@ tail
         },
         "max_heading_level": None,
     }
-    out, _ = MarkdownAdapter().bind(cfg).process(text, group_size=1, mixed=False)  # type: ignore
+    out, _ = adapter(cfg).process(lctx_md(text))
     # Не должно быть тройных пустых строк
     assert "\n\n\n" not in out
     # Разумный шов: максимум двойные переводы
@@ -123,5 +124,5 @@ tail
         },
         "max_heading_level": None,
     }
-    out, _ = MarkdownAdapter().bind(cfg).process(text, group_size=1, mixed=False)  # type: ignore
+    out, _ = adapter(cfg).process(lctx_md(text))
     assert "\n\n\n" not in out

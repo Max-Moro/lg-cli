@@ -7,15 +7,15 @@ import pytest
 from lg.cache.fs_cache import Cache
 from lg.context.resolver import resolve_context
 from lg.run_context import RunContext
+from lg.stats.tokenizer import default_tokenizer
 from lg.types import RunOptions
 from lg.vcs import NullVcs
-
 from tests.conftest import write
 
 
 def _mk_run_ctx(root: Path) -> RunContext:
     cache = Cache(root, enabled=None, fresh=False, tool_version="test")
-    return RunContext(root=root, options=RunOptions(), cache=cache, vcs=NullVcs())
+    return RunContext(root=root, options=RunOptions(), cache=cache, vcs=NullVcs(), tokenizer=default_tokenizer())
 
 
 def test_resolve_context_collects_addressed_sections_and_multiplicity(monorepo: Path):

@@ -20,7 +20,7 @@ from .plan import build_plan
 from .protocol import PROTOCOL_VERSION
 from .render import render_by_section
 from .run_context import RunContext
-from .stats import get_model_info, compute_stats
+from .stats import compute_stats, TokenService
 from .types import RunOptions, RenderedDocument, ContextSpec, Manifest, ProcessedBlob
 from .vcs import NullVcs
 from .vcs.git import GitVcs
@@ -34,7 +34,8 @@ def _build_run_ctx(options: RunOptions) -> RunContext:
     tool_ver = tool_version()
     cache = Cache(root, enabled=None, fresh=False, tool_version=tool_ver)
     vcs = GitVcs() if (root / ".git").is_dir() else NullVcs()
-    return RunContext(root=root, options=options, cache=cache, vcs=vcs)
+    tokenizer = TokenService(root, options.model)
+    return RunContext(root=root, options=options, cache=cache, vcs=vcs, tokenizer=tokenizer)
 
 
 def _pipeline_common(target: str, run_ctx: RunContext) -> Tuple[ContextSpec, Manifest, list[ProcessedBlob], ComposedDocument]:
@@ -90,16 +91,16 @@ def run_report(target: str, options: RunOptions) -> RunResultM:
     """
     run_ctx = _build_run_ctx(options)
     spec, manifest, blobs, composed = _pipeline_common(target, run_ctx)
+    tokenizer = run_ctx.tokenizer
 
-    model_info = get_model_info(run_ctx.root, options.model)
-    files_rows, totals, ctx_block, enc_name = compute_stats(
+    files_rows, totals, ctx_block = compute_stats(
         blobs=blobs,
         rendered_final_text=composed.text,
         rendered_sections_only_text=composed.sections_only_text,
         templates_hashes=composed.templates_hashes,
         spec=spec,
         manifest=manifest,
-        model_info=model_info,
+        tokenizer=tokenizer,
         code_fence=options.code_fence,
         cache=run_ctx.cache,
     )
@@ -155,9 +156,9 @@ def run_report(target: str, options: RunOptions) -> RunResultM:
         protocol=PROTOCOL_VERSION,
         scope=scope,
         target=target_norm,
-        model=model_info.label,
-        encoder=enc_name,
-        ctxLimit=model_info.ctx_limit,
+        model=tokenizer.model_info.label,
+        encoder=tokenizer.encoder_name,
+        ctxLimit=tokenizer.model_info.ctx_limit,
         total=total_m,
         files=files_m,
         context=context_m,

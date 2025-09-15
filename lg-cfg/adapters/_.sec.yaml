@@ -1,0 +1,88 @@
+src:
+  extensions: [".py"]
+  path_labels: relative
+  filters:
+    mode: allow
+    allow:
+      - "/lg/"
+    children:
+      lg:
+        mode: allow
+        allow:
+          - "/adapters/"
+        children:
+          adapters:
+            mode: block
+            block:
+              - "/cpp.py"
+              - "/java.py"
+              - "/javascript.py"
+              - "/markdown.py"
+              - "/scala.py"
+
+src-budget:
+  extensions: [".py", ".toml"]
+  filters:
+    mode: allow
+    allow:
+      - "/pyproject.toml"
+      - "/lg/"
+    children:
+      lg:
+        mode: block
+        block:
+          - "/migrate/"
+          - "/markdown/"
+          - "diag**"
+          - "scaffold.py"
+          - "/_skeletons/"
+        children:
+          adapters:
+            mode: block
+            block:
+              - "/cpp.py"
+              - "/java.py"
+              - "/javascript.py"
+              - "/markdown.py"
+              - "/scala.py"
+              - "/placeholders.py"
+              - "/optimizations/comments.py"
+              - "/optimizations/imports.py"
+            children:
+              python:
+                mode: allow
+                allow:
+                  - "/adapter.py"
+              typescript:
+                mode: allow
+                allow:
+                  - "/adapter.py"
+
+src-tests:
+  extensions: [".py"]
+  path_labels: relative
+  filters:
+    mode: allow
+    allow:
+      - "/tests/adapters/"
+      - "/tests/conftest.py"
+    children:
+      tests:
+        mode: block
+        children:
+          adapters:
+            mode: block
+            block:
+              - "/test_infrastructure.py"
+              - "/test_integration.py"
+              - "/golden_utils.py"
+
+docs-golden-utils:
+  extensions: [".md"]
+  markdown:
+    max_heading_level: 3
+    strip_single_h1: true
+  filters:
+    mode: allow
+    allow:
+      - "/tests/adapters/golden_utils.md"

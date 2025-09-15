@@ -1,7 +1,9 @@
 import re
+
 import pytest
 
-from lg.adapters.markdown import MarkdownAdapter
+from tests.conftest import lctx_md
+
 
 # Помощник: проверяем только ожидаемые поля, не требуя точного совпадения всех ключей.
 def assert_meta_subset(meta: dict, expected_subset: dict):
@@ -13,8 +15,9 @@ def make_adapter(max_lvl, strip_single_h1):
     Новый способ конфигурирования: через bind(raw_cfg).
     Передаём сырой dict, поля совпадают с датаклассом MarkdownCfg.
     """
+    from .conftest import adapter
     raw_cfg = {"max_heading_level": max_lvl, "strip_single_h1": strip_single_h1}
-    return MarkdownAdapter().bind(raw_cfg)
+    return adapter(raw_cfg)
 
 @pytest.mark.parametrize("text, max_lvl, strip_single_h1, group_size, mixed, expected, expected_meta", [
     # 1) single-file + max_heading_level=3: убираем H1, сдвигаем H2→H3, H3→H4
@@ -55,7 +58,7 @@ def make_adapter(max_lvl, strip_single_h1):
 ])
 def test_header_normalization(text, max_lvl, strip_single_h1, group_size, mixed, expected, expected_meta):
     adapter = make_adapter(max_lvl, strip_single_h1)
-    out, meta = adapter.process(text, group_size, mixed)
+    out, meta = adapter.process(lctx_md(text, group_size, mixed))
     # сравниваем линии напрямую
     assert out == expected
     # и метаданные тоже
@@ -65,7 +68,7 @@ def test_only_strips_single_h1_line_when_alone():
     # если только H1 и никаких подзаголовков – убираем его, получаем пустую строку
     text = "# Lone Title\n"
     adapter = make_adapter(3, True)
-    out, meta = adapter.process(text, group_size=1, mixed=False)
+    out, meta = adapter.process(lctx_md(raw_text=text))
     assert out == ""
     # В этом граничном кейсе min_lvl отсутствует → shifted остаётся False,
     # но removed_h1 обязательно должен быть 1.
@@ -74,9 +77,8 @@ def test_only_strips_single_h1_line_when_alone():
 def test_complex_markdown_preserves_non_header_content():
     text = "# T\n## A\nPara line\n### B\n- item\n"
     adapter = make_adapter(2, True)
-    out, meta = adapter.process(text, group_size=1, mixed=False)
     # group_size=1 → удаляет # T, shift = 2-2 = 0
-    out, meta = adapter.process(text, group_size=1, mixed=False)
+    out, meta = adapter.process(lctx_md(raw_text=text))
     lines = out.splitlines()
     # первая строка должна быть "## A"
     assert lines[0] == "## A"
@@ -106,7 +108,7 @@ print("hello")
     # Убираем H1, max_heading_level=2 → Next Section остаётся на уровне 2,
     # а комментарий в коде не трогаем
     adapter = make_adapter(2, True)
-    out, meta = adapter.process(text, group_size=1, mixed=False)
+    out, meta = adapter.process(lctx_md(raw_text=text))
     lines = out.splitlines()
 
 
