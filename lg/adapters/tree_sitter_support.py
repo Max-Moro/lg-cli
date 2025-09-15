@@ -260,24 +260,24 @@ class TreeSitterDocument(ABC):
 
     def byte_to_char_position(self, byte_pos: int) -> int:
         """
-        Конвертирует байтовую позицию в позицию символа в Unicode тексте.
+        Корректно конвертирует байтовую позицию в позицию символа в Unicode-тексте.
+        Гарантирует, что если позиция указывает на середину многобайтового символа,
+        возвращается позиция до этого символа.
         """
         if byte_pos <= 0:
             return 0
         if byte_pos >= len(self._text_bytes):
-            return len(self._text_bytes)
+            # Если позиция за пределами текста, возвращаем длину текста в символах
+            return len(self.text)
 
-        # Декодируем текст до указанной байтовой позиции
-        try:
-            decoded_part = self._text_bytes[:byte_pos].decode('utf-8')
-            return len(decoded_part)
-        except UnicodeDecodeError:
-            # Если не можем декодировать, ищем ближайшую валидную позицию
-            for offset in range(1, 5):
-                if byte_pos - offset >= 0:
-                    try:
-                        decoded_part = self._text_bytes[:byte_pos - offset].decode('utf-8')
-                        return len(decoded_part)
-                    except UnicodeDecodeError:
-                        continue
+        # Ищем максимально длинный валидный срез
+        # (UTF-8 гарантирует, что максимум 4 байта на символ)
+        start = max(0, byte_pos - 4)
+        for end in range(byte_pos, start - 1, -1):
+            try:
+                decoded = self._text_bytes[:end].decode('utf-8')
+                return len(decoded)
+            except UnicodeDecodeError:
+                continue
+        # Если не удалось декодировать ни один срез, возвращаем 0
         return 0
