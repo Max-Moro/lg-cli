@@ -12,10 +12,11 @@ from .api_schema import (
     Scope as ScopeE,
 )
 from .cache.fs_cache import Cache
+from .config import process_adaptive_options
 from .config.paths import cfg_root as cfg_root_of
-from .migrate import ensure_cfg_actual
 from .context import resolve_context, compose_context, ComposedDocument
 from .manifest import build_manifest
+from .migrate import ensure_cfg_actual
 from .plan import build_plan
 from .protocol import PROTOCOL_VERSION
 from .render import render_by_section
@@ -36,28 +37,21 @@ def _build_run_ctx(options: RunOptions) -> RunContext:
     vcs = GitVcs() if (root / ".git").is_dir() else NullVcs()
     tokenizer = TokenService(root, options.model)
     
-    # Валидация и вычисление активных тегов
-    from .adaptive_utils import compute_active_tags, validate_modes, validate_tags
-    
-    # Проверяем корректность режимов
-    if options.adaptive_modes:
-        validate_modes(root, options.adaptive_modes)
-    
-    # Проверяем корректность тегов
-    if options.extra_tags:
-        validate_tags(root, options.extra_tags)
-    
-    # Вычисляем все активные теги
-    active_tags = compute_active_tags(root, options.adaptive_modes, options.extra_tags)
-    
+    active_tags, adaptive_loader = process_adaptive_options(
+        root, 
+        options.adaptive_modes, 
+        options.extra_tags
+    )
+
     return RunContext(
-        root=root, 
-        options=options, 
-        cache=cache, 
-        vcs=vcs, 
+        root=root,
+        options=options,
+        cache=cache,
+        vcs=vcs,
         tokenizer=tokenizer,
+        adaptive_loader=adaptive_loader,
         active_modes=options.adaptive_modes,
-        active_tags=active_tags
+        active_tags=active_tags,
     )
 
 

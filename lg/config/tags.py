@@ -6,16 +6,16 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Dict, List, Tuple, Any
+from typing import Dict, List, Any
 
 from ruamel.yaml import YAML
 
 from lg.migrate import ensure_cfg_actual
+from .adaptive_model import TagsConfig, TagSet, Tag, DEFAULT_TAGS_CONFIG
 from .paths import (
     cfg_root,
     tags_path,
 )
-from .adaptive_model import TagsConfig, TagSet, Tag, DEFAULT_TAGS_CONFIG
 
 _yaml = YAML(typ="safe")
 
@@ -189,14 +189,3 @@ def list_tag_sets(root: Path) -> List[dict]:
         })
     
     return sorted(result, key=lambda x: x["id"])
-
-
-def get_all_available_tags(root: Path) -> Tuple[Dict[str, TagSet], Dict[str, Tag]]:
-    """
-    Возвращает все доступные теги, разделенные на наборы и глобальные.
-    
-    Returns:
-        Кортеж (наборы_тегов, глобальные_теги)
-    """
-    config = load_tags(root)
-    return config.tag_sets, config.global_tags
