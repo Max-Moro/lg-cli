@@ -1,0 +1,8 @@
+design:
+  extensions: [".md"]
+  filters:
+    mode: allow
+    allow:
+      - "/docs/adaptability/design.md"
+  markdown:
+    max_heading_level: 2

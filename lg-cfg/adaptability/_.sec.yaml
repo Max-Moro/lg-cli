@@ -1,0 +1,33 @@
+src:
+  extensions: [".py", ".toml"]
+  filters:
+    mode: allow
+    allow:
+      - "/pyproject.toml"
+      - "/lg/"
+    children:
+      lg:
+        mode: block
+        block:
+          - "/markdown/"
+          - "/migrate/"
+          - "/_skeletons/"
+          - "/scaffold.py"
+          - "diag**"
+        children:
+          adapters:
+            mode: allow
+            allow:
+              - "/__init__.py"
+              - "/engine.py"
+              - "/registry.py"
+              - "/code_base.py"
+  targets:
+    - match: 
+      - "/lg/stats/report.py"
+      - "/lg/stats/tokenizer.py"
+      - "/lg/cache/fs_cache.py"
+      python:
+        budget:
+          max_tokens_per_file: 500
+
