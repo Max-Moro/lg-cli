@@ -3,10 +3,10 @@ from pathlib import Path
 import pytest
 
 from lg.cache.fs_cache import Cache
+from lg.config.adaptive_loader import AdaptiveConfigLoader
 from lg.config.paths import cfg_root
 from lg.context import resolve_context, compose_context
 from lg.run_context import RunContext
-from lg.stats import TokenService
 from lg.stats.tokenizer import default_tokenizer
 from lg.types import RunOptions
 from lg.vcs import NullVcs
@@ -26,11 +26,12 @@ def _write_ctx(root: Path, rel: str, body: str):
 
 def _mk_ctx(root: Path) -> RunContext:
     return RunContext(
-        root=root.resolve(),
+        root=root,
         options=RunOptions(),
         cache=Cache(root, tool_version="0.0.0"),
         vcs=NullVcs(),
-        tokenizer=default_tokenizer()
+        tokenizer=default_tokenizer(),
+        adaptive_loader=AdaptiveConfigLoader(root),
     )
 
 def test_context_nested_ok(tmp_path: Path, monkeypatch):
@@ -88,11 +89,12 @@ def test_context_cycle_detection(tmp_path: Path):
     _write_ctx(tmp_path, "a", "${tpl:a}")  # корневой контекст, откуда начнётся разворачивание
 
     run_ctx = RunContext(
-        root=tmp_path.resolve(),
+        root=tmp_path,
         options=RunOptions(),
         cache=Cache(tmp_path, tool_version="0.0.0"),
         vcs=NullVcs(),
-        tokenizer=default_tokenizer()
+        tokenizer=default_tokenizer(),
+        adaptive_loader=AdaptiveConfigLoader(tmp_path),
     )
 
     with pytest.raises(RuntimeError) as ei:

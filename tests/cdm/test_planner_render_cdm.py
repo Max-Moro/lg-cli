@@ -2,20 +2,11 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from lg.cache.fs_cache import Cache
 from lg.context.resolver import resolve_context
 from lg.manifest.builder import build_manifest
 from lg.plan.planner import build_plan
 from lg.render.sections import render_by_section
-from lg.run_context import RunContext
-from lg.stats.tokenizer import default_tokenizer
-from lg.types import RunOptions
-from lg.vcs import NullVcs
-
-
-def _mk_run_ctx(root: Path) -> RunContext:
-    cache = Cache(root, enabled=None, fresh=False, tool_version="test")
-    return RunContext(root=root, options=RunOptions(), cache=cache, vcs=NullVcs(), tokenizer=default_tokenizer())
+from .conftest import mk_run_ctx
 
 
 def test_planner_and_render_for_addressed_sections(monorepo: Path):
@@ -25,10 +16,10 @@ def test_planner_and_render_for_addressed_sections(monorepo: Path):
         рендер содержит ```python и FILE-маркер с укороченной меткой README.md
       • для секции apps/web::web-api — md_only=True, use_fence=False, рендер без FILE-маркеров
     """
-    rc = _mk_run_ctx(monorepo)
+    rc = mk_run_ctx(monorepo)
     spec = resolve_context("ctx:a", rc)
 
-    manifest = build_manifest(root=monorepo, spec=spec, mode=rc.options.mode, vcs=rc.vcs)
+    manifest = build_manifest(root=monorepo, spec=spec, vcs_mode=rc.mode_options.vcs_mode, vcs=rc.vcs)
     plan = build_plan(manifest, rc)
 
     # Быстрый smoke: есть обе секции

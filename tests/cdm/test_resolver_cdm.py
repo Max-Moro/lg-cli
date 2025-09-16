@@ -4,18 +4,9 @@ from pathlib import Path
 
 import pytest
 
-from lg.cache.fs_cache import Cache
 from lg.context.resolver import resolve_context
-from lg.run_context import RunContext
-from lg.stats.tokenizer import default_tokenizer
-from lg.types import RunOptions
-from lg.vcs import NullVcs
 from tests.conftest import write
-
-
-def _mk_run_ctx(root: Path) -> RunContext:
-    cache = Cache(root, enabled=None, fresh=False, tool_version="test")
-    return RunContext(root=root, options=RunOptions(), cache=cache, vcs=NullVcs(), tokenizer=default_tokenizer())
+from .conftest import mk_run_ctx
 
 
 def test_resolve_context_collects_addressed_sections_and_multiplicity(monorepo: Path):
@@ -29,7 +20,7 @@ def test_resolve_context_collects_addressed_sections_and_multiplicity(monorepo: 
       - два CanonSectionId: 'packages/svc-a::a' с multiplicity=2 и 'apps/web::web-api' с multiplicity=1
       - ph2canon маппит сырые плейсхолдеры на эти каноны
     """
-    rc = _mk_run_ctx(monorepo)
+    rc = mk_run_ctx(monorepo)
     spec = resolve_context("ctx:a", rc)
     assert spec.kind == "context" and spec.name == "a"
 
@@ -49,7 +40,7 @@ def test_resolve_context_collects_addressed_sections_and_multiplicity(monorepo: 
 
 
 def test_resolve_sec_virtual_context_uses_root_scope(monorepo: Path):
-    rc = _mk_run_ctx(monorepo)
+    rc = mk_run_ctx(monorepo)
     spec = resolve_context("sec:a", rc)
     assert spec.kind == "section" and spec.name == "a"
     # Корневой lg-cfg → scope_rel == ""
@@ -74,6 +65,6 @@ def test_template_cycle_is_detected(monorepo: Path):
         "${tpl@apps/web:docs/loop}\n",
     )
 
-    rc = _mk_run_ctx(monorepo)
+    rc = mk_run_ctx(monorepo)
     with pytest.raises(RuntimeError, match="TPL cycle detected"):
         resolve_context("ctx:a", rc)

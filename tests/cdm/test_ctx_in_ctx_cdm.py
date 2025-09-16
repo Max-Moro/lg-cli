@@ -10,6 +10,7 @@ from lg.run_context import RunContext
 from lg.stats.tokenizer import default_tokenizer
 from lg.types import RunOptions
 from lg.vcs import NullVcs
+from .conftest import mk_run_ctx
 
 
 def _mk_run_ctx(root: Path) -> RunContext:
@@ -25,7 +26,7 @@ def test_ctx_in_ctx_cross_scope(monorepo: Path):
       • в финальном тексте есть маркеры из дочернего ctx,
       • в templates_hashes есть ключи для обоих контекстов (root и child).
     """
-    rc = _mk_run_ctx(monorepo)
+    rc = mk_run_ctx(monorepo)
     spec = resolve_context("ctx:x", rc)
 
     # Заменим секции заметными маркерами

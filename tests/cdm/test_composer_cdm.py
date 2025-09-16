@@ -4,23 +4,14 @@ from pathlib import Path
 
 import pytest
 
-from lg.cache.fs_cache import Cache
 from lg.config.paths import cfg_root
 from lg.context.composer import compose_context
 from lg.context.resolver import resolve_context
-from lg.run_context import RunContext
-from lg.stats.tokenizer import default_tokenizer
-from lg.types import RunOptions
-from lg.vcs import NullVcs
-
-
-def _mk_run_ctx(root: Path) -> RunContext:
-    cache = Cache(root, enabled=None, fresh=False, tool_version="test")
-    return RunContext(root=root, options=RunOptions(), cache=cache, vcs=NullVcs(), tokenizer=default_tokenizer())
+from .conftest import mk_run_ctx
 
 
 def test_compose_context_expands_tpl_at_and_builds_hashes(monorepo: Path):
-    rc = _mk_run_ctx(monorepo)
+    rc = mk_run_ctx(monorepo)
     spec = resolve_context("ctx:a", rc)
 
     # Синтетический рендер секций: подставим заметные маркеры
@@ -55,7 +46,7 @@ def test_compose_context_expands_tpl_at_and_builds_hashes(monorepo: Path):
 
 def test_compose_context_fails_on_unknown_section_placeholder(monorepo: Path):
     # Возьмём реальный spec, но дадим пустую карту ph2canon, чтобы спровоцировать ошибку
-    rc = _mk_run_ctx(monorepo)
+    rc = mk_run_ctx(monorepo)
     spec = resolve_context("ctx:a", rc)
 
     with pytest.raises(RuntimeError, match="Unknown section placeholder"):

@@ -5,8 +5,25 @@ from pathlib import Path
 
 import pytest
 
+from lg.cache.fs_cache import Cache
+from lg.config.adaptive_loader import AdaptiveConfigLoader
+from lg.run_context import RunContext
+from lg.stats.tokenizer import default_tokenizer
+from lg.types import RunOptions
+from lg.vcs import NullVcs
 from tests.conftest import write  # уже есть в вашем репо
 
+
+def mk_run_ctx(root: Path) -> RunContext:
+    cache = Cache(root, enabled=None, fresh=False, tool_version="test")
+    return RunContext(
+        root=root,
+        options=RunOptions(),
+        cache=cache,
+        vcs=NullVcs(),
+        tokenizer=default_tokenizer(),
+        adaptive_loader=AdaptiveConfigLoader(root),
+    )
 
 def _root_sections_yaml() -> str:
     # Корневой конфиг: хотя бы одна простая секция, но тесты CDM опираются на child-секции

@@ -26,7 +26,7 @@ def build_manifest(
     *,
     root: Path,
     spec: ContextSpec,
-    mode: str, # "all" | "changes"
+    vcs_mode: str, # "all" | "changes"
     vcs: VcsProvider | None = None,
 ) -> Manifest:
     """
@@ -34,7 +34,7 @@ def build_manifest(
     """
     vcs = vcs or NullVcs()
     changed: Set[str] = set()
-    if mode == "changes":
+    if vcs_mode == "changes":
         changed = vcs.changed_files(root)
 
     spec_git = build_gitignore_spec(root)
@@ -152,7 +152,7 @@ def build_manifest(
         for fp in iter_files(root, extensions=exts, spec_git=spec_git, dir_pruner=_pruner):
             rel_posix = fp.resolve().relative_to(root.resolve()).as_posix()
 
-            if mode == "changes" and rel_posix not in changed:
+            if vcs_mode == "changes" and rel_posix not in changed:
                 continue
 
             # ограничиваемся файлами внутри scope_rel

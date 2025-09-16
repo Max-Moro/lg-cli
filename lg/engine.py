@@ -66,7 +66,7 @@ def _pipeline_common(target: str, run_ctx: RunContext) -> Tuple[ContextSpec, Man
     manifest = build_manifest(
         root=run_ctx.root,
         spec=spec,
-        mode=run_ctx.mode_options.vcs_mode,
+        vcs_mode=run_ctx.mode_options.vcs_mode,
         vcs=run_ctx.vcs,
     )
 

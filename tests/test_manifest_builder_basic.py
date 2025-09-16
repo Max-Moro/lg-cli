@@ -63,7 +63,7 @@ all:
     # адресная секция: self lg-cfg с корректным canon
     spec = mk_local_sec_spec(tmp_path, "all")
 
-    mf = build_manifest(root=tmp_path, spec=spec, mode="all", vcs=NullVcs())
+    mf = build_manifest(root=tmp_path, spec=spec, vcs_mode="all", vcs=NullVcs())
     paths = [f.rel_path for f in mf.iter_files()]
     assert "src/a.py" in paths
     assert "src/b.md" in paths
@@ -94,7 +94,7 @@ all:
         def changed_files(self, root: Path):
             return {"src/changed.py"}
 
-    mf = build_manifest(root=tmp_path, spec=spec, mode="changes", vcs=FakeVcs())
+    mf = build_manifest(root=tmp_path, spec=spec, vcs_mode="changes", vcs=FakeVcs())
     paths = [f.rel_path for f in mf.iter_files()]
     assert paths == ["src/changed.py"]
 
@@ -113,4 +113,4 @@ all:
     spec = mk_local_sec_spec(tmp_path, "ghost")
 
     with pytest.raises(RuntimeError):
-        build_manifest(root=tmp_path, spec=spec, mode="all", vcs=NullVcs())
+        build_manifest(root=tmp_path, spec=spec, vcs_mode="all", vcs=NullVcs())

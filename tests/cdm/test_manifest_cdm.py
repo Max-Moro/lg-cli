@@ -6,23 +6,11 @@ from pathlib import Path
 import pytest
 from ruamel.yaml import YAML
 
-from lg.cache.fs_cache import Cache
 from lg.context.resolver import resolve_context
 from lg.manifest.builder import build_manifest
-from lg.run_context import RunContext
-from lg.stats.tokenizer import default_tokenizer
-from lg.types import RunOptions
 from lg.vcs import VcsProvider
 from tests.conftest import write
-
-
-def _mk_run_ctx(root: Path) -> RunContext:
-    cache = Cache(root, enabled=None, fresh=False, tool_version="test")
-    # VCS нам не нужен здесь — передадим явно в build_manifest, где требуется
-    class _NullVcs:
-        def changed_files(self, root: Path):  # type: ignore[override]
-            return set()
-    return RunContext(root=root, options=RunOptions(), cache=cache, vcs=_NullVcs(), tokenizer=default_tokenizer())
+from .conftest import mk_run_ctx
 
 
 class FakeVcs(VcsProvider):
@@ -31,12 +19,10 @@ class FakeVcs(VcsProvider):
     def changed_files(self, root: Path) -> set[str]:
         return set(self._changed)
 
-
 def _manifest_for_ctx(root: Path, ctx_name: str, *, mode: str = "all", vcs=None):
-    rc = _mk_run_ctx(root)
+    rc = mk_run_ctx(root)
     spec = resolve_context(f"ctx:{ctx_name}", rc)
-    return build_manifest(root=root, spec=spec, mode=mode, vcs=vcs)
-
+    return build_manifest(root=root, spec=spec, vcs_mode=mode, vcs=vcs)
 
 def test_scope_and_filters_limit_to_scope(monorepo: Path):
     """
@@ -141,11 +127,11 @@ def test_missing_sections_diagnostic_includes_available(monorepo: Path):
     bad_ctx = monorepo / "lg-cfg" / "bad.ctx.md"
     bad_ctx.write_text("${@apps/web:missing}\n", encoding="utf-8")
 
-    rc = _mk_run_ctx(monorepo)
+    rc = mk_run_ctx(monorepo)
     spec = resolve_context("ctx:bad", rc)
 
     with pytest.raises(RuntimeError) as ei:
-        build_manifest(root=monorepo, spec=spec, mode="all")
+        build_manifest(root=monorepo, spec=spec, vcs_mode="all")
 
     msg = str(ei.value)
     assert "Section(s) not found" in msg
