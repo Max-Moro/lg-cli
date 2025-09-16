@@ -62,16 +62,6 @@ def _collect_sections_from_fragments(root: Path) -> Dict[str, SectionCfg]:
             # Пустой фрагмент — корректен, но нечего добавлять
             continue
 
-        # Правило 1: одинарная секция → канон = её имя
-        if len(section_items) == 1:
-            local_name, node = section_items[0]
-            if not isinstance(node, dict):
-                raise RuntimeError(f"Section '{local_name}' in {frag} must be a mapping")
-            canon_id = local_name
-            acc[canon_id] = SectionCfg.from_dict(canon_id, node)
-            continue
-
-        # Правило 2: несколько секций → нормализация "хвоста" по prefix
         pref_tail = prefix.split("/")[-1] if prefix else ""
         for local_name, node in section_items:
             if not isinstance(node, dict):
