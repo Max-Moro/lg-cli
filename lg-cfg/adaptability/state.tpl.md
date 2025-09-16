@@ -37,126 +37,6 @@
 
 ### Новые модули и их назначение
 
-#### Система конфигурации режимов и тегов
-
-```
-lg/config/
-  ├── modes.py      # Загрузка и обработка режимов
-  ├── tags.py       # Загрузка и обработка тегов
-  └── adaptive.py   # Общая логика адаптивной системы
-```
-
-#### Система условий
-
-```
-lg/conditions/
-  ├── __init__.py
-  ├── parser.py     # Парсер с рекурсивным спуском
-  ├── lexer.py      # Лексер для токенизации условий
-  └── model.py      # Модели условных выражений
-```
-
-##### Ключевые классы и функции:
-
-```python
-# model.py
-class ConditionType(Enum):
-    TAG = "tag"
-    TAGSET = "tagset"
-    SCOPE = "scope"
-    AND = "and"
-    OR = "or"
-    NOT = "not"
-    GROUP = "group"  # для явной группировки в скобках
-
-@dataclass
-class Condition(ABC):
-    """Базовый абстрактный класс для условий"""
-    
-    @abstractmethod
-    def get_type(self) -> ConditionType:
-        """Возвращает тип условия"""
-        pass
-
-@dataclass
-class TagCondition(Condition):
-    """Условие наличия тега: tag:name"""
-    name: str
-    
-    def get_type(self) -> ConditionType:
-        return ConditionType.TAG
-
-@dataclass
-class TagSetCondition(Condition):
-    """Условие на набор тегов: TAGSET:set:tag"""
-    set_name: str
-    tag_name: str
-    
-    def get_type(self) -> ConditionType:
-        return ConditionType.TAGSET
-
-@dataclass
-class ScopeCondition(Condition):
-    """Условие скоупа: scope:type"""
-    scope_type: str  # "local" или "parent"
-    
-    def get_type(self) -> ConditionType:
-        return ConditionType.SCOPE
-
-@dataclass
-class GroupCondition(Condition):
-    """Группа условий в скобках: (condition)"""
-    condition: Condition
-    
-    def get_type(self) -> ConditionType:
-        return ConditionType.GROUP
-
-@dataclass
-class NotCondition(Condition):
-    """Отрицание условия: NOT condition"""
-    condition: Condition
-    
-    def get_type(self) -> ConditionType:
-        return ConditionType.NOT
-
-@dataclass
-class BinaryCondition(Condition):
-    """Бинарная операция: left op right"""
-    left: Condition
-    right: Condition
-    operator: ConditionType  # AND или OR
-    
-    def get_type(self) -> ConditionType:
-        return self.operator
-
-# lexer.py
-@dataclass
-class Token:
-    """Токен для парсинга условий"""
-    type: str
-    value: str
-    position: int
-    
-    def __repr__(self):
-        return f"Token({self.type}, '{self.value}', pos={self.position})"
-
-class ConditionLexer:
-    """Лексер для разбиения строки условия на токены"""
-    
-    TOKEN_SPECS = [ ]
-    
-    def tokenize(self, text: str) -> List[Token]:
-        """Разбивает строку на токены"""
-         ...
-    
-# parser.py
-class ConditionParser:
-    
-    def parse(self, condition_str: str) -> Condition:
-        """Парсит строку условия в AST"""
-       ...
-```
-
 #### Расширения шаблонизатора
 
 ```
@@ -227,19 +107,11 @@ class FilterNode:
 2. **[+] Загрузка конфигурации**
 3. **[+] Расширение RunContext**
 
-#### [] Итерация 2: Система условий
+#### [+] Итерация 2: Система условий
 
-1. **[] Парсер условий**
-   - Реализация модели для представления условий
-   - Парсер для выражений условий с поддержкой операторов `tag`, `TAGSET`, `AND`, `OR`, `NOT`
-
-2. **[] Вычислитель условий**
-   - Реализация вычислителя условных выражений
-   - Контекстно-зависимая оценка (`scope:local`, `scope:parent`)
-
-3. **[] Фреймворк тестирования**
-   - Модульные тесты для парсера условий
-   - Модульные тесты для вычислителя условий
+1. **[+] Парсер условий**
+2. **[+] Вычислитель условий**
+3. **[+] Фреймворк тестирования**
 
 #### [] Итерация 3: Условные блоки в шаблонах
 

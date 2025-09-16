@@ -43,8 +43,8 @@ class ConditionContext:
         """
         tagset_tags = self.tagsets.get(set_name, set())
         if not tagset_tags:
-            # Набор не существует - условие ложно
-            return False
+            # Набор не существует или пуст - условие истинно (ни один тег не активен)
+            return True
 
         # Проверяем, какие теги из набора активны
         active_in_set = tagset_tags.intersection(self.active_tags)

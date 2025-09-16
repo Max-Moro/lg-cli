@@ -9,32 +9,29 @@ src:
       lg:
         mode: block
         block:
+          - "/stats/"
           - "/markdown/"
           - "/migrate/"
           - "/_skeletons/"
           - "/scaffold.py"
           - "diag**"
         children:
+          conditions:
+            mode: allow
+            allow:
+              - "/evaluator.py"
           adapters:
             mode: allow
             allow:
               - "/__init__.py"
               - "/engine.py"
               - "/registry.py"
-              - "/code_base.py"
           config:
             mode: block
             block:
               - "/load.py"
-          stats:
-            mode: block
-            block:
-              - "/load.py"
-              - "/model.py"
   targets:
-    - match: 
-      - "/lg/stats/report.py"
-      - "/lg/stats/tokenizer.py"
+    - match:
       - "/lg/cache/fs_cache.py"
       python:
         budget:
