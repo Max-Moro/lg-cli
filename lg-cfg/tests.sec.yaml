@@ -34,7 +34,6 @@ min:
           - "/conftest.py"
           - "/test_adapters_registry.py"
           - "/test_cli_minimum.py"
-          - "/tests/test_config.py"
 
 markdown:
   extensions: [".py"]

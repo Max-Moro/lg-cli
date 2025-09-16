@@ -46,42 +46,6 @@ lg/config/
   └── adaptive.py   # Общая логика адаптивной системы
 ```
 
-##### Ключевые классы и функции:
-
-```python
-# modes.py
-@dataclass
-class Mode:
-    title: str
-    description: str = ""
-    tags: List[str] = field(default_factory=list)
-    options: Dict[str, Any] = field(default_factory=dict)
-
-@dataclass
-class ModeSet:
-    title: str
-    modes: Dict[str, Mode] = field(default_factory=dict)
-
-def load_modes(root: Path) -> Dict[str, ModeSet]:
-    """Загрузка режимов с учетом иерархии скоупов"""
-    ...
-
-# tags.py
-@dataclass
-class Tag:
-    title: str
-    description: str = ""
-
-@dataclass
-class TagSet:
-    title: str
-    tags: Dict[str, Tag] = field(default_factory=dict)
-
-def load_tags(root: Path) -> Tuple[Dict[str, TagSet], Dict[str, Tag]]:
-    """Загрузка наборов тегов и глобальных тегов с учетом иерархии скоупов"""
-    ...
-```
-
 #### 2. Система условий
 
 ```
@@ -220,40 +184,13 @@ class FilterNode:
     when: List[ConditionalFilterRule] = field(default_factory=list)  # новое поле
 ```
 
-#### 6. Обновления CLI
-
-```python
-# cli.py
-def _build_parser() -> argparse.ArgumentParser:
-    # ...существующий код...
-    
-    # Добавление новых параметров
-    p.add_argument("--mode", action="append", help="активный режим в формате 'modeset:mode'")
-    p.add_argument("--tags", help="дополнительные теги, разделенные запятыми")
-    
-    # Добавление новых команд
-    sp_list.add_argument("what", choices=["contexts", "sections", "models", "mode-sets", "tag-sets"], 
-                        help="что вывести")
-    
-    # ...существующий код...
-```
-
 ### План внедрения
 
-#### [] Итерация 1: Основы и конфигурация
+#### [+] Итерация 1: Основы и конфигурация
 
-1. **[] Реализация базовых моделей данных**
-   - Создание классов `Mode`, `ModeSet`, `Tag`, `TagSet` 
-   - Реализация сериализации/десериализации для YAML
-
-2. **[] Загрузка конфигурации**
-   - Разработка загрузчиков `modes.yaml` и `tags.yaml`
-   - Поддержка директивы `include` для федеративной конфигурации
-   - Механизм объединения родительских/дочерних конфигураций
-
-3. **[] Расширение RunContext**
-   - Добавление полей для активных режимов и тегов
-   - Обработка CLI-параметров для режимов и тегов
+1. **[+] Реализация базовых моделей данных**
+2. **[+] Загрузка конфигурации**
+3. **[+] Расширение RunContext**
 
 #### [] Итерация 2: Система условий
 
@@ -308,4 +245,3 @@ def _build_parser() -> argparse.ArgumentParser:
 3. **[] Примеры и тесты**
    - Примеры конфигураций
    - Сквозные тесты
-
