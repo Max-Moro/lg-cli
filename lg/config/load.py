@@ -43,8 +43,9 @@ def _collect_sections_from_fragments(root: Path) -> Dict[str, SectionCfg]:
     """
     Собирает секции из всех **/*.sec.yaml.
     Канонический ID секции формируется так:
-      • Если фрагмент содержит РОВНО одну секцию → канон-ID = <имя этой секции> (префикс игнорируем).
-        Пример: 'web.sec.yaml' c единственной секцией 'web-api' → 'web-api'.
+      • Если фрагмент содержит РОВНО одну секцию → канон-ID = <директорный_префикс>/<имя_секции>.
+        Префикс имени файла отбрасывается, но префикс директорий сохраняется.
+        Пример: 'subdir/web.sec.yaml' c единственной секцией 'web-api' → 'subdir/web-api'.
       • Иначе:
           – prefix = путь к файлу без суффикса '.sec.yaml' относительно lg-cfg/ (POSIX).
           – Если последний сегмент prefix совпадает с именем секции → канон-ID = prefix
@@ -62,6 +63,26 @@ def _collect_sections_from_fragments(root: Path) -> Dict[str, SectionCfg]:
             # Пустой фрагмент — корректен, но нечего добавлять
             continue
 
+        # Правило 1: одинарная секция → канон = директорный_префикс + имя_секции
+        if len(section_items) == 1:
+            local_name, node = section_items[0]
+            if not isinstance(node, dict):
+                raise RuntimeError(f"Section '{local_name}' in {frag} must be a mapping")
+            
+            # Извлекаем директорный префикс (все сегменты кроме последнего)
+            prefix_parts = prefix.split("/") if prefix else []
+            if len(prefix_parts) > 1:
+                # Есть поддиректории - сохраняем их
+                dir_prefix = "/".join(prefix_parts[:-1])
+                canon_id = f"{dir_prefix}/{local_name}"
+            else:
+                # Нет поддиректорий - только имя секции
+                canon_id = local_name
+            
+            acc[canon_id] = SectionCfg.from_dict(canon_id, node)
+            continue
+
+        # Правило 2: несколько секций → нормализация "хвоста" по prefix
         pref_tail = prefix.split("/")[-1] if prefix else ""
         for local_name, node in section_items:
             if not isinstance(node, dict):
