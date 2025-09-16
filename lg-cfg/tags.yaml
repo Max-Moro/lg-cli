@@ -1,0 +1,45 @@
+tag-sets:
+  language:
+    title: "Языки программирования"
+    tags:
+      python:
+        title: "Python"
+      typescript:
+        title: "TypeScript"
+      javascript:
+        title: "JavaScript"
+  
+  code-type:
+    title: "Тип кода"
+    tags:
+      product:
+        title: "Продуктовый код"
+      tests:
+        title: "Тестовый код"
+      generated:
+        title: "Сгенерированный код"
+    
+  feature-slices:
+    title: "Функциональные блоки"
+    tags:
+      adaptability:
+        title: "Адаптивные возможности"
+      adapters:
+        title: "Языковые адаптеры"
+      stats:
+        title: "Статистика и токены"
+
+# Глобальные теги (не входят в определенные наборы)
+tags:
+  agent:
+    title: "Агентные возможности"
+  review:
+    title: "Правила проведения кодревью"
+  architecture:
+    title: "Архитектурная документация"
+  docs:
+    title: "Документация"
+  tests:
+    title: "Тестовый код"
+  tools:
+    title: "Инструменты"

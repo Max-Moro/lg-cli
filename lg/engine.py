@@ -35,7 +35,30 @@ def _build_run_ctx(options: RunOptions) -> RunContext:
     cache = Cache(root, enabled=None, fresh=False, tool_version=tool_ver)
     vcs = GitVcs() if (root / ".git").is_dir() else NullVcs()
     tokenizer = TokenService(root, options.model)
-    return RunContext(root=root, options=options, cache=cache, vcs=vcs, tokenizer=tokenizer)
+    
+    # Валидация и вычисление активных тегов
+    from .adaptive_utils import compute_active_tags, validate_modes, validate_tags
+    
+    # Проверяем корректность режимов
+    if options.adaptive_modes:
+        validate_modes(root, options.adaptive_modes)
+    
+    # Проверяем корректность тегов
+    if options.extra_tags:
+        validate_tags(root, options.extra_tags)
+    
+    # Вычисляем все активные теги
+    active_tags = compute_active_tags(root, options.adaptive_modes, options.extra_tags)
+    
+    return RunContext(
+        root=root, 
+        options=options, 
+        cache=cache, 
+        vcs=vcs, 
+        tokenizer=tokenizer,
+        active_modes=options.adaptive_modes,
+        active_tags=active_tags
+    )
 
 
 def _pipeline_common(target: str, run_ctx: RunContext) -> Tuple[ContextSpec, Manifest, list[ProcessedBlob], ComposedDocument]:

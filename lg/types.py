@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Dict, List, Literal, Optional, NewType, Mapping, Any
+from typing import Dict, List, Literal, Optional, NewType, Mapping, Any, Set
 
 # ---- Aliases for clarity ----
 PathLabelMode = Literal["auto", "relative", "basename", "off"]
@@ -17,8 +17,11 @@ AdapterRawCfg = Mapping[str, Any]
 @dataclass(frozen=True)
 class RunOptions:
     mode: Literal["all", "changes"] = "all"
-    model: ModelName = "o3"
+    model: ModelName = ModelName("o3")
     code_fence: bool = True  # override config if needed
+    # Адаптивные возможности
+    adaptive_modes: Dict[str, str] = field(default_factory=dict)  # modeset -> mode
+    extra_tags: Set[str] = field(default_factory=set)  # дополнительные теги
 
 # -------- Context --------
 @dataclass(frozen=True)

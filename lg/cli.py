@@ -35,7 +35,7 @@ def _build_parser() -> argparse.ArgumentParser:
             "--mode",
             choices=["all", "changes"],
             default="all",
-            help="область рабочего дерева",
+            help="область рабочего дерева (устаревший, используйте режимы)",
         )
         sp.add_argument(
             "--model",
@@ -47,6 +47,17 @@ def _build_parser() -> argparse.ArgumentParser:
             action="store_true",
             help="override конфигурации: отключить code fence",
         )
+        # Новые параметры для адаптивных возможностей
+        sp.add_argument(
+            "--adaptive-mode",
+            action="append",
+            metavar="MODESET:MODE",
+            help="активный режим в формате 'modeset:mode' (можно указать несколько)",
+        )
+        sp.add_argument(
+            "--tags",
+            help="дополнительные теги через запятую (например: python,tests,minimal)",
+        )
 
     sp_report = sub.add_parser("report", help="JSON-отчёт: статистика")
     add_common(sp_report)
@@ -55,7 +66,7 @@ def _build_parser() -> argparse.ArgumentParser:
     add_common(sp_render)
 
     sp_list = sub.add_parser("list", help="Списки сущностей (JSON)")
-    sp_list.add_argument("what", choices=["contexts", "sections", "models"], help="что вывести")
+    sp_list.add_argument("what", choices=["contexts", "sections", "models", "mode-sets", "tag-sets"], help="что вывести")
 
     sp_diag = sub.add_parser("diag", help="Диагностика окружения и конфига (JSON) [--bundle] [--rebuild-cache]")
     sp_diag.add_argument(
@@ -81,11 +92,40 @@ def _build_parser() -> argparse.ArgumentParser:
 
 
 def _opts(ns: argparse.Namespace) -> RunOptions:
+    # Парсим режимы и теги
+    adaptive_modes = _parse_modes(getattr(ns, "adaptive_mode", None))
+    extra_tags = _parse_tags(getattr(ns, "tags", None))
+    
     return RunOptions(
         mode=ns.mode,
         model=ns.model,
         code_fence=not bool(getattr(ns, "no_fence", False)),
+        adaptive_modes=adaptive_modes,
+        extra_tags=extra_tags,
     )
+
+
+def _parse_modes(adaptive_modes: list[str] | None) -> Dict[str, str]:
+    """Парсит список режимов в формате 'modeset:mode' в словарь."""
+    result = {}
+    if not adaptive_modes:
+        return result
+    
+    for mode_spec in adaptive_modes:
+        if ":" not in mode_spec:
+            raise ValueError(f"Invalid mode format '{mode_spec}'. Expected 'modeset:mode'")
+        modeset, mode = mode_spec.split(":", 1)
+        result[modeset.strip()] = mode.strip()
+    
+    return result
+
+
+def _parse_tags(tags_str: str | None) -> set[str]:
+    """Парсит строку тегов в множество."""
+    if not tags_str:
+        return set()
+    
+    return {tag.strip() for tag in tags_str.split(",") if tag.strip()}
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -114,8 +154,16 @@ def main(argv: list[str] | None = None) -> int:
                 data = {"contexts": list_contexts(root)}
             elif ns.what == "sections":
                 data = {"sections": list_sections(root)}
-            else:  # ns.what == "models" (choices enforce this)
+            elif ns.what == "models":
                 data = {"models": list_models(root)}
+            elif ns.what == "mode-sets":
+                from .config.modes import list_mode_sets
+                data = {"mode-sets": list_mode_sets(root)}
+            elif ns.what == "tag-sets":
+                from .config.tags import list_tag_sets
+                data = {"tag-sets": list_tag_sets(root)}
+            else:
+                raise ValueError(f"Unknown list target: {ns.what}")
             sys.stdout.write(jdumps(data))
             return 0
 

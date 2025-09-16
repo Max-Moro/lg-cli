@@ -22,6 +22,15 @@ src:
               - "/engine.py"
               - "/registry.py"
               - "/code_base.py"
+          config:
+            mode: block
+            allow:
+              - "/load.py"
+          stats:
+            mode: block
+            allow:
+              - "/load.py"
+              - "/model.py"
   targets:
     - match: 
       - "/lg/stats/report.py"
