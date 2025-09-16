@@ -37,7 +37,7 @@
 
 ### Новые модули и их назначение
 
-#### 1. Система конфигурации режимов и тегов
+#### Система конфигурации режимов и тегов
 
 ```
 lg/config/
@@ -46,13 +46,13 @@ lg/config/
   └── adaptive.py   # Общая логика адаптивной системы
 ```
 
-#### 2. Система условий
+#### Система условий
 
 ```
 lg/conditions/
   ├── __init__.py
-  ├── parser.py     # Парсер условных выражений
-  ├── evaluator.py  # Вычислитель условий
+  ├── parser.py     # Парсер с рекурсивным спуском
+  ├── lexer.py      # Лексер для токенизации условий
   └── model.py      # Модели условных выражений
 ```
 
@@ -60,50 +60,104 @@ lg/conditions/
 
 ```python
 # model.py
+class ConditionType(Enum):
+    TAG = "tag"
+    TAGSET = "tagset"
+    SCOPE = "scope"
+    AND = "and"
+    OR = "or"
+    NOT = "not"
+    GROUP = "group"  # для явной группировки в скобках
+
 @dataclass
-class Condition:
-    """Базовый класс для условий"""
-    pass
+class Condition(ABC):
+    """Базовый абстрактный класс для условий"""
+    
+    @abstractmethod
+    def get_type(self) -> ConditionType:
+        """Возвращает тип условия"""
+        pass
 
 @dataclass
 class TagCondition(Condition):
-    tag_name: str
-    negated: bool = False
+    """Условие наличия тега: tag:name"""
+    name: str
+    
+    def get_type(self) -> ConditionType:
+        return ConditionType.TAG
 
 @dataclass
 class TagSetCondition(Condition):
+    """Условие на набор тегов: TAGSET:set:tag"""
     set_name: str
     tag_name: str
-
-@dataclass
-class BinaryCondition(Condition):
-    operator: str  # "AND" или "OR"
-    left: Condition
-    right: Condition
+    
+    def get_type(self) -> ConditionType:
+        return ConditionType.TAGSET
 
 @dataclass
 class ScopeCondition(Condition):
+    """Условие скоупа: scope:type"""
     scope_type: str  # "local" или "parent"
-
-# parser.py
-def parse_condition(condition_str: str) -> Condition:
-    """Парсинг строки условия в объект Condition"""
-    ...
-
-# evaluator.py
-def evaluate_condition(condition: Condition, context: ConditionContext) -> bool:
-    """Вычисление условия на основе активных тегов и режимов"""
-    ...
+    
+    def get_type(self) -> ConditionType:
+        return ConditionType.SCOPE
 
 @dataclass
-class ConditionContext:
-    active_tags: Set[str]
-    tagsets: Dict[str, Set[str]]
-    current_scope: str = ""
-    parent_scope: str = ""
+class GroupCondition(Condition):
+    """Группа условий в скобках: (condition)"""
+    condition: Condition
+    
+    def get_type(self) -> ConditionType:
+        return ConditionType.GROUP
+
+@dataclass
+class NotCondition(Condition):
+    """Отрицание условия: NOT condition"""
+    condition: Condition
+    
+    def get_type(self) -> ConditionType:
+        return ConditionType.NOT
+
+@dataclass
+class BinaryCondition(Condition):
+    """Бинарная операция: left op right"""
+    left: Condition
+    right: Condition
+    operator: ConditionType  # AND или OR
+    
+    def get_type(self) -> ConditionType:
+        return self.operator
+
+# lexer.py
+@dataclass
+class Token:
+    """Токен для парсинга условий"""
+    type: str
+    value: str
+    position: int
+    
+    def __repr__(self):
+        return f"Token({self.type}, '{self.value}', pos={self.position})"
+
+class ConditionLexer:
+    """Лексер для разбиения строки условия на токены"""
+    
+    TOKEN_SPECS = [ ]
+    
+    def tokenize(self, text: str) -> List[Token]:
+        """Разбивает строку на токены"""
+         ...
+    
+# parser.py
+class ConditionParser:
+    
+    def parse(self, condition_str: str) -> Condition:
+        """Парсит строку условия в AST"""
+       ...
 ```
 
-#### 3. Расширения шаблонизатора
+#### Расширения шаблонизатора
 
 ```
 lg/templates/
@@ -146,26 +200,7 @@ def process_mode_blocks(blocks: List[Union[str, ModeBlock]], active_modes: Dict[
     ...
 ```
 
-#### 4. Расширение контекста выполнения
-
-```python
-# run_context.py
-@dataclass(frozen=True)
-class RunContext:
-    root: Path
-    options: RunOptions
-    cache: Cache
-    vcs: VcsProvider
-    tokenizer: TokenService
-    active_modes: Dict[str, str] = field(default_factory=dict)  # modeset_name -> mode_name
-    active_tags: Set[str] = field(default_factory=set)  # все активные теги
-    
-    def get_condition_context(self) -> ConditionContext:
-        """Создание контекста для вычисления условий"""
-        ...
-```
-
-#### 5. Обновления в системе фильтрации
+#### Обновления в системе фильтрации
 
 ```python
 # io/model.py
