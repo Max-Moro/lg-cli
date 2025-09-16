@@ -16,11 +16,10 @@ AdapterRawCfg = Mapping[str, Any]
 # -----------------------------
 @dataclass(frozen=True)
 class RunOptions:
-    mode: Literal["all", "changes"] = "all"
     model: ModelName = ModelName("o3")
     code_fence: bool = True  # override config if needed
     # Адаптивные возможности
-    adaptive_modes: Dict[str, str] = field(default_factory=dict)  # modeset -> mode
+    modes: Dict[str, str] = field(default_factory=dict)  # modeset -> mode
     extra_tags: Set[str] = field(default_factory=set)  # дополнительные теги
 
 # -------- Context --------

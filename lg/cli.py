@@ -32,12 +32,6 @@ def _build_parser() -> argparse.ArgumentParser:
             help="ctx:<name> | sec:<name> | <name> (сначала ищется контекст, иначе секция)",
         )
         sp.add_argument(
-            "--mode",
-            choices=["all", "changes"],
-            default="all",
-            help="область рабочего дерева (устаревший, используйте режимы)",
-        )
-        sp.add_argument(
             "--model",
             default="o3",
             help="базовая модель для статистики",
@@ -47,9 +41,8 @@ def _build_parser() -> argparse.ArgumentParser:
             action="store_true",
             help="override конфигурации: отключить code fence",
         )
-        # Новые параметры для адаптивных возможностей
         sp.add_argument(
-            "--adaptive-mode",
+            "--mode",
             action="append",
             metavar="MODESET:MODE",
             help="активный режим в формате 'modeset:mode' (можно указать несколько)",
@@ -93,25 +86,24 @@ def _build_parser() -> argparse.ArgumentParser:
 
 def _opts(ns: argparse.Namespace) -> RunOptions:
     # Парсим режимы и теги
-    adaptive_modes = _parse_modes(getattr(ns, "adaptive_mode", None))
+    modes = _parse_modes(getattr(ns, "mode", None))
     extra_tags = _parse_tags(getattr(ns, "tags", None))
     
     return RunOptions(
-        mode=ns.mode,
         model=ns.model,
         code_fence=not bool(getattr(ns, "no_fence", False)),
-        adaptive_modes=adaptive_modes,
+        modes=modes,
         extra_tags=extra_tags,
     )
 
 
-def _parse_modes(adaptive_modes: list[str] | None) -> Dict[str, str]:
+def _parse_modes(modes: list[str] | None) -> Dict[str, str]:
     """Парсит список режимов в формате 'modeset:mode' в словарь."""
     result = {}
-    if not adaptive_modes:
+    if not modes:
         return result
     
-    for mode_spec in adaptive_modes:
+    for mode_spec in modes:
         if ":" not in mode_spec:
             raise ValueError(f"Invalid mode format '{mode_spec}'. Expected 'modeset:mode'")
         modeset, mode = mode_spec.split(":", 1)

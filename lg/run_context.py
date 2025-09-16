@@ -6,6 +6,7 @@ from typing import Dict, Set
 
 from .cache.fs_cache import Cache
 from .config.adaptive_loader import AdaptiveConfigLoader
+from .config.adaptive_model import ModeOptions
 from .types import RunOptions
 from .vcs import VcsProvider
 from .stats import TokenService
@@ -73,7 +74,7 @@ class RunContext:
     vcs: VcsProvider
     tokenizer: TokenService
     adaptive_loader: AdaptiveConfigLoader
-    active_modes: Dict[str, str] = field(default_factory=dict)  # modeset_name -> mode_name
+    mode_options: ModeOptions = field(default_factory=ModeOptions)  # смердженные опции от режимов
     active_tags: Set[str] = field(default_factory=set)  # все активные теги
 
     def get_condition_context(self):

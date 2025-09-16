@@ -37,9 +37,9 @@ def _build_run_ctx(options: RunOptions) -> RunContext:
     vcs = GitVcs() if (root / ".git").is_dir() else NullVcs()
     tokenizer = TokenService(root, options.model)
     
-    active_tags, adaptive_loader = process_adaptive_options(
+    active_tags, mode_options, adaptive_loader = process_adaptive_options(
         root, 
-        options.adaptive_modes, 
+        options.modes,
         options.extra_tags
     )
 
@@ -50,7 +50,7 @@ def _build_run_ctx(options: RunOptions) -> RunContext:
         vcs=vcs,
         tokenizer=tokenizer,
         adaptive_loader=adaptive_loader,
-        active_modes=options.adaptive_modes,
+        mode_options=mode_options,
         active_tags=active_tags,
     )
 
@@ -66,7 +66,7 @@ def _pipeline_common(target: str, run_ctx: RunContext) -> Tuple[ContextSpec, Man
     manifest = build_manifest(
         root=run_ctx.root,
         spec=spec,
-        mode=run_ctx.options.mode,
+        mode=run_ctx.mode_options.vcs_mode,
         vcs=run_ctx.vcs,
     )
 

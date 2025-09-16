@@ -6,7 +6,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Dict, List, Any, Optional
+from typing import Dict, List, Any, Optional, Literal
 
 
 @dataclass
@@ -283,3 +283,54 @@ DEFAULT_TAGS_CONFIG = TagsConfig(
         "tools": Tag(title="Инструменты")
     }
 )
+
+
+@dataclass
+class ModeOptions:
+    """
+    Типизированный контейнер для смердженных опций от всех активных режимов.
+    
+    Содержит все возможные опции, которые могут быть определены в режимах,
+    с разумными значениями по умолчанию.
+    """
+    # VCS опции
+    vcs_mode: Literal["all", "changes"] = "all"
+    
+    # Инструментальные возможности
+    allow_tools: bool = False  # разрешение использования инструментов в агентном режиме
+    
+    # Дополнительные опции можно добавлять по мере необходимости
+
+    @classmethod
+    def merge_from_modes(cls, modes_config: ModesConfig, active_modes: Dict[str, str]) -> "ModeOptions":
+        """
+        Создает MergedModeOptions путем мержинга опций из всех активных режимов.
+        
+        Args:
+            modes_config: Конфигурация всех доступных режимов
+            active_modes: Словарь активных режимов {modeset_name: mode_name}
+            
+        Returns:
+            MergedModeOptions с объединенными настройками
+        """
+        result = cls()
+        
+        # Проходим по всем активным режимам и собираем их опции
+        for modeset_name, mode_name in active_modes.items():
+            modeset = modes_config.mode_sets.get(modeset_name)
+            if not modeset:
+                continue
+                
+            mode = modeset.modes.get(mode_name)
+            if not mode or not mode.options:
+                continue
+            
+            # Мержим опции в типизированный датакласс
+            for option_key, option_value in mode.options.items():
+                if option_key == "vcs_mode" and isinstance(option_value, str):
+                    result.vcs_mode = option_value
+                elif option_key == "allow_tools" and isinstance(option_value, bool):
+                    result.allow_tools = option_value
+                # Здесь можно добавить обработку других опций
+        
+        return result

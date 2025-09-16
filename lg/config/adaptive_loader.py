@@ -9,6 +9,7 @@ from typing import Dict, Set, Tuple, Optional
 
 from .modes import load_modes, ModesConfig
 from .tags import load_tags, TagsConfig, TagSet, Tag
+from .adaptive_model import ModeOptions
 
 
 class AdaptiveConfigLoader:
@@ -42,20 +43,20 @@ class AdaptiveConfigLoader:
 
 def process_adaptive_options(
     root: Path,
-    adaptive_modes: Dict[str, str],
+    modes: Dict[str, str],
     extra_tags: Set[str]
-) -> Tuple[Set[str], AdaptiveConfigLoader]:
+) -> Tuple[Set[str], ModeOptions, AdaptiveConfigLoader]:
     """
     Основная функция для обработки адаптивных опций.
-    Выполняет валидацию режимов и тегов, вычисляет активные теги.
+    Выполняет валидацию режимов и тегов, вычисляет активные теги и мержит опции режимов.
     
     Args:
         root: Корень репозитория
-        adaptive_modes: Словарь активных режимов {modeset_name: mode_name}
+        modes: Словарь активных режимов {modeset_name: mode_name}
         extra_tags: Дополнительные теги, указанные явно
         
     Returns:
-        Кортеж (активные_теги, загрузчик_конфигурации)
+        Кортеж (активные_теги, смердженные_опции_режимов, загрузчик_конфигурации)
         
     Raises:
         ValueError: Если режим или набор режимов не найден
@@ -63,8 +64,8 @@ def process_adaptive_options(
     loader = AdaptiveConfigLoader(root)
     
     # Валидируем режимы
-    if adaptive_modes:
-        _validate_modes_with_config(loader.get_modes_config(), adaptive_modes)
+    if modes:
+        _validate_modes_with_config(loader.get_modes_config(), modes)
     
     # Валидируем теги
     if extra_tags:
@@ -73,25 +74,31 @@ def process_adaptive_options(
     # Вычисляем активные теги
     active_tags = _compute_active_tags_with_config(
         loader.get_modes_config(), 
-        adaptive_modes, 
+        modes,
         extra_tags
     )
     
-    return active_tags, loader
+    # Мержим опции от всех активных режимов
+    mode_options = ModeOptions.merge_from_modes(
+        loader.get_modes_config(), 
+        modes
+    )
+    
+    return active_tags, mode_options, loader
 
 
-def _validate_modes_with_config(modes_config: ModesConfig, adaptive_modes: Dict[str, str]) -> None:
+def _validate_modes_with_config(modes_config: ModesConfig, modes: Dict[str, str]) -> None:
     """
     Проверяет корректность указанных режимов с использованием уже загруженной конфигурации.
     
     Args:
         modes_config: Загруженная конфигурация режимов
-        adaptive_modes: Словарь режимов для проверки
+        modes: Словарь режимов для проверки
         
     Raises:
         ValueError: Если режим или набор режимов не найден
     """
-    for modeset_name, mode_name in adaptive_modes.items():
+    for modeset_name, mode_name in modes.items():
         modeset = modes_config.mode_sets.get(modeset_name)
         if not modeset:
             available_modesets = list(modes_config.mode_sets.keys())
@@ -139,7 +146,7 @@ def _validate_tags_with_config(all_tags: Tuple[Dict[str, TagSet], Dict[str, Tag]
 
 def _compute_active_tags_with_config(
     modes_config: ModesConfig, 
-    adaptive_modes: Dict[str, str], 
+    modes: Dict[str, str],
     extra_tags: Set[str]
 ) -> Set[str]:
     """
@@ -147,7 +154,7 @@ def _compute_active_tags_with_config(
     
     Args:
         modes_config: Загруженная конфигурация режимов
-        adaptive_modes: Словарь активных режимов {modeset_name: mode_name}
+        modes: Словарь активных режимов {modeset_name: mode_name}
         extra_tags: Дополнительные теги, указанные явно
         
     Returns:
@@ -156,7 +163,7 @@ def _compute_active_tags_with_config(
     active_tags = set(extra_tags)  # Начинаем с явно указанных тегов
     
     # Собираем теги из активных режимов
-    for modeset_name, mode_name in adaptive_modes.items():
+    for modeset_name, mode_name in modes.items():
         modeset = modes_config.mode_sets.get(modeset_name)
         if not modeset:
             # Неизвестный набор режимов - пропускаем (уже проверено в валидации)
