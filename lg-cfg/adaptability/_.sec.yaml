@@ -49,5 +49,10 @@ docs-design:
     mode: allow
     allow:
       - "/docs/adaptability/design.md"
-  markdown:
-    max_heading_level: 2
+
+docs-template-engine:
+  extensions: [".md"]
+  filters:
+    mode: allow
+    allow:
+      - "/docs/adaptability/template-engine.md"
