@@ -291,96 +291,6 @@ flowchart LR
     end
 ```
 
-### Конфигурация и модель для адаптивных возможностей
-
-Данный системы уже реализованы и располагаются в:
-- `lg/config/adaptive_model.py`
-- `lg/config/adaptive_loader.py`
-
-Например, довольно полезна концепция нового класса `ModeOptions`, которая позволяет типизировать активные сейчас технические опции. Сюда же необходимо перенести `code_fence`.
-
-Новая IR-модель учитывает и дополняет то, что уже реализовано в `lg/config/adaptive_model.py`.
-
-### Новая IR модель для обработки секций
-
-Вот предлагаемая IR модель для обработчика секций по запросу:
-
-```python
-# lg/types_v2.py
-
-from __future__ import annotations
-from dataclasses import dataclass, field
-from pathlib import Path
-from typing import Dict, List, Literal, Optional, Set, Any
-
-# Базовые типы
-PathLabelMode = Literal["auto", "relative", "basename", "off"]
-LangName = str  # "python", "markdown", "", и т.д.
-LANG_NONE: LangName = ""
-
-@dataclass(frozen=True)
-class SectionRef:
-    """Ссылка на секцию с информацией о разрешении."""
-    name: str         # Имя секции, используемое в шаблоне
-    scope_path: str   # Путь к директории области (относительно корня репозитория)
-    cfg_path: Path    # Абсолютный путь к директории конфигурации
-    
-    def canon_key(self) -> str: # В однопроходной системе каноничный стабильный ключ уже не сильно нужен, но пусть на всякий случай будет
-        """Возвращает канонический ключ для этой секции."""
-        scope = self.scope_path or "."
-        return f"{scope}::{self.name}"
-
-@dataclass(frozen=True)
-class FileEntry:
-    """Представляет файл для включения в секцию."""
-    abs_path: Path
-    rel_path: str      # Относительно корня репозитория
-    language_hint: LangName
-    adapter_overrides: Dict[str, Dict] = field(default_factory=dict)
-
-@dataclass
-class SectionManifest:
-    """Манифест одной секции со всеми её файлами."""
-    ref: SectionRef
-    files: List[FileEntry]
-    # code_fence: bool — этого поля теперь нет, достается из TemplateContext.current_mode_options (ModeOptions)
-    path_labels: PathLabelMode
-    adapters_cfg: Dict[str, Dict] = field(default_factory=dict)
-
-@dataclass
-class FileGroup:
-    """Группа файлов с одинаковым языком."""
-    lang: LangName
-    entries: List[FileEntry]
-    mixed: bool = False
-
-@dataclass
-class SectionPlan:
-    """План для рендеринга одной секции."""
-    manifest: SectionManifest
-    groups: List[FileGroup]
-    md_only: bool
-    labels: Dict[str, str] = field(default_factory=dict)  # rel_path -> отображаемая метка
-
-@dataclass(frozen=True)
-class ProcessedFile:
-    """Обработанный файл, готовый для рендеринга."""
-    abs_path: Path
-    rel_path: str
-    processed_text: str
-    meta: Dict[str, Any]
-    raw_text: str
-    cache_key: str
-
-@dataclass
-class RenderedSection:
-    """Финальная отрендеренная секция."""
-    ref: SectionRef
-    text: str
-    files: List[ProcessedFile]
-    meta_summary: Dict[str, int] = field(default_factory=dict)
-```
-
 ### Реализация обработчика секций
 
 ```python
@@ -509,7 +419,7 @@ class TemplateProcessor:
 @dataclass
 class TemplateContext:
     """Контекст для рендеринга шаблона с управлением состоянием."""
-    run_ctx: RunContext
+    run_ctx: ProcessingContext
     # Локальные переопределения
     current_mode_options: ModeOptions
     active_tags: Set[str]
@@ -825,39 +735,6 @@ class StatsCollector:
         return out
 ```
 
-#### Необходимые дополнения в IR-модели
-
-```python
-@dataclass
-class FileStats:
-    """Статистика по файлу."""
-    path: str
-    size_bytes: int
-    tokens_raw: int
-    tokens_processed: int
-    saved_tokens: int
-    saved_pct: float
-    meta: Dict[str, Any]
-    sections: Dict[str, int] = field(default_factory=dict)  # секция -> количество использований
-
-@dataclass
-class SectionStats:
-    """Статистика по отрендеренной секции."""
-    ref: SectionRef
-    text: str
-    tokens_processed: int
-    tokens_raw: int
-    total_size_bytes: int
-    meta_summary: Dict[str, int] = field(default_factory=dict)
-
-@dataclass
-class TemplateStats:
-    """Статистика по шаблону."""
-    key: str
-    tokens: int
-    text_size: int
-```
-
 #### Интеграция с движком шаблонов
 
 ```python
@@ -946,5 +823,3 @@ flowchart TD
     
     StatsCollector -- "Вычисляет" --> FinalStats["Финальная статистика (API)"]
 ```
-
-Такая архитектура сбора статистики сохраняет все функциональные возможности текущей реализации, но при этом полностью интегрирована с новым однопроходным подходом к обработке шаблонов в LG V2.

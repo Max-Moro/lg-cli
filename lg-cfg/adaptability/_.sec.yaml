@@ -15,6 +15,7 @@ src:
           - "/_skeletons/"
           - "/scaffold.py"
           - "diag**"
+          - "/types.py"
         children:
           conditions:
             mode: allow

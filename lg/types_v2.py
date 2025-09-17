@@ -16,7 +16,6 @@ from typing import Dict, List, Literal, Set
 
 from .cache.fs_cache import Cache
 from .config.adaptive_loader import AdaptiveConfigLoader
-from .config.adaptive_model import ModeOptions
 from .stats import TokenService
 from .vcs import VcsProvider
 
@@ -297,9 +296,6 @@ class ProcessingContext:
     cache: Cache
     tokenizer: TokenService
     adaptive_loader: AdaptiveConfigLoader
-    
-    # Текущие режимные опции (могут изменяться в режимных блоках)
-    current_mode_options: ModeOptions
 
 
 # ---- Спецификация цели ----
