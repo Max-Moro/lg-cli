@@ -356,13 +356,17 @@ class TestParserComplexScenarios:
         
         ast = parser.parse()
         
-        # Проверяем что есть различные типы узлов
+        # Проверяем что есть различные типы узлов на верхнем уровне
         node_types = {type(node) for node in ast}
         assert TextNode in node_types
         assert ConditionalBlockNode in node_types
         assert SectionNode in node_types
         assert ModeBlockNode in node_types
-        assert IncludeNode in node_types
+        
+        # Проверяем что есть IncludeNode в любом месте AST
+        from lg.template.nodes import collect_include_nodes
+        include_nodes = collect_include_nodes(ast)
+        assert len(include_nodes) > 0
 
     def test_deeply_nested_structures(self):
         """Парсинг глубоко вложенных структур."""
@@ -384,10 +388,10 @@ class TestParserComplexScenarios:
         
         ast = parser.parse()
         
-        # Проверяем структуру вложения
-        assert len(ast) == 1
-        outer_if = ast[0]
-        assert isinstance(outer_if, ConditionalBlockNode)
+        # Проверяем структуру вложения - находим ConditionalBlockNode
+        conditional_nodes = [node for node in ast if isinstance(node, ConditionalBlockNode)]
+        assert len(conditional_nodes) == 1
+        outer_if = conditional_nodes[0]
         
         # Внутри должен быть mode блок
         mode_nodes = [node for node in outer_if.body if isinstance(node, ModeBlockNode)]

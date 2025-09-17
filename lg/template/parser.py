@@ -202,6 +202,10 @@ class TemplateParser:
             return self._parse_else_directive(tokens)
         elif first_token.type == TokenType.MODE:
             return self._parse_mode_directive(tokens)
+        elif first_token.type == TokenType.ENDIF:
+            raise ParserError("endif without if", first_token)
+        elif first_token.type == TokenType.ENDMODE:
+            raise ParserError("endmode without mode", first_token)
         else:
             raise ParserError(f"Unknown directive: {first_token.value}", first_token)
     
@@ -227,21 +231,27 @@ class TemplateParser:
         # Парсим тело условия до endif или else
         body_nodes = []
         else_block = None
+        found_end = False
         
         while not self._is_at_end():
             # Проверяем, не встретили ли мы endif или else
             if self._check_directive_keyword(TokenType.ENDIF):
                 self._consume_directive_keyword(TokenType.ENDIF)
+                found_end = True
                 break
             elif self._check_directive_keyword(TokenType.ELSE):
                 self._consume_directive_keyword(TokenType.ELSE)
                 else_block = self._parse_else_block()
                 self._consume_directive_keyword(TokenType.ENDIF)
+                found_end = True
                 break
             
             node = self._parse_top_level()
             if node:
                 body_nodes.append(node)
+        
+        if not found_end:
+            raise ParserError("Unexpected end of tokens, expected {% endif %}", tokens[0])
         
         return ConditionalBlockNode(
             condition_text=condition_text,
@@ -257,7 +267,7 @@ class TemplateParser:
         Примечание: Этот метод не должен вызываться напрямую,
         else обрабатывается внутри _parse_if_directive.
         """
-        raise ParserError("Else directive should be handled within if block", tokens[0])
+        raise ParserError("else without if", tokens[0])
     
     def _parse_else_block(self) -> ElseBlockNode:
         """Парсит тело else блока до endif."""
@@ -289,15 +299,20 @@ class TemplateParser:
         
         # Парсим тело режима до endmode
         body_nodes = []
+        found_end = False
         
         while not self._is_at_end():
             if self._check_directive_keyword(TokenType.ENDMODE):
                 self._consume_directive_keyword(TokenType.ENDMODE)
+                found_end = True
                 break
             
             node = self._parse_top_level()
             if node:
                 body_nodes.append(node)
+        
+        if not found_end:
+            raise ParserError("Unexpected end of tokens, expected {% endmode %}", tokens[0])
         
         return ModeBlockNode(modeset=modeset, mode=mode, body=body_nodes)
     
@@ -335,8 +350,17 @@ class TemplateParser:
         # Токенизируем собранное содержимое
         content_text = ''.join(content_parts)
         if content_text.strip():
-            lexer = TemplateLexer(content_text)
-            return lexer.tokenize_placeholder_content(content_text)
+            # Создаем новый лексер и используем правильный метод токенизации
+            temp_lexer = TemplateLexer(content_text)
+            tokens = []
+            
+            while temp_lexer.position < temp_lexer.length:
+                token = temp_lexer._tokenize_inside_placeholder()
+                if token.type == TokenType.EOF:
+                    break
+                tokens.append(token)
+            
+            return tokens
         else:
             return []
     
