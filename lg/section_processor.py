@@ -14,6 +14,7 @@ from pathlib import Path
 from typing import Dict, List, Optional, Set, cast
 
 from .adapters import get_adapter_for_path, process_groups
+from .adapters.base import BaseAdapter
 from .config import SectionCfg, EmptyPolicy, load_config
 from .config.paths import cfg_root, is_cfg_relpath
 from .conditions.evaluator import evaluate_condition_string
@@ -461,7 +462,7 @@ class SectionProcessor:
         cache = self.run_ctx.cache
         
         # Кэш связанных адаптеров для эффективности
-        bound_cache: Dict[tuple[str, tuple[tuple[str, object], ...]], object] = {}
+        bound_cache: Dict[tuple[str, tuple[tuple[str, object], ...]], BaseAdapter] = {}
         
         for group in plan.groups:
             group_size = len(group.entries)
@@ -486,6 +487,9 @@ class SectionProcessor:
                 if adapter is None:
                     adapter = adapter_cls.bind(raw_cfg, self.run_ctx.tokenizer)
                     bound_cache[bkey] = adapter
+                
+                # Type casting для корректной типизации
+                adapter = cast(BaseAdapter, adapter)
                 
                 # Читаем содержимое файла
                 raw_text = read_text(fp)
