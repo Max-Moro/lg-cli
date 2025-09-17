@@ -12,7 +12,13 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Dict, List, Literal, Optional, Set, Any
+from typing import Dict, List, Literal, Set
+
+from .cache.fs_cache import Cache
+from .config.adaptive_loader import AdaptiveConfigLoader
+from .config.adaptive_model import ModeOptions
+from .stats import TokenService
+from .vcs import VcsProvider
 
 # ---- Базовые типы ----
 PathLabelMode = Literal["auto", "relative", "basename", "off"]
@@ -148,13 +154,13 @@ class ProcessedFile:
     abs_path: Path
     rel_path: str
     processed_text: str
-    meta: Dict[str, Any]
+    meta: Dict[str, int | float | str | bool]
     raw_text: str
     cache_key: str
     
     # Статистические данные
-    tokens_raw: Optional[int] = None
-    tokens_processed: Optional[int] = None
+    tokens_raw: int
+    tokens_processed: int
     
     def __post_init__(self):
         """Инициализирует вычисляемые поля."""
@@ -233,7 +239,7 @@ class FileStats:
     tokens_processed: int
     saved_tokens: int
     saved_pct: float
-    meta: Dict[str, Any]
+    meta: Dict[str, int | float | str | bool]
     
     # Информация об использовании в секциях
     sections: Dict[str, int] = field(default_factory=dict)  # canon_key -> count
@@ -283,17 +289,17 @@ class ProcessingContext:
     options: RunOptionsV2
     
     # Активное состояние адаптивных возможностей
-    active_tags: Set[str] = field(default_factory=set)
-    active_modes: Dict[str, str] = field(default_factory=dict)
+    active_tags: Set[str]
+    active_modes: Dict[str, str]
     
     # Сервисы (будут инициализированы извне)
-    vcs: Any = None           # VcsProvider
-    cache: Any = None         # Cache
-    tokenizer: Any = None     # TokenService
-    adaptive_loader: Any = None  # AdaptiveConfigLoader
+    vcs: VcsProvider
+    cache: Cache
+    tokenizer: TokenService
+    adaptive_loader: AdaptiveConfigLoader
     
     # Текущие режимные опции (могут изменяться в режимных блоках)
-    current_mode_options: Any = None  # ModeOptions
+    current_mode_options: ModeOptions
 
 
 # ---- Спецификация цели ----
@@ -310,7 +316,7 @@ class TargetSpec:
     name: str                     # "docs/arch" или "all"
     
     # Для контекстов - путь к файлу шаблона
-    template_path: Optional[Path] = None
+    template_path: Path
 
 
 # ---- Результаты обработки ----
