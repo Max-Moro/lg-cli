@@ -13,28 +13,28 @@ import hashlib
 from pathlib import Path
 from typing import Dict, List, Optional, Set, cast
 
-from .adapters import get_adapter_for_path, process_groups
+from .adapters import get_adapter_for_path
 from .adapters.base import BaseAdapter
-from .config import SectionCfg, EmptyPolicy, load_config
-from .config.paths import cfg_root, is_cfg_relpath
 from .conditions.evaluator import evaluate_condition_string
+from .config import SectionCfg, load_config
+from .config.paths import cfg_root, is_cfg_relpath
 from .io.filters import FilterEngine
 from .io.fs import build_gitignore_spec, iter_files
 from .lang import get_language_for_file
 from .paths import build_labels
 from .render.renderer import render_document
 from .run_context import RunContext
+from .stats.collector import StatsCollector
+from .template.context import TemplateContext
 from .types import (
-    CanonSectionId, Group, ManifestFile, 
+    CanonSectionId, Group, ManifestFile,
     ProcessedBlob, RepoRelPath, SectionPlan
 )
 from .types import LangName as OldLangName, LANG_NONE as OLD_LANG_NONE
 from .types_v2 import (
-    FileEntry, FileGroup, ProcessedFile, RenderedSection, 
+    FileEntry, FileGroup, ProcessedFile, RenderedSection,
     SectionManifest, SectionPlan as SectionPlanV2, SectionRef
 )
-from .template.context import TemplateContext
-from .stats.collector import StatsCollector
 
 
 class SectionProcessor:
@@ -45,17 +45,23 @@ class SectionProcessor:
     но для одной секции за раз с учетом активного контекста шаблона.
     """
     
-    def __init__(self, run_ctx: RunContext):
+    def __init__(self, run_ctx: RunContext, stats_collector: Optional[StatsCollector] = None):
         """
         Инициализирует обработчик секций.
         
         Args:
             run_ctx: Контекст выполнения с настройками и сервисами
+            stats_collector: Коллектор статистики для делегирования всех расчетов
         """
         self.run_ctx = run_ctx
         self.cache = run_ctx.cache
         self.vcs = run_ctx.vcs
         self.tokenizer = run_ctx.tokenizer
+        self.stats_collector = stats_collector or StatsCollector(
+            tokenizer=self.tokenizer,
+            cache=self.cache,
+            target_name="section_processor"
+        )
         
         # Кэш результатов обработки секций
         self.section_cache: Dict[str, RenderedSection] = {}
@@ -85,9 +91,6 @@ class SectionProcessor:
         plan = self._build_section_plan(manifest, template_ctx)
         processed_files = self._process_files(plan, template_ctx)
         rendered = self._render_section(plan, processed_files)
-        
-        # Регистрируем статистику, если коллектор доступен
-        self._register_section_stats(rendered, section_ref, template_ctx)
         
         # Кэшируем результат
         self.section_cache[cache_key] = rendered
@@ -545,20 +548,21 @@ class SectionProcessor:
                     # Кэшируем результат
                     cache.put_processed(p_proc, processed_text=processed_text, meta=meta)
                 
-                # Вычисляем токены (простая аппроксимация, будет улучшено в задаче 4)
-                tokens_raw = len(raw_text.split())
-                tokens_processed = len(processed_text.split())
-                
-                # Создаем ProcessedFile
+                # Создаем ProcessedFile (без статистики)
                 processed_file = ProcessedFile(
                     abs_path=fp,
                     rel_path=file_entry.rel_path,
                     processed_text=processed_text.rstrip("\n") + "\n",
                     meta=meta,
                     raw_text=raw_text,
-                    cache_key=k_proc,
-                    tokens_raw=tokens_raw,
-                    tokens_processed=tokens_processed
+                    cache_key=k_proc
+                )
+                
+                # Регистрируем файл в коллекторе статистики
+                self.stats_collector.register_processed_file(
+                    file=processed_file,
+                    section_ref=plan.manifest.ref,
+                    multiplicity=1
                 )
                 processed_files.append(processed_file)
         
@@ -640,40 +644,10 @@ class SectionProcessor:
             files=processed_files
         )
         
-        # Обновляем статистику
-        rendered_section.update_stats()
+        # Регистрируем отрендеренную секцию в коллекторе статистики
+        self.stats_collector.register_section_rendered(rendered_section)
         
         return rendered_section
-
-    def _register_section_stats(
-        self, 
-        rendered_section: RenderedSection, 
-        section_ref: SectionRef, 
-        template_ctx: TemplateContext
-    ) -> None:
-        """
-        Регистрирует статистику обработанной секции в коллекторе.
-        
-        Args:
-            rendered_section: Отрендеренная секция
-            section_ref: Ссылка на секцию
-            template_ctx: Контекст шаблона с коллектором статистики
-        """
-        # Получаем коллектор статистики из контекста шаблона
-        stats_collector: StatsCollector = cast(StatsCollector, getattr(template_ctx, 'stats_collector', None))
-        if not stats_collector:
-            return
-        
-        # Регистрируем все обработанные файлы
-        for processed_file in rendered_section.files:
-            stats_collector.register_processed_file(
-                file=processed_file,
-                section_ref=section_ref,
-                multiplicity=1  # Пока используем фиксированное значение
-            )
-        
-        # Регистрируем отрендеренную секцию
-        stats_collector.register_section_rendered(rendered_section)
 
 
 __all__ = ["SectionProcessor"]

@@ -7,14 +7,13 @@
 
 from __future__ import annotations
 
-from pathlib import Path
-from typing import Dict, List, Optional, Set, Tuple
+from typing import Dict, List, Optional, Tuple
 
 from ..cache.fs_cache import Cache
 from ..stats import TokenService
 from ..types import FileRow, Totals, ContextBlock  # Старый формат для совместимости
 from ..types_v2 import (
-    ProcessedFile, RenderedSection, SectionRef, FileStats, 
+    ProcessedFile, RenderedSection, SectionRef, FileStats,
     SectionStats, TemplateStats
 )
 
@@ -81,9 +80,9 @@ class StatsCollector:
         rel_path = file.rel_path
         canon_key = section_ref.canon_key()
         
-        # Получаем токены из файла или подсчитываем
-        t_proc = file.tokens_processed or self.tokenizer.count_text(file.processed_text)
-        t_raw = file.tokens_raw or self.tokenizer.count_text(file.raw_text)
+        # Подсчитываем токены (коллектор полностью отвечает за статистику)
+        t_proc = self.tokenizer.count_text(file.processed_text)
+        t_raw = self.tokenizer.count_text(file.raw_text)
         
         # Обновляем кэш токенов
         self._update_file_tokens_cache(file.cache_key, t_raw, t_proc)
@@ -125,11 +124,24 @@ class StatsCollector:
     def register_section_rendered(self, section: RenderedSection) -> None:
         """
         Регистрирует статистику отрендеренной секции.
+        Подсчитывает статистику на основе содержимого секции и файлов.
         
         Args:
-            section: Отрендеренная секция со статистикой
+            section: Отрендеренная секция
         """
         canon_key = section.ref.canon_key()
+        
+        # Подсчитываем токены отрендеренной секции
+        tokens_processed = self.tokenizer.count_text(section.text)
+        
+        # Подсчитываем токены исходного содержимого файлов
+        tokens_raw = sum(self.tokenizer.count_text(file.raw_text) for file in section.files)
+        
+        # Подсчитываем общий размер файлов
+        total_size_bytes = sum(
+            file.abs_path.stat().st_size if file.abs_path.exists() else 0 
+            for file in section.files
+        )
         
         # Собираем метаданные со всех файлов
         meta_summary = {}
@@ -141,9 +153,9 @@ class StatsCollector:
         self.sections_stats[canon_key] = SectionStats(
             ref=section.ref,
             text=section.text,
-            tokens_processed=section.tokens_processed,
-            tokens_raw=section.tokens_raw,
-            total_size_bytes=section.total_size_bytes,
+            tokens_processed=tokens_processed,
+            tokens_raw=tokens_raw,
+            total_size_bytes=total_size_bytes,
             meta_summary=meta_summary
         )
     

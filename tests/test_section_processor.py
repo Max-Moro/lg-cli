@@ -13,15 +13,15 @@ from unittest.mock import Mock, patch
 
 import pytest
 
-from lg.section_processor import SectionProcessor
-from lg.template.context import TemplateContext
-from lg.run_context import RunContext
 from lg.cache.fs_cache import Cache
-from lg.vcs import NullVcs
-from lg.stats import TokenService
-from lg.types_v2 import SectionRef, FileEntry, RenderedSection
 from lg.config.adaptive_loader import AdaptiveConfigLoader
 from lg.config.adaptive_model import ModeOptions
+from lg.run_context import RunContext
+from lg.section_processor import SectionProcessor
+from lg.stats import TokenService
+from lg.template.context import TemplateContext
+from lg.types_v2 import SectionRef, FileEntry
+from lg.vcs import NullVcs
 
 
 class TestSectionProcessor:
@@ -108,6 +108,7 @@ test-section:
         assert processor.cache == mock_run_ctx.cache
         assert processor.vcs == mock_run_ctx.vcs
         assert processor.tokenizer == mock_run_ctx.tokenizer
+        assert processor.stats_collector is not None
         assert isinstance(processor.section_cache, dict)
         assert isinstance(processor._config_cache, dict)
 
