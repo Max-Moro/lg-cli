@@ -7,13 +7,13 @@ AST-узлы для движка шаблонизации LG V2.
 
 from __future__ import annotations
 
+from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from typing import List, Optional, Set, Dict, Any
-from abc import ABC, abstractmethod
 
 from ..conditions.model import Condition
-from ..types_v2 import SectionRef
 from ..config.adaptive_model import ModeOptions
+from ..types_v2 import SectionRef
 
 
 @dataclass(frozen=True)
@@ -224,3 +224,36 @@ def has_conditional_content(ast: TemplateAST) -> bool:
         return False
     
     return any(_check_node(node) for node in ast)
+
+
+def format_ast_tree(ast: List[TemplateNode], indent: int = 0) -> str:
+    """Format AST as a tree structure for debugging."""
+    lines = []
+    prefix = "  " * indent
+    
+    for node in ast:
+        if isinstance(node, TextNode):
+            lines.append(f"{prefix}TextNode('{node.text}')")
+        elif isinstance(node, SectionNode):
+            lines.append(f"{prefix}SectionNode('{node.section_name}')")
+        elif isinstance(node, CommentNode):
+            lines.append(f"{prefix}CommentNode('{node.text}')")
+        elif isinstance(node, ConditionalBlockNode):
+            lines.append(f"{prefix}ConditionalBlockNode(condition='{node.condition_text}')")
+            if node.body:
+                lines.append(f"{prefix}  body:")
+                lines.append(format_ast_tree(node.body, indent + 2))
+            if node.else_block:
+                lines.append(f"{prefix}  else:")
+                lines.append(format_ast_tree(node.else_block.body, indent + 2))
+        elif isinstance(node, ModeBlockNode):
+            lines.append(f"{prefix}ModeBlockNode(modeset='{node.modeset}', mode='{node.mode}')")
+            if node.body:
+                lines.append(f"{prefix}  body:")
+                lines.append(format_ast_tree(node.body, indent + 2))
+        elif isinstance(node, IncludeNode):
+            lines.append(f"{prefix}IncludeNode(kind='{node.kind}', name='{node.name}', origin='{node.origin}')")
+        else:
+            lines.append(f"{prefix}{type(node).__name__}")
+    
+    return "\n".join(lines)

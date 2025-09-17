@@ -8,21 +8,19 @@
 
 from __future__ import annotations
 
-from pathlib import Path
-from typing import Dict, List, Optional, Set, Callable, Any
+from typing import Dict, List, Optional, Callable, Any
 
-from .lexer import TemplateLexer, LexerError, tokenize_template
-from .parser import TemplateParser, ParserError, parse_template, parse_template_from_tokens
+from .context import TemplateContext, create_template_context
+from .evaluator import TemplateEvaluationError
+from .lexer import LexerError
 from .nodes import (
     TemplateAST, TemplateNode, TextNode, SectionNode, IncludeNode,
     ConditionalBlockNode, ModeBlockNode, CommentNode, ElseBlockNode,
     collect_section_nodes, collect_include_nodes, has_conditional_content
 )
-from .context import TemplateContext, create_template_context
-from .evaluator import TemplateConditionEvaluator, TemplateEvaluationError
-
-from ..run_context import RunContext
+from .parser import ParserError, parse_template
 from ..context.common import load_template_from, load_context_from
+from ..run_context import RunContext
 
 
 class TemplateProcessingError(Exception):

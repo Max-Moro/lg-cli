@@ -10,7 +10,7 @@ from __future__ import annotations
 import enum
 import re
 from dataclasses import dataclass
-from typing import Iterator, List, Optional, Pattern
+from typing import List
 
 
 class TokenType(enum.Enum):
@@ -189,29 +189,7 @@ class TemplateLexer:
                 self._advance(len(value))
                 return Token(token_type, value, start_pos, start_line, start_column)
         
-        # Проверяем остальные токены
-        for token_type, pattern in self._PATTERNS.items():
-            if token_type in [
-                TokenType.PLACEHOLDER_START, TokenType.DIRECTIVE_START,
-                TokenType.COMMENT_START, TokenType.PLACEHOLDER_END,
-                TokenType.DIRECTIVE_END, TokenType.COMMENT_END
-            ]:
-                continue  # Уже проверены выше
-                
-            match = pattern.match(self.text, self.position)
-            if match:
-                value = match.group(0)
-                self._advance(len(value))
-                
-                # Проверяем, не является ли идентификатор ключевым словом
-                if token_type == TokenType.IDENTIFIER:
-                    keyword_type = self._KEYWORDS.get(value)
-                    if keyword_type:
-                        token_type = keyword_type
-                
-                return Token(token_type, value, start_pos, start_line, start_column)
-        
-        # Если ничего не подошло, считаем это текстом
+        # Если не нашли специальных разделителей, считаем это текстом
         # Читаем до следующего специального символа или конца
         text_end = self._find_next_special_sequence()
         if text_end > self.position:
@@ -243,19 +221,28 @@ class TemplateLexer:
     def _find_next_special_sequence(self) -> int:
         """
         Находит позицию следующей специальной последовательности
-        (${, {%, {#) или конец текста.
+        (${, {%, {#, }, %}, #}) или конец текста.
         """
         pos = self.position
         while pos < self.length:
             char = self.text[pos]
-            if char in '${}':
-                # Проверяем, начинается ли здесь специальная последовательность
-                if char == '$' and pos + 1 < self.length and self.text[pos + 1] == '{':
-                    return pos  # Найден ${
-                elif char == '{' and pos + 1 < self.length:
-                    next_char = self.text[pos + 1]
-                    if next_char in '%#':
-                        return pos  # Найден {% или {#
+            
+            # Открывающие последовательности
+            if char == '$' and pos + 1 < self.length and self.text[pos + 1] == '{':
+                return pos  # Найден ${
+            elif char == '{' and pos + 1 < self.length:
+                next_char = self.text[pos + 1]
+                if next_char in '%#':
+                    return pos  # Найден {% или {#
+                    
+            # Закрывающие последовательности  
+            elif char == '}':
+                return pos  # Найден }
+            elif char == '%' and pos + 1 < self.length and self.text[pos + 1] == '}':
+                return pos  # Найден %}  
+            elif char == '#' and pos + 1 < self.length and self.text[pos + 1] == '}':
+                return pos  # Найден #}
+            
             pos += 1
         return self.length
     

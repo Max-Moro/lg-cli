@@ -7,9 +7,9 @@
 
 from __future__ import annotations
 
-from typing import List, Optional, Tuple
+from typing import List, Optional
 
-from .lexer import Token, TokenType, TemplateLexer, LexerError
+from .lexer import Token, TokenType, TemplateLexer
 from .nodes import (
     TemplateNode, TemplateAST, TextNode, SectionNode, IncludeNode,
     ConditionalBlockNode, ElseBlockNode, ModeBlockNode, CommentNode
@@ -277,16 +277,15 @@ class TemplateParser:
         """
         Парсит директиву режима {% mode modeset:mode %}.
         """
-        if len(tokens) < 2:
+        if len(tokens) < 4:  # mode, modeset, :, mode_name
             raise ParserError("Missing mode specification", tokens[0])
         
-        # Ожидаем formат: mode modeset:mode_name
-        mode_spec = tokens[1].value
-        
-        if ':' not in mode_spec:
+        # Ожидаем format: mode modeset : mode_name
+        if tokens[1].type != TokenType.IDENTIFIER or tokens[2].type != TokenType.COLON or tokens[3].type != TokenType.IDENTIFIER:
             raise ParserError("Invalid mode format, expected 'modeset:mode'", tokens[1])
         
-        modeset, mode = mode_spec.split(':', 1)
+        modeset = tokens[1].value
+        mode = tokens[3].value
         
         # Парсим тело режима до endmode
         body_nodes = []
@@ -335,8 +334,11 @@ class TemplateParser:
         
         # Токенизируем собранное содержимое
         content_text = ''.join(content_parts)
-        lexer = TemplateLexer(content_text)
-        return lexer.tokenize_placeholder_content(content_text)
+        if content_text.strip():
+            lexer = TemplateLexer(content_text)
+            return lexer.tokenize_placeholder_content(content_text)
+        else:
+            return []
     
     def _collect_directive_content(self) -> List[Token]:
         """Собирает токены содержимого директивы до %}."""
@@ -350,9 +352,21 @@ class TemplateParser:
             self._advance()
         
         # Токенизируем собранное содержимое
-        content_text = ''.join(content_parts)
-        lexer = TemplateLexer(content_text)
-        return lexer.tokenize_directive_content(content_text)
+        content_text = ''.join(content_parts).strip()
+        if content_text:
+            # Создаем новый лексер для содержимого директивы
+            lexer = TemplateLexer(content_text)
+            tokens = []
+            
+            while lexer.position < lexer.length:
+                token = lexer._tokenize_inside_directive()
+                if token.type == TokenType.EOF:
+                    break
+                tokens.append(token)
+            
+            return tokens
+        else:
+            return []
     
     def _reconstruct_condition_text(self, tokens: List[Token]) -> str:
         """Восстанавливает текст условия из токенов."""
@@ -366,16 +380,22 @@ class TemplateParser:
         """
         if (self.position + 2 < len(self.tokens) and
             self.tokens[self.position].type == TokenType.DIRECTIVE_START and
-            self.tokens[self.position + 1].type == keyword and
-            self.position + 3 < len(self.tokens) and
-            self.tokens[self.position + 3].type == TokenType.DIRECTIVE_END):
-            return True
+            self.tokens[self.position + 2].type == TokenType.DIRECTIVE_END):
+            # Проверяем содержимое директивы
+            content = self.tokens[self.position + 1].value.strip()
+            keyword_name = keyword.name.lower()
+            return content == keyword_name
         return False
     
     def _consume_directive_keyword(self, keyword: TokenType) -> None:
         """Потребляет директиву с указанным ключевым словом."""
         self._consume(TokenType.DIRECTIVE_START)
-        self._consume(keyword)
+        # Проверяем, что содержимое соответствует ключевому слову
+        content_token = self._current_token()
+        keyword_name = keyword.name.lower()
+        if content_token.value.strip() != keyword_name:
+            raise ParserError(f"Expected '{keyword_name}', got '{content_token.value.strip()}'", content_token)
+        self._advance()  # Потребляем содержимое
         self._consume(TokenType.DIRECTIVE_END)
     
     def _current_token(self) -> Token:
