@@ -9,7 +9,6 @@ src:
       lg:
         mode: block
         block:
-          - "/stats/"
           - "/markdown/"
           - "/migrate/"
           - "/_skeletons/"
@@ -35,6 +34,11 @@ src:
             mode: block
             block:
               - "/load.py"
+          stats:
+            mode: allow
+            allow:
+              - "/collector.py"
+              - "/report_builder.py"
   targets:
     - match:
       - "/lg/cache/fs_cache.py"

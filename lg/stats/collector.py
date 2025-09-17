@@ -1,0 +1,368 @@
+"""
+Инкрементальный коллектор статистики для LG V2.
+
+Собирает метрики постепенно в процессе рендеринга шаблонов и секций,
+обеспечивая корректный учет активных режимов, тегов и условных блоков.
+"""
+
+from __future__ import annotations
+
+from pathlib import Path
+from typing import Dict, List, Optional, Set, Tuple
+
+from ..cache.fs_cache import Cache
+from ..stats import TokenService
+from ..types import FileRow, Totals, ContextBlock  # Старый формат для совместимости
+from ..types_v2 import (
+    ProcessedFile, RenderedSection, SectionRef, FileStats, 
+    SectionStats, TemplateStats
+)
+
+
+class StatsCollector:
+    """
+    Коллектор статистики, встроенный в процесс рендеринга шаблонов.
+    
+    Собирает метрики инкрементально, по мере обработки шаблонов и секций.
+    Обеспечивает корректный учет:
+    - Активных режимов и тегов
+    - Условных блоков 
+    - Переопределений режимов через {% mode %} блоки
+    - Кэширования токенов
+    """
+    
+    def __init__(self, tokenizer: TokenService, cache: Cache, target_name: str):
+        """
+        Инициализирует коллектор статистики.
+        
+        Args:
+            tokenizer: Сервис подсчета токенов
+            cache: Кэш для сохранения метрик
+            target_name: Имя цели (контекста/секции) для статистики
+        """
+        self.tokenizer = tokenizer
+        self.cache = cache
+        self.target_name = target_name
+        
+        # Статистика по файлам (ключ: rel_path)
+        self.files_stats: Dict[str, FileStats] = {}
+        
+        # Статистика по секциям (ключ: canon_key)
+        self.sections_stats: Dict[str, SectionStats] = {}
+        
+        # Статистика по шаблонам (ключ: template_key)
+        self.templates_stats: Dict[str, TemplateStats] = {}
+        
+        # Карта использования секций {canon_key: count}
+        self.sections_usage: Dict[str, int] = {}
+        
+        # Итоговые тексты для подсчета финальных токенов
+        self.final_text: Optional[str] = None
+        self.sections_only_text: Optional[str] = None
+        
+        # Кэшированные токены для итогового текста
+        self._final_tokens: Optional[int] = None
+        self._sections_only_tokens: Optional[int] = None
+    
+    def register_processed_file(
+        self, 
+        file: ProcessedFile, 
+        section_ref: SectionRef, 
+        multiplicity: int = 1
+    ) -> None:
+        """
+        Регистрирует статистику обработанного файла.
+        
+        Args:
+            file: Обработанный файл
+            section_ref: Ссылка на секцию, в которой используется файл
+            multiplicity: Количество использований файла (для дедупликации)
+        """
+        rel_path = file.rel_path
+        canon_key = section_ref.canon_key()
+        
+        # Получаем токены из файла или подсчитываем
+        t_proc = file.tokens_processed or self.tokenizer.count_text(file.processed_text)
+        t_raw = file.tokens_raw or self.tokenizer.count_text(file.raw_text)
+        
+        # Обновляем кэш токенов
+        self._update_file_tokens_cache(file.cache_key, t_raw, t_proc)
+        
+        # Вычисляем статистику с учетом множественности
+        saved_tokens = max(0, (t_raw - t_proc) * multiplicity)
+        saved_pct = (1 - (t_proc / t_raw)) * 100.0 if t_raw else 0.0
+        
+        # Регистрируем или обновляем статистику файла
+        if rel_path not in self.files_stats:
+            self.files_stats[rel_path] = FileStats(
+                path=rel_path,
+                size_bytes=file.abs_path.stat().st_size if file.abs_path.exists() else 0,
+                tokens_raw=t_raw * multiplicity,
+                tokens_processed=t_proc * multiplicity,
+                saved_tokens=saved_tokens,
+                saved_pct=saved_pct,
+                meta=file.meta.copy() if file.meta else {},
+                sections={canon_key: multiplicity}
+            )
+        else:
+            # Файл уже учтен, обновляем статистику использования
+            stats = self.files_stats[rel_path]
+            
+            # Увеличиваем счетчики для этой секции
+            current_count = stats.sections.get(canon_key, 0)
+            stats.sections[canon_key] = current_count + multiplicity
+            
+            # Пересчитываем токены с учетом нового использования
+            total_multiplicity = sum(stats.sections.values())
+            stats.tokens_raw = t_raw * total_multiplicity
+            stats.tokens_processed = t_proc * total_multiplicity
+            stats.saved_tokens = max(0, stats.tokens_raw - stats.tokens_processed)
+            stats.saved_pct = (1 - (stats.tokens_processed / stats.tokens_raw)) * 100.0 if stats.tokens_raw else 0.0
+        
+        # Обновляем счетчик использования секции
+        self.sections_usage[canon_key] = self.sections_usage.get(canon_key, 0) + multiplicity
+    
+    def register_section_rendered(self, section: RenderedSection) -> None:
+        """
+        Регистрирует статистику отрендеренной секции.
+        
+        Args:
+            section: Отрендеренная секция со статистикой
+        """
+        canon_key = section.ref.canon_key()
+        
+        # Собираем метаданные со всех файлов
+        meta_summary = {}
+        for file in section.files:
+            for k, v in self._extract_numeric_meta(file.meta).items():
+                meta_summary[k] = meta_summary.get(k, 0) + v
+        
+        # Создаем статистику секции
+        self.sections_stats[canon_key] = SectionStats(
+            ref=section.ref,
+            text=section.text,
+            tokens_processed=section.tokens_processed,
+            tokens_raw=section.tokens_raw,
+            total_size_bytes=section.total_size_bytes,
+            meta_summary=meta_summary
+        )
+    
+    def register_template(self, template_key: str, template_text: str) -> None:
+        """
+        Регистрирует статистику шаблона.
+        
+        Args:
+            template_key: Уникальный ключ шаблона
+            template_text: Текст шаблона для подсчета токенов
+        """
+        tokens = self.tokenizer.count_text(template_text)
+        
+        self.templates_stats[template_key] = TemplateStats(
+            key=template_key,
+            tokens=tokens,
+            text_size=len(template_text)
+        )
+    
+    def set_final_texts(self, final_text: str, sections_only_text: str) -> None:
+        """
+        Устанавливает итоговые тексты для подсчета финальных токенов.
+        
+        Args:
+            final_text: Полностью отрендеренный документ (с шаблонным "клеем")
+            sections_only_text: Только секции без шаблонного содержимого
+        """
+        self.final_text = final_text
+        self.sections_only_text = sections_only_text
+        
+        # Подсчитываем и кэшируем токены
+        self._final_tokens = self._get_or_count_rendered_tokens("final", final_text)
+        self._sections_only_tokens = self._get_or_count_rendered_tokens("sections_only", sections_only_text)
+    
+    def compute_final_stats(self) -> Tuple[List[FileRow], Totals, ContextBlock]:
+        """
+        Вычисляет итоговую статистику на основе собранных данных.
+        
+        Возвращает структуру, совместимую со старым API:
+        - список статистики по файлам
+        - общую статистику
+        - статистику контекста
+        
+        Returns:
+            Кортеж (files_rows, totals, context_block)
+            
+        Raises:
+            ValueError: Если итоговые тексты не установлены
+        """
+        if self.final_text is None or self.sections_only_text is None:
+            raise ValueError("Final texts not set. Call set_final_texts() before computing stats.")
+        
+        # Вычисляем общие суммы
+        total_raw = sum(f.tokens_raw for f in self.files_stats.values())
+        total_proc = sum(f.tokens_processed for f in self.files_stats.values())
+        total_size = sum(f.size_bytes for f in self.files_stats.values())
+        
+        # Собираем общую метасводку
+        meta_summary = {}
+        for file_stats in self.files_stats.values():
+            for k, v in self._extract_numeric_meta(file_stats.meta).items():
+                meta_summary[k] = meta_summary.get(k, 0) + v
+        
+        # Получаем информацию о модели для подсчета shares
+        model_info = self.tokenizer.model_info
+        
+        # Преобразуем статистику файлов в формат API
+        files_rows = []
+        for file_stats in sorted(self.files_stats.values(), key=lambda x: x.path):
+            prompt_share = (file_stats.tokens_processed / total_proc * 100.0) if total_proc else 0.0
+            ctx_share = (file_stats.tokens_processed / model_info.ctx_limit * 100.0) if model_info.ctx_limit else 0.0
+            
+            files_rows.append(FileRow(
+                path=file_stats.path,
+                sizeBytes=file_stats.size_bytes,
+                tokensRaw=file_stats.tokens_raw,
+                tokensProcessed=file_stats.tokens_processed,
+                savedTokens=file_stats.saved_tokens,
+                savedPct=file_stats.saved_pct,
+                promptShare=prompt_share,
+                ctxShare=ctx_share,
+                meta=file_stats.meta or {}
+            ))
+        
+        # Создаем итоговую статистику
+        totals = Totals(
+            sizeBytes=total_size,
+            tokensProcessed=total_proc,
+            tokensRaw=total_raw,
+            savedTokens=max(0, total_raw - total_proc),
+            savedPct=(1 - (total_proc / total_raw)) * 100.0 if total_raw else 0.0,
+            ctxShare=(total_proc / model_info.ctx_limit * 100.0) if model_info.ctx_limit else 0.0,
+            renderedTokens=self._sections_only_tokens,
+            renderedOverheadTokens=max(0, (self._sections_only_tokens or 0) - total_proc),
+            metaSummary=meta_summary
+        )
+        
+        # Создаем статистику контекста
+        template_overhead_tokens = max(0, (self._final_tokens or 0) - (self._sections_only_tokens or 0))
+        template_overhead_pct = 0.0
+        if self._final_tokens and self._final_tokens > 0:
+            template_overhead_pct = (template_overhead_tokens / self._final_tokens * 100.0)
+        
+        ctx_block = ContextBlock(
+            templateName=self.target_name,
+            sectionsUsed=self.sections_usage.copy(),
+            finalRenderedTokens=self._final_tokens,
+            templateOnlyTokens=template_overhead_tokens,
+            templateOverheadPct=template_overhead_pct,
+            finalCtxShare=(self._final_tokens / model_info.ctx_limit * 100.0) if model_info.ctx_limit and self._final_tokens else 0.0
+        )
+        
+        return files_rows, totals, ctx_block
+    
+    def get_processing_summary(self) -> Dict[str, int]:
+        """
+        Возвращает краткую сводку для отладки и логирования.
+        
+        Returns:
+            Словарь с ключевыми метриками
+        """
+        total_files = len(self.files_stats)
+        total_sections = len(self.sections_stats)
+        total_templates = len(self.templates_stats)
+        
+        total_processed_tokens = sum(f.tokens_processed for f in self.files_stats.values())
+        total_raw_tokens = sum(f.tokens_raw for f in self.files_stats.values())
+        
+        return {
+            "files_count": total_files,
+            "sections_count": total_sections,
+            "templates_count": total_templates,
+            "total_processed_tokens": total_processed_tokens,
+            "total_raw_tokens": total_raw_tokens,
+            "total_saved_tokens": max(0, total_raw_tokens - total_processed_tokens),
+            "final_tokens": self._final_tokens or 0,
+            "sections_only_tokens": self._sections_only_tokens or 0
+        }
+    
+    # -------------------- Внутренние методы -------------------- #
+    
+    def _update_file_tokens_cache(self, cache_key: str, tokens_raw: int, tokens_processed: int) -> None:
+        """Обновляет кэш токенов для файла."""
+        try:
+            model_info = self.tokenizer.model_info
+            
+            # Пытаемся обновить кэш processed токенов
+            p_proc = self.cache.path_for_processed_key(cache_key)
+            if p_proc.exists():
+                self.cache.update_tokens(p_proc, model=model_info.base, mode="processed", value=tokens_processed)
+            
+            # Пытаемся обновить кэш raw токенов 
+            p_raw = self.cache.path_for_raw_tokens_key(cache_key)
+            if p_raw.exists():
+                self.cache.update_tokens(p_raw, model=model_info.base, mode="raw", value=tokens_raw)
+                
+        except Exception:
+            # Ошибки кэширования не должны прерывать сбор статистики
+            pass
+    
+    def _get_or_count_rendered_tokens(self, variant: str, text: str) -> int:
+        """
+        Получает токены из кэша или подсчитывает их и сохраняет.
+        
+        Args:
+            variant: Вариант рендеринга ("final", "sections_only")
+            text: Текст для подсчета токенов
+            
+        Returns:
+            Количество токенов
+        """
+        try:
+            model_info = self.tokenizer.model_info
+            
+            # Формируем ключ кэша для rendered токенов
+            options_fp = {"variant": variant}
+            processed_keys = {f.path: str(hash(str(f.sections))) for f in self.files_stats.values()}
+            templates_hashes = {k: str(hash(v.key)) for k, v in self.templates_stats.items()}
+            
+            k_rendered, p_rendered = self.cache.build_rendered_key(
+                context_name=self.target_name,
+                sections_used=self.sections_usage,
+                options_fp=options_fp,
+                processed_keys=processed_keys,
+                templates=templates_hashes,
+            )
+            
+            # Пытаемся получить из кэша
+            cached_tokens = self.cache.get_rendered_tokens(p_rendered, model=model_info.base)
+            if isinstance(cached_tokens, int):
+                return cached_tokens
+            
+            # Подсчитываем и сохраняем в кэш
+            tokens = self.tokenizer.count_text(text)
+            self.cache.update_rendered_tokens(p_rendered, model=model_info.base, value=tokens)
+            
+            return tokens
+            
+        except Exception:
+            # Fallback: просто подсчитываем токены без кэширования
+            return self.tokenizer.count_text(text)
+    
+    def _extract_numeric_meta(self, meta: Dict) -> Dict[str, int]:
+        """
+        Извлекает числовые метаданные для агрегации.
+        
+        Args:
+            meta: Словарь метаданных
+            
+        Returns:
+            Словарь с числовыми значениями
+        """
+        out: Dict[str, int] = {}
+        for k, v in (meta or {}).items():
+            try:
+                if isinstance(v, bool):
+                    v = int(v)
+                if isinstance(v, (int, float)):
+                    out[k] = int(v)
+            except Exception:
+                pass
+        return out

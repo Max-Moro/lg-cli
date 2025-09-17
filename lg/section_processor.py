@@ -34,6 +34,7 @@ from .types_v2 import (
     SectionManifest, SectionPlan as SectionPlanV2, SectionRef
 )
 from .template.context import TemplateContext
+from .stats.collector import StatsCollector
 
 
 class SectionProcessor:
@@ -84,6 +85,9 @@ class SectionProcessor:
         plan = self._build_section_plan(manifest, template_ctx)
         processed_files = self._process_files(plan, template_ctx)
         rendered = self._render_section(plan, processed_files)
+        
+        # Регистрируем статистику, если коллектор доступен
+        self._register_section_stats(rendered, section_ref, template_ctx)
         
         # Кэшируем результат
         self.section_cache[cache_key] = rendered
@@ -640,6 +644,36 @@ class SectionProcessor:
         rendered_section.update_stats()
         
         return rendered_section
+
+    def _register_section_stats(
+        self, 
+        rendered_section: RenderedSection, 
+        section_ref: SectionRef, 
+        template_ctx: TemplateContext
+    ) -> None:
+        """
+        Регистрирует статистику обработанной секции в коллекторе.
+        
+        Args:
+            rendered_section: Отрендеренная секция
+            section_ref: Ссылка на секцию
+            template_ctx: Контекст шаблона с коллектором статистики
+        """
+        # Получаем коллектор статистики из контекста шаблона
+        stats_collector = getattr(template_ctx, 'stats_collector', None)
+        if not stats_collector:
+            return
+        
+        # Регистрируем все обработанные файлы
+        for processed_file in rendered_section.files:
+            stats_collector.register_processed_file(
+                file=processed_file,
+                section_ref=section_ref,
+                multiplicity=1  # Пока используем фиксированное значение
+            )
+        
+        # Регистрируем отрендеренную секцию
+        stats_collector.register_section_rendered(rendered_section)
 
 
 __all__ = ["SectionProcessor"]

@@ -21,6 +21,7 @@ from .nodes import (
 from .parser import ParserError, parse_template
 from ..context.common import load_template_from, load_context_from
 from ..run_context import RunContext
+from ..stats.collector import StatsCollector
 
 
 class TemplateProcessingError(Exception):
@@ -56,7 +57,7 @@ class TemplateProcessor:
         
         # Хендлеры для обработки различных типов узлов
         self.section_handler: Optional[Callable[[str, TemplateContext], str]] = None
-        self.stats_collector: Optional[Any] = None  # Будет типизирован в stats модуле
+        self.stats_collector: Optional[StatsCollector] = None
         
     def set_section_handler(self, handler: Callable[[str, TemplateContext], str]) -> None:
         """
@@ -68,7 +69,7 @@ class TemplateProcessor:
         """
         self.section_handler = handler
     
-    def set_stats_collector(self, collector: Any) -> None:
+    def set_stats_collector(self, collector: StatsCollector) -> None:
         """
         Устанавливает коллектор статистики.
         
@@ -399,6 +400,45 @@ class TemplateProcessor:
                 issues.append(f"Cannot load {node.kind}:{node.name}: {e}")
         
         return issues
+
+    def compute_final_texts(self, final_rendered_text: str) -> tuple[str, str]:
+        """
+        Вычисляет итоговые тексты для статистики: полный и только секции.
+        
+        Args:
+            final_rendered_text: Полностью отрендеренный текст
+            
+        Returns:
+            Кортеж (sections_only_text, final_text)
+            
+        Описание:
+            sections_only_text - текст без шаблонного "клея" (только секции)
+            final_text - полный отрендеренный текст с шаблонами
+        """
+        # В текущей реализации используем простую аппроксимацию:
+        # итоговый текст равен входящему, а sections_only мы оцениваем
+        # как ~90% от итогового (без точного разделения шаблонов и секций)
+        
+        # TODO: В будущих итерациях можно более точно разделять
+        # содержимое секций и шаблонный "клей"
+        
+        sections_only_text = final_rendered_text  # Упрощение для первой итерации
+        
+        if self.stats_collector:
+            self.stats_collector.set_final_texts(final_rendered_text, sections_only_text)
+        
+        return sections_only_text, final_rendered_text
+
+    def collect_stats(self) -> Optional[tuple]:
+        """
+        Собирает финальную статистику, если настроен коллектор.
+        
+        Returns:
+            Кортеж (files_rows, totals, context_block) или None если коллектор не настроен
+        """
+        if self.stats_collector:
+            return self.stats_collector.compute_final_stats()
+        return None
 
 
 def create_template_processor(run_ctx: RunContext) -> TemplateProcessor:

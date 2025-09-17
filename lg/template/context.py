@@ -55,6 +55,9 @@ class TemplateContext:
         self.run_ctx = run_ctx
         self.adaptive_loader = run_ctx.adaptive_loader
         
+        # Коллектор статистики (устанавливается извне)
+        self.stats_collector = None
+        
         # Текущее состояние (инициализируется из run_ctx)
         self.current_state = TemplateState(
             mode_options=run_ctx.mode_options,

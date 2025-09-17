@@ -147,8 +147,8 @@ class ProcessedFile:
     """
     Обработанный файл, готовый для рендеринга.
     
-    Содержит результат работы языкового адаптера
-    и всю необходимую информацию для статистики.
+    Содержит результат работы языкового адаптера.
+    Статистические данные собираются отдельно через StatsCollector.
     """
     abs_path: Path
     rel_path: str
@@ -157,14 +157,9 @@ class ProcessedFile:
     raw_text: str
     cache_key: str
     
-    # Статистические данные
-    tokens_raw: int
-    tokens_processed: int
-    
-    def __post_init__(self):
-        """Инициализирует вычисляемые поля."""
-        # Размер будет вычислен при необходимости
-        pass
+    # Опциональные кэшированные данные для производительности
+    tokens_raw: int = 0
+    tokens_processed: int = 0
 
 
 # ---- Отрендеренные секции ----
@@ -174,21 +169,20 @@ class RenderedSection:
     """
     Финальная отрендеренная секция.
     
-    Содержит итоговый текст секции и метаинформацию
-    для сбора статистики.
+    Содержит итоговый текст секции и список обработанных файлов.
+    Статистика собирается отдельно через StatsCollector.
     """
     ref: SectionRef
     text: str
     files: List[ProcessedFile]
     
-    # Статистика секции
+    # Кэшированная статистика (вычисляется при необходимости)
     tokens_processed: int = 0
     tokens_raw: int = 0
     total_size_bytes: int = 0
-    meta_summary: Dict[str, int] = field(default_factory=dict)
     
     def update_stats(self) -> None:
-        """Обновляет статистику на основе файлов."""
+        """Обновляет кэшированную статистику на основе файлов."""
         self.tokens_processed = sum(f.tokens_processed or 0 for f in self.files)
         self.tokens_raw = sum(f.tokens_raw or 0 for f in self.files)
         self.total_size_bytes = sum(f.abs_path.stat().st_size 
@@ -222,15 +216,12 @@ class RenderedDocument:
     blocks: List[RenderBlock] = field(default_factory=list)
 
 
-# ---- Статистика ----
+# ---- Статистика (используется StatsCollector) ----
 
 @dataclass
 class FileStats:
     """
-    Статистика по файлу.
-    
-    Собирается инкрементально в процессе обработки
-    и используется для формирования итогового отчета.
+    Статистика по файлу для StatsCollector.
     """
     path: str
     size_bytes: int
@@ -239,17 +230,13 @@ class FileStats:
     saved_tokens: int
     saved_pct: float
     meta: Dict[str, int | float | str | bool]
-    
-    # Информация об использовании в секциях
     sections: Dict[str, int] = field(default_factory=dict)  # canon_key -> count
 
 
 @dataclass
 class SectionStats:
     """
-    Статистика по отрендеренной секции.
-    
-    Агрегированная информация о секции для отчетов.
+    Статистика по отрендеренной секции для StatsCollector.
     """
     ref: SectionRef
     text: str
@@ -262,14 +249,11 @@ class SectionStats:
 @dataclass
 class TemplateStats:
     """
-    Статистика по шаблону.
-    
-    Информация о шаблонах (контекстах и включениях)
-    для анализа overhead.
+    Статистика по шаблону для StatsCollector.
     """
-    key: str        # Уникальный ключ шаблона
-    tokens: int     # Количество токенов в шаблоне
-    text_size: int  # Размер текста в символах
+    key: str
+    tokens: int
+    text_size: int
 
 
 # ---- Контекст выполнения ----
@@ -315,27 +299,6 @@ class TargetSpec:
     template_path: Path
 
 
-# ---- Результаты обработки ----
-
-@dataclass
-class ProcessingResult:
-    """
-    Результат полной обработки цели.
-    
-    Содержит отрендеренный документ и всю собранную статистику
-    для формирования ответа API.
-    """
-    target_spec: TargetSpec
-    rendered_document: RenderedDocument
-    
-    # Статистика
-    files_stats: Dict[str, FileStats] = field(default_factory=dict)
-    sections_stats: Dict[str, SectionStats] = field(default_factory=dict)
-    templates_stats: Dict[str, TemplateStats] = field(default_factory=dict)
-    
-    # Использование секций
-    sections_usage: Dict[str, int] = field(default_factory=dict)
-    
-    # Итоговые тексты для подсчета токенов
-    final_text: str = ""
-    sections_only_text: str = ""
+# ---- Результат обработки ----
+# Статистика полностью управляется StatsCollector
+# Результат обработки - это RenderedDocument + коллектор со статистикой
