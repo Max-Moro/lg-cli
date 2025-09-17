@@ -1,0 +1,374 @@
+"""
+Движок LG V2: новый пайплайн обработки с интегрированным движком шаблонизации.
+
+Основные отличия от V1:
+- Единый пайплайн с встроенным движком шаблонизации
+- Обработка секций по запросу (on-demand)
+- Инкрементальный сбор статистики
+- Полная поддержка адаптивных возможностей
+- Условная логика в шаблонах и конфигурации
+"""
+
+from __future__ import annotations
+
+from pathlib import Path
+from typing import Optional
+
+from .cache.fs_cache import Cache
+from .config import process_adaptive_options
+from .config.paths import cfg_root as cfg_root_of
+from .migrate import ensure_cfg_actual
+from .protocol import PROTOCOL_VERSION
+from .section_processor import SectionProcessor
+from .stats.collector import StatsCollector
+from .stats.report_builder import build_run_result_from_collector
+from .template.processor import TemplateProcessor, TemplateProcessingError
+from .template.context import TemplateContext, TemplateState
+from .types import RunOptions, RenderedDocument
+from .types_v2 import RunOptionsV2, TargetSpec, ProcessingContext
+from .vcs import NullVcs
+from .vcs.git import GitVcs
+from .version import tool_version
+from .api_schema import RunResult as RunResultM
+
+
+class EngineV2:
+    """
+    Координирующий класс для движка LG V2.
+    
+    Управляет взаимодействием между компонентами:
+    - TemplateProcessor для обработки шаблонов
+    - SectionProcessor для обработки секций 
+    - StatsCollector для сбора статистики
+    """
+    
+    def __init__(self, options: RunOptionsV2):
+        """
+        Инициализирует движок с указанными опциями.
+        
+        Args:
+            options: Опции выполнения LG V2
+        """
+        self.options = options
+        self.root = Path.cwd().resolve()
+        
+        # Инициализируем сервисы
+        self._init_services()
+        
+        # Создаем контекст обработки
+        self._init_processing_context()
+        
+        # Создаем процессоры
+        self._init_processors()
+        
+        # Настраиваем взаимодействие между компонентами
+        self._setup_component_integration()
+    
+    def _init_services(self) -> None:
+        """Инициализирует базовые сервисы."""
+        # Кэш
+        tool_ver = tool_version()
+        self.cache = Cache(self.root, enabled=None, fresh=False, tool_version=tool_ver)
+        
+        # VCS
+        self.vcs = GitVcs() if (self.root / ".git").is_dir() else NullVcs()
+        
+        # Конвертируем RunOptionsV2 в RunOptions для совместимости
+        legacy_options = RunOptions(
+            model=self.options.model,
+            code_fence=self.options.code_fence,
+            modes=self.options.modes,
+            extra_tags=self.options.extra_tags
+        )
+        
+        # Обрабатываем адаптивные опции
+        from .stats import TokenService
+        from .run_context import RunContext
+        
+        self.tokenizer = TokenService(self.root, self.options.model)
+        active_tags, mode_options, adaptive_loader = process_adaptive_options(
+            self.root,
+            self.options.modes,
+            self.options.extra_tags
+        )
+        
+        # Создаем run_context для совместимости
+        self.run_ctx = RunContext(
+            root=self.root,
+            options=legacy_options,
+            cache=self.cache,
+            vcs=self.vcs,
+            tokenizer=self.tokenizer,
+            adaptive_loader=adaptive_loader,
+            mode_options=mode_options,
+            active_tags=active_tags,
+        )
+    
+    def _init_processing_context(self) -> None:
+        """Создает контекст обработки."""
+        self.processing_ctx = ProcessingContext(
+            repo_root=self.root,
+            cfg_root=cfg_root_of(self.root),
+            options=self.options,
+            active_tags=self.run_ctx.active_tags,
+            active_modes=self.options.modes,
+            vcs=self.vcs,
+            cache=self.cache,
+            tokenizer=self.tokenizer,
+            adaptive_loader=self.run_ctx.adaptive_loader
+        )
+    
+    def _init_processors(self) -> None:
+        """Создает основные процессоры."""
+        # Коллектор статистики
+        self.stats_collector = StatsCollector(
+            tokenizer=self.tokenizer,
+            cache=self.cache,
+            target_name=""  # Будет установлено при обработке
+        )
+        
+        # Процессор секций
+        self.section_processor = SectionProcessor(
+            run_ctx=self.run_ctx,
+            stats_collector=self.stats_collector
+        )
+        
+        # Процессор шаблонов
+        self.template_processor = TemplateProcessor(self.run_ctx)
+    
+    def _setup_component_integration(self) -> None:
+        """Настраивает взаимодействие между компонентами."""
+        # Связываем процессор шаблонов с обработчиком секций
+        def section_handler(section_name: str, template_ctx: TemplateContext) -> str:
+            rendered_section = self.section_processor.process_section(section_name, template_ctx)
+            return rendered_section.text
+        
+        self.template_processor.set_section_handler(section_handler)
+        self.template_processor.set_stats_collector(self.stats_collector)
+    
+    def render_context(self, context_name: str) -> RenderedDocument:
+        """
+        Рендерит контекст из шаблона.
+        
+        Args:
+            context_name: Имя контекста для рендеринга
+            
+        Returns:
+            Отрендеренный документ
+            
+        Raises:
+            TemplateProcessingError: При ошибке обработки шаблона
+            FileNotFoundError: Если шаблон контекста не найден
+        """
+        # Обеспечиваем актуальность конфигурации
+        ensure_cfg_actual(cfg_root_of(self.root))
+        
+        # Обновляем target в коллекторе статистики
+        self.stats_collector.target_name = f"ctx:{context_name}"
+        
+        try:
+            # Обрабатываем шаблон
+            rendered_text = self.template_processor.process_template_file(context_name)
+            
+            # Вычисляем итоговые тексты для статистики
+            final_text, sections_only_text = self.template_processor.compute_final_texts(rendered_text)
+            
+            # Устанавливаем итоговые тексты в коллекторе
+            self.stats_collector.set_final_texts(final_text, sections_only_text)
+            
+            return RenderedDocument(text=final_text, blocks=[])
+            
+        except Exception as e:
+            raise TemplateProcessingError(
+                f"Failed to render context '{context_name}': {str(e)}", 
+                template_name=context_name,
+                cause=e
+            ) from e
+    
+    def render_section(self, section_name: str) -> RenderedDocument:
+        """
+        Рендерит отдельную секцию.
+        
+        Args:
+            section_name: Имя секции для рендеринга
+            
+        Returns:
+            Отрендеренный документ
+        """
+        # Обеспечиваем актуальность конфигурации
+        ensure_cfg_actual(cfg_root_of(self.root))
+        
+        # Обновляем target в коллекторе статистики
+        self.stats_collector.target_name = f"sec:{section_name}"
+        
+        # Создаем минимальный контекст шаблона для секции
+        template_state = TemplateState(
+            active_tags=self.processing_ctx.active_tags,
+            active_modes=self.processing_ctx.active_modes,
+            mode_options=self.run_ctx.mode_options
+        )
+        
+        template_ctx = TemplateContext(template_state, self.run_ctx.get_condition_context())
+        
+        # Обрабатываем секцию
+        rendered_section = self.section_processor.process_section(section_name, template_ctx)
+        
+        # Устанавливаем итоговые тексты в коллекторе (для секции они совпадают)
+        self.stats_collector.set_final_texts(rendered_section.text, rendered_section.text)
+        
+        return RenderedDocument(text=rendered_section.text, blocks=[])
+    
+    def generate_report(self, target_spec: TargetSpec) -> RunResultM:
+        """
+        Генерирует полный отчет с статистикой.
+        
+        Args:
+            target_spec: Спецификация цели для отчета
+            
+        Returns:
+            Модель RunResult в формате API v4
+        """
+        # Рендерим цель в зависимости от типа
+        if target_spec.kind == "context":
+            self.render_context(target_spec.name)
+        else:
+            self.render_section(target_spec.name)
+        
+        # Конвертируем RunOptionsV2 в RunOptions для совместимости
+        legacy_options = RunOptions(
+            model=self.options.model,
+            code_fence=self.options.code_fence,
+            modes=self.options.modes,
+            extra_tags=self.options.extra_tags
+        )
+        
+        # Генерируем отчет из коллектора статистики
+        return build_run_result_from_collector(
+            collector=self.stats_collector,
+            target_spec=target_spec,
+            options=legacy_options
+        )
+
+
+# ----------------------------- Entry Points ----------------------------- #
+
+def _parse_target(target: str) -> TargetSpec:
+    """
+    Парсит строку цели в TargetSpec.
+    
+    Args:
+        target: Строка цели в формате "ctx:name", "sec:name" или "name"
+        
+    Returns:
+        Спецификация цели
+    """
+    from .config.paths import cfg_root
+    from .context.common import CTX_SUFFIX
+    
+    root = Path.cwd().resolve()
+    cfg_path = cfg_root(root)
+    
+    kind = "auto"
+    name = target.strip()
+    
+    if name.startswith("ctx:"):
+        kind, name = "context", name[4:]
+    elif name.startswith("sec:"):
+        kind, name = "section", name[4:]
+    
+    # Для auto режима проверяем наличие контекста
+    if kind in ("auto", "context"):
+        template_path = cfg_path / f"{name}{CTX_SUFFIX}"
+        if template_path.is_file():
+            return TargetSpec(
+                kind="context", 
+                name=name, 
+                template_path=template_path
+            )
+        if kind == "context":
+            raise FileNotFoundError(f"Context template not found: {template_path}")
+    
+    # Fallback к секции
+    return TargetSpec(
+        kind="section",
+        name=name,
+        template_path=Path()  # Не используется для секций
+    )
+
+
+def _convert_options_v1_to_v2(options: RunOptions) -> RunOptionsV2:
+    """
+    Конвертирует RunOptions в RunOptionsV2 для совместимости.
+    
+    Args:
+        options: Опции в формате V1
+        
+    Returns:
+        Опции в формате V2
+    """
+    return RunOptionsV2(
+        model=options.model,
+        code_fence=options.code_fence,
+        modes=options.modes,
+        extra_tags=options.extra_tags,
+        vcs_mode="all"  # По умолчанию, может быть переопределено через modes
+    )
+
+
+def run_render_v2(target: str, options: RunOptions) -> RenderedDocument:
+    """
+    Точка входа для рендеринга в LG V2.
+    
+    Args:
+        target: Цель для рендеринга (контекст или секция)
+        options: Опции выполнения
+        
+    Returns:
+        Отрендеренный документ
+    """
+    # Конвертируем опции
+    v2_options = _convert_options_v1_to_v2(options)
+    
+    # Парсим цель
+    target_spec = _parse_target(target)
+    
+    # Создаем движок
+    engine = EngineV2(v2_options)
+    
+    # Рендерим в зависимости от типа цели
+    if target_spec.kind == "context":
+        return engine.render_context(target_spec.name)
+    else:
+        return engine.render_section(target_spec.name)
+
+
+def run_report_v2(target: str, options: RunOptions) -> RunResultM:
+    """
+    Точка входа для генерации отчета в LG V2.
+    
+    Args:
+        target: Цель для анализа (контекст или секция)
+        options: Опции выполнения
+        
+    Returns:
+        Отчет в формате API v4
+    """
+    # Конвертируем опции
+    v2_options = _convert_options_v1_to_v2(options)
+    
+    # Парсим цель
+    target_spec = _parse_target(target)
+    
+    # Создаем движок
+    engine = EngineV2(v2_options)
+    
+    # Генерируем отчет
+    return engine.generate_report(target_spec)
+
+
+__all__ = [
+    "EngineV2",
+    "run_render_v2", 
+    "run_report_v2",
+    "TemplateProcessingError"
+]
