@@ -32,10 +32,13 @@ resolve_context  → build_manifest → build_plan → process_groups → render
 
 ```
 lg/template/
-  ├─ lexer.py         # Лексический анализатор для шаблонов
-  ├─ parser.py        # Построение AST из токенов
-  ├─ evaluator.py     # Вычисление условий и режимов
-  └─ process.py       # Однопроходный финальный резолвинг секций и рендеринг AST, внешнее API для `lg/engine_v2.py`
+  ├─ nodes.py           # Определения AST-узлов шаблона
+  ├─ lexer.py           # Лексический анализатор для шаблонов
+  ├─ parser.py          # Построение AST из токенов
+  ├─ evaluator.py       # Вычисление условий и режимов
+  ├─ context.py         # Контекст рендеринга шаблона
+  ├─ errors.py          # Классы ошибок и обработка исключений
+  └─ processor.py       # API для движка шаблонизации
 ```
 
 #### Новая структура AST для шаблонов
@@ -76,6 +79,11 @@ class ConditionalBlockNode(TemplateNode):
     evaluated: Optional[bool] = None  # Результат после вычисления
 
 @dataclass
+class ElseNode(TemplateNode):
+    """Обработка {% else %} внутри условных блоков."""
+    body: List[TemplateNode] = field(default_factory=list)
+
+@dataclass
 class ModeBlockNode(TemplateNode):
     """Блок {% mode modeset:mode %}...{% endmode %}."""
     modeset: str
@@ -83,6 +91,71 @@ class ModeBlockNode(TemplateNode):
     body: List[TemplateNode] = field(default_factory=list)
     original_mode_options: Optional[ModeOptions] = None  # Сохраненный контекст перед блоком
     original_active_tags: Optional[Set[str]] = None  # Сохраненный контекст перед блоком
+
+@dataclass
+class CommentNode(TemplateNode):
+    """Блок {# комментарий #}, который игнорируется при рендеринге."""
+    text: str
+```
+
+Также нужно детализировать структуру лексера и парсера:
+
+```python
+# lg/template/lexer.py
+class TokenType(enum.Enum):
+    TEXT = "TEXT"
+    PLACEHOLDER_START = "PLACEHOLDER_START"  # ${
+    PLACEHOLDER_END = "PLACEHOLDER_END"      # }
+    DIRECTIVE_START = "DIRECTIVE_START"      # {%
+    DIRECTIVE_END = "DIRECTIVE_END"          # %}
+    COMMENT_START = "COMMENT_START"          # {#
+    COMMENT_END = "COMMENT_END"              # #}
+    IDENTIFIER = "IDENTIFIER"
+    COLON = "COLON"
+    AND = "AND"
+    OR = "OR"
+    NOT = "NOT"
+    # ... другие токены
+
+@dataclass
+class Token:
+    type: TokenType
+    value: str
+    position: int
+    line: int
+    column: int  # Для точной диагностики ошибок
+```
+
+#### Диаграмма классов для нового движка шаблонизации
+
+```
++------------------+
+| TemplateNode     |<-----------------+
++------------------+                  |
+                                      |
+    +-------------+--------------+--------------+--------------+
+    |             |              |              |              |
++---v----+    +---v----+    +----v---+    +-----v--+    +-----v--+
+|TextNode|    |SectNode|    |IncNode |    |IfNode  |    |ModeNode|
++--------+    +--------+    +--------+    +--------+    +--------+
+
++------------------+     +------------------+     +------------------+
+| TemplateProcessor|---->| TemplateParser   |---->| TemplateLexer    |
++------------------+     +------------------+     +------------------+
+| process_template()|    | parse()          |     | tokenize()       |
+| evaluate_template()|   | parse_directive()|     | next_token()     |
++------------------+     +------------------+     +------------------+
+         |
+         v
++------------------+     +------------------+
+| TemplateContext  |---->| RunContext       |
++------------------+     +------------------+
+| run_ctx          |     | options          |
+| current_options  |     | vcs              |
+| active_tags      |     | cache            |
+| active_modes     |     | tokenizer        |
+| saved_states     |     +------------------+
++------------------+
 ```
 
 ### Новая версия центрального пайплайна обработки LG V2
@@ -93,7 +166,67 @@ class ModeBlockNode(TemplateNode):
 
 Таким образом, не умея самостоятельно производить фильтрацию файлов, работать с VCS, языковыми адаптерами и рендерить итоговые секции в fanced-блоки, шаблонизатор через хендлер (один или несколько) все равно получает возможность выполнить эти задачи. Это сокращает необходимость в объёмной промежуточной IR-модели.
 
-<!-- TODO Тут необходимо нарисовать сиквенс диаграмму -->
+```
+┌─────┐          ┌─────────────┐          ┌─────────────────┐          ┌─────────────────┐
+│ CLI │          │ engine_v2   │          │template.process │          │section processor│
+└──┬──┘          └──────┬──────┘          └────────┬────────┘          └────────┬────────┘
+   │  run_render_v2     │                          │                            │
+   │──────────────────>│                          │                            │
+   │                   │                          │                            │
+   │                   │  _build_run_ctx          │                            │
+   │                   │◄─────────────────┐       │                            │
+   │                   │                 │       │                            │
+   │                   │  resolve_template│       │                            │
+   │                   │◄─────────────────┐       │                            │
+   │                   │                 │       │                            │
+   │                   │ process_template │                            │
+   │                   │────────────────────────>│                            │
+   │                   │                         │                            │
+   │                   │                         │   parse_template           │
+   │                   │                         │◄───────────────────┐       │
+   │                   │                         │                    │       │
+   │                   │                         │                    │       │
+   │                   │                         │  evaluate_template │       │
+   │                   │                         │◄───────────────────┐       │
+   │                   │                         │                    │       │
+   │                   │                         │                    │       │
+   │                   │                         │   ВСТРЕТИЛИ ${section}     │
+   │                   │                         │───────────────────────────>│
+   │                   │                         │                            │
+   │                   │                         │                            │  build_manifest
+   │                   │                         │                            │◄─────────────┐
+   │                   │                         │                            │              │
+   │                   │                         │                            │  build_plan  │
+   │                   │                         │                            │◄─────────────┐
+   │                   │                         │                            │              │
+   │                   │                         │                            │process_groups│
+   │                   │                         │                            │◄─────────────┐
+   │                   │                         │                            │              │
+   │                   │                         │                            │render_section│
+   │                   │                         │                            │◄─────────────┐
+   │                   │                         │                            │              │
+   │                   │                         │    section_rendered_text   │              │
+   │                   │                         │<───────────────────────────┘              │
+   │                   │                         │                                           │
+   │                   │                         │  ВСТРЕТИЛИ {% if ... %}                   │
+   │                   │                         │  evaluate_condition                       │
+   │                   │                         │◄───────────────────┐                      │
+   │                   │                         │                    │                      │
+   │                   │                         │  ВСТРЕТИЛИ {% mode ... %}                 │
+   │                   │                         │  enter_mode_block                         │
+   │                   │                         │◄───────────────────┐                      │
+   │                   │                         │  РЕКУРСИВНО ОБРАБАТЫВАЕМ ВЛОЖЕННЫЙ КОНТЕНТ│
+   │                   │                         │  exit_mode_block                          │
+   │                   │                         │◄───────────────────┐                      │
+   │                   │                         │                    │                      │
+   │                   │    rendered_result      │                    │                      │
+   │                   │<────────────────────────┘                    │                      │
+   │  rendered_result  │                                              │                      │
+   │<──────────────────┘                                              │                      │
+┌──┴──┐          ┌──────┴──────┐          ┌────────┴────────┐          ┌────────┴────────┐
+│ CLI │          │ engine_v2   │          │template.process │          │section processor│
+└─────┘          └─────────────┘          └─────────────────┘          └─────────────────┘
+```
 
 #### Новый RunContext для отслеживания режимов и тегов
 
@@ -104,17 +237,18 @@ class ModeBlockNode(TemplateNode):
 2. Обработать содержимое блока с этими измененными настройками
 3. Вернуть исходные режимы и теги после блока
 
-Поэтому необходимо будет написать новую версию `RunContext` для шаблонизатора:
+Вместо изменения самого `RunContext`, правильное решение:
 
 1. **Создать локальный контекст для шаблонизатора**:
    ```python
    @dataclass
    class TemplateRenderingContext:
-       # Постоянные данные, как в старом RunContext
-       …
+       # Ссылка на глобальный контекст
+       run_ctx: RunContext
        # Локальные переопределения
-       current_mode_options: ModeOptions
-       current_active_tags: Set[str]
+       current_options: ModeOptions
+       active_tags: Set[str]
+       active_modes: Set[str]
        # Стек сохраненных состояний для вложенных блоков
        saved_states: List[Tuple[ModeOptions, Set[str]]] = field(default_factory=list)
    ```
@@ -124,8 +258,8 @@ class ModeBlockNode(TemplateNode):
    def enter_mode_block(self, modeset: str, mode: str) -> None:
        # Сохраняем текущее состояние в стек
        self.saved_states.append((
-           self.current_mode_options,
-           self.current_active_tags
+           self.current_options,
+           self.active_tags
        ))
        
        # Применяем новый режим и обновляем теги
@@ -133,13 +267,13 @@ class ModeBlockNode(TemplateNode):
        new_tags = self.run_ctx.adaptive_loader.get_tags_for_mode(modeset, mode)
        
        # Создаем новые копии, чтобы избежать мутирования
-       self.current_mode_options = ModeOptions.merge(self.current_mode_options, new_options)
-       self.current_active_tags = self.current_active_tags.union(new_tags)
+       self.current_options = ModeOptions.merge(self.current_options, new_options)
+       self.active_tags = self.active_tags.union(new_tags)
        
    def exit_mode_block(self) -> None:
        # Восстанавливаем предыдущее состояние из стека
        if self.saved_states:
-           self.current_mode_options, self.current_active_tags = self.saved_states.pop()
+           self.current_options, self.active_tags = self.saved_states.pop()
    ```
 
 3. **Использовать этот контекст при обработке AST шаблона**:
@@ -155,8 +289,30 @@ class ModeBlockNode(TemplateNode):
        return "".join(result)
    ```
 
+#### Управление кэшем в динамическом контексте
+
+В новой модели важно правильно кэшировать результаты с учетом активных режимов:
+
+```python
+def compute_section_cache_key(section_name: str, ctx: TemplateRenderingContext) -> str:
+    """Формирует ключ кэша для секции с учетом режимов и тегов."""
+    mode_fingerprint = hashlib.sha1()
+    
+    # Добавляем базовую информацию
+    mode_fingerprint.update(section_name.encode('utf-8'))
+    
+    # Добавляем информацию о режимах
+    for modeset, mode in ctx.active_modes.items():
+        mode_fingerprint.update(f"{modeset}:{mode}".encode('utf-8'))
+    
+    # Добавляем активные теги
+    for tag in sorted(ctx.current_active_tags):
+        mode_fingerprint.update(tag.encode('utf-8'))
+    
+    return mode_fingerprint.hexdigest()
+```
+
+
 ## Что делаем сейчас
 
-Давай осудим предложенный мною план переработки системы шаблонизации и центрального пайплайна. При анализе учитывай уже существующий код (чтобы не сломать старый функционал) ил новые поступившие требования.
-
-Я предложил общее видение, но в предложенной мною архитектуре явно есть пробелы. Так что было бы полезно, если бы ты что-то детализировал и дорисовал необходимое диаграммы и схемы.
+В предложенном мною архитектурном документе есть ряд диаграмм. Но они нарисованы как ASCII-графика, что выглядит не очень аккуратно. Можешь перерисовать в виде Mermaid-диаграмм (graph TD), чтобы внутри Markdown-документации это выглядело более аккуратно?
