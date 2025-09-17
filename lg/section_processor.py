@@ -660,7 +660,7 @@ class SectionProcessor:
             template_ctx: Контекст шаблона с коллектором статистики
         """
         # Получаем коллектор статистики из контекста шаблона
-        stats_collector = getattr(template_ctx, 'stats_collector', None)
+        stats_collector: StatsCollector = cast(StatsCollector, getattr(template_ctx, 'stats_collector', None))
         if not stats_collector:
             return
         

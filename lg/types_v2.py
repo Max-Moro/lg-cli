@@ -156,11 +156,6 @@ class ProcessedFile:
     meta: Dict[str, int | float | str | bool]
     raw_text: str
     cache_key: str
-    
-    # Опциональные кэшированные данные для производительности
-    tokens_raw: int = 0
-    tokens_processed: int = 0
-
 
 # ---- Отрендеренные секции ----
 
@@ -175,20 +170,6 @@ class RenderedSection:
     ref: SectionRef
     text: str
     files: List[ProcessedFile]
-    
-    # Кэшированная статистика (вычисляется при необходимости)
-    tokens_processed: int = 0
-    tokens_raw: int = 0
-    total_size_bytes: int = 0
-    
-    def update_stats(self) -> None:
-        """Обновляет кэшированную статистику на основе файлов."""
-        self.tokens_processed = sum(f.tokens_processed or 0 for f in self.files)
-        self.tokens_raw = sum(f.tokens_raw or 0 for f in self.files)
-        self.total_size_bytes = sum(f.abs_path.stat().st_size 
-                                  if f.abs_path.exists() else 0 
-                                  for f in self.files)
-
 
 # ---- Рендеринг документов ----
 
@@ -298,7 +279,3 @@ class TargetSpec:
     # Для контекстов - путь к файлу шаблона
     template_path: Path
 
-
-# ---- Результат обработки ----
-# Статистика полностью управляется StatsCollector
-# Результат обработки - это RenderedDocument + коллектор со статистикой
