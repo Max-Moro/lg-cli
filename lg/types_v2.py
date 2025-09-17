@@ -1,0 +1,339 @@
+"""
+Новая IR-модель для LG V2: более простая и ориентированная на однопроходную обработку.
+
+Основные отличия от старой модели:
+- Упрощенная структура без сложной каноничности
+- Интеграция с системой адаптивных возможностей
+- Ориентация на обработку по запросу
+- Поддержка инкрементального сбора статистики
+"""
+
+from __future__ import annotations
+
+from dataclasses import dataclass, field
+from pathlib import Path
+from typing import Dict, List, Literal, Optional, Set, Any
+
+# ---- Базовые типы ----
+PathLabelMode = Literal["auto", "relative", "basename", "off"]
+LangName = str  # "python", "markdown", "", и т.д.
+LANG_NONE: LangName = ""
+ModelName = str  # "o3", "gpt-4o", ...
+AdapterName = str
+
+# ---- Расширенные опции выполнения ----
+
+@dataclass(frozen=True)
+class RunOptionsV2:
+    """
+    Расширенные опции выполнения для LG V2.
+    
+    Включает все параметры, необходимые для работы нового движка,
+    включая адаптивные возможности и контекстную информацию.
+    """
+    model: ModelName = "o3"
+    code_fence: bool = True  # Глобальная опция, может переопределяться ModeOptions
+    
+    # Адаптивные возможности
+    modes: Dict[str, str] = field(default_factory=dict)  # modeset -> mode
+    extra_tags: Set[str] = field(default_factory=set)  # дополнительные теги
+    
+    # Режим VCS (может переопределяться через modes)
+    vcs_mode: Literal["all", "changes"] = "all"
+
+
+# ---- Секции и ссылки ----
+
+@dataclass(frozen=True)
+class SectionRef:
+    """
+    Ссылка на секцию с информацией о разрешении.
+    
+    В отличие от старого CanonSectionId, этот класс содержит
+    всю необходимую информацию для обработки секции.
+    """
+    name: str         # Имя секции, используемое в шаблоне
+    scope_path: str   # Путь к директории области (относительно корня репозитория)
+    cfg_path: Path    # Абсолютный путь к директории конфигурации
+    
+    def canon_key(self) -> str:
+        """
+        Возвращает канонический ключ для этой секции.
+        Используется для кэширования и дедупликации.
+        """
+        scope = self.scope_path or "."
+        return f"{scope}::{self.name}"
+
+
+# ---- Файлы и группировка ----
+
+@dataclass(frozen=True)
+class FileEntry:
+    """
+    Представляет файл для включения в секцию.
+    
+    Содержит всю информацию, необходимую для обработки файла
+    через языковые адаптеры.
+    """
+    abs_path: Path
+    rel_path: str      # Относительно корня репозитория
+    language_hint: LangName
+    adapter_overrides: Dict[str, Dict] = field(default_factory=dict)
+    size_bytes: int = 0  # Размер файла в байтах
+    
+    def __post_init__(self):
+        """Вычисляет размер файла, если не указан."""
+        if self.size_bytes == 0 and self.abs_path.exists():
+            object.__setattr__(self, 'size_bytes', self.abs_path.stat().st_size)
+
+
+@dataclass
+class FileGroup:
+    """
+    Группа файлов с одинаковым языком.
+    
+    Используется для группировки файлов при рендеринге
+    в fenced-блоки или без них.
+    """
+    lang: LangName
+    entries: List[FileEntry]
+    mixed: bool = False  # True если в группе смешанные языки
+
+
+# ---- Манифесты и планы ----
+
+@dataclass
+class SectionManifest:
+    """
+    Манифест одной секции со всеми её файлами.
+    
+    Содержит результат фильтрации файлов для конкретной секции
+    с учетом активных тегов и режимов.
+    """
+    ref: SectionRef
+    files: List[FileEntry]
+    path_labels: PathLabelMode
+    adapters_cfg: Dict[str, Dict] = field(default_factory=dict)
+    
+    # Метаданные секции
+    scope_dir: Path = field(default_factory=lambda: Path())
+    scope_rel: str = ""
+
+
+@dataclass
+class SectionPlan:
+    """
+    План для рендеринга одной секции.
+    
+    Содержит информацию о том, как группировать и отображать
+    файлы в итоговом документе.
+    """
+    manifest: SectionManifest
+    groups: List[FileGroup]
+    md_only: bool  # True если все файлы - markdown/plain text
+    use_fence: bool  # Использовать ли fenced-блоки
+    labels: Dict[str, str] = field(default_factory=dict)  # rel_path -> отображаемая метка
+
+
+# ---- Обработанные файлы ----
+
+@dataclass(frozen=True)
+class ProcessedFile:
+    """
+    Обработанный файл, готовый для рендеринга.
+    
+    Содержит результат работы языкового адаптера
+    и всю необходимую информацию для статистики.
+    """
+    abs_path: Path
+    rel_path: str
+    processed_text: str
+    meta: Dict[str, Any]
+    raw_text: str
+    cache_key: str
+    
+    # Статистические данные
+    tokens_raw: Optional[int] = None
+    tokens_processed: Optional[int] = None
+    
+    def __post_init__(self):
+        """Инициализирует вычисляемые поля."""
+        # Размер будет вычислен при необходимости
+        pass
+
+
+# ---- Отрендеренные секции ----
+
+@dataclass
+class RenderedSection:
+    """
+    Финальная отрендеренная секция.
+    
+    Содержит итоговый текст секции и метаинформацию
+    для сбора статистики.
+    """
+    ref: SectionRef
+    text: str
+    files: List[ProcessedFile]
+    
+    # Статистика секции
+    tokens_processed: int = 0
+    tokens_raw: int = 0
+    total_size_bytes: int = 0
+    meta_summary: Dict[str, int] = field(default_factory=dict)
+    
+    def update_stats(self) -> None:
+        """Обновляет статистику на основе файлов."""
+        self.tokens_processed = sum(f.tokens_processed or 0 for f in self.files)
+        self.tokens_raw = sum(f.tokens_raw or 0 for f in self.files)
+        self.total_size_bytes = sum(f.abs_path.stat().st_size 
+                                  if f.abs_path.exists() else 0 
+                                  for f in self.files)
+
+
+# ---- Рендеринг документов ----
+
+@dataclass(frozen=True)
+class RenderBlock:
+    """
+    Блок отрендеренного содержимого.
+    
+    Представляет один fenced-блок или секцию без fence.
+    """
+    lang: LangName
+    text: str                     # уже с маркерами файлов / fenced
+    file_paths: List[str]         # какие rel_paths попали в блок (для трассировки)
+
+
+@dataclass(frozen=True)
+class RenderedDocument:
+    """
+    Полностью отрендеренный документ.
+    
+    Содержит итоговый текст и информацию о блоках
+    для анализа и отладки.
+    """
+    text: str
+    blocks: List[RenderBlock] = field(default_factory=list)
+
+
+# ---- Статистика ----
+
+@dataclass
+class FileStats:
+    """
+    Статистика по файлу.
+    
+    Собирается инкрементально в процессе обработки
+    и используется для формирования итогового отчета.
+    """
+    path: str
+    size_bytes: int
+    tokens_raw: int
+    tokens_processed: int
+    saved_tokens: int
+    saved_pct: float
+    meta: Dict[str, Any]
+    
+    # Информация об использовании в секциях
+    sections: Dict[str, int] = field(default_factory=dict)  # canon_key -> count
+
+
+@dataclass
+class SectionStats:
+    """
+    Статистика по отрендеренной секции.
+    
+    Агрегированная информация о секции для отчетов.
+    """
+    ref: SectionRef
+    text: str
+    tokens_processed: int
+    tokens_raw: int
+    total_size_bytes: int
+    meta_summary: Dict[str, int] = field(default_factory=dict)
+
+
+@dataclass
+class TemplateStats:
+    """
+    Статистика по шаблону.
+    
+    Информация о шаблонах (контекстах и включениях)
+    для анализа overhead.
+    """
+    key: str        # Уникальный ключ шаблона
+    tokens: int     # Количество токенов в шаблоне
+    text_size: int  # Размер текста в символах
+
+
+# ---- Контекст выполнения ----
+
+@dataclass
+class ProcessingContext:
+    """
+    Контекст обработки для передачи состояния между компонентами.
+    
+    Содержит все необходимые сервисы и состояние
+    для обработки шаблонов и секций.
+    """
+    # Базовые пути и настройки
+    repo_root: Path
+    cfg_root: Path
+    options: RunOptionsV2
+    
+    # Активное состояние адаптивных возможностей
+    active_tags: Set[str] = field(default_factory=set)
+    active_modes: Dict[str, str] = field(default_factory=dict)
+    
+    # Сервисы (будут инициализированы извне)
+    vcs: Any = None           # VcsProvider
+    cache: Any = None         # Cache
+    tokenizer: Any = None     # TokenService
+    adaptive_loader: Any = None  # AdaptiveConfigLoader
+    
+    # Текущие режимные опции (могут изменяться в режимных блоках)
+    current_mode_options: Any = None  # ModeOptions
+
+
+# ---- Спецификация цели ----
+
+@dataclass(frozen=True)
+class TargetSpec:
+    """
+    Спецификация цели обработки.
+    
+    Описывает что именно нужно обработать:
+    контекст или отдельную секцию.
+    """
+    kind: Literal["context", "section"]
+    name: str                     # "docs/arch" или "all"
+    
+    # Для контекстов - путь к файлу шаблона
+    template_path: Optional[Path] = None
+
+
+# ---- Результаты обработки ----
+
+@dataclass
+class ProcessingResult:
+    """
+    Результат полной обработки цели.
+    
+    Содержит отрендеренный документ и всю собранную статистику
+    для формирования ответа API.
+    """
+    target_spec: TargetSpec
+    rendered_document: RenderedDocument
+    
+    # Статистика
+    files_stats: Dict[str, FileStats] = field(default_factory=dict)
+    sections_stats: Dict[str, SectionStats] = field(default_factory=dict)
+    templates_stats: Dict[str, TemplateStats] = field(default_factory=dict)
+    
+    # Использование секций
+    sections_usage: Dict[str, int] = field(default_factory=dict)
+    
+    # Итоговые тексты для подсчета токенов
+    final_text: str = ""
+    sections_only_text: str = ""
