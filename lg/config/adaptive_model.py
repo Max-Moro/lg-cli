@@ -302,7 +302,7 @@ class ModeOptions:
     # Дополнительные опции можно добавлять по мере необходимости
 
     @classmethod
-    def merge_from_modes(cls, modes_config: ModesConfig, active_modes: Dict[str, str]) -> "ModeOptions":
+    def merge_from_modes(cls, modes_config: ModesConfig, active_modes: Dict[str, str]) -> ModeOptions:
         """
         Создает MergedModeOptions путем мержинга опций из всех активных режимов.
         

@@ -28,6 +28,7 @@ resolve_context  → build_manifest → build_plan → process_groups → render
 - **Новый единый движок шаблонизации**
 - **Новая версия центрального пайплайна обработки LG V2**
 - **Новая последовательность обработки секций**
+- **Новая конфигурация и модель для адаптивных возможностей**
 - **Новая IR-модель**
 - **Новая инкрементальная система статистики**
 
@@ -291,6 +292,16 @@ flowchart LR
     end
 ```
 
+### Конфигурация и модель для адаптивных возможностей
+
+Данный системы уже реализованы и располагаются в:
+- `lg/config/adaptive_model.py`
+- `lg/config/adaptive_loader.py`
+
+Например, довольно полезна концепция нового класса `ModeOptions`, которая позволяет типизировать активные сейчас технические опции. Сюда же необходимо перенести `code_fence`.
+
+Новая IR-модель учитывает и дополняет то, что уже реализовано в `lg/config/adaptive_model.py`.
+
 ### Новая IR модель для обработки секций
 
 Вот предлагаемая IR модель для обработчика секций по запросу:
@@ -333,7 +344,7 @@ class SectionManifest:
     """Манифест одной секции со всеми её файлами."""
     ref: SectionRef
     files: List[FileEntry]
-    # code_fence: bool — этого поля теперь нет, достается из TemplateContext.current_mode_options
+    # code_fence: bool — этого поля теперь нет, достается из TemplateContext.current_mode_options (ModeOptions)
     path_labels: PathLabelMode
     adapters_cfg: Dict[str, Dict] = field(default_factory=dict)
 
