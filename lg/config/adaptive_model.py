@@ -6,7 +6,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Dict, List, Any, Optional, Literal
+from typing import Dict, List, Any, Literal
 
 
 @dataclass
@@ -298,7 +298,10 @@ class ModeOptions:
     
     # Инструментальные возможности
     allow_tools: bool = False  # разрешение использования инструментов в агентном режиме
-    
+
+    # Оборачивать файлы в fenced-блоки
+    code_fence: bool = True
+
     # Дополнительные опции можно добавлять по мере необходимости
 
     @classmethod
@@ -331,6 +334,8 @@ class ModeOptions:
                     result.vcs_mode = option_value
                 elif option_key == "allow_tools" and isinstance(option_value, bool):
                     result.allow_tools = option_value
+                elif option_key == "code_fence" and isinstance(option_value, bool):
+                    result.code_fence = option_value
                 # Здесь можно добавить обработку других опций
         
         return result
