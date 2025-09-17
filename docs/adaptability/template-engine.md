@@ -128,34 +128,93 @@ class Token:
 
 #### Диаграмма классов для нового движка шаблонизации
 
-```
-+------------------+
-| TemplateNode     |<-----------------+
-+------------------+                  |
-                                      |
-    +-------------+--------------+--------------+--------------+
-    |             |              |              |              |
-+---v----+    +---v----+    +----v---+    +-----v--+    +-----v--+
-|TextNode|    |SectNode|    |IncNode |    |IfNode  |    |ModeNode|
-+--------+    +--------+    +--------+    +--------+    +--------+
+```mermaid
+classDiagram
+    TemplateNode <|-- TextNode
+    TemplateNode <|-- SectionNode
+    TemplateNode <|-- IncludeNode
+    TemplateNode <|-- ConditionalBlockNode
+    TemplateNode <|-- ModeBlockNode
+    TemplateNode <|-- CommentNode
+    TemplateNode <|-- ElseNode
 
-+------------------+     +------------------+     +------------------+
-| TemplateProcessor|---->| TemplateParser   |---->| TemplateLexer    |
-+------------------+     +------------------+     +------------------+
-| process_template()|    | parse()          |     | tokenize()       |
-| evaluate_template()|   | parse_directive()|     | next_token()     |
-+------------------+     +------------------+     +------------------+
-         |
-         v
-+------------------+     +------------------+
-| TemplateContext  |---->| RunContext       |
-+------------------+     +------------------+
-| run_ctx          |     | options          |
-| current_options  |     | vcs              |
-| active_tags      |     | cache            |
-| active_modes     |     | tokenizer        |
-| saved_states     |     +------------------+
-+------------------+
+    class TemplateNode {
+        <<abstract>>
+    }
+    
+    class TextNode {
+        +String text
+    }
+    
+    class SectionNode {
+        +String section_name
+        +SectionRef resolved_ref
+    }
+    
+    class IncludeNode {
+        +String kind
+        +String name
+        +String origin
+        +List~TemplateNode~ children
+    }
+    
+    class ConditionalBlockNode {
+        +String condition_text
+        +Condition condition_ast
+        +List~TemplateNode~ body
+        +Boolean evaluated
+    }
+    
+    class ElseNode {
+        +List~TemplateNode~ body
+    }
+    
+    class ModeBlockNode {
+        +String modeset
+        +String mode
+        +List~TemplateNode~ body
+        +ModeOptions original_mode_options
+        +Set~String~ original_active_tags
+    }
+    
+    class CommentNode {
+        +String text
+    }
+    
+    TemplateProcessor --> TemplateParser
+    TemplateParser --> TemplateLexer
+    TemplateProcessor --> TemplateContext
+    TemplateContext --> RunContext
+    
+    class TemplateProcessor {
+        +process_template()
+        +evaluate_template()
+    }
+    
+    class TemplateParser {
+        +parse()
+        +parse_directive()
+    }
+    
+    class TemplateLexer {
+        +tokenize()
+        +next_token()
+    }
+    
+    class TemplateContext {
+        +RunContext run_ctx
+        +ModeOptions current_options
+        +Set~String~ active_tags
+        +Map active_modes
+        +List saved_states
+    }
+    
+    class RunContext {
+        +RunOptions options
+        +VcsProvider vcs
+        +Cache cache
+        +TokenService tokenizer
+    }
 ```
 
 ### Новая версия центрального пайплайна обработки LG V2
@@ -166,66 +225,39 @@ class Token:
 
 Таким образом, не умея самостоятельно производить фильтрацию файлов, работать с VCS, языковыми адаптерами и рендерить итоговые секции в fanced-блоки, шаблонизатор через хендлер (один или несколько) все равно получает возможность выполнить эти задачи. Это сокращает необходимость в объёмной промежуточной IR-модели.
 
-```
-┌─────┐          ┌─────────────┐          ┌─────────────────┐          ┌─────────────────┐
-│ CLI │          │ engine_v2   │          │template.process │          │section processor│
-└──┬──┘          └──────┬──────┘          └────────┬────────┘          └────────┬────────┘
-   │  run_render_v2     │                          │                            │
-   │──────────────────>│                          │                            │
-   │                   │                          │                            │
-   │                   │  _build_run_ctx          │                            │
-   │                   │◄─────────────────┐       │                            │
-   │                   │                 │       │                            │
-   │                   │  resolve_template│       │                            │
-   │                   │◄─────────────────┐       │                            │
-   │                   │                 │       │                            │
-   │                   │ process_template │                            │
-   │                   │────────────────────────>│                            │
-   │                   │                         │                            │
-   │                   │                         │   parse_template           │
-   │                   │                         │◄───────────────────┐       │
-   │                   │                         │                    │       │
-   │                   │                         │                    │       │
-   │                   │                         │  evaluate_template │       │
-   │                   │                         │◄───────────────────┐       │
-   │                   │                         │                    │       │
-   │                   │                         │                    │       │
-   │                   │                         │   ВСТРЕТИЛИ ${section}     │
-   │                   │                         │───────────────────────────>│
-   │                   │                         │                            │
-   │                   │                         │                            │  build_manifest
-   │                   │                         │                            │◄─────────────┐
-   │                   │                         │                            │              │
-   │                   │                         │                            │  build_plan  │
-   │                   │                         │                            │◄─────────────┐
-   │                   │                         │                            │              │
-   │                   │                         │                            │process_groups│
-   │                   │                         │                            │◄─────────────┐
-   │                   │                         │                            │              │
-   │                   │                         │                            │render_section│
-   │                   │                         │                            │◄─────────────┐
-   │                   │                         │                            │              │
-   │                   │                         │    section_rendered_text   │              │
-   │                   │                         │<───────────────────────────┘              │
-   │                   │                         │                                           │
-   │                   │                         │  ВСТРЕТИЛИ {% if ... %}                   │
-   │                   │                         │  evaluate_condition                       │
-   │                   │                         │◄───────────────────┐                      │
-   │                   │                         │                    │                      │
-   │                   │                         │  ВСТРЕТИЛИ {% mode ... %}                 │
-   │                   │                         │  enter_mode_block                         │
-   │                   │                         │◄───────────────────┐                      │
-   │                   │                         │  РЕКУРСИВНО ОБРАБАТЫВАЕМ ВЛОЖЕННЫЙ КОНТЕНТ│
-   │                   │                         │  exit_mode_block                          │
-   │                   │                         │◄───────────────────┐                      │
-   │                   │                         │                    │                      │
-   │                   │    rendered_result      │                    │                      │
-   │                   │<────────────────────────┘                    │                      │
-   │  rendered_result  │                                              │                      │
-   │<──────────────────┘                                              │                      │
-┌──┴──┐          ┌──────┴──────┐          ┌────────┴────────┐          ┌────────┴────────┐
-│ CLI │          │ engine_v2   │          │template.process │          │section processor│
-└─────┘          └─────────────┘          └─────────────────┘          └─────────────────┘
+```mermaid
+sequenceDiagram
+    participant CLI
+    participant engine_v2
+    participant template.process
+    participant section_processor
+    
+    CLI->>engine_v2: run_render_v2
+    engine_v2->>engine_v2: _build_run_ctx
+    engine_v2->>engine_v2: resolve_template
+    engine_v2->>template.process: process_template
+    
+    template.process->>template.process: parse_template
+    template.process->>template.process: evaluate_template
+    
+    Note over template.process, section_processor: ВСТРЕТИЛИ ${section}
+    template.process->>section_processor: section placeholder found
+    section_processor->>section_processor: build_manifest
+    section_processor->>section_processor: build_plan
+    section_processor->>section_processor: process_groups
+    section_processor->>section_processor: render_section
+    section_processor-->>template.process: section_rendered_text
+    
+    Note over template.process: ВСТРЕТИЛИ {% if ... %}
+    template.process->>template.process: evaluate_condition
+    
+    Note over template.process: ВСТРЕТИЛИ {% mode ... %}
+    template.process->>template.process: enter_mode_block
+    Note over template.process: РЕКУРСИВНО ОБРАБАТЫВАЕМ ВЛОЖЕННЫЙ КОНТЕНТ
+    template.process->>template.process: exit_mode_block
+    
+    template.process-->>engine_v2: rendered_result
+    engine_v2-->>CLI: rendered_result
 ```
 
 #### Новый RunContext для отслеживания режимов и тегов
@@ -242,7 +274,7 @@ class Token:
 1. **Создать локальный контекст для шаблонизатора**:
    ```python
    @dataclass
-   class TemplateRenderingContext:
+   class TemplateContext:
        # Ссылка на глобальный контекст
        run_ctx: RunContext
        # Локальные переопределения
@@ -315,4 +347,4 @@ def compute_section_cache_key(section_name: str, ctx: TemplateRenderingContext) 
 
 ## Что делаем сейчас
 
-В предложенном мною архитектурном документе есть ряд диаграмм. Но они нарисованы как ASCII-графика, что выглядит не очень аккуратно. Можешь перерисовать в виде Mermaid-диаграмм (graph TD), чтобы внутри Markdown-документации это выглядело более аккуратно?
+Ничего пока делать не нужно. Просто подтверди, что ты дочитал досюда.
