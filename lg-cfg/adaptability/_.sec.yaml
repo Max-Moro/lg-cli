@@ -34,6 +34,12 @@ src:
   targets:
     - match:
       - "/lg/cache/fs_cache.py"
+      - "/lg/config/adaptive_model.py"
+      - "/lg/io/filters.py"
+      - "/lg/context/resolver.py"
+      - "/lg/context/composer.py"
+      - "/lg/context/common.py"
+      - "/lg/config/adaptive_loader.py"
       python:
         budget:
           max_tokens_per_file: 500

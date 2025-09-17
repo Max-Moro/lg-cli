@@ -162,7 +162,12 @@ def collect_section_nodes(ast: TemplateAST) -> List[SectionNode]:
     def _visit_node(node: TemplateNode) -> None:
         if isinstance(node, SectionNode):
             sections.append(node)
-        elif isinstance(node, (ConditionalBlockNode, ModeBlockNode)):
+        elif isinstance(node, ConditionalBlockNode):
+            for child in node.body:
+                _visit_node(child)
+            if node.else_block:
+                _visit_node(node.else_block)
+        elif isinstance(node, ModeBlockNode):
             for child in node.body:
                 _visit_node(child)
         elif isinstance(node, ElseBlockNode):
