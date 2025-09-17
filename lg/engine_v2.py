@@ -12,24 +12,21 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Optional
 
+from .api_schema import RunResult
 from .cache.fs_cache import Cache
 from .config import process_adaptive_options
-from .config.paths import cfg_root as cfg_root_of
+from .config.paths import cfg_root
 from .migrate import ensure_cfg_actual
-from .protocol import PROTOCOL_VERSION
+from .run_context import RunContext
 from .section_processor import SectionProcessor
-from .stats.collector import StatsCollector
-from .stats.report_builder import build_run_result_from_collector
-from .template.processor import TemplateProcessor, TemplateProcessingError
-from .template.context import TemplateContext, TemplateState
+from .stats import build_run_result_from_collector, StatsCollector, TokenService
+from .template import TemplateProcessor, TemplateProcessingError, TemplateContext
 from .types import RunOptions, RenderedDocument
-from .types_v2 import RunOptionsV2, TargetSpec, ProcessingContext
+from .types_v2 import TargetSpec, ProcessingContext
 from .vcs import NullVcs
 from .vcs.git import GitVcs
 from .version import tool_version
-from .api_schema import RunResult as RunResultM
 
 
 class EngineV2:
@@ -42,7 +39,7 @@ class EngineV2:
     - StatsCollector для сбора статистики
     """
     
-    def __init__(self, options: RunOptionsV2):
+    def __init__(self, options: RunOptions):
         """
         Инициализирует движок с указанными опциями.
         
@@ -73,18 +70,6 @@ class EngineV2:
         # VCS
         self.vcs = GitVcs() if (self.root / ".git").is_dir() else NullVcs()
         
-        # Конвертируем RunOptionsV2 в RunOptions для совместимости
-        legacy_options = RunOptions(
-            model=self.options.model,
-            code_fence=self.options.code_fence,
-            modes=self.options.modes,
-            extra_tags=self.options.extra_tags
-        )
-        
-        # Обрабатываем адаптивные опции
-        from .stats import TokenService
-        from .run_context import RunContext
-        
         self.tokenizer = TokenService(self.root, self.options.model)
         active_tags, mode_options, adaptive_loader = process_adaptive_options(
             self.root,
@@ -92,10 +77,9 @@ class EngineV2:
             self.options.extra_tags
         )
         
-        # Создаем run_context для совместимости
         self.run_ctx = RunContext(
             root=self.root,
-            options=legacy_options,
+            options=self.options,
             cache=self.cache,
             vcs=self.vcs,
             tokenizer=self.tokenizer,
@@ -108,7 +92,7 @@ class EngineV2:
         """Создает контекст обработки."""
         self.processing_ctx = ProcessingContext(
             repo_root=self.root,
-            cfg_root=cfg_root_of(self.root),
+            cfg_root=cfg_root(self.root),
             options=self.options,
             active_tags=self.run_ctx.active_tags,
             active_modes=self.options.modes,
@@ -161,7 +145,7 @@ class EngineV2:
             FileNotFoundError: Если шаблон контекста не найден
         """
         # Обеспечиваем актуальность конфигурации
-        ensure_cfg_actual(cfg_root_of(self.root))
+        ensure_cfg_actual(cfg_root(self.root))
         
         # Обновляем target в коллекторе статистики
         self.stats_collector.target_name = f"ctx:{context_name}"
@@ -196,19 +180,12 @@ class EngineV2:
             Отрендеренный документ
         """
         # Обеспечиваем актуальность конфигурации
-        ensure_cfg_actual(cfg_root_of(self.root))
+        ensure_cfg_actual(cfg_root(self.root))
         
         # Обновляем target в коллекторе статистики
         self.stats_collector.target_name = f"sec:{section_name}"
         
-        # Создаем минимальный контекст шаблона для секции
-        template_state = TemplateState(
-            active_tags=self.processing_ctx.active_tags,
-            active_modes=self.processing_ctx.active_modes,
-            mode_options=self.run_ctx.mode_options
-        )
-        
-        template_ctx = TemplateContext(template_state, self.run_ctx.get_condition_context())
+        template_ctx = TemplateContext(self.run_ctx)
         
         # Обрабатываем секцию
         rendered_section = self.section_processor.process_section(section_name, template_ctx)
@@ -218,7 +195,7 @@ class EngineV2:
         
         return RenderedDocument(text=rendered_section.text, blocks=[])
     
-    def generate_report(self, target_spec: TargetSpec) -> RunResultM:
+    def generate_report(self, target_spec: TargetSpec) -> RunResult:
         """
         Генерирует полный отчет с статистикой.
         
@@ -234,19 +211,11 @@ class EngineV2:
         else:
             self.render_section(target_spec.name)
         
-        # Конвертируем RunOptionsV2 в RunOptions для совместимости
-        legacy_options = RunOptions(
-            model=self.options.model,
-            code_fence=self.options.code_fence,
-            modes=self.options.modes,
-            extra_tags=self.options.extra_tags
-        )
-        
         # Генерируем отчет из коллектора статистики
         return build_run_result_from_collector(
             collector=self.stats_collector,
             target_spec=target_spec,
-            options=legacy_options
+            options=self.options
         )
 
 
@@ -262,7 +231,6 @@ def _parse_target(target: str) -> TargetSpec:
     Returns:
         Спецификация цели
     """
-    from .config.paths import cfg_root
     from .context.common import CTX_SUFFIX
     
     root = Path.cwd().resolve()
@@ -296,25 +264,6 @@ def _parse_target(target: str) -> TargetSpec:
     )
 
 
-def _convert_options_v1_to_v2(options: RunOptions) -> RunOptionsV2:
-    """
-    Конвертирует RunOptions в RunOptionsV2 для совместимости.
-    
-    Args:
-        options: Опции в формате V1
-        
-    Returns:
-        Опции в формате V2
-    """
-    return RunOptionsV2(
-        model=options.model,
-        code_fence=options.code_fence,
-        modes=options.modes,
-        extra_tags=options.extra_tags,
-        vcs_mode="all"  # По умолчанию, может быть переопределено через modes
-    )
-
-
 def run_render_v2(target: str, options: RunOptions) -> RenderedDocument:
     """
     Точка входа для рендеринга в LG V2.
@@ -326,14 +275,11 @@ def run_render_v2(target: str, options: RunOptions) -> RenderedDocument:
     Returns:
         Отрендеренный документ
     """
-    # Конвертируем опции
-    v2_options = _convert_options_v1_to_v2(options)
-    
     # Парсим цель
     target_spec = _parse_target(target)
     
     # Создаем движок
-    engine = EngineV2(v2_options)
+    engine = EngineV2(options)
     
     # Рендерим в зависимости от типа цели
     if target_spec.kind == "context":
@@ -342,7 +288,7 @@ def run_render_v2(target: str, options: RunOptions) -> RenderedDocument:
         return engine.render_section(target_spec.name)
 
 
-def run_report_v2(target: str, options: RunOptions) -> RunResultM:
+def run_report_v2(target: str, options: RunOptions) -> RunResult:
     """
     Точка входа для генерации отчета в LG V2.
     
@@ -353,14 +299,11 @@ def run_report_v2(target: str, options: RunOptions) -> RunResultM:
     Returns:
         Отчет в формате API v4
     """
-    # Конвертируем опции
-    v2_options = _convert_options_v1_to_v2(options)
-    
     # Парсим цель
     target_spec = _parse_target(target)
     
     # Создаем движок
-    engine = EngineV2(v2_options)
+    engine = EngineV2(options)
     
     # Генерируем отчет
     return engine.generate_report(target_spec)

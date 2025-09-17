@@ -17,35 +17,8 @@ from typing import Dict, List, Literal, Set
 from .cache.fs_cache import Cache
 from .config.adaptive_loader import AdaptiveConfigLoader
 from .stats import TokenService
+from .types import LangName, PathLabelMode, RunOptions
 from .vcs import VcsProvider
-
-# ---- Базовые типы ----
-PathLabelMode = Literal["auto", "relative", "basename", "off"]
-LangName = str  # "python", "markdown", "", и т.д.
-LANG_NONE: LangName = ""
-ModelName = str  # "o3", "gpt-4o", ...
-AdapterName = str
-
-# ---- Расширенные опции выполнения ----
-
-@dataclass(frozen=True)
-class RunOptionsV2:
-    """
-    Расширенные опции выполнения для LG V2.
-    
-    Включает все параметры, необходимые для работы нового движка,
-    включая адаптивные возможности и контекстную информацию.
-    """
-    model: ModelName = "o3"
-    code_fence: bool = True  # Глобальная опция, может переопределяться ModeOptions
-    
-    # Адаптивные возможности
-    modes: Dict[str, str] = field(default_factory=dict)  # modeset -> mode
-    extra_tags: Set[str] = field(default_factory=set)  # дополнительные теги
-    
-    # Режим VCS (может переопределяться через modes)
-    vcs_mode: Literal["all", "changes"] = "all"
-
 
 # ---- Секции и ссылки ----
 
@@ -250,7 +223,7 @@ class ProcessingContext:
     # Базовые пути и настройки
     repo_root: Path
     cfg_root: Path
-    options: RunOptionsV2
+    options: RunOptions
     
     # Активное состояние адаптивных возможностей
     active_tags: Set[str]
