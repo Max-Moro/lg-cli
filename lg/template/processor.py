@@ -95,9 +95,9 @@ class TemplateProcessor:
             # Определяем тип и загружаем шаблон
             template_text = self._load_template_text(template_name)
             
-            # Регистрируем шаблон в статистике
+            # Регистрируем шаблон в статистике с правильным ключом
             if self.stats_collector:
-                template_key = f"{self.run_ctx.root.as_posix()}::ctx:{template_name}"
+                template_key = self._build_template_key(template_name, "ctx", origin=None)
                 self.stats_collector.register_template(template_key, template_text)
             
             return self.process_template_text(template_text, template_name)
@@ -195,6 +195,24 @@ class TemplateProcessor:
     
     # Внутренние методы
     
+    def _build_template_key(self, template_name: str, kind: str, origin: Optional[str] = None) -> str:
+        """
+        Формирует ключ шаблона в федеративном формате.
+        
+        Args:
+            template_name: Имя шаблона
+            kind: Тип шаблона ("ctx" или "tpl") 
+            origin: Путь к скоупу для адресных шаблонов (уже готовый scope_rel)
+            
+        Returns:
+            Ключ шаблона в формате: kind@scope:name или kind:name для локальных
+        """
+        if origin:
+            return f"{kind}@{origin}:{template_name}"
+        else:
+            return f"{kind}:{template_name}"
+    
+
     def _parse_template(self, template_text: str, template_name: str) -> TemplateAST:
         """Парсит текст шаблона в AST с кэшированием."""
         cache_key = f"{template_name}:{hash(template_text)}"
@@ -229,6 +247,11 @@ class TemplateProcessor:
                         include_text = self._load_template_text(node.name, kind="ctx")
                     else:
                         raise ValueError(f"Unknown include kind: {node.kind}")
+                    
+                    # Регистрируем включаемый шаблон в статистике
+                    if self.stats_collector:
+                        template_key = self._build_template_key(node.name, node.kind, node.origin)
+                        self.stats_collector.register_template(template_key, include_text)
                     
                     include_ast = parse_template(include_text)
                     resolved_include = self._resolve_includes_recursive(include_ast)
