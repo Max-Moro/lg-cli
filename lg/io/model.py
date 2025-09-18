@@ -7,6 +7,30 @@ Mode = Literal["allow", "block"]
 
 
 @dataclass
+class ConditionalFilter:
+    """
+    Условное правило фильтрации файлов.
+    
+    Если условие истинно, применяются указанные allow/block правила.
+    """
+    condition: str  # Условие в виде строки (например, "tag:python AND NOT tag:minimal")
+    allow: List[str] = field(default_factory=list)  # Дополнительные allow паттерны
+    block: List[str] = field(default_factory=list)  # Дополнительные block паттерны
+    
+    @classmethod
+    def from_dict(cls, data: dict) -> "ConditionalFilter":
+        """Создает экземпляр из словаря YAML."""
+        if "condition" not in data:
+            raise ValueError("ConditionalFilter requires 'condition' field")
+        
+        return cls(
+            condition=str(data["condition"]),
+            allow=list(data.get("allow", [])),
+            block=list(data.get("block", []))
+        )
+
+
+@dataclass
 class FilterNode:
     """
     Узел фильтрации.
