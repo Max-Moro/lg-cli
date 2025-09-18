@@ -1,12 +1,14 @@
 from __future__ import annotations
 
 # Публичный API пакета adapters:
-#  • process_groups — движок обработки
+#  • process_groups — движок обработки (старый)
+#  • process_files — движок обработки файлов (V2) 
 #  • get_adapter_for_path — ленивое получение класса адаптера по пути
 from .engine import process_groups
+from .processor_v2 import process_files
 from .registry import get_adapter_for_path, register_lazy
 
-__all__ = ["process_groups", "get_adapter_for_path", "register_lazy"]
+__all__ = ["process_groups", "process_files", "get_adapter_for_path", "register_lazy"]
 
 # ---- Лёгкая (ленивая) регистрация встроенных адаптеров --------------------
 # Никаких импортов тяжёлых модулей здесь нет — только строки module:class.
