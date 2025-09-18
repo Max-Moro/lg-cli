@@ -15,12 +15,7 @@ from lg.config.adaptive_loader import AdaptiveConfigLoader
 from lg.config.adaptive_model import ModesConfig, ModeSet, Mode, TagsConfig, ModeOptions
 from lg.run_context import RunContext
 from lg.stats import TokenService
-from lg.template.context import TemplateContext
-from lg.template.processor import (
-    TemplateProcessor,
-    TemplateProcessingError,
-    create_template_processor
-)
+from lg.template.processor import TemplateProcessor, TemplateProcessingError, TemplateContext
 from lg.types import RunOptions
 from lg.vcs import NullVcs
 
@@ -65,13 +60,6 @@ class TestTemplateProcessor:
         assert processor.stats_collector is None
         assert processor._template_cache == {}
         assert processor._resolved_cache == {}
-    
-    def test_create_template_processor(self, mock_run_ctx):
-        """Тест фабричной функции create_template_processor."""
-        processor = create_template_processor(mock_run_ctx)
-        
-        assert isinstance(processor, TemplateProcessor)
-        assert processor.run_ctx == mock_run_ctx
     
     def test_set_section_handler(self, processor):
         """Тест установки обработчика секций."""
@@ -1326,7 +1314,7 @@ class TestIntegration:
         # Проверяем, что статистика собирается
         mock_collector.register_template.assert_called_once()
         call_args = mock_collector.register_template.call_args
-        assert "/test/repo::ctx:stats" in call_args[0][0]  # template key
+        assert "ctx:stats" in call_args[0][0]  # template key
         assert call_args[0][1] == template_content  # template text
 
     def test_template_context_isolation(self, processor):

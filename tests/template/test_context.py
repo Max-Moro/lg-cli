@@ -1,14 +1,14 @@
 """Тесты для контекста шаблонов TemplateContext."""
-import pytest
-from unittest.mock import Mock, MagicMock
-from typing import Dict, Set
 import warnings
+from unittest.mock import Mock
 
-from lg.template.context import TemplateContext, TemplateState, create_template_context
-from lg.template.evaluator import TemplateConditionEvaluator
-from lg.run_context import RunContext
-from lg.config.adaptive_model import ModeOptions, ModesConfig, ModeSet, Mode, TagsConfig, TagSet, Tag
+import pytest
+
 from lg.conditions.model import TagCondition
+from lg.config.adaptive_model import ModeOptions, ModesConfig, ModeSet, Mode, TagsConfig, TagSet, Tag
+from lg.run_context import RunContext
+from lg.template.context import TemplateContext, TemplateState
+from lg.template.evaluator import TemplateConditionEvaluator
 
 
 class TestTemplateState:
@@ -429,7 +429,7 @@ class TestCreateTemplateContext:
         run_ctx.options = Mock()
         run_ctx.options.modes = {}
         
-        context = create_template_context(run_ctx)
+        context = TemplateContext(run_ctx)
         
         assert isinstance(context, TemplateContext)
         assert context.run_ctx == run_ctx
