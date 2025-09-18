@@ -64,8 +64,7 @@ class StatsCollector:
     def register_processed_file(
         self, 
         file: ProcessedFile, 
-        section_ref: SectionRef, 
-        multiplicity: int = 1
+        section_ref: SectionRef
     ) -> None:
         """
         Регистрирует статистику обработанного файла.
@@ -73,7 +72,6 @@ class StatsCollector:
         Args:
             file: Обработанный файл
             section_ref: Ссылка на секцию, в которой используется файл
-            multiplicity: Количество использований файла (для дедупликации)
         """
         rel_path = file.rel_path
         canon_key = section_ref.canon_key()
@@ -85,8 +83,8 @@ class StatsCollector:
         # Обновляем кэш токенов
         self._update_file_tokens_cache(file.cache_key, t_raw, t_proc)
         
-        # Вычисляем статистику с учетом множественности
-        saved_tokens = max(0, (t_raw - t_proc) * multiplicity)
+        # Вычисляем статистику для файла
+        saved_tokens = max(0, t_raw - t_proc)
         saved_pct = (1 - (t_proc / t_raw)) * 100.0 if t_raw else 0.0
         
         # Регистрируем или обновляем статистику файла
@@ -94,30 +92,21 @@ class StatsCollector:
             self.files_stats[rel_path] = FileStats(
                 path=rel_path,
                 size_bytes=file.abs_path.stat().st_size if file.abs_path.exists() else 0,
-                tokens_raw=t_raw * multiplicity,
-                tokens_processed=t_proc * multiplicity,
+                tokens_raw=t_raw,
+                tokens_processed=t_proc,
                 saved_tokens=saved_tokens,
                 saved_pct=saved_pct,
                 meta=file.meta.copy() if file.meta else {},
-                sections={canon_key: multiplicity}
+                sections=[canon_key]
             )
         else:
-            # Файл уже учтен, обновляем статистику использования
+            # Файл уже учтен, добавляем секцию если её еще нет
             stats = self.files_stats[rel_path]
-            
-            # Увеличиваем счетчики для этой секции
-            current_count = stats.sections.get(canon_key, 0)
-            stats.sections[canon_key] = current_count + multiplicity
-            
-            # Пересчитываем токены с учетом нового использования
-            total_multiplicity = sum(stats.sections.values())
-            stats.tokens_raw = t_raw * total_multiplicity
-            stats.tokens_processed = t_proc * total_multiplicity
-            stats.saved_tokens = max(0, stats.tokens_raw - stats.tokens_processed)
-            stats.saved_pct = (1 - (stats.tokens_processed / stats.tokens_raw)) * 100.0 if stats.tokens_raw else 0.0
+            if canon_key not in stats.sections:
+                stats.sections.append(canon_key)
         
         # Обновляем счетчик использования секции
-        self.sections_usage[canon_key] = self.sections_usage.get(canon_key, 0) + multiplicity
+        self.sections_usage[canon_key] = self.sections_usage.get(canon_key, 0) + 1
     
     def register_section_rendered(self, section: RenderedSection) -> None:
         """
@@ -252,7 +241,7 @@ class StatsCollector:
             template_overhead_pct = (template_overhead_tokens / final_tokens * 100.0)
         
         ctx_block = ContextBlock(
-            templateName=self.target_name,
+            templateName=self.target_name or "unknown",
             sectionsUsed=self.sections_usage.copy(),
             finalRenderedTokens=final_tokens,
             templateOnlyTokens=template_overhead_tokens,
@@ -299,11 +288,11 @@ class StatsCollector:
             
             # Формируем ключ кэша для rendered токенов
             options_fp = {"variant": variant}
-            processed_keys = {f.path: str(hash(str(f.sections))) for f in self.files_stats.values()}
+            processed_keys = {f.path: str(hash(tuple(sorted(f.sections)))) for f in self.files_stats.values()}
             templates_hashes = {k: str(hash(v.key)) for k, v in self.templates_stats.items()}
             
             k_rendered, p_rendered = self.cache.build_rendered_key(
-                context_name=self.target_name,
+                context_name=self.target_name or "unknown",
                 sections_used=self.sections_usage,
                 options_fp=options_fp,
                 processed_keys=processed_keys,

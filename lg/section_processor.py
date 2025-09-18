@@ -554,8 +554,7 @@ class SectionProcessor:
                 # Регистрируем файл в коллекторе статистики
                 self.stats_collector.register_processed_file(
                     file=processed_file,
-                    section_ref=plan.manifest.ref,
-                    multiplicity=1
+                    section_ref=plan.manifest.ref
                 )
                 processed_files.append(processed_file)
         
@@ -615,7 +614,7 @@ class SectionProcessor:
                     abs_path=file_entry.abs_path,
                     rel_path=RepoRelPath(file_entry.rel_path),
                     section_id=temp_section_plan.section_id,
-                    multiplicity=1,
+                    multiplicity=1,  # В новой модели каждый файл считается только один раз в секции
                     language_hint=OldLangName(file_entry.language_hint),
                     adapter_overrides=file_entry.adapter_overrides
                 )

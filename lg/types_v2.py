@@ -197,7 +197,7 @@ class FileStats:
     saved_tokens: int
     saved_pct: float
     meta: Dict[str, int | float | str | bool]
-    sections: Dict[str, int] = field(default_factory=dict)  # canon_key -> count
+    sections: List[str] = field(default_factory=list)  # список секций где использован файл
 
 
 @dataclass
