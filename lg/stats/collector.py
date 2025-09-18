@@ -12,10 +12,7 @@ from typing import Dict, List, Optional, Tuple
 from ..cache.fs_cache import Cache
 from ..stats import TokenService
 from ..types import FileRow, Totals, ContextBlock  # Старый формат для совместимости
-from ..types_v2 import (
-    ProcessedFile, RenderedSection, SectionRef, FileStats,
-    SectionStats, TemplateStats
-)
+from ..types_v2 import ProcessedFile, RenderedSection, SectionRef, FileStats, SectionStats
 
 
 class StatsCollector:
@@ -47,10 +44,7 @@ class StatsCollector:
         
         # Статистика по секциям (ключ: canon_key)
         self.sections_stats: Dict[str, SectionStats] = {}
-        
-        # Статистика по шаблонам (ключ: template_key)
-        self.templates_stats: Dict[str, TemplateStats] = {}
-        
+
         # Карта использования секций {canon_key: count}
         self.sections_usage: Dict[str, int] = {}
         
@@ -140,22 +134,6 @@ class StatsCollector:
             tokens_rendered=tokens_rendered,
             total_size_bytes=total_size_bytes,
             meta_summary=meta_summary
-        )
-    
-    def register_template(self, template_key: str, template_text: str) -> None:
-        """
-        Регистрирует статистику шаблона.
-        
-        Args:
-            template_key: Уникальный ключ шаблона
-            template_text: Текст шаблона для подсчета токенов
-        """
-        tokens = self.tokenizer.count_text(template_text)
-        
-        self.templates_stats[template_key] = TemplateStats(
-            key=template_key,
-            tokens=tokens,
-            text_size=len(template_text)
         )
     
     def set_final_texts(self, final_text: str) -> None:
@@ -289,14 +267,12 @@ class StatsCollector:
             # Формируем ключ кэша для rendered токенов
             options_fp = {"variant": variant}
             processed_keys = {f.path: str(hash(tuple(sorted(f.sections)))) for f in self.files_stats.values()}
-            templates_hashes = {k: str(hash(v.key)) for k, v in self.templates_stats.items()}
-            
+
             k_rendered, p_rendered = self.cache.build_rendered_key(
                 context_name=self.target_name or "unknown",
                 sections_used=self.sections_usage,
                 options_fp=options_fp,
                 processed_keys=processed_keys,
-                templates=templates_hashes,
             )
             
             # Пытаемся получить из кэша

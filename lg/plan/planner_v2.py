@@ -43,11 +43,7 @@ def build_section_plan(manifest: SectionManifest, template_ctx: TemplateContext)
     md_only = all(f.language_hint == "" for f in files)
     
     # Определяем, использовать ли fenced блоки
-    code_fence_enabled = (
-        template_ctx.run_ctx.options.code_fence and 
-        template_ctx.current_state.mode_options.code_fence
-    )
-    use_fence = code_fence_enabled and not md_only
+    use_fence = template_ctx.current_state.mode_options.code_fence and not md_only
     
     # Группируем файлы по языку
     groups = _group_files_by_language(files, use_fence)

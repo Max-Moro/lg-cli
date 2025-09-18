@@ -68,8 +68,7 @@ class TemplateProcessor:
         
         # Хендлеры для обработки различных типов узлов
         self.section_handler: Optional[Callable[[SectionRef, TemplateContext], str]] = None
-        self.stats_collector: Optional[StatsCollector] = None
-    
+
     def _load_template_from_wrapper(self, cfg_root, name):
         """Обёртка для load_template_from, которую можно мокать в тестах."""
         return load_template_from(cfg_root, name)
@@ -88,15 +87,6 @@ class TemplateProcessor:
         """
         self.section_handler = handler
     
-    def set_stats_collector(self, collector: StatsCollector) -> None:
-        """
-        Устанавливает коллектор статистики.
-        
-        Args:
-            collector: Объект для сбора статистики во время обработки
-        """
-        self.stats_collector = collector
-    
     def process_template_file(self, template_name: str) -> str:
         """
         Обрабатывает шаблон из файла lg-cfg/<name>.tpl.md или lg-cfg/<name>.ctx.md.
@@ -113,11 +103,6 @@ class TemplateProcessor:
         try:
             # Определяем тип и загружаем шаблон
             template_text = self._load_template_text(template_name)
-            
-            # Регистрируем шаблон в статистике с правильным ключом
-            if self.stats_collector:
-                template_key = self._build_template_key(template_name, "ctx", origin=None)
-                self.stats_collector.register_template(template_key, template_text)
             
             return self.process_template_text(template_text, template_name)
             
@@ -181,7 +166,7 @@ class TemplateProcessor:
             
             return {
                 "sections": [node.section_name for node in section_nodes],
-                "includes": [f"{node.kind}:{node.name}" for node in include_nodes],
+                "includes": [f"{node.canon_key()}" for node in include_nodes],
                 "conditional": has_conditional_content(ast)
             }
             
@@ -238,24 +223,6 @@ class TemplateProcessor:
         except Exception as e:
             raise TemplateProcessingError(f"Unexpected error during resolution: {e}", template_name, e)
     
-    def _build_template_key(self, template_name: str, kind: str, origin: Optional[str] = None) -> str:
-        """
-        Формирует ключ шаблона в федеративном формате.
-        
-        Args:
-            template_name: Имя шаблона
-            kind: Тип шаблона ("ctx" или "tpl") 
-            origin: Путь к скоупу для адресных шаблонов (уже готовый scope_rel)
-            
-        Returns:
-            Ключ шаблона в формате: kind@scope:name или kind:name для локальных
-        """
-        if origin:
-            return f"{kind}@{origin}:{template_name}"
-        else:
-            return f"{kind}:{template_name}"
-    
-
     def _parse_template(self, template_text: str, template_name: str) -> TemplateAST:
         """Парсит текст шаблона в AST с кэшированием."""
         cache_key = f"{template_name}:{hash(template_text)}"
@@ -292,7 +259,7 @@ class TemplateProcessor:
                 return self._evaluate_ast(node.children)
             else:
                 # Если включение не резолвлено, возвращаем плейсхолдер  
-                return f"${{{node.kind}:{node.name}}}"
+                return f"${{{node.canon_key()}}}"
         
         elif isinstance(node, ConditionalBlockNode):
             # Оцениваем условие
@@ -383,6 +350,6 @@ class TemplateProcessor:
             try:
                 self._load_template_text(node.name, node.kind)
             except Exception as e:
-                issues.append(f"Cannot load {node.kind}:{node.name}: {e}")
+                issues.append(f"Cannot load {node.canon_key()}: {e}")
         
         return issues

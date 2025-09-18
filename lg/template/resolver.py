@@ -223,7 +223,7 @@ class TemplateResolver:
         - "tpl@origin:name", "ctx@origin:name" → указанный скоуп
         - "tpl@[origin]:name", "ctx@[origin]:name" → скоуп с двоеточиями в имени
         """
-        include_key = f"{node.kind}:{node.name}@{node.origin}"
+        include_key = node.canon_key()
         
         try:
             # Проверяем циклы включений
@@ -259,7 +259,7 @@ class TemplateResolver:
         except Exception as e:
             if isinstance(e, ResolverError):
                 raise
-            raise ResolverError(f"Failed to resolve include '{node.kind}:{node.name}': {e}", context)
+            raise ResolverError(f"Failed to resolve include '{node.canon_key()}': {e}", context)
     
     def _parse_section_reference(self, section_name: str) -> Tuple[Path, str]:
         """
@@ -304,11 +304,7 @@ class TemplateResolver:
         Returns:
             Резолвленное включение с AST
         """
-        # Создаем полное имя включения для парсинга адресации
-        if node.origin == "self":
-            include_spec = f"{node.kind}:{node.name}"
-        else:
-            include_spec = f"{node.kind}@{node.origin}:{node.name}"
+        include_spec = node.canon_key()
         
         # Парсим адресную ссылку
         try:

@@ -110,7 +110,6 @@ class EngineV2:
             return rendered_section.text
         
         self.template_processor.set_section_handler(section_handler)
-        self.template_processor.set_stats_collector(self.stats_collector)
     
     def render_context(self, context_name: str) -> RenderedDocument:
         """

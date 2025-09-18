@@ -70,9 +70,18 @@ class IncludeNode(TemplateNode):
     
     # Для хранения вложенного AST после резолвинга и парсинга
     children: Optional[List[TemplateNode]] = None
-    
+
     def accept(self, visitor) -> Any:
         return visitor.visit_include_node(self)
+
+    def canon_key(self) -> str:
+        """
+        Возвращает канонический ключ.
+        """
+        if self.origin and self.origin != "self":
+            return f"{self.kind}@{self.origin}:{self.name}"
+        else:
+            return f"{self.kind}:{self.name}"
 
 
 @dataclass(frozen=True)

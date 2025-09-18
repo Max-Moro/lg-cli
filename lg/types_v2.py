@@ -208,13 +208,3 @@ class SectionStats:
     tokens_rendered: int
     total_size_bytes: int
     meta_summary: Dict[str, int] = field(default_factory=dict)
-
-
-@dataclass
-class TemplateStats:
-    """
-    Статистика по шаблону для StatsCollector.
-    """
-    key: str
-    tokens: int
-    text_size: int

@@ -84,8 +84,7 @@ def process_files(plan: SectionPlan, template_ctx: TemplateContext) -> List[Proc
                 group_size=group_size,
                 mixed=bool(group.mixed),
             )
-            k_raw, p_raw = cache.build_raw_tokens_key(abs_path=fp)
-            
+
             # Пытаемся получить из кэша
             cached = cache.get_processed(p_proc)
             if cached and "processed_text" in cached:
