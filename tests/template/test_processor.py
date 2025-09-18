@@ -48,7 +48,7 @@ class TestTemplateProcessor:
     @pytest.fixture
     def processor(self, mock_run_ctx):
         """Создает экземпляр TemplateProcessor для тестов."""
-        return TemplateProcessor(mock_run_ctx)
+        return TemplateProcessor(mock_run_ctx, validate_paths=False)
     
     def test_init(self, mock_run_ctx):
         """Тест инициализации TemplateProcessor."""
@@ -268,89 +268,89 @@ class TestIncludeHandling:
     
     @pytest.fixture
     def processor(self, mock_run_ctx):
-        return TemplateProcessor(mock_run_ctx)
+        return TemplateProcessor(mock_run_ctx, validate_paths=False)
 
-    @patch('lg.template.processor.load_template_from')
-    @patch('lg.template.processor.load_context_from')
-    def test_template_include(self, mock_load_ctx, mock_load_tpl, processor):
+    def test_template_include(self, processor):
         """Тест включения шаблона."""
-        # Мокаем загрузку включаемого шаблона
-        mock_load_tpl.return_value = (Path("/test/include.tpl.md"), "Included template content")
-        
-        template_text = "Before ${tpl:header} after"
-        
-        result = processor.process_template_text(template_text)
-        
-        assert result == "Before Included template content after"
-        mock_load_tpl.assert_called_once()
-
-    @patch('lg.template.processor.load_template_from')
-    @patch('lg.template.processor.load_context_from')
-    def test_context_include(self, mock_load_ctx, mock_load_tpl, processor):
-        """Тест включения контекста."""
-        # Мокаем загрузку включаемого контекста
-        mock_load_ctx.return_value = (Path("/test/include.ctx.md"), "Included context content")
-        
-        template_text = "Before ${ctx:intro} after"
-        
-        result = processor.process_template_text(template_text)
-        
-        assert result == "Before Included context content after"
-        mock_load_ctx.assert_called_once()
-
-    @patch('lg.template.processor.load_template_from')
-    @patch('lg.template.processor.load_context_from')
-    def test_nested_includes(self, mock_load_ctx, mock_load_tpl, processor):
-        """Тест вложенных включений."""
-        # Первый уровень включает второй
-        mock_load_tpl.side_effect = [
-            (Path("/test/level1.tpl.md"), "Level 1: ${tpl:level2}"),
-            (Path("/test/level2.tpl.md"), "Level 2 content")
-        ]
-        
-        template_text = "Start ${tpl:level1} end"
-        
-        result = processor.process_template_text(template_text)
-        
-        assert result == "Start Level 1: Level 2 content end"
-        assert mock_load_tpl.call_count == 2
-
-    @patch('lg.template.processor.load_template_from')
-    def test_include_error_handling(self, mock_load_tpl, processor):
-        """Тест обработки ошибок при включении."""
-        # Мокаем ошибку загрузки
-        mock_load_tpl.side_effect = FileNotFoundError("Template not found")
-        
-        template_text = "Before ${tpl:missing} after"
-        
-        result = processor.process_template_text(template_text)
-        
-        # Должен быть заменен на комментарий об ошибке
-        assert "Before <!-- Error loading tpl:missing:" in result
-        assert "after" in result
-
-    @patch('lg.template.processor.load_template_from')
-    def test_include_without_resolution(self, mock_load_tpl, processor):
-        """Тест включения, которое не может быть разрешено."""
-        # Не мокаем load_template_from, чтобы симулировать отсутствие резолвинга
-        template_text = "Before ${tpl:unresolved} after"
-        
-        # Отключаем резолвинг включений для этого теста
-        with patch.object(processor, '_resolve_includes_recursive') as mock_resolve:
-            # Возвращаем узел включения без детей (не разрешен)
-            from lg.template.nodes import TextNode, IncludeNode
-            mock_resolve.return_value = [
-                TextNode("Before "),
-                IncludeNode(kind="tpl", name="unresolved", origin="self", children=None),
-                TextNode(" after")
-            ]
+        # Мокаем load функции в resolver
+        with patch.object(processor.resolver, 'load_template_fn') as mock_load_tpl:
+            mock_load_tpl.return_value = (Path("/test/include.tpl.md"), "Included template content")
+            
+            template_text = "Before ${tpl:header} after"
             
             result = processor.process_template_text(template_text)
-        
-        # Должен остаться плейсхолдер
-        assert result == "Before ${tpl:unresolved} after"
+            
+            assert result == "Before Included template content after"
+            mock_load_tpl.assert_called_once()
 
+    def test_context_include(self, processor):
+        """Тест включения контекста."""
+        # Мокаем load функции в resolver
+        with patch.object(processor.resolver, 'load_context_fn') as mock_load_ctx:
+            mock_load_ctx.return_value = (Path("/test/include.ctx.md"), "Included context content")
+            
+            template_text = "Before ${ctx:intro} after"
+            
+            result = processor.process_template_text(template_text)
+            
+            assert result == "Before Included context content after"
+            mock_load_ctx.assert_called_once()
 
+    def test_nested_includes(self, processor):
+        """Тест вложенных включений."""
+        # Мокаем load функции в resolver
+        with patch.object(processor.resolver, 'load_template_fn') as mock_load_tpl:
+            # Первый уровень включает второй
+            mock_load_tpl.side_effect = [
+                (Path("/test/level1.tpl.md"), "Level 1: ${tpl:level2}"),
+                (Path("/test/level2.tpl.md"), "Level 2 content")
+            ]
+            
+            template_text = "Start ${tpl:level1} end"
+            
+            result = processor.process_template_text(template_text)
+            
+            assert result == "Start Level 1: Level 2 content end"
+            assert mock_load_tpl.call_count == 2
+
+    def test_include_error_handling(self, processor):
+        """Тест обработки ошибок при включении."""
+        # Мокируем функции resolver для полноценного теста
+        with patch.object(processor.resolver, 'load_template_fn') as mock_load_tpl, \
+             patch.object(processor.resolver, '_resolve_cfg_root_safe') as mock_cfg_root:
+            
+            # Настраиваем мок cfg_root
+            mock_cfg_root.return_value = Path("/test/repo/lg-cfg")
+            # Настраиваем ошибку загрузки
+            mock_load_tpl.side_effect = FileNotFoundError("Template not found")
+            
+            template_text = "Before ${tpl:missing} after"
+            
+            # Ожидаем ошибку резолвинга
+            with pytest.raises(TemplateProcessingError) as exc_info:
+                processor.process_template_text(template_text)
+                
+            assert "Resolution failed" in str(exc_info.value)
+
+    def test_include_without_resolution(self, processor):
+        """Тест включения, которое не может быть разрешено."""
+        # Мокируем функции resolver для полноценного теста
+        with patch.object(processor.resolver, 'load_template_fn') as mock_load_tpl, \
+             patch.object(processor.resolver, '_resolve_cfg_root_safe') as mock_cfg_root:
+            
+            # Настраиваем мок cfg_root
+            mock_cfg_root.return_value = Path("/test/repo/lg-cfg")
+            # Настраиваем ошибку загрузки
+            mock_load_tpl.side_effect = FileNotFoundError("Template not found")
+            
+            template_text = "Before ${tpl:unresolved} after"
+            
+            # Ожидаем, что резолвер выдаст ошибку при отсутствии шаблона
+            with pytest.raises(TemplateProcessingError) as exc_info:
+                processor.process_template_text(template_text)
+                
+            # Проверяем, что ошибка связана с резолвингом
+            assert "Resolution failed" in str(exc_info.value)
 class TestConditionalBlocks:
     """Тесты обработки условных блоков."""
     
@@ -1132,7 +1132,7 @@ class TestIntegration:
     
     @pytest.fixture
     def processor(self, mock_run_ctx):
-        processor = TemplateProcessor(mock_run_ctx)
+        processor = TemplateProcessor(mock_run_ctx, validate_paths=False)
         
         # Устанавливаем реалистичный обработчик секций
         def section_handler(section_name, template_ctx):
@@ -1148,9 +1148,7 @@ class TestIntegration:
         processor.set_section_handler(section_handler)
         return processor
 
-    @patch('lg.template.processor.load_context_from')
-    @patch('lg.template.processor.load_template_from')
-    def test_complex_template_with_all_features(self, mock_load_tpl, mock_load_ctx, processor):
+    def test_complex_template_with_all_features(self, processor):
         """Тест сложного шаблона со всеми возможностями."""
         # Основной шаблон
         main_template = """
@@ -1198,25 +1196,29 @@ class TestIntegration:
         header_template = "<!-- Project Header -->\n\nWelcome to the project!"
         footer_template = "<!-- Project Footer -->\n\nEnd of documentation."
         
-        mock_load_ctx.return_value = (Path("/test/main.ctx.md"), main_template)
-        mock_load_tpl.side_effect = lambda cfg_root, name: {
-            "header": (Path("/test/header.tpl.md"), header_template),
-            "footer": (Path("/test/footer.tpl.md"), footer_template)
-        }[name]
-        
-        result = processor.process_template_file("main")
-        
-        # Базовая структура должна присутствовать
-        assert "# Project Documentation" in result
-        assert "Welcome to the project!" in result
-        assert "End of documentation." in result
-        
-        # Содержимое режимных блоков должно быть включено
-        assert "Architecture Overview" in result
-        assert "Agent Capabilities" in result
-        
-        # Секции должны быть отрендерены
-        assert "Full content for architecture" in result
+        # Мокаем load функции
+        with patch.object(processor, '_load_template_text') as mock_load_text, \
+             patch.object(processor.resolver, 'load_template_fn') as mock_load_tpl:
+            
+            mock_load_text.return_value = main_template
+            mock_load_tpl.side_effect = lambda cfg_root, name: {
+                "header": (Path("/test/header.tpl.md"), header_template),
+                "footer": (Path("/test/footer.tpl.md"), footer_template)
+            }[name]
+            
+            result = processor.process_template_file("main")
+            
+            # Базовая структура должна присутствовать
+            assert "# Project Documentation" in result
+            assert "Welcome to the project!" in result
+            assert "End of documentation." in result
+            
+            # Содержимое режимных блоков должно быть включено
+            assert "Architecture Overview" in result
+            assert "Agent Capabilities" in result
+            
+            # Секции должны быть отрендерены
+            assert "Full content for architecture" in result
 
     @patch('lg.template.processor.load_context_from')
     def test_conditional_content_with_tagset(self, mock_load, processor):

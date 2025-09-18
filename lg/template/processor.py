@@ -15,10 +15,11 @@ from .evaluator import TemplateEvaluationError
 from .lexer import LexerError
 from .nodes import (
     TemplateAST, TemplateNode, TextNode, SectionNode, IncludeNode,
-    ConditionalBlockNode, ModeBlockNode, CommentNode, ElseBlockNode,
-    collect_section_nodes, collect_include_nodes, has_conditional_content
+    ConditionalBlockNode, ModeBlockNode, CommentNode, collect_section_nodes, collect_include_nodes,
+    has_conditional_content
 )
 from .parser import ParserError, parse_template
+from .resolver import TemplateResolver, ResolverError
 from ..context.common import load_template_from, load_context_from
 from ..run_context import RunContext
 from ..stats.collector import StatsCollector
@@ -41,15 +42,24 @@ class TemplateProcessor:
     лексера, парсера, оценщика условий и рендерера.
     """
     
-    def __init__(self, run_ctx: RunContext):
+    def __init__(self, run_ctx: RunContext, validate_paths: bool = True):
         """
         Инициализирует процессор шаблонов.
         
         Args:
             run_ctx: Контекст выполнения с настройками и сервисами
+            validate_paths: Если False, не проверяет существование путей (для тестирования)
         """
         self.run_ctx = run_ctx
         self.template_ctx = TemplateContext(run_ctx)
+        
+        # Резолвер для обработки адресных ссылок
+        self.resolver = TemplateResolver(
+            run_ctx, 
+            validate_paths=validate_paths,
+            load_template_fn=self._load_template_from_wrapper,
+            load_context_fn=self._load_context_from_wrapper
+        )
         
         # Кэш загруженных и обработанных шаблонов
         self._template_cache: Dict[str, TemplateAST] = {}
@@ -58,6 +68,14 @@ class TemplateProcessor:
         # Хендлеры для обработки различных типов узлов
         self.section_handler: Optional[Callable[[str, TemplateContext], str]] = None
         self.stats_collector: Optional[StatsCollector] = None
+    
+    def _load_template_from_wrapper(self, cfg_root, name):
+        """Обёртка для load_template_from, которую можно мокать в тестах."""
+        return load_template_from(cfg_root, name)
+    
+    def _load_context_from_wrapper(self, cfg_root, name):
+        """Обёртка для load_context_from, которую можно мокать в тестах."""
+        return load_context_from(cfg_root, name)
         
     def set_section_handler(self, handler: Callable[[str, TemplateContext], str]) -> None:
         """
@@ -120,17 +138,20 @@ class TemplateProcessor:
             TemplateProcessingError: При ошибке обработки шаблона
         """
         try:
-            # Парсим шаблон
+            # 1. Парсим шаблон
             ast = self._parse_template(template_text, template_name)
             
-            # Резолвим включения
-            resolved_ast = self._resolve_includes(ast, template_name)
+            # 2. Резолвим ссылки (адресные секции и включения)
+            resolved_ast = self._resolve_template_references(ast, template_name)
             
-            # Обрабатываем AST
+            # 3. Обрабатываем AST
             return self._evaluate_ast(resolved_ast)
             
-        except (LexerError, ParserError, TemplateEvaluationError) as e:
+        except (LexerError, ParserError, ResolverError, TemplateEvaluationError) as e:
             raise TemplateProcessingError(str(e), template_name, e)
+        except TemplateProcessingError:
+            # Повторный бросок TemplateProcessingError без дополнительной обёртки
+            raise
         except Exception as e:
             raise TemplateProcessingError(f"Unexpected error during processing", template_name, e)
     
@@ -195,6 +216,27 @@ class TemplateProcessor:
     
     # Внутренние методы
     
+    def _resolve_template_references(self, ast: TemplateAST, template_name: str = "") -> TemplateAST:
+        """
+        Резолвит все ссылки в AST с использованием TemplateResolver.
+        
+        Args:
+            ast: AST для резолвинга
+            template_name: Имя шаблона для диагностики
+            
+        Returns:
+            AST с резолвленными ссылками
+            
+        Raises:
+            TemplateProcessingError: При ошибке резолвинга
+        """
+        try:
+            return self.resolver.resolve_template_references(ast, template_name)
+        except ResolverError as e:
+            raise TemplateProcessingError(f"Resolution failed: {e}", template_name, e)
+        except Exception as e:
+            raise TemplateProcessingError(f"Unexpected error during resolution: {e}", template_name, e)
+    
     def _build_template_key(self, template_name: str, kind: str, origin: Optional[str] = None) -> str:
         """
         Формирует ключ шаблона в федеративном формате.
@@ -222,86 +264,6 @@ class TemplateProcessor:
             self._template_cache[cache_key] = ast
         
         return self._template_cache[cache_key]
-    
-    def _resolve_includes(self, ast: TemplateAST, template_name: str) -> TemplateAST:
-        """Резолвит все включения в AST."""
-        cache_key = f"resolved:{template_name}:{id(ast)}"
-        
-        if cache_key not in self._resolved_cache:
-            resolved_ast = self._resolve_includes_recursive(ast)
-            self._resolved_cache[cache_key] = resolved_ast
-        
-        return self._resolved_cache[cache_key]
-    
-    def _resolve_includes_recursive(self, ast: TemplateAST) -> TemplateAST:
-        """Рекурсивно резолвит включения в AST."""
-        resolved_nodes = []
-        
-        for node in ast:
-            if isinstance(node, IncludeNode):
-                # Загружаем и парсим включаемый шаблон
-                try:
-                    if node.kind == "tpl":
-                        include_text = self._load_template_text(node.name, kind="tpl")
-                    elif node.kind == "ctx":
-                        include_text = self._load_template_text(node.name, kind="ctx")
-                    else:
-                        raise ValueError(f"Unknown include kind: {node.kind}")
-                    
-                    # Регистрируем включаемый шаблон в статистике
-                    if self.stats_collector:
-                        template_key = self._build_template_key(node.name, node.kind, node.origin)
-                        self.stats_collector.register_template(template_key, include_text)
-                    
-                    include_ast = parse_template(include_text)
-                    resolved_include = self._resolve_includes_recursive(include_ast)
-                    
-                    # Создаем обновленный узел включения с резолвленными детьми
-                    resolved_node = IncludeNode(
-                        kind=node.kind,
-                        name=node.name,
-                        origin=node.origin,
-                        children=resolved_include
-                    )
-                    resolved_nodes.append(resolved_node)
-                    
-                except Exception as e:
-                    # В случае ошибки заменяем на текстовый узел с ошибкой
-                    error_text = f"<!-- Error loading {node.kind}:{node.name}: {e} -->"
-                    resolved_nodes.append(TextNode(text=error_text))
-            
-            elif isinstance(node, ConditionalBlockNode):
-                # Рекурсивно обрабатываем тело условного блока
-                resolved_body = self._resolve_includes_recursive(node.body)
-                resolved_else = None
-                if node.else_block:
-                    resolved_else_body = self._resolve_includes_recursive(node.else_block.body)
-                    resolved_else = ElseBlockNode(body=resolved_else_body)
-                
-                resolved_node = ConditionalBlockNode(
-                    condition_text=node.condition_text,
-                    body=resolved_body,
-                    else_block=resolved_else,
-                    condition_ast=node.condition_ast,
-                    evaluated=node.evaluated
-                )
-                resolved_nodes.append(resolved_node)
-            
-            elif isinstance(node, ModeBlockNode):
-                # Рекурсивно обрабатываем тело режимного блока
-                resolved_body = self._resolve_includes_recursive(node.body)
-                resolved_node = ModeBlockNode(
-                    modeset=node.modeset,
-                    mode=node.mode,
-                    body=resolved_body
-                )
-                resolved_nodes.append(resolved_node)
-            
-            else:
-                # Остальные узлы копируем как есть
-                resolved_nodes.append(node)
-        
-        return resolved_nodes
     
     def _evaluate_ast(self, ast: TemplateAST) -> str:
         """Оценивает AST и возвращает отрендеренный текст."""

@@ -7,7 +7,7 @@
 
 from __future__ import annotations
 
-from typing import List, Optional
+from typing import List, Optional, Tuple
 
 from .lexer import Token, TokenType, TemplateLexer
 from .nodes import (
@@ -142,10 +142,13 @@ class TemplateParser:
             section_name = tokens[0].value
             return SectionNode(section_name=section_name)
         
-        # Адресная секция - пока что парсим как простую
-        # TODO: Добавить поддержку адресации когда будет нужно
-        section_name = tokens[0].value
-        return SectionNode(section_name=section_name)
+        # Адресная секция
+        if len(tokens) >= 3 and tokens[0].type == TokenType.AT:
+            section_name = self._reconstruct_section_reference(tokens)
+            return SectionNode(section_name=section_name)
+        
+        # Fallback для неожиданных форматов
+        raise ParserError(f"Invalid section placeholder format", tokens[0])
     
     def _parse_include_placeholder(self, tokens: List[Token]) -> IncludeNode:
         """
@@ -163,11 +166,11 @@ class TemplateParser:
             name = tokens[2].value
             return IncludeNode(kind=kind, name=name, origin="self")
         
-        # Адресное включение - пока что парсим упрощенно
-        # TODO: Добавить полную поддержку адресации
-        if len(tokens) >= 3:
-            name = tokens[-1].value  # Берем последний токен как имя
-            return IncludeNode(kind=kind, name=name, origin="self")
+        # Адресное включение
+        if len(tokens) >= 4 and tokens[1].type == TokenType.AT:
+            # Парсим адресную ссылку
+            origin, name = self._parse_include_reference(tokens[1:])  # Пропускаем kind
+            return IncludeNode(kind=kind, name=name, origin=origin)
         
         raise ParserError(f"Invalid {kind} include format", tokens[0])
     
@@ -333,6 +336,125 @@ class TemplateParser:
         self._consume(TokenType.COMMENT_END)
         
         return CommentNode(text=''.join(content_parts))
+    
+    # Вспомогательные методы для адресных ссылок
+    
+    def _reconstruct_section_reference(self, tokens: List[Token]) -> str:
+        """
+        Восстанавливает полную адресную ссылку на секцию из токенов.
+        
+        Поддерживает форматы:
+        - @origin:name
+        - @[origin]:name
+        """
+        if not tokens:
+            raise ParserError("Empty section reference", self._current_token())
+        if tokens[0].type != TokenType.AT:
+            raise ParserError("Expected '@' at start of section reference", tokens[0])
+        
+        if len(tokens) >= 4 and tokens[1].type == TokenType.LBRACKET:
+            # Формат: @[origin]:name
+            return self._reconstruct_bracketed_reference(tokens)
+        else:
+            # Формат: @origin:name
+            return self._reconstruct_simple_reference(tokens)
+    
+    def _reconstruct_bracketed_reference(self, tokens: List[Token]) -> str:
+        """Восстанавливает ссылку вида @[origin]:name."""
+        # Ожидаем: @ [ origin ] : name
+        if len(tokens) < 5:
+            raise ParserError("Incomplete bracketed reference", tokens[0])
+        
+        if (tokens[0].type != TokenType.AT or 
+            tokens[1].type != TokenType.LBRACKET):
+            raise ParserError("Invalid bracketed reference format", tokens[0])
+        
+        # Находим закрывающую скобку
+        bracket_end = -1
+        for i in range(2, len(tokens)):
+            if tokens[i].type == TokenType.RBRACKET:
+                bracket_end = i
+                break
+        
+        if bracket_end == -1:
+            raise ParserError("Missing closing bracket in reference", tokens[1])
+        
+        # Проверяем двоеточие после скобки
+        if (bracket_end + 1 >= len(tokens) or 
+            tokens[bracket_end + 1].type != TokenType.COLON):
+            raise ParserError("Missing ':' after bracketed origin", tokens[bracket_end] if bracket_end < len(tokens) else tokens[-1])
+        
+        # Собираем origin (между скобками)
+        origin_parts = []
+        for i in range(2, bracket_end):
+            origin_parts.append(tokens[i].value)
+        origin = ''.join(origin_parts)
+        
+        # Собираем name (после двоеточия)  
+        name_parts = []
+        for i in range(bracket_end + 2, len(tokens)):
+            name_parts.append(tokens[i].value)
+        name = ''.join(name_parts)
+        
+        return f"@[{origin}]:{name}"
+    
+    def _reconstruct_simple_reference(self, tokens: List[Token]) -> str:
+        """Восстанавливает ссылку вида @origin:name."""
+        # Ожидаем: @ origin : name
+        if len(tokens) < 3:
+            raise ParserError("Incomplete simple reference", tokens[0])
+        
+        # Находим двоеточие
+        colon_pos = -1
+        for i in range(1, len(tokens)):
+            if tokens[i].type == TokenType.COLON:
+                colon_pos = i
+                break
+        
+        if colon_pos == -1:
+            raise ParserError("Missing ':' in reference", tokens[0])
+        
+        # Собираем origin (между @ и :)
+        origin_parts = []
+        for i in range(1, colon_pos):
+            origin_parts.append(tokens[i].value)
+        origin = ''.join(origin_parts)
+        
+        # Собираем name (после :)
+        name_parts = []
+        for i in range(colon_pos + 1, len(tokens)):
+            name_parts.append(tokens[i].value)
+        name = ''.join(name_parts)
+        
+        return f"@{origin}:{name}"
+    
+    def _parse_include_reference(self, tokens: List[Token]) -> Tuple[str, str]:
+        """
+        Парсит адресную ссылку включения и возвращает (origin, name).
+        
+        Поддерживает форматы:
+        - @origin:name  
+        - @[origin]:name
+        """
+        full_ref = self._reconstruct_section_reference(tokens)
+        
+        # Парсим результат для извлечения origin и name
+        if full_ref.startswith("@["):
+            # @[origin]:name
+            close = full_ref.find("]:")
+            if close < 0:
+                raise ParserError(f"Invalid bracketed reference: {full_ref}", tokens[0])
+            origin = full_ref[2:close]
+            name = full_ref[close + 2:]
+        else:
+            # @origin:name
+            colon = full_ref.find(":", 1)  # Ищем после @
+            if colon < 0:
+                raise ParserError(f"Invalid simple reference: {full_ref}", tokens[0])
+            origin = full_ref[1:colon]
+            name = full_ref[colon + 1:]
+        
+        return origin, name
     
     # Вспомогательные методы
     
