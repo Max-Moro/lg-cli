@@ -20,6 +20,49 @@ from .stats import TokenService
 from .types import LangName, PathLabelMode, RunOptions
 from .vcs import VcsProvider
 
+
+# ---- Контекст выполнения ----
+
+@dataclass
+class ProcessingContext:
+    """
+    Контекст обработки для передачи состояния между компонентами.
+
+    Содержит все необходимые сервисы и состояние
+    для обработки шаблонов и секций.
+    """
+    # Базовые пути и настройки
+    repo_root: Path
+    cfg_root: Path
+    options: RunOptions
+
+    # Активное состояние адаптивных возможностей
+    active_tags: Set[str]
+    active_modes: Dict[str, str]
+
+    # Сервисы (будут инициализированы извне)
+    vcs: VcsProvider
+    cache: Cache
+    tokenizer: TokenService
+    adaptive_loader: AdaptiveConfigLoader
+
+
+# ---- Спецификация цели ----
+
+@dataclass(frozen=True)
+class TargetSpec:
+    """
+    Спецификация цели обработки.
+
+    Описывает что именно нужно обработать:
+    контекст или отдельную секцию.
+    """
+    kind: Literal["context", "section"]
+    name: str  # "docs/arch" или "all"
+
+    # Для контекстов - путь к файлу шаблона
+    template_path: Path
+
 # ---- Секции и ссылки ----
 
 @dataclass(frozen=True)
@@ -207,47 +250,3 @@ class TemplateStats:
     key: str
     tokens: int
     text_size: int
-
-
-# ---- Контекст выполнения ----
-
-@dataclass
-class ProcessingContext:
-    """
-    Контекст обработки для передачи состояния между компонентами.
-    
-    Содержит все необходимые сервисы и состояние
-    для обработки шаблонов и секций.
-    """
-    # Базовые пути и настройки
-    repo_root: Path
-    cfg_root: Path
-    options: RunOptions
-    
-    # Активное состояние адаптивных возможностей
-    active_tags: Set[str]
-    active_modes: Dict[str, str]
-    
-    # Сервисы (будут инициализированы извне)
-    vcs: VcsProvider
-    cache: Cache
-    tokenizer: TokenService
-    adaptive_loader: AdaptiveConfigLoader
-
-
-# ---- Спецификация цели ----
-
-@dataclass(frozen=True)
-class TargetSpec:
-    """
-    Спецификация цели обработки.
-    
-    Описывает что именно нужно обработать:
-    контекст или отдельную секцию.
-    """
-    kind: Literal["context", "section"]
-    name: str                     # "docs/arch" или "all"
-    
-    # Для контекстов - путь к файлу шаблона
-    template_path: Path
-

@@ -30,18 +30,17 @@ class StatsCollector:
     - Кэширования токенов
     """
     
-    def __init__(self, tokenizer: TokenService, cache: Cache, target_name: str):
+    def __init__(self, tokenizer: TokenService, cache: Cache):
         """
         Инициализирует коллектор статистики.
         
         Args:
             tokenizer: Сервис подсчета токенов
             cache: Кэш для сохранения метрик
-            target_name: Имя цели (контекста/секции) для статистики
         """
         self.tokenizer = tokenizer
         self.cache = cache
-        self.target_name = target_name
+        self.target_name: Optional[str] = None
         
         # Статистика по файлам (ключ: rel_path)
         self.files_stats: Dict[str, FileStats] = {}
@@ -57,6 +56,10 @@ class StatsCollector:
         
         # Итоговые тексты для подсчета финальных токенов
         self.final_text: Optional[str] = None
+
+    def set_target_name(self, target_name: str) -> None:
+        """Устанавливает имя цели (контекста/секции)."""
+        self.target_name = target_name
     
     def register_processed_file(
         self, 

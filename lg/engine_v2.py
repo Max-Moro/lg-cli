@@ -108,7 +108,6 @@ class EngineV2:
         self.stats_collector = StatsCollector(
             tokenizer=self.tokenizer,
             cache=self.cache,
-            target_name=""  # Будет установлено при обработке
         )
         
         # Процессор секций
@@ -147,8 +146,8 @@ class EngineV2:
         # Обеспечиваем актуальность конфигурации
         ensure_cfg_actual(cfg_root(self.root))
         
-        # Обновляем target в коллекторе статистики
-        self.stats_collector.target_name = f"ctx:{context_name}"
+        # Устанавливаем target в коллекторе статистики
+        self.stats_collector.set_target_name(f"ctx:{context_name}")
         
         try:
             # Обрабатываем шаблон
@@ -179,8 +178,8 @@ class EngineV2:
         # Обеспечиваем актуальность конфигурации
         ensure_cfg_actual(cfg_root(self.root))
         
-        # Обновляем target в коллекторе статистики
-        self.stats_collector.target_name = f"sec:{section_name}"
+        # Устанавливаем target в коллекторе статистики
+        self.stats_collector.set_target_name(f"sec:{section_name}")
         
         template_ctx = TemplateContext(self.run_ctx)
         
@@ -191,7 +190,23 @@ class EngineV2:
         self.stats_collector.set_final_texts(rendered_section.text)
         
         return RenderedDocument(text=rendered_section.text, blocks=[])
-    
+
+    def render_text(self, target_spec: TargetSpec) -> RenderedDocument:
+        """
+        Рендерит финальный текст.
+
+        Args:
+            target_spec: Спецификация цели для отчета
+
+        Returns:
+            Отрендеренный контекст или секция
+        """
+        # Рендерим цель в зависимости от типа
+        if target_spec.kind == "context":
+            return self.render_context(target_spec.name)
+        else:
+            return self.render_section(target_spec.name)
+
     def generate_report(self, target_spec: TargetSpec) -> RunResult:
         """
         Генерирует полный отчет с статистикой.
@@ -212,7 +227,6 @@ class EngineV2:
         return build_run_result_from_collector(
             collector=self.stats_collector,
             target_spec=target_spec,
-            options=self.options
         )
 
 
@@ -262,47 +276,16 @@ def _parse_target(target: str) -> TargetSpec:
 
 
 def run_render_v2(target: str, options: RunOptions) -> RenderedDocument:
-    """
-    Точка входа для рендеринга в LG V2.
-    
-    Args:
-        target: Цель для рендеринга (контекст или секция)
-        options: Опции выполнения
-        
-    Returns:
-        Отрендеренный документ
-    """
-    # Парсим цель
+    """Точка входа для рендеринга в LG V2."""
     target_spec = _parse_target(target)
-    
-    # Создаем движок
     engine = EngineV2(options)
-    
-    # Рендерим в зависимости от типа цели
-    if target_spec.kind == "context":
-        return engine.render_context(target_spec.name)
-    else:
-        return engine.render_section(target_spec.name)
+    return engine.render_text(target_spec)
 
 
 def run_report_v2(target: str, options: RunOptions) -> RunResult:
-    """
-    Точка входа для генерации отчета в LG V2.
-    
-    Args:
-        target: Цель для анализа (контекст или секция)
-        options: Опции выполнения
-        
-    Returns:
-        Отчет в формате API v4
-    """
-    # Парсим цель
+    """Точка входа для генерации отчета в LG V2."""
     target_spec = _parse_target(target)
-    
-    # Создаем движок
     engine = EngineV2(options)
-    
-    # Генерируем отчет
     return engine.generate_report(target_spec)
 
 
