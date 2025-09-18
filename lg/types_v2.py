@@ -12,39 +12,9 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Dict, List, Literal, Set
+from typing import Dict, List, Literal
 
-from .cache.fs_cache import Cache
-from .config.adaptive_loader import AdaptiveConfigLoader
-from .stats import TokenService
-from .types import LangName, PathLabelMode, RunOptions
-from .vcs import VcsProvider
-
-
-# ---- Контекст выполнения ----
-
-@dataclass
-class ProcessingContext:
-    """
-    Контекст обработки для передачи состояния между компонентами.
-
-    Содержит все необходимые сервисы и состояние
-    для обработки шаблонов и секций.
-    """
-    # Базовые пути и настройки
-    repo_root: Path
-    cfg_root: Path
-    options: RunOptions
-
-    # Активное состояние адаптивных возможностей
-    active_tags: Set[str]
-    active_modes: Dict[str, str]
-
-    # Сервисы (будут инициализированы извне)
-    vcs: VcsProvider
-    cache: Cache
-    tokenizer: TokenService
-    adaptive_loader: AdaptiveConfigLoader
+from .types import LangName, PathLabelMode
 
 
 # ---- Спецификация цели ----

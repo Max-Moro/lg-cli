@@ -45,7 +45,7 @@ class SectionProcessor:
     но для одной секции за раз с учетом активного контекста шаблона.
     """
     
-    def __init__(self, run_ctx: RunContext, stats_collector: Optional[StatsCollector] = None):
+    def __init__(self, run_ctx: RunContext, stats_collector: StatsCollector):
         """
         Инициализирует обработчик секций.
         
@@ -54,14 +54,7 @@ class SectionProcessor:
             stats_collector: Коллектор статистики для делегирования всех расчетов
         """
         self.run_ctx = run_ctx
-        self.cache = run_ctx.cache
-        self.vcs = run_ctx.vcs
-        self.tokenizer = run_ctx.tokenizer
-        self.stats_collector = stats_collector or StatsCollector(
-            tokenizer=self.tokenizer,
-            cache=self.cache,
-            target_name="section_processor"
-        )
+        self.stats_collector = stats_collector
         
         # Кэш результатов обработки секций
         self.section_cache: Dict[str, RenderedSection] = {}
@@ -153,7 +146,7 @@ class SectionProcessor:
         # Получаем список измененных файлов для режима changes
         changed_files = set()
         if template_ctx.current_state.mode_options.vcs_mode == "changes":
-            changed_files = self.vcs.changed_files(self.run_ctx.root)
+            changed_files = self.run_ctx.vcs.changed_files(self.run_ctx.root)
         
         # Строим список файлов с учетом фильтров и условий
         files = self._collect_files(

@@ -23,7 +23,7 @@ from .section_processor import SectionProcessor
 from .stats import build_run_result_from_collector, StatsCollector, TokenService
 from .template import TemplateProcessor, TemplateProcessingError, TemplateContext
 from .types import RunOptions, RenderedDocument
-from .types_v2 import TargetSpec, ProcessingContext
+from .types_v2 import TargetSpec
 from .vcs import NullVcs
 from .vcs.git import GitVcs
 from .version import tool_version
@@ -51,9 +51,6 @@ class EngineV2:
         
         # Инициализируем сервисы
         self._init_services()
-        
-        # Создаем контекст обработки
-        self._init_processing_context()
         
         # Создаем процессоры
         self._init_processors()
@@ -86,20 +83,6 @@ class EngineV2:
             adaptive_loader=adaptive_loader,
             mode_options=mode_options,
             active_tags=active_tags,
-        )
-    
-    def _init_processing_context(self) -> None:
-        """Создает контекст обработки."""
-        self.processing_ctx = ProcessingContext(
-            repo_root=self.root,
-            cfg_root=cfg_root(self.root),
-            options=self.options,
-            active_tags=self.run_ctx.active_tags,
-            active_modes=self.options.modes,
-            vcs=self.vcs,
-            cache=self.cache,
-            tokenizer=self.tokenizer,
-            adaptive_loader=self.run_ctx.adaptive_loader
         )
     
     def _init_processors(self) -> None:
@@ -149,22 +132,14 @@ class EngineV2:
         # Устанавливаем target в коллекторе статистики
         self.stats_collector.set_target_name(f"ctx:{context_name}")
         
-        try:
-            # Обрабатываем шаблон
-            final_text = self.template_processor.process_template_file(context_name)
-            
-            # Устанавливаем итоговые тексты в коллекторе
-            self.stats_collector.set_final_texts(final_text)
-            
-            return RenderedDocument(text=final_text, blocks=[])
-            
-        except Exception as e:
-            raise TemplateProcessingError(
-                f"Failed to render context '{context_name}': {str(e)}", 
-                template_name=context_name,
-                cause=e
-            ) from e
-    
+        # Обрабатываем шаблон
+        final_text = self.template_processor.process_template_file(context_name)
+
+        # Устанавливаем итоговые тексты в коллекторе
+        self.stats_collector.set_final_texts(final_text)
+
+        return RenderedDocument(text=final_text, blocks=[])
+
     def render_section(self, section_name: str) -> RenderedDocument:
         """
         Рендерит отдельную секцию.
