@@ -12,9 +12,9 @@ from pathlib import Path
 from typing import Dict, List, Optional, Set
 
 from ..adapters.registry import get_adapter_for_path
+from ..conditions.evaluator import evaluate_condition_string
 from ..config import SectionCfg, load_config
 from ..config.paths import cfg_root, is_cfg_relpath
-from ..conditions.evaluator import evaluate_condition_string
 from ..io.filters import FilterEngine
 from ..io.fs import build_gitignore_spec, iter_files
 from ..lang import get_language_for_file

@@ -9,9 +9,9 @@ from __future__ import annotations
 
 from typing import Dict, List, cast
 
-from ..adapters.registry import get_adapter_for_path
 from ..adapters.base import BaseAdapter
 from ..adapters.context import LightweightContext
+from ..adapters.registry import get_adapter_for_path
 from ..io.fs import read_text
 from ..template.context import TemplateContext
 from ..types_v2 import ProcessedFile, SectionPlan

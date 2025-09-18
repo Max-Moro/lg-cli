@@ -11,7 +11,7 @@ from typing import List
 
 from ..paths import build_labels
 from ..template.context import TemplateContext
-from ..types import LangName, LANG_NONE
+from ..types import LANG_NONE
 from ..types_v2 import (
     FileEntry, FileGroup, SectionManifest, SectionPlan
 )
