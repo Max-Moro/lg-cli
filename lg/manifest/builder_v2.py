@@ -46,10 +46,9 @@ def build_section_manifest(
         RuntimeError: Если секция не найдена
     """
     # Загружаем конфигурацию секции
-    scope_dir = section_ref.cfg_path.parent
-    cfg = _get_section_config(scope_dir, section_ref.name)
+    cfg = _get_section_config(section_ref.scope_dir, section_ref.name)
     if not cfg:
-        raise RuntimeError(f"Section '{section_ref.name}' not found in {scope_dir}")
+        raise RuntimeError(f"Section '{section_ref.name}' not found in {section_ref.scope_dir}")
     
     # Получаем список измененных файлов для режима changes
     changed_files = set()
@@ -59,7 +58,7 @@ def build_section_manifest(
     # Строим список файлов с учетом фильтров и условий
     files = _collect_files(
         root=root,
-        scope_dir=scope_dir,
+        scope_dir=section_ref.scope_dir,
         scope_rel="",  # Текущий скоуп - корень репозитория
         cfg=cfg,
         changed_files=changed_files,
@@ -70,9 +69,7 @@ def build_section_manifest(
         ref=section_ref,
         files=files,
         path_labels=cfg.path_labels,
-        adapters_cfg=cfg.adapters,
-        scope_dir=scope_dir,
-        scope_rel=""
+        adapters_cfg=cfg.adapters
     )
 
 

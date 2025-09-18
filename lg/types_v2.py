@@ -45,7 +45,7 @@ class SectionRef:
     """
     name: str         # Имя секции, используемое в шаблоне
     scope_rel: str   # Путь к директории области (относительно корня репозитория)
-    cfg_path: Path    # Абсолютный путь к директории конфигурации
+    scope_dir: Path    # Абсолютный путь к директории конфигурации
     
     def canon_key(self) -> str:
         """
@@ -107,10 +107,6 @@ class SectionManifest:
     files: List[FileEntry]
     path_labels: PathLabelMode
     adapters_cfg: Dict[str, Dict] = field(default_factory=dict)
-    
-    # Метаданные секции
-    scope_dir: Path = field(default_factory=lambda: Path())
-    scope_rel: str = ""
 
 
 @dataclass
