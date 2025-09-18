@@ -8,17 +8,14 @@
 
 from __future__ import annotations
 
-import hashlib
-from typing import Dict
-
 from .adapters.processor_v2 import process_files
-from .manifest.builder_v2 import build_section_manifest, resolve_section_ref
+from .manifest.builder_v2 import build_section_manifest
 from .plan.planner_v2 import build_section_plan
 from .render.renderer_v2 import render_section
 from .run_context import RunContext
 from .stats.collector import StatsCollector
 from .template.context import TemplateContext
-from .types_v2 import RenderedSection
+from .types_v2 import RenderedSection, SectionRef
 
 
 class SectionProcessor:
@@ -45,29 +42,19 @@ class SectionProcessor:
         """
         self.run_ctx = run_ctx
         self.stats_collector = stats_collector
-        
-        # Кэш результатов обработки секций
-        self.section_cache: Dict[str, RenderedSection] = {}
-    
-    def process_section(self, section_name: str, template_ctx: TemplateContext) -> RenderedSection:
+
+    def process_section(self, section_ref: SectionRef, template_ctx: TemplateContext) -> RenderedSection:
         """
         Обрабатывает одну секцию и возвращает её отрендеренное содержимое.
         
         Args:
-            section_name: Имя секции для обработки
+            section_ref: Ссылка на секцию
             template_ctx: Текущий контекст шаблона (содержит активные режимы, теги)
             
         Returns:
             Отрендеренная секция
         """
-        # Сначала проверяем кэш
-        cache_key = self._compute_cache_key(section_name, template_ctx)
-        if cache_key in self.section_cache:
-            return self.section_cache[cache_key]
-        
-        # Обрабатываем секцию через новые модули
-        section_ref = resolve_section_ref(section_name, self.run_ctx.root)
-        
+
         manifest = build_section_manifest(
             section_ref=section_ref,
             template_ctx=template_ctx,
@@ -92,35 +79,6 @@ class SectionProcessor:
         # Регистрируем отрендеренную секцию в коллекторе статистики
         self.stats_collector.register_section_rendered(rendered)
         
-        # Кэшируем результат
-        self.section_cache[cache_key] = rendered
-        
         return rendered
-    
-    def _compute_cache_key(self, section_name: str, template_ctx: TemplateContext) -> str:
-        """
-        Вычисляет ключ кэша для секции на основе:
-        - Имени секции
-        - Активных режимов
-        - Активных тегов
-        - Режима VCS (all vs changes)
-        """
-        key_parts = [
-            section_name,
-            template_ctx.current_state.mode_options.vcs_mode,
-        ]
-        
-        # Добавляем активные режимы
-        for modeset, mode in sorted(template_ctx.current_state.active_modes.items()):
-            key_parts.append(f"mode:{modeset}:{mode}")
-        
-        # Добавляем активные теги
-        for tag in sorted(template_ctx.current_state.active_tags):
-            key_parts.append(f"tag:{tag}")
-        
-        # Создаем хэш от всех параметров
-        key_string = ":".join(key_parts)
-        return hashlib.sha256(key_string.encode("utf-8")).hexdigest()[:16]
-
 
 __all__ = ["SectionProcessor"]

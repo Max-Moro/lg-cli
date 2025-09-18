@@ -202,7 +202,7 @@ class TemplateResolver:
             
             resolved_ref = SectionRef(
                 name=resolved_name,
-                scope_path=scope_rel,
+                scope_rel=scope_rel,
                 cfg_path=cfg_root
             )
             

@@ -23,6 +23,7 @@ from .resolver import TemplateResolver, ResolverError
 from ..context.common import load_template_from, load_context_from
 from ..run_context import RunContext
 from ..stats.collector import StatsCollector
+from ..types_v2 import SectionRef
 
 
 class TemplateProcessingError(Exception):
@@ -66,7 +67,7 @@ class TemplateProcessor:
         self._resolved_cache: Dict[str, TemplateAST] = {}
         
         # Хендлеры для обработки различных типов узлов
-        self.section_handler: Optional[Callable[[str, TemplateContext], str]] = None
+        self.section_handler: Optional[Callable[[SectionRef, TemplateContext], str]] = None
         self.stats_collector: Optional[StatsCollector] = None
     
     def _load_template_from_wrapper(self, cfg_root, name):
@@ -77,7 +78,7 @@ class TemplateProcessor:
         """Обёртка для load_context_from, которую можно мокать в тестах."""
         return load_context_from(cfg_root, name)
         
-    def set_section_handler(self, handler: Callable[[str, TemplateContext], str]) -> None:
+    def set_section_handler(self, handler: Callable[[SectionRef, TemplateContext], str]) -> None:
         """
         Устанавливает обработчик секций.
         
@@ -281,7 +282,7 @@ class TemplateProcessor:
         
         elif isinstance(node, SectionNode):
             if self.section_handler:
-                return self.section_handler(node.section_name, self.template_ctx)
+                return self.section_handler(node.resolved_ref, self.template_ctx)
             else:
                 # Если нет обработчика секций, возвращаем плейсхолдер
                 return f"${{section:{node.section_name}}}"

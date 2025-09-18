@@ -63,7 +63,7 @@ class TestTemplateResolver:
         assert resolved.section_name == "test_section"
         assert resolved.resolved_ref is not None
         assert resolved.resolved_ref.name == "test_section"
-        assert resolved.resolved_ref.scope_path == ""  # текущий скоуп
+        assert resolved.resolved_ref.scope_rel == ""  # текущий скоуп
         assert resolved.resolved_ref.cfg_path == Path("/test/repo/lg-cfg")
     
     def test_resolve_section_node_with_origin(self, resolver):
@@ -75,7 +75,7 @@ class TestTemplateResolver:
         assert resolved.section_name == "test_section"
         assert resolved.resolved_ref is not None
         assert resolved.resolved_ref.name == "test_section"
-        assert resolved.resolved_ref.scope_path == "other"
+        assert resolved.resolved_ref.scope_rel == "other"
         assert str(resolved.resolved_ref.cfg_path).replace("\\", "/").endswith("/test/repo/other/lg-cfg")
     
     def test_resolve_section_node_with_bracketed_origin(self, resolver):
@@ -87,7 +87,7 @@ class TestTemplateResolver:
         assert resolved.section_name == "test_section"
         assert resolved.resolved_ref is not None
         assert resolved.resolved_ref.name == "test_section"
-        assert resolved.resolved_ref.scope_path == "my:origin"
+        assert resolved.resolved_ref.scope_rel == "my:origin"
         assert str(resolved.resolved_ref.cfg_path).replace("\\", "/").endswith("/test/repo/my:origin/lg-cfg")
     
     def test_resolve_include_node_template(self, resolver):
@@ -144,7 +144,7 @@ class TestTemplateResolver:
         
         # Секция резолвлена
         assert resolved_ast[1].section_name == "config"
-        assert resolved_ast[1].resolved_ref.scope_path == "other"
+        assert resolved_ast[1].resolved_ref.scope_rel == "other"
         
         # Включение резолвлено
         assert resolved_ast[2].kind == "tpl"

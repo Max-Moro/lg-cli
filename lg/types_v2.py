@@ -44,7 +44,7 @@ class SectionRef:
     всю необходимую информацию для обработки секции.
     """
     name: str         # Имя секции, используемое в шаблоне
-    scope_path: str   # Путь к директории области (относительно корня репозитория)
+    scope_rel: str   # Путь к директории области (относительно корня репозитория)
     cfg_path: Path    # Абсолютный путь к директории конфигурации
     
     def canon_key(self) -> str:
@@ -52,8 +52,10 @@ class SectionRef:
         Возвращает канонический ключ для этой секции.
         Используется для кэширования и дедупликации.
         """
-        scope = self.scope_path or "."
-        return f"{scope}::{self.name}"
+        if self.scope_rel:
+            return f"sec@{self.scope_rel}:{self.name}"
+        else:
+            return f"sec:{self.name}"
 
 
 # ---- Файлы и группировка ----

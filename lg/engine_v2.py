@@ -23,7 +23,7 @@ from .section_processor import SectionProcessor
 from .stats import build_run_result_from_collector, StatsCollector, TokenService
 from .template import TemplateProcessor, TemplateProcessingError, TemplateContext
 from .types import RunOptions, RenderedDocument
-from .types_v2 import TargetSpec
+from .types_v2 import TargetSpec, SectionRef
 from .vcs import NullVcs
 from .vcs.git import GitVcs
 from .version import tool_version
@@ -105,8 +105,8 @@ class EngineV2:
     def _setup_component_integration(self) -> None:
         """Настраивает взаимодействие между компонентами."""
         # Связываем процессор шаблонов с обработчиком секций
-        def section_handler(section_name: str, template_ctx: TemplateContext) -> str:
-            rendered_section = self.section_processor.process_section(section_name, template_ctx)
+        def section_handler(section_ref: SectionRef, template_ctx: TemplateContext) -> str:
+            rendered_section = self.section_processor.process_section(section_ref, template_ctx)
             return rendered_section.text
         
         self.template_processor.set_section_handler(section_handler)

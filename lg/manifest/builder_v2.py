@@ -14,7 +14,7 @@ from typing import Dict, List, Optional, Set
 from ..adapters.registry import get_adapter_for_path
 from ..conditions.evaluator import evaluate_condition_string
 from ..config import SectionCfg, load_config
-from ..config.paths import cfg_root, is_cfg_relpath
+from ..config.paths import is_cfg_relpath
 from ..io.filters import FilterEngine
 from ..io.fs import build_gitignore_spec, iter_files
 from ..lang import get_language_for_file
@@ -73,30 +73,6 @@ def build_section_manifest(
         adapters_cfg=cfg.adapters,
         scope_dir=scope_dir,
         scope_rel=""
-    )
-
-
-def resolve_section_ref(section_name: str, root: Path) -> SectionRef:
-    """
-    Разрешает имя секции в SectionRef.
-    
-    В текущей реализации предполагаем, что секция находится в текущем скоупе.
-    В будущем можно добавить поддержку адресных секций (@origin:name).
-    
-    Args:
-        section_name: Имя секции
-        root: Корень репозитория
-        
-    Returns:
-        Ссылка на секцию
-    """
-    cfg_path = cfg_root(root)
-    scope_path = ""  # Текущий скоуп
-    
-    return SectionRef(
-        name=section_name,
-        scope_path=scope_path,
-        cfg_path=cfg_path
     )
 
 
@@ -304,6 +280,5 @@ def _apply_conditional_patterns(
 
 
 __all__ = [
-    "build_section_manifest",
-    "resolve_section_ref"
+    "build_section_manifest"
 ]

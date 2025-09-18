@@ -104,7 +104,7 @@ class TestSectionNode:
         
         section_ref = SectionRef(
             name="test-section",
-            scope_path="",
+            scope_rel="",
             cfg_path=Path("/test/lg-cfg")
         )
         
