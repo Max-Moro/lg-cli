@@ -47,7 +47,7 @@ src:
       - "/lg/context/common.py"
       - "/lg/config/adaptive_model.py"
       - "/lg/config/adaptive_loader.py"
-      - "lg/template/processor.py"
+      - "/lg/section_processor.py"
       python:
         budget:
           max_tokens_per_file: 500

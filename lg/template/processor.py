@@ -10,7 +10,7 @@ from __future__ import annotations
 
 from typing import Dict, List, Optional, Callable, Any
 
-from .context import TemplateContext, create_template_context
+from .context import TemplateContext
 from .evaluator import TemplateEvaluationError
 from .lexer import LexerError
 from .nodes import (
@@ -49,7 +49,7 @@ class TemplateProcessor:
             run_ctx: Контекст выполнения с настройками и сервисами
         """
         self.run_ctx = run_ctx
-        self.template_ctx = create_template_context(run_ctx)
+        self.template_ctx = TemplateContext(run_ctx)
         
         # Кэш загруженных и обработанных шаблонов
         self._template_cache: Dict[str, TemplateAST] = {}
@@ -400,27 +400,3 @@ class TemplateProcessor:
                 issues.append(f"Cannot load {node.kind}:{node.name}: {e}")
         
         return issues
-
-    def collect_stats(self) -> Optional[tuple]:
-        """
-        Собирает финальную статистику, если настроен коллектор.
-        
-        Returns:
-            Кортеж (files_rows, totals, context_block) или None если коллектор не настроен
-        """
-        if self.stats_collector:
-            return self.stats_collector.compute_final_stats()
-        return None
-
-
-def create_template_processor(run_ctx: RunContext) -> TemplateProcessor:
-    """
-    Удобная функция для создания процессора шаблонов.
-    
-    Args:
-        run_ctx: Контекст выполнения
-        
-    Returns:
-        Настроенный процессор шаблонов
-    """
-    return TemplateProcessor(run_ctx)

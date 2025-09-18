@@ -278,16 +278,3 @@ class TemplateContext:
                 RuntimeWarning,
                 stacklevel=2
             )
-
-
-def create_template_context(run_ctx: RunContext) -> TemplateContext:
-    """
-    Удобная функция для создания контекста шаблона.
-    
-    Args:
-        run_ctx: Контекст выполнения
-        
-    Returns:
-        Новый контекст шаблона
-    """
-    return TemplateContext(run_ctx)
