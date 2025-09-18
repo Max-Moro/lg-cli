@@ -14,7 +14,8 @@ src:
           - "/_skeletons/"
           - "/scaffold.py"
           - "diag**"
-          - "/types.py"
+          - "/conditions/"
+          - "/template/"
         children:
           conditions:
             mode: allow
@@ -51,12 +52,12 @@ src:
       python:
         budget:
           max_tokens_per_file: 500
-    - match:
-      - "/lg/manifest/builder.py"
-      python:
-        comment_policy: "keep_doc"
-        imports:
-          policy: "strip_all"
+#    - match:
+#      - "/lg/manifest/builder.py"
+#      python:
+#        comment_policy: "keep_doc"
+#        imports:
+#          policy: "strip_all"
 
 docs-design:
   extensions: [".md"]
