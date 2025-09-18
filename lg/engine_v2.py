@@ -152,13 +152,10 @@ class EngineV2:
         
         try:
             # Обрабатываем шаблон
-            rendered_text = self.template_processor.process_template_file(context_name)
-            
-            # Вычисляем итоговые тексты для статистики
-            final_text, sections_only_text = self.template_processor.compute_final_texts(rendered_text)
+            final_text = self.template_processor.process_template_file(context_name)
             
             # Устанавливаем итоговые тексты в коллекторе
-            self.stats_collector.set_final_texts(final_text, sections_only_text)
+            self.stats_collector.set_final_texts(final_text)
             
             return RenderedDocument(text=final_text, blocks=[])
             
@@ -191,7 +188,7 @@ class EngineV2:
         rendered_section = self.section_processor.process_section(section_name, template_ctx)
         
         # Устанавливаем итоговые тексты в коллекторе (для секции они совпадают)
-        self.stats_collector.set_final_texts(rendered_section.text, rendered_section.text)
+        self.stats_collector.set_final_texts(rendered_section.text)
         
         return RenderedDocument(text=rendered_section.text, blocks=[])
     

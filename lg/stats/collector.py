@@ -57,11 +57,6 @@ class StatsCollector:
         
         # Итоговые тексты для подсчета финальных токенов
         self.final_text: Optional[str] = None
-        self.sections_only_text: Optional[str] = None
-        
-        # Кэшированные токены для итогового текста
-        self._final_tokens: Optional[int] = None
-        self._sections_only_tokens: Optional[int] = None
     
     def register_processed_file(
         self, 
@@ -132,10 +127,7 @@ class StatsCollector:
         canon_key = section.ref.canon_key()
         
         # Подсчитываем токены отрендеренной секции
-        tokens_processed = self.tokenizer.count_text(section.text)
-        
-        # Подсчитываем токены исходного содержимого файлов
-        tokens_raw = sum(self.tokenizer.count_text(file.raw_text) for file in section.files)
+        tokens_rendered = self.tokenizer.count_text(section.text)
         
         # Подсчитываем общий размер файлов
         total_size_bytes = sum(
@@ -153,8 +145,7 @@ class StatsCollector:
         self.sections_stats[canon_key] = SectionStats(
             ref=section.ref,
             text=section.text,
-            tokens_processed=tokens_processed,
-            tokens_raw=tokens_raw,
+            tokens_rendered=tokens_rendered,
             total_size_bytes=total_size_bytes,
             meta_summary=meta_summary
         )
@@ -175,21 +166,15 @@ class StatsCollector:
             text_size=len(template_text)
         )
     
-    def set_final_texts(self, final_text: str, sections_only_text: str) -> None:
+    def set_final_texts(self, final_text: str) -> None:
         """
         Устанавливает итоговые тексты для подсчета финальных токенов.
         
         Args:
             final_text: Полностью отрендеренный документ (с шаблонным "клеем")
-            sections_only_text: Только секции без шаблонного содержимого
         """
         self.final_text = final_text
-        self.sections_only_text = sections_only_text
-        
-        # Подсчитываем и кэшируем токены
-        self._final_tokens = self._get_or_count_rendered_tokens("final", final_text)
-        self._sections_only_tokens = self._get_or_count_rendered_tokens("sections_only", sections_only_text)
-    
+
     def compute_final_stats(self) -> Tuple[List[FileRow], Totals, ContextBlock]:
         """
         Вычисляет итоговую статистику на основе собранных данных.
@@ -205,9 +190,13 @@ class StatsCollector:
         Raises:
             ValueError: Если итоговые тексты не установлены
         """
-        if self.final_text is None or self.sections_only_text is None:
+        if self.final_text is None:
             raise ValueError("Final texts not set. Call set_final_texts() before computing stats.")
-        
+
+        # Подсчитываем и кэшируем токены
+        final_tokens = self._get_or_count_rendered_tokens("final", self.final_text)
+        sections_only_tokens = sum(s.tokens_rendered for s in self.sections_stats.values())
+
         # Вычисляем общие суммы
         total_raw = sum(f.tokens_raw for f in self.files_stats.values())
         total_proc = sum(f.tokens_processed for f in self.files_stats.values())
@@ -248,53 +237,28 @@ class StatsCollector:
             savedTokens=max(0, total_raw - total_proc),
             savedPct=(1 - (total_proc / total_raw)) * 100.0 if total_raw else 0.0,
             ctxShare=(total_proc / model_info.ctx_limit * 100.0) if model_info.ctx_limit else 0.0,
-            renderedTokens=self._sections_only_tokens,
-            renderedOverheadTokens=max(0, (self._sections_only_tokens or 0) - total_proc),
+            renderedTokens=sections_only_tokens,
+            renderedOverheadTokens=max(0, (sections_only_tokens or 0) - total_proc),
             metaSummary=meta_summary
         )
         
         # Создаем статистику контекста
-        template_overhead_tokens = max(0, (self._final_tokens or 0) - (self._sections_only_tokens or 0))
+        template_overhead_tokens = max(0, (final_tokens or 0) - (sections_only_tokens or 0))
         template_overhead_pct = 0.0
-        if self._final_tokens and self._final_tokens > 0:
-            template_overhead_pct = (template_overhead_tokens / self._final_tokens * 100.0)
+        if final_tokens and final_tokens > 0:
+            template_overhead_pct = (template_overhead_tokens / final_tokens * 100.0)
         
         ctx_block = ContextBlock(
             templateName=self.target_name,
             sectionsUsed=self.sections_usage.copy(),
-            finalRenderedTokens=self._final_tokens,
+            finalRenderedTokens=final_tokens,
             templateOnlyTokens=template_overhead_tokens,
             templateOverheadPct=template_overhead_pct,
-            finalCtxShare=(self._final_tokens / model_info.ctx_limit * 100.0) if model_info.ctx_limit and self._final_tokens else 0.0
+            finalCtxShare=(final_tokens / model_info.ctx_limit * 100.0) if model_info.ctx_limit and final_tokens else 0.0
         )
         
         return files_rows, totals, ctx_block
-    
-    def get_processing_summary(self) -> Dict[str, int]:
-        """
-        Возвращает краткую сводку для отладки и логирования.
-        
-        Returns:
-            Словарь с ключевыми метриками
-        """
-        total_files = len(self.files_stats)
-        total_sections = len(self.sections_stats)
-        total_templates = len(self.templates_stats)
-        
-        total_processed_tokens = sum(f.tokens_processed for f in self.files_stats.values())
-        total_raw_tokens = sum(f.tokens_raw for f in self.files_stats.values())
-        
-        return {
-            "files_count": total_files,
-            "sections_count": total_sections,
-            "templates_count": total_templates,
-            "total_processed_tokens": total_processed_tokens,
-            "total_raw_tokens": total_raw_tokens,
-            "total_saved_tokens": max(0, total_raw_tokens - total_processed_tokens),
-            "final_tokens": self._final_tokens or 0,
-            "sections_only_tokens": self._sections_only_tokens or 0
-        }
-    
+
     # -------------------- Внутренние методы -------------------- #
     
     def _update_file_tokens_cache(self, cache_key: str, tokens_raw: int, tokens_processed: int) -> None:

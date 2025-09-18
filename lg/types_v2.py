@@ -194,8 +194,7 @@ class SectionStats:
     """
     ref: SectionRef
     text: str
-    tokens_processed: int
-    tokens_raw: int
+    tokens_rendered: int
     total_size_bytes: int
     meta_summary: Dict[str, int] = field(default_factory=dict)
 

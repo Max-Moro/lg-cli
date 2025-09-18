@@ -105,37 +105,6 @@ def build_run_result_from_collector(
     return result
 
 
-def create_stats_summary(collector: StatsCollector) -> dict[str, Any]:
-    """
-    Создает краткую сводку статистики для логирования и отладки.
-    
-    Args:
-        collector: Коллектор статистики
-        
-    Returns:
-        Словарь с ключевыми метриками
-    """
-    summary = collector.get_processing_summary()
-    
-    # Добавляем дополнительную информацию
-    if collector.tokenizer and hasattr(collector.tokenizer, 'model_info'):
-        try:
-            model_info = collector.tokenizer.model_info
-            summary["model_name"] = model_info.label
-            summary["ctx_limit"] = model_info.ctx_limit
-            summary["encoder"] = collector.tokenizer.encoder_name
-            
-            # Вычисляем процент использования контекста
-            if summary["total_processed_tokens"] > 0 and model_info.ctx_limit > 0:
-                summary["ctx_utilization_pct"] = (
-                    summary["total_processed_tokens"] / model_info.ctx_limit * 100.0
-                )
-        except Exception:
-            pass
-    
-    return summary
-
-
 def validate_collector_state(collector: StatsCollector) -> list[str]:
     """
     Валидирует состояние коллектора перед формированием отчета.
@@ -176,6 +145,5 @@ def validate_collector_state(collector: StatsCollector) -> list[str]:
 
 __all__ = [
     "build_run_result_from_collector",
-    "create_stats_summary", 
     "validate_collector_state"
 ]

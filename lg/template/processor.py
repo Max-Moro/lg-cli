@@ -401,34 +401,6 @@ class TemplateProcessor:
         
         return issues
 
-    def compute_final_texts(self, final_rendered_text: str) -> tuple[str, str]:
-        """
-        Вычисляет итоговые тексты для статистики: полный и только секции.
-        
-        Args:
-            final_rendered_text: Полностью отрендеренный текст
-            
-        Returns:
-            Кортеж (sections_only_text, final_text)
-            
-        Описание:
-            sections_only_text - текст без шаблонного "клея" (только секции)
-            final_text - полный отрендеренный текст с шаблонами
-        """
-        # В текущей реализации используем простую аппроксимацию:
-        # итоговый текст равен входящему, а sections_only мы оцениваем
-        # как ~90% от итогового (без точного разделения шаблонов и секций)
-        
-        # TODO: В будущих итерациях можно более точно разделять
-        # содержимое секций и шаблонный "клей"
-        
-        sections_only_text = final_rendered_text  # Упрощение для первой итерации
-        
-        if self.stats_collector:
-            self.stats_collector.set_final_texts(final_rendered_text, sections_only_text)
-        
-        return sections_only_text, final_rendered_text
-
     def collect_stats(self) -> Optional[tuple]:
         """
         Собирает финальную статистику, если настроен коллектор.
