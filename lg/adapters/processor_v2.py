@@ -91,19 +91,6 @@ def process_files(plan: SectionPlan, template_ctx: TemplateContext) -> List[Proc
                 # Обрабатываем файл адаптером
                 processed_text, meta = adapter.process(lightweight_ctx)
                 
-                # Добавляем диагностическую информацию
-                if raw_cfg:
-                    keys = sorted(raw_cfg.keys())
-                    meta = dict(meta or {})
-                    meta["_adapter_cfg_keys"] = ",".join(keys)
-                
-                # Метки группы для диагностики
-                meta = dict(meta or {})
-                meta["_group_size"] = group_size
-                meta["_group_mixed"] = group.mixed
-                meta["_group_lang"] = group.lang
-                meta["_section"] = plan.manifest.ref.canon_key()
-                
                 # Кэшируем результат
                 cache.put_processed(p_proc, processed_text=processed_text, meta=meta)
             
