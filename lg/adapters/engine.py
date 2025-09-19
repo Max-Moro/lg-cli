@@ -80,7 +80,6 @@ def process_groups(plan: ContextPlan, run_ctx: RunContext) -> List[ProcessedBlob
                     abs_path=fp,
                     adapter_cfg=raw_cfg,
                 )
-                k_raw, p_raw = cache.build_raw_tokens_key(abs_path=fp)
 
                 # попытка взять processed из кэша
                 cached = cache.get_processed(p_proc)
@@ -113,7 +112,7 @@ def process_groups(plan: ContextPlan, run_ctx: RunContext) -> List[ProcessedBlob
                     meta=meta,
                     raw_text=raw_text,
                     cache_key_processed=k_proc,
-                    cache_key_raw=k_raw,
+                    cache_key_raw="",
                 ))
 
     # стабильный порядок: по rel_path
