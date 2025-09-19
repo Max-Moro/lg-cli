@@ -158,7 +158,8 @@ class EngineV2:
         template_ctx = TemplateContext(self.run_ctx)
         
         # Обрабатываем секцию
-        rendered_section = self.section_processor.process_section(section_name, template_ctx)
+        section_ref = SectionRef(section_name, "", self.root)
+        rendered_section = self.section_processor.process_section(section_ref, template_ctx)
         
         # Устанавливаем итоговые тексты в коллекторе (для секции они совпадают)
         self.stats_collector.set_final_texts(rendered_section.text)
