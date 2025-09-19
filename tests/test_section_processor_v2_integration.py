@@ -54,8 +54,7 @@ py-files:
     
     # Создаем коллектор статистики
     stats_collector = StatsCollector(
-        tokenizer=run_ctx.tokenizer,
-        cache=run_ctx.cache
+        tokenizer=run_ctx.tokenizer
     )
     
     # Создаем процессор секций
@@ -115,7 +114,7 @@ all-files:
     
     # Тест 1: без тега minimal - все файлы включены
     run_ctx = _create_run_context(tmp_path, active_tags=set())
-    stats_collector = StatsCollector(tokenizer=run_ctx.tokenizer, cache=run_ctx.cache)
+    stats_collector = StatsCollector(tokenizer=run_ctx.tokenizer)
     section_processor = SectionProcessor(run_ctx=run_ctx, stats_collector=stats_collector)
     
     template_ctx = TemplateContext(run_ctx)
@@ -131,7 +130,7 @@ all-files:
     
     # Тест 2: с тегом minimal - тестовые файлы и документация исключены
     run_ctx = _create_run_context(tmp_path, active_tags={"minimal"})
-    stats_collector = StatsCollector(tokenizer=run_ctx.tokenizer, cache=run_ctx.cache)
+    stats_collector = StatsCollector(tokenizer=run_ctx.tokenizer)
     section_processor = SectionProcessor(run_ctx=run_ctx, stats_collector=stats_collector)
     
     template_ctx = TemplateContext(run_ctx)
@@ -153,7 +152,7 @@ def _create_run_context(root: Path, active_tags: set | None = None) -> RunContex
     tool_ver = "0.3.0"
     cache = Cache(root, enabled=None, fresh=False, tool_version=tool_ver)
     vcs = NullVcs()
-    tokenizer = TokenService(root, "o3")
+    tokenizer = TokenService(root, "o3", cache=cache)
     adaptive_loader = AdaptiveConfigLoader(root)
     
     return RunContext(

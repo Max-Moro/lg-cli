@@ -53,7 +53,7 @@ py-files:
     tool_ver = "0.3.0"
     cache = Cache(tmp_path, enabled=None, fresh=False, tool_version=tool_ver)
     vcs = NullVcs()
-    tokenizer = TokenService(tmp_path, "o3")
+    tokenizer = TokenService(tmp_path, "o3", cache=cache)
     adaptive_loader = AdaptiveConfigLoader(tmp_path)
     
     run_ctx = RunContext(
@@ -168,7 +168,7 @@ def _create_run_context(root: Path, active_tags: set | None = None) -> RunContex
     tool_ver = "0.3.0"
     cache = Cache(root, enabled=None, fresh=False, tool_version=tool_ver)
     vcs = NullVcs()
-    tokenizer = TokenService(root, "o3")
+    tokenizer = TokenService(root, "o3", cache=cache)
     adaptive_loader = AdaptiveConfigLoader(root)
     
     return RunContext(

@@ -67,7 +67,7 @@ class Engine:
         # VCS
         self.vcs = GitVcs() if (self.root / ".git").is_dir() else NullVcs()
         
-        self.tokenizer = TokenService(self.root, self.options.model)
+        self.tokenizer = TokenService(self.root, self.options.model, cache=self.cache)
         active_tags, mode_options, adaptive_loader = process_adaptive_options(
             self.root,
             self.options.modes,
@@ -88,10 +88,7 @@ class Engine:
     def _init_processors(self) -> None:
         """Создает основные процессоры."""
         # Коллектор статистики
-        self.stats_collector = StatsCollector(
-            tokenizer=self.tokenizer,
-            cache=self.cache,
-        )
+        self.stats_collector = StatsCollector(tokenizer=self.tokenizer)
         
         # Процессор секций
         self.section_processor = SectionProcessor(

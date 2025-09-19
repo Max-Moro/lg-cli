@@ -19,7 +19,7 @@ DEFAULT_ENCODER = "cl100k_base"
 
 class TokenService:
     """
-    Обёртка над tiktoken с единым энкодером.
+    Обёртка над tiktoken с единым энкодером и встроенным кешированием.
     """
 
     def __init__(
@@ -27,12 +27,14 @@ class TokenService:
             root: Optional[Path],
             model_id: Optional[str],
             *,
-            encoder: Optional[Encoding] = None
+            encoder: Optional[Encoding] = None,
+            cache=None
     ):
         self.root = root
         self.model_id = model_id
         self._enc: Optional[Encoding] = encoder
         self._model_info: Optional[ResolvedModel] = None
+        self.cache = cache  # Кеш для токенов
 
     # ---------------- Internal ---------------- #
     def _get_encoder(self, cfg_name: str) -> Encoding:
@@ -78,6 +80,37 @@ class TokenService:
         if not text:
             return 0
         return len(self.enc.encode(text))
+    
+    def count_text_cached(self, text: str) -> int:
+        """
+        Подсчитать токены в тексте с использованием кеша.
+        
+        Args:
+            text: Текст для подсчета токенов
+            
+        Returns:
+            Количество токенов
+        """
+        if not text:
+            return 0
+        
+        # Если нет кеша, просто считаем
+        if not self.cache:
+            return self.count_text(text)
+        
+        # Получаем имя модели для кеша
+        model_name = self.model_info.base if self.root else "default"
+        
+        # Пытаемся получить из кеша
+        cached_tokens = self.cache.get_text_tokens(text, model_name)
+        if cached_tokens is not None:
+            return cached_tokens
+        
+        # Если нет в кеше, подсчитываем и сохраняем
+        token_count = self.count_text(text)
+        self.cache.put_text_tokens(text, model_name, token_count)
+        
+        return token_count
 
     def compare_texts(self, original: str, replacement: str) -> Tuple[int, int, int, float]:
         """
@@ -142,5 +175,6 @@ def default_tokenizer() -> TokenService:
     return TokenService(
         root=None,
         model_id=None,
-        encoder=tiktoken.get_encoding(DEFAULT_ENCODER)
+        encoder=tiktoken.get_encoding(DEFAULT_ENCODER),
+        cache=None
     )

@@ -7,9 +7,13 @@ import shutil
 from dataclasses import asdict, is_dataclass, dataclass
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Any, Optional
 
 CACHE_VERSION = 1
+
+def _sha1_text(text: str) -> str:
+    """Простой хеш от текста для кеширования токенов."""
+    return hashlib.sha1(text.encode("utf-8")).hexdigest()
 
 def _sha1_json(payload: dict) -> str:
     return hashlib.sha1(json.dumps(payload, ensure_ascii=False, sort_keys=True).encode("utf-8")).hexdigest()
@@ -66,7 +70,66 @@ class Cache:
             except Exception:
                 self.enabled = False
 
-    # --------------------------- КЛЮЧИ --------------------------- #
+    # --------------------------- ПРОСТОЕ КЕШИРОВАНИЕ ТОКЕНОВ --------------------------- #
+
+    def get_text_tokens(self, text: str, model: str) -> Optional[int]:
+        """
+        Получает количество токенов для текста из кэша по простому хешу.
+        
+        Args:
+            text: Текст для подсчета токенов
+            model: Имя модели
+            
+        Returns:
+            Количество токенов или None если нет в кэше
+        """
+        if not self.enabled or not text:
+            return None
+        
+        text_hash = _sha1_text(text)
+        path = self._bucket_path("tokens", text_hash)
+        
+        try:
+            data = self._load_json(path)
+            if not data:
+                return None
+            return data.get("tokens", {}).get(model)
+        except Exception:
+            return None
+    
+    def put_text_tokens(self, text: str, model: str, token_count: int) -> None:
+        """
+        Сохраняет количество токенов для текста в кэш по простому хешу.
+        
+        Args:
+            text: Текст
+            model: Имя модели
+            token_count: Количество токенов
+        """
+        if not self.enabled or not text:
+            return
+        
+        text_hash = _sha1_text(text)
+        path = self._bucket_path("tokens", text_hash)
+        
+        try:
+            # Загружаем существующие данные или создаем новые
+            data = self._load_json(path) or {
+                "v": CACHE_VERSION,
+                "text_hash": text_hash,
+                "tokens": {},
+                "created_at": datetime.utcnow().isoformat() + "Z"
+            }
+            
+            # Обновляем токены для модели
+            data["tokens"][model] = int(token_count)
+            data["updated_at"] = datetime.utcnow().isoformat() + "Z"
+            
+            self._atom_write(path, data)
+        except Exception:
+            pass
+
+    # --------------------------- PROCESSED --------------------------- #
 
     def build_processed_key(
         self,
@@ -97,60 +160,23 @@ class Cache:
         path = self._bucket_path("processed", h)
         return h, path
 
-    def build_raw_tokens_key(self, *, abs_path: Path) -> tuple[str, Path]:
+    def get_processed(self, key_path: Path) -> Optional[dict]:
         """
-        Ключ для raw-токенов на основе только файлового fingerprint.
-        (Адаптер/группировка не участвуют, т.к. читаем «сырой» текст с диска.)
+        Возвращает entry:
+          { "v":1, "processed_text":str, "meta":{}, "created_at":..., "updated_at":... }
+        или None.
         """
-        try:
-            st = abs_path.stat()
-            file_fp = {
-                "path": str(abs_path.resolve()),
-                "mtime_ns": int(getattr(st, "st_mtime_ns", int(st.st_mtime * 1e9))),
-                "size": int(st.st_size),
-            }
-        except Exception:
-            file_fp = {"path": str(abs_path), "mtime_ns": 0, "size": 0}
-        payload = {
-            "v": CACHE_VERSION,
-            "kind": "raw-tokens",
-            "file": file_fp,
-            "tool": self.tool_version,
-        }
-        h = _sha1_json(payload)
-        path = self._bucket_path("raw_tokens", h)
-        return h, path
+        return self._load_json(key_path)
 
-    def build_rendered_key(
-        self,
-        *,
-        context_name: str,
-        sections_used: Dict[str, int],
-        options_fp: Dict[str, Any],  # {mode, code_fence, model, variant, ...}
-        processed_keys: Dict[str, str],  # rel_path -> processed_key_sha1 (для инвалидации)
-        templates: Optional[Dict[str, str]] = None,  # {tpl_name: sha1(text)}
-    ) -> tuple[str, Path]:
-        """
-        Ключ rendered-документа. Включает:
-          - имя контекста, кратности секций
-          - опции рендера (code_fence, модель, variant="final"/"sections-only")
-          - список файлов и их processed-ключи (чтобы реагировать на изменения адаптеров/конфига)
-          - хэши исходных текстов шаблонов
-          - версию инструмента
-        """
-        payload = {
+    def put_processed(self, key_path: Path, *, processed_text: str, meta: dict | None = None) -> None:
+        now = datetime.utcnow().isoformat() + "Z"
+        self._atom_write(key_path, {
             "v": CACHE_VERSION,
-            "kind": "rendered",
-            "context": context_name,
-            "sections": dict(sorted(sections_used.items())),
-            "options": options_fp,
-            "processed": dict(sorted(processed_keys.items())),  # стабилизируем порядок
-            "templates": dict(sorted((templates or {}).items())),
-            "tool": self.tool_version,
-        }
-        h = _sha1_json(payload)
-        path = self._bucket_path("rendered", h)
-        return h, path
+            "processed_text": processed_text,
+            "meta": meta or {},
+            "created_at": now,
+            "updated_at": now,
+        })
 
     # --------------------------- IO helpers --------------------------- #
 
@@ -179,86 +205,12 @@ class Cache:
         except Exception:
             pass
 
-    # --------------------------- PROCESSED --------------------------- #
-
-    def get_processed(self, key_path: Path) -> Optional[dict]:
-        """
-        Возвращает entry:
-          { "v":1, "processed_text":str, "tokens":{model:{mode:int}}, "meta":{}, "created_at":..., "updated_at":... }
-        или None.
-        """
-        return self._load_json(key_path)
-
-    def put_processed(self, key_path: Path, *, processed_text: str, meta: dict | None = None) -> None:
-        now = datetime.utcnow().isoformat() + "Z"
-        self._atom_write(key_path, {
-            "v": CACHE_VERSION,
-            "processed_text": processed_text,
-            "tokens": {},   # model -> { "raw":int, "processed":int, "rendered":int }
-            "meta": meta or {},
-            "created_at": now,
-            "updated_at": now,
-        })
-
-    # --------------------------- TOKENS (raw/processed) --------------------------- #
-
-    def get_tokens(self, key_path: Path, *, model: str, mode: str) -> Optional[int]:
-        try:
-            data = self._load_json(key_path)
-            if not data:
-                return None
-            return int((data.get("tokens") or {}).get(model, {}).get(mode))
-        except Exception:
-            return None
-
-    def update_tokens(self, key_path: Path, *, model: str, mode: str, value: int) -> None:
-        if not self.enabled:
-            return
-        try:
-            data = self._load_json(key_path) or {"v": CACHE_VERSION, "tokens": {}, "processed_text": "", "meta": {}, "created_at": datetime.utcnow().isoformat() + "Z"}
-            tokens = data.setdefault("tokens", {})
-            per_model = tokens.setdefault(model, {})
-            per_model[mode] = int(value)
-            data["updated_at"] = datetime.utcnow().isoformat() + "Z"
-            self._atom_write(key_path, data)
-        except Exception:
-            pass
-
-    # --------------------------- RENDERED TOKENS --------------------------- #
-
-    def get_rendered_tokens(self, key_path: Path, *, model: str) -> Optional[int]:
-        data = self._load_json(key_path)
-        if not data:
-            return None
-        try:
-            return int((data.get("tokens") or {}).get(model))
-        except Exception:
-            return None
-
-    def update_rendered_tokens(self, key_path: Path, *, model: str, value: int) -> None:
-        if not self.enabled:
-            return
-        try:
-            now = datetime.utcnow().isoformat() + "Z"
-            data = self._load_json(key_path) or {"v": CACHE_VERSION, "tokens": {}, "created_at": now}
-            data.setdefault("tokens", {})[model] = int(value)
-            data["updated_at"] = now
-            self._atom_write(key_path, data)
-        except Exception:
-            pass
-
     # --------------------------- PUBLIC: key→path helpers --------------------------- #
     def path_for(self, bucket: str, key: str) -> Path:
         return self._bucket_path(bucket, key)
 
     def path_for_processed_key(self, key: str) -> Path:
         return self._bucket_path("processed", key)
-
-    def path_for_raw_tokens_key(self, key: str) -> Path:
-        return self._bucket_path("raw_tokens", key)
-
-    def path_for_rendered_key(self, key: str) -> Path:
-        return self._bucket_path("rendered", key)
 
     # --------------------------- CFG STATE (lg-cfg) --------------------------- #
     def _cfg_state_path(self, cfg_root: Path) -> Path:
