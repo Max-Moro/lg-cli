@@ -8,7 +8,7 @@ from typing import Any, Dict
 from .config import list_sections
 from .context import list_contexts
 from .diagnostics import run_diag
-from .engine_v2 import run_report_v2, run_render_v2, TemplateProcessingError
+from .engine import run_report, run_render, TemplateProcessingError
 from .jsonic import dumps as jdumps
 from .migrate.errors import MigrationFatalError
 from .stats import list_models
@@ -124,12 +124,12 @@ def main(argv: list[str] | None = None) -> int:
             return int(rc) if isinstance(rc, int) else 0
 
         if ns.cmd == "report":
-            result = run_report_v2(ns.target, _opts(ns))
+            result = run_report(ns.target, _opts(ns))
             sys.stdout.write(jdumps(result.model_dump(mode="json")))
             return 0
 
         if ns.cmd == "render":
-            doc = run_render_v2(ns.target, _opts(ns))
+            doc = run_render(ns.target, _opts(ns))
             sys.stdout.write(doc.text)
             return 0
 

@@ -29,7 +29,7 @@ from .vcs.git import GitVcs
 from .version import tool_version
 
 
-class EngineV2:
+class Engine:
     """
     Координирующий класс для движка LG V2.
     
@@ -250,23 +250,23 @@ def _parse_target(target: str) -> TargetSpec:
     )
 
 
-def run_render_v2(target: str, options: RunOptions) -> RenderedDocument:
+def run_render(target: str, options: RunOptions) -> RenderedDocument:
     """Точка входа для рендеринга в LG V2."""
     target_spec = _parse_target(target)
-    engine = EngineV2(options)
+    engine = Engine(options)
     return engine.render_text(target_spec)
 
 
-def run_report_v2(target: str, options: RunOptions) -> RunResult:
+def run_report(target: str, options: RunOptions) -> RunResult:
     """Точка входа для генерации отчета в LG V2."""
     target_spec = _parse_target(target)
-    engine = EngineV2(options)
+    engine = Engine(options)
     return engine.generate_report(target_spec)
 
 
 __all__ = [
-    "EngineV2",
-    "run_render_v2", 
-    "run_report_v2",
+    "Engine",
+    "run_render",
+    "run_report",
     "TemplateProcessingError"
 ]
