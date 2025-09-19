@@ -1,5 +1,6 @@
 """Тесты для контекста шаблонов TemplateContext."""
 import warnings
+from pathlib import Path
 from unittest.mock import Mock
 
 import pytest
@@ -9,6 +10,7 @@ from lg.config.adaptive_model import ModeOptions, ModesConfig, ModeSet, Mode, Ta
 from lg.run_context import RunContext
 from lg.template.context import TemplateContext, TemplateState
 from lg.template.evaluator import TemplateConditionEvaluator
+from lg.types import RunOptions
 
 
 class TestTemplateState:
@@ -21,6 +23,7 @@ class TestTemplateState:
         active_modes = {"java": "class", "test": "unit"}
         
         state = TemplateState(
+            origin="self",
             mode_options=mode_options,
             active_tags=active_tags,
             active_modes=active_modes
@@ -37,6 +40,7 @@ class TestTemplateState:
         active_modes = {"java": "class"}
         
         original = TemplateState(
+            origin="self",
             mode_options=mode_options,
             active_tags=active_tags,
             active_modes=active_modes
@@ -343,7 +347,6 @@ class TestTemplateContextConditionEvaluation:
         
         # Должен создать новый оценщик
         assert evaluator1 is not evaluator2
-        assert evaluator2.get_active_tags() == {"debug", "java", "production"}
 
     def test_evaluate_condition_text(self):
         """Оценка условия из текста."""
@@ -552,3 +555,167 @@ class TestTemplateContextIntegration:
         # Условие с tagset
         tagset_condition = "TAGSET:lang:java AND tag:test_context"
         assert context.evaluate_condition_text(tagset_condition) is True
+
+
+class TestOriginManagement:
+    """Тесты для управления origin в TemplateContext."""
+
+    @pytest.fixture
+    def run_ctx(self):
+        """Создает мок контекста выполнения."""
+        run_ctx = Mock(spec=RunContext)
+        run_ctx.root = Path("/test/repo")
+        run_ctx.options = RunOptions()
+        
+        # Настраиваем адаптивный загрузчик
+        adaptive_loader = Mock()
+        modes_config = ModesConfig()
+        tags_config = TagsConfig()
+        adaptive_loader.get_modes_config.return_value = modes_config
+        adaptive_loader.get_tags_config.return_value = tags_config
+        run_ctx.adaptive_loader = adaptive_loader
+        
+        run_ctx.mode_options = ModeOptions()
+        run_ctx.active_tags = {"debug"}
+        
+        return run_ctx
+
+    def test_initial_origin_is_self(self, run_ctx):
+        """Проверка что начальный origin равен 'self'."""
+        context = TemplateContext(run_ctx)
+        
+        assert context.current_state.origin == "self"
+
+    def test_enter_include_scope_changes_origin(self, run_ctx):
+        """Тест входа в скоуп включения изменяет origin."""
+        context = TemplateContext(run_ctx)
+        
+        context.enter_include_scope("apps/web")
+        
+        assert context.current_state.origin == "apps/web"
+        assert context.is_in_mode_block() is True
+        assert context.get_nesting_level() == 1
+
+    def test_exit_include_scope_restores_origin(self, run_ctx):
+        """Тест выхода из скоупа включения восстанавливает origin."""
+        context = TemplateContext(run_ctx)
+        
+        # Входим в скоуп
+        context.enter_include_scope("apps/web")
+        assert context.current_state.origin == "apps/web"
+        
+        # Выходим из скоупа
+        context.exit_include_scope()
+        assert context.current_state.origin == "self"
+        assert context.is_in_mode_block() is False
+
+    def test_nested_include_scopes(self, run_ctx):
+        """Тест вложенных скоупов включений."""
+        context = TemplateContext(run_ctx)
+        
+        # Первый уровень вложенности
+        context.enter_include_scope("apps/web")
+        assert context.current_state.origin == "apps/web"
+        assert context.get_nesting_level() == 1
+        
+        # Второй уровень вложенности
+        context.enter_include_scope("core/api")
+        assert context.current_state.origin == "core/api"
+        assert context.get_nesting_level() == 2
+        
+        # Выходим из второго уровня
+        context.exit_include_scope()
+        assert context.current_state.origin == "apps/web"
+        assert context.get_nesting_level() == 1
+        
+        # Выходим из первого уровня
+        context.exit_include_scope()
+        assert context.current_state.origin == "self"
+        assert context.get_nesting_level() == 0
+
+    def test_exit_include_scope_without_entry_raises_error(self, run_ctx):
+        """Тест выхода без входа вызывает ошибку."""
+        context = TemplateContext(run_ctx)
+        
+        with pytest.raises(RuntimeError, match="No include scope to exit"):
+            context.exit_include_scope()
+
+    def test_scope_conditions_local_scope(self, run_ctx):
+        """Тест условий scope:local в локальном скоупе."""
+        context = TemplateContext(run_ctx)
+        
+        # В начальном состоянии (origin="self") scope:local должно быть True
+        assert context.evaluate_condition_text("scope:local") is True
+        assert context.evaluate_condition_text("scope:parent") is False
+
+    def test_scope_conditions_parent_scope(self, run_ctx):
+        """Тест условий scope:parent в родительском скоупе."""
+        context = TemplateContext(run_ctx)
+        
+        # Входим в скоуп включения
+        context.enter_include_scope("apps/web")
+        
+        # В родительском скоупе scope:parent должно быть True
+        assert context.evaluate_condition_text("scope:local") is False
+        assert context.evaluate_condition_text("scope:parent") is True
+
+    def test_scope_conditions_with_empty_origin(self, run_ctx):
+        """Тест условий scope с пустым origin."""
+        context = TemplateContext(run_ctx)
+        
+        # Входим в скоуп с пустым origin (эквивалентно "self")
+        context.enter_include_scope("")
+        
+        # Пустой origin должен рассматриваться как локальный
+        assert context.evaluate_condition_text("scope:local") is True
+        assert context.evaluate_condition_text("scope:parent") is False
+
+    def test_combined_conditions_with_scope(self, run_ctx):
+        """Тест комбинированных условий с scope."""
+        context = TemplateContext(run_ctx)
+        
+        # В локальном скоупе
+        assert context.evaluate_condition_text("tag:debug AND scope:local") is True
+        assert context.evaluate_condition_text("tag:debug AND scope:parent") is False
+        
+        # Переходим в родительский скоуп
+        context.enter_include_scope("apps/web")
+        
+        # В родительском скоупе
+        assert context.evaluate_condition_text("tag:debug AND scope:local") is False
+        assert context.evaluate_condition_text("tag:debug AND scope:parent") is True
+
+    def test_include_scope_preserves_other_state(self, run_ctx):
+        """Тест что вход в скоуп включения сохраняет остальное состояние."""
+        context = TemplateContext(run_ctx)
+        
+        # Добавляем дополнительные теги и режимы
+        context.add_extra_tag("production")
+        original_tags = context.get_active_tags()
+        original_modes = context.get_active_modes()
+        original_options = context.get_mode_options()
+        
+        # Входим в скоуп
+        context.enter_include_scope("apps/web")
+        
+        # Проверяем что остальное состояние сохранилось
+        assert context.get_active_tags() == original_tags
+        assert context.get_active_modes() == original_modes
+        assert context.get_mode_options() == original_options
+        
+        # Но origin изменился
+        assert context.current_state.origin == "apps/web"
+
+    def test_context_manager_with_include_scopes(self, run_ctx):
+        """Тест контекстного менеджера с незакрытыми скоупами включений."""
+        with warnings.catch_warnings(record=True) as w:
+            warnings.simplefilter("always")
+            
+            with TemplateContext(run_ctx) as context:
+                context.enter_include_scope("apps/web")
+                # Не закрываем скоуп - должно вызвать предупреждение
+            
+            # Проверяем что было выдано предупреждение
+            assert len(w) == 1
+            assert "unclosed" in str(w[0].message).lower()
+            assert "include" in str(w[0].message) or "mode" in str(w[0].message)

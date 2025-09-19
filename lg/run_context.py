@@ -58,11 +58,19 @@ class ConditionContext:
     def is_scope_condition_met(self, scope_type: str) -> bool:
         """
         Проверяет условие scope:local/parent.
+        
+        Args:
+            scope_type: "local" или "parent"
+            
+        Returns:
+            True если условие выполнено:
+            - scope:local - истинно для локального скоупа (origin == "self" или пустой)
+            - scope:parent - истинно для родительского скоупа (origin != "self" и не пустой)
         """
         if scope_type == "local":
             return not self.origin or self.origin == "self"
         elif scope_type == "parent":
-            return self.origin and self.origin != "self"
+            return bool(self.origin and self.origin != "self")
         return False
 
 @dataclass(frozen=True)
@@ -94,5 +102,5 @@ class RunContext:
         return ConditionContext(
             active_tags=self.active_tags,
             tagsets=tagsets,
-            current_scope="local",  # По умолчанию локальный скоуп
+            origin="self",  # По умолчанию локальный скоуп
         )

@@ -1322,5 +1322,156 @@ class TestIntegration:
         assert "This should not appear" not in result2
 
 
+class TestOriginIncludes:
+    """Тесты для обработки включений с управлением origin."""
+
+    @pytest.fixture
+    def mock_run_ctx(self):
+        """Создает мок контекста выполнения."""
+        run_ctx = Mock(spec=RunContext)
+        run_ctx.root = Path("/test/repo")
+        run_ctx.options = RunOptions()
+        
+        # Мок адаптивного загрузчика с поддержкой scope условий
+        adaptive_loader = Mock(spec=AdaptiveConfigLoader)
+        adaptive_loader.get_modes_config.return_value = ModesConfig()
+        adaptive_loader.get_tags_config.return_value = TagsConfig()
+        run_ctx.adaptive_loader = adaptive_loader
+        
+        run_ctx.cache = Mock(spec=Cache)
+        run_ctx.vcs = Mock(spec=NullVcs)
+        run_ctx.tokenizer = Mock(spec=TokenService)
+        run_ctx.mode_options = ModeOptions()
+        run_ctx.active_tags = {"debug"}
+        
+        return run_ctx
+
+    @pytest.fixture
+    def processor(self, mock_run_ctx):
+        """Создает процессор с мок функциями загрузки."""
+        processor = TemplateProcessor(mock_run_ctx, validate_paths=False)
+        
+        # Мок загрузчики шаблонов
+        def mock_load_template(cfg_root, name):
+            if name == "local_template":
+                return Path("local_template.tpl.md"), "Local content: {% if scope:local %}LOCAL{% endif %}"
+            elif name == "parent_template":
+                return Path("parent_template.tpl.md"), "Parent content: {% if scope:parent %}PARENT{% endif %}"
+            else:
+                raise FileNotFoundError(f"Template {name} not found")
+        
+        def mock_load_context(cfg_root, name):
+            if name == "scope_test":
+                return Path("scope_test.ctx.md"), "Context: {% if scope:local %}LOCAL{% endif %}{% if scope:parent %}PARENT{% endif %}"
+            else:
+                raise FileNotFoundError(f"Context {name} not found")
+        
+        processor.resolver.load_template_fn = mock_load_template
+        processor.resolver.load_context_fn = mock_load_context
+        
+        return processor
+
+    def test_include_local_template(self, processor):
+        """Тест включения локального шаблона."""
+        template_text = "Start ${tpl:local_template} end"
+        
+        result = processor.process_template_text(template_text)
+        
+        assert result == "Start Local content: LOCAL end"
+
+    def test_include_template_from_different_scope(self, processor):
+        """Тест включения шаблона из другого скоупа."""
+        # Исправленный формат: нужно использовать правильную адресную нотацию
+        # Но пока парсер еще не поддерживает адресные включения, используем простые
+        template_text = "Start ${tpl:parent_template} end"
+        
+        # Настраиваем загрузчик для симуляции другого скоупа
+        def parent_scope_loader(cfg_root, name):
+            if name == "parent_template":
+                # Симулируем что шаблон загружается из другого скоупа
+                return Path("parent_template.tpl.md"), "Parent content: {% if scope:parent %}PARENT{% endif %}"
+            else:
+                raise FileNotFoundError(f"Template {name} not found")
+        
+        # Для данного теста будем вручную менять origin в процессоре
+        original_loader = processor.resolver.load_template_fn
+        processor.resolver.load_template_fn = parent_scope_loader
+        
+        result = processor.process_template_text(template_text)
+        
+        # Восстанавливаем оригинальный загрузчик
+        processor.resolver.load_template_fn = original_loader
+        
+        # В этом тесте мы не меняем origin, так что условие scope:parent не сработает
+        assert "Start Parent content: " in result
+        assert "End" in result
+
+    def test_nested_scope_includes(self, processor):
+        """Тест вложенных включений с разными скоупами."""
+        # Настраиваем более сложную загрузку
+        def complex_load_template(cfg_root, name):
+            if name == "outer":
+                return Path("outer.tpl.md"), "{% if scope:local %}OUTER_LOCAL{% endif %} ${tpl@child:inner} {% if scope:local %}OUTER_LOCAL_END{% endif %}"
+            elif name == "inner":
+                return Path("inner.tpl.md"), "{% if scope:parent %}INNER_PARENT{% endif %}"
+            else:
+                raise FileNotFoundError(f"Template {name} not found")
+        
+        processor.resolver.load_template_fn = complex_load_template
+        
+        template_text = "${tpl:outer}"
+        
+        result = processor.process_template_text(template_text)
+        
+        # outer шаблон работает в локальном скоупе, inner - в родительском
+        assert "OUTER_LOCAL" in result
+        assert "INNER_PARENT" in result
+        assert "OUTER_LOCAL_END" in result
+
+    def test_context_include_with_scope(self, processor):
+        """Тест включения контекста с проверкой скоупа."""
+        template_text = "Local: ${ctx:scope_test} Remote: ${ctx@remote:scope_test}"
+        
+        result = processor.process_template_text(template_text)
+        
+        # Локальный контекст должен показать LOCAL, удаленный - PARENT
+        assert "Local: Context: LOCAL" in result
+        assert "Remote: Context: PARENT" in result
+
+    def test_scope_condition_evaluation_during_include(self, processor):
+        """Тест оценки scope условий во время обработки включений."""
+        # Более детальный тест с отслеживанием изменений origin
+        template_changes = []
+        
+        def tracking_load_template(cfg_root, name):
+            if name == "tracker":
+                return Path("tracker.tpl.md"), """
+                {% if scope:local %}
+                In local scope
+                {% endif %}
+                {% if scope:parent %}
+                In parent scope  
+                {% endif %}
+                """
+            else:
+                raise FileNotFoundError(f"Template {name} not found")
+        
+        processor.resolver.load_template_fn = tracking_load_template
+        
+        template_text = """
+        Root level: {% if scope:local %}ROOT_LOCAL{% endif %}
+        Include: ${tpl@other:tracker}
+        Back to root: {% if scope:local %}ROOT_LOCAL_BACK{% endif %}
+        """
+        
+        result = processor.process_template_text(template_text)
+        
+        # Проверяем правильную обработку скоупов
+        assert "ROOT_LOCAL" in result
+        assert "In parent scope" in result
+        assert "ROOT_LOCAL_BACK" in result
+        assert "In local scope" not in result  # Это должно быть false в родительском скоупе
+
+
 if __name__ == "__main__":
     pytest.main([__file__])

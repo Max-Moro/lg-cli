@@ -22,7 +22,6 @@ from .parser import ParserError, parse_template
 from .resolver import TemplateResolver, ResolverError
 from ..context.common import load_template_from, load_context_from
 from ..run_context import RunContext
-from ..stats.collector import StatsCollector
 from ..types_v2 import SectionRef
 
 
@@ -248,7 +247,7 @@ class TemplateProcessor:
             return node.text
         
         elif isinstance(node, SectionNode):
-            if self.section_handler:
+            if self.section_handler and node.resolved_ref:
                 return self.section_handler(node.resolved_ref, self.template_ctx)
             else:
                 # Если нет обработчика секций, возвращаем плейсхолдер
@@ -256,7 +255,14 @@ class TemplateProcessor:
         
         elif isinstance(node, IncludeNode):
             if node.children:
-                return self._evaluate_ast(node.children)
+                # Входим в скоуп включаемого шаблона
+                self.template_ctx.enter_include_scope(node.origin)
+                try:
+                    result = self._evaluate_ast(node.children)
+                finally:
+                    # Всегда выходим из скоупа, даже при ошибке
+                    self.template_ctx.exit_include_scope()
+                return result
             else:
                 # Если включение не резолвлено, возвращаем плейсхолдер  
                 return f"${{{node.canon_key()}}}"
