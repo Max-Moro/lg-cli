@@ -18,7 +18,6 @@ src-cleaning:
           - "lang.py"
           - "api_schema.py"
           # Под задачу
-          - "/stats/"
           - "/context/"
           - "/render/"
           - "/manifest/"
@@ -39,3 +38,8 @@ src-cleaning:
             allow:
               - "/processor.py"
               - "/context.py"
+          stats:
+            mode: allow
+            allow:
+              - "/collector.py"
+              - "/tokenizer.py"
