@@ -233,7 +233,6 @@ class TemplateContext:
             active_tags=self.current_state.active_tags,
             tagsets=tagsets,
             current_scope="local",  # По умолчанию локальный скоуп
-            parent_scope="parent"
         )
     
     def _get_tagsets(self) -> Dict[str, Set[str]]:

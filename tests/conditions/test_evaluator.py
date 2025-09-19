@@ -23,7 +23,6 @@ class TestConditionEvaluator:
                 "empty_set": set()
             },
             current_scope="local",
-            parent_scope="parent"
         )
         
         self.evaluator = ConditionEvaluator(self.context)
@@ -83,7 +82,6 @@ class TestConditionEvaluator:
             active_tags=set(),
             tagsets={},
             current_scope="parent",
-            parent_scope=""
         )
         evaluator_parent = ConditionEvaluator(context_parent)
         

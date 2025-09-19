@@ -96,5 +96,4 @@ class RunContext:
             active_tags=self.active_tags,
             tagsets=tagsets,
             current_scope="local",  # По умолчанию локальный скоуп
-            parent_scope="parent"
         )

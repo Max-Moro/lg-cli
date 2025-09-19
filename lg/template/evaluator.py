@@ -147,7 +147,6 @@ def create_template_evaluator(
         active_tags=active_tags,
         tagsets=tagsets,
         current_scope=current_scope,
-        parent_scope="parent"  # Фиксированное значение для федеративности
     )
     
     return TemplateConditionEvaluator(condition_context)
