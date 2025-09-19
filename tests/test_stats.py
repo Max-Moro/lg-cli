@@ -138,7 +138,7 @@ def test_context_template_overhead_and_ctx_block(tmp_path: Path, monkeypatch):
 
     ctx = report.context
     assert ctx.templateName == "ctx:glued"
-    assert ctx.sectionsUsed == {".::all": 1}
+    assert ctx.sectionsUsed == {"sec:all": 1}
     assert isinstance(ctx.finalRenderedTokens, int) and ctx.finalRenderedTokens > 0
     assert isinstance(ctx.templateOnlyTokens, int) and ctx.templateOnlyTokens > 0
     # финальный share должен считаться от finalRenderedTokens
