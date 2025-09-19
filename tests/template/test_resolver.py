@@ -64,7 +64,7 @@ class TestTemplateResolver:
         assert resolved.resolved_ref is not None
         assert resolved.resolved_ref.name == "test_section"
         assert resolved.resolved_ref.scope_rel == ""  # текущий скоуп
-        assert resolved.resolved_ref.scope_dir == Path("/test/repo/lg-cfg")
+        assert str(resolved.resolved_ref.scope_dir).replace("\\", "/").endswith("/test/repo")
     
     def test_resolve_section_node_with_origin(self, resolver):
         """Тест резолвинга секции с указанием origin."""
@@ -76,7 +76,7 @@ class TestTemplateResolver:
         assert resolved.resolved_ref is not None
         assert resolved.resolved_ref.name == "test_section"
         assert resolved.resolved_ref.scope_rel == "other"
-        assert str(resolved.resolved_ref.scope_dir).replace("\\", "/").endswith("/test/repo/other/lg-cfg")
+        assert str(resolved.resolved_ref.scope_dir).replace("\\", "/").endswith("/test/repo/other")
     
     def test_resolve_section_node_with_bracketed_origin(self, resolver):
         """Тест резолвинга секции с origin в скобках."""
@@ -88,7 +88,7 @@ class TestTemplateResolver:
         assert resolved.resolved_ref is not None
         assert resolved.resolved_ref.name == "test_section"
         assert resolved.resolved_ref.scope_rel == "my:origin"
-        assert str(resolved.resolved_ref.scope_dir).replace("\\", "/").endswith("/test/repo/my:origin/lg-cfg")
+        assert str(resolved.resolved_ref.scope_dir).replace("\\", "/").endswith("/test/repo/my:origin")
     
     def test_resolve_include_node_template(self, resolver):
         """Тест резолвинга включения шаблона."""

@@ -40,4 +40,5 @@ src-cleaning:
           template:
             mode: allow
             allow:
-              - "/context.py"
+              - "/processor.py"
+              - "/resolver.py"

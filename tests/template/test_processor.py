@@ -57,7 +57,6 @@ class TestTemplateProcessor:
         assert processor.run_ctx == mock_run_ctx
         assert isinstance(processor.template_ctx, TemplateContext)
         assert processor.section_handler is None
-        assert processor.stats_collector is None
         assert processor._template_cache == {}
         assert processor._resolved_cache == {}
     
@@ -69,13 +68,6 @@ class TestTemplateProcessor:
         
         assert processor.section_handler == mock_handler
     
-    def test_set_stats_collector(self, processor):
-        """Тест установки коллектора статистики."""
-        mock_collector = Mock()
-        
-        processor.set_stats_collector(mock_collector)
-        
-        assert processor.stats_collector == mock_collector
 
     def test_process_template_text_simple_text(self, processor):
         """Тест обработки простого текстового шаблона."""
@@ -112,7 +104,12 @@ class TestTemplateProcessor:
         result = processor.process_template_text(template_text)
         
         assert result == "Start SECTION_CONTENT end"
-        mock_handler.assert_called_once_with("section1", processor.template_ctx)
+        # Проверяем что обработчик был вызван с SectionRef
+        mock_handler.assert_called_once()
+        call_args = mock_handler.call_args
+        section_ref = call_args[0][0]
+        assert section_ref.name == "section1"
+        assert call_args[0][1] == processor.template_ctx
 
     @patch('lg.template.processor.load_context_from')
     def test_process_template_file(self, mock_load, processor):
@@ -124,19 +121,6 @@ class TestTemplateProcessor:
         assert result == "Hello from file!"
         mock_load.assert_called_once()
 
-    @patch('lg.template.processor.load_context_from')
-    def test_process_template_file_with_stats(self, mock_load, processor):
-        """Тест обработки шаблона из файла с коллекцией статистики."""
-        mock_load.return_value = (Path("/test/template.ctx.md"), "Template content")
-        
-        # Устанавливаем мок коллектор статистики
-        mock_collector = Mock()
-        processor.set_stats_collector(mock_collector)
-        
-        result = processor.process_template_file("test-template")
-        
-        assert result == "Template content"
-        mock_collector.register_template.assert_called_once()
 
     def test_process_template_text_caching(self, processor):
         """Тест кэширования распарсенных шаблонов."""
@@ -195,8 +179,8 @@ class TestSectionHandling:
         processor = TemplateProcessor(mock_run_ctx)
         
         # Мок обработчик секций
-        def mock_section_handler(section_name, template_ctx):
-            return f"RENDERED_{section_name.upper()}"
+        def mock_section_handler(section_ref, template_ctx):
+            return f"RENDERED_{section_ref.name.upper()}"
         
         processor.set_section_handler(mock_section_handler)
         return processor
@@ -247,7 +231,12 @@ class TestSectionHandling:
         result = processor.process_template_text(template_text)
         
         assert result == "Content: TEST_RESULT"
-        mock_handler.assert_called_once_with("test_section", processor.template_ctx)
+        # Проверяем что обработчик был вызван с SectionRef
+        mock_handler.assert_called_once()
+        call_args = mock_handler.call_args
+        section_ref = call_args[0][0]
+        assert section_ref.name == "test_section"
+        assert call_args[0][1] == processor.template_ctx
 
 
 class TestIncludeHandling:
@@ -1135,7 +1124,8 @@ class TestIntegration:
         processor = TemplateProcessor(mock_run_ctx, validate_paths=False)
         
         # Устанавливаем реалистичный обработчик секций
-        def section_handler(section_name, template_ctx):
+        def section_handler(section_ref, template_ctx):
+            section_name = section_ref.name
             active_tags = template_ctx.get_active_tags()
             
             if "minimal" in active_tags:
@@ -1301,23 +1291,6 @@ class TestIntegration:
         assert "Back to basic testing mode." in result
         assert "End of workflow." in result
 
-    @patch('lg.template.processor.load_context_from')
-    def test_stats_collection_integration(self, mock_load, processor):
-        """Тест интеграции со сбором статистики."""
-        template_content = "Simple template: ${content}"
-        mock_load.return_value = (Path("/test/stats.ctx.md"), template_content)
-        
-        # Мок коллектора статистики
-        mock_collector = Mock()
-        processor.set_stats_collector(mock_collector)
-        
-        result = processor.process_template_file("stats")
-        
-        # Проверяем, что статистика собирается
-        mock_collector.register_template.assert_called_once()
-        call_args = mock_collector.register_template.call_args
-        assert "ctx:stats" in call_args[0][0]  # template key
-        assert call_args[0][1] == template_content  # template text
 
     def test_template_context_isolation(self, processor):
         """Тест изоляции контекста между шаблонами."""
