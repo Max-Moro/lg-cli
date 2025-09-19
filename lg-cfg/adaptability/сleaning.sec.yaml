@@ -23,16 +23,14 @@ src-cleaning:
           - "/context/"
           - "/render/"
           - "/manifest/"
+          - "/io/"
         children:
           adapters:
             mode: allow
             allow:
               - "/__init__.py"
-              - "/engine.py"
               - "/registry.py"
               - "/processor_v2.py"
-              - "/base.py"
-              - "/context.py"
           conditions:
             mode: allow
             allow:
@@ -42,3 +40,5 @@ src-cleaning:
             allow:
               - "/processor.py"
               - "/resolver.py"
+              - "/context.py"
+              - "/nodes.py"

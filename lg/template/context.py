@@ -23,6 +23,7 @@ class TemplateState:
     Используется для реализации стека состояний при входе/выходе
     из блоков {% mode %}.
     """
+    origin: str
     mode_options: ModeOptions
     active_tags: Set[str]
     active_modes: Dict[str, str]  # modeset -> mode_name
@@ -30,6 +31,7 @@ class TemplateState:
     def copy(self) -> TemplateState:
         """Создает глубокую копию состояния."""
         return TemplateState(
+            origin=self.origin,
             mode_options=self.mode_options,
             active_tags=set(self.active_tags),
             active_modes=dict(self.active_modes)
@@ -57,6 +59,7 @@ class TemplateContext:
         
         # Текущее состояние (инициализируется из run_ctx)
         self.current_state = TemplateState(
+            origin="self",
             mode_options=run_ctx.mode_options,
             active_tags=set(run_ctx.active_tags),
             active_modes=dict(run_ctx.options.modes)
@@ -232,7 +235,7 @@ class TemplateContext:
         return ConditionContext(
             active_tags=self.current_state.active_tags,
             tagsets=tagsets,
-            current_scope="local",  # По умолчанию локальный скоуп
+            origin=self.current_state.origin,
         )
     
     def _get_tagsets(self) -> Dict[str, Set[str]]:

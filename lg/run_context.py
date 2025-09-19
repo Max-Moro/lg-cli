@@ -21,12 +21,11 @@ class ConditionContext:
     необходимую для правильной оценки условий типа:
     - tag:name
     - TAGSET:set_name:tag_name
-    - scope:local/parent
+    - origin: "self" или путь к области (например, "apps/web")
     """
     active_tags: Set[str] = field(default_factory=set)
     tagsets: Dict[str, Set[str]] = field(default_factory=dict)
-    current_scope: str = ""
-    parent_scope: str = ""
+    origin: str = ""
 
     def is_tag_active(self, tag_name: str) -> bool:
         """Проверяет, активен ли указанный тег."""
@@ -61,9 +60,9 @@ class ConditionContext:
         Проверяет условие scope:local/parent.
         """
         if scope_type == "local":
-            return self.current_scope == "local"
+            return not self.origin or self.origin == "self"
         elif scope_type == "parent":
-            return self.current_scope == "parent"
+            return self.origin and self.origin != "self"
         return False
 
 @dataclass(frozen=True)
