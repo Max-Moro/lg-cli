@@ -14,6 +14,7 @@ src-cleaning:
           - "/_skeletons/"
           - "/scaffold.py"
           - "diag**"
+          - "/vcs/"
           - "lang.py"
           - "api_schema.py"
           # Под задачу
@@ -21,6 +22,7 @@ src-cleaning:
           - "/cache/"
           - "/context/"
           - "/render/"
+          - "/manifest/"
         children:
           adapters:
             mode: allow
@@ -28,6 +30,9 @@ src-cleaning:
               - "/__init__.py"
               - "/engine.py"
               - "/registry.py"
+              - "/processor_v2.py"
+              - "/base.py"
+              - "/context.py"
           conditions:
             mode: allow
             allow:
