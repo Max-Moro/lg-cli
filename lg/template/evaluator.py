@@ -129,7 +129,7 @@ def create_template_evaluator(
     active_tags: Set[str],
     active_modes: Dict[str, str],
     tagsets: Dict[str, Set[str]],
-    current_scope: str = "local"
+    origin: str = "self"
 ) -> TemplateConditionEvaluator:
     """
     Удобная функция для создания оценщика условий шаблона.
@@ -138,7 +138,7 @@ def create_template_evaluator(
         active_tags: Множество активных тегов
         active_modes: Словарь активных режимов {modeset -> mode}
         tagsets: Карта наборов тегов {set_name -> {tag_names}}
-        current_scope: Текущий скоуп ("local" или "parent")
+        origin: Origin для скоупа ("self" для local, путь для parent)
         
     Returns:
         Настроенный оценщик условий шаблона
@@ -146,7 +146,7 @@ def create_template_evaluator(
     condition_context = ConditionContext(
         active_tags=active_tags,
         tagsets=tagsets,
-        current_scope=current_scope,
+        origin=origin,
     )
     
     return TemplateConditionEvaluator(condition_context)

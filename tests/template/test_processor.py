@@ -1404,7 +1404,7 @@ class TestOriginIncludes:
         
         # В этом тесте мы не меняем origin, так что условие scope:parent не сработает
         assert "Start Parent content: " in result
-        assert "End" in result
+        assert "end" in result
 
     def test_nested_scope_includes(self, processor):
         """Тест вложенных включений с разными скоупами."""

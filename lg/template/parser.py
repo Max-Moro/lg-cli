@@ -123,10 +123,16 @@ class TemplateParser:
         
         # Проверяем, является ли это включением (tpl: или ctx:)
         if identifier in ('tpl', 'ctx'):
-            if len(tokens) < 3 or tokens[1].type != TokenType.COLON:
-                raise ParserError(f"Expected ':' after '{identifier}'", first_token)
+            # Может быть простое включение (tpl:name) или адресное (tpl@origin:name)
+            if len(tokens) >= 3:
+                if tokens[1].type == TokenType.COLON:
+                    # Простое включение: tpl:name
+                    return self._parse_include_placeholder(tokens)
+                elif tokens[1].type == TokenType.AT:
+                    # Адресное включение: tpl@origin:name
+                    return self._parse_include_placeholder(tokens)
             
-            return self._parse_include_placeholder(tokens)
+            raise ParserError(f"Invalid {identifier} include format", first_token)
         
         # Иначе это плейсхолдер секции
         return self._parse_section_placeholder(tokens)

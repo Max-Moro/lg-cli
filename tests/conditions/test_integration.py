@@ -28,7 +28,7 @@ class TestConditionsIntegration:
                 "component": {"api", "ui", "db"},
                 "stage": {"dev", "prod"}
             },
-            current_scope="local"
+            origin=""
         )
         
         # Набор тестовых случаев: (условие, ожидаемый результат)
@@ -95,7 +95,7 @@ class TestConditionsIntegration:
                 "component": {"api", "ui", "db"},
                 "empty": set()
             },
-            current_scope="local"
+            origin=""
         )
         
         # Тест is_tag_active
@@ -137,7 +137,7 @@ class TestConditionsIntegration:
         
         assert empty_context.is_tag_active("anything") is False
         assert empty_context.is_tagset_condition_met("set", "tag") is True  # несуществующий набор = пустой = True
-        assert empty_context.is_scope_condition_met("local") is False  # пустая строка != "local"
+        assert empty_context.is_scope_condition_met("local") is True  # пустая строка означает local скоуп
         
         # Контекст только с активными тегами
         tags_only_context = ConditionContext(active_tags={"python", "api"})
@@ -201,7 +201,7 @@ class TestConditionsIntegration:
                 "environment": {"development", "staging", "production"},
                 "feature": {"auth", "payments", "notifications"}
             },
-            current_scope="local"
+            origin=""
         )
         
         scenarios = [

@@ -22,7 +22,7 @@ class TestConditionEvaluator:
                 "feature": {"auth", "api", "ui"},
                 "empty_set": set()
             },
-            current_scope="local",
+            origin="",
         )
         
         self.evaluator = ConditionEvaluator(self.context)
@@ -81,7 +81,7 @@ class TestConditionEvaluator:
         context_parent = ConditionContext(
             active_tags=set(),
             tagsets={},
-            current_scope="parent",
+            origin="parent",
         )
         evaluator_parent = ConditionEvaluator(context_parent)
         

@@ -21,7 +21,7 @@ class TestTemplateConditionEvaluator:
         context = ConditionContext(
             active_tags={"debug", "test"}, 
             tagsets={"lang": {"java", "python"}},
-            current_scope="local"
+            origin="self"
         )
         
         evaluator = TemplateConditionEvaluator(context)
@@ -35,7 +35,7 @@ class TestTemplateConditionEvaluator:
         context = ConditionContext(
             active_tags={"debug", "test"}, 
             tagsets={},
-            current_scope="local"
+            origin="self"
         )
         evaluator = TemplateConditionEvaluator(context)
         
@@ -50,7 +50,7 @@ class TestTemplateConditionEvaluator:
         context = ConditionContext(
             active_tags={"debug", "test"}, 
             tagsets={},
-            current_scope="local"
+            origin="self"
         )
         evaluator = TemplateConditionEvaluator(context)
         
@@ -65,7 +65,7 @@ class TestTemplateConditionEvaluator:
         context = ConditionContext(
             active_tags={"debug"}, 
             tagsets={"lang": {"java", "python"}},
-            current_scope="local"
+            origin="self"
         )
         evaluator = TemplateConditionEvaluator(context)
         
@@ -80,7 +80,7 @@ class TestTemplateConditionEvaluator:
         context = ConditionContext(
             active_tags={"debug", "java"}, # java активен в наборе lang
             tagsets={"lang": {"java", "python"}},
-            current_scope="local"
+            origin="self"
         )
         evaluator = TemplateConditionEvaluator(context)
         
@@ -95,7 +95,7 @@ class TestTemplateConditionEvaluator:
         context = ConditionContext(
             active_tags={"debug", "test"}, 
             tagsets={"lang": {"java", "python"}},
-            current_scope="local"
+            origin="self"
         )
         evaluator = TemplateConditionEvaluator(context)
         
@@ -112,7 +112,7 @@ class TestTemplateConditionEvaluator:
         context = ConditionContext(
             active_tags={"debug", "test"}, 
             tagsets={"lang": {"java"}, "env": {"dev", "staging"}},
-            current_scope="local"
+            origin="self"
         )
         evaluator = TemplateConditionEvaluator(context)
         
@@ -132,7 +132,7 @@ class TestTemplateConditionEvaluator:
         context = ConditionContext(
             active_tags={"debug", "java", "dev"},
             tagsets={"lang": {"java", "python"}, "env": {"dev", "staging"}},
-            current_scope="local"
+            origin="self"
         )
         evaluator = TemplateConditionEvaluator(context)
         
@@ -153,7 +153,7 @@ class TestTemplateConditionEvaluator:
         initial_context = ConditionContext(
             active_tags={"debug"}, 
             tagsets={},
-            current_scope="local"
+            origin="self"
         )
         evaluator = TemplateConditionEvaluator(initial_context)
         
@@ -165,7 +165,7 @@ class TestTemplateConditionEvaluator:
         new_context = ConditionContext(
             active_tags={"production"}, 
             tagsets={},
-            current_scope="local"
+            origin="self"
         )
         evaluator.update_context(new_context)
         
@@ -178,7 +178,7 @@ class TestTemplateConditionEvaluator:
         context = ConditionContext(
             active_tags={"debug", "test", "java"}, 
             tagsets={},
-            current_scope="local"
+            origin="self"
         )
         evaluator = TemplateConditionEvaluator(context)
         
@@ -196,7 +196,7 @@ class TestTemplateConditionEvaluator:
                 "lang": {"java", "python", "cpp"},
                 "env": {"dev", "staging", "prod"}
             },
-            current_scope="local"
+            origin="self"
         )
         evaluator = TemplateConditionEvaluator(context)
         
@@ -218,7 +218,7 @@ class TestTemplateConditionEvaluator:
                 "lang": {"java", "python", "cpp"},
                 "env": {"dev", "staging", "prod"}
             },
-            current_scope="local"
+            origin="self"
         )
         evaluator = TemplateConditionEvaluator(context)
         
@@ -281,10 +281,10 @@ class TestCreateTemplateEvaluator:
             active_tags={"debug"},
             active_modes={},
             tagsets={},
-            current_scope="parent"
+            origin="parent"
         )
         
-        assert evaluator.condition_context.current_scope == "parent"
+        assert evaluator.condition_context.origin == "parent"
 
     def test_create_evaluator_empty(self):
         """Создание оценщика с пустыми параметрами."""
@@ -418,7 +418,7 @@ class TestTemplateEvaluatorIntegration:
         new_context = ConditionContext(
             active_tags={"debug", "test"},
             tagsets={"lang": {"java"}, "test": {"unit", "integration"}},
-            current_scope="local"
+            origin="self"
         )
         evaluator.update_context(new_context)
         

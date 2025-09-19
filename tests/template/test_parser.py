@@ -1,13 +1,14 @@
 """Тесты для парсера шаблонов TemplateParser."""
-import pytest
 from typing import List
 
-from lg.template.parser import TemplateParser, ParserError
+import pytest
+
 from lg.template.lexer import TemplateLexer, Token, TokenType
 from lg.template.nodes import (
-    TemplateNode, TextNode, SectionNode, IncludeNode,
+    TextNode, SectionNode, IncludeNode,
     ConditionalBlockNode, ElseBlockNode, ModeBlockNode, CommentNode
 )
+from lg.template.parser import TemplateParser, ParserError
 
 
 class TestTemplateParser:
@@ -318,7 +319,7 @@ class TestParserErrors:
         with pytest.raises(ParserError) as excinfo:
             parser.parse()
         
-        assert "Expected ':' after 'tpl'" in str(excinfo.value)
+        assert "Invalid tpl include format" in str(excinfo.value)
 
     def test_unexpected_token_at_top_level(self):
         """Ошибка при неожиданном токене на верхнем уровне."""
