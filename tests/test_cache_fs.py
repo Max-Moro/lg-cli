@@ -4,7 +4,7 @@ from lg.cache.fs_cache import Cache
 def test_cache_processed_and_tokens(tmp_path: Path):
     cache = Cache(tmp_path, enabled=True, tool_version="T")
     absf = tmp_path / "f.txt"; absf.write_text("hello", encoding="utf-8")
-    k_proc, p_proc = cache.build_processed_key(abs_path=absf, adapter_name="markdown", adapter_cfg={"lvl":2}, group_size=1, mixed=False)
+    k_proc, p_proc = cache.build_processed_key(abs_path=absf, adapter_cfg={"lvl":2})
     cache.put_processed(p_proc, processed_text="HELLO", meta={"removed_h1":0})
     assert cache.get_processed(p_proc)
     cache.update_tokens(p_proc, model="o3", mode="processed", value=123)
