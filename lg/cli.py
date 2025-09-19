@@ -37,11 +37,6 @@ def _build_parser() -> argparse.ArgumentParser:
             help="базовая модель для статистики",
         )
         sp.add_argument(
-            "--no-fence",
-            action="store_true",
-            help="override конфигурации: отключить code fence",
-        )
-        sp.add_argument(
             "--mode",
             action="append",
             metavar="MODESET:MODE",
@@ -91,7 +86,6 @@ def _opts(ns: argparse.Namespace) -> RunOptions:
     
     return RunOptions(
         model=ns.model,
-        code_fence=not bool(getattr(ns, "no_fence", False)),
         modes=modes,
         extra_tags=extra_tags,
     )

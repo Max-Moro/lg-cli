@@ -43,7 +43,7 @@ def _build_section_plan(
     """
     md_only = all(l == "" for l in langs)
     # Глобальная опция может оверрайдить, но секционная политика тоже учитывается.
-    use_fence = (run_ctx.options.code_fence and code_fence) and not md_only
+    use_fence = code_fence and not md_only
 
     groups: List[Group] = []
     if use_fence:

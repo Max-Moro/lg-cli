@@ -102,7 +102,7 @@ def test_render_with_allow_specific_file(tmp_path: Path, monkeypatch):
 
     # ── запуск пайплайна (виртуальный контекст секции)
     monkeypatch.chdir(tmp_path)
-    doc = run_render("sec:all", RunOptions(code_fence=False))
+    doc = run_render("sec:all", RunOptions())
     out = doc.text
 
     # В чистом MD режиме путь файла не печатается — проверяем содержимое

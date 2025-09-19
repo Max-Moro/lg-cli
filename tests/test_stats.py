@@ -96,7 +96,7 @@ def test_non_md_with_fence_adds_overhead(tmp_path: Path, monkeypatch):
     _w(tmp_path / "b.py", "print('b')\n")
     monkeypatch.chdir(tmp_path)
 
-    report = run_report("sec:all", RunOptions(code_fence=True))
+    report = run_report("sec:all", RunOptions())
     total = report.total
 
     assert total.tokensProcessed > 0
@@ -116,7 +116,7 @@ def test_non_md_no_fence_but_markers_overhead(tmp_path: Path, monkeypatch):
     _w(tmp_path / "b.py", "print('b')\n")
     monkeypatch.chdir(tmp_path)
 
-    report = run_report("sec:all", RunOptions(code_fence=False))
+    report = run_report("sec:all", RunOptions())
     total = report.total
 
     assert total.tokensProcessed > 0

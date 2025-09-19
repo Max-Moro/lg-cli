@@ -118,7 +118,7 @@ def run_report(target: str, options: RunOptions) -> RunResultM:
         spec=spec,
         manifest=manifest,
         tokenizer=tokenizer,
-        code_fence=options.code_fence,
+        code_fence=True,
         cache=run_ctx.cache,
     )
 

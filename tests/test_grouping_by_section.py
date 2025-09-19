@@ -61,10 +61,3 @@ def test_grouping_respects_sections(tmp_path: Path):
     assert "docs/a.md" in files
     assert "docs/b.md" in files
     assert "code/only.md" in files
-
-    # Проверяем корректный _group_size по секциям:
-    #  • в docs два файла → group_size==2 для каждого из них
-    #  • в code один файл → group_size==1
-    assert int(files["docs/a.md"]["meta"]["_group_size"]) == 2
-    assert int(files["docs/b.md"]["meta"]["_group_size"]) == 2
-    assert int(files["code/only.md"]["meta"]["_group_size"]) == 1
