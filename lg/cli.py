@@ -8,7 +8,6 @@ from typing import Any, Dict
 from .config import list_sections
 from .context import list_contexts
 from .diagnostics import run_diag
-from .engine import run_report, run_render
 from .engine_v2 import run_report_v2, run_render_v2, TemplateProcessingError
 from .jsonic import dumps as jdumps
 from .migrate.errors import MigrationFatalError
@@ -51,11 +50,6 @@ def _build_parser() -> argparse.ArgumentParser:
         sp.add_argument(
             "--tags",
             help="дополнительные теги через запятую (например: python,tests,minimal)",
-        )
-        sp.add_argument(
-            "--v2",
-            action="store_true",
-            help="использовать новый движок LG V2 (с поддержкой условной логики в шаблонах)",
         )
 
     sp_report = sub.add_parser("report", help="JSON-отчёт: статистика")
@@ -136,20 +130,12 @@ def main(argv: list[str] | None = None) -> int:
             return int(rc) if isinstance(rc, int) else 0
 
         if ns.cmd == "report":
-            # Проверяем флаг V2
-            if getattr(ns, "v2", False):
-                result = run_report_v2(ns.target, _opts(ns))
-            else:
-                result = run_report(ns.target, _opts(ns))
+            result = run_report_v2(ns.target, _opts(ns))
             sys.stdout.write(jdumps(result.model_dump(mode="json")))
             return 0
 
         if ns.cmd == "render":
-            # Проверяем флаг V2
-            if getattr(ns, "v2", False):
-                doc = run_render_v2(ns.target, _opts(ns))
-            else:
-                doc = run_render(ns.target, _opts(ns))
+            doc = run_render_v2(ns.target, _opts(ns))
             sys.stdout.write(doc.text)
             return 0
 
