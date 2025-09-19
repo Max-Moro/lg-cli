@@ -78,10 +78,7 @@ def process_groups(plan: ContextPlan, run_ctx: RunContext) -> List[ProcessedBlob
                 # ключи кэша
                 k_proc, p_proc = cache.build_processed_key(
                     abs_path=fp,
-                    adapter_name=adapter.name,
                     adapter_cfg=raw_cfg,
-                    group_size=group_size,
-                    mixed=bool(grp.mixed),
                 )
                 k_raw, p_raw = cache.build_raw_tokens_key(abs_path=fp)
 

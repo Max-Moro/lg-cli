@@ -70,12 +70,8 @@ class Cache:
 
     def build_processed_key(
         self,
-        *,
         abs_path: Path,
-        adapter_name: str,
         adapter_cfg: Any,
-        group_size: int,
-        mixed: bool,
     ) -> tuple[str, Path]:
         """
         Ключ processed-кэша. Включает файловый fingerprint (mtime/size),
@@ -94,10 +90,7 @@ class Cache:
             "v": CACHE_VERSION,
             "kind": "processed",
             "file": file_fp,
-            "adapter": adapter_name,
             "cfg": _fingerprint_cfg(adapter_cfg),
-            "group_size": int(group_size),
-            "mixed": bool(mixed),
             "tool": self.tool_version,
         }
         h = _sha1_json(payload)
