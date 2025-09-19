@@ -116,6 +116,11 @@ class TemplateParser:
         # Проверяем первый токен
         first_token = tokens[0]
         
+        # Если начинается с @, это адресная секция
+        if first_token.type == TokenType.AT:
+            return self._parse_section_placeholder(tokens)
+        
+        # Должен быть идентификатор
         if first_token.type != TokenType.IDENTIFIER:
             raise ParserError("Expected identifier in placeholder", first_token)
         

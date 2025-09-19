@@ -8,7 +8,7 @@ from typing import Any, Dict
 from .config import list_sections
 from .context import list_contexts
 from .diagnostics import run_diag
-from .engine import run_report, run_render, TemplateProcessingError
+from .engine import run_report, run_render
 from .jsonic import dumps as jdumps
 from .migrate.errors import MigrationFatalError
 from .stats import list_models
@@ -168,8 +168,6 @@ def main(argv: list[str] | None = None) -> int:
 
     except MigrationFatalError as e:
         sys.stderr.write(str(e).rstrip() + "\n")
-    except TemplateProcessingError as e:
-        sys.stderr.write(f"Template processing error: {str(e).rstrip()}\n")
 
     return 2
 

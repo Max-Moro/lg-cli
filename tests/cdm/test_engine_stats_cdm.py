@@ -26,8 +26,8 @@ def test_run_report_end_to_end_with_cdm(monorepo: Path):
     assert result.context.templateName == "ctx:a"
     # Канонические ключи секций и кратности
     su = result.context.sectionsUsed
-    assert su.get("packages/svc-a::a") == 2
-    assert su.get("apps/web::web-api") == 1
+    assert su.get("sec@packages/svc-a:a") == 2
+    assert su.get("sec@apps/web:web-api") == 1
 
     # Тоталы
     t = result.total

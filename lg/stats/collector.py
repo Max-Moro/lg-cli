@@ -47,7 +47,7 @@ class StatsCollector:
 
         # Карта использования секций {canon_key: count}
         self.sections_usage: Dict[str, int] = {}
-        
+
         # Итоговые тексты для подсчета финальных токенов
         self.final_text: Optional[str] = None
 
@@ -70,12 +70,9 @@ class StatsCollector:
         rel_path = file.rel_path
         canon_key = section_ref.canon_key()
         
-        # Подсчитываем токены (коллектор полностью отвечает за статистику)
-        t_proc = self.tokenizer.count_text(file.processed_text)
-        t_raw = self.tokenizer.count_text(file.raw_text)
-        
-        # Обновляем кэш токенов
-        self._update_file_tokens_cache(file.cache_key, t_raw, t_proc)
+        # Подсчитываем токены с использованием кэша
+        t_proc = self._get_or_count_tokens(file.cache_key, file.processed_text, "processed")
+        t_raw = self._get_or_count_tokens(file.cache_key, file.raw_text, "raw")
         
         # Вычисляем статистику для файла
         saved_tokens = max(0, t_raw - t_proc)
@@ -98,10 +95,7 @@ class StatsCollector:
             stats = self.files_stats[rel_path]
             if canon_key not in stats.sections:
                 stats.sections.append(canon_key)
-        
-        # Обновляем счетчик использования секции
-        self.sections_usage[canon_key] = self.sections_usage.get(canon_key, 0) + 1
-    
+
     def register_section_rendered(self, section: RenderedSection) -> None:
         """
         Регистрирует статистику отрендеренной секции.
@@ -112,8 +106,10 @@ class StatsCollector:
         """
         canon_key = section.ref.canon_key()
         
-        # Подсчитываем токены отрендеренной секции
-        tokens_rendered = self.tokenizer.count_text(section.text)
+        self.sections_usage[canon_key] = self.sections_usage.get(canon_key, 0) + 1
+        
+        # Подсчитываем токены отрендеренной секции с использованием системного кэша
+        tokens_rendered = self._get_or_count_section_tokens(section.text, canon_key)
         
         # Подсчитываем общий размер файлов
         total_size_bytes = sum(
@@ -231,24 +227,86 @@ class StatsCollector:
 
     # -------------------- Внутренние методы -------------------- #
     
-    def _update_file_tokens_cache(self, cache_key: str, tokens_raw: int, tokens_processed: int) -> None:
-        """Обновляет кэш токенов для файла."""
+    def _get_or_count_tokens(self, cache_key: str, text: str, mode: str) -> int:
+        """
+        Получает количество токенов из кэша или пересчитывает.
+        
+        Args:
+            cache_key: Ключ для кэша
+            text: Текст для подсчета токенов
+            mode: Режим - "processed" или "raw"
+            
+        Returns:
+            Количество токенов
+        """
         try:
             model_info = self.tokenizer.model_info
             
-            # Пытаемся обновить кэш processed токенов
-            p_proc = self.cache.path_for_processed_key(cache_key)
-            if p_proc.exists():
-                self.cache.update_tokens(p_proc, model=model_info.base, mode="processed", value=tokens_processed)
+            # Определяем путь к кэшу в зависимости от режима
+            if mode == "processed":
+                cache_path = self.cache.path_for_processed_key(cache_key)
+            else:  # mode == "raw"
+                cache_path = self.cache.path_for_raw_tokens_key(cache_key)
             
-            # Пытаемся обновить кэш raw токенов 
-            p_raw = self.cache.path_for_raw_tokens_key(cache_key)
-            if p_raw.exists():
-                self.cache.update_tokens(p_raw, model=model_info.base, mode="raw", value=tokens_raw)
-                
+            # Пытаемся получить из кэша
+            cached_tokens = self.cache.get_tokens(cache_path, model=model_info.base, mode=mode)
+            if isinstance(cached_tokens, int):
+                return cached_tokens
+            
+            # Если нет в кэше, пересчитываем
+            tokens = self.tokenizer.count_text(text)
+            
+            # Сохраняем в кэш
+            self.cache.update_tokens(cache_path, model=model_info.base, mode=mode, value=tokens)
+            
+            return tokens
+            
         except Exception:
             # Ошибки кэширования не должны прерывать сбор статистики
-            pass
+            # Возвращаем пересчитанное значение
+            return self.tokenizer.count_text(text)
+    
+    def _get_or_count_section_tokens(self, section_text: str, canon_key: str) -> int:
+        """
+        Получает токены отрендеренной секции из кэша или подсчитывает их.
+        
+        Args:
+            section_text: Текст отрендеренной секции
+            canon_key: Канонический ключ секции
+            
+        Returns:
+            Количество токенов
+        """
+        try:
+            model_info = self.tokenizer.model_info
+            
+            # Используем хеш текста как часть ключа кэша
+            text_hash = str(hash(section_text))
+            
+            # Формируем простой ключ для кэша rendered токенов
+            options_fp = {"variant": "section", "canon_key": canon_key, "text_hash": text_hash}
+            
+            k_section, p_section = self.cache.build_rendered_key(
+                context_name=f"section_{canon_key}",
+                sections_used={canon_key: 1},
+                options_fp=options_fp,
+                processed_keys={},
+            )
+            
+            # Пытаемся получить из кэша
+            cached_tokens = self.cache.get_rendered_tokens(p_section, model=model_info.base)
+            if isinstance(cached_tokens, int):
+                return cached_tokens
+            
+            # Подсчитываем и сохраняем в кэш
+            tokens = self.tokenizer.count_text(section_text)
+            self.cache.update_rendered_tokens(p_section, model=model_info.base, value=tokens)
+            
+            return tokens
+            
+        except Exception:
+            # Fallback: просто подсчитываем токены без кэширования
+            return self.tokenizer.count_text(section_text)
     
     def _get_or_count_rendered_tokens(self, variant: str, text: str) -> int:
         """

@@ -19,7 +19,6 @@ src-cleaning:
           - "api_schema.py"
           # Под задачу
           - "/stats/"
-          - "/cache/"
           - "/context/"
           - "/render/"
           - "/manifest/"
@@ -39,6 +38,4 @@ src-cleaning:
             mode: allow
             allow:
               - "/processor.py"
-              - "/resolver.py"
               - "/context.py"
-              - "/nodes.py"
