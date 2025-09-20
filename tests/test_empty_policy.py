@@ -30,8 +30,7 @@ def test_empty_policy_include_overrides_section_skip(tmp_path: Path, monkeypatch
     _write(tmp_path / "m.py", "")
 
     monkeypatch.chdir(tmp_path)
-    doc = run_render("sec:all", RunOptions())
-    out = doc.text
+    out = run_render("sec:all", RunOptions())
     assert "# —— FILE: m.py ——" in out  # файл не отфильтрован
 
 def test_empty_policy_exclude_overrides_section_allow(tmp_path: Path, monkeypatch):
@@ -56,8 +55,7 @@ def test_empty_policy_exclude_overrides_section_allow(tmp_path: Path, monkeypatc
     _write(tmp_path / "x.py", "print('x')\n")
 
     monkeypatch.chdir(tmp_path)
-    doc = run_render("sec:all", RunOptions())
-    out = doc.text
+    out = run_render("sec:all", RunOptions())
     # маркер для README.md отсутствует
     assert "# —— FILE: README.md ——" not in out
     # а .py виден — чтобы убедиться, что рендер прошёл
@@ -83,7 +81,6 @@ def test_empty_policy_inherit_follows_section(tmp_path: Path, monkeypatch):
     _write(tmp_path / "m.py", "")  # пустой .py
 
     monkeypatch.chdir(tmp_path)
-    doc = run_render("sec:all", RunOptions())
-    out = doc.text
+    out = run_render("sec:all", RunOptions())
     assert "# —— FILE: m.py ——" not in out
     assert out.strip() == ""

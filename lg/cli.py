@@ -129,8 +129,8 @@ def main(argv: list[str] | None = None) -> int:
             return 0
 
         if ns.cmd == "render":
-            doc = run_render(ns.target, _opts(ns))
-            sys.stdout.write(doc.text)
+            doc_text = run_render(ns.target, _opts(ns))
+            sys.stdout.write(doc_text)
             return 0
 
         if ns.cmd == "list":

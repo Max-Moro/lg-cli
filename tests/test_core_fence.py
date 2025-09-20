@@ -37,8 +37,7 @@ def test_two_python_files_grouped(tmpproj: Path, monkeypatch):
     (tmpproj / "foo.py").write_text('print("foo")\n', encoding="utf-8")
     (tmpproj / "bar.py").write_text('print("bar")\n', encoding="utf-8")
 
-    doc = run_render("sec:all", RunOptions())
-    out = doc.text
+    out = run_render("sec:all", RunOptions())
 
     assert out.startswith("```python\n")
     assert out.count("```python") == 1
@@ -60,8 +59,7 @@ def test_switch_to_toml_starts_new_block(tmpproj: Path, monkeypatch):
     (tmpproj / "config.toml").write_text('key = "value"\n', encoding="utf-8")
     (tmpproj / "bar.py").write_text('print("bar")\n', encoding="utf-8")
 
-    doc = run_render("sec:all", RunOptions())
-    out = doc.text
+    out = run_render("sec:all", RunOptions())
 
     # Два отдельных python-блока (до и после toml)
     assert out.count("```python\n") == 2
@@ -92,8 +90,7 @@ def test_language_detection_special_files(tmpproj: Path, monkeypatch):
     (tmpproj / "Dockerfile").write_text("FROM python:3.8\n", encoding="utf-8")
     (tmpproj / "Makefile").write_text("all:\n\t@echo hi\n", encoding="utf-8")
 
-    doc = run_render("sec:all", RunOptions())
-    out = doc.text
+    out = run_render("sec:all", RunOptions())
 
     assert "```toml\n# —— FILE: pyproject.toml ——\n" in out
     assert "```xml\n# —— FILE: pom.xml ——\n" in out

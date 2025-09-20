@@ -151,21 +151,6 @@ class ProcessedFile:
 
 # ---- Отрендеренные секции ----
 
-@dataclass
-class RenderedSection:
-    """
-    Финальная отрендеренная секция.
-
-    Содержит итоговый текст секции и список обработанных файлов.
-    Статистика собирается отдельно через StatsCollector.
-    """
-    ref: SectionRef
-    text: str
-    files: List[ProcessedFile]
-
-
-# ---- Рендеринг документов ----
-
 @dataclass(frozen=True)
 class RenderBlock:
     """
@@ -177,18 +162,18 @@ class RenderBlock:
     text: str  # уже с маркерами файлов / fenced
     file_paths: List[str]  # какие rel_paths попали в блок (для трассировки)
 
-
-@dataclass(frozen=True)
-class RenderedDocument:
+@dataclass
+class RenderedSection:
     """
-    Полностью отрендеренный документ.
+    Финальная отрендеренная секция.
 
-    Содержит итоговый текст и информацию о блоках
-    для анализа и отладки.
+    Содержит итоговый текст секции и список обработанных файлов.
+    Статистика собирается отдельно через StatsCollector.
     """
+    ref: SectionRef
     text: str
+    files: List[ProcessedFile]
     blocks: List[RenderBlock] = field(default_factory=list)
-
 
 # ---- Статистика (используется StatsCollector) ----
 
@@ -217,18 +202,6 @@ class SectionStats:
     tokens_rendered: int
     total_size_bytes: int
     meta_summary: Dict[str, int] = field(default_factory=dict)
-
-# -------- Rendering --------
-@dataclass(frozen=True)
-class RenderBlock:
-    lang: LangName
-    text: str                     # уже с маркерами файлов / fenced
-    file_paths: List[str]         # какие rel_paths попали в блок (для трассировки)
-
-@dataclass(frozen=True)
-class RenderedDocument:
-    text: str
-    blocks: List[RenderBlock]     # полезно для отладки/GUI
 
 # -------- Stats / Result --------
 @dataclass(frozen=True)

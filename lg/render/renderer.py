@@ -9,38 +9,14 @@ from __future__ import annotations
 from typing import Dict, List
 
 from ..paths import render_file_marker
-from ..types import LANG_NONE, ProcessedFile, RenderedDocument, RenderedSection, RenderBlock, SectionPlan
+from ..types import LANG_NONE, ProcessedFile, RenderedSection, RenderBlock, SectionPlan
 
 
 def render_section(plan: SectionPlan, processed_files: List[ProcessedFile]) -> RenderedSection:
     """
-    Рендерит секцию в финальный текст с новой IR-моделью.
+    Генерирует финальный текст и блоки.
     
-    Args:
-        plan: План рендеринга секции
-        processed_files: Обработанные файлы
-        
-    Returns:
-        Отрендеренная секция
-    """
-    # Рендерим документ
-    rendered_doc = render_document(plan, processed_files)
-    
-    # Создаем RenderedSection
-    rendered_section = RenderedSection(
-        ref=plan.manifest.ref,
-        text=rendered_doc.text,
-        files=processed_files
-    )
-    
-    return rendered_section
-
-
-def render_document(plan: SectionPlan, processed_files: List[ProcessedFile]) -> RenderedDocument:
-    """
-    Генерирует финальный текст и блоки с новой IR-моделью.
-    
-    Правила аналогичны старому render_document:
+    Правила:
     • use_fence=True → для каждой группы языка один fenced-блок ```{lang}
       и внутри — маркеры "# —— FILE: <rel> ——" перед каждым файлом.
     • use_fence=False:
@@ -54,7 +30,7 @@ def render_document(plan: SectionPlan, processed_files: List[ProcessedFile]) -> 
     blocks: List[RenderBlock] = []
 
     if not plan.groups:
-        return RenderedDocument(text="", blocks=[])
+        return RenderedSection(plan.manifest.ref, "", [], [])
 
     if plan.use_fence:
         for group in plan.groups:
@@ -118,8 +94,17 @@ def render_document(plan: SectionPlan, processed_files: List[ProcessedFile]) -> 
         out_lines.append(block_text)
 
     # финальный текст
-    doc_text = "".join(out_lines).rstrip() + ("\n" if out_lines else "")
-    return RenderedDocument(text=doc_text, blocks=blocks)
+    text = "".join(out_lines).rstrip() + ("\n" if out_lines else "")
+
+    # Создаем RenderedSection
+    rendered_section = RenderedSection(
+        ref=plan.manifest.ref,
+        text=text,
+        files=processed_files,
+        blocks=blocks
+    )
+
+    return rendered_section
 
 
-__all__ = ["render_section", "render_document"]
+__all__ = ["render_section"]

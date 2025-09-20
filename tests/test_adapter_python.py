@@ -10,8 +10,7 @@ def test_trivial_init_skipped(tmpproj: Path, monkeypatch):
     (pkg / "__init__.py").write_text("pass\n", encoding="utf-8")
 
     # Рендерируем виртуальный контекст секции all
-    doc = run_render("sec:all", RunOptions())
-    text = doc.text
+    text = run_render("sec:all", RunOptions())
 
     # Тривиальный __init__.py должен быть пропущен адаптером → маркера файла нет
     assert "# —— FILE: pkg/__init__.py ——" not in text
@@ -22,8 +21,7 @@ def test_non_trivial_init_kept(tmpproj: Path, monkeypatch):
     pkg.mkdir(exist_ok=True)
     (pkg / "__init__.py").write_text("VERSION = '1.0'\n", encoding="utf-8")
 
-    doc = run_render("sec:all", RunOptions())
-    text = doc.text
+    text = run_render("sec:all", RunOptions())
 
     # Нетривиальный __init__.py должен попасть в листинг → маркер присутствует
     assert "# —— FILE: pkg/__init__.py ——" in text

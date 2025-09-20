@@ -22,7 +22,7 @@ from .run_context import RunContext
 from .section_processor import SectionProcessor
 from .stats import build_run_result_from_collector, StatsCollector, TokenService
 from .template import TemplateProcessor, TemplateProcessingError, TemplateContext
-from .types import RunOptions, RenderedDocument, TargetSpec, SectionRef
+from .types import RunOptions, TargetSpec, SectionRef
 from .vcs import NullVcs
 from .vcs.git import GitVcs
 from .version import tool_version
@@ -107,7 +107,7 @@ class Engine:
         
         self.template_processor.set_section_handler(section_handler)
     
-    def render_context(self, context_name: str) -> RenderedDocument:
+    def render_context(self, context_name: str) -> str:
         """
         Рендерит контекст из шаблона.
         
@@ -133,9 +133,9 @@ class Engine:
         # Устанавливаем итоговые тексты в коллекторе
         self.stats_collector.set_final_texts(final_text)
 
-        return RenderedDocument(text=final_text, blocks=[])
+        return final_text
 
-    def render_section(self, section_name: str) -> RenderedDocument:
+    def render_section(self, section_name: str) -> str:
         """
         Рендерит отдельную секцию.
         
@@ -160,9 +160,9 @@ class Engine:
         # Устанавливаем итоговые тексты в коллекторе (для секции они совпадают)
         self.stats_collector.set_final_texts(rendered_section.text)
         
-        return RenderedDocument(text=rendered_section.text, blocks=[])
+        return rendered_section.text
 
-    def render_text(self, target_spec: TargetSpec) -> RenderedDocument:
+    def render_text(self, target_spec: TargetSpec) -> str:
         """
         Рендерит финальный текст.
 
@@ -246,7 +246,7 @@ def _parse_target(target: str) -> TargetSpec:
     )
 
 
-def run_render(target: str, options: RunOptions) -> RenderedDocument:
+def run_render(target: str, options: RunOptions) -> str:
     """Точка входа для рендеринга в LG V2."""
     target_spec = _parse_target(target)
     engine = Engine(options)
