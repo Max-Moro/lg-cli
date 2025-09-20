@@ -59,3 +59,19 @@ docs-design:
     mode: allow
     allow:
       - "/docs/adaptability/design.md"
+
+tests-samples:
+  extensions: [".py"]
+  path_labels: relative
+  filters:
+    mode: allow
+    allow:
+      - "/tests/"
+    children:
+      tests:
+        mode: allow
+        allow:
+          - "/conftest.py"
+          - "/test_stats.py"
+          - "/cdm/conftest.py"
+          - "/adapters/conftest.py"

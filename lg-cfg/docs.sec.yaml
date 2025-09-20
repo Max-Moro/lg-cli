@@ -33,5 +33,3 @@ templates:
     mode: allow
     allow:
       - "/docs/templates.md"
-  markdown:
-    max_heading_level: 2
