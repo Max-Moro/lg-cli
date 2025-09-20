@@ -205,13 +205,6 @@ class Cache:
         except Exception:
             pass
 
-    # --------------------------- PUBLIC: key→path helpers --------------------------- #
-    def path_for(self, bucket: str, key: str) -> Path:
-        return self._bucket_path(bucket, key)
-
-    def path_for_processed_key(self, key: str) -> Path:
-        return self._bucket_path("processed", key)
-
     # --------------------------- CFG STATE (lg-cfg) --------------------------- #
     def _cfg_state_path(self, cfg_root: Path) -> Path:
         # ключ по абсолютному пути (sha1), чтобы устойчиво к переносам/линкам

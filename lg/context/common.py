@@ -1,9 +1,8 @@
 from __future__ import annotations
 
-import re
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Iterable, List, Set, Tuple
+from typing import List, Tuple
 
 from ..config.paths import cfg_root
 from ..migrate import ensure_cfg_actual
@@ -11,42 +10,6 @@ from ..migrate import ensure_cfg_actual
 # Унифицированные суффиксы документов
 TPL_SUFFIX = ".tpl.md"
 CTX_SUFFIX = ".ctx.md"
-
-
-# ---------------------------- Tokens/Placeholders ---------------------------- #
-
-class TemplateTokens:
-    """
-    Минимальный парсер плейсхолдеров по семантике:
-      - разрешаем буквы/цифры/подчёркивание/дефис/слеш и двоеточие в идентификаторах
-      - добавляем `@`, `[` и `]` для локаторов вида `tpl@child:res` и `tpl@[child]:res`
-      - распознаём `${name}` и `$name`
-    """
-    _idpattern = r"[A-Za-z0-9_@:/\-\[\]\.]+"
-    _pattern = re.compile(
-        r"""
-        \$\{
-            (?P<braced>""" + _idpattern + r""")
-        \}
-        |
-        \$
-            (?P<name>""" + _idpattern + r""")
-        """,
-        re.VERBOSE,
-    )
-
-    @classmethod
-    def iter_matches(cls, text: str) -> Iterable[re.Match]:
-        return cls._pattern.finditer(text)
-
-    @classmethod
-    def placeholders(cls, text: str) -> Set[str]:
-        out: Set[str] = set()
-        for m in cls.iter_matches(text):
-            name = m.group("braced") or m.group("name")
-            if name:
-                out.add(name)
-        return out
 
 
 # ---------------------------- Locators (generic) ----------------------------- #
@@ -164,11 +127,6 @@ def list_contexts(root: Path) -> List[str]:
     return out
 
 
-def context_path(root: Path, name: str) -> Path:
-    """Путь к контексту: lg-cfg/<name>.ctx.md (поддиректории поддерживаются)."""
-    return cfg_root(root) / f"{name}{CTX_SUFFIX}"
-
-
 def load_context_from(cfg_root: Path, name: str) -> Tuple[Path, str]:
     """Контекст: <cfg_root>/<name>.ctx.md"""
     return load_from_cfg(cfg_root, name, suffix=CTX_SUFFIX)
@@ -177,17 +135,3 @@ def load_context_from(cfg_root: Path, name: str) -> Tuple[Path, str]:
 def load_template_from(cfg_root: Path, name: str) -> Tuple[Path, str]:
     """Шаблон: <cfg_root>/<name>.tpl.md"""
     return load_from_cfg(cfg_root, name, suffix=TPL_SUFFIX)
-
-
-def parse_tpl_locator(ph: str, *, current_cfg_root: Path, repo_root: Path) -> Tuple[Path, str]:
-    """Совместимость: парсер specifically для шаблонов ('tpl')."""
-    loc = parse_locator(ph, expected_kind="tpl")
-    cfg = resolve_cfg_root(loc.origin, current_cfg_root=current_cfg_root, repo_root=repo_root)
-    return cfg, loc.resource
-
-
-def parse_ctx_locator(ph: str, *, current_cfg_root: Path, repo_root: Path) -> Tuple[Path, str]:
-    """Совместимость: парсер specifically для контекстов ('ctx')."""
-    loc = parse_locator(ph, expected_kind="ctx")
-    cfg = resolve_cfg_root(loc.origin, current_cfg_root=current_cfg_root, repo_root=repo_root)
-    return cfg, loc.resource

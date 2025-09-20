@@ -39,16 +39,6 @@ class Edit:
     replacement: str
     type: Optional[str] # Тип для счетчика в метаинформации
     is_insertion: bool = False  # True если это операция вставки (range.start_char == range.end_char)
-    
-    @property
-    def removes_text(self) -> bool:
-        """True if this edit removes text (replacement is shorter than original)."""
-        return len(self.replacement) < self.range.length
-    
-    @property
-    def is_deletion(self) -> bool:
-        """True if this edit is a pure deletion (empty replacement)."""
-        return len(self.replacement) == 0
 
 
 class RangeEditor:
