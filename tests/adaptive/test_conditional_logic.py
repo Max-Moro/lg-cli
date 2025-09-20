@@ -9,7 +9,6 @@ from __future__ import annotations
 
 import pytest
 
-from lg.engine import run_render
 from lg.template.processor import TemplateProcessingError
 from .conftest import (
     adaptive_project, make_run_options, render_for_test,
@@ -384,16 +383,29 @@ def test_conditions_with_mode_blocks(adaptive_project):
     
     create_conditional_template(root, "mode-conditions", template_content)
     
-    result = render_for_test(root, "ctx:mode-conditions", make_run_options())
+    # Тест 1: без предварительно активированного тега agent
+    result1 = render_for_test(root, "ctx:mode-conditions", make_run_options())
     
     # В блоке режима agent активируются теги agent и tools
-    assert "Inside agent mode" in result
-    assert "Tools available in agent mode" in result
-    assert "Full agent" in result  # tag:minimal не активен
-    assert "Minimal agent" not in result
+    assert "Inside agent mode" in result1
+    assert "Tools available in agent mode" in result1
+    assert "Full agent" in result1  # tag:minimal не активен
+    assert "Minimal agent" not in result1
     
-    # Вне блока режима тег agent также должен быть доступен
-    assert "Agent tag detected outside mode block" in result
+    # Вне блока режима тег agent НЕ должен быть доступен (режим восстанавливается)
+    assert "Agent tag detected outside mode block" not in result1
+    
+    # Тест 2: с предварительно активированным тегом agent
+    result2 = render_for_test(root, "ctx:mode-conditions", make_run_options(extra_tags={"agent"}))
+    
+    # В блоке режима agent все еще активен
+    assert "Inside agent mode" in result2
+    assert "Tools available in agent mode" in result2
+    assert "Full agent" in result2
+    assert "Minimal agent" not in result2
+    
+    # Вне блока режима тег agent должен быть доступен (был активен изначально)
+    assert "Agent tag detected outside mode block" in result2
 
 
 def test_custom_tagsets_in_conditions(adaptive_project):
@@ -473,7 +485,7 @@ def test_invalid_condition_syntax_errors(adaptive_project):
         
         # Проверяем, что возникает ошибка обработки
         with pytest.raises((TemplateProcessingError, ValueError)):
-            run_render(f"ctx:{template_name}", make_run_options())
+            render_for_test(root, f"ctx:{template_name}", make_run_options())
 
 
 def test_condition_evaluation_performance(adaptive_project):
@@ -483,7 +495,7 @@ def test_condition_evaluation_performance(adaptive_project):
     # Создаем шаблон с большим количеством условий
     conditions = []
     for i in range(50):
-        conditions.append(f"{{% if tag:tag{i} %}}Section {i}{{% endif %}}")
+        conditions.append(f"{{% if tag:tag{i} %}}Section {i:02d}{{% endif %}}")  # используем двузначные номера
     
     template_content = "# Performance Test\n\n" + "\n\n".join(conditions)
     create_conditional_template(root, "performance-test", template_content)
@@ -497,8 +509,8 @@ def test_condition_evaluation_performance(adaptive_project):
     
     # Проверяем, что активированные секции присутствуют
     for i in range(0, 50, 5):
-        assert f"Section {i}" in result
+        assert f"Section {i:02d}" in result
         
     # Проверяем, что неактивированные секции отсутствуют 
     for i in [1, 2, 3, 4]:
-        assert f"Section {i}" not in result
+        assert f"Section {i:02d}" not in result
