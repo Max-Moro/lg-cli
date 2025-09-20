@@ -45,3 +45,8 @@ exclude = ["test_cache*", "tests*"]
 [tool.setuptools.package-data]
 # Включить все файлы пресетов и их вложения
 "lg._skeletons" = ["**/*"]
+
+[tool.pytest.ini_options]
+markers = [
+    "slow: marks tests as slow (deselect with '-m \"not slow\"')",
+]

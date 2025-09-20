@@ -56,7 +56,7 @@ class TagSetConfig:
 
 # ====================== Хелперы для создания конфигурации ======================
 
-def write_modes_yaml(root: Path, mode_sets: Dict[str, ModeSetConfig], include: Optional[List[str]] = None) -> Path:
+def write_modes_yaml(root: Path, mode_sets: Dict[str, ModeSetConfig], include: Optional[List[str]] = None, append: bool = False) -> Path:
     """
     Создает файл modes.yaml с указанными наборами режимов.
     
@@ -64,48 +64,76 @@ def write_modes_yaml(root: Path, mode_sets: Dict[str, ModeSetConfig], include: O
         root: Корень проекта
         mode_sets: Словарь наборов режимов
         include: Список дочерних скоупов для включения
+        append: Если True, дополняет существующую конфигурацию
         
     Returns:
         Путь к созданному файлу
     """
-    content = []
+    from ruamel.yaml import YAML
+    
+    modes_file = root / "lg-cfg" / "modes.yaml"
+    yaml = YAML()
+    yaml.preserve_quotes = True
+    
+    # Загружаем существующую конфигурацию если append=True
+    existing_data = {}
+    if append and modes_file.exists():
+        with modes_file.open(encoding="utf-8") as f:
+            existing_data = yaml.load(f) or {}
+    
+    # Преобразуем наши mode_sets в формат YAML
+    new_data = {}
     
     if mode_sets:
-        content.append("mode-sets:")
+        new_mode_sets = {}
         for set_name, mode_set in mode_sets.items():
-            content.append(f"  {set_name}:")
-            content.append(f'    title: "{mode_set.title}"')
-            if mode_set.modes:
-                content.append("    modes:")
-                for mode_name, mode in mode_set.modes.items():
-                    content.append(f"      {mode_name}:")
-                    content.append(f'        title: "{mode.title}"')
-                    if mode.description:
-                        content.append(f'        description: "{mode.description}"')
-                    if mode.tags:
-                        content.append(f"        tags: {mode.tags}")
-                    # Добавляем дополнительные опции
-                    for key, value in mode.options.items():
-                        if isinstance(value, str):
-                            content.append(f'        {key}: "{value}"')
-                        else:
-                            content.append(f"        {key}: {value}")
+            modes_dict = {}
+            for mode_name, mode in mode_set.modes.items():
+                mode_dict = {"title": mode.title}
+                if mode.description:
+                    mode_dict["description"] = mode.description
+                if mode.tags:
+                    mode_dict["tags"] = mode.tags
+                mode_dict.update(mode.options)
+                modes_dict[mode_name] = mode_dict
+            
+            new_mode_sets[set_name] = {
+                "title": mode_set.title,
+                "modes": modes_dict
+            }
+        new_data["mode-sets"] = new_mode_sets
     
     if include:
-        content.append("")
-        content.append("include:")
-        for scope in include:
-            content.append(f"  - {scope}")
+        new_data["include"] = include
     
-    modes_content = "\n".join(content) + "\n"
-    return write(root / "lg-cfg" / "modes.yaml", modes_content)
+    # Объединяем с существующими данными если append=True
+    if append:
+        if "mode-sets" in existing_data and "mode-sets" in new_data:
+            existing_data["mode-sets"].update(new_data["mode-sets"])
+        elif "mode-sets" in new_data:
+            existing_data["mode-sets"] = new_data["mode-sets"]
+        
+        if "include" in new_data:
+            existing_data["include"] = new_data["include"]
+        
+        final_data = existing_data
+    else:
+        final_data = new_data
+    
+    # Записываем обратно
+    modes_file.parent.mkdir(parents=True, exist_ok=True)
+    with modes_file.open("w", encoding="utf-8") as f:
+        yaml.dump(final_data, f)
+    
+    return modes_file
 
 
 def write_tags_yaml(
     root: Path, 
     tag_sets: Optional[Dict[str, TagSetConfig]] = None,
     global_tags: Optional[Dict[str, TagConfig]] = None, 
-    include: Optional[List[str]] = None
+    include: Optional[List[str]] = None,
+    append: bool = False
 ) -> Path:
     """
     Создает файл tags.yaml с указанными наборами тегов.
@@ -115,43 +143,79 @@ def write_tags_yaml(
         tag_sets: Словарь наборов тегов
         global_tags: Словарь глобальных тегов
         include: Список дочерних скоупов для включения
+        append: Если True, дополняет существующую конфигурацию
         
     Returns:
         Путь к созданному файлу
     """
-    content = []
+    from ruamel.yaml import YAML
+    
+    tags_file = root / "lg-cfg" / "tags.yaml"
+    yaml = YAML()
+    yaml.preserve_quotes = True
+    
+    # Загружаем существующую конфигурацию если append=True
+    existing_data = {}
+    if append and tags_file.exists():
+        with tags_file.open(encoding="utf-8") as f:
+            existing_data = yaml.load(f) or {}
+    
+    # Преобразуем наши данные в формат YAML
+    new_data = {}
     
     if tag_sets:
-        content.append("tag-sets:")
+        new_tag_sets = {}
         for set_name, tag_set in tag_sets.items():
-            content.append(f"  {set_name}:")
-            content.append(f'    title: "{tag_set.title}"')
-            if tag_set.tags:
-                content.append("    tags:")
-                for tag_name, tag in tag_set.tags.items():
-                    content.append(f"      {tag_name}:")
-                    content.append(f'        title: "{tag.title}"')
-                    if tag.description:
-                        content.append(f'        description: "{tag.description}"')
+            tags_dict = {}
+            for tag_name, tag in tag_set.tags.items():
+                tag_dict = {"title": tag.title}
+                if tag.description:
+                    tag_dict["description"] = tag.description
+                tags_dict[tag_name] = tag_dict
+            
+            new_tag_sets[set_name] = {
+                "title": tag_set.title,
+                "tags": tags_dict
+            }
+        new_data["tag-sets"] = new_tag_sets
     
     if global_tags:
-        if content:
-            content.append("")
-        content.append("tags:")
+        new_global_tags = {}
         for tag_name, tag in global_tags.items():
-            content.append(f"  {tag_name}:")
-            content.append(f'    title: "{tag.title}"')
+            tag_dict = {"title": tag.title}
             if tag.description:
-                content.append(f'    description: "{tag.description}"')
+                tag_dict["description"] = tag.description
+            new_global_tags[tag_name] = tag_dict
+        new_data["tags"] = new_global_tags
     
     if include:
-        content.append("")
-        content.append("include:")
-        for scope in include:
-            content.append(f"  - {scope}")
+        new_data["include"] = include
     
-    tags_content = "\n".join(content) + "\n"
-    return write(root / "lg-cfg" / "tags.yaml", tags_content)
+    # Объединяем с существующими данными если append=True
+    if append:
+        if "tag-sets" in existing_data and "tag-sets" in new_data:
+            existing_data["tag-sets"].update(new_data["tag-sets"])
+        elif "tag-sets" in new_data:
+            existing_data["tag-sets"] = new_data["tag-sets"]
+        
+        if "tags" in existing_data and "tags" in new_data:
+            existing_data["tags"].update(new_data["tags"])
+        elif "tags" in new_data:
+            existing_data["tags"] = new_data["tags"]
+        
+        if "include" in new_data:
+            existing_data["include"] = new_data["include"]
+        
+        final_data = existing_data
+    else:
+        final_data = new_data
+    
+    # Записываем обратно
+    tags_file.parent.mkdir(parents=True, exist_ok=True)
+    with tags_file.open("w", encoding="utf-8") as f:
+        yaml.dump(final_data, f)
+    
+    return tags_file
 
 
 def create_basic_sections_yaml(root: Path) -> Path:
