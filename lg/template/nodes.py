@@ -153,31 +153,26 @@ TemplateAST = List[TemplateNode]
 
 # Вспомогательные функции для работы с AST
 
-def collect_section_nodes(ast: TemplateAST) -> List[SectionNode]:
+def _visit_ast_nodes(ast: TemplateAST, visitor_func) -> None:
     """
-    Собирает все узлы секций из AST (включая вложенные).
+    Обобщенная функция для обхода всех узлов в AST.
     
-    Используется для предварительного анализа зависимостей шаблона.
+    Args:
+        ast: AST для обхода
+        visitor_func: Функция, вызываемая для каждого узла
     """
-    sections: List[SectionNode] = []
-    
     def _visit_node(node: TemplateNode) -> None:
-        if isinstance(node, SectionNode):
-            sections.append(node)
-        elif isinstance(node, ConditionalBlockNode):
+        visitor_func(node)
+        
+        # Рекурсивно обходим дочерние узлы
+        if isinstance(node, ConditionalBlockNode):
             for child in node.body:
                 _visit_node(child)
             for elif_block in node.elif_blocks:
                 _visit_node(elif_block)
             if node.else_block:
                 _visit_node(node.else_block)
-        elif isinstance(node, ElifBlockNode):
-            for child in node.body:
-                _visit_node(child)
-        elif isinstance(node, ModeBlockNode):
-            for child in node.body:
-                _visit_node(child)
-        elif isinstance(node, ElseBlockNode):
+        elif isinstance(node, (ElifBlockNode, ElseBlockNode, ModeBlockNode)):
             for child in node.body:
                 _visit_node(child)
         elif isinstance(node, IncludeNode) and node.children:
@@ -186,7 +181,21 @@ def collect_section_nodes(ast: TemplateAST) -> List[SectionNode]:
     
     for node in ast:
         _visit_node(node)
+
+
+def collect_section_nodes(ast: TemplateAST) -> List[SectionNode]:
+    """
+    Собирает все узлы секций из AST (включая вложенные).
     
+    Используется для предварительного анализа зависимостей шаблона.
+    """
+    sections: List[SectionNode] = []
+    
+    def collect_section(node: TemplateNode) -> None:
+        if isinstance(node, SectionNode):
+            sections.append(node)
+    
+    _visit_ast_nodes(ast, collect_section)
     return sections
 
 
@@ -198,30 +207,11 @@ def collect_include_nodes(ast: TemplateAST) -> List[IncludeNode]:
     """
     includes: List[IncludeNode] = []
     
-    def _visit_node(node: TemplateNode) -> None:
+    def collect_include(node: TemplateNode) -> None:
         if isinstance(node, IncludeNode):
             includes.append(node)
-            # Также проверяем вложенные узлы после разрешения
-            if node.children:
-                for child in node.children:
-                    _visit_node(child)
-        elif isinstance(node, ConditionalBlockNode):
-            for child in node.body:
-                _visit_node(child)
-            for elif_block in node.elif_blocks:
-                _visit_node(elif_block)
-            if node.else_block:
-                _visit_node(node.else_block)
-        elif isinstance(node, ModeBlockNode):
-            for child in node.body:
-                _visit_node(child)
-        elif isinstance(node, (ElifBlockNode, ElseBlockNode)):
-            for child in node.body:
-                _visit_node(child)
     
-    for node in ast:
-        _visit_node(node)
-    
+    _visit_ast_nodes(ast, collect_include)
     return includes
 
 
@@ -231,18 +221,15 @@ def has_conditional_content(ast: TemplateAST) -> bool:
     
     Возвращает True, если в шаблоне есть условные блоки или блоки режимов.
     """
-    def _check_node(node: TemplateNode) -> bool:
-        if isinstance(node, (ConditionalBlockNode, ElifBlockNode, ModeBlockNode)):
-            return True
-        elif isinstance(node, ConditionalBlockNode):
-            return any(_check_node(child) for child in node.body)
-        elif isinstance(node, (ElifBlockNode, ElseBlockNode, ModeBlockNode)):
-            return any(_check_node(child) for child in node.body)
-        elif isinstance(node, IncludeNode) and node.children:
-            return any(_check_node(child) for child in node.children)
-        return False
+    found_conditional = False
     
-    return any(_check_node(node) for node in ast)
+    def check_conditional(node: TemplateNode) -> None:
+        nonlocal found_conditional
+        if isinstance(node, (ConditionalBlockNode, ElifBlockNode, ModeBlockNode)):
+            found_conditional = True
+    
+    _visit_ast_nodes(ast, check_conditional)
+    return found_conditional
 
 
 def format_ast_tree(ast: List[TemplateNode], indent: int = 0) -> str:

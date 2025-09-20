@@ -86,6 +86,25 @@ class TemplateProcessor:
         """
         self.section_handler = handler
     
+    def _handle_template_errors(self, func, template_name: str, error_message: str):
+        """
+        Общий обработчик ошибок для операций с шаблонами.
+        
+        Args:
+            func: Функция для выполнения
+            template_name: Имя шаблона для диагностики
+            error_message: Сообщение об ошибке
+        """
+        try:
+            return func()
+        except (LexerError, ParserError, ResolverError, TemplateEvaluationError) as e:
+            raise TemplateProcessingError(str(e), template_name, e)
+        except TemplateProcessingError:
+            # Повторный бросок без дополнительной обёртки
+            raise
+        except Exception as e:
+            raise TemplateProcessingError(f"{error_message}: {e}", template_name, e)
+    
     def process_template_file(self, template_name: str) -> str:
         """
         Обрабатывает шаблон из файла lg-cfg/<name>.tpl.md или lg-cfg/<name>.ctx.md.
@@ -99,14 +118,16 @@ class TemplateProcessor:
         Raises:
             TemplateProcessingError: При ошибке обработки шаблона
         """
-        try:
+        def process_file():
             # Определяем тип и загружаем шаблон
             template_text = self._load_template_text(template_name)
-            
             return self.process_template_text(template_text, template_name)
-            
-        except Exception as e:
-            raise TemplateProcessingError(f"Failed to process template file", template_name, e)
+        
+        return self._handle_template_errors(
+            process_file, 
+            template_name, 
+            "Failed to process template file"
+        )
     
     def process_template_text(self, template_text: str, template_name: str = "") -> str:
         """
@@ -122,7 +143,7 @@ class TemplateProcessor:
         Raises:
             TemplateProcessingError: При ошибке обработки шаблона
         """
-        try:
+        def process_text():
             # 1. Парсим шаблон
             ast = self._parse_template(template_text, template_name)
             
@@ -131,14 +152,12 @@ class TemplateProcessor:
             
             # 3. Обрабатываем AST
             return self._evaluate_ast(resolved_ast)
-            
-        except (LexerError, ParserError, ResolverError, TemplateEvaluationError) as e:
-            raise TemplateProcessingError(str(e), template_name, e)
-        except TemplateProcessingError:
-            # Повторный бросок TemplateProcessingError без дополнительной обёртки
-            raise
-        except Exception as e:
-            raise TemplateProcessingError(f"Unexpected error during processing", template_name, e)
+        
+        return self._handle_template_errors(
+            process_text,
+            template_name,
+            "Unexpected error during processing"
+        )
     
     def get_template_dependencies(self, template_name: str) -> Dict[str, Any]:
         """
@@ -155,7 +174,7 @@ class TemplateProcessor:
                 "conditional": True/False - есть ли условное содержимое
             }
         """
-        try:
+        def analyze_dependencies():
             template_text = self._load_template_text(template_name)
             ast = self._parse_template(template_text, template_name)
             
@@ -168,9 +187,12 @@ class TemplateProcessor:
                 "includes": [f"{node.canon_key()}" for node in include_nodes],
                 "conditional": has_conditional_content(ast)
             }
-            
-        except Exception as e:
-            raise TemplateProcessingError(f"Failed to analyze dependencies", template_name, e)
+        
+        return self._handle_template_errors(
+            analyze_dependencies,
+            template_name,
+            "Failed to analyze dependencies"
+        )
     
     def prevalidate_template(self, template_name: str) -> List[str]:
         """

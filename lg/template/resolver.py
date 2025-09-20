@@ -145,51 +145,59 @@ class TemplateResolver:
             return self._resolve_include_node(node, context)
         
         elif isinstance(node, ConditionalBlockNode):
-            # Рекурсивно обрабатываем тело условного блока
-            resolved_body = self._resolve_ast_recursive(node.body, f"{context}/if")
-            
-            # Обрабатываем elif блоки
-            resolved_elif_blocks = []
-            for i, elif_block in enumerate(node.elif_blocks):
-                resolved_elif_body = self._resolve_ast_recursive(elif_block.body, f"{context}/elif[{i}]")
-                resolved_elif_blocks.append(ElifBlockNode(
-                    condition_text=elif_block.condition_text,
-                    body=resolved_elif_body,
-                    condition_ast=elif_block.condition_ast,
-                    evaluated=elif_block.evaluated
-                ))
-            
-            # Обрабатываем else блок
-            resolved_else = None
-            if node.else_block:
-                resolved_else_body = self._resolve_ast_recursive(node.else_block.body, f"{context}/else")
-                resolved_else = ElseBlockNode(body=resolved_else_body)
-            
-            return ConditionalBlockNode(
-                condition_text=node.condition_text,
-                body=resolved_body,
-                elif_blocks=resolved_elif_blocks,
-                else_block=resolved_else,
-                condition_ast=node.condition_ast,
-                evaluated=node.evaluated
-            )
+            return self._resolve_conditional_block(node, context)
         
         elif isinstance(node, ModeBlockNode):
-            # Рекурсивно обрабатываем тело режимного блока
-            resolved_body = self._resolve_ast_recursive(node.body, f"{context}/mode[{node.modeset}:{node.mode}]")
-            
-            return ModeBlockNode(
-                modeset=node.modeset,
-                mode=node.mode,
-                body=resolved_body,
-                original_mode_options=node.original_mode_options,
-                original_active_tags=node.original_active_tags,
-                original_active_modes=node.original_active_modes
-            )
+            return self._resolve_mode_block(node, context)
         
         else:
             # Остальные узлы (TextNode, CommentNode, ElseBlockNode) возвращаем как есть
             return node
+    
+    def _resolve_conditional_block(self, node: ConditionalBlockNode, context: str) -> ConditionalBlockNode:
+        """Резолвит условный блок с его elif и else частями."""
+        # Рекурсивно обрабатываем тело условного блока
+        resolved_body = self._resolve_ast_recursive(node.body, f"{context}/if")
+        
+        # Обрабатываем elif блоки
+        resolved_elif_blocks = []
+        for i, elif_block in enumerate(node.elif_blocks):
+            resolved_elif_body = self._resolve_ast_recursive(elif_block.body, f"{context}/elif[{i}]")
+            resolved_elif_blocks.append(ElifBlockNode(
+                condition_text=elif_block.condition_text,
+                body=resolved_elif_body,
+                condition_ast=elif_block.condition_ast,
+                evaluated=elif_block.evaluated
+            ))
+        
+        # Обрабатываем else блок
+        resolved_else = None
+        if node.else_block:
+            resolved_else_body = self._resolve_ast_recursive(node.else_block.body, f"{context}/else")
+            resolved_else = ElseBlockNode(body=resolved_else_body)
+        
+        return ConditionalBlockNode(
+            condition_text=node.condition_text,
+            body=resolved_body,
+            elif_blocks=resolved_elif_blocks,
+            else_block=resolved_else,
+            condition_ast=node.condition_ast,
+            evaluated=node.evaluated
+        )
+    
+    def _resolve_mode_block(self, node: ModeBlockNode, context: str) -> ModeBlockNode:
+        """Резолвит режимный блок."""
+        # Рекурсивно обрабатываем тело режимного блока
+        resolved_body = self._resolve_ast_recursive(node.body, f"{context}/mode[{node.modeset}:{node.mode}]")
+        
+        return ModeBlockNode(
+            modeset=node.modeset,
+            mode=node.mode,
+            body=resolved_body,
+            original_mode_options=node.original_mode_options,
+            original_active_tags=node.original_active_tags,
+            original_active_modes=node.original_active_modes
+        )
     
     def _resolve_section_node(self, node: SectionNode, context: str = "") -> SectionNode:
         """

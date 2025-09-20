@@ -248,23 +248,36 @@ class TemplateLexer:
             pos += 1
         return self.length
     
+    def _tokenize_content_generic(self, content: str, tokenize_method_name: str) -> List[Token]:
+        """
+        Общий метод для токенизации содержимого с указанным методом токенизации.
+        
+        Args:
+            content: Содержимое для токенизации
+            tokenize_method_name: Имя метода токенизации ('_tokenize_inside_placeholder' или '_tokenize_inside_directive')
+        """
+        if not content.strip():
+            return []
+            
+        temp_lexer = TemplateLexer(content)
+        tokens = []
+        tokenize_method = getattr(temp_lexer, tokenize_method_name)
+        
+        while temp_lexer.position < temp_lexer.length:
+            token = tokenize_method()
+            if token.type == TokenType.EOF:
+                break
+            tokens.append(token)
+        
+        return tokens
+    
     def tokenize_placeholder_content(self, content: str) -> List[Token]:
         """
         Токенизирует содержимое плейсхолдера ${...}.
         
         Используется для обработки содержимого между ${ и }.
         """
-        # Создаем временный лексер для содержимого
-        temp_lexer = TemplateLexer(content)
-        tokens = []
-        
-        while temp_lexer.position < temp_lexer.length:
-            token = temp_lexer._tokenize_inside_placeholder()
-            if token.type == TokenType.EOF:
-                break
-            tokens.append(token)
-        
-        return tokens
+        return self._tokenize_content_generic(content, '_tokenize_inside_placeholder')
     
     def tokenize_directive_content(self, content: str) -> List[Token]:
         """
@@ -272,17 +285,7 @@ class TemplateLexer:
         
         Используется для обработки содержимого между {% и %}.
         """
-        # Создаем временный лексер для содержимого
-        temp_lexer = TemplateLexer(content)
-        tokens = []
-        
-        while temp_lexer.position < temp_lexer.length:
-            token = temp_lexer._tokenize_inside_directive()
-            if token.type == TokenType.EOF:
-                break
-            tokens.append(token)
-        
-        return tokens
+        return self._tokenize_content_generic(content, '_tokenize_inside_directive')
     
     def _tokenize_inside_placeholder(self) -> Token:
         """Токенизирует содержимое внутри плейсхолдера."""

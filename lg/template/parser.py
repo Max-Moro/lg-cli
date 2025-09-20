@@ -455,6 +455,20 @@ class TemplateParser:
             tokens[1].type != TokenType.LBRACKET):
             raise ParserError("Invalid bracketed reference format", tokens[0])
         
+        origin, name = self._parse_bracketed_origin_and_name(tokens)
+        return f"@[{origin}]:{name}"
+    
+    def _reconstruct_simple_reference(self, tokens: List[Token]) -> str:
+        """Восстанавливает ссылку вида @origin:name."""
+        # Ожидаем: @ origin : name
+        if len(tokens) < 3:
+            raise ParserError("Incomplete simple reference", tokens[0])
+        
+        origin, name = self._parse_simple_origin_and_name(tokens)
+        return f"@{origin}:{name}"
+    
+    def _parse_bracketed_origin_and_name(self, tokens: List[Token]) -> Tuple[str, str]:
+        """Парсит origin и name из токенов формата @[origin]:name."""
         # Находим закрывающую скобку
         bracket_end = -1
         for i in range(2, len(tokens)):
@@ -471,25 +485,15 @@ class TemplateParser:
             raise ParserError("Missing ':' after bracketed origin", tokens[bracket_end] if bracket_end < len(tokens) else tokens[-1])
         
         # Собираем origin (между скобками)
-        origin_parts = []
-        for i in range(2, bracket_end):
-            origin_parts.append(tokens[i].value)
-        origin = ''.join(origin_parts)
+        origin = ''.join(tokens[i].value for i in range(2, bracket_end))
         
         # Собираем name (после двоеточия)  
-        name_parts = []
-        for i in range(bracket_end + 2, len(tokens)):
-            name_parts.append(tokens[i].value)
-        name = ''.join(name_parts)
+        name = ''.join(tokens[i].value for i in range(bracket_end + 2, len(tokens)))
         
-        return f"@[{origin}]:{name}"
+        return origin, name
     
-    def _reconstruct_simple_reference(self, tokens: List[Token]) -> str:
-        """Восстанавливает ссылку вида @origin:name."""
-        # Ожидаем: @ origin : name
-        if len(tokens) < 3:
-            raise ParserError("Incomplete simple reference", tokens[0])
-        
+    def _parse_simple_origin_and_name(self, tokens: List[Token]) -> Tuple[str, str]:
+        """Парсит origin и name из токенов формата @origin:name."""
         # Находим двоеточие
         colon_pos = -1
         for i in range(1, len(tokens)):
@@ -501,18 +505,12 @@ class TemplateParser:
             raise ParserError("Missing ':' in reference", tokens[0])
         
         # Собираем origin (между @ и :)
-        origin_parts = []
-        for i in range(1, colon_pos):
-            origin_parts.append(tokens[i].value)
-        origin = ''.join(origin_parts)
+        origin = ''.join(tokens[i].value for i in range(1, colon_pos))
         
         # Собираем name (после :)
-        name_parts = []
-        for i in range(colon_pos + 1, len(tokens)):
-            name_parts.append(tokens[i].value)
-        name = ''.join(name_parts)
+        name = ''.join(tokens[i].value for i in range(colon_pos + 1, len(tokens)))
         
-        return f"@{origin}:{name}"
+        return origin, name
     
     def _parse_include_reference(self, tokens: List[Token]) -> Tuple[str, str]:
         """
@@ -522,25 +520,12 @@ class TemplateParser:
         - @origin:name  
         - @[origin]:name
         """
-        full_ref = self._reconstruct_section_reference(tokens)
-        
-        # Парсим результат для извлечения origin и name
-        if full_ref.startswith("@["):
-            # @[origin]:name
-            close = full_ref.find("]:")
-            if close < 0:
-                raise ParserError(f"Invalid bracketed reference: {full_ref}", tokens[0])
-            origin = full_ref[2:close]
-            name = full_ref[close + 2:]
+        if len(tokens) >= 4 and tokens[1].type == TokenType.LBRACKET:
+            # Формат: @[origin]:name
+            return self._parse_bracketed_origin_and_name(tokens)
         else:
-            # @origin:name
-            colon = full_ref.find(":", 1)  # Ищем после @
-            if colon < 0:
-                raise ParserError(f"Invalid simple reference: {full_ref}", tokens[0])
-            origin = full_ref[1:colon]
-            name = full_ref[colon + 1:]
-        
-        return origin, name
+            # Формат: @origin:name
+            return self._parse_simple_origin_and_name(tokens)
     
     # Вспомогательные методы
     
@@ -604,6 +589,19 @@ class TemplateParser:
         """Восстанавливает текст условия из токенов."""
         return ' '.join(token.value for token in tokens)
     
+    # Общие данные для директив
+    _KEYWORD_MAP = {
+        TokenType.IF: "if",
+        TokenType.ELIF: "elif", 
+        TokenType.ELSE: "else",
+        TokenType.ENDIF: "endif",
+        TokenType.MODE: "mode", 
+        TokenType.ENDMODE: "endmode"
+    }
+    
+    # Директивы с параметрами (vs. простые директивы)
+    _PARAMETERIZED_DIRECTIVES = {TokenType.IF, TokenType.ELIF, TokenType.MODE}
+    
     def _check_directive_keyword(self, keyword: TokenType) -> bool:
         """
         Проверяет, следует ли указанное ключевое слово директивы.
@@ -615,18 +613,10 @@ class TemplateParser:
             self.tokens[self.position + 2].type == TokenType.DIRECTIVE_END):
             # Проверяем содержимое директивы
             content = self.tokens[self.position + 1].value.strip()
-            # Сопоставляем токены с их строковыми представлениями
-            keyword_map = {
-                TokenType.IF: "if",
-                TokenType.ELIF: "elif",
-                TokenType.ELSE: "else", 
-                TokenType.ENDIF: "endif",
-                TokenType.MODE: "mode",
-                TokenType.ENDMODE: "endmode"
-            }
-            expected_keyword = keyword_map.get(keyword, keyword.name.lower())
+            expected_keyword = self._KEYWORD_MAP.get(keyword, keyword.name.lower())
+            
             # Для директив с параметрами проверяем только начало
-            if keyword in [TokenType.IF, TokenType.ELIF, TokenType.MODE]:
+            if keyword in self._PARAMETERIZED_DIRECTIVES:
                 return content.startswith(expected_keyword + ' ') or content == expected_keyword
             else:
                 # Для директив без параметров проверяем точное соответствие
@@ -638,19 +628,11 @@ class TemplateParser:
         self._consume(TokenType.DIRECTIVE_START)
         # Проверяем, что содержимое соответствует ключевому слову
         content_token = self._current_token()
-        # Сопоставляем токены с их строковыми представлениями
-        keyword_map = {
-            TokenType.IF: "if",
-            TokenType.ELIF: "elif",
-            TokenType.ELSE: "else",
-            TokenType.ENDIF: "endif", 
-            TokenType.MODE: "mode",
-            TokenType.ENDMODE: "endmode"
-        }
-        expected_keyword = keyword_map.get(keyword, keyword.name.lower())
+        expected_keyword = self._KEYWORD_MAP.get(keyword, keyword.name.lower())
         content = content_token.value.strip()
+        
         # Для директив с параметрами проверяем только начало
-        if keyword in [TokenType.IF, TokenType.ELIF, TokenType.MODE]:
+        if keyword in self._PARAMETERIZED_DIRECTIVES:
             if not (content.startswith(expected_keyword + ' ') or content == expected_keyword):
                 raise ParserError(f"Expected directive starting with '{expected_keyword}', got '{content}'", content_token)
         else:
