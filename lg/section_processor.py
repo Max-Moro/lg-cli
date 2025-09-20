@@ -9,7 +9,7 @@
 from __future__ import annotations
 
 from .adapters.processor_v2 import process_files
-from .manifest.builder_v2 import build_section_manifest
+from .manifest.builder import build_section_manifest
 from .plan.planner_v2 import build_section_plan
 from .render.renderer_v2 import render_section
 from .run_context import RunContext
@@ -75,7 +75,7 @@ class SectionProcessor:
             )
         
         rendered = render_section(plan, processed_files)
-        
+
         # Регистрируем отрендеренную секцию в коллекторе статистики
         self.stats_collector.register_section_rendered(rendered)
         

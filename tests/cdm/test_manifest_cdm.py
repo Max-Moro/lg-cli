@@ -7,7 +7,7 @@ import pytest
 from ruamel.yaml import YAML
 
 from lg.context.resolver import resolve_context
-from lg.manifest.builder import build_manifest
+from lg.manifest.builder import build_section_manifest
 from lg.vcs import VcsProvider
 from tests.conftest import write
 from .conftest import mk_run_ctx
@@ -22,7 +22,7 @@ class FakeVcs(VcsProvider):
 def _manifest_for_ctx(root: Path, ctx_name: str, *, mode: str = "all", vcs=None):
     rc = mk_run_ctx(root)
     spec = resolve_context(f"ctx:{ctx_name}", rc)
-    return build_manifest(root=root, spec=spec, vcs_mode=mode, vcs=vcs)
+    return build_section_manifest(root=root, spec=spec, vcs_mode=mode, vcs=vcs)
 
 def test_scope_and_filters_limit_to_scope(monorepo: Path):
     """
@@ -118,7 +118,7 @@ def test_empty_policy_include_allows_empty_files(monorepo: Path):
 
 def test_missing_sections_diagnostic_includes_available(monorepo: Path):
     """
-    Если в контексте запрошена несуществующая секция в child, build_manifest должен
+    Если в контексте запрошена несуществующая секция в child, build_section_manifest должен
     упасть с сообщением:
       - указывает scope: apps/web/...
       - перечисляет плейсхолдер и доступные секции в этом скоупе
@@ -131,7 +131,7 @@ def test_missing_sections_diagnostic_includes_available(monorepo: Path):
     spec = resolve_context("ctx:bad", rc)
 
     with pytest.raises(RuntimeError) as ei:
-        build_manifest(root=monorepo, spec=spec, vcs_mode="all")
+        build_section_manifest(root=monorepo, spec=spec, vcs_mode="all")
 
     msg = str(ei.value)
     assert "Section(s) not found" in msg

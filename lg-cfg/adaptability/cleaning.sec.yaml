@@ -1,4 +1,4 @@
-src-cleaning:
+src:
   extensions: [".py", ".toml"]
   filters:
     mode: allow
@@ -14,14 +14,13 @@ src-cleaning:
           - "/_skeletons/"
           - "/scaffold.py"
           - "diag**"
-          - "/vcs/"
           - "lang.py"
           - "api_schema.py"
           # Под задачу
           - "/context/"
           - "/render/"
-          - "/manifest/"
           - "/io/"
+          - "/stats/"
         children:
           adapters:
             mode: allow
@@ -36,10 +35,21 @@ src-cleaning:
           template:
             mode: allow
             allow:
-              - "/processor.py"
               - "/context.py"
-          stats:
-            mode: allow
-            allow:
-              - "/collector.py"
-              - "/tokenizer.py"
+
+tests:
+  extensions: [".py"]
+  path_labels: relative
+  filters:
+    mode: allow
+    allow:
+      - "/tests/"
+    children:
+      tests:
+        mode: allow
+        allow:
+          - "/conftest.py"
+          - "/test_manifest_builder_v2.py"
+          - "/cdm/conftest.py"
+          - "/cdm/test_manifest_cdm.py"
+          - "/cdm/test_planner_render_cdm.py"

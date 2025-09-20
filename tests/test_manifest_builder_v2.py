@@ -2,18 +2,16 @@ from __future__ import annotations
 
 from pathlib import Path
 
-import pytest
-
-from lg.config.adaptive_model import ModeOptions
-from lg.manifest.builder_v2 import build_section_manifest
-from lg.run_context import RunContext
-from lg.template.context import TemplateContext, TemplateState
-from lg.types_v2 import SectionRef
-from lg.vcs import NullVcs
 from lg.cache.fs_cache import Cache
 from lg.config.adaptive_loader import AdaptiveConfigLoader
+from lg.config.adaptive_model import ModeOptions
+from lg.manifest.builder import build_section_manifest
+from lg.run_context import RunContext
 from lg.stats import TokenService
+from lg.template.context import TemplateContext
 from lg.types import RunOptions
+from lg.types_v2 import SectionRef
+from lg.vcs import NullVcs
 
 
 def _write(tmp: Path, rel: str, text: str = "x") -> Path:

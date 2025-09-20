@@ -3,7 +3,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from lg.context.resolver import resolve_context
-from lg.manifest.builder import build_manifest
+from lg.manifest.builder import build_section_manifest
 from lg.plan.planner import build_plan
 from lg.render.sections import render_by_section
 from .conftest import mk_run_ctx
@@ -19,7 +19,7 @@ def test_planner_and_render_for_addressed_sections(monorepo: Path):
     rc = mk_run_ctx(monorepo)
     spec = resolve_context("ctx:a", rc)
 
-    manifest = build_manifest(root=monorepo, spec=spec, vcs_mode=rc.mode_options.vcs_mode, vcs=rc.vcs)
+    manifest = build_section_manifest(root=monorepo, spec=spec, vcs_mode=rc.mode_options.vcs_mode, vcs=rc.vcs)
     plan = build_plan(manifest, rc)
 
     # Быстрый smoke: есть обе секции
