@@ -32,7 +32,6 @@ src:
             allow:
               - "/processor.py"
               - "/context.py"
-              - "/evaluator.py"
           adapters:
             mode: allow
             allow:
@@ -48,13 +47,6 @@ src:
             allow:
               - "/collector.py"
               - "/report_builder.py"
-  # targets:
-  #   - match:
-  #     - "/lg/cache/fs_cache.py"
-  #     - "/lg/manifest/builder.py"
-  #     python:
-  #       budget:
-  #         max_tokens_per_file: 500
 
 docs-design:
   extensions: [".md"]
@@ -80,4 +72,4 @@ tests:
             mode: allow
             allow:
               - "/conftest.py"
-              - "/test_edge_cases.py"
+              - "/test_conditional_adapter_options.py"
