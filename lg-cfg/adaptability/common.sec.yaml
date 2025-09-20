@@ -14,7 +14,12 @@ src:
           - "/_skeletons/"
           - "/scaffold.py"
           - "diag**"
-          - "/conditions/"
+          - "/vcs/"
+          - "lang.py"
+          - "api_schema.py"
+          # Под задачу
+          - "/stats/"
+          - "/io/"
         children:
           conditions:
             mode: allow
@@ -24,13 +29,13 @@ src:
             mode: allow
             allow:
               - "/processor.py"
-              - "/parser.py"
+              - "/context.py"
           adapters:
             mode: allow
             allow:
               - "/__init__.py"
-              - "/engine.py"
               - "/registry.py"
+              - "/processor.py"
           config:
             mode: block
             block:
@@ -43,21 +48,10 @@ src:
   targets:
     - match:
       - "/lg/cache/fs_cache.py"
-      - "/lg/context/resolver.py"
-      - "/lg/context/composer.py"
-      - "/lg/context/common.py"
-      - "/lg/config/adaptive_model.py"
-      - "/lg/config/adaptive_loader.py"
-      - "/lg/section_processor.py"
+      - "/lg/manifest/builder.py"
       python:
         budget:
           max_tokens_per_file: 500
-    - match:
-      - "/lg/manifest/builder.py"
-      python:
-        comment_policy: "keep_doc"
-        imports:
-          policy: "strip_all"
 
 docs-design:
   extensions: [".md"]
@@ -65,12 +59,3 @@ docs-design:
     mode: allow
     allow:
       - "/docs/adaptability/design.md"
-  markdown:
-    max_heading_level: 2
-
-docs-template-engine:
-  extensions: [".md"]
-  filters:
-    mode: allow
-    allow:
-      - "/docs/adaptability/template-engine.md"
