@@ -36,6 +36,7 @@ src:
             mode: allow
             allow:
               - "/context.py"
+              - "/processor.py"
 
 tests:
   extensions: [".py"]
