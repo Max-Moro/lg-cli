@@ -1,16 +1,14 @@
 """Тесты для оценщика условий шаблонов TemplateConditionEvaluator."""
 import pytest
-from typing import Set, Dict
 
+from lg.conditions.model import TagCondition, TagSetCondition
+from lg.run_context import ConditionContext
 from lg.template.evaluator import (
-    TemplateConditionEvaluator, 
+    TemplateConditionEvaluator,
     TemplateEvaluationError,
     create_template_evaluator,
     evaluate_simple_condition
 )
-from lg.run_context import ConditionContext
-from lg.conditions.model import TagCondition, TagSetCondition
-from lg.conditions.evaluator import EvaluationError
 
 
 class TestTemplateConditionEvaluator:
@@ -27,7 +25,7 @@ class TestTemplateConditionEvaluator:
         evaluator = TemplateConditionEvaluator(context)
         
         assert evaluator.condition_context == context
-        assert evaluator.get_active_tags() == {"debug", "test"}
+        assert evaluator.condition_context.active_tags == {"debug", "test"}
         assert evaluator.get_tagsets() == {"lang": {"java", "python"}}
 
     def test_evaluate_tag_condition_true(self):
@@ -272,7 +270,7 @@ class TestCreateTemplateEvaluator:
             tagsets={"lang": {"java", "python"}}
         )
         
-        assert evaluator.get_active_tags() == {"debug", "test"}
+        assert evaluator.condition_context.active_tags == {"debug", "test"}
         assert evaluator.get_tagsets() == {"lang": {"java", "python"}}
 
     def test_create_evaluator_with_scope(self):
@@ -294,7 +292,7 @@ class TestCreateTemplateEvaluator:
             tagsets={}
         )
         
-        assert evaluator.get_active_tags() == set()
+        assert evaluator.condition_context.active_tags == set()
         assert evaluator.get_tagsets() == {}
 
 

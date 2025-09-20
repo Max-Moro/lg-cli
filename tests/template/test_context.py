@@ -87,70 +87,6 @@ class TestTemplateContext:
         assert context.current_state.active_modes == {"java": "class"}
         assert context.state_stack == []
 
-    def test_get_active_tags(self):
-        """Получение активных тегов."""
-        context = TemplateContext(self.run_ctx)
-        
-        active_tags = context.get_active_tags()
-        
-        assert active_tags == {"debug", "test"}
-        # Проверяем, что возвращается копия, а не ссылка
-        active_tags.add("production")
-        assert "production" not in context.current_state.active_tags
-
-    def test_get_active_modes(self):
-        """Получение активных режимов."""
-        context = TemplateContext(self.run_ctx)
-        
-        active_modes = context.get_active_modes()
-        
-        assert active_modes == {"java": "class"}
-        # Проверяем, что возвращается копия
-        active_modes["test"] = "unit"
-        assert "test" not in context.current_state.active_modes
-
-    def test_get_mode_options(self):
-        """Получение опций режимов."""
-        context = TemplateContext(self.run_ctx)
-        
-        mode_options = context.get_mode_options()
-        
-        assert mode_options == self.run_ctx.mode_options
-
-    def test_is_in_mode_block_false(self):
-        """Проверка нахождения в блоке режима - false."""
-        context = TemplateContext(self.run_ctx)
-        
-        assert context.is_in_mode_block() is False
-        assert context.get_nesting_level() == 0
-
-    def test_add_extra_tag(self):
-        """Добавление дополнительного тега."""
-        context = TemplateContext(self.run_ctx)
-        initial_tags = context.get_active_tags()
-        
-        context.add_extra_tag("production")
-        
-        assert "production" in context.current_state.active_tags
-        assert context.current_state.active_tags == initial_tags | {"production"}
-
-    def test_remove_tag(self):
-        """Удаление тега."""
-        context = TemplateContext(self.run_ctx)
-        
-        context.remove_tag("test")
-        
-        assert "test" not in context.current_state.active_tags
-        assert context.current_state.active_tags == {"debug"}
-
-    def test_remove_nonexistent_tag(self):
-        """Удаление несуществующего тега."""
-        context = TemplateContext(self.run_ctx)
-        initial_tags = context.get_active_tags()
-        
-        context.remove_tag("nonexistent")
-        
-        assert context.get_active_tags() == initial_tags
 
 
 class TestTemplateContextModeBlocks:
@@ -202,21 +138,20 @@ class TestTemplateContextModeBlocks:
     def test_enter_mode_block_success(self):
         """Успешный вход в блок режима."""
         context = TemplateContext(self.run_ctx)
-        initial_tags = context.get_active_tags().copy()
+        initial_tags = context.current_state.active_tags.copy()
         
         context.enter_mode_block("test", "unit")
         
         # Проверяем, что состояние сохранено в стек
         assert len(context.state_stack) == 1
-        assert context.is_in_mode_block() is True
-        assert context.get_nesting_level() == 1
+        assert len(context.state_stack) > 0  # is_in_mode_block equivalent
         
         # Проверяем, что режим активен
         assert context.current_state.active_modes["test"] == "unit"
         
         # Проверяем, что теги режима добавлены
         expected_tags = initial_tags | {"unit_test", "testing"}
-        assert context.get_active_tags() == expected_tags
+        assert context.current_state.active_tags == expected_tags
 
     def test_enter_mode_block_unknown_modeset(self):
         """Ошибка при входе в блок несуществующего набора режимов."""
@@ -235,24 +170,23 @@ class TestTemplateContextModeBlocks:
     def test_exit_mode_block_success(self):
         """Успешный выход из блока режима."""
         context = TemplateContext(self.run_ctx)
-        initial_tags = context.get_active_tags().copy()
-        initial_modes = context.get_active_modes().copy()
+        initial_tags = context.current_state.active_tags.copy()
+        initial_modes = context.current_state.active_modes.copy()
         
         # Входим в блок режима
         context.enter_mode_block("test", "unit")
         
         # Проверяем изменения
-        assert context.get_active_tags() != initial_tags
-        assert context.get_active_modes() != initial_modes
+        assert context.current_state.active_tags != initial_tags
+        assert context.current_state.active_modes != initial_modes
         
         # Выходим из блока
         context.exit_mode_block()
         
         # Проверяем восстановление состояния
-        assert context.get_active_tags() == initial_tags
-        assert context.get_active_modes() == initial_modes
-        assert context.is_in_mode_block() is False
-        assert context.get_nesting_level() == 0
+        assert context.current_state.active_tags == initial_tags
+        assert context.current_state.active_modes == initial_modes
+        assert len(context.state_stack) == 0  # is_in_mode_block equivalent
 
     def test_exit_mode_block_empty_stack(self):
         """Ошибка при выходе из блока когда стек пуст."""
@@ -264,17 +198,17 @@ class TestTemplateContextModeBlocks:
     def test_nested_mode_blocks(self):
         """Тестирование вложенных блоков режимов."""
         context = TemplateContext(self.run_ctx)
-        initial_state = (context.get_active_tags().copy(), context.get_active_modes().copy())
+        initial_state = (context.current_state.active_tags.copy(), context.current_state.active_modes.copy())
         
         # Первый уровень вложенности
         context.enter_mode_block("test", "unit")
-        level1_state = (context.get_active_tags().copy(), context.get_active_modes().copy())
-        assert context.get_nesting_level() == 1
+        level1_state = (context.current_state.active_tags.copy(), context.current_state.active_modes.copy())
+        assert len(context.state_stack) == 1  # get_nesting_level equivalent
         
         # Второй уровень вложенности
         context.enter_mode_block("test", "integration")
-        level2_state = (context.get_active_tags().copy(), context.get_active_modes().copy())
-        assert context.get_nesting_level() == 2
+        level2_state = (context.current_state.active_tags.copy(), context.current_state.active_modes.copy())
+        assert len(context.state_stack) == 2  # get_nesting_level equivalent
         
         # Проверяем, что состояния различаются
         assert level2_state != level1_state
@@ -282,13 +216,13 @@ class TestTemplateContextModeBlocks:
         
         # Выходим из второго уровня
         context.exit_mode_block()
-        assert (context.get_active_tags(), context.get_active_modes()) == level1_state
-        assert context.get_nesting_level() == 1
+        assert (context.current_state.active_tags, context.current_state.active_modes) == level1_state
+        assert len(context.state_stack) == 1  # get_nesting_level equivalent
         
         # Выходим из первого уровня
         context.exit_mode_block()
-        assert (context.get_active_tags(), context.get_active_modes()) == initial_state
-        assert context.get_nesting_level() == 0
+        assert (context.current_state.active_tags, context.current_state.active_modes) == initial_state
+        assert len(context.state_stack) == 0  # get_nesting_level equivalent
 
 
 class TestTemplateContextConditionEvaluation:
@@ -342,7 +276,9 @@ class TestTemplateContextConditionEvaluation:
         context = TemplateContext(self.run_ctx)
         
         evaluator1 = context.get_condition_evaluator()
-        context.add_extra_tag("production")
+        # Изменяем теги напрямую через current_state
+        context.current_state.active_tags.add("production")
+        context._condition_evaluator = None  # Сбрасываем кэш как это делают удаленные методы
         evaluator2 = context.get_condition_evaluator()
         
         # Должен создать новый оценщик
@@ -500,15 +436,15 @@ class TestTemplateContextIntegration:
         context = TemplateContext(self.run_ctx)
         
         # Начальное состояние
-        assert "debug" in context.get_active_tags()
-        assert context.get_active_modes() == {"java": "class"}
+        assert "debug" in context.current_state.active_tags
+        assert context.current_state.active_modes == {"java": "class"}
         
         # Вход в блок test:unit
         context.enter_mode_block("test", "unit")
         
         # Проверяем новые теги
-        assert "test_context" in context.get_active_tags()
-        assert context.get_active_modes() == {"java": "class", "test": "unit"}
+        assert "test_context" in context.current_state.active_tags
+        assert context.current_state.active_modes == {"java": "class", "test": "unit"}
         
         # Оценка условий в новом контексте
         assert context.evaluate_condition_text("tag:debug") is True
@@ -519,22 +455,22 @@ class TestTemplateContextIntegration:
         context.enter_mode_block("java", "method")
         
         # Проверяем изменения
-        assert "method_context" in context.get_active_tags()
-        assert context.get_active_modes() == {"java": "method", "test": "unit"}
+        assert "method_context" in context.current_state.active_tags
+        assert context.current_state.active_modes == {"java": "method", "test": "unit"}
         
         # Выход из вложенного блока
         context.exit_mode_block()
         
         # Проверяем восстановление
-        assert "method_context" not in context.get_active_tags()
-        assert context.get_active_modes() == {"java": "class", "test": "unit"}
+        assert "method_context" not in context.current_state.active_tags
+        assert context.current_state.active_modes == {"java": "class", "test": "unit"}
         
         # Выход из внешнего блока
         context.exit_mode_block()
         
         # Проверяем полное восстановление
-        assert "test_context" not in context.get_active_tags()
-        assert context.get_active_modes() == {"java": "class"}
+        assert "test_context" not in context.current_state.active_tags
+        assert context.current_state.active_modes == {"java": "class"}
 
     def test_complex_condition_evaluation(self):
         """Сложная оценка условий с изменением контекста."""
@@ -546,7 +482,7 @@ class TestTemplateContextIntegration:
         
         # Вход в тестовый режим и добавление дополнительных тегов
         context.enter_mode_block("test", "unit")
-        context.add_extra_tag("integration")
+        context.current_state.active_tags.add("integration")  # add_extra_tag equivalent
         
         # Сложные условия
         complex_condition = "tag:debug AND tag:test_context AND tag:integration"
@@ -593,8 +529,7 @@ class TestOriginManagement:
         context.enter_include_scope("apps/web")
         
         assert context.current_state.origin == "apps/web"
-        assert context.is_in_mode_block() is True
-        assert context.get_nesting_level() == 1
+        assert len(context.state_stack) > 0  # is_in_mode_block equivalent
 
     def test_exit_include_scope_restores_origin(self, run_ctx):
         """Тест выхода из скоупа включения восстанавливает origin."""
@@ -607,7 +542,7 @@ class TestOriginManagement:
         # Выходим из скоупа
         context.exit_include_scope()
         assert context.current_state.origin == "self"
-        assert context.is_in_mode_block() is False
+        assert len(context.state_stack) == 0  # is_in_mode_block equivalent
 
     def test_nested_include_scopes(self, run_ctx):
         """Тест вложенных скоупов включений."""
@@ -616,22 +551,22 @@ class TestOriginManagement:
         # Первый уровень вложенности
         context.enter_include_scope("apps/web")
         assert context.current_state.origin == "apps/web"
-        assert context.get_nesting_level() == 1
+        assert len(context.state_stack) == 1  # get_nesting_level equivalent
         
         # Второй уровень вложенности
         context.enter_include_scope("core/api")
         assert context.current_state.origin == "core/api"
-        assert context.get_nesting_level() == 2
+        assert len(context.state_stack) == 2  # get_nesting_level equivalent
         
         # Выходим из второго уровня
         context.exit_include_scope()
         assert context.current_state.origin == "apps/web"
-        assert context.get_nesting_level() == 1
+        assert len(context.state_stack) == 1  # get_nesting_level equivalent
         
         # Выходим из первого уровня
         context.exit_include_scope()
         assert context.current_state.origin == "self"
-        assert context.get_nesting_level() == 0
+        assert len(context.state_stack) == 0  # get_nesting_level equivalent
 
     def test_exit_include_scope_without_entry_raises_error(self, run_ctx):
         """Тест выхода без входа вызывает ошибку."""
@@ -689,19 +624,19 @@ class TestOriginManagement:
         """Тест что вход в скоуп включения сохраняет остальное состояние."""
         context = TemplateContext(run_ctx)
         
-        # Добавляем дополнительные теги и режимы
-        context.add_extra_tag("production")
-        original_tags = context.get_active_tags()
-        original_modes = context.get_active_modes()
-        original_options = context.get_mode_options()
+        # Добавляем дополнительные теги напрямую через current_state
+        context.current_state.active_tags.add("production")
+        original_tags = context.current_state.active_tags.copy()
+        original_modes = context.current_state.active_modes.copy()
+        original_options = context.current_state.mode_options
         
         # Входим в скоуп
         context.enter_include_scope("apps/web")
         
         # Проверяем что остальное состояние сохранилось
-        assert context.get_active_tags() == original_tags
-        assert context.get_active_modes() == original_modes
-        assert context.get_mode_options() == original_options
+        assert context.current_state.active_tags == original_tags
+        assert context.current_state.active_modes == original_modes
+        assert context.current_state.mode_options == original_options
         
         # Но origin изменился
         assert context.current_state.origin == "apps/web"

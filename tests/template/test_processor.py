@@ -212,7 +212,7 @@ class TestSectionHandling:
         """
         
         # Устанавливаем активный тег docs
-        processor.template_ctx.add_extra_tag("docs")
+        processor.template_ctx.current_state.active_tags.add("docs")
         
         result = processor.process_template_text(template_text)
         
@@ -404,7 +404,7 @@ class TestConditionalBlocks:
         """
         
         # Активируем тег docs
-        processor.template_ctx.add_extra_tag("docs")
+        processor.template_ctx.current_state.active_tags.add("docs")
         
         result = processor.process_template_text(template_text)
         
@@ -440,7 +440,7 @@ class TestConditionalBlocks:
         End
         """
         
-        processor.template_ctx.add_extra_tag("docs")
+        processor.template_ctx.current_state.active_tags.add("docs")
         
         result = processor.process_template_text(template_text)
         
@@ -479,8 +479,8 @@ class TestConditionalBlocks:
         {% endif %}
         """
         
-        processor.template_ctx.add_extra_tag("docs")
-        processor.template_ctx.add_extra_tag("tests")
+        processor.template_ctx.current_state.active_tags.add("docs")
+        processor.template_ctx.current_state.active_tags.add("tests")
         
         result = processor.process_template_text(template_text)
         
@@ -498,8 +498,8 @@ class TestConditionalBlocks:
         """
         
         # Активируем оба тега
-        processor.template_ctx.add_extra_tag("docs")
-        processor.template_ctx.add_extra_tag("tests")
+        processor.template_ctx.current_state.active_tags.add("docs")
+        processor.template_ctx.current_state.active_tags.add("tests")
         
         result = processor.process_template_text(template_text)
         
@@ -666,7 +666,7 @@ class TestModeBlocks:
     def test_mode_block_proper_cleanup(self, processor):
         """Тест корректной очистки состояния после режимного блока."""
         # Добавляем начальный тег
-        processor.template_ctx.add_extra_tag("initial")
+        processor.template_ctx.current_state.active_tags.add("initial")
         
         template_text = """
         {% if tag:initial %}
@@ -1126,7 +1126,7 @@ class TestIntegration:
         # Устанавливаем реалистичный обработчик секций
         def section_handler(section_ref, template_ctx):
             section_name = section_ref.name
-            active_tags = template_ctx.get_active_tags()
+            active_tags = template_ctx.current_state.active_tags
             
             if "minimal" in active_tags:
                 return f"<!-- {section_name} (minimal) -->"
@@ -1235,7 +1235,7 @@ class TestIntegration:
         mock_load.return_value = (Path("/test/multi.ctx.md"), template_content)
         
         # Активируем тег Python
-        processor.template_ctx.add_extra_tag("python")
+        processor.template_ctx.current_state.active_tags.add("python")
         
         result = processor.process_template_file("multi")
         

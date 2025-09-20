@@ -222,48 +222,6 @@ class TemplateContext:
         evaluator = self.get_condition_evaluator()
         return evaluator.evaluate_condition_text(condition_text)
     
-    def get_active_tags(self) -> Set[str]:
-        """Возвращает множество активных тегов в текущем состоянии."""
-        return set(self.current_state.active_tags)
-    
-    def get_active_modes(self) -> Dict[str, str]:
-        """Возвращает словарь активных режимов в текущем состоянии."""
-        return dict(self.current_state.active_modes)
-    
-    def get_mode_options(self) -> ModeOptions:
-        """Возвращает текущие опции режимов."""
-        return self.current_state.mode_options
-    
-    def is_in_mode_block(self) -> bool:
-        """Проверяет, находимся ли мы внутри блока режима."""
-        return len(self.state_stack) > 0
-    
-    def get_nesting_level(self) -> int:
-        """Возвращает уровень вложенности режимных блоков."""
-        return len(self.state_stack)
-    
-    def add_extra_tag(self, tag: str) -> None:
-        """
-        Добавляет дополнительный тег в текущее состояние.
-        
-        Полезно для динамического изменения активных тегов
-        во время обработки шаблона.
-        
-        Args:
-            tag: Имя тега для добавления
-        """
-        self.current_state.active_tags.add(tag)
-        self._condition_evaluator = None  # Сброс кэша
-    
-    def remove_tag(self, tag: str) -> None:
-        """
-        Удаляет тег из текущего состояния.
-        
-        Args:
-            tag: Имя тега для удаления
-        """
-        self.current_state.active_tags.discard(tag)
-        self._condition_evaluator = None  # Сброс кэша
     
     def _create_condition_evaluator(self) -> TemplateConditionEvaluator:
         """Создает новый оценщик условий для текущего состояния."""
