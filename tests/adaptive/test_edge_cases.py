@@ -8,14 +8,10 @@
 from __future__ import annotations
 
 import pytest
-from pathlib import Path
 
-from lg.engine import run_render, run_report
-from lg.template.processor import TemplateProcessingError
-
+from lg.engine import run_render
 from .conftest import (
-    adaptive_project, minimal_adaptive_project,
-    make_run_options, make_engine,
+    adaptive_project, make_run_options, make_engine,
     create_conditional_template, write_modes_yaml, write_tags_yaml,
     ModeConfig, ModeSetConfig, TagConfig, TagSetConfig
 )
@@ -341,8 +337,7 @@ Should always be true for nonexistent set
 def test_concurrent_rendering_safety(adaptive_project):
     """Тест безопасности параллельного рендеринга."""
     import threading
-    import time
-    
+
     root = adaptive_project
     
     template_content = """# Concurrent Test

@@ -7,11 +7,7 @@
 
 from __future__ import annotations
 
-import pytest
-from pathlib import Path
-
 from lg.engine import run_render
-
 from .conftest import (
     federated_project, make_run_options, make_engine,
     create_conditional_template, write_modes_yaml, write_tags_yaml,

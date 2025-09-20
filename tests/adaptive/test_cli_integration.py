@@ -7,10 +7,6 @@
 
 from __future__ import annotations
 
-import json
-import pytest
-from pathlib import Path
-
 from tests.conftest import run_cli, jload
 from .conftest import adaptive_project, federated_project
 
