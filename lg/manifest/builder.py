@@ -138,8 +138,6 @@ def _collect_section_files(
 ) -> List[FileEntry]:
     """
     Собирает файлы для секции с применением всех фильтров.
-    
-    Портирует логику из старого build_manifest для работы с одной секцией.
     """
     scope_rel = section_ref.scope_rel
 
@@ -241,8 +239,6 @@ def _collect_section_files(
 def _prepare_target_specs(section_cfg: SectionCfg) -> List[tuple]:
     """
     Подготавливает спецификации целей с метрикой специфичности.
-    
-    Портирует логику из старого build_manifest.
     """
     target_specs = []
     for idx, target_rule in enumerate(section_cfg.targets):
@@ -287,8 +283,6 @@ def _should_skip_empty_file(file_path: Path, section_cfg: SectionCfg) -> bool:
 def _calculate_adapter_overrides(rel_path: str, target_specs: List[tuple]) -> Dict[str, dict]:
     """
     Вычисляет адресные оверрайды конфигураций адаптеров.
-    
-    Портирует логику из старого build_manifest.
     """
     overrides: Dict[str, dict] = {}
     

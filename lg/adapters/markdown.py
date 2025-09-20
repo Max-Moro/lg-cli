@@ -5,9 +5,6 @@ from .base import BaseAdapter
 from .context import LightweightContext
 
 
-# Тонкая оболочка над новым пайплайном lg.markdown.*
-
-
 class MarkdownAdapter(BaseAdapter[MarkdownCfg]):
     """
     Адаптер для Markdown (.md) файлов.

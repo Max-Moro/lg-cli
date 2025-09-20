@@ -1,8 +1,7 @@
 from __future__ import annotations
 
 # Публичный API пакета adapters:
-#  • process_groups — движок обработки (старый)
-#  • process_files — движок обработки файлов (V2) 
+#  • process_files — движок обработки файлов
 #  • get_adapter_for_path — ленивое получение класса адаптера по пути
 from .processor import process_files
 from .registry import get_adapter_for_path, register_lazy
