@@ -9,8 +9,7 @@ from __future__ import annotations
 from typing import Dict, List
 
 from ..paths import render_file_marker
-from ..types import LANG_NONE
-from ..types_v2 import ProcessedFile, RenderedDocument, RenderedSection, RenderBlock, SectionPlan
+from ..types import LANG_NONE, ProcessedFile, RenderedDocument, RenderedSection, RenderBlock, SectionPlan
 
 
 def render_section(plan: SectionPlan, processed_files: List[ProcessedFile]) -> RenderedSection:

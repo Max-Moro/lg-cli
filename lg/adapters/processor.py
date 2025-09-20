@@ -14,7 +14,7 @@ from ..adapters.context import LightweightContext
 from ..adapters.registry import get_adapter_for_path
 from ..io.fs import read_text
 from ..template.context import TemplateContext
-from ..types_v2 import ProcessedFile, SectionPlan
+from ..types import ProcessedFile, SectionPlan
 
 
 def process_files(plan: SectionPlan, template_ctx: TemplateContext) -> List[ProcessedFile]:

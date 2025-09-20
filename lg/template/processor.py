@@ -22,7 +22,7 @@ from .parser import ParserError, parse_template
 from .resolver import TemplateResolver, ResolverError
 from ..context.common import load_template_from, load_context_from
 from ..run_context import RunContext
-from ..types_v2 import SectionRef
+from ..types import SectionRef
 
 
 class TemplateProcessingError(Exception):

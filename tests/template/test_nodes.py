@@ -99,7 +99,7 @@ class TestSectionNode:
 
     def test_section_node_with_resolved_ref(self):
         """Узел секции с разрешенной ссылкой."""
-        from lg.types_v2 import SectionRef
+        from lg.types import SectionRef
         from pathlib import Path
         
         section_ref = SectionRef(

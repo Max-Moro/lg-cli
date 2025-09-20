@@ -10,7 +10,7 @@ from __future__ import annotations
 from ..api_schema import RunResult, Total, File, Context, Scope
 from ..protocol import PROTOCOL_VERSION
 from ..stats.collector import StatsCollector
-from ..types_v2 import TargetSpec
+from ..types import TargetSpec
 
 
 def build_run_result_from_collector(

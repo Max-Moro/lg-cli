@@ -8,7 +8,7 @@ from ruamel.yaml import YAML
 
 from lg.manifest.builder import build_section_manifest
 from lg.template.context import TemplateContext
-from lg.types_v2 import SectionRef
+from lg.types import SectionRef
 from lg.vcs import VcsProvider
 from tests.conftest import write
 from .conftest import mk_run_ctx

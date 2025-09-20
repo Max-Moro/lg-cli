@@ -21,7 +21,7 @@ from ..context.common import (
     parse_locator, resolve_cfg_root
 )
 from ..run_context import RunContext
-from ..types_v2 import SectionRef
+from ..types import SectionRef
 
 
 class ResolverError(Exception):

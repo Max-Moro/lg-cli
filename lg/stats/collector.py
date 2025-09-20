@@ -10,8 +10,7 @@ from __future__ import annotations
 from typing import Dict, List, Optional, Tuple
 
 from ..stats import TokenService
-from ..types import FileRow, Totals, ContextBlock  # Старый формат для совместимости
-from ..types_v2 import ProcessedFile, RenderedSection, SectionRef, FileStats, SectionStats
+from ..types import FileRow, Totals, ContextBlock, ProcessedFile, RenderedSection, SectionRef, FileStats, SectionStats
 
 
 class StatsCollector:

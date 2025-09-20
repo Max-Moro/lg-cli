@@ -22,8 +22,7 @@ from .run_context import RunContext
 from .section_processor import SectionProcessor
 from .stats import build_run_result_from_collector, StatsCollector, TokenService
 from .template import TemplateProcessor, TemplateProcessingError, TemplateContext
-from .types import RunOptions, RenderedDocument
-from .types_v2 import TargetSpec, SectionRef
+from .types import RunOptions, RenderedDocument, TargetSpec, SectionRef
 from .vcs import NullVcs
 from .vcs.git import GitVcs
 from .version import tool_version

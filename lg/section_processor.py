@@ -15,7 +15,7 @@ from .render.renderer import render_section
 from .run_context import RunContext
 from .stats.collector import StatsCollector
 from .template.context import TemplateContext
-from .types_v2 import RenderedSection, SectionRef
+from .types import RenderedSection, SectionRef
 
 
 class SectionProcessor:

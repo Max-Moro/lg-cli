@@ -11,10 +11,7 @@ from typing import List
 
 from ..paths import build_labels
 from ..template.context import TemplateContext
-from ..types import LANG_NONE
-from ..types_v2 import (
-    FileEntry, FileGroup, SectionManifest, SectionPlan
-)
+from ..types import LANG_NONE, FileEntry, FileGroup, SectionManifest, SectionPlan
 
 
 def build_section_plan(manifest: SectionManifest, template_ctx: TemplateContext) -> SectionPlan:

@@ -13,7 +13,7 @@ from typing import List, Optional, Set, Dict, Any
 
 from ..conditions.model import Condition
 from ..config.adaptive_model import ModeOptions
-from ..types_v2 import SectionRef
+from ..types import SectionRef
 
 
 @dataclass(frozen=True)

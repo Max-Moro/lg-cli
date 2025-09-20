@@ -19,7 +19,7 @@ from ..io.fs import build_gitignore_spec, iter_files
 from ..io.model import FilterNode
 from ..lang import get_language_for_file
 from ..template.context import TemplateContext
-from ..types_v2 import FileEntry, SectionManifest, SectionRef
+from ..types import FileEntry, SectionManifest, SectionRef
 from ..vcs import VcsProvider, NullVcs
 
 

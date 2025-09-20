@@ -9,12 +9,11 @@ from lg.run_context import RunContext
 from lg.section_processor import SectionProcessor
 from lg.stats.collector import StatsCollector
 from lg.template.context import TemplateContext
-from lg.types_v2 import SectionRef
+from lg.types import RunOptions, SectionRef
 from lg.vcs import NullVcs
 from lg.cache.fs_cache import Cache
 from lg.config.adaptive_loader import AdaptiveConfigLoader
 from lg.stats import TokenService
-from lg.types import RunOptions
 
 
 def _write(tmp: Path, rel: str, text: str = "x") -> Path:
