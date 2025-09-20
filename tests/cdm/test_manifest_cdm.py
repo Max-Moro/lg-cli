@@ -6,8 +6,9 @@ from pathlib import Path
 import pytest
 from ruamel.yaml import YAML
 
-from lg.context.resolver import resolve_context
 from lg.manifest.builder import build_section_manifest
+from lg.template.context import TemplateContext
+from lg.types_v2 import SectionRef
 from lg.vcs import VcsProvider
 from tests.conftest import write
 from .conftest import mk_run_ctx
@@ -19,10 +20,50 @@ class FakeVcs(VcsProvider):
     def changed_files(self, root: Path) -> set[str]:
         return set(self._changed)
 
-def _manifest_for_ctx(root: Path, ctx_name: str, *, mode: str = "all", vcs=None):
+
+def _build_section_manifest_v2(
+    root: Path, 
+    section_name: str, 
+    scope_rel: str = "", 
+    *, 
+    vcs_mode: str = "all", 
+    vcs=None
+):
+    """
+    Хелпер для построения манифеста одной секции в новом пайплайне V2.
+    
+    Args:
+        root: Корень репозитория
+        section_name: Имя секции
+        scope_rel: Относительный путь к скоупу (пустой для корня)
+        vcs_mode: Режим VCS ("all" или "changes")
+        vcs: VCS провайдер
+        
+    Returns:
+        SectionManifest для указанной секции
+    """
     rc = mk_run_ctx(root)
-    spec = resolve_context(f"ctx:{ctx_name}", rc)
-    return build_section_manifest(root=root, spec=spec, vcs_mode=mode, vcs=vcs)
+    template_ctx = TemplateContext(rc)
+    
+    # Определяем scope_dir на основе scope_rel
+    if scope_rel:
+        scope_dir = (root / scope_rel).resolve()
+    else:
+        scope_dir = root
+    
+    section_ref = SectionRef(
+        name=section_name,
+        scope_rel=scope_rel,
+        scope_dir=scope_dir
+    )
+    
+    return build_section_manifest(
+        section_ref=section_ref,
+        template_ctx=template_ctx,
+        root=root,
+        vcs=vcs or rc.vcs,
+        vcs_mode=vcs_mode
+    )
 
 def test_scope_and_filters_limit_to_scope(monorepo: Path):
     """
@@ -31,11 +72,9 @@ def test_scope_and_filters_limit_to_scope(monorepo: Path):
       - /src/**, /README.md
     Ничего из apps/web/** попадать не должно.
     """
-    man = _manifest_for_ctx(monorepo, "a")
-
-    # найдём секцию 'packages/svc-a::a'
-    sec = next(s for s in man.iter_sections() if s.id.as_key() == "packages/svc-a::a")
-    rels = [f.rel_path for f in sec.files]
+    # Тестируем секцию 'a' из скоупа 'packages/svc-a'
+    manifest = _build_section_manifest_v2(monorepo, "a", "packages/svc-a")
+    rels = [f.rel_path for f in manifest.files]
 
     # Попали файлы из своего скоупа и по allow
     assert "packages/svc-a/src/pkg/x.py" in rels
@@ -44,6 +83,10 @@ def test_scope_and_filters_limit_to_scope(monorepo: Path):
 
     # Не попали ничего из другого скоупа
     assert all(not p.startswith("apps/web/") for p in rels)
+    
+    # Проверяем, что секция правильно определила свой скоуп
+    assert manifest.ref.scope_rel == "packages/svc-a"
+    assert manifest.ref.name == "a"
 
 
 def test_targets_match_are_relative_to_scope(monorepo: Path):
@@ -51,17 +94,20 @@ def test_targets_match_are_relative_to_scope(monorepo: Path):
     В a.sec.yaml есть targets.match: '/src/pkg/**.py' → должен примениться только к
     packages/svc-a/src/pkg/x.py, но не к src/other/y.py.
     """
-    man = _manifest_for_ctx(monorepo, "a")
-    sec = next(s for s in man.iter_sections() if s.id.as_key() == "packages/svc-a::a")
+    manifest = _build_section_manifest_v2(monorepo, "a", "packages/svc-a")
 
     # карта rel -> overrides для python
     overrides = {
         f.rel_path: (f.adapter_overrides.get("python") or {})
-        for f in sec.files
+        for f in manifest.files
     }
 
     assert overrides.get("packages/svc-a/src/pkg/x.py").get("strip_function_bodies") is True
-    assert "python" not in sec.files[[f.rel_path for f in sec.files].index("packages/svc-a/src/other/y.py")].adapter_overrides
+    
+    # Найдем файл src/other/y.py
+    other_file = next((f for f in manifest.files if f.rel_path == "packages/svc-a/src/other/y.py"), None)
+    assert other_file is not None
+    assert "python" not in other_file.adapter_overrides
 
 
 def test_changes_mode_filters_by_vcs_and_scope(monorepo: Path):
@@ -77,10 +123,12 @@ def test_changes_mode_filters_by_vcs_and_scope(monorepo: Path):
     # создадим отсутствующий файл из changed
     write(monorepo / "packages" / "svc-a" / "src" / "only_this.py", "print('changed')\n")
 
-    man = _manifest_for_ctx(monorepo, "a", mode="changes", vcs=FakeVcs(changed))
-
-    sec = next(s for s in man.iter_sections() if s.id.as_key() == "packages/svc-a::a")
-    rels = [f.rel_path for f in sec.files]
+    manifest = _build_section_manifest_v2(
+        monorepo, "a", "packages/svc-a", 
+        vcs_mode="changes", 
+        vcs=FakeVcs(changed)
+    )
+    rels = [f.rel_path for f in manifest.files]
 
     assert "packages/svc-a/src/only_this.py" in rels
     assert "packages/svc-a/README.md" in rels
@@ -110,34 +158,25 @@ def test_empty_policy_include_allows_empty_files(monorepo: Path):
     empty_fp.write_bytes(b"")
 
     # 3) Строим манифест и проверяем попадание пустого файла
-    man = _manifest_for_ctx(monorepo, "a")
-    sec = next(s for s in man.iter_sections() if s.id.as_key() == "packages/svc-a::a")
-    rels = [f.rel_path for f in sec.files]
+    manifest = _build_section_manifest_v2(monorepo, "a", "packages/svc-a")
+    rels = [f.rel_path for f in manifest.files]
     assert "packages/svc-a/src/pkg/empty.py" in rels
 
 
 def test_missing_sections_diagnostic_includes_available(monorepo: Path):
     """
-    Если в контексте запрошена несуществующая секция в child, build_section_manifest должен
+    Если запрошена несуществующая секция в child скоупе, build_section_manifest должен
     упасть с сообщением:
       - указывает scope: apps/web/...
-      - перечисляет плейсхолдер и доступные секции в этом скоупе
+      - перечисляет доступные секции в этом скоупе
     """
-    # создадим контекст, который ссылается на несуществующую секцию в apps/web
-    bad_ctx = monorepo / "lg-cfg" / "bad.ctx.md"
-    bad_ctx.write_text("${@apps/web:missing}\n", encoding="utf-8")
-
-    rc = mk_run_ctx(monorepo)
-    spec = resolve_context("ctx:bad", rc)
-
+    # Тестируем попытку получить несуществующую секцию 'missing' из скоупа 'apps/web'
     with pytest.raises(RuntimeError) as ei:
-        build_section_manifest(root=monorepo, spec=spec, vcs_mode="all")
+        _build_section_manifest_v2(monorepo, "missing", "apps/web")
 
     msg = str(ei.value)
-    assert "Section(s) not found" in msg
-    assert "scope: " in msg and "apps/web" in msg
-    assert "available:" in msg
+    assert "not found" in msg
+    assert "apps" in msg and "web" in msg
+    assert "Available:" in msg
     # в нашем фикстурном apps/web есть 'web-api'
     assert "web-api" in msg
-    # и должен присутствовать исходный плейсхолдер
-    assert "placeholder '@apps/web:missing'" in msg

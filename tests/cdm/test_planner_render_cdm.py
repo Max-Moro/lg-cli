@@ -2,54 +2,103 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from lg.context.resolver import resolve_context
 from lg.manifest.builder import build_section_manifest
-from lg.plan.planner import build_plan
-from lg.render.sections import render_by_section
+from lg.plan.planner_v2 import build_section_plan
+from lg.render.renderer_v2 import render_section
+from lg.adapters.processor_v2 import process_files
+from lg.template.context import TemplateContext
+from lg.types_v2 import SectionRef
 from .conftest import mk_run_ctx
+
+
+def _process_section_v2(
+    root: Path, 
+    section_name: str, 
+    scope_rel: str = "", 
+    *, 
+    vcs_mode: str = "all", 
+    vcs=None
+):
+    """
+    Хелпер для полной обработки секции в новом пайплайне V2:
+    manifest -> plan -> process -> render
+    
+    Returns:
+        Tuple (manifest, plan, rendered_section)
+    """
+    rc = mk_run_ctx(root)
+    template_ctx = TemplateContext(rc)
+    
+    # Определяем scope_dir на основе scope_rel
+    if scope_rel:
+        scope_dir = (root / scope_rel).resolve()
+    else:
+        scope_dir = root
+    
+    section_ref = SectionRef(
+        name=section_name,
+        scope_rel=scope_rel,
+        scope_dir=scope_dir
+    )
+    
+    # 1. Строим манифест
+    manifest = build_section_manifest(
+        section_ref=section_ref,
+        template_ctx=template_ctx,
+        root=root,
+        vcs=vcs or rc.vcs,
+        vcs_mode=vcs_mode
+    )
+    
+    # 2. Строим план
+    plan = build_section_plan(manifest, template_ctx)
+    
+    # 3. Обрабатываем файлы
+    processed_files = process_files(plan, template_ctx)
+    
+    # 4. Рендерим
+    rendered_section = render_section(plan, processed_files)
+    
+    return manifest, plan, rendered_section
 
 
 def test_planner_and_render_for_addressed_sections(monorepo: Path):
     """
-    Проверяем:
+    Проверяем работу полного пайплайна V2 для CDM секций:
       • для секции packages/svc-a::a — use_fence=True, есть группы python и '' (md),
         рендер содержит ```python и FILE-маркер с укороченной меткой README.md
       • для секции apps/web::web-api — md_only=True, use_fence=False, рендер без FILE-маркеров
     """
-    rc = mk_run_ctx(monorepo)
-    spec = resolve_context("ctx:a", rc)
-
-    manifest = build_section_manifest(root=monorepo, spec=spec, vcs_mode=rc.mode_options.vcs_mode, vcs=rc.vcs)
-    plan = build_plan(manifest, rc)
-
-    # Быстрый smoke: есть обе секции
-    ids = [sec.section_id.as_key() for sec in plan.sections]
-    assert "packages/svc-a::a" in ids
-    assert "apps/web::web-api" in ids
-
-    # Проверим свойства плана
-    sec_a = next(s for s in plan.sections if s.section_id.as_key() == "packages/svc-a::a")
-    assert sec_a.use_fence is True and sec_a.md_only is False
-    langs = {g.lang for g in sec_a.groups}
+    # Тестируем секцию 'a' из скоупа 'packages/svc-a'
+    manifest_a, plan_a, rendered_a = _process_section_v2(monorepo, "a", "packages/svc-a")
+    
+    # Проверяем свойства плана секции A
+    assert plan_a.use_fence is True and plan_a.md_only is False
+    langs = {g.lang for g in plan_a.groups}
     assert "python" in langs and "" in langs  # есть и код, и markdown-группа
-
-    # Секция web-api — чистый MD без fenced/FILE
-    sec_web = next(s for s in plan.sections if s.section_id.as_key() == "apps/web::web-api")
-    assert sec_web.md_only is True and sec_web.use_fence is False
-
-    # Рендер
-    from lg.adapters.engine import process_groups
-    blobs = process_groups(plan, rc)
-    rendered_by_sec = render_by_section(plan, blobs)
-
-    txt_a = rendered_by_sec[sec_a.section_id]
+    
+    # Проверяем рендер секции A
+    txt_a = rendered_a.text
     assert "```python" in txt_a
     # метка README должна быть короткой (auto снимает общий префикс)
     assert "# —— FILE: README.md ——" in txt_a or "# —— FILE: packages/svc-a/README.md ——" in txt_a
     # возможно, для md-группы тоже fenced-блок без языка
     assert "```" in txt_a
-
-    txt_web = rendered_by_sec[sec_web.section_id]
+    
+    # Тестируем секцию 'web-api' из скоупа 'apps/web'
+    manifest_web, plan_web, rendered_web = _process_section_v2(monorepo, "web-api", "apps/web")
+    
+    # Секция web-api — чистый MD без fenced/FILE
+    assert plan_web.md_only is True and plan_web.use_fence is False
+    
+    # Проверяем рендер секции web-api
+    txt_web = rendered_web.text
     assert "# —— FILE:" not in txt_web
     assert "```" not in txt_web
     assert "# web docs" in txt_web  # содержимое apps/web/docs/index.md
+    
+    # Дополнительные проверки для CDM
+    assert manifest_a.ref.scope_rel == "packages/svc-a"
+    assert manifest_a.ref.name == "a"
+    assert manifest_web.ref.scope_rel == "apps/web"
+    assert manifest_web.ref.name == "web-api"
