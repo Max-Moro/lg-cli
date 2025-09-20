@@ -24,16 +24,6 @@ class ModelsConfig:
     models: Dict[str, ModelInfo] = field(default_factory=dict)
     plans: List[PlanInfo] = field(default_factory=list)
 
-    def list_display_names(self) -> List[str]:
-        out: List[str] = []
-        for m in self.models.values():
-            out.append(m.alias)
-            for p in self.plans:
-                if p.provider == m.provider and p.featured:
-                    out.append(f"{m.alias} ({p.name})")
-        # стабильная сортировка без дубликатов
-        return sorted(dict.fromkeys(out).keys())
-
 @dataclass(frozen=True)
 class ResolvedModel:
     # Полностью резолвленное представление (с учётом плана)

@@ -83,24 +83,3 @@ class RunContext:
     adaptive_loader: AdaptiveConfigLoader
     mode_options: ModeOptions = field(default_factory=ModeOptions)  # смердженные опции от режимов
     active_tags: Set[str] = field(default_factory=set)  # все активные теги
-
-    def get_condition_context(self):
-        """Создание контекста для вычисления условий."""
-
-        # Получаем все доступные наборы тегов
-        tag_sets, global_tags = self.adaptive_loader.get_all_available_tags()
-        
-        # Создаем карту наборов тегов для контекста
-        tagsets: Dict[str, Set[str]] = {}
-        for set_name, tag_set in tag_sets.items():
-            tagsets[set_name] = set(tag_set.tags.keys())
-        
-        # Добавляем глобальные теги как отдельный набор
-        if global_tags:
-            tagsets["global"] = set(global_tags.keys())
-        
-        return ConditionContext(
-            active_tags=self.active_tags,
-            tagsets=tagsets,
-            origin="self",  # По умолчанию локальный скоуп
-        )
