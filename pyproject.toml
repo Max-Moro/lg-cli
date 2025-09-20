@@ -27,6 +27,7 @@ listing-generator = "lg.cli:main"
 dev = [
     "pytest>=8.0",
     "datamodel-code-generator>=0.25",
+    "vulture>=2.14",
 ]
 
 # Дополнительные языки для будущих итераций (M7)
@@ -36,6 +37,10 @@ extended-langs = [
     "tree-sitter-c",
     "tree-sitter-scala",
 ]
+
+[tool.setuptools.packages.find]
+include = ["lg*"]
+exclude = ["test_cache*", "tests*"]
 
 [tool.setuptools.package-data]
 # Включить все файлы пресетов и их вложения

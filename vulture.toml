@@ -1,0 +1,25 @@
+[tool.vulture]
+# Исключаемые директории и файлы
+exclude = [
+    "tests/*",
+    "test_cache/*", 
+    "__pycache__/*",
+    ".venv/*",
+    "build/*",
+    "dist/*",
+    "*.egg-info/*",
+    "htmlcov/*",
+    "lg-cfg/*"
+]
+
+# Минимальная конфиденция для обнаружения мертвого кода (0-100)
+min_confidence = 60
+
+# Игнорировать функции и классы, которые начинаются с подчеркивания
+ignore_decorators = ["@staticmethod", "@classmethod"]
+
+# Игнорировать файлы с определенными паттернами
+ignore_names = ["_*", "test_*", "*_test"]
+
+# Считать как используемые функции с определенными именами
+make_whitelist = true
