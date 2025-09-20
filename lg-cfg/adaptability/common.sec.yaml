@@ -22,11 +22,8 @@ src:
           - "/io/"
           - "/cache/"
           - "/manifest/"
+          - "/conditions/"
         children:
-          conditions:
-            mode: allow
-            allow:
-              - "/evaluator.py"
           template:
             mode: allow
             allow:

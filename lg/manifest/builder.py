@@ -66,7 +66,10 @@ def build_section_manifest(
     
     # Создаем базовый фильтр с условными дополнениями
     filter_engine = _create_enhanced_filter_engine(section_cfg, template_ctx)
-    
+
+    # Вычисляем финальные опции адаптеров с учетом условий
+    adapters_cfg = _compute_final_adapter_configs(section_cfg, template_ctx)
+
     # Получаем файлы секции
     files = _collect_section_files(
         section_ref=section_ref,
@@ -74,16 +77,48 @@ def build_section_manifest(
         filter_engine=filter_engine,
         changed_files=changed,
         vcs_mode=vcs_mode,
-        root=root
+        root=root,
+        adapters_cfg=adapters_cfg
     )
-    
+
     # Создаем манифест
     return SectionManifest(
         ref=section_ref,
         files=files,
         path_labels=section_cfg.path_labels,
-        adapters_cfg=section_cfg.adapters
+        adapters_cfg=adapters_cfg
     )
+
+
+def _compute_final_adapter_configs(section_cfg: SectionCfg, template_ctx: TemplateContext) -> Dict[str, Dict]:
+    """
+    Вычисляет финальные опции адаптеров с учетом условных правил.
+    
+    Args:
+        section_cfg: Конфигурация секции с AdapterConfig объектами
+        template_ctx: Контекст шаблона с активными тегами
+        
+    Returns:
+        Словарь финальных опций адаптеров (имя_адаптера -> опции)
+    """
+    final_configs = {}
+    for adapter_name, adapter_config in section_cfg.adapters.items():
+        # Начинаем с базовых опций
+        final_options = dict(adapter_config.base_options)
+
+        # Применяем условные опции в порядке их определения
+        # Более поздние правила переопределяют более ранние
+        for conditional_option in adapter_config.conditional_options:
+            # Вычисляем условие
+            condition_met = template_ctx.evaluate_condition_text(conditional_option.condition)
+
+            if condition_met:
+                # Применяем опции из этого условного блока
+                final_options.update(conditional_option.options)
+
+        final_configs[adapter_name] = final_options
+    
+    return final_configs
 
 
 def _create_enhanced_filter_engine(section_cfg: SectionCfg, template_ctx: TemplateContext) -> FilterEngine:
@@ -134,7 +169,8 @@ def _collect_section_files(
     filter_engine: FilterEngine,
     changed_files: Set[str],
     vcs_mode: str,
-    root: Path
+    root: Path,
+    adapters_cfg: dict[str, dict]
 ) -> List[FileEntry]:
     """
     Собирает файлы для секции с применением всех фильтров.
@@ -213,7 +249,7 @@ def _collect_section_files(
             continue
         
         # Обработка пустых файлов
-        if _should_skip_empty_file(fp, section_cfg):
+        if _should_skip_empty_file(fp, bool(section_cfg.skip_empty), adapters_cfg):
             continue
         
         # Определяем язык файла
@@ -229,7 +265,7 @@ def _collect_section_files(
             language_hint=lang,
             adapter_overrides=overrides
         ))
-    
+
     # Сортируем по rel_path для стабильности
     files.sort(key=lambda f: f.rel_path)
     
@@ -249,11 +285,11 @@ def _prepare_target_specs(section_cfg: SectionCfg) -> List[tuple]:
     return target_specs
 
 
-def _should_skip_empty_file(file_path: Path, section_cfg: SectionCfg) -> bool:
+def _should_skip_empty_file(file_path: Path, effective_exclude_empty: bool, adapters_cfg: dict[str, dict]) -> bool:
     """
     Определяет, следует ли пропустить пустой файл.
     
-    Учитывает политику секции и адаптера.
+    Учитывает политику секции и адаптера с учетом условных правил.
     """
     try:
         size0 = (file_path.stat().st_size == 0)
@@ -265,10 +301,9 @@ def _should_skip_empty_file(file_path: Path, section_cfg: SectionCfg) -> bool:
     
     # Определяем адаптер и его политику
     adapter_cls = get_adapter_for_path(file_path)
-    effective_exclude_empty = bool(section_cfg.skip_empty)
-    
+
     # Проверяем политику адаптера
-    raw_cfg = section_cfg.adapters.get(adapter_cls.name)
+    raw_cfg = adapters_cfg.get(adapter_cls.name)
     if raw_cfg and "empty_policy" in raw_cfg:
         empty_policy = cast(EmptyPolicy, raw_cfg["empty_policy"])
         

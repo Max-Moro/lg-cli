@@ -1,11 +1,68 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Dict, List, Literal
+from typing import Dict, List, Literal, Any
 
 from ..io.model import FilterNode, ConditionalFilter
 from ..types import PathLabelMode
 
+
+@dataclass
+class ConditionalAdapterOptions:
+    """
+    Условные опции адаптера.
+
+    Если условие истинно, применяются указанные опции адаптера.
+    """
+    condition: str  # Условие в виде строки (например, "tag:include-inits")
+    options: Dict[str, Any] = field(default_factory=dict)  # Опции адаптера для применения
+
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any]) -> ConditionalAdapterOptions:
+        """Создание из словаря YAML."""
+        if not isinstance(data, dict):
+            raise ValueError("ConditionalAdapterOptions data must be a dictionary")
+
+        if "condition" not in data:
+            raise ValueError("ConditionalAdapterOptions must have 'condition' field")
+
+        condition = str(data["condition"])
+
+        # Все остальные ключи (кроме condition) являются опциями адаптера
+        options = {k: v for k, v in data.items() if k != "condition"}
+
+        return cls(condition=condition, options=options)
+
+@dataclass
+class AdapterConfig:
+    """
+    Конфигурация адаптера с поддержкой условных опций.
+    """
+    base_options: Dict[str, Any] = field(default_factory=dict)  # базовые опции адаптера
+    conditional_options: List[ConditionalAdapterOptions] = field(default_factory=list)  # условные опции
+    
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any]) -> AdapterConfig:
+        """Создание из словаря YAML."""
+        if not isinstance(data, dict):
+            return cls(base_options=dict(data) if data else {})
+        
+        base_options = {}
+        conditional_options = []
+        
+        for key, value in data.items():
+            if key == "when":
+                # Обрабатываем условные опции
+                if isinstance(value, list):
+                    for when_item in value:
+                        conditional_options.append(ConditionalAdapterOptions.from_dict(when_item))
+                else:
+                    raise ValueError(f"'when' must be a list, got {type(value)}")
+            else:
+                # Обычные опции адаптера
+                base_options[key] = value
+        
+        return cls(base_options=base_options, conditional_options=conditional_options)
 
 @dataclass
 class TargetRule:
@@ -28,8 +85,8 @@ class SectionCfg:
     code_fence: bool = True                  # оборачивать файлы в ```{lang}
     path_labels: PathLabelMode = "auto"      # Как печатать файл-маркеры в секции
 
-    # Ленивые конфиги адаптеров: имя_адаптера → сырой dict из YAML
-    adapters: Dict[str, dict] = field(default_factory=dict)
+    # Конфиги адаптеров с поддержкой условных опций: имя_адаптера → AdapterConfig
+    adapters: Dict[str, AdapterConfig] = field(default_factory=dict)
 
     # Адресные оверрайды по путям
     targets: List[TargetRule] = field(default_factory=list)
@@ -45,13 +102,16 @@ class SectionCfg:
         filters = FilterNode.from_dict(node.get("filters", {"mode": "block"}))
         # adapters config (всё, что не service keys)
         service_keys = {"extensions", "filters", "skip_empty", "code_fence", "targets", "path_labels", "when"}
-        adapters_cfg: Dict[str, dict] = {}
+        adapters_cfg: Dict[str, AdapterConfig] = {}
         for k, v in node.items():
             if k in service_keys:
                 continue
             if not isinstance(v, dict):
                 raise RuntimeError(f"Adapter config for '{k}' in section '{name}' must be a mapping")
-            adapters_cfg[str(k)] = dict(v)
+            try:
+                adapters_cfg[str(k)] = AdapterConfig.from_dict(dict(v))
+            except Exception as e:
+                raise RuntimeError(f"Failed to parse adapter config for '{k}' in section '{name}': {e}")
 
         # targets
         targets_raw = node.get("targets", []) or []
