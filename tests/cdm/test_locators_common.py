@@ -5,7 +5,7 @@ from pathlib import Path
 
 import pytest
 
-from lg.context.common import parse_locator, resolve_cfg_root
+from lg.template.common import parse_locator, resolve_cfg_root
 from lg.config.paths import cfg_root
 
 

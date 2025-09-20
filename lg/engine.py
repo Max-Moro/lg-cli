@@ -213,7 +213,7 @@ def _parse_target(target: str) -> TargetSpec:
     Returns:
         Спецификация цели
     """
-    from .context.common import CTX_SUFFIX
+    from lg.template.common import CTX_SUFFIX
     
     root = Path.cwd().resolve()
     cfg_path = cfg_root(root)

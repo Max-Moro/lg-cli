@@ -11,7 +11,7 @@ from zipfile import ZipFile, ZIP_DEFLATED
 from .cache.fs_cache import Cache
 from .config import list_sections_peek
 from .config.paths import cfg_root
-from .context import list_contexts
+from .template import list_contexts
 from .diag_report_schema import (
     DiagReport, DiagConfig, DiagCache, DiagCheck, DiagEnv, DiagMigrationRef, DiagLastError, Severity
 )

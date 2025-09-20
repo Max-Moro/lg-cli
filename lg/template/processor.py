@@ -20,7 +20,7 @@ from .nodes import (
 )
 from .parser import ParserError, parse_template
 from .resolver import TemplateResolver, ResolverError
-from ..context.common import load_template_from, load_context_from
+from .common import load_template_from, load_context_from
 from ..run_context import RunContext
 from ..types import SectionRef
 
@@ -71,11 +71,11 @@ class TemplateProcessor:
     def _load_template_from_wrapper(self, cfg_root, name):
         """Обёртка для load_template_from, которую можно мокать в тестах."""
         return load_template_from(cfg_root, name)
-    
+
     def _load_context_from_wrapper(self, cfg_root, name):
         """Обёртка для load_context_from, которую можно мокать в тестах."""
         return load_context_from(cfg_root, name)
-        
+
     def set_section_handler(self, handler: Callable[[SectionRef, TemplateContext], str]) -> None:
         """
         Устанавливает обработчик секций.

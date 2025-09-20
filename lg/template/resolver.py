@@ -17,9 +17,7 @@ from .nodes import (
     ConditionalBlockNode, ModeBlockNode, ElseBlockNode
 )
 from .parser import parse_template
-from ..context.common import (
-    parse_locator, resolve_cfg_root
-)
+from .common import parse_locator, resolve_cfg_root
 from ..run_context import RunContext
 from ..types import SectionRef
 
@@ -70,13 +68,13 @@ class TemplateResolver:
         if load_template_fn is not None:
             self.load_template_fn = load_template_fn
         else:
-            from ..context.common import load_template_from
+            from lg.template.common import load_template_from
             self.load_template_fn = load_template_from
             
         if load_context_fn is not None:
             self.load_context_fn = load_context_fn  
         else:
-            from ..context.common import load_context_from
+            from lg.template.common import load_context_from
             self.load_context_fn = load_context_from
         
         # Кэш загруженных шаблонов для предотвращения циклов и повторной загрузки
