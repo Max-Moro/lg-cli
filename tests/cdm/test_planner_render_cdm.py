@@ -3,7 +3,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from lg.manifest.builder import build_section_manifest
-from lg.plan.planner_v2 import build_section_plan
+from lg.plan.planner import build_section_plan
 from lg.render.renderer_v2 import render_section
 from lg.adapters.processor_v2 import process_files
 from lg.template.context import TemplateContext

@@ -10,7 +10,7 @@ from __future__ import annotations
 
 from .adapters.processor_v2 import process_files
 from .manifest.builder import build_section_manifest
-from .plan.planner_v2 import build_section_plan
+from .plan.planner import build_section_plan
 from .render.renderer_v2 import render_section
 from .run_context import RunContext
 from .stats.collector import StatsCollector
@@ -26,8 +26,8 @@ class SectionProcessor:
     но для одной секции за раз с учетом активного контекста шаблона.
     
     Теперь работает как оркестратор отдельных модулей:
-    - manifest/builder_v2.py - построение манифеста секции
-    - plan/planner_v2.py - планирование рендеринга
+    - manifest/builder.py - построение манифеста секции
+    - plan/planner.py - планирование рендеринга
     - adapters/processor_v2.py - обработка файлов
     - render/renderer_v2.py - рендеринг секции
     """
