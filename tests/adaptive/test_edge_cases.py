@@ -182,46 +182,45 @@ def test_unicode_in_configurations(adaptive_project):
     assert "这是中文文本" not in result  # тег 中文 не активен
 
 
-@pytest.mark.skip(reason="Condition lexer doesn't support hyphens in tag names")
 def test_massive_number_of_tags(adaptive_project):
     """Тест производительности с большим количеством тегов."""
     root = adaptive_project
-    
+
     # Создаем большое количество тегов
     massive_tag_sets = {}
     for i in range(10):  # 10 наборов
         tags = {}
         for j in range(100):  # по 100 тегов в каждом
             tags[f"tag-{i}-{j}"] = TagConfig(title=f"Tag {i}-{j}")
-        
+
         massive_tag_sets[f"set-{i}"] = TagSetConfig(
             title=f"Set {i}",
             tags=tags
         )
-    
+
     write_tags_yaml(root, massive_tag_sets, append=True)
-    
-    # Создаем шаблон с множественными условиями TAGSET
+
+    # Создаем шаблон с множественными условиями tag (проверяем активность конкретных тегов)
     conditions = []
     for i in range(5):
         for j in range(10):
-            conditions.append(f"{{% if TAGSET:set-{i}:tag-{i}-{j} %}}Tag {i}-{j} active{{% endif %}}")
+            conditions.append(f"{{% if tag:tag-{i}-{j} %}}Tag {i}-{j} active{{% endif %}}")
     
     template_content = "# Massive Tags Test\n\n" + "\n".join(conditions)
     create_conditional_template(root, "massive-tags-test", template_content)
-    
+
     # Активируем некоторые теги
     active_tags = {f"tag-0-{j}" for j in range(5)}  # теги из первого набора
     options = make_run_options(extra_tags=active_tags)
-    
+
     # Проверяем, что рендеринг завершается разумное время
     result = render_for_test(root, "ctx:massive-tags-test", options)
-    
+
     # Проверяем результат
     for j in range(5):
         assert f"Tag 0-{j} active" in result
-    
-    # Теги из других наборов не должны активироваться 
+
+    # Теги из других наборов не должны активироваться
     assert "Tag 1-0 active" not in result
 
 

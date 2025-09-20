@@ -49,25 +49,23 @@ class ConditionLexer:
         # Пробелы и табуляция (игнорируем)
         (r'\s+', 'WHITESPACE', True),
         
-        # Ключевые слова (проверяем в порядке убывания длины для избежания конфликтов)
-        (r'\bTAGSET\b', 'KEYWORD', False),
-        (r'\bscope\b', 'KEYWORD', False),
-        (r'\btag\b', 'KEYWORD', False),
-        (r'\bAND\b', 'KEYWORD', False),
-        (r'\bOR\b', 'KEYWORD', False),
-        (r'\bNOT\b', 'KEYWORD', False),
-        
-        # Символы
+        # Символы (проверяем перед идентификаторами)
         (r'\(', 'SYMBOL', False),
         (r'\)', 'SYMBOL', False),
         (r':', 'SYMBOL', False),
         
-        # Идентификаторы (буквы, цифры, подчёркивания, дефисы)
-        (r'[a-zA-Z_][a-zA-Z0-9_-]*', 'IDENTIFIER', False),
+        # Идентификаторы (Unicode буквы, цифры, подчёркивания, дефисы)
+        # Ключевые слова будем определять после захвата
+        (r'[\w][\w-]*', 'IDENTIFIER', False),
         
         # Неизвестный символ (ошибка)
         (r'.', 'UNKNOWN', False),
     ]
+    
+    # Ключевые слова для постпроцессинга
+    KEYWORDS = {
+        'TAGSET', 'scope', 'tag', 'AND', 'OR', 'NOT'
+    }
     
     def __init__(self):
         # Компилируем регулярные выражения для лучшей производительности
@@ -104,8 +102,13 @@ class ConditionLexer:
                         if token_type == 'UNKNOWN':
                             raise ValueError(f"Unexpected character '{value}' at position {position}")
                         
+                        # Определяем тип токена: ключевое слово или идентификатор
+                        final_type = token_type
+                        if token_type == 'IDENTIFIER' and value in self.KEYWORDS:
+                            final_type = 'KEYWORD'
+                        
                         tokens.append(Token(
-                            type=token_type,
+                            type=final_type,
                             value=value,
                             position=position
                         ))
