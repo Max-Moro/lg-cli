@@ -2,16 +2,16 @@ from __future__ import annotations
 
 from pathlib import Path
 
+from lg.adapters.processor import process_files
 from lg.manifest.builder import build_section_manifest
 from lg.plan.planner import build_section_plan
 from lg.render.renderer import render_section
-from lg.adapters.processor import process_files
 from lg.template.context import TemplateContext
 from lg.types import SectionRef
 from .conftest import mk_run_ctx
 
 
-def _process_section_v2(
+def _process_section(
     root: Path, 
     section_name: str, 
     scope_rel: str = "", 
@@ -70,7 +70,7 @@ def test_planner_and_render_for_addressed_sections(monorepo: Path):
       • для секции apps/web::web-api — md_only=True, use_fence=False, рендер без FILE-маркеров
     """
     # Тестируем секцию 'a' из скоупа 'packages/svc-a'
-    manifest_a, plan_a, rendered_a = _process_section_v2(monorepo, "a", "packages/svc-a")
+    manifest_a, plan_a, rendered_a = _process_section(monorepo, "a", "packages/svc-a")
     
     # Проверяем свойства плана секции A
     assert plan_a.use_fence is True and plan_a.md_only is False
@@ -86,7 +86,7 @@ def test_planner_and_render_for_addressed_sections(monorepo: Path):
     assert "```" in txt_a
     
     # Тестируем секцию 'web-api' из скоупа 'apps/web'
-    manifest_web, plan_web, rendered_web = _process_section_v2(monorepo, "web-api", "apps/web")
+    manifest_web, plan_web, rendered_web = _process_section(monorepo, "web-api", "apps/web")
     
     # Секция web-api — чистый MD без fenced/FILE
     assert plan_web.md_only is True and plan_web.use_fence is False

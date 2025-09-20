@@ -27,7 +27,7 @@ def _write_sections_yaml(tmp: Path, text: str) -> Path:
     return p
 
 
-def test_basic_section_manifest_v2(tmp_path: Path):
+def test_basic_section_manifest(tmp_path: Path):
     """Тестирует базовую функциональность build_section_manifest."""
     
     # Создаем файловую структуру
@@ -94,7 +94,7 @@ py-files:
     assert "tests/test_main.py" in file_paths
 
 
-def test_conditional_filters_v2(tmp_path: Path):
+def test_conditional_filters(tmp_path: Path):
     """Тестирует работу условных фильтров."""
     
     # Создаем файловую структуру

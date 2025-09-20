@@ -53,7 +53,7 @@ tests:
         mode: allow
         allow:
           - "/conftest.py"
-          - "/test_manifest_builder_v2.py"
+          - "/test_manifest_builder.py"
           - "/cdm/conftest.py"
           - "/cdm/test_manifest_cdm.py"
           - "/cdm/test_planner_render_cdm.py"

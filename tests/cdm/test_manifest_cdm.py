@@ -21,7 +21,7 @@ class FakeVcs(VcsProvider):
         return set(self._changed)
 
 
-def _build_section_manifest_v2(
+def _build_section_manifest(
     root: Path, 
     section_name: str, 
     scope_rel: str = "", 
@@ -73,7 +73,7 @@ def test_scope_and_filters_limit_to_scope(monorepo: Path):
     Ничего из apps/web/** попадать не должно.
     """
     # Тестируем секцию 'a' из скоупа 'packages/svc-a'
-    manifest = _build_section_manifest_v2(monorepo, "a", "packages/svc-a")
+    manifest = _build_section_manifest(monorepo, "a", "packages/svc-a")
     rels = [f.rel_path for f in manifest.files]
 
     # Попали файлы из своего скоупа и по allow
@@ -94,7 +94,7 @@ def test_targets_match_are_relative_to_scope(monorepo: Path):
     В a.sec.yaml есть targets.match: '/src/pkg/**.py' → должен примениться только к
     packages/svc-a/src/pkg/x.py, но не к src/other/y.py.
     """
-    manifest = _build_section_manifest_v2(monorepo, "a", "packages/svc-a")
+    manifest = _build_section_manifest(monorepo, "a", "packages/svc-a")
 
     # карта rel -> overrides для python
     overrides = {
@@ -123,7 +123,7 @@ def test_changes_mode_filters_by_vcs_and_scope(monorepo: Path):
     # создадим отсутствующий файл из changed
     write(monorepo / "packages" / "svc-a" / "src" / "only_this.py", "print('changed')\n")
 
-    manifest = _build_section_manifest_v2(
+    manifest = _build_section_manifest(
         monorepo, "a", "packages/svc-a", 
         vcs_mode="changes", 
         vcs=FakeVcs(changed)
@@ -158,7 +158,7 @@ def test_empty_policy_include_allows_empty_files(monorepo: Path):
     empty_fp.write_bytes(b"")
 
     # 3) Строим манифест и проверяем попадание пустого файла
-    manifest = _build_section_manifest_v2(monorepo, "a", "packages/svc-a")
+    manifest = _build_section_manifest(monorepo, "a", "packages/svc-a")
     rels = [f.rel_path for f in manifest.files]
     assert "packages/svc-a/src/pkg/empty.py" in rels
 
@@ -172,7 +172,7 @@ def test_missing_sections_diagnostic_includes_available(monorepo: Path):
     """
     # Тестируем попытку получить несуществующую секцию 'missing' из скоупа 'apps/web'
     with pytest.raises(RuntimeError) as ei:
-        _build_section_manifest_v2(monorepo, "missing", "apps/web")
+        _build_section_manifest(monorepo, "missing", "apps/web")
 
     msg = str(ei.value)
     assert "not found" in msg

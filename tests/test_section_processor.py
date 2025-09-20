@@ -2,18 +2,16 @@ from __future__ import annotations
 
 from pathlib import Path
 
-import pytest
-
+from lg.cache.fs_cache import Cache
+from lg.config.adaptive_loader import AdaptiveConfigLoader
 from lg.config.adaptive_model import ModeOptions
 from lg.run_context import RunContext
 from lg.section_processor import SectionProcessor
+from lg.stats import TokenService
 from lg.stats.collector import StatsCollector
 from lg.template.context import TemplateContext
 from lg.types import RunOptions, SectionRef
 from lg.vcs import NullVcs
-from lg.cache.fs_cache import Cache
-from lg.config.adaptive_loader import AdaptiveConfigLoader
-from lg.stats import TokenService
 
 
 def _write(tmp: Path, rel: str, text: str = "x") -> Path:
@@ -30,8 +28,8 @@ def _write_sections_yaml(tmp: Path, text: str) -> Path:
     return p
 
 
-def test_section_processor_integration_v2(tmp_path: Path):
-    """Тестирует интеграцию section_processor с новым builder_v2."""
+def test_section_processor_integration(tmp_path: Path):
+    """Тестирует интеграцию section_processor с manifest.builder."""
     
     # Создаем файловую структуру
     _write(tmp_path, "src/main.py", 'print("hello world")')
