@@ -4,7 +4,7 @@ from pathlib import Path
 
 from lg.manifest.builder import build_section_manifest
 from lg.plan.planner import build_section_plan
-from lg.render.renderer_v2 import render_section
+from lg.render.renderer import render_section
 from lg.adapters.processor import process_files
 from lg.template.context import TemplateContext
 from lg.types_v2 import SectionRef

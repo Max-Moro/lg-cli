@@ -11,7 +11,7 @@ from __future__ import annotations
 from .adapters.processor import process_files
 from .manifest.builder import build_section_manifest
 from .plan.planner import build_section_plan
-from .render.renderer_v2 import render_section
+from .render.renderer import render_section
 from .run_context import RunContext
 from .stats.collector import StatsCollector
 from .template.context import TemplateContext
@@ -29,7 +29,7 @@ class SectionProcessor:
     - manifest/builder.py - построение манифеста секции
     - plan/planner.py - планирование рендеринга
     - adapters/processor.py - обработка файлов
-    - render/renderer_v2.py - рендеринг секции
+    - render/renderer.py - рендеринг секции
     """
     
     def __init__(self, run_ctx: RunContext, stats_collector: StatsCollector):

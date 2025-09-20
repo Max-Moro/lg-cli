@@ -25,7 +25,7 @@ def render_section(plan: SectionPlan, processed_files: List[ProcessedFile]) -> R
         Отрендеренная секция
     """
     # Рендерим документ
-    rendered_doc = render_document_v2(plan, processed_files)
+    rendered_doc = render_document(plan, processed_files)
     
     # Создаем RenderedSection
     rendered_section = RenderedSection(
@@ -37,7 +37,7 @@ def render_section(plan: SectionPlan, processed_files: List[ProcessedFile]) -> R
     return rendered_section
 
 
-def render_document_v2(plan: SectionPlan, processed_files: List[ProcessedFile]) -> RenderedDocument:
+def render_document(plan: SectionPlan, processed_files: List[ProcessedFile]) -> RenderedDocument:
     """
     Генерирует финальный текст и блоки с новой IR-моделью.
     
@@ -123,4 +123,4 @@ def render_document_v2(plan: SectionPlan, processed_files: List[ProcessedFile]) 
     return RenderedDocument(text=doc_text, blocks=blocks)
 
 
-__all__ = ["render_section", "render_document_v2"]
+__all__ = ["render_section", "render_document"]

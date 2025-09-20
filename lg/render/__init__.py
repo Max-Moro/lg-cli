@@ -1,3 +1,3 @@
-from .renderer_v2 import render_section, render_document_v2
+from .renderer import render_section, render_document
 
-__all__ = ["render_document_v2", "render_section"]
+__all__ = ["render_document", "render_section"]
