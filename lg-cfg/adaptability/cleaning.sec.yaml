@@ -27,7 +27,7 @@ src:
             allow:
               - "/__init__.py"
               - "/registry.py"
-              - "/processor_v2.py"
+              - "/processor.py"
           conditions:
             mode: allow
             allow:

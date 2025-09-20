@@ -8,7 +8,7 @@
 
 from __future__ import annotations
 
-from .adapters.processor_v2 import process_files
+from .adapters.processor import process_files
 from .manifest.builder import build_section_manifest
 from .plan.planner import build_section_plan
 from .render.renderer_v2 import render_section
@@ -28,7 +28,7 @@ class SectionProcessor:
     Теперь работает как оркестратор отдельных модулей:
     - manifest/builder.py - построение манифеста секции
     - plan/planner.py - планирование рендеринга
-    - adapters/processor_v2.py - обработка файлов
+    - adapters/processor.py - обработка файлов
     - render/renderer_v2.py - рендеринг секции
     """
     
