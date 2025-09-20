@@ -69,4 +69,15 @@ tests:
   filters:
     mode: allow
     allow:
-      - "/tests/adaptive"
+      - "/tests/"
+    children:
+      tests:
+        mode: allow
+        allow:
+          - "/adaptive/"
+        children:
+          adaptive:
+            mode: allow
+            allow:
+              - "/conftest.py"
+              - "/test_federated.py"
