@@ -610,20 +610,3 @@ def parse_template(text: str) -> TemplateAST:
     
     parser = TemplateParser(tokens)
     return parser.parse()
-
-
-def parse_template_from_tokens(tokens: List[Token]) -> TemplateAST:
-    """
-    Парсит шаблон из готовой последовательности токенов.
-    
-    Args:
-        tokens: Последовательность токенов
-        
-    Returns:
-        AST шаблона
-        
-    Raises:
-        ParserError: При ошибке синтаксического анализа
-    """
-    parser = TemplateParser(tokens)
-    return parser.parse()

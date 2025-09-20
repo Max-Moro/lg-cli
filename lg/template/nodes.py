@@ -7,9 +7,8 @@ AST-узлы для движка шаблонизации LG V2.
 
 from __future__ import annotations
 
-from abc import ABC, abstractmethod
 from dataclasses import dataclass
-from typing import List, Optional, Set, Dict, Any
+from typing import List, Optional, Set, Dict
 
 from ..conditions.model import Condition
 from ..config.adaptive_model import ModeOptions
@@ -17,13 +16,9 @@ from ..types import SectionRef
 
 
 @dataclass(frozen=True)
-class TemplateNode(ABC):
-    """Базовый абстрактный класс для всех узлов AST шаблона."""
-    
-    @abstractmethod
-    def accept(self, visitor) -> Any:
-        """Метод для реализации паттерна Visitor."""
-        pass
+class TemplateNode:
+    """Базовый класс для всех узлов AST шаблона."""
+    pass
 
 
 @dataclass(frozen=True)
@@ -35,9 +30,6 @@ class TextNode(TemplateNode):
     и выводится в результат как есть.
     """
     text: str
-    
-    def accept(self, visitor) -> Any:
-        return visitor.visit_text_node(self)
 
 
 @dataclass(frozen=True)
@@ -51,9 +43,6 @@ class SectionNode(TemplateNode):
     section_name: str
     # Метаданные для резолвинга (заполняются во время парсинга/резолвинга)
     resolved_ref: Optional[SectionRef] = None
-    
-    def accept(self, visitor) -> Any:
-        return visitor.visit_section_node(self)
 
 
 @dataclass(frozen=True)
@@ -70,9 +59,6 @@ class IncludeNode(TemplateNode):
     
     # Для хранения вложенного AST после резолвинга и парсинга
     children: Optional[List[TemplateNode]] = None
-
-    def accept(self, visitor) -> Any:
-        return visitor.visit_include_node(self)
 
     def canon_key(self) -> str:
         """
@@ -100,9 +86,6 @@ class ConditionalBlockNode(TemplateNode):
     condition_ast: Optional[Condition] = None
     # Результат вычисления (заполняется во время оценки)
     evaluated: Optional[bool] = None
-    
-    def accept(self, visitor) -> Any:
-        return visitor.visit_conditional_block_node(self)
 
 
 @dataclass(frozen=True)
@@ -114,9 +97,6 @@ class ElseBlockNode(TemplateNode):
     если условие в ConditionalBlockNode не выполняется.
     """
     body: List[TemplateNode]
-    
-    def accept(self, visitor) -> Any:
-        return visitor.visit_else_block_node(self)
 
 
 @dataclass(frozen=True)
@@ -135,9 +115,6 @@ class ModeBlockNode(TemplateNode):
     original_mode_options: Optional[ModeOptions] = None
     original_active_tags: Optional[Set[str]] = None
     original_active_modes: Optional[Dict[str, str]] = None
-    
-    def accept(self, visitor) -> Any:
-        return visitor.visit_mode_block_node(self)
 
 
 @dataclass(frozen=True)
@@ -149,9 +126,6 @@ class CommentNode(TemplateNode):
     при рендеринге и не попадает в итоговый результат.
     """
     text: str
-    
-    def accept(self, visitor) -> Any:
-        return visitor.visit_comment_node(self)
 
 
 # Тип для коллекции узлов шаблона

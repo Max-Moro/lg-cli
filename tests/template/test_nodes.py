@@ -12,12 +12,16 @@
 - Вспомогательные функции для работы с AST
 """
 
+from typing import List
+
 import pytest
-from typing import List, cast
+
+from lg.conditions.model import TagCondition
+from lg.config.adaptive_model import ModeOptions
 from lg.template.nodes import (
     TemplateNode,
     TextNode,
-    SectionNode, 
+    SectionNode,
     IncludeNode,
     ConditionalBlockNode,
     ModeBlockNode,
@@ -29,8 +33,6 @@ from lg.template.nodes import (
     has_conditional_content,
     format_ast_tree
 )
-from lg.conditions.model import TagCondition
-from lg.config.adaptive_model import ModeOptions
 
 
 class TestTextNode:
@@ -52,17 +54,6 @@ class TestTextNode:
         with pytest.raises((AttributeError, TypeError)):
             node.text = "modified"  # type: ignore
 
-    def test_text_node_visitor_pattern(self):
-        """Проверка реализации паттерна Visitor."""
-        node = TextNode(text="test")
-        
-        class MockVisitor:
-            def visit_text_node(self, node):
-                return f"visited: {node.text}"
-        
-        visitor = MockVisitor()
-        result = node.accept(visitor)
-        assert result == "visited: test"
 
     def test_text_node_equality(self):
         """Проверка равенства текстовых узлов."""
@@ -116,17 +107,6 @@ class TestSectionNode:
         assert node.section_name == "test-section"
         assert node.resolved_ref == section_ref
 
-    def test_section_node_visitor_pattern(self):
-        """Проверка реализации паттерна Visitor."""
-        node = SectionNode(section_name="test")
-        
-        class MockVisitor:
-            def visit_section_node(self, node):
-                return f"section: {node.section_name}"
-        
-        visitor = MockVisitor()
-        result = node.accept(visitor)
-        assert result == "section: test"
 
     def test_section_node_immutable(self):
         """Узел секции должен быть неизменяемым."""
@@ -172,17 +152,6 @@ class TestIncludeNode:
         assert node.children[0] == child1
         assert node.children[1] == child2
 
-    def test_include_node_visitor_pattern(self):
-        """Проверка реализации паттерна Visitor."""
-        node = IncludeNode(kind="tpl", name="test", origin="self")
-        
-        class MockVisitor:
-            def visit_include_node(self, node):
-                return f"{node.kind}:{node.name}@{node.origin}"
-        
-        visitor = MockVisitor()
-        result = node.accept(visitor)
-        assert result == "tpl:test@self"
 
     def test_include_kinds(self):
         """Проверка различных типов включений."""
@@ -191,6 +160,20 @@ class TestIncludeNode:
         
         assert tpl_node.kind == "tpl"
         assert ctx_node.kind == "ctx"
+
+    def test_include_node_canon_key(self):
+        """Проверка генерации канонического ключа."""
+        # Узел с origin="self"
+        self_node = IncludeNode(kind="tpl", name="template", origin="self")
+        assert self_node.canon_key() == "tpl:template"
+        
+        # Узел с origin=""
+        empty_node = IncludeNode(kind="ctx", name="context", origin="")
+        assert empty_node.canon_key() == "ctx:context"
+        
+        # Узел с origin="apps/web"
+        scoped_node = IncludeNode(kind="tpl", name="template", origin="apps/web")
+        assert scoped_node.canon_key() == "tpl@apps/web:template"
 
 
 class TestConditionalBlockNode:
@@ -251,20 +234,6 @@ class TestConditionalBlockNode:
         assert node.condition_ast == condition_ast
         assert node.evaluated == True
 
-    def test_conditional_block_visitor_pattern(self):
-        """Проверка реализации паттерна Visitor."""
-        node = ConditionalBlockNode(
-            condition_text="tag:test",
-            body=[TextNode(text="content")]
-        )
-        
-        class MockVisitor:
-            def visit_conditional_block_node(self, node):
-                return f"if {node.condition_text}"
-        
-        visitor = MockVisitor()
-        result = node.accept(visitor)
-        assert result == "if tag:test"
 
     def test_nested_conditional_blocks(self):
         """Вложенные условные блоки."""
@@ -300,17 +269,6 @@ class TestElseBlockNode:
         node = ElseBlockNode(body=[])
         assert len(node.body) == 0
 
-    def test_else_block_visitor_pattern(self):
-        """Проверка реализации паттерна Visitor."""
-        node = ElseBlockNode(body=[TextNode(text="content")])
-        
-        class MockVisitor:
-            def visit_else_block_node(self, node):
-                return f"else with {len(node.body)} items"
-        
-        visitor = MockVisitor()
-        result = node.accept(visitor)
-        assert result == "else with 1 items"
 
 
 class TestModeBlockNode:
@@ -356,21 +314,6 @@ class TestModeBlockNode:
         assert node.original_active_tags == original_tags
         assert node.original_active_modes == original_modes
 
-    def test_mode_block_visitor_pattern(self):
-        """Проверка реализации паттерна Visitor."""
-        node = ModeBlockNode(
-            modeset="test-set",
-            mode="test-mode",
-            body=[TextNode(text="content")]
-        )
-        
-        class MockVisitor:
-            def visit_mode_block_node(self, node):
-                return f"mode {node.modeset}:{node.mode}"
-        
-        visitor = MockVisitor()
-        result = node.accept(visitor)
-        assert result == "mode test-set:test-mode"
 
     def test_nested_mode_blocks(self):
         """Вложенные режимные блоки."""
@@ -412,17 +355,6 @@ class TestCommentNode:
         node = CommentNode(text=comment_text)
         assert node.text == comment_text
 
-    def test_comment_node_visitor_pattern(self):
-        """Проверка реализации паттерна Visitor."""
-        node = CommentNode(text="test comment")
-        
-        class MockVisitor:
-            def visit_comment_node(self, node):
-                return f"comment: {node.text}"
-        
-        visitor = MockVisitor()
-        result = node.accept(visitor)
-        assert result == "comment: test comment"
 
 
 class TestASTHelpers:
