@@ -7,7 +7,6 @@
 
 from __future__ import annotations
 
-from lg.engine import run_render
 from .conftest import (
     federated_project, make_run_options, make_engine, render_for_test,
     create_conditional_template, write_modes_yaml, write_tags_yaml,
@@ -237,7 +236,7 @@ This should not appear in local scope
 {% endif %}
 """
     
-    create_conditional_template(root / "apps" / "web", "scope-test", child_template_content)
+    create_conditional_template(root / "apps" / "web", "scope-test", child_template_content, "tpl")
     
     # Создаем корневой шаблон, который включает дочерний
     root_template_content = """# Root Template
@@ -289,25 +288,30 @@ ${overview}
 {% mode frontend:ui %}
 ### UI Components
 ${@apps/web:web-src}
+
+{% if tag:full-context AND tag:typescript %}
+#### Full TypeScript Context  
+Complete web application view
+{% endif %}
 {% endmode %}
 
 {% mode library:public-api %}  
 ### Public API
 ${@libs/core:core-lib}
+
+{% if tag:full-context AND tag:python %}
+#### Full Python Context
+Complete library view
+{% endif %}
 {% endmode %}
 
 {% endmode %}
 
 ## Conditional Sections
 
-{% if tag:full-context AND tag:typescript %}
-### Full TypeScript Context  
-Complete web application view
-{% endif %}
-
-{% if tag:full-context AND tag:python %}
-### Full Python Context
-Complete library view
+{% if tag:full-context %}
+### Full Context Available
+Global full context mode is active
 {% endif %}
 """
     
@@ -321,9 +325,12 @@ Complete library view
     assert "UI Components" in result  # из вложенного mode блока
     assert "Public API" in result     # из вложенного mode блока
     
-    # Теги из вложенных режимов должны активироваться
-    assert "Full TypeScript Context" in result  # tag:typescript из frontend:ui
-    assert "Full Python Context" in result     # tag:python из library:public-api
+    # Теги из вложенных режимов должны активироваться внутри своих блоков
+    assert "Full TypeScript Context" in result  # tag:typescript из frontend:ui + tag:full-context
+    assert "Full Python Context" in result     # tag:python из library:public-api + tag:full-context
+    
+    # Глобальный тег должен быть доступен
+    assert "Full Context Available" in result
 
 
 def test_federated_error_handling(federated_project):
@@ -337,11 +344,16 @@ ${@nonexistent/scope:some-section}
     
     create_conditional_template(root, "error-test", template_content)
     
-    # Рендеринг должен завершиться, но с плейсхолдером вместо содержимого
-    result = render_for_test(root, "ctx:error-test", make_run_options())
+    # Рендеринг должен выбрасывать исключение для несуществующего скоупа
+    from lg.template.processor import TemplateProcessingError
+    import pytest
     
-    # В зависимости от реализации может быть плейсхолдер или ошибка
-    assert len(result) > 0  # Базовая проверка, что результат получен
+    with pytest.raises(TemplateProcessingError) as exc_info:
+        render_for_test(root, "ctx:error-test", make_run_options())
+    
+    # Проверяем, что ошибка содержит информативное сообщение
+    assert "nonexistent/scope" in str(exc_info.value)
+    assert "not found" in str(exc_info.value).lower()
 
 
 def test_federated_modes_list_cli_compatibility(federated_project, monkeypatch):
