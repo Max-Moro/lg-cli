@@ -201,7 +201,7 @@ ${src}
 ${src}
 {% endif %}
 
-{% if NOT TAGSET:language:javascript %}
+{% if NOT tag:javascript %}
 ## Not JavaScript
 ${docs}
 {% endif %}
@@ -213,7 +213,8 @@ ${docs}
     options1 = make_run_options()
     result1 = render_for_test(root, "ctx:tagset-test", options1)
     
-    # Если ни один тег из набора не активен, условие истинно
+    # Если ни один тег из набора не активен, TAGSET условия истинны
+    # NOT tag:javascript истинно, так как javascript тег не активен
     assert "Python Code" in result1
     assert "TypeScript Code" in result1
     assert "Not JavaScript" in result1
@@ -222,9 +223,21 @@ ${docs}
     options2 = make_run_options(extra_tags={"python"})
     result2 = render_for_test(root, "ctx:tagset-test", options2)
     
-    # Теперь условие истинно только для python
+    # Теперь TAGSET условие истинно только для python
+    # NOT tag:javascript все еще истинно, так как javascript не активен
     assert "Python Code" in result2
     assert "TypeScript Code" not in result2
+    assert "Not JavaScript" in result2
+    
+    # Активируем javascript тег
+    options3 = make_run_options(extra_tags={"javascript"})
+    result3 = render_for_test(root, "ctx:tagset-test", options3)
+    
+    # Теперь TAGSET:language:javascript истинно, остальные TAGSET ложны
+    # NOT tag:javascript ложно, так как javascript активен
+    assert "Python Code" not in result3
+    assert "TypeScript Code" not in result3
+    assert "Not JavaScript" not in result3
 
 
 def test_complex_conditions(adaptive_project):
