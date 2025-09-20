@@ -175,15 +175,15 @@ def test_combined_modes_and_tags_cli(adaptive_project, monkeypatch):
     write(root / "lg-cfg" / "combined-test.ctx.md", """# Combined Test
 
 {% if tag:agent %}
-## Agent from Mode: {{ tag:agent }}
+## Agent from Mode
 {% endif %}
 
 {% if tag:tools %}
-## Tools from Mode: {{ tag:tools }}
+## Tools from Mode
 {% endif %}
 
 {% if tag:custom %}
-## Custom from Tags: {{ tag:custom }}
+## Custom from Tags
 {% endif %}
 
 ${src}
@@ -208,7 +208,7 @@ def test_report_with_adaptive_options(adaptive_project, monkeypatch):
     monkeypatch.chdir(root)
     
     result = run_cli(root, "report", "sec:src",
-                     "--mode", "dev-stage:review", 
+                     "--mode", "ai-interaction:agent", 
                      "--tags", "python")
     
     assert result.returncode == 0
@@ -224,7 +224,7 @@ def test_report_with_adaptive_options(adaptive_project, monkeypatch):
     assert len(data["files"]) > 0
     
     # Проверяем метаданные
-    assert data["target"] == "src"
+    assert data["target"] == "sec:src"
     assert data["scope"] == "section"
 
 

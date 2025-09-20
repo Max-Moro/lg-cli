@@ -340,6 +340,28 @@ def make_engine(root: Path, options: Optional[RunOptions] = None) -> Engine:
         os.chdir(original_cwd)
 
 
+def render_for_test(root: Path, target: str, options: Optional[RunOptions] = None) -> str:
+    """
+    Хелпер для рендеринга в тестах.
+    
+    Args:
+        root: Корень проекта
+        target: Цель для рендеринга
+        options: Опции выполнения
+        
+    Returns:
+        Отрендеренный текст
+    """
+    from lg.engine import _parse_target
+    
+    if options is None:
+        options = make_run_options()
+    
+    engine = make_engine(root, options)
+    target_spec = _parse_target(target, root)
+    return engine.render_text(target_spec)
+
+
 # ====================== Основные фикстуры ======================
 
 @pytest.fixture
@@ -622,7 +644,7 @@ __all__ = [
     "get_default_modes_config", "get_default_tags_config",
     
     # Хелперы для RunOptions и контекстов
-    "make_run_options", "make_run_context", "make_engine",
+    "make_run_options", "make_run_context", "make_engine", "render_for_test",
     
     # Основные фикстуры
     "adaptive_project", "minimal_adaptive_project", "federated_project",

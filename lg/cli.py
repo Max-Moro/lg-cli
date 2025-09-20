@@ -168,6 +168,10 @@ def main(argv: list[str] | None = None) -> int:
 
     except MigrationFatalError as e:
         sys.stderr.write(str(e).rstrip() + "\n")
+        return 2
+    except ValueError as e:
+        sys.stderr.write(str(e).rstrip() + "\n")
+        return 2
 
     return 2
 

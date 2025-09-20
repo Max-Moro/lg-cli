@@ -5,6 +5,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+from typing import Optional
 
 from .api_schema import RunResult
 from .cache.fs_cache import Cache
@@ -133,7 +134,7 @@ class Engine:
         Рендерит отдельную секцию.
         
         Args:
-            section_name: Имя секции для рендеринга
+            section_name: Имя секции для рендеринга (может быть адресной ссылкой)
             
         Returns:
             Отрендеренный документ
@@ -146,14 +147,48 @@ class Engine:
         
         template_ctx = TemplateContext(self.run_ctx)
         
-        # Обрабатываем секцию
-        section_ref = SectionRef(section_name, "", self.root)
+        # Парсим адресную ссылку, если это необходимо
+        section_ref = self._create_section_ref(section_name)
         rendered_section = self.section_processor.process_section(section_ref, template_ctx)
         
         # Устанавливаем итоговые тексты в коллекторе (для секции они совпадают)
         self.stats_collector.set_final_texts(rendered_section.text)
         
         return rendered_section.text
+
+    def _create_section_ref(self, section_name: str) -> SectionRef:
+        """
+        Создает SectionRef из имени секции, поддерживая адресные ссылки.
+        
+        Args:
+            section_name: Имя секции (может быть адресной ссылкой типа @origin:name)
+            
+        Returns:
+            SectionRef с правильными scope_rel и scope_dir
+        """
+        if section_name.startswith("@["):
+            # @[origin]:name
+            close = section_name.find("]:")
+            if close < 0:
+                raise ValueError(f"Invalid section reference (missing ']:' ): {section_name}")
+            origin = section_name[2:close]
+            name = section_name[close + 2:]
+        elif section_name.startswith("@"):
+            # @origin:name
+            colon = section_name.find(":")
+            if colon < 0:
+                raise ValueError(f"Invalid section reference (missing ':'): {section_name}")
+            origin = section_name[1:colon]
+            name = section_name[colon + 1:]
+        else:
+            # Простая ссылка без адресности
+            return SectionRef(section_name, "", self.root)
+        
+        # Для адресных ссылок вычисляем scope_dir
+        scope_dir = (self.root / origin).resolve()
+        scope_rel = origin
+        
+        return SectionRef(name, scope_rel, scope_dir)
 
     def render_text(self, target_spec: TargetSpec) -> str:
         """
@@ -196,19 +231,23 @@ class Engine:
 
 # ----------------------------- Entry Points ----------------------------- #
 
-def _parse_target(target: str) -> TargetSpec:
+def _parse_target(target: str, root: Optional[Path] = None) -> TargetSpec:
     """
     Парсит строку цели в TargetSpec.
     
     Args:
         target: Строка цели в формате "ctx:name", "sec:name" или "name"
+        root: Корень проекта (если None, используется cwd)
         
     Returns:
         Спецификация цели
     """
     from lg.template.common import CTX_SUFFIX
     
-    root = Path.cwd().resolve()
+    if root is None:
+        root = Path.cwd().resolve()
+    else:
+        root = root.resolve()
     cfg_path = cfg_root(root)
     
     kind = "auto"
@@ -241,15 +280,15 @@ def _parse_target(target: str) -> TargetSpec:
 
 def run_render(target: str, options: RunOptions) -> str:
     """Точка входа для рендеринга."""
-    target_spec = _parse_target(target)
     engine = Engine(options)
+    target_spec = _parse_target(target, engine.root)
     return engine.render_text(target_spec)
 
 
 def run_report(target: str, options: RunOptions) -> RunResult:
     """Точка входа для генерации отчета."""
-    target_spec = _parse_target(target)
     engine = Engine(options)
+    target_spec = _parse_target(target, engine.root)
     return engine.generate_report(target_spec)
 
 

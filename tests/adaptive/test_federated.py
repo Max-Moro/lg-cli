@@ -9,7 +9,7 @@ from __future__ import annotations
 
 from lg.engine import run_render
 from .conftest import (
-    federated_project, make_run_options, make_engine,
+    federated_project, make_run_options, make_engine, render_for_test,
     create_conditional_template, write_modes_yaml, write_tags_yaml,
     ModeConfig, ModeSetConfig, TagConfig, TagSetConfig
 )
@@ -204,7 +204,7 @@ Core library available
     
     # Тестируем рендеринг с разными режимами
     options1 = make_run_options(modes={"frontend": "ui"})
-    result1 = run_render("ctx:cross-scope-test", options1)
+    result1 = render_for_test(root, "ctx:cross-scope-test", options1)
     
     assert "Root Overview" in result1
     assert "Web Frontend" in result1
@@ -213,7 +213,7 @@ Core library available
     assert "Python Specific" not in result1
     
     options2 = make_run_options(modes={"library": "internals"})
-    result2 = run_render("ctx:cross-scope-test", options2)
+    result2 = render_for_test(root, "ctx:cross-scope-test", options2)
     
     assert "Python Specific" in result2
     assert "TypeScript Specific" not in result2
@@ -251,7 +251,7 @@ ${tpl@apps/web:scope-test}
     
     create_conditional_template(root, "root-scope-test", root_template_content)
     
-    result = run_render("ctx:root-scope-test", make_run_options())
+    result = render_for_test(root, "ctx:root-scope-test", make_run_options())
     
     # При включении из родительского скоупа должен активироваться scope:parent
     assert "Including Child Template" in result
@@ -315,7 +315,7 @@ Complete library view
     
     # Тестируем с активацией корневого режима
     options = make_run_options(modes={"workflow": "full"})
-    result = run_render("ctx:complex-federated", options)
+    result = render_for_test(root, "ctx:complex-federated", options)
     
     assert "Full Context Mode" in result
     assert "UI Components" in result  # из вложенного mode блока
@@ -338,7 +338,7 @@ ${@nonexistent/scope:some-section}
     create_conditional_template(root, "error-test", template_content)
     
     # Рендеринг должен завершиться, но с плейсхолдером вместо содержимого
-    result = run_render("ctx:error-test", make_run_options())
+    result = render_for_test(root, "ctx:error-test", make_run_options())
     
     # В зависимости от реализации может быть плейсхолдер или ошибка
     assert len(result) > 0  # Базовая проверка, что результат получен
