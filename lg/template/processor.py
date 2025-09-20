@@ -10,6 +10,7 @@ from __future__ import annotations
 
 from typing import Dict, List, Optional, Callable, Any
 
+from .common import load_template_from, load_context_from
 from .context import TemplateContext
 from .evaluator import TemplateEvaluationError
 from .lexer import LexerError
@@ -20,7 +21,6 @@ from .nodes import (
 )
 from .parser import ParserError, parse_template
 from .resolver import TemplateResolver, ResolverError
-from .common import load_template_from, load_context_from
 from ..run_context import RunContext
 from ..types import SectionRef
 
@@ -268,12 +268,20 @@ class TemplateProcessor:
                 return f"${{{node.canon_key()}}}"
         
         elif isinstance(node, ConditionalBlockNode):
-            # Оцениваем условие
+            # Оцениваем основное условие
             should_include = self.template_ctx.evaluate_condition(node.condition_ast)
             
             if should_include:
                 return self._evaluate_ast(node.body)
-            elif node.else_block:
+            
+            # Проверяем elif блоки по порядку
+            for elif_block in node.elif_blocks:
+                elif_should_include = self.template_ctx.evaluate_condition(elif_block.condition_ast)
+                if elif_should_include:
+                    return self._evaluate_ast(elif_block.body)
+            
+            # Если ни одно условие не выполнилось, проверяем else блок
+            if node.else_block:
                 return self._evaluate_ast(node.else_block.body)
             else:
                 return ""

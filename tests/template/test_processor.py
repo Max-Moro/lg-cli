@@ -464,6 +464,100 @@ class TestConditionalBlocks:
         assert "True branch" not in result
         assert "False branch" in result
 
+    def test_if_elif_first_true(self, processor):
+        """Тест цепочки if-elif (первое условие истинно)."""
+        template_text = """
+        {% if tag:first %}
+        First branch
+        {% elif tag:second %}
+        Second branch
+        {% endif %}
+        """
+        
+        processor.template_ctx.current_state.active_tags.add("first")
+        processor.template_ctx.current_state.active_tags.add("second")
+        
+        result = processor.process_template_text(template_text)
+        
+        assert "First branch" in result
+        assert "Second branch" not in result
+
+    def test_if_elif_second_true(self, processor):
+        """Тест цепочки if-elif (второе условие истинно)."""
+        template_text = """
+        {% if tag:first %}
+        First branch
+        {% elif tag:second %}
+        Second branch
+        {% endif %}
+        """
+        
+        processor.template_ctx.current_state.active_tags.add("second")
+        
+        result = processor.process_template_text(template_text)
+        
+        assert "First branch" not in result
+        assert "Second branch" in result
+
+    def test_if_elif_multiple_conditions(self, processor):
+        """Тест цепочки if-elif-elif с множественными условиями."""
+        template_text = """
+        {% if tag:first %}
+        First branch
+        {% elif tag:second %}
+        Second branch
+        {% elif tag:third %}
+        Third branch
+        {% endif %}
+        """
+        
+        processor.template_ctx.current_state.active_tags.add("third")
+        
+        result = processor.process_template_text(template_text)
+        
+        assert "First branch" not in result
+        assert "Second branch" not in result
+        assert "Third branch" in result
+
+    def test_if_elif_else_chain(self, processor):
+        """Тест полной цепочки if-elif-else."""
+        template_text = """
+        {% if tag:first %}
+        First branch
+        {% elif tag:second %}
+        Second branch
+        {% else %}
+        Default branch
+        {% endif %}
+        """
+        
+        # Не активируем ни один тег
+        result = processor.process_template_text(template_text)
+        
+        assert "First branch" not in result
+        assert "Second branch" not in result
+        assert "Default branch" in result
+
+    def test_if_elif_else_elif_triggered(self, processor):
+        """Тест полной цепочки if-elif-else (срабатывает elif)."""
+        template_text = """
+        {% if tag:first %}
+        First branch
+        {% elif tag:second %}
+        Second branch
+        {% else %}
+        Default branch
+        {% endif %}
+        """
+        
+        processor.template_ctx.current_state.active_tags.add("second")
+        
+        result = processor.process_template_text(template_text)
+        
+        assert "First branch" not in result
+        assert "Second branch" in result
+        assert "Default branch" not in result
+
     def test_nested_conditionals(self, processor):
         """Тест вложенных условных блоков."""
         template_text = """

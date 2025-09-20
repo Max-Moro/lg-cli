@@ -13,7 +13,7 @@ from typing import Dict, List, Tuple
 
 from .nodes import (
     TemplateAST, TemplateNode, SectionNode, IncludeNode,
-    ConditionalBlockNode, ModeBlockNode, ElseBlockNode
+    ConditionalBlockNode, ElifBlockNode, ModeBlockNode, ElseBlockNode
 )
 from .parser import parse_template
 from .common import parse_locator, resolve_cfg_root
@@ -147,6 +147,19 @@ class TemplateResolver:
         elif isinstance(node, ConditionalBlockNode):
             # Рекурсивно обрабатываем тело условного блока
             resolved_body = self._resolve_ast_recursive(node.body, f"{context}/if")
+            
+            # Обрабатываем elif блоки
+            resolved_elif_blocks = []
+            for i, elif_block in enumerate(node.elif_blocks):
+                resolved_elif_body = self._resolve_ast_recursive(elif_block.body, f"{context}/elif[{i}]")
+                resolved_elif_blocks.append(ElifBlockNode(
+                    condition_text=elif_block.condition_text,
+                    body=resolved_elif_body,
+                    condition_ast=elif_block.condition_ast,
+                    evaluated=elif_block.evaluated
+                ))
+            
+            # Обрабатываем else блок
             resolved_else = None
             if node.else_block:
                 resolved_else_body = self._resolve_ast_recursive(node.else_block.body, f"{context}/else")
@@ -155,6 +168,7 @@ class TemplateResolver:
             return ConditionalBlockNode(
                 condition_text=node.condition_text,
                 body=resolved_body,
+                elif_blocks=resolved_elif_blocks,
                 else_block=resolved_else,
                 condition_ast=node.condition_ast,
                 evaluated=node.evaluated

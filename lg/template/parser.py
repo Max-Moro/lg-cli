@@ -12,7 +12,7 @@ from typing import List, Optional, Tuple
 from .lexer import Token, TokenType, TemplateLexer
 from .nodes import (
     TemplateNode, TemplateAST, TextNode, SectionNode, IncludeNode,
-    ConditionalBlockNode, ElseBlockNode, ModeBlockNode, CommentNode
+    ConditionalBlockNode, ElifBlockNode, ElseBlockNode, ModeBlockNode, CommentNode
 )
 from ..conditions.parser import ConditionParser
 
@@ -212,6 +212,8 @@ class TemplateParser:
         
         if first_token.type == TokenType.IF:
             return self._parse_if_directive(tokens)
+        elif first_token.type == TokenType.ELIF:
+            raise ParserError("elif without if", first_token)
         elif first_token.type == TokenType.ELSE:
             return self._parse_else_directive(tokens)
         elif first_token.type == TokenType.MODE:
@@ -225,9 +227,9 @@ class TemplateParser:
     
     def _parse_if_directive(self, tokens: List[Token]) -> ConditionalBlockNode:
         """
-        Парсит условную директиву {% if condition %}.
+        Парсит условную директиву {% if condition %} с поддержкой elif.
         
-        Включает обработку тела условия и опционального else блока.
+        Включает обработку тела условия, опциональных elif блоков и else блока.
         """
         # Извлекаем условие (все токены после 'if')
         if len(tokens) < 2:
@@ -242,14 +244,25 @@ class TemplateParser:
         except Exception as e:
             raise ParserError(f"Invalid condition: {e}", tokens[0])
         
-        # Парсим тело условия до endif или else
+        # Парсим тело условия до elif, else или endif
         body_nodes = []
+        elif_blocks = []
         else_block = None
         found_end = False
         
         while not self._is_at_end():
-            # Проверяем, не встретили ли мы endif или else
+            # Проверяем, не встретили ли мы endif, elif или else
             if self._check_directive_keyword(TokenType.ENDIF):
+                self._consume_directive_keyword(TokenType.ENDIF)
+                found_end = True
+                break
+            elif self._check_directive_keyword(TokenType.ELIF):
+                # Парсим elif блоки
+                elif_blocks.extend(self._parse_elif_blocks())
+                # После парсинга всех elif блоков проверяем else
+                if self._check_directive_keyword(TokenType.ELSE):
+                    self._consume_directive_keyword(TokenType.ELSE)
+                    else_block = self._parse_else_block()
                 self._consume_directive_keyword(TokenType.ENDIF)
                 found_end = True
                 break
@@ -270,7 +283,69 @@ class TemplateParser:
         return ConditionalBlockNode(
             condition_text=condition_text,
             body=body_nodes,
+            elif_blocks=elif_blocks,
             else_block=else_block,
+            condition_ast=condition_ast
+        )
+    
+    def _parse_elif_blocks(self) -> List[ElifBlockNode]:
+        """
+        Парсит последовательность elif блоков.
+        
+        Возвращает список ElifBlockNode до тех пор, пока не встретит
+        else, endif или конец токенов.
+        """
+        elif_blocks = []
+        
+        while self._check_directive_keyword(TokenType.ELIF):
+            self._consume(TokenType.DIRECTIVE_START)  # {%
+            
+            # Токенизируем содержимое elif директивы
+            content_tokens = self._collect_directive_content()
+            
+            self._consume(TokenType.DIRECTIVE_END)    # %}
+            
+            # Парсим содержимое elif директивы
+            elif_block = self._parse_single_elif_directive(content_tokens)
+            elif_blocks.append(elif_block)
+        
+        return elif_blocks
+    
+    def _parse_single_elif_directive(self, tokens: List[Token]) -> ElifBlockNode:
+        """
+        Парсит одну elif директиву из уже извлеченных токенов содержимого.
+        """
+        if not tokens or tokens[0].value != 'elif':
+            raise ParserError("Expected 'elif' keyword", tokens[0] if tokens else self._current_token())
+        
+        # Извлекаем условие (все токены после 'elif')
+        if len(tokens) < 2:
+            raise ParserError("Missing condition in elif directive", tokens[0])
+        
+        condition_tokens = tokens[1:]
+        condition_text = self._reconstruct_condition_text(condition_tokens)
+        
+        # Парсим условие с помощью парсера условий
+        try:
+            condition_ast = self.condition_parser.parse(condition_text)
+        except Exception as e:
+            raise ParserError(f"Invalid elif condition: {e}", tokens[0])
+        
+        # Парсим тело elif блока
+        elif_body = []
+        while not self._is_at_end():
+            if (self._check_directive_keyword(TokenType.ELIF) or 
+                self._check_directive_keyword(TokenType.ELSE) or 
+                self._check_directive_keyword(TokenType.ENDIF)):
+                break
+            
+            node = self._parse_top_level()
+            if node:
+                elif_body.append(node)
+        
+        return ElifBlockNode(
+            condition_text=condition_text,
+            body=elif_body,
             condition_ast=condition_ast
         )
     
@@ -540,8 +615,22 @@ class TemplateParser:
             self.tokens[self.position + 2].type == TokenType.DIRECTIVE_END):
             # Проверяем содержимое директивы
             content = self.tokens[self.position + 1].value.strip()
-            keyword_name = keyword.name.lower()
-            return content == keyword_name
+            # Сопоставляем токены с их строковыми представлениями
+            keyword_map = {
+                TokenType.IF: "if",
+                TokenType.ELIF: "elif",
+                TokenType.ELSE: "else", 
+                TokenType.ENDIF: "endif",
+                TokenType.MODE: "mode",
+                TokenType.ENDMODE: "endmode"
+            }
+            expected_keyword = keyword_map.get(keyword, keyword.name.lower())
+            # Для директив с параметрами проверяем только начало
+            if keyword in [TokenType.IF, TokenType.ELIF, TokenType.MODE]:
+                return content.startswith(expected_keyword + ' ') or content == expected_keyword
+            else:
+                # Для директив без параметров проверяем точное соответствие
+                return content == expected_keyword
         return False
     
     def _consume_directive_keyword(self, keyword: TokenType) -> None:
@@ -549,9 +638,25 @@ class TemplateParser:
         self._consume(TokenType.DIRECTIVE_START)
         # Проверяем, что содержимое соответствует ключевому слову
         content_token = self._current_token()
-        keyword_name = keyword.name.lower()
-        if content_token.value.strip() != keyword_name:
-            raise ParserError(f"Expected '{keyword_name}', got '{content_token.value.strip()}'", content_token)
+        # Сопоставляем токены с их строковыми представлениями
+        keyword_map = {
+            TokenType.IF: "if",
+            TokenType.ELIF: "elif",
+            TokenType.ELSE: "else",
+            TokenType.ENDIF: "endif", 
+            TokenType.MODE: "mode",
+            TokenType.ENDMODE: "endmode"
+        }
+        expected_keyword = keyword_map.get(keyword, keyword.name.lower())
+        content = content_token.value.strip()
+        # Для директив с параметрами проверяем только начало
+        if keyword in [TokenType.IF, TokenType.ELIF, TokenType.MODE]:
+            if not (content.startswith(expected_keyword + ' ') or content == expected_keyword):
+                raise ParserError(f"Expected directive starting with '{expected_keyword}', got '{content}'", content_token)
+        else:
+            # Для директив без параметров проверяем точное соответствие
+            if content != expected_keyword:
+                raise ParserError(f"Expected '{expected_keyword}', got '{content}'", content_token)
         self._advance()  # Потребляем содержимое
         self._consume(TokenType.DIRECTIVE_END)
     

@@ -43,6 +43,7 @@ class TokenType(enum.Enum):
     
     # Ключевые слова директив
     IF = "IF"
+    ELIF = "ELIF"
     ELSE = "ELSE"
     ENDIF = "ENDIF"
     MODE = "MODE"
@@ -127,6 +128,7 @@ class TemplateLexer:
     # Ключевые слова
     _KEYWORDS = {
         'if': TokenType.IF,
+        'elif': TokenType.ELIF,
         'else': TokenType.ELSE,
         'endif': TokenType.ENDIF,
         'mode': TokenType.MODE,

@@ -6,7 +6,7 @@ import pytest
 from lg.template.lexer import TemplateLexer, Token, TokenType
 from lg.template.nodes import (
     TextNode, SectionNode, IncludeNode,
-    ConditionalBlockNode, ElseBlockNode, ModeBlockNode, CommentNode
+    ConditionalBlockNode, ElifBlockNode, ElseBlockNode, ModeBlockNode, CommentNode
 )
 from lg.template.parser import TemplateParser, ParserError
 
@@ -159,6 +159,93 @@ class TestParserDirectives:
         assert len(inner_if.body) == 1
         assert isinstance(inner_if.body[0], TextNode)
         assert inner_if.body[0].text == "nested"
+
+    def test_parse_if_elif_directive(self):
+        """Парсинг условной директивы с elif."""
+        template = "{%if tag:first%}first content{%elif tag:second%}second content{%endif%}"
+        lexer = TemplateLexer(template)
+        tokens = lexer.tokenize()
+        parser = TemplateParser(tokens)
+        
+        ast = parser.parse()
+        
+        assert len(ast) == 1
+        assert isinstance(ast[0], ConditionalBlockNode)
+        assert ast[0].condition_text == "tag : first"
+        assert len(ast[0].body) == 1
+        assert isinstance(ast[0].body[0], TextNode)
+        assert ast[0].body[0].text == "first content"
+        
+        # Проверяем elif блок
+        assert len(ast[0].elif_blocks) == 1
+        elif_block = ast[0].elif_blocks[0]
+        assert isinstance(elif_block, ElifBlockNode)
+        assert elif_block.condition_text == "tag : second"
+        assert len(elif_block.body) == 1
+        assert isinstance(elif_block.body[0], TextNode)
+        assert elif_block.body[0].text == "second content"
+        
+        assert ast[0].else_block is None
+
+    def test_parse_if_multiple_elif_directive(self):
+        """Парсинг условной директивы с несколькими elif."""
+        template = "{%if tag:first%}first{%elif tag:second%}second{%elif tag:third%}third{%endif%}"
+        lexer = TemplateLexer(template)
+        tokens = lexer.tokenize()
+        parser = TemplateParser(tokens)
+        
+        ast = parser.parse()
+        
+        assert len(ast) == 1
+        assert isinstance(ast[0], ConditionalBlockNode)
+        assert ast[0].condition_text == "tag : first"
+        
+        # Проверяем множественные elif блоки
+        assert len(ast[0].elif_blocks) == 2
+        
+        elif1 = ast[0].elif_blocks[0]
+        assert isinstance(elif1, ElifBlockNode)
+        assert elif1.condition_text == "tag : second"
+        assert len(elif1.body) == 1
+        assert isinstance(elif1.body[0], TextNode)
+        assert elif1.body[0].text == "second"
+        
+        elif2 = ast[0].elif_blocks[1]
+        assert isinstance(elif2, ElifBlockNode)
+        assert elif2.condition_text == "tag : third"
+        assert len(elif2.body) == 1
+        assert isinstance(elif2.body[0], TextNode)
+        assert elif2.body[0].text == "third"
+        
+        assert ast[0].else_block is None
+
+    def test_parse_if_elif_else_directive(self):
+        """Парсинг полной цепочки if-elif-else."""
+        template = "{%if tag:first%}first{%elif tag:second%}second{%else%}default{%endif%}"
+        lexer = TemplateLexer(template)
+        tokens = lexer.tokenize()
+        parser = TemplateParser(tokens)
+        
+        ast = parser.parse()
+        
+        assert len(ast) == 1
+        assert isinstance(ast[0], ConditionalBlockNode)
+        assert ast[0].condition_text == "tag : first"
+        
+        # Проверяем elif блок
+        assert len(ast[0].elif_blocks) == 1
+        elif_block = ast[0].elif_blocks[0]
+        assert isinstance(elif_block, ElifBlockNode)
+        assert elif_block.condition_text == "tag : second"
+        assert isinstance(elif_block.body[0], TextNode)
+        assert elif_block.body[0].text == "second"
+        
+        # Проверяем else блок
+        assert ast[0].else_block is not None
+        assert isinstance(ast[0].else_block, ElseBlockNode)
+        assert len(ast[0].else_block.body) == 1
+        assert isinstance(ast[0].else_block.body[0], TextNode)
+        assert ast[0].else_block.body[0].text == "default"
 
     def test_parse_mode_directive(self):
         """Парсинг директивы режима."""

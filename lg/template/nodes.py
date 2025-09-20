@@ -7,7 +7,7 @@ AST-узлы для движка шаблонизации.
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import List, Optional, Set, Dict
 
 from ..conditions.model import Condition
@@ -73,14 +73,33 @@ class IncludeNode(TemplateNode):
 @dataclass(frozen=True)
 class ConditionalBlockNode(TemplateNode):
     """
-    Условный блок {% if condition %}...{% endif %}.
+    Условный блок {% if condition %}...{% elif condition %}...{% else %}...{% endif %}.
     
     Представляет условную конструкцию, которая включает или исключает
-    содержимое на основе вычисления условного выражения.
+    содержимое на основе вычисления условного выражения с поддержкой 
+    цепочек elif блоков.
     """
     condition_text: str  # Исходный текст условия
     body: List[TemplateNode]
+    elif_blocks: List[ElifBlockNode] = field(default_factory=list)
     else_block: Optional[ElseBlockNode] = None
+    
+    # AST условия после парсинга (заполняется парсером условий)
+    condition_ast: Optional[Condition] = None
+    # Результат вычисления (заполняется во время оценки)
+    evaluated: Optional[bool] = None
+
+
+@dataclass(frozen=True)
+class ElifBlockNode(TemplateNode):
+    """
+    Блок {% elif condition %} внутри условных конструкций.
+    
+    Представляет условное альтернативное содержимое, которое проверяется
+    если предыдущие условия в цепочке if/elif не выполнились.
+    """
+    condition_text: str  # Исходный текст условия
+    body: List[TemplateNode]
     
     # AST условия после парсинга (заполняется парсером условий)
     condition_ast: Optional[Condition] = None
@@ -148,8 +167,13 @@ def collect_section_nodes(ast: TemplateAST) -> List[SectionNode]:
         elif isinstance(node, ConditionalBlockNode):
             for child in node.body:
                 _visit_node(child)
+            for elif_block in node.elif_blocks:
+                _visit_node(elif_block)
             if node.else_block:
                 _visit_node(node.else_block)
+        elif isinstance(node, ElifBlockNode):
+            for child in node.body:
+                _visit_node(child)
         elif isinstance(node, ModeBlockNode):
             for child in node.body:
                 _visit_node(child)
@@ -181,10 +205,17 @@ def collect_include_nodes(ast: TemplateAST) -> List[IncludeNode]:
             if node.children:
                 for child in node.children:
                     _visit_node(child)
-        elif isinstance(node, (ConditionalBlockNode, ModeBlockNode)):
+        elif isinstance(node, ConditionalBlockNode):
             for child in node.body:
                 _visit_node(child)
-        elif isinstance(node, ElseBlockNode):
+            for elif_block in node.elif_blocks:
+                _visit_node(elif_block)
+            if node.else_block:
+                _visit_node(node.else_block)
+        elif isinstance(node, ModeBlockNode):
+            for child in node.body:
+                _visit_node(child)
+        elif isinstance(node, (ElifBlockNode, ElseBlockNode)):
             for child in node.body:
                 _visit_node(child)
     
@@ -201,11 +232,11 @@ def has_conditional_content(ast: TemplateAST) -> bool:
     Возвращает True, если в шаблоне есть условные блоки или блоки режимов.
     """
     def _check_node(node: TemplateNode) -> bool:
-        if isinstance(node, (ConditionalBlockNode, ModeBlockNode)):
+        if isinstance(node, (ConditionalBlockNode, ElifBlockNode, ModeBlockNode)):
             return True
-        elif isinstance(node, (ConditionalBlockNode, ModeBlockNode)):
+        elif isinstance(node, ConditionalBlockNode):
             return any(_check_node(child) for child in node.body)
-        elif isinstance(node, ElseBlockNode):
+        elif isinstance(node, (ElifBlockNode, ElseBlockNode, ModeBlockNode)):
             return any(_check_node(child) for child in node.body)
         elif isinstance(node, IncludeNode) and node.children:
             return any(_check_node(child) for child in node.children)
@@ -231,9 +262,17 @@ def format_ast_tree(ast: List[TemplateNode], indent: int = 0) -> str:
             if node.body:
                 lines.append(f"{prefix}  body:")
                 lines.append(format_ast_tree(node.body, indent + 2))
+            for i, elif_block in enumerate(node.elif_blocks):
+                lines.append(f"{prefix}  elif[{i}]:")
+                lines.append(format_ast_tree([elif_block], indent + 2))
             if node.else_block:
                 lines.append(f"{prefix}  else:")
                 lines.append(format_ast_tree(node.else_block.body, indent + 2))
+        elif isinstance(node, ElifBlockNode):
+            lines.append(f"{prefix}ElifBlockNode(condition='{node.condition_text}')")
+            if node.body:
+                lines.append(f"{prefix}  body:")
+                lines.append(format_ast_tree(node.body, indent + 2))
         elif isinstance(node, ModeBlockNode):
             lines.append(f"{prefix}ModeBlockNode(modeset='{node.modeset}', mode='{node.mode}')")
             if node.body:
