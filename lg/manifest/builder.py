@@ -17,7 +17,7 @@ from ..config.paths import is_cfg_relpath
 from ..io.filters import FilterEngine
 from ..io.fs import build_gitignore_spec, iter_files
 from ..io.model import FilterNode
-from ..lang import get_language_for_file
+from ..render import get_language_for_file
 from ..template.context import TemplateContext
 from ..types import FileEntry, SectionManifest, SectionRef
 from ..vcs import VcsProvider, NullVcs
