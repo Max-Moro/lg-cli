@@ -1,8 +1,7 @@
 """
-Процессор файлов для LG V2.
+Процессор файлов.
 
-Обработка файлов через языковые адаптеры с использованием новой IR-модели.
-Заменяет parts старого process_groups.
+Обработка файлов через языковые адаптеры.
 """
 
 from __future__ import annotations
@@ -19,7 +18,7 @@ from ..types import ProcessedFile, SectionPlan
 
 def process_files(plan: SectionPlan, template_ctx: TemplateContext) -> List[ProcessedFile]:
     """
-    Обрабатывает файлы через языковые адаптеры с новой IR-моделью.
+    Обрабатывает файлы через языковые адаптеры.
     
     Args:
         plan: План секции с файлами для обработки

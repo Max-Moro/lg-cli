@@ -34,7 +34,7 @@ class SectionCfg:
     # Адресные оверрайды по путям
     targets: List[TargetRule] = field(default_factory=list)
     
-    # Условные фильтры (новая возможность для LG V2)
+    # Условные фильтры
     conditional_filters: List[ConditionalFilter] = field(default_factory=list)
 
     @staticmethod

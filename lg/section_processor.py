@@ -1,9 +1,7 @@
 """
-Обработчик секций для LG V2.
+Обработчик секций.
 
-Реализует обработку отдельных секций по запросу от движка шаблонов,
-заменяя части старой цепочки build_manifest -> build_plan -> process_groups -> render_by_section
-для одной секции за раз.
+Реализует обработку отдельных секций по запросу от движка шаблонов.
 """
 
 from __future__ import annotations
@@ -21,15 +19,6 @@ from .types import RenderedSection, SectionRef
 class SectionProcessor:
     """
     Обрабатывает одну секцию по запросу.
-    
-    Это заменяет части старой цепочки build_manifest -> build_plan -> process_groups -> render_by_section,
-    но для одной секции за раз с учетом активного контекста шаблона.
-    
-    Теперь работает как оркестратор отдельных модулей:
-    - manifest/builder.py - построение манифеста секции
-    - plan/planner.py - планирование рендеринга
-    - adapters/processor.py - обработка файлов
-    - render/renderer.py - рендеринг секции
     """
     
     def __init__(self, run_ctx: RunContext, stats_collector: StatsCollector):

@@ -1,12 +1,5 @@
 """
-Движок LG V2: новый пайплайн обработки с интегрированным движком шаблонизации.
-
-Основные отличия от V1:
-- Единый пайплайн с встроенным движком шаблонизации
-- Обработка секций по запросу (on-demand)
-- Инкрементальный сбор статистики
-- Полная поддержка адаптивных возможностей
-- Условная логика в шаблонах и конфигурации
+Основной пайплайн обработки.
 """
 
 from __future__ import annotations
@@ -30,7 +23,7 @@ from .version import tool_version
 
 class Engine:
     """
-    Координирующий класс для движка LG V2.
+    Координирующий класс движка.
     
     Управляет взаимодействием между компонентами:
     - TemplateProcessor для обработки шаблонов
@@ -43,7 +36,7 @@ class Engine:
         Инициализирует движок с указанными опциями.
         
         Args:
-            options: Опции выполнения LG V2
+            options: Опции выполнения
         """
         self.options = options
         self.root = Path.cwd().resolve()
@@ -247,14 +240,14 @@ def _parse_target(target: str) -> TargetSpec:
 
 
 def run_render(target: str, options: RunOptions) -> str:
-    """Точка входа для рендеринга в LG V2."""
+    """Точка входа для рендеринга."""
     target_spec = _parse_target(target)
     engine = Engine(options)
     return engine.render_text(target_spec)
 
 
 def run_report(target: str, options: RunOptions) -> RunResult:
-    """Точка входа для генерации отчета в LG V2."""
+    """Точка входа для генерации отчета."""
     target_spec = _parse_target(target)
     engine = Engine(options)
     return engine.generate_report(target_spec)
