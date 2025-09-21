@@ -245,6 +245,12 @@ core:
 
 ---
 
+## Адаптивные возможности
+
+Все способы создания универсальных шаблонов и конфигураций секций описаны в разделе [Адаптивные возможности](docs/adaptability.md).
+
+---
+<!-- lg:omit:start -->
 ## CLI-опции
 
 Общий формат:
@@ -266,7 +272,6 @@ lg <command> <target> [--mode all|changes] [<additional_flags>]
 * `list contexts|sections` — перечисление доступных сущностей (JSON).
 * `diag` — диагностика окружения/кэша/конфига (JSON), есть `--rebuild-cache`.
 
-<!-- lg:omit:start -->
 Примеры:
 
 ```bash

@@ -50,7 +50,7 @@ docs-design:
   filters:
     mode: allow
     allow:
-      - "/docs/adaptability/design.md"
+      - "/docs/adaptability.md"
 
 tests:
   extensions: [".py"]
