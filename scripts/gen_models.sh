@@ -206,29 +206,23 @@ ensure_node_tools() {
 
 # Collect JSON Schema files for CLI project (Python models)
 discover_cli_schemas() {
-  # Known default location: <monorepo>/cli/lg/*.schema.json
+  # Recursive search in <monorepo>/cli/lg/ and all subdirectories
   local dir="${CLI_DIR}/lg"
   local -a found=()
   if [[ -d "$dir" ]]; then
     while IFS= read -r -d '' f; do
       found+=("$f")
-    done < <(find "$dir" -maxdepth 1 -type f -name "*.schema.json" -print0)
+    done < <(find "$dir" -type f -name "*.schema.json" -print0)
   fi
   printf '%s\n' "${found[@]:-}"
 }
 
 # Map schema path → output target file (Python).
-# Default rule: foo.schema.json → foo_schema.py (same directory).
-# Override map for special cases (e.g., run_result → api_schema.py).
+# Rule: foo.schema.json → foo_schema.py (same directory, preserving subdirectory structure).
 cli_output_path_for_schema() {
   local schema="$1"
   local base="${schema%".schema.json"}"
   local default_py="${base}_schema.py"
-
-  # Overrides:
-  if [[ "$schema" == "${CLI_DIR}/lg/run_result.schema.json" ]]; then
-    echo "${CLI_DIR}/lg/api_schema.py"; return 0
-  fi
 
   echo "$default_py"
 }
