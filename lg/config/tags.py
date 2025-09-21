@@ -6,7 +6,7 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Dict, List, Any
+from typing import Dict
 
 from ruamel.yaml import YAML
 
@@ -16,6 +16,7 @@ from .paths import (
     cfg_root,
     tags_path,
 )
+from .tag_sets_list_schema import TagSetsList, TagSet as TagSetSchema, Tag as TagSchema
 
 _yaml = YAML(typ="safe")
 
@@ -124,68 +125,53 @@ def load_tags(root: Path) -> TagsConfig:
     return config
 
 
-def list_tag_sets(root: Path) -> List[dict]:
+def list_tag_sets(root: Path) -> TagSetsList:
     """
-    Возвращает список наборов тегов для CLI команды 'lg list tag-sets'.
+    Возвращает типизированный объект со списком наборов тегов для CLI команды 'lg list tag-sets'.
     
     Returns:
-        Массив объектов с информацией о наборах тегов:
-        [
-            {
-                "id": "language",
-                "title": "Языки программирования",
-                "tags": [
-                    {"id": "python", "title": "Python"},
-                    {"id": "typescript", "title": "TypeScript", "description": "..."}
-                ]
-            },
-            {
-                "id": "global",
-                "title": "Глобальные теги",
-                "tags": [
-                    {"id": "agent", "title": "Агентные возможности"},
-                    {"id": "review", "title": "Правила проведения кодревью"}
-                ]
-            }
-        ]
+        TagSetsList: Типизированный объект с массивом наборов тегов
     """
     config = load_tags(root)
-    result = []
+    tag_sets_list = []
     
     # Наборы тегов
     for tag_set_id, tag_set in config.tag_sets.items():
         tags_list = []
         for tag_id, tag in tag_set.tags.items():
-            tag_info: Dict[str, Any] = {
-                "id": tag_id,
-                "title": tag.title
-            }
-            if tag.description:
-                tag_info["description"] = tag.description
-            tags_list.append(tag_info)
+            tag_schema = TagSchema(
+                id=tag_id,
+                title=tag.title,
+                description=tag.description if tag.description else None
+            )
+            tags_list.append(tag_schema)
         
-        result.append({
-            "id": tag_set_id,
-            "title": tag_set.title,
-            "tags": tags_list
-        })
+        tag_set_schema = TagSetSchema(
+            id=tag_set_id,
+            title=tag_set.title,
+            tags=tags_list
+        )
+        tag_sets_list.append(tag_set_schema)
     
     # Глобальные теги (если есть)
     if config.global_tags:
         global_tags_list = []
         for tag_id, tag in config.global_tags.items():
-            tag_info: Dict[str, Any] = {
-                "id": tag_id,
-                "title": tag.title
-            }
-            if tag.description:
-                tag_info["description"] = tag.description
-            global_tags_list.append(tag_info)
+            tag_schema = TagSchema(
+                id=tag_id,
+                title=tag.title,
+                description=tag.description if tag.description else None
+            )
+            global_tags_list.append(tag_schema)
         
-        result.append({
-            "id": "global",
-            "title": "Глобальные теги",
-            "tags": global_tags_list
-        })
+        global_tag_set_schema = TagSetSchema(
+            id="global",
+            title="Глобальные теги",
+            tags=global_tags_list
+        )
+        tag_sets_list.append(global_tag_set_schema)
     
-    return sorted(result, key=lambda x: x["id"])
+    # Сортируем по id для стабильного порядка
+    tag_sets_list.sort(key=lambda x: x.id)
+    
+    return TagSetsList(**{"tag-sets": tag_sets_list})

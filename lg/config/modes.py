@@ -6,12 +6,13 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Dict, List, Any
+from typing import Dict
 
 from ruamel.yaml import YAML
 
 from lg.migrate import ensure_cfg_actual
 from .adaptive_model import ModesConfig, ModeSet, DEFAULT_MODES_CONFIG
+from .mode_sets_list_schema import ModeSetsList, ModeSet as ModeSetSchema, Mode as ModeSchema
 from .paths import (
     cfg_root,
     modes_path,
@@ -115,45 +116,36 @@ def load_modes(root: Path) -> ModesConfig:
     return config
 
 
-def list_mode_sets(root: Path) -> List[dict]:
+def list_mode_sets(root: Path) -> ModeSetsList:
     """
-    Возвращает список наборов режимов для CLI команды 'lg list mode-sets'.
+    Возвращает типизированный объект со списком наборов режимов для CLI команды 'lg list mode-sets'.
     
     Returns:
-        Массив объектов с информацией о наборах режимов:
-        [
-            {
-                "id": "ai-interaction",
-                "title": "Способ работы с AI",
-                "modes": [
-                    {"id": "ask", "title": "Спросить", "description": "..."},
-                    {"id": "agent", "title": "Агентная работа", "description": "...", "tags": ["agent", "tools"]}
-                ]
-            }
-        ]
+        ModeSetsList: Типизированный объект с массивом наборов режимов
     """
     config = load_modes(root)
-    result = []
+    mode_sets_list = []
     
     for mode_set_id, mode_set in config.mode_sets.items():
         modes_list = []
         for mode_id, mode in mode_set.modes.items():
-            mode_info: Dict[str, Any] = {
-                "id": mode_id,
-                "title": mode.title
-            }
-            if mode.description:
-                mode_info["description"] = mode.description
-            if mode.tags:
-                mode_info["tags"] = mode.tags
-            if mode.options:
-                mode_info["options"] = mode.options
-            modes_list.append(mode_info)
+            mode_schema = ModeSchema(
+                id=mode_id,
+                title=mode.title,
+                description=mode.description if mode.description else None,
+                tags=list(mode.tags) if mode.tags else None,
+                options=dict(mode.options) if mode.options else None
+            )
+            modes_list.append(mode_schema)
         
-        result.append({
-            "id": mode_set_id,
-            "title": mode_set.title,
-            "modes": modes_list
-        })
+        mode_set_schema = ModeSetSchema(
+            id=mode_set_id,
+            title=mode_set.title,
+            modes=modes_list
+        )
+        mode_sets_list.append(mode_set_schema)
     
-    return sorted(result, key=lambda x: x["id"])
+    # Сортируем по id для стабильного порядка
+    mode_sets_list.sort(key=lambda x: x.id)
+    
+    return ModeSetsList(**{"mode-sets": mode_sets_list})

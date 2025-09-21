@@ -1,0 +1,67 @@
+{
+  "$schema": "https://json-schema.org/draft-07/schema#",
+  "$id": "https://example.org/lg/mode_sets_list.schema.json",
+  "title": "ModeSetsList",
+  "description": "Response schema for 'lg list mode-sets' command",
+  "type": "object",
+  "required": ["mode-sets"],
+  "additionalProperties": false,
+  "properties": {
+    "mode-sets": {
+      "type": "array",
+      "items": { "$ref": "#/definitions/ModeSet" }
+    }
+  },
+  "definitions": {
+    "ModeSet": {
+      "type": "object",
+      "required": ["id", "title", "modes"],
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier of the mode set"
+        },
+        "title": {
+          "type": "string",
+          "description": "Human-readable title of the mode set"
+        },
+        "modes": {
+          "type": "array",
+          "items": { "$ref": "#/definitions/Mode" }
+        }
+      }
+    },
+    "Mode": {
+      "type": "object",
+      "required": ["id", "title"],
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier of the mode within the mode set"
+        },
+        "title": {
+          "type": "string",
+          "description": "Human-readable title of the mode"
+        },
+        "description": {
+          "type": "string",
+          "description": "Optional detailed description of the mode"
+        },
+        "tags": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Array of tags activated by this mode"
+        },
+        "options": {
+          "type": "object",
+          "additionalProperties": true,
+          "description": "Additional options specific to this mode"
+        }
+      }
+    }
+  }
+}

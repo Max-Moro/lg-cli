@@ -363,20 +363,20 @@ def test_federated_modes_list_cli_compatibility(federated_project, monkeypatch):
     root = federated_project
     monkeypatch.chdir(root)
     
-    mode_sets = list_mode_sets(root)
+    mode_sets_result = list_mode_sets(root)
     
     # Проверяем, что все режимы из всех скоупов присутствуют
-    mode_set_names = {ms["id"] for ms in mode_sets}
+    mode_set_names = {ms.id for ms in mode_sets_result.mode_sets}
     
     assert "workflow" in mode_set_names      # корневой
     assert "frontend" in mode_set_names      # apps/web
     assert "library" in mode_set_names       # libs/core
     
     # Проверяем структуру одного из наборов
-    frontend_set = next(ms for ms in mode_sets if ms["id"] == "frontend")
-    assert frontend_set["title"] == "Фронтенд работа"
+    frontend_set = next(ms for ms in mode_sets_result.mode_sets if ms.id == "frontend")
+    assert frontend_set.title == "Фронтенд работа"
     
-    mode_names = {m["id"] for m in frontend_set["modes"]}
+    mode_names = {m.id for m in frontend_set.modes}
     assert "ui" in mode_names
     assert "api" in mode_names
 
@@ -391,14 +391,14 @@ def test_federated_tags_list_cli_compatibility(federated_project, monkeypatch):
     tag_sets = list_tag_sets(root)
     
     # Проверяем наличие тегов из всех скоупов
-    tag_set_names = {ts["id"] for ts in tag_sets}
+    tag_set_names = {ts.id for ts in tag_sets.tag_sets}
     
     assert "frontend-type" in tag_set_names  # apps/web
     
     # Проверяем глобальные теги
-    global_set = next((ts for ts in tag_sets if ts["id"] == "global"), None)
+    global_set = next((ts for ts in tag_sets.tag_sets if ts.id == "global"), None)
     if global_set:
-        global_tag_names = {t["id"] for t in global_set["tags"]}
+        global_tag_names = {t.id for t in global_set.tags}
         assert "full-context" in global_tag_names  # корневой
         assert "typescript" in global_tag_names    # apps/web  
         assert "python" in global_tag_names        # libs/core

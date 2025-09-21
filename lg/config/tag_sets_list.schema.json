@@ -1,0 +1,55 @@
+{
+  "$schema": "https://json-schema.org/draft-07/schema#",
+  "$id": "https://example.org/lg/tag_sets_list.schema.json",
+  "title": "TagSetsList",
+  "description": "Response schema for 'lg list tag-sets' command",
+  "type": "object",
+  "required": ["tag-sets"],
+  "additionalProperties": false,
+  "properties": {
+    "tag-sets": {
+      "type": "array",
+      "items": { "$ref": "#/definitions/TagSet" }
+    }
+  },
+  "definitions": {
+    "TagSet": {
+      "type": "object",
+      "required": ["id", "title", "tags"],
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier of the tag set"
+        },
+        "title": {
+          "type": "string",
+          "description": "Human-readable title of the tag set"
+        },
+        "tags": {
+          "type": "array",
+          "items": { "$ref": "#/definitions/Tag" }
+        }
+      }
+    },
+    "Tag": {
+      "type": "object",
+      "required": ["id", "title"],
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier of the tag within the tag set"
+        },
+        "title": {
+          "type": "string",
+          "description": "Human-readable title of the tag"
+        },
+        "description": {
+          "type": "string",
+          "description": "Optional detailed description of the tag"
+        }
+      }
+    }
+  }
+}

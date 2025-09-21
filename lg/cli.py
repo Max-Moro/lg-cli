@@ -5,13 +5,10 @@ import sys
 from pathlib import Path
 from typing import Any, Dict
 
-from .config import list_sections
-from .template import list_contexts
 from .diag import run_diag
 from .engine import run_report, run_render
 from .jsonic import dumps as jdumps
 from .migrate.errors import MigrationFatalError
-from .stats import list_models
 from .types import RunOptions
 from .version import tool_version
 
@@ -137,17 +134,22 @@ def main(argv: list[str] | None = None) -> int:
             root = Path.cwd()
             data: Dict[str, Any]
             if ns.what == "contexts":
+                from .template import list_contexts
                 data = {"contexts": list_contexts(root)}
             elif ns.what == "sections":
+                from .config import list_sections
                 data = {"sections": list_sections(root)}
             elif ns.what == "models":
+                from .stats import list_models
                 data = {"models": list_models(root)}
             elif ns.what == "mode-sets":
                 from .config.modes import list_mode_sets
-                data = {"mode-sets": list_mode_sets(root)}
+                mode_sets_result = list_mode_sets(root)
+                data = mode_sets_result.model_dump(by_alias=True)
             elif ns.what == "tag-sets":
                 from .config.tags import list_tag_sets
-                data = {"tag-sets": list_tag_sets(root)}
+                tag_sets_result = list_tag_sets(root)
+                data = tag_sets_result.model_dump(by_alias=True)
             else:
                 raise ValueError(f"Unknown list target: {ns.what}")
             sys.stdout.write(jdumps(data))
