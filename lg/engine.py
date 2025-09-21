@@ -7,14 +7,13 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Optional
 
-from .api_schema import RunResult
 from .cache.fs_cache import Cache
 from .config import process_adaptive_options
 from .config.paths import cfg_root
 from .migrate import ensure_cfg_actual
 from .run_context import RunContext
 from .section_processor import SectionProcessor
-from .stats import build_run_result_from_collector, StatsCollector, TokenService
+from .stats import RunResult, build_run_result_from_collector, StatsCollector, TokenService
 from .template import TemplateProcessor, TemplateProcessingError, TemplateContext
 from .types import RunOptions, TargetSpec, SectionRef
 from .vcs import NullVcs

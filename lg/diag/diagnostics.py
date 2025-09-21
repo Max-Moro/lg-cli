@@ -8,18 +8,18 @@ from datetime import datetime
 from pathlib import Path
 from zipfile import ZipFile, ZIP_DEFLATED
 
-from .cache.fs_cache import Cache
-from .config import list_sections_peek
-from .config.paths import cfg_root
-from .template import list_contexts
+from lg.cache.fs_cache import Cache
+from lg.config import list_sections_peek
+from lg.config.paths import cfg_root
+from lg.template import list_contexts
 from .diag_report_schema import (
     DiagReport, DiagConfig, DiagCache, DiagCheck, DiagEnv, DiagMigrationRef, DiagLastError, Severity
 )
-from .migrate import ensure_cfg_actual
-from .migrate.errors import MigrationFatalError
-from .migrate.version import CFG_CURRENT
-from .protocol import PROTOCOL_VERSION
-from .version import tool_version
+from lg.migrate import ensure_cfg_actual
+from lg.migrate.errors import MigrationFatalError
+from lg.migrate.version import CFG_CURRENT
+from lg.protocol import PROTOCOL_VERSION
+from lg.version import tool_version
 
 
 def run_diag(*, rebuild_cache: bool = False) -> DiagReport:

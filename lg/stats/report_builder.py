@@ -6,7 +6,7 @@
 
 from __future__ import annotations
 
-from ..api_schema import RunResult, Total, File, Context, Scope
+from .report_schema import RunResult, Total, File, Context, Scope
 from ..protocol import PROTOCOL_VERSION
 from ..stats.collector import StatsCollector
 from ..types import TargetSpec

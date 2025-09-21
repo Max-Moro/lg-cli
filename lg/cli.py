@@ -7,7 +7,7 @@ from typing import Any, Dict
 
 from .config import list_sections
 from .template import list_contexts
-from .diagnostics import run_diag
+from .diag import run_diag
 from .engine import run_report, run_render
 from .jsonic import dumps as jdumps
 from .migrate.errors import MigrationFatalError
@@ -158,7 +158,7 @@ def main(argv: list[str] | None = None) -> int:
             # По флагу --bundle собираем zip; путь пишем в stderr, stdout остаётся JSON
             if bool(getattr(ns, "bundle", False)):
                 try:
-                    from .diagnostics import build_diag_bundle
+                    from lg.diag.diagnostics import build_diag_bundle
                     bundle_path = build_diag_bundle(report)
                     sys.stderr.write(f"Diagnostic bundle written to: {bundle_path}\n")
                 except Exception as e:
