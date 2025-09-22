@@ -9,11 +9,11 @@ from __future__ import annotations
 
 from typing import Tuple, Optional
 
-from .parser import parse_markdown_template, MarkdownTemplateParserError
 from .nodes import (
-    MarkdownAST, MarkdownNode, TextNode, ConditionalBlockNode, 
-    ElifBlockNode, ElseBlockNode, CommentBlockNode
+    MarkdownAST, MarkdownNode, TextNode, ConditionalBlockNode,
+    CommentBlockNode
 )
+from .parser import parse_markdown_template, MarkdownTemplateParserError
 
 
 class MarkdownTemplateProcessorError(Exception):

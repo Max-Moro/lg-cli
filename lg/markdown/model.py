@@ -23,22 +23,22 @@ class MarkdownCfg:
     # блок drop: секции/маркеры/frontmatter/политика плейсхолдеров
     drop: MarkdownDropCfg | None = None
     # включение обработки условных конструкций в HTML-комментариях
-    enable_templating: bool = False
+    enable_templating: bool = True
 
     @staticmethod
-    def from_dict(d: Optional[Dict[str, Any]]) -> "MarkdownCfg":
+    def from_dict(d: Optional[Dict[str, Any]]) -> MarkdownCfg:
         if not d:
             # Конфиг не задан → возвращаем дефолтный конфиг
             return MarkdownCfg(
                 max_heading_level=None,
                 strip_single_h1=False,
                 drop=None,
-                enable_templating=False
+                enable_templating=True
             )
         _assert_only_keys(d, ["max_heading_level", "strip_single_h1", "drop", "enable_templating"], ctx="MarkdownCfg")
         max_heading_level = d.get("max_heading_level", None)
         strip_single_h1 = d.get("strip_single_h1", False)
-        enable_templating = d.get("enable_templating", False)
+        enable_templating = d.get("enable_templating", True)
         drop_cfg = d.get("drop", None)
         # Если блок drop не задан — None.
         drop = MarkdownDropCfg.from_dict(drop_cfg) if drop_cfg is not None else None
@@ -58,7 +58,7 @@ class SectionMatch:
     flags: Optional[str] = None           # для regex: напр. "i", "ms"
 
     @staticmethod
-    def from_dict(d: Dict[str, Any]) -> "SectionMatch":
+    def from_dict(d: Dict[str, Any]) -> SectionMatch:
         if not isinstance(d, dict):
             raise TypeError("SectionMatch must be a mapping with keys: kind, pattern[, flags]")
         _assert_only_keys(d, ["kind", "pattern", "flags"], ctx="SectionMatch")
@@ -87,7 +87,7 @@ class SectionRule:
     placeholder: Optional[str] = None     # локальный шаблон плейсхолдера
 
     @staticmethod
-    def from_dict(d: Dict[str, Any]) -> "SectionRule":
+    def from_dict(d: Dict[str, Any]) -> SectionRule:
         if not isinstance(d, dict):
             raise TypeError("SectionRule must be a mapping")
         _assert_only_keys(
@@ -136,7 +136,7 @@ class PlaceholderPolicy:
     template: Optional[str] = "> *(Опущено: {title}; −{lines} строк)*"
 
     @staticmethod
-    def from_dict(d: Optional[Dict[str, Any]]) -> "PlaceholderPolicy":
+    def from_dict(d: Optional[Dict[str, Any]]) -> PlaceholderPolicy:
         if not d:
             return PlaceholderPolicy(mode="none")
         _assert_only_keys(d, ["mode", "template"], ctx="PlaceholderPolicy")
@@ -155,7 +155,7 @@ class MarkdownDropCfg:
     placeholder: PlaceholderPolicy = field(default_factory=PlaceholderPolicy)
 
     @staticmethod
-    def from_dict(d: Optional[Dict[str, Any]]) -> "MarkdownDropCfg":
+    def from_dict(d: Optional[Dict[str, Any]]) -> MarkdownDropCfg:
         """
         Разбор блока drop:
           - sections: list[SectionRule]
