@@ -16,7 +16,6 @@ src:
           - "diag**"
           - "/vcs/"
           - "lang.py"
-          - "api_schema.py"
           # Под задачу
           - "/stats/"
           - "/io/"
@@ -44,6 +43,30 @@ src:
             allow:
               - "/collector.py"
               - "/report_builder.py"
+
+src-front:
+  extensions: [".py", ".toml", ".json"]
+  path_labels: relative
+  filters:
+    mode: allow
+    allow:
+      - "/pyproject.toml"
+      - "/lg/"
+    children:
+      lg:
+        mode: allow
+        allow:
+          - "/cli.py"
+          - "/types.py"
+          - "/engine.py"
+          - "/config/"
+        children:
+          config:
+            mode: block
+            block:
+              - "/load.py"
+              - "/mode_sets_list_schema.py"
+              - "/tag_sets_list_schema.py"
 
 docs-design:
   extensions: [".md"]
