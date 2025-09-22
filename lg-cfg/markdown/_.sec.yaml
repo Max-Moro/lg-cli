@@ -32,6 +32,46 @@ src:
               - "/processor.py"
               - "/markdown.py"
 
+src-markdown-ast:
+  extensions: [".py", ".toml"]
+  filters:
+    mode: allow
+    allow:
+      - "/pyproject.toml"
+      - "/lg/"
+    children:
+      lg:
+        mode: allow
+        allow:
+          - "/cli.py"
+          - "/types.py"
+          - "/engine.py"
+          - "/config/"
+          - "/section_processor.py"
+          - "/template/"
+          - "/adapters/"
+          - "/markdown/"
+        children:
+          config:
+            mode: allow
+            allow:
+              - "/load.py"
+              - "/model.py"
+          adapters:
+            mode: allow
+            allow:
+              - "/__init__.py"
+              - "/registry.py"
+              - "/base.py"
+              - "/processor.py"
+              - "/markdown.py"
+          markdown:
+            mode: allow
+            allow:
+              - "/__init__.py"
+              - "/adapter.py"
+              - "/model.py"
+
 docs-design:
   extensions: [".md"]
   filters:
