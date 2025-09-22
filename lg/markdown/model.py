@@ -22,6 +22,8 @@ class MarkdownCfg:
     strip_single_h1: bool = False
     # блок drop: секции/маркеры/frontmatter/политика плейсхолдеров
     drop: MarkdownDropCfg | None = None
+    # включение обработки условных конструкций в HTML-комментариях
+    enable_templating: bool = False
 
     @staticmethod
     def from_dict(d: Optional[Dict[str, Any]]) -> "MarkdownCfg":
@@ -30,11 +32,13 @@ class MarkdownCfg:
             return MarkdownCfg(
                 max_heading_level=None,
                 strip_single_h1=False,
-                drop=None
+                drop=None,
+                enable_templating=False
             )
-        _assert_only_keys(d, ["max_heading_level", "strip_single_h1", "drop"], ctx="MarkdownCfg")
+        _assert_only_keys(d, ["max_heading_level", "strip_single_h1", "drop", "enable_templating"], ctx="MarkdownCfg")
         max_heading_level = d.get("max_heading_level", None)
         strip_single_h1 = d.get("strip_single_h1", False)
+        enable_templating = d.get("enable_templating", False)
         drop_cfg = d.get("drop", None)
         # Если блок drop не задан — None.
         drop = MarkdownDropCfg.from_dict(drop_cfg) if drop_cfg is not None else None
@@ -42,6 +46,7 @@ class MarkdownCfg:
             max_heading_level=max_heading_level if max_heading_level is None else int(max_heading_level),
             strip_single_h1=strip_single_h1,
             drop=drop,
+            enable_templating=enable_templating,
         )
 
 MatchKind = Literal["text", "slug", "regex"]

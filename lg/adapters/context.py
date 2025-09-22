@@ -43,12 +43,15 @@ class LightweightContext(LightState):
         file_path: Path,
         raw_text: str,
         group_size: int,
-        mixed: bool
+        mixed: bool,
+        template_ctx=None
     ):
         super().__init__(file_path, raw_text, group_size, mixed)
         
         # Для ленивой инициализации полноценного контекста
         self._full_context: Optional[ProcessingContext] = None
+        # Контекст шаблона для обработки условных конструкций
+        self.template_ctx = template_ctx
 
     def get_full_context(self, adapter, tokenizer: TokenService) -> ProcessingContext:
         """
