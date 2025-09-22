@@ -41,8 +41,8 @@ class MarkdownTemplateLexer:
     
     # Регулярное выражение для поиска LG-комментариев
     LG_COMMENT_PATTERN = re.compile(
-        r'<!--\s*lg:([a-z:]+)(?:\s+(.+?))?\s*-->',
-        re.MULTILINE | re.DOTALL
+        r'<!--\s*lg:([a-z:]+)(?:\s+([^-]+(?:-(?!->)[^-]*)*))?\s*-->',
+        re.MULTILINE
     )
     
     def __init__(self, text: str):

@@ -68,7 +68,8 @@ def process_files(plan: SectionPlan, template_ctx: TemplateContext) -> List[Proc
                 file_path=fp,
                 raw_text=raw_text,
                 group_size=group_size,
-                mixed=bool(group.mixed)
+                mixed=bool(group.mixed),
+                template_ctx=template_ctx
             )
             
             # Проверяем эвристики пропуска
