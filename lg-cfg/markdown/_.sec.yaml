@@ -65,12 +65,21 @@ src-markdown-ast:
               - "/base.py"
               - "/processor.py"
               - "/markdown.py"
+          template:
+            mode: allow
+            allow:
+              - "/processor.py"
+              - "/context.py"
           markdown:
             mode: allow
             allow:
-              - "/__init__.py"
-              - "/adapter.py"
+              - "/templating/"
               - "/model.py"
+  targets:
+    - match: "/lg/markdown/templating/*.py"
+      python:
+        budget:
+          max_tokens_per_file: 500
 
 docs-design:
   extensions: [".md"]

@@ -89,7 +89,7 @@ tests:
           - "/adaptive/"
         children:
           adaptive:
-            mode: allow
-            allow:
-              - "/conftest.py"
-              - "/test_conditional_adapter_options.py"
+            mode: block
+            block:
+              - "/test_edge_cases.py"
+              - "/test_federated.py"
