@@ -89,7 +89,6 @@ tests:
           - "/adaptive/"
         children:
           adaptive:
-            mode: block
-            block:
-              - "/test_edge_cases.py"
-              - "/test_federated.py"
+            mode: allow
+            allow:
+              - "/test_markdown_templating.py"

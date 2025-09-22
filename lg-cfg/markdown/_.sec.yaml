@@ -75,11 +75,6 @@ src-markdown-ast:
             allow:
               - "/templating/"
               - "/model.py"
-  targets:
-    - match: "/lg/markdown/templating/*.py"
-      python:
-        budget:
-          max_tokens_per_file: 500
 
 docs-design:
   extensions: [".md"]
