@@ -514,9 +514,9 @@ def test_markdown_templating_with_regular_drop_rules(adaptive_project):
     assert "Advanced Usage" in result1
     
     # Разделы должны быть удалены с плейсхолдерами
-    assert "Installation" not in result1
-    assert "License" not in result1
     assert "Download the package" not in result1
+    assert "Run installation commands" not in result1
+    assert "This section would also be dropped" not in result1
     assert "*(Раздел «Installation» опущен)*" in result1
     assert "*(Раздел «License» опущен)*" in result1
     
@@ -535,8 +535,9 @@ def test_markdown_templating_with_regular_drop_rules(adaptive_project):
     assert "Advanced Usage" not in result2  # часть else блока
     
     # Drop правила все еще работают
-    assert "Installation" not in result2
-    assert "License" not in result2
+    assert "Download the package" not in result2
+    assert "Run installation commands" not in result2
+    assert "This section would also be dropped" not in result2
     assert "*(Раздел «Installation» опущен)*" in result2
     assert "*(Раздел «License» опущен)*" in result2
 
