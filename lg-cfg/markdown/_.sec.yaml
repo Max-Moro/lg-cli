@@ -78,10 +78,3 @@ docs-design:
     mode: allow
     allow:
       - "/docs/markdown.md"
-
-docs-ast-based-design:
-  extensions: [".md"]
-  filters:
-    mode: allow
-    allow:
-      - "/docs/markdown-ast-based-design.tpl.md"
