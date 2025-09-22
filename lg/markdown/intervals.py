@@ -2,8 +2,8 @@ from __future__ import annotations
 
 from typing import List, Tuple
 
-from .model import SectionRule, MarkerRule, ParsedDoc
-from .selectors import select_section_intervals, select_marker_intervals
+from .model import SectionRule, ParsedDoc
+from .selectors import select_section_intervals
 
 Interval = Tuple[int, int, dict]  # (start, end_excl, payload_meta)
 
@@ -68,11 +68,11 @@ def _merge_intervals(intervals: List[Interval]) -> List[Interval]:
     return merged
 
 
-def build_drop_intervals(doc: ParsedDoc, *, section_rules: List[SectionRule], marker_rules: List[MarkerRule], drop_frontmatter: bool) -> List[Interval]:
+def build_drop_intervals(doc: ParsedDoc, *, section_rules: List[SectionRule], drop_frontmatter: bool) -> List[Interval]:
     """
     Строит итоговый, слитый список интервалов для удаления.
     payload_meta содержит:
-      • kind: "section" | "marker" | "frontmatter"
+      • kind: "section" | "frontmatter"
       • title, level, reason (когда применимо)
       • placeholders: {template_override?}
     """
@@ -90,23 +90,10 @@ def build_drop_intervals(doc: ParsedDoc, *, section_rules: List[SectionRule], ma
         }
         intervals.append((s, e, meta))
 
-    # 2) Маркеры
-    mints = select_marker_intervals(doc.lines, marker_rules)
-    for s, e, rule in mints:
-        meta = {
-            "kind": "marker",
-            "title": None,
-            "level": None,
-            "reason": rule.reason,
-            "placeholder": rule.placeholder or None,
-            "count": 1,
-        }
-        intervals.append((s, e, meta))
-
-    # 3) Frontmatter
+    # 2) Frontmatter
     if drop_frontmatter and doc.frontmatter_range:
         s, e = doc.frontmatter_range
         intervals.append((s, e, {"kind": "frontmatter", "title": None, "level": None, "reason": "frontmatter", "placeholder": None, "count": 1}))
 
-    # 4) Слияние
+    # 3) Слияние
     return _merge_intervals(intervals)

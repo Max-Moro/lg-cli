@@ -4,7 +4,7 @@ import re
 from typing import Callable, List, Optional
 
 from .model import (
-    SectionMatch, SectionRule, MarkerRule, HeadingNode, ParsedDoc
+    SectionMatch, SectionRule, HeadingNode, ParsedDoc
 )
 from .slug import slugify_github
 
@@ -126,53 +126,4 @@ def select_section_intervals(doc: ParsedDoc, rules: List[SectionRule]) -> List[t
     return out
 
 
-def select_marker_intervals(lines: List[str], markers: List[MarkerRule]) -> List[tuple[int, int, MarkerRule]]:
-    """
-    Для каждого маркерного правила ищем непересекающиеся пары start-end по порядку.
-    Если end не найден — считаем до конца файла.
-    """
-    out: list[tuple[int, int, MarkerRule]] = []
-    n = len(lines)
-    def _normalize_ws(s: str) -> str:
-        # Схлопываем внутренние последовательности пробелов + обрезаем края.
-        # Это покрывает случаи вроде "<!-- a   -->" vs "<!-- a -->" и отступы.
-        return " ".join(s.strip().split())
 
-    def _find_line(target: str, start_idx: int) -> int:
-        """Ищем строку: exact → strip → normalized whitespace."""
-        t_exact = target
-        t_stripped = target.strip()
-        t_norm = _normalize_ws(target)
-        # точное совпадение
-        for j in range(start_idx, n):
-            if lines[j] == t_exact:
-                return j
-        # сравнение по .strip()
-        for j in range(start_idx, n):
-            if lines[j].strip() == t_stripped:
-                return j
-        # сравнение по нормализованным пробелам
-        for j in range(start_idx, n):
-            if _normalize_ws(lines[j]) == t_norm:
-                return j
-        return -1
-
-    for rule in markers:
-        i = 0
-        while i < n:
-            # поиск start (exact → strip)
-            s = _find_line(rule.start, i)
-            if s < 0:
-                break
-            # поиск end (exact → strip)
-            e = _find_line(rule.end, s + 1)
-            end_excl = (e + 1) if e >= 0 else n
-            # интервал
-            if not rule.include_markers:
-                s0 = s + 1
-                e0 = end_excl - 1 if end_excl > s + 1 else s + 1
-                out.append((s0, e0, rule))
-            else:
-                out.append((s, end_excl, rule))
-            i = end_excl
-    return out

@@ -25,9 +25,7 @@ def test_markdown_cfg_nested_drop_is_parsed():
                     "placeholder": "> *(FAQ pruned; {lines})*",
                 },
             ],
-            "markers": [
-                {"start": "<!-- lg:omit:start -->", "end": "<!-- lg:omit:end -->", "include_markers": True}
-            ],
+
         },
     }
     adapter = MarkdownAdapter().bind(raw, default_tokenizer())
@@ -37,7 +35,7 @@ def test_markdown_cfg_nested_drop_is_parsed():
     assert cfg.drop.placeholder.mode == "summary"
     assert len(cfg.drop.sections) == 3
     assert cfg.drop.sections[0].match is not None and cfg.drop.sections[0].match.kind == "text"
-    assert cfg.drop.markers[0].include_markers is True
+
 
 def test_unknown_extra_key_raises():
     bad = {

@@ -30,7 +30,6 @@ def test_sections_match_by_slug():
             "sections": [
                 {"match": {"kind": "slug", "pattern": "cli-options"}}
             ],
-            "markers": [],
             "frontmatter": False,
             "placeholder": {"mode": "summary", "template": "> *(drop {title} L{level}; {lines})*"},
         },
@@ -53,7 +52,6 @@ def test_sections_match_by_regex_flags():
             "sections": [
                 {"match": {"kind": "regex", "pattern": "^legacy", "flags": "i"}}
             ],
-            "markers": [],
             "frontmatter": False,
             "placeholder": {"mode": "summary", "template": "> *(omitted {title})*"},
         },
@@ -72,7 +70,6 @@ def test_sections_match_by_path_only():
             "sections": [
                 {"path": ["FAQ", "User"], "placeholder": "> *(FAQ user pruned)*"}
             ],
-            "markers": [],
             "frontmatter": False,
             "placeholder": {"mode": "summary", "template": "> *(GEN)*"},
         },
@@ -91,7 +88,6 @@ def test_sections_level_bounds():
                 # удалим только H2 разделы (level_exact)
                 {"match": {"kind": "regex", "pattern": "."}, "level_exact": 2, "reason": "demo"}
             ],
-            "markers": [],
             "frontmatter": False,
             "placeholder": {"mode": "summary", "template": "> *(omit L{level} {title})*"},
         },
@@ -114,7 +110,6 @@ def test_sections_match_plus_path_combo():
                 # совпадение по text + правильный путь
                 {"match": {"kind": "text", "pattern": "Dev"}, "path": ["FAQ"]},
             ],
-            "markers": [],
             "frontmatter": False,
             "placeholder": {"mode": "summary", "template": "> *(PH)*"},
         },

@@ -13,7 +13,7 @@ def process_markdown(text: str, cfg: MarkdownCfg, *, group_size: int, mixed: boo
     """
     Пайплайн адаптера:
       1) parse_markdown → ParsedDoc
-      2) (если есть cfg.drop) построить интервалы удаления (sections/markers/frontmatter) и применить
+      2) (если есть cfg.drop) построить интервалы удаления (sections/frontmatter) и применить
          с плейсхолдерами
       3) normalize_markdown (снятие H1, max_heading_level)
       4) meta агрегируем
@@ -28,7 +28,6 @@ def process_markdown(text: str, cfg: MarkdownCfg, *, group_size: int, mixed: boo
         "md.placeholders": 0,
         "md.removed.frontmatter": False,
         "md.removed.sections": 0,
-        "md.removed.markers": 0,
     }
 
     # 1) parse
@@ -40,7 +39,6 @@ def process_markdown(text: str, cfg: MarkdownCfg, *, group_size: int, mixed: boo
         intervals = build_drop_intervals(
             doc,
             section_rules=drop_cfg.sections,
-            marker_rules=drop_cfg.markers,
             drop_frontmatter=drop_cfg.frontmatter,
         )
         # счётчики из интервалов
@@ -52,8 +50,6 @@ def process_markdown(text: str, cfg: MarkdownCfg, *, group_size: int, mixed: boo
                     meta["md.removed.frontmatter"] = True
                 elif k == "section":
                     meta["md.removed.sections"] = int(meta["md.removed.sections"]) + 1
-                elif k == "marker":
-                    meta["md.removed.markers"] = int(meta["md.removed.markers"]) + 1
             ph_policy: PlaceholderPolicy = drop_cfg.placeholder
             current_text, ph_meta = apply_intervals_with_placeholders(doc.lines, intervals, ph_policy)
             meta.update(ph_meta)

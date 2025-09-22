@@ -26,18 +26,18 @@ class MarkdownCfg:
     @staticmethod
     def from_dict(d: Optional[Dict[str, Any]]) -> "MarkdownCfg":
         if not d:
-            # Конфиг не задан → включаем дефолтные маркеры lg:omit
+            # Конфиг не задан → возвращаем дефолтный конфиг
             return MarkdownCfg(
                 max_heading_level=None,
                 strip_single_h1=False,
-                drop=MarkdownDropCfg._with_default_markers()
+                drop=None
             )
         _assert_only_keys(d, ["max_heading_level", "strip_single_h1", "drop"], ctx="MarkdownCfg")
         max_heading_level = d.get("max_heading_level", None)
         strip_single_h1 = d.get("strip_single_h1", False)
         drop_cfg = d.get("drop", None)
-        # Если блок drop не задан — создаём с дефолтными маркерами.
-        drop = MarkdownDropCfg.from_dict(drop_cfg) if drop_cfg is not None else MarkdownDropCfg._with_default_markers()
+        # Если блок drop не задан — None.
+        drop = MarkdownDropCfg.from_dict(drop_cfg) if drop_cfg is not None else None
         return MarkdownCfg(
             max_heading_level=max_heading_level if max_heading_level is None else int(max_heading_level),
             strip_single_h1=strip_single_h1,
@@ -123,33 +123,7 @@ class SectionRule:
             placeholder=str(placeholder) if isinstance(placeholder, str) else (None if placeholder is None else str(placeholder)),
         )
 
-@dataclass
-class MarkerRule:
-    start: str
-    end: str
-    include_markers: bool = True
-    reason: Optional[str] = None
-    placeholder: Optional[str] = None
 
-    @staticmethod
-    def from_dict(d: Dict[str, Any]) -> "MarkerRule":
-        if not isinstance(d, dict):
-            raise TypeError("MarkerRule must be a mapping")
-        _assert_only_keys(d, ["start", "end", "include_markers", "reason", "placeholder"], ctx="MarkerRule")
-        start = d.get("start")
-        end = d.get("end")
-        if not isinstance(start, str) or not isinstance(end, str):
-            raise ValueError("MarkerRule requires 'start' and 'end' strings")
-        include_markers = bool(d.get("include_markers", True))
-        reason = d.get("reason")
-        placeholder = d.get("placeholder")
-        return MarkerRule(
-            start=start,
-            end=end,
-            include_markers=include_markers,
-            reason=str(reason) if isinstance(reason, str) else (None if reason is None else str(reason)),
-            placeholder=str(placeholder) if isinstance(placeholder, str) else (None if placeholder is None else str(placeholder)),
-        )
 
 @dataclass
 class PlaceholderPolicy:
@@ -172,54 +146,23 @@ class PlaceholderPolicy:
 @dataclass
 class MarkdownDropCfg:
     sections: List[SectionRule] = field(default_factory=list)
-    markers: List[MarkerRule] = field(default_factory=list)
     frontmatter: bool = False
     placeholder: PlaceholderPolicy = field(default_factory=PlaceholderPolicy)
-
-    @staticmethod
-    def _default_omit_markers() -> List[MarkerRule]:
-        """Стандартные маркеры lg:omit, включаемые по умолчанию."""
-        return [MarkerRule(
-            start="<!-- lg:omit:start -->",
-            end="<!-- lg:omit:end -->",
-            include_markers=True,
-            reason="lg:omit default"
-        )]
-
-    @classmethod
-    def _with_default_markers(cls) -> "MarkdownDropCfg":
-        """Готовый drop-конфиг с дефолтными lg:omit-маркерами и placeholder=none."""
-        return cls(
-            sections=[],
-            markers=cls._default_omit_markers(),
-            frontmatter=False,
-            placeholder=PlaceholderPolicy(mode="none")
-        )
 
     @staticmethod
     def from_dict(d: Optional[Dict[str, Any]]) -> "MarkdownDropCfg":
         """
         Разбор блока drop:
           - sections: list[SectionRule]
-          - markers: list[MarkerRule]
           - frontmatter: bool
           - placeholder: PlaceholderPolicy
-        Допускает d=None → вернётся конфиг по умолчанию (без правил).
+        Допускает d=None → вернётся пустой конфиг.
         """
         if not d:
-            # drop не задан → возвращаем конфиг с дефолтными lg:omit маркерами
-            return MarkdownDropCfg._with_default_markers()
-        _assert_only_keys(d, ["sections", "markers", "frontmatter", "placeholder"], ctx="MarkdownDropCfg")
+            # drop не задан → возвращаем пустой конфиг
+            return MarkdownDropCfg()
+        _assert_only_keys(d, ["sections", "frontmatter", "placeholder"], ctx="MarkdownDropCfg")
         sections_raw = d.get("sections", []) or []
-        # ВАЖНО: различаем «ключ отсутствует» и «пустой список».
-        markers_key_present = ("markers" in d)
-        markers_raw = d.get("markers", None)
-        if markers_raw is None and not markers_key_present:
-            # ключ не указан → подставляем дефолтные lg:omit-маркеры
-            markers = MarkdownDropCfg._default_omit_markers()
-        else:
-            markers_raw = markers_raw or []
-            markers = [MarkerRule.from_dict(x) for x in markers_raw]
         if not isinstance(sections_raw, Iterable):
             raise TypeError("drop.sections must be a list")
         sections = [SectionRule.from_dict(x) for x in sections_raw]
@@ -227,7 +170,6 @@ class MarkdownDropCfg:
         placeholder = PlaceholderPolicy.from_dict(d.get("placeholder", None))
         return MarkdownDropCfg(
             sections=sections,
-            markers=markers,
             frontmatter=frontmatter,
             placeholder=placeholder,
         )
