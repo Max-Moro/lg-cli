@@ -80,7 +80,7 @@ def process_files(plan: SectionPlan, template_ctx: TemplateContext) -> List[Proc
             k_proc, p_proc = cache.build_processed_key(
                 abs_path=fp,
                 adapter_cfg=raw_cfg,
-                template_context=template_ctx,
+                active_tags=template_ctx.current_state.active_tags,
             )
 
             # Пытаемся получить из кэша

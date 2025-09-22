@@ -135,7 +135,7 @@ class Cache:
         self,
         abs_path: Path,
         adapter_cfg: Any,
-        template_context: Any = None,
+        active_tags: set[str],
     ) -> tuple[str, Path]:
         """
         Ключ processed-кэша. Включает файловый fingerprint (mtime/size),
@@ -158,13 +158,10 @@ class Cache:
             "tool": self.tool_version,
         }
         
-        # Добавляем информацию о тегах и режимах для адаптивных возможностей
-        if template_context:
-            payload["template"] = {
-                "active_tags": sorted(template_context.current_state.active_tags),
-                "active_modes": template_context.current_state.active_modes,
-                "origin": template_context.current_state.origin,
-            }
+        # Добавляем информацию о тегах для адаптивных возможностей
+        if active_tags:
+            payload["active_tags"] = sorted(active_tags)
+
         h = _sha1_json(payload)
         path = self._bucket_path("processed", h)
         return h, path
