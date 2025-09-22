@@ -16,7 +16,7 @@ from dataclasses import dataclass, field
 import pytest
 
 from lg.cache.fs_cache import Cache
-from lg.config.adaptive_loader import AdaptiveConfigLoader
+from lg.config.adaptive_loader import AdaptiveConfigLoader, process_adaptive_options
 from lg.engine import Engine
 from lg.run_context import RunContext
 from lg.stats.tokenizer import default_tokenizer
@@ -369,6 +369,14 @@ def make_run_context(root: Path, options: Optional[RunOptions] = None) -> RunCon
         options = make_run_options()
     
     cache = Cache(root, enabled=None, fresh=False, tool_version="test")
+    adaptive_loader = AdaptiveConfigLoader(root)
+    
+    # Используем process_adaptive_options для правильной инициализации active_tags
+    active_tags, mode_options, _ = process_adaptive_options(
+        root,
+        options.modes,
+        options.extra_tags
+    )
     
     return RunContext(
         root=root,
@@ -376,7 +384,9 @@ def make_run_context(root: Path, options: Optional[RunOptions] = None) -> RunCon
         cache=cache,
         vcs=NullVcs(),
         tokenizer=default_tokenizer(),
-        adaptive_loader=AdaptiveConfigLoader(root)
+        adaptive_loader=adaptive_loader,
+        mode_options=mode_options,
+        active_tags=active_tags
     )
 
 

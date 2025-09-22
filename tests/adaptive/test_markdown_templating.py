@@ -64,7 +64,7 @@ def test_markdown_conditional_blocks_basic(adaptive_project):
       filters:
         mode: allow
         allow:
-          - "/docs/**"
+          - "/docs/setup.md"
     """).strip() + "\n"
     
     write(root / "lg-cfg" / "sections.yaml", sections_content)
