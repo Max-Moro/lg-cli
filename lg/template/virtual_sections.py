@@ -10,6 +10,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Dict, Any, Optional
 
+from .nodes import MarkdownFileNode
 from ..config.model import SectionCfg, AdapterConfig
 from ..io.model import FilterNode
 from ..types import SectionRef
@@ -29,24 +30,14 @@ class VirtualSectionFactory:
     
     def create_for_markdown_file(
         self, 
-        path: str, 
-        origin: str = "self",
-        heading_level: Optional[int] = None,
-        strip_h1: Optional[bool] = None,
-        anchor: Optional[str] = None,
-        is_glob: bool = False,
+        node: MarkdownFileNode,
         repo_root: Optional[Path] = None
     ) -> tuple[SectionCfg, SectionRef]:
         """
         Создает виртуальную секцию для Markdown-файла или набора файлов.
         
         Args:
-            path: Путь к файлу(ам) (относительно скоупа, поддерживает глобы)
-            origin: Скоуп файла ("self" или путь к области)
-            heading_level: Желаемый максимальный уровень заголовков
-            strip_h1: Флаг удаления H1 заголовка
-            anchor: Якорь для включения только части документа
-            is_glob: True если path содержит глобы
+            node: Узел MarkdownFileNode с полной информацией о включаемом файле
             repo_root: Корень репозитория для резолвинга путей
             
         Returns:
@@ -55,14 +46,18 @@ class VirtualSectionFactory:
         Raises:
             ValueError: При некорректных параметрах
         """
+        # Получаем эффективные параметры из ноды
+        heading_level = node.get_effective_heading_level()
+        strip_h1 = node.get_effective_strip_h1()
+        
         # Нормализуем путь к файлу(ам)
-        normalized_paths = self._normalize_file_paths(path, origin, is_glob)
+        normalized_paths = self._normalize_file_paths(node.path, node.origin, node.is_glob)
         
         # Создаем конфигурацию фильтров
-        filters = self._create_file_filter(normalized_paths, origin)
+        filters = self._create_file_filter(normalized_paths, node.origin)
         
         # Создаем конфигурацию Markdown-адаптера
-        markdown_config = self._create_markdown_config(heading_level, strip_h1, anchor)
+        markdown_config = self._create_markdown_config(heading_level, strip_h1, node.anchor)
         
         # Создаем адаптеры
         adapters = {}
@@ -81,16 +76,16 @@ class VirtualSectionFactory:
         
         # Создаем SectionRef
         if repo_root:
-            if origin == "self":
+            if node.origin == "self":
                 scope_dir = repo_root.resolve()
                 scope_rel = ""
             else:
-                scope_dir = (repo_root / origin).resolve()
-                scope_rel = origin
+                scope_dir = (repo_root / node.origin).resolve()
+                scope_rel = node.origin
         else:
             # Для тестирования без реальных путей
             scope_dir = Path("/fake/root")
-            scope_rel = origin if origin != "self" else ""
+            scope_rel = node.origin if node.origin != "self" else ""
         
         section_ref = SectionRef(
             name="",

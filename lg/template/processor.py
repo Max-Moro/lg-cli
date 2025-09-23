@@ -340,12 +340,7 @@ class TemplateProcessor:
                 # Создаем конфигурацию для виртуальной секции
                 try:
                     section_config, section_ref = self.virtual_factory.create_for_markdown_file(
-                        path=node.path,
-                        origin=node.origin,
-                        heading_level=node.get_effective_heading_level(),
-                        strip_h1=node.get_effective_strip_h1(),
-                        anchor=node.anchor,
-                        is_glob=node.is_glob,
+                        node=node,
                         repo_root=self.run_ctx.root
                     )
                     
