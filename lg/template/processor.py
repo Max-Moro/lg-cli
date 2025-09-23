@@ -13,6 +13,7 @@ from typing import Dict, List, Optional, Callable, Any
 from .common import load_template_from, load_context_from
 from .context import TemplateContext
 from .evaluator import TemplateEvaluationError
+from .heading_context import HeadingContextDetector, detect_heading_context_for_node
 from .lexer import LexerError
 from .nodes import (
     TemplateAST, TemplateNode, TextNode, SectionNode, IncludeNode,
@@ -258,32 +259,74 @@ class TemplateProcessor:
         except Exception as e:
             raise TemplateProcessingError(f"Unexpected error during resolution: {e}", template_name, e)
     
+    def _analyze_heading_contexts(self, ast: TemplateAST) -> TemplateAST:
+        """
+        Анализирует контекст заголовков для всех MarkdownFileNode в AST.
+        
+        Args:
+            ast: AST для анализа
+            
+        Returns:
+            AST с обновленными контекстуальными параметрами узлов
+        """
+        detector = HeadingContextDetector()
+        result_ast = []
+        
+        for i, node in enumerate(ast):
+            if isinstance(node, MarkdownFileNode):
+                # Анализируем контекст заголовков для этого узла
+                heading_context = detector.detect_context(node, ast, i)
+                
+                # Создаем обновленный узел с контекстуальными параметрами
+                updated_node = MarkdownFileNode(
+                    path=node.path,
+                    origin=node.origin,
+                    heading_level=node.heading_level,
+                    strip_h1=node.strip_h1,
+                    anchor=node.anchor,
+                    contextual_heading_level=heading_context.suggested_max_heading_level,
+                    contextual_strip_h1=heading_context.suggested_strip_h1,
+                    context_analysis_reason=heading_context.analysis_reason,
+                    section_id=node.section_id,
+                    virtual_section=node.virtual_section
+                )
+                result_ast.append(updated_node)
+            else:
+                # Для остальных узлов просто копируем
+                result_ast.append(node)
+        
+        return result_ast
+    
     def _resolve_markdown_nodes(self, ast: TemplateAST, template_name: str = "") -> TemplateAST:
         """
-        Создает виртуальные секции для всех MarkdownFileNode в AST.
+        Создает виртуальные секции для всех MarkdownFileNode в AST с контекстуальным анализом.
         
         Args:
             ast: AST для обработки
             template_name: Имя шаблона для диагностики
             
         Returns:
-            AST с заполненными виртуальными секциями
+            AST с заполненными виртуальными секциями и контекстуальными параметрами
         """
+        # Сначала проходим по AST и анализируем контекст для каждого MarkdownFileNode
+        enhanced_ast = self._analyze_heading_contexts(ast)
+        
         def resolve_node(node: TemplateNode) -> TemplateNode:
             if isinstance(node, MarkdownFileNode):
-                # Проверяем кэш виртуальных секций
+                # Проверяем кэш виртуальных секций (используем обновленный ключ)
                 cache_key = node.canon_key()
                 
                 if cache_key in self._virtual_sections_cache:
                     virtual_section = self._virtual_sections_cache[cache_key]
                 else:
-                    # Создаем новую виртуальную секцию
+                    # Создаем новую виртуальную секцию с эффективными параметрами
                     try:
                         section_id, section_config, section_ref = self.virtual_factory.create_for_markdown_file(
                             path=node.path,
                             origin=node.origin,
-                            heading_level=node.heading_level,
-                            strip_h1=node.strip_h1,
+                            heading_level=node.get_effective_heading_level(),
+                            strip_h1=node.get_effective_strip_h1(),
+                            anchor=node.anchor,
                             repo_root=self.run_ctx.root
                         )
                         
@@ -303,6 +346,10 @@ class TemplateProcessor:
                     origin=node.origin,
                     heading_level=node.heading_level,
                     strip_h1=node.strip_h1,
+                    anchor=node.anchor,
+                    contextual_heading_level=node.contextual_heading_level,
+                    contextual_strip_h1=node.contextual_strip_h1,
+                    context_analysis_reason=node.context_analysis_reason,
                     section_id=virtual_section.name,
                     virtual_section=virtual_section
                 )
@@ -358,7 +405,7 @@ class TemplateProcessor:
             return node
         
         # Обрабатываем все узлы в AST
-        return [resolve_node(node) for node in ast]
+        return [resolve_node(node) for node in enhanced_ast]
     
     def _parse_template(self, template_text: str, template_name: str) -> TemplateAST:
         """Парсит текст шаблона в AST с кэшированием."""

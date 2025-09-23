@@ -35,6 +35,7 @@ class VirtualSectionFactory:
         origin: str = "self",
         heading_level: Optional[int] = None,
         strip_h1: Optional[bool] = None,
+        anchor: Optional[str] = None,
         repo_root: Optional[Path] = None
     ) -> tuple[str, SectionCfg, SectionRef]:
         """
@@ -45,6 +46,7 @@ class VirtualSectionFactory:
             origin: Скоуп файла ("self" или путь к области)
             heading_level: Желаемый максимальный уровень заголовков
             strip_h1: Флаг удаления H1 заголовка
+            anchor: Якорь для включения только части документа
             repo_root: Корень репозитория для резолвинга путей
             
         Returns:
@@ -63,7 +65,7 @@ class VirtualSectionFactory:
         filters = self._create_file_filter(normalized_path, origin)
         
         # Создаем конфигурацию Markdown-адаптера
-        markdown_config = self._create_markdown_config(heading_level, strip_h1)
+        markdown_config = self._create_markdown_config(heading_level, strip_h1, anchor)
         
         # Создаем адаптеры
         adapters = {}
@@ -167,7 +169,8 @@ class VirtualSectionFactory:
     def _create_markdown_config(
         self, 
         heading_level: Optional[int], 
-        strip_h1: Optional[bool]
+        strip_h1: Optional[bool],
+        anchor: Optional[str] = None
     ) -> Optional[Dict[str, Any]]:
         """
         Создает конфигурацию Markdown-адаптера.
@@ -175,6 +178,7 @@ class VirtualSectionFactory:
         Args:
             heading_level: Желаемый максимальный уровень заголовков
             strip_h1: Флаг удаления H1 заголовка
+            anchor: Якорь для включения только части документа
             
         Returns:
             Словарь конфигурации адаптера или None если параметры не заданы
@@ -190,6 +194,26 @@ class VirtualSectionFactory:
             if not isinstance(strip_h1, bool):
                 raise ValueError(f"strip_h1 must be boolean, got {type(strip_h1)}")
             config["strip_single_h1"] = strip_h1
+        
+        # Обработка якоря - создаем правила drop с инверсией
+        if anchor:
+            if not isinstance(anchor, str) or not anchor.strip():
+                raise ValueError(f"anchor must be non-empty string, got {anchor}")
+            
+            # Создаем drop-правило для включения только указанной секции
+            # Используем инверсию: удаляем все, кроме целевой секции
+            config["drop"] = {
+                "sections": [
+                    {
+                        "match": {
+                            "kind": "text",
+                            "pattern": anchor.strip()
+                        },
+                        "reason": f"include_only_{anchor}",
+                        "invert": True  # Специальный флаг для инверсии логики
+                    }
+                ]
+            }
         
         return config if config else None
 

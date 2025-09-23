@@ -73,7 +73,7 @@ class IncludeNode(TemplateNode):
 @dataclass(frozen=True)
 class MarkdownFileNode(TemplateNode):
     """
-    Плейсхолдер для прямого включения Markdown-файла ${md:path}.
+    Плейсхолдер для прямого включения Markdown-файла ${md:path} или ${md:path#section}.
     
     Представляет ссылку на Markdown-документ, который должен быть
     загружен и обработан через виртуальную секцию с автоматической
@@ -81,29 +81,69 @@ class MarkdownFileNode(TemplateNode):
     """
     path: str                      # Путь к документу относительно скоупа
     origin: str = "self"           # Скоуп (self или путь к области)
+    
+    # Явно указанные параметры (переопределяют контекстуальные)
     heading_level: Optional[int] = None    # Желаемый уровень заголовка
     strip_h1: Optional[bool] = None        # Флаг удаления H1
-    section_id: str = ""           # ID динамически созданной секции
+    
+    # Поддержка якорей и фрагментов
+    anchor: Optional[str] = None           # Якорь для включения части документа (#section)
+    
+    # Контекстуально определенные параметры (заполняются HeadingContextDetector)
+    contextual_heading_level: Optional[int] = None
+    contextual_strip_h1: Optional[bool] = None
+    context_analysis_reason: str = ""      # Причина выбора контекстуальных параметров
     
     # Метаданные для резолвинга (заполняются во время обработки)
+    section_id: str = ""                   # ID динамически созданной секции
     virtual_section: Optional[SectionRef] = None
+    
+    def get_effective_heading_level(self) -> Optional[int]:
+        """
+        Возвращает эффективный уровень заголовка.
+        
+        Приоритет: явно указанный > контекстуальный > None
+        """
+        if self.heading_level is not None:
+            return self.heading_level
+        return self.contextual_heading_level
+    
+    def get_effective_strip_h1(self) -> Optional[bool]:
+        """
+        Возвращает эффективный флаг удаления H1.
+        
+        Приоритет: явно указанный > контекстуальный > None
+        """
+        if self.strip_h1 is not None:
+            return self.strip_h1
+        return self.contextual_strip_h1
     
     def canon_key(self) -> str:
         """
         Возвращает канонический ключ для кэширования и дедупликации.
         """
         params = []
-        if self.heading_level is not None:
-            params.append(f"level:{self.heading_level}")
-        if self.strip_h1 is not None:
-            params.append(f"strip_h1:{str(self.strip_h1).lower()}")
+        
+        # Используем эффективные значения для ключа
+        effective_level = self.get_effective_heading_level()
+        if effective_level is not None:
+            params.append(f"level:{effective_level}")
+            
+        effective_strip_h1 = self.get_effective_strip_h1()
+        if effective_strip_h1 is not None:
+            params.append(f"strip_h1:{str(effective_strip_h1).lower()}")
+        
+        # Добавляем якорь в ключ
+        path_with_anchor = self.path
+        if self.anchor:
+            path_with_anchor += f"#{self.anchor}"
         
         param_str = f",{','.join(params)}" if params else ""
         
         if self.origin and self.origin != "self":
-            return f"md@{self.origin}:{self.path}{param_str}"
+            return f"md@{self.origin}:{path_with_anchor}{param_str}"
         else:
-            return f"md:{self.path}{param_str}"
+            return f"md:{path_with_anchor}{param_str}"
 
 
 @dataclass(frozen=True)

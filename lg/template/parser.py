@@ -230,7 +230,8 @@ class TemplateParser:
             path=path,
             origin=origin,
             heading_level=params.get('level'),
-            strip_h1=params.get('strip_h1')
+            strip_h1=params.get('strip_h1'),
+            anchor=params.get('anchor')
         )
     
     def _parse_markdown_origin_and_path(self, tokens: List[Token]) -> Tuple[str, List[Token]]:
@@ -302,18 +303,24 @@ class TemplateParser:
         """
         Парсит путь и параметры из токенов.
         
-        Формат: path [, param:value, param:value, ...]
-        Возвращает: (path, {param: value})
+        Формат: path[#anchor] [, param:value, param:value, ...]
+        Возвращает: (path, {param: value, "anchor": anchor})
         """
         if not tokens:
             raise ParserError("Missing path in markdown placeholder", 
                            Token(TokenType.EOF, "", 0, 1, 1))
         
-        # Первый токен - это путь
-        path = tokens[0].value
+        # Первый токен - это путь (может содержать якорь)
+        path_with_anchor = tokens[0].value
+        
+        # Разделяем путь и якорь
+        path, anchor = self._split_path_and_anchor(path_with_anchor)
         
         # Парсим параметры если они есть
         params = {}
+        if anchor:
+            params["anchor"] = anchor
+        
         i = 1
         
         while i < len(tokens):
@@ -347,6 +354,22 @@ class TemplateParser:
             params[param_name] = param_value
         
         return path, params
+    
+    def _split_path_and_anchor(self, path_with_anchor: str) -> Tuple[str, Optional[str]]:
+        """
+        Разделяет путь и якорь.
+        
+        Args:
+            path_with_anchor: Путь возможно с якорем (например, "docs/guide#section")
+            
+        Returns:
+            Кортеж (path, anchor), где anchor может быть None
+        """
+        if '#' in path_with_anchor:
+            parts = path_with_anchor.split('#', 1)
+            return parts[0], parts[1] if len(parts) > 1 and parts[1] else None
+        else:
+            return path_with_anchor, None
     
     def _convert_param_value(self, param_name: str, value_str: str, token: Token):
         """

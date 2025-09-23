@@ -41,6 +41,7 @@ src:
               - "/resolver.py"
               - "/common.py"
               - "/parser.py"
+              - "/virtual_sections.py"
 
 docs-state:
   extensions: [".md"]
