@@ -71,6 +71,42 @@ class IncludeNode(TemplateNode):
 
 
 @dataclass(frozen=True)
+class MarkdownFileNode(TemplateNode):
+    """
+    Плейсхолдер для прямого включения Markdown-файла ${md:path}.
+    
+    Представляет ссылку на Markdown-документ, который должен быть
+    загружен и обработан через виртуальную секцию с автоматической
+    настройкой уровней заголовков.
+    """
+    path: str                      # Путь к документу относительно скоупа
+    origin: str = "self"           # Скоуп (self или путь к области)
+    heading_level: Optional[int] = None    # Желаемый уровень заголовка
+    strip_h1: Optional[bool] = None        # Флаг удаления H1
+    section_id: str = ""           # ID динамически созданной секции
+    
+    # Метаданные для резолвинга (заполняются во время обработки)
+    virtual_section: Optional[SectionRef] = None
+    
+    def canon_key(self) -> str:
+        """
+        Возвращает канонический ключ для кэширования и дедупликации.
+        """
+        params = []
+        if self.heading_level is not None:
+            params.append(f"level:{self.heading_level}")
+        if self.strip_h1 is not None:
+            params.append(f"strip_h1:{str(self.strip_h1).lower()}")
+        
+        param_str = f",{','.join(params)}" if params else ""
+        
+        if self.origin and self.origin != "self":
+            return f"md@{self.origin}:{self.path}{param_str}"
+        else:
+            return f"md:{self.path}{param_str}"
+
+
+@dataclass(frozen=True)
 class ConditionalBlockNode(TemplateNode):
     """
     Условный блок {% if condition %}...{% elif condition %}...{% else %}...{% endif %}.
@@ -215,6 +251,22 @@ def collect_include_nodes(ast: TemplateAST) -> List[IncludeNode]:
     return includes
 
 
+def collect_markdown_file_nodes(ast: TemplateAST) -> List[MarkdownFileNode]:
+    """
+    Собирает все узлы Markdown-файлов из AST (включая вложенные).
+    
+    Используется для предварительного создания виртуальных секций.
+    """
+    markdown_files: List[MarkdownFileNode] = []
+    
+    def collect_markdown_file(node: TemplateNode) -> None:
+        if isinstance(node, MarkdownFileNode):
+            markdown_files.append(node)
+    
+    _visit_ast_nodes(ast, collect_markdown_file)
+    return markdown_files
+
+
 def has_conditional_content(ast: TemplateAST) -> bool:
     """
     Проверяет, содержит ли AST условное содержимое.
@@ -267,6 +319,8 @@ def format_ast_tree(ast: List[TemplateNode], indent: int = 0) -> str:
                 lines.append(format_ast_tree(node.body, indent + 2))
         elif isinstance(node, IncludeNode):
             lines.append(f"{prefix}IncludeNode(kind='{node.kind}', name='{node.name}', origin='{node.origin}')")
+        elif isinstance(node, MarkdownFileNode):
+            lines.append(f"{prefix}MarkdownFileNode(path='{node.path}', origin='{node.origin}', level={node.heading_level}, strip_h1={node.strip_h1})")
         else:
             lines.append(f"{prefix}{type(node).__name__}")
     

@@ -12,7 +12,8 @@ from typing import List, Optional, Tuple
 from .lexer import Token, TokenType, TemplateLexer
 from .nodes import (
     TemplateNode, TemplateAST, TextNode, SectionNode, IncludeNode,
-    ConditionalBlockNode, ElifBlockNode, ElseBlockNode, ModeBlockNode, CommentNode
+    ConditionalBlockNode, ElifBlockNode, ElseBlockNode, ModeBlockNode, CommentNode,
+    MarkdownFileNode
 )
 from ..conditions.parser import ConditionParser
 
@@ -139,6 +140,19 @@ class TemplateParser:
             
             raise ParserError(f"Invalid {identifier} include format", first_token)
         
+        # Проверяем, является ли это Markdown-файлом (md:)
+        if identifier == 'md':
+            # Может быть md:path, md:path,params или md@origin:path,params
+            if len(tokens) >= 3:
+                if tokens[1].type == TokenType.COLON:
+                    # Простое включение: md:path или md:path,params
+                    return self._parse_markdown_placeholder(tokens)
+                elif tokens[1].type == TokenType.AT:
+                    # Адресное включение: md@origin:path или md@origin:path,params
+                    return self._parse_markdown_placeholder(tokens)
+            
+            raise ParserError(f"Invalid {identifier} markdown format", first_token)
+        
         # Иначе это плейсхолдер секции
         return self._parse_section_placeholder(tokens)
     
@@ -184,6 +198,188 @@ class TemplateParser:
             return IncludeNode(kind=kind, name=name, origin=origin)
         
         raise ParserError(f"Invalid {kind} include format", tokens[0])
+    
+    def _parse_markdown_placeholder(self, tokens: List[Token]) -> MarkdownFileNode:
+        """
+        Парсит плейсхолдер Markdown-файла.
+        
+        Форматы:
+        - md:path
+        - md:path,level:3,strip_h1:true
+        - md@origin:path
+        - md@origin:path,level:3,strip_h1:true
+        """
+        if tokens[0].value != 'md':
+            raise ParserError(f"Expected 'md', got '{tokens[0].value}'", tokens[0])
+        
+        # Определяем, простое это включение или адресное
+        if len(tokens) >= 3 and tokens[1].type == TokenType.COLON:
+            # Простое включение: md:path[,params...]
+            origin = "self"
+            path_and_params = tokens[2:]
+        elif len(tokens) >= 4 and tokens[1].type == TokenType.AT:
+            # Адресное включение: md@origin:path[,params...]
+            origin, path_and_params = self._parse_markdown_origin_and_path(tokens[1:])
+        else:
+            raise ParserError("Invalid markdown file format", tokens[0])
+        
+        # Парсим путь и параметры
+        path, params = self._parse_markdown_path_and_params(path_and_params)
+        
+        return MarkdownFileNode(
+            path=path,
+            origin=origin,
+            heading_level=params.get('level'),
+            strip_h1=params.get('strip_h1')
+        )
+    
+    def _parse_markdown_origin_and_path(self, tokens: List[Token]) -> Tuple[str, List[Token]]:
+        """
+        Парсит origin и возвращает оставшиеся токены для пути и параметров.
+        
+        Входные токены: @ origin : path [, params...]
+        Возвращает: (origin, path_and_params_tokens)
+        """
+        if tokens[0].type != TokenType.AT:
+            raise ParserError("Expected '@' at start of origin", tokens[0])
+        
+        if len(tokens) >= 4 and tokens[1].type == TokenType.LBRACKET:
+            # Формат: @[origin]:path
+            origin, remaining_tokens = self._parse_bracketed_origin_and_remaining(tokens)
+        else:
+            # Формат: @origin:path
+            origin, remaining_tokens = self._parse_simple_origin_and_remaining(tokens)
+        
+        return origin, remaining_tokens
+    
+    def _parse_bracketed_origin_and_remaining(self, tokens: List[Token]) -> Tuple[str, List[Token]]:
+        """Парсит origin в скобках и возвращает оставшиеся токены."""
+        # Находим закрывающую скобку
+        bracket_end = -1
+        for i in range(2, len(tokens)):
+            if tokens[i].type == TokenType.RBRACKET:
+                bracket_end = i
+                break
+        
+        if bracket_end == -1:
+            raise ParserError("Missing closing bracket in origin", tokens[1])
+        
+        # Проверяем двоеточие после скобки
+        if (bracket_end + 1 >= len(tokens) or 
+            tokens[bracket_end + 1].type != TokenType.COLON):
+            raise ParserError("Missing ':' after bracketed origin", 
+                           tokens[bracket_end] if bracket_end < len(tokens) else tokens[-1])
+        
+        # Собираем origin (между скобками)
+        origin = ''.join(tokens[i].value for i in range(2, bracket_end))
+        
+        # Возвращаем оставшиеся токены (после двоеточия)
+        remaining_tokens = tokens[bracket_end + 2:]
+        
+        return origin, remaining_tokens
+    
+    def _parse_simple_origin_and_remaining(self, tokens: List[Token]) -> Tuple[str, List[Token]]:
+        """Парсит простой origin и возвращает оставшиеся токены."""
+        # Находим двоеточие
+        colon_pos = -1
+        for i in range(1, len(tokens)):
+            if tokens[i].type == TokenType.COLON:
+                colon_pos = i
+                break
+        
+        if colon_pos == -1:
+            raise ParserError("Missing ':' in origin specification", tokens[0])
+        
+        # Собираем origin (между @ и :)
+        origin = ''.join(tokens[i].value for i in range(1, colon_pos))
+        
+        # Возвращаем оставшиеся токены (после двоеточия)
+        remaining_tokens = tokens[colon_pos + 1:]
+        
+        return origin, remaining_tokens
+    
+    def _parse_markdown_path_and_params(self, tokens: List[Token]) -> Tuple[str, dict]:
+        """
+        Парсит путь и параметры из токенов.
+        
+        Формат: path [, param:value, param:value, ...]
+        Возвращает: (path, {param: value})
+        """
+        if not tokens:
+            raise ParserError("Missing path in markdown placeholder", 
+                           Token(TokenType.EOF, "", 0, 1, 1))
+        
+        # Первый токен - это путь
+        path = tokens[0].value
+        
+        # Парсим параметры если они есть
+        params = {}
+        i = 1
+        
+        while i < len(tokens):
+            # Ожидаем запятую
+            if tokens[i].type != TokenType.COMMA:
+                raise ParserError(f"Expected comma before parameter, got {tokens[i].type.name}", tokens[i])
+            i += 1
+            
+            # Ожидаем имя параметра
+            if i >= len(tokens) or tokens[i].type != TokenType.IDENTIFIER:
+                raise ParserError("Expected parameter name after comma", 
+                               tokens[i] if i < len(tokens) else tokens[-1])
+            param_name = tokens[i].value
+            i += 1
+            
+            # Ожидаем двоеточие
+            if i >= len(tokens) or tokens[i].type != TokenType.COLON:
+                raise ParserError(f"Expected ':' after parameter name '{param_name}'", 
+                               tokens[i] if i < len(tokens) else tokens[-1])
+            i += 1
+            
+            # Ожидаем значение параметра
+            if i >= len(tokens) or tokens[i].type != TokenType.IDENTIFIER:
+                raise ParserError(f"Expected parameter value after '{param_name}:'", 
+                               tokens[i] if i < len(tokens) else tokens[-1])
+            param_value_str = tokens[i].value
+            i += 1
+            
+            # Конвертируем значение в правильный тип
+            param_value = self._convert_param_value(param_name, param_value_str, tokens[i-1])
+            params[param_name] = param_value
+        
+        return path, params
+    
+    def _convert_param_value(self, param_name: str, value_str: str, token: Token):
+        """
+        Конвертирует строковое значение параметра в правильный тип.
+        
+        Args:
+            param_name: Имя параметра
+            value_str: Строковое представление значения
+            token: Токен для диагностики ошибок
+            
+        Returns:
+            Значение в правильном типе
+        """
+        if param_name == 'level':
+            try:
+                value = int(value_str)
+                if not 1 <= value <= 6:
+                    raise ParserError(f"Level must be between 1 and 6, got {value}", token)
+                return value
+            except ValueError:
+                raise ParserError(f"Level must be integer, got '{value_str}'", token)
+        
+        elif param_name == 'strip_h1':
+            if value_str.lower() in ('true', '1', 'yes'):
+                return True
+            elif value_str.lower() in ('false', '0', 'no'):
+                return False
+            else:
+                raise ParserError(f"strip_h1 must be boolean (true/false), got '{value_str}'", token)
+        
+        else:
+            # Неизвестный параметр - возвращаем как строку
+            return value_str
     
     def _parse_directive(self) -> TemplateNode:
         """

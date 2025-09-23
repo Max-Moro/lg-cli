@@ -35,6 +35,7 @@ class TokenType(enum.Enum):
     IDENTIFIER = "IDENTIFIER"
     COLON = "COLON"                          # :
     AT = "AT"                                # @
+    COMMA = "COMMA"                          # ,
     
     # Логические операторы
     AND = "AND"
@@ -112,6 +113,7 @@ class TemplateLexer:
         # Операторы и символы
         TokenType.COLON: re.compile(r':'),
         TokenType.AT: re.compile(r'@'),
+        TokenType.COMMA: re.compile(r','),
         TokenType.LPAREN: re.compile(r'\('),
         TokenType.RPAREN: re.compile(r'\)'),
         TokenType.LBRACKET: re.compile(r'\['),
@@ -304,7 +306,7 @@ class TemplateLexer:
                 return self._tokenize_inside_placeholder()  # Рекурсивно продолжаем
         
         # Проверяем специальные символы
-        for token_type in [TokenType.COLON, TokenType.AT, TokenType.LBRACKET, TokenType.RBRACKET]:
+        for token_type in [TokenType.COLON, TokenType.AT, TokenType.COMMA, TokenType.LBRACKET, TokenType.RBRACKET]:
             pattern = self._PATTERNS[token_type]
             match = pattern.match(self.text, self.position)
             if match:
