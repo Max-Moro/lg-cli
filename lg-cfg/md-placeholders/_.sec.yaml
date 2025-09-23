@@ -17,6 +17,7 @@ src:
           - "/template/"
           - "/adapters/"
           - "/manifest/"
+          - "/markdown/model.py"
         children:
           config:
             mode: allow
