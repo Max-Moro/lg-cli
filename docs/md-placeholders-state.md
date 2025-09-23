@@ -342,32 +342,13 @@ ${md:docs/deployment, if:tag:cloud}
 
 ### План поэтапной разработки
 
-#### [] Итерация 1: Базовая функциональность
+#### [+] Итерация 1: Базовая функциональность
 
-1. **Расширить AST**:
-   ```python
-   @dataclass(frozen=True)
-   class MarkdownFileNode(TemplateNode):
-       path: str                 # Путь к документу
-       origin: str = "self"      # Скоуп (self или путь)
-       heading_level: int = None # Желаемый уровень заголовка
-       strip_h1: bool = None     # Флаг удаления H1
-       section_id: str = ""      # ID динамически созданной секции
-       virtual_section: SectionRef = None  # Ссылка на виртуальную секцию
-   ```
+1. **[+] Расширить AST**:
 
-2. **Расширить парсер**:
-   - Добавить обработку `${md:...}` в `template/lexer.py` и `parser.py`
-   - Реализовать извлечение параметров вида `${md:path, level:3, strip_h1:true}`
+2. **[+] Расширить парсер**:
 
-3. **Создать базовый генератор виртуальных секций**:
-   ```python
-   class VirtualSectionFactory:
-       def create_for_markdown_file(self, path, origin, params):
-           # Создание временной виртуальной секции для файла
-           section_id = f"_virtual_{self._generate_unique_id()}"
-           return section_id, section_config
-   ```
+3. **[+] Создать базовый генератор виртуальных секций**:
 
 #### [] Итерация 2: Контекстуальная интеллектуальность
 
