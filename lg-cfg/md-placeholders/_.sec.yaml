@@ -39,6 +39,7 @@ src:
               - "/context.py"
               - "/resolver.py"
               - "/common.py"
+              - "/parser.py"
 
 docs-state:
   extensions: [".md"]
