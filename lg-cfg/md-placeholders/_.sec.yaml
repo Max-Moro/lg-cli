@@ -1,0 +1,48 @@
+src:
+  extensions: [".py", ".toml"]
+  filters:
+    mode: allow
+    allow:
+      - "/pyproject.toml"
+      - "/lg/"
+    children:
+      lg:
+        mode: allow
+        allow:
+          - "/cli.py"
+          - "/types.py"
+          - "/engine.py"
+          - "/section_processor.py"
+          - "/config/"
+          - "/template/"
+          - "/adapters/"
+          - "/manifest/"
+        children:
+          config:
+            mode: allow
+            allow:
+              - "/load.py"
+              - "/model.py"
+          adapters:
+            mode: allow
+            allow:
+              - "/__init__.py"
+              - "/registry.py"
+              - "/base.py"
+              - "/processor.py"
+              - "/markdown.py"
+          template:
+            mode: allow
+            allow:
+              - "/processor.py"
+              - "/nodes.py"
+              - "/context.py"
+              - "/resolver.py"
+              - "/common.py"
+
+docs-state:
+  extensions: [".md"]
+  filters:
+    mode: allow
+    allow:
+      - "/docs/md-placeholders-state.md"
