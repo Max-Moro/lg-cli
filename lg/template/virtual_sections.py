@@ -34,30 +34,32 @@ class VirtualSectionFactory:
         heading_level: Optional[int] = None,
         strip_h1: Optional[bool] = None,
         anchor: Optional[str] = None,
+        is_glob: bool = False,
         repo_root: Optional[Path] = None
     ) -> tuple[SectionCfg, SectionRef]:
         """
-        Создает виртуальную секцию для Markdown-файла.
+        Создает виртуальную секцию для Markdown-файла или набора файлов.
         
         Args:
-            path: Путь к файлу (относительно скоупа или абсолютный)
+            path: Путь к файлу(ам) (относительно скоупа, поддерживает глобы)
             origin: Скоуп файла ("self" или путь к области)
             heading_level: Желаемый максимальный уровень заголовков
             strip_h1: Флаг удаления H1 заголовка
             anchor: Якорь для включения только части документа
+            is_glob: True если path содержит глобы
             repo_root: Корень репозитория для резолвинга путей
             
         Returns:
-            Кортеж (section_id, section_config, section_ref)
+            Кортеж (section_config, section_ref)
             
         Raises:
             ValueError: При некорректных параметрах
         """
-        # Нормализуем путь к файлу
-        normalized_path = self._normalize_file_path(path, origin)
+        # Нормализуем путь к файлу(ам)
+        normalized_paths = self._normalize_file_paths(path, origin, is_glob)
         
         # Создаем конфигурацию фильтров
-        filters = self._create_file_filter(normalized_path, origin)
+        filters = self._create_file_filter(normalized_paths, origin)
         
         # Создаем конфигурацию Markdown-адаптера
         markdown_config = self._create_markdown_config(heading_level, strip_h1, anchor)
@@ -66,7 +68,7 @@ class VirtualSectionFactory:
         adapters = {}
         if markdown_config:
             adapters["markdown"] = AdapterConfig.from_dict(markdown_config)
-        
+
         # Создаем полную конфигурацию секции
         section_config = SectionCfg(
             extensions=[".md"],
@@ -98,55 +100,65 @@ class VirtualSectionFactory:
         
         return section_config, section_ref
     
-    def _normalize_file_path(self, path: str, origin: str) -> str:
+    def _normalize_file_paths(self, path: str, origin: str, is_glob: bool) -> list[str]:
         """
-        Нормализует путь к файлу для создания фильтра.
+        Нормализует путь(и) к файлу(ам) для создания фильтра.
         
         Args:
-            path: Исходный путь к файлу
+            path: Исходный путь к файлу или паттерн глоба
             origin: Скоуп ("self" или путь к области)
+            is_glob: True если path содержит символы глобов
             
         Returns:
-            Нормализованный путь для фильтра allow
+            Список нормализованных путей для фильтра allow
         """
-        # Добавляем расширение .md если не указано
-        if not path.endswith('.md') and '.' not in Path(path).name:
-            path = f"{path}.md"
+        # Обрабатываем глобы
+        if is_glob:
+            # Для глобов добавляем .md в конце если нет расширения
+            if not path.endswith('.md') and not path.endswith('/*') and '.' not in Path(path).name:
+                path = f"{path}.md"
+            # Для глобов типа "docs/*" автоматически добавляем фильтр для .md файлов
+            elif path.endswith('/*'):
+                path = f"{path}.md"
+        else:
+            # Для обычных файлов добавляем расширение .md если не указано
+            if not path.endswith('.md') and '.' not in Path(path).name:
+                path = f"{path}.md"
         
         # Для origin="self" путь считается относительно корня репо
         if origin == "self":
             if not path.startswith('/'):
                 path = f"/{path}"
-            return path
+            return [path]
         
         # Для других скоупов путь может быть:
         # 1. Относительно lg-cfg (специальный случай @self:)
         # 2. Относительно корня области
         if path.startswith('lg-cfg/'):
             # Специальный случай для файлов в lg-cfg
-            return f"/{origin}/{path}"
+            return [f"/{origin}/{path}"]
         else:
             # Обычный случай - файл в области
             if not path.startswith('/'):
                 path = f"/{origin}/lg-cfg/{path}"
             else:
                 path = f"/{origin}{path}"
-            return path
+            return [path]
     
-    def _create_file_filter(self, normalized_path: str, origin: str) -> FilterNode:
+    def _create_file_filter(self, normalized_paths: list[str], origin: str) -> FilterNode:
         """
-        Создает фильтр для включения только указанного файла.
+        Создает фильтр для включения указанных файлов.
         
         Args:
-            normalized_path: Нормализованный путь к файлу
+            normalized_paths: Список нормализованных путей к файлам
             origin: Скоуп файла
             
         Returns:
-            FilterNode с режимом allow для конкретного файла
+            FilterNode с режимом allow для указанных файлов
         """
         return FilterNode(
             mode="allow",
-            allow=[normalized_path],
+            allow=normalized_paths,
             block=[]
         )
     

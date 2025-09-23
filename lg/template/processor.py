@@ -324,6 +324,17 @@ class TemplateProcessor:
             return result
         
         elif isinstance(node, MarkdownFileNode):
+            # Проверяем условие включения если оно задано
+            if node.condition:
+                try:
+                    should_include = self.template_ctx.evaluate_condition_text(node.condition)
+                    if not should_include:
+                        # Условие не выполнено - пропускаем узел
+                        return ""
+                except Exception as e:
+                    # Ошибка при вычислении условия - возвращаем комментарий об ошибке
+                    return f"<!-- Error evaluating condition '{node.condition}': {e} -->"
+            
             # Обрабатываем Markdown-файл через виртуальную секцию
             if self.section_handler:
                 # Создаем конфигурацию для виртуальной секции
@@ -334,6 +345,7 @@ class TemplateProcessor:
                         heading_level=node.get_effective_heading_level(),
                         strip_h1=node.get_effective_strip_h1(),
                         anchor=node.anchor,
+                        is_glob=node.is_glob,
                         repo_root=self.run_ctx.root
                     )
                     

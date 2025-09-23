@@ -226,12 +226,17 @@ class TemplateParser:
         # Парсим путь и параметры
         path, params = self._parse_markdown_path_and_params(path_and_params)
         
+        # Определяем, содержит ли путь глобы
+        is_glob = self._path_contains_globs(path)
+        
         return MarkdownFileNode(
             path=path,
             origin=origin,
             heading_level=params.get('level'),
             strip_h1=params.get('strip_h1'),
-            anchor=params.get('anchor')
+            anchor=params.get('anchor'),
+            condition=params.get('if'),
+            is_glob=is_glob
         )
     
     def _parse_markdown_origin_and_path(self, tokens: List[Token]) -> Tuple[str, List[Token]]:
@@ -400,9 +405,27 @@ class TemplateParser:
             else:
                 raise ParserError(f"strip_h1 must be boolean (true/false), got '{value_str}'", token)
         
+        elif param_name == 'if':
+            # Условие включения - возвращаем как строку для дальнейшей обработки
+            if not value_str.strip():
+                raise ParserError(f"Condition cannot be empty", token)
+            return value_str
+        
         else:
             # Неизвестный параметр - возвращаем как строку
             return value_str
+    
+    def _path_contains_globs(self, path: str) -> bool:
+        """
+        Проверяет, содержит ли путь символы глобов.
+        
+        Args:
+            path: Путь для проверки
+            
+        Returns:
+            True если путь содержит глобы (* или ?)
+        """
+        return '*' in path or '?' in path
     
     def _parse_directive(self) -> TemplateNode:
         """

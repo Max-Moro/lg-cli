@@ -78,8 +78,15 @@ class MarkdownFileNode(TemplateNode):
     Представляет ссылку на Markdown-документ, который должен быть
     загружен и обработан через виртуальную секцию с автоматической
     настройкой уровней заголовков.
+    
+    Поддерживает:
+    - ${md:path} - простое включение
+    - ${md:path,level:3} - с параметрами  
+    - ${md:docs/guides/*} - глобы для множественного включения
+    - ${md:path,if:tag:cloud} - условные включения
+    - ${md@origin:path} - адресные включения
     """
-    path: str                      # Путь к документу относительно скоупа
+    path: str                      # Путь к документу(ам) относительно скоупа (поддерживает глобы)
     origin: str = "self"           # Скоуп (self или путь к области)
     
     # Явно указанные параметры (переопределяют контекстуальные)
@@ -88,6 +95,12 @@ class MarkdownFileNode(TemplateNode):
     
     # Поддержка якорей и фрагментов
     anchor: Optional[str] = None           # Якорь для включения части документа (#section)
+    
+    # Поддержка условных включений
+    condition: Optional[str] = None        # Условие для включения (например, "tag:cloud")
+    
+    # Поддержка глобов
+    is_glob: bool = False                  # True если path содержит глобы (* или ?)
     
     # Контекстуально определенные параметры (заполняются HeadingContextDetector)
     contextual_heading_level: Optional[int] = None
@@ -128,6 +141,14 @@ class MarkdownFileNode(TemplateNode):
         effective_strip_h1 = self.get_effective_strip_h1()
         if effective_strip_h1 is not None:
             params.append(f"strip_h1:{str(effective_strip_h1).lower()}")
+        
+        # Добавляем условие в ключ
+        if self.condition:
+            params.append(f"if:{self.condition}")
+        
+        # Добавляем флаг глоба
+        if self.is_glob:
+            params.append("glob:true")
         
         # Добавляем якорь в ключ
         path_with_anchor = self.path
