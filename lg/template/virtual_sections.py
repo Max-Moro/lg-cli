@@ -7,8 +7,6 @@
 
 from __future__ import annotations
 
-import random
-import time
 from pathlib import Path
 from typing import Dict, Any, Optional
 
@@ -55,9 +53,6 @@ class VirtualSectionFactory:
         Raises:
             ValueError: При некорректных параметрах
         """
-        # Генерируем уникальный ID секции
-        section_id = self._generate_unique_id()
-        
         # Нормализуем путь к файлу
         normalized_path = self._normalize_file_path(path, origin)
         
@@ -96,23 +91,12 @@ class VirtualSectionFactory:
             scope_rel = origin if origin != "self" else ""
         
         section_ref = SectionRef(
-            name=section_id,
+            name="",
             scope_rel=scope_rel,
             scope_dir=scope_dir
         )
         
         return section_config, section_ref
-    
-    def _generate_unique_id(self) -> str:
-        """
-        Генерирует уникальный ID для виртуальной секции.
-        
-        Returns:
-            Строка вида "_virtual_<timestamp>_<random>"
-        """
-        timestamp = int(time.time() * 1000)
-        rand_part = random.randint(1000, 9999)
-        return f"_virtual_{timestamp}_{rand_part}"
     
     def _normalize_file_path(self, path: str, origin: str) -> str:
         """
