@@ -13,7 +13,7 @@ from pathlib import Path
 from typing import Dict, Any, Optional
 
 from ..config.model import SectionCfg, AdapterConfig
-from ..io.model import FilterNode  
+from ..io.model import FilterNode
 from ..types import SectionRef
 
 
@@ -37,7 +37,7 @@ class VirtualSectionFactory:
         strip_h1: Optional[bool] = None,
         anchor: Optional[str] = None,
         repo_root: Optional[Path] = None
-    ) -> tuple[str, SectionCfg, SectionRef]:
+    ) -> tuple[SectionCfg, SectionRef]:
         """
         Создает виртуальную секцию для Markdown-файла.
         
@@ -101,7 +101,7 @@ class VirtualSectionFactory:
             scope_dir=scope_dir
         )
         
-        return section_id, section_config, section_ref
+        return section_config, section_ref
     
     def _generate_unique_id(self) -> str:
         """

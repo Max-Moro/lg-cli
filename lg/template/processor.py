@@ -13,13 +13,11 @@ from typing import Dict, List, Optional, Callable, Any
 from .common import load_template_from, load_context_from
 from .context import TemplateContext
 from .evaluator import TemplateEvaluationError
-from .heading_context import HeadingContextDetector, detect_heading_context_for_node
 from .lexer import LexerError
 from .nodes import (
     TemplateAST, TemplateNode, TextNode, SectionNode, IncludeNode,
-    ConditionalBlockNode, ElifBlockNode, ElseBlockNode, ModeBlockNode, CommentNode, MarkdownFileNode,
-    collect_section_nodes, collect_include_nodes, collect_markdown_file_nodes,
-    has_conditional_content
+    ConditionalBlockNode, ModeBlockNode, CommentNode, MarkdownFileNode,
+    collect_section_nodes, collect_include_nodes, has_conditional_content
 )
 from .parser import ParserError, parse_template
 from .resolver import TemplateResolver, ResolverError
@@ -70,9 +68,6 @@ class TemplateProcessor:
         # Кэш загруженных и обработанных шаблонов
         self._template_cache: Dict[str, TemplateAST] = {}
         self._resolved_cache: Dict[str, TemplateAST] = {}
-        
-        # Кэш виртуальных секций для MarkdownFileNode
-        self._virtual_sections_cache: Dict[str, SectionRef] = {}
         
         # Хендлеры для обработки различных типов узлов
         self.section_handler: Optional[Callable[[SectionRef, TemplateContext], str]] = None
@@ -231,181 +226,27 @@ class TemplateProcessor:
         return issues
     
     # Внутренние методы
-    
+
     def _resolve_template_references(self, ast: TemplateAST, template_name: str = "") -> TemplateAST:
         """
-        Резолвит все ссылки в AST с использованием TemplateResolver и создает виртуальные секции.
-        
+        Резолвит все ссылки в AST с использованием TemplateResolver.
+
         Args:
             ast: AST для резолвинга
             template_name: Имя шаблона для диагностики
-            
+
         Returns:
-            AST с резолвленными ссылками и виртуальными секциями
-            
+            AST с резолвленными ссылками
+
         Raises:
             TemplateProcessingError: При ошибке резолвинга
         """
         try:
-            # Сначала резолвим обычные ссылки (секции, включения)
-            resolved_ast = self.resolver.resolve_template_references(ast, template_name)
-            
-            # Затем обрабатываем MarkdownFileNode узлы
-            resolved_ast = self._resolve_markdown_nodes(resolved_ast, template_name)
-            
-            return resolved_ast
+            return self.resolver.resolve_template_references(ast, template_name)
         except ResolverError as e:
             raise TemplateProcessingError(f"Resolution failed: {e}", template_name, e)
         except Exception as e:
             raise TemplateProcessingError(f"Unexpected error during resolution: {e}", template_name, e)
-    
-    def _analyze_heading_contexts(self, ast: TemplateAST) -> TemplateAST:
-        """
-        Анализирует контекст заголовков для всех MarkdownFileNode в AST.
-        
-        Args:
-            ast: AST для анализа
-            
-        Returns:
-            AST с обновленными контекстуальными параметрами узлов
-        """
-        detector = HeadingContextDetector()
-        result_ast = []
-        
-        for i, node in enumerate(ast):
-            if isinstance(node, MarkdownFileNode):
-                # Анализируем контекст заголовков для этого узла
-                heading_context = detector.detect_context(node, ast, i)
-                
-                # Создаем обновленный узел с контекстуальными параметрами
-                updated_node = MarkdownFileNode(
-                    path=node.path,
-                    origin=node.origin,
-                    heading_level=node.heading_level,
-                    strip_h1=node.strip_h1,
-                    anchor=node.anchor,
-                    contextual_heading_level=heading_context.suggested_max_heading_level,
-                    contextual_strip_h1=heading_context.suggested_strip_h1,
-                    context_analysis_reason=heading_context.analysis_reason,
-                    section_id=node.section_id,
-                    virtual_section=node.virtual_section
-                )
-                result_ast.append(updated_node)
-            else:
-                # Для остальных узлов просто копируем
-                result_ast.append(node)
-        
-        return result_ast
-    
-    def _resolve_markdown_nodes(self, ast: TemplateAST, template_name: str = "") -> TemplateAST:
-        """
-        Создает виртуальные секции для всех MarkdownFileNode в AST с контекстуальным анализом.
-        
-        Args:
-            ast: AST для обработки
-            template_name: Имя шаблона для диагностики
-            
-        Returns:
-            AST с заполненными виртуальными секциями и контекстуальными параметрами
-        """
-        # Сначала проходим по AST и анализируем контекст для каждого MarkdownFileNode
-        enhanced_ast = self._analyze_heading_contexts(ast)
-        
-        def resolve_node(node: TemplateNode) -> TemplateNode:
-            if isinstance(node, MarkdownFileNode):
-                # Проверяем кэш виртуальных секций (используем обновленный ключ)
-                cache_key = node.canon_key()
-                
-                if cache_key in self._virtual_sections_cache:
-                    virtual_section = self._virtual_sections_cache[cache_key]
-                else:
-                    # Создаем новую виртуальную секцию с эффективными параметрами
-                    try:
-                        section_id, section_config, section_ref = self.virtual_factory.create_for_markdown_file(
-                            path=node.path,
-                            origin=node.origin,
-                            heading_level=node.get_effective_heading_level(),
-                            strip_h1=node.get_effective_strip_h1(),
-                            anchor=node.anchor,
-                            repo_root=self.run_ctx.root
-                        )
-                        
-                        # Кэшируем результат
-                        self._virtual_sections_cache[cache_key] = section_ref
-                        virtual_section = section_ref
-                        
-                    except Exception as e:
-                        raise TemplateProcessingError(
-                            f"Failed to create virtual section for {node.canon_key()}: {e}", 
-                            template_name, e
-                        )
-                
-                # Возвращаем обновленный узел с виртуальной секцией
-                return MarkdownFileNode(
-                    path=node.path,
-                    origin=node.origin,
-                    heading_level=node.heading_level,
-                    strip_h1=node.strip_h1,
-                    anchor=node.anchor,
-                    contextual_heading_level=node.contextual_heading_level,
-                    contextual_strip_h1=node.contextual_strip_h1,
-                    context_analysis_reason=node.context_analysis_reason,
-                    section_id=virtual_section.name,
-                    virtual_section=virtual_section
-                )
-            
-            # Рекурсивно обрабатываем дочерние узлы
-            elif isinstance(node, ConditionalBlockNode):
-                resolved_body = [resolve_node(child) for child in node.body]
-                resolved_elif_blocks = []
-                for elif_block in node.elif_blocks:
-                    resolved_elif_body = [resolve_node(child) for child in elif_block.body]
-                    resolved_elif_blocks.append(ElifBlockNode(
-                        condition_text=elif_block.condition_text,
-                        body=resolved_elif_body,
-                        condition_ast=elif_block.condition_ast,
-                        evaluated=elif_block.evaluated
-                    ))
-                
-                resolved_else = None
-                if node.else_block:
-                    resolved_else_body = [resolve_node(child) for child in node.else_block.body]
-                    resolved_else = ElseBlockNode(body=resolved_else_body)
-                
-                return ConditionalBlockNode(
-                    condition_text=node.condition_text,
-                    body=resolved_body,
-                    elif_blocks=resolved_elif_blocks,
-                    else_block=resolved_else,
-                    condition_ast=node.condition_ast,
-                    evaluated=node.evaluated
-                )
-            
-            elif isinstance(node, ModeBlockNode):
-                resolved_body = [resolve_node(child) for child in node.body]
-                return ModeBlockNode(
-                    modeset=node.modeset,
-                    mode=node.mode,
-                    body=resolved_body,
-                    original_mode_options=node.original_mode_options,
-                    original_active_tags=node.original_active_tags,
-                    original_active_modes=node.original_active_modes
-                )
-            
-            elif isinstance(node, IncludeNode) and node.children:
-                resolved_children = [resolve_node(child) for child in node.children]
-                return IncludeNode(
-                    kind=node.kind,
-                    name=node.name,
-                    origin=node.origin,
-                    children=resolved_children
-                )
-            
-            # Остальные узлы возвращаем как есть
-            return node
-        
-        # Обрабатываем все узлы в AST
-        return [resolve_node(node) for node in enhanced_ast]
     
     def _parse_template(self, template_text: str, template_name: str) -> TemplateAST:
         """Парсит текст шаблона в AST с кэшированием."""
@@ -484,11 +325,37 @@ class TemplateProcessor:
         
         elif isinstance(node, MarkdownFileNode):
             # Обрабатываем Markdown-файл через виртуальную секцию
-            if node.virtual_section and self.section_handler:
-                return self.section_handler(node.virtual_section, self.template_ctx)
+            if self.section_handler:
+                # Создаем конфигурацию для виртуальной секции
+                try:
+                    section_config, section_ref = self.virtual_factory.create_for_markdown_file(
+                        path=node.path,
+                        origin=node.origin,
+                        heading_level=node.get_effective_heading_level(),
+                        strip_h1=node.get_effective_strip_h1(),
+                        anchor=node.anchor,
+                        repo_root=self.run_ctx.root
+                    )
+                    
+                    # Устанавливаем виртуальную секцию в контекст
+                    self.template_ctx.set_virtual_section(section_config)
+                    
+                    try:
+                        # Обрабатываем через section_handler
+                        result = self.section_handler(section_ref, self.template_ctx)
+                    finally:
+                        # Всегда очищаем виртуальную секцию после обработки
+                        self.template_ctx.clear_virtual_section()
+                    
+                    return result
+                    
+                except Exception as e:
+                    # В случае ошибки очищаем контекст и возвращаем плейсхолдер
+                    self.template_ctx.clear_virtual_section()
+                    return f"<!-- Error processing {node.canon_key()}: {e} -->"
             else:
                 # Если виртуальная секция не создана или нет обработчика, возвращаем плейсхолдер
-                return f"${{md:{node.path}}}"
+                return f"${{{node.canon_key()}}}"
         
         elif isinstance(node, CommentNode):
             # Комментарии игнорируются

@@ -12,6 +12,7 @@ from typing import Dict, Set, List, Optional
 
 from .evaluator import TemplateConditionEvaluator
 from ..config.adaptive_model import ModeOptions
+from ..config.model import SectionCfg
 from ..run_context import RunContext, ConditionContext
 
 
@@ -27,6 +28,8 @@ class TemplateState:
     mode_options: ModeOptions
     active_tags: Set[str]
     active_modes: Dict[str, str]  # modeset -> mode_name
+    # Виртуальная секция (для обработки ${md:...} плейсхолдеров)
+    current_virtual_section: Optional[SectionCfg] = None
     
     def copy(self) -> TemplateState:
         """Создает глубокую копию состояния."""
@@ -34,7 +37,8 @@ class TemplateState:
             origin=self.origin,
             mode_options=self.mode_options,
             active_tags=set(self.active_tags),
-            active_modes=dict(self.active_modes)
+            active_modes=dict(self.active_modes),
+            current_virtual_section=self.current_virtual_section
         )
 
 
@@ -62,7 +66,8 @@ class TemplateContext:
             origin="self",
             mode_options=run_ctx.mode_options,
             active_tags=set(run_ctx.active_tags),
-            active_modes=dict(run_ctx.options.modes)
+            active_modes=dict(run_ctx.options.modes),
+            current_virtual_section=None
         )
         
         # Стек состояний для вложенных блоков режимов
@@ -172,7 +177,8 @@ class TemplateContext:
             origin=origin,
             mode_options=self.current_state.mode_options,
             active_tags=set(self.current_state.active_tags),
-            active_modes=dict(self.current_state.active_modes)
+            active_modes=dict(self.current_state.active_modes),
+            current_virtual_section=self.current_state.current_virtual_section
         )
         
         # Сбрасываем кэш оценщика условий
@@ -195,6 +201,30 @@ class TemplateContext:
         
         # Сбрасываем кэш оценщика условий
         self._condition_evaluator = None
+    
+    def set_virtual_section(self, section_config: SectionCfg) -> None:
+        """
+        Устанавливает текущую виртуальную секцию для обработки ${md:...} плейсхолдера.
+        
+        Args:
+            section_config: Конфигурация виртуальной секции
+        """
+        self.current_state.current_virtual_section = section_config
+    
+    def get_virtual_section(self) -> Optional[SectionCfg]:
+        """
+        Возвращает текущую виртуальную секцию, если установлена.
+        
+        Returns:
+            Кортеж (section_ref, section_config) или None
+        """
+        return self.current_state.current_virtual_section
+    
+    def clear_virtual_section(self) -> None:
+        """
+        Очищает текущую виртуальную секцию после обработки.
+        """
+        self.current_state.current_virtual_section = None
     
     def evaluate_condition(self, condition_ast) -> bool:
         """

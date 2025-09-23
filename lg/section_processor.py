@@ -7,7 +7,7 @@
 from __future__ import annotations
 
 from .adapters.processor import process_files
-from .manifest.builder import build_section_manifest
+from .manifest.builder import build_section_manifest, build_section_manifest_from_config
 from .plan.planner import build_section_plan
 from .render.renderer import render_section
 from .run_context import RunContext
@@ -43,14 +43,28 @@ class SectionProcessor:
         Returns:
             Отрендеренная секция
         """
-
-        manifest = build_section_manifest(
-            section_ref=section_ref,
-            template_ctx=template_ctx,
-            root=self.run_ctx.root,
-            vcs=self.run_ctx.vcs,
-            vcs_mode=template_ctx.current_state.mode_options.vcs_mode
-        )
+        # Проверяем, есть ли в контексте виртуальная секция
+        virtual_section_config = template_ctx.get_virtual_section()
+        
+        if virtual_section_config is not None:
+            # Используем виртуальную секцию вместо обычной загрузки конфигурации
+            manifest = build_section_manifest_from_config(
+                section_ref=section_ref,
+                section_config=virtual_section_config,
+                template_ctx=template_ctx,
+                root=self.run_ctx.root,
+                vcs=self.run_ctx.vcs,
+                vcs_mode=template_ctx.current_state.mode_options.vcs_mode
+            )
+        else:
+            # Обрабатываем обычную секцию
+            manifest = build_section_manifest(
+                section_ref=section_ref,
+                template_ctx=template_ctx,
+                root=self.run_ctx.root,
+                vcs=self.run_ctx.vcs,
+                vcs_mode=template_ctx.current_state.mode_options.vcs_mode
+            )
         
         plan = build_section_plan(manifest, template_ctx)
         

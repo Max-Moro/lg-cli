@@ -93,11 +93,7 @@ class MarkdownFileNode(TemplateNode):
     contextual_heading_level: Optional[int] = None
     contextual_strip_h1: Optional[bool] = None
     context_analysis_reason: str = ""      # Причина выбора контекстуальных параметров
-    
-    # Метаданные для резолвинга (заполняются во время обработки)
-    section_id: str = ""                   # ID динамически созданной секции
-    virtual_section: Optional[SectionRef] = None
-    
+
     def get_effective_heading_level(self) -> Optional[int]:
         """
         Возвращает эффективный уровень заголовка.

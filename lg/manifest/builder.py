@@ -22,6 +22,61 @@ from ..types import FileEntry, SectionManifest, SectionRef
 from ..vcs import VcsProvider, NullVcs
 
 
+def build_section_manifest_from_config(
+    section_ref: SectionRef,
+    section_config: SectionCfg,
+    template_ctx: TemplateContext,
+    root: Path,
+    vcs: VcsProvider,
+    vcs_mode: str
+) -> SectionManifest:
+    """
+    Строит манифест секции на основе готовой конфигурации (для виртуальных секций).
+    
+    Args:
+        section_ref: Ссылка на секцию
+        section_config: Готовая конфигурация секции
+        template_ctx: Контекст шаблона с активными режимами/тегами
+        root: Корень репозитория
+        vcs: VCS провайдер
+        vcs_mode: Режим VCS ("all" или "changes")
+        
+    Returns:
+        Манифест секции с отфильтрованными файлами
+    """
+    vcs = vcs or NullVcs()
+    
+    # Получаем изменённые файлы для режима changes
+    changed: Set[str] = set()
+    if vcs_mode == "changes":
+        changed = vcs.changed_files(root)
+    
+    # Создаем базовый фильтр с условными дополнениями
+    filter_engine = _create_enhanced_filter_engine(section_config, template_ctx)
+
+    # Вычисляем финальные опции адаптеров с учетом условий
+    adapters_cfg = _compute_final_adapter_configs(section_config, template_ctx)
+
+    # Получаем файлы секции
+    files = _collect_section_files(
+        section_ref=section_ref,
+        section_cfg=section_config,
+        filter_engine=filter_engine,
+        changed_files=changed,
+        vcs_mode=vcs_mode,
+        root=root,
+        adapters_cfg=adapters_cfg
+    )
+
+    # Создаем манифест
+    return SectionManifest(
+        ref=section_ref,
+        files=files,
+        path_labels=section_config.path_labels,
+        adapters_cfg=adapters_cfg
+    )
+
+
 def build_section_manifest(
     section_ref: SectionRef, 
     template_ctx: TemplateContext,
@@ -45,13 +100,6 @@ def build_section_manifest(
     Raises:
         RuntimeError: Если секция не найдена
     """
-    vcs = vcs or NullVcs()
-    
-    # Получаем изменённые файлы для режима changes
-    changed: Set[str] = set()
-    if vcs_mode == "changes":
-        changed = vcs.changed_files(root)
-    
     # Загружаем конфигурацию секции
     scope_dir = section_ref.scope_dir
     config = load_config(scope_dir)
@@ -64,30 +112,7 @@ def build_section_manifest(
             f"Available: {', '.join(available) if available else '(none)'}"
         )
     
-    # Создаем базовый фильтр с условными дополнениями
-    filter_engine = _create_enhanced_filter_engine(section_cfg, template_ctx)
-
-    # Вычисляем финальные опции адаптеров с учетом условий
-    adapters_cfg = _compute_final_adapter_configs(section_cfg, template_ctx)
-
-    # Получаем файлы секции
-    files = _collect_section_files(
-        section_ref=section_ref,
-        section_cfg=section_cfg,
-        filter_engine=filter_engine,
-        changed_files=changed,
-        vcs_mode=vcs_mode,
-        root=root,
-        adapters_cfg=adapters_cfg
-    )
-
-    # Создаем манифест
-    return SectionManifest(
-        ref=section_ref,
-        files=files,
-        path_labels=section_cfg.path_labels,
-        adapters_cfg=adapters_cfg
-    )
+    return build_section_manifest_from_config(section_ref, section_cfg, template_ctx, root, vcs, vcs_mode)
 
 
 def _compute_final_adapter_configs(section_cfg: SectionCfg, template_ctx: TemplateContext) -> Dict[str, Dict]:
