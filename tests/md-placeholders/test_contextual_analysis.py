@@ -1,19 +1,17 @@
 """
 Тесты контекстуального анализа заголовков для md-плейсхолдеров.
 
-Проверяет автоматическое определение max_heading_level и strip_single_h1 
-на основе позиции плейсхолдера в шаблоне:
-- Анализ окружающих заголовков
-- Определение уровня вложенности
-- Автоматическая установка strip_h1 при наличии родительского заголовка
+Реализует логику согласно ТЗ:
+- strip_h1=true когда плейсхолдеры разделены заголовками родительского шаблона
+- strip_h1=false когда плейсхолдеры образуют непрерывную цепочку
+- max_heading_level определяется уровнем ближайшего родительского заголовка
 """
 
 from __future__ import annotations
 
-import pytest
 import re
 
-from .conftest import md_project, create_template, render_template, write_markdown
+from .conftest import md_project, create_template, render_template
 
 
 def extract_heading_level(text: str, heading_text: str) -> int | None:
@@ -48,7 +46,7 @@ def assert_heading_level(result: str, heading_text: str, expected_level: int):
     actual_level = extract_heading_level(result, heading_text)
     assert actual_level == expected_level, (
         f"Expected heading '{heading_text}' to be level {expected_level}, "
-        f"but found level {actual_level}"
+        f"but found level {actual_level}. Full result:\n{result}"
     )
 
 
@@ -61,124 +59,310 @@ def assert_heading_not_present(result: str, heading_text: str):
         heading_text: Текст заголовка для проверки
     """
     actual_level = extract_heading_level(result, heading_text)
-    assert actual_level is None, f"Heading '{heading_text}' should not be present, but found at level {actual_level}"
+    assert actual_level is None, (
+        f"Heading '{heading_text}' should not be present, but found at level {actual_level}. "
+        f"Full result:\n{result}"
+    )
 
 
-def test_contextual_heading_level_from_h3_position(md_project):
-    """Тест автоматического определения max_heading_level=4 при вставке под H3."""
+# ===== Тесты для strip_h1=true (плейсхолдеры разделены заголовками) =====
+
+def test_placeholders_separated_by_headings_strip_h1_true(md_project):
+    """
+    Тест случая strip_h1=true: плейсхолдеры разделены заголовками родительского шаблона.
+    
+    Соответствует первому примеру из ТЗ:
+    ### Шаблоны, контексты и каскадные включения
+    ${md:docs/templates}
+    ### Руководство по работе с Markdown
+    ${md:docs/markdown}
+    """
     root = md_project
     
-    create_template(root, "h3-context-test", """# Main Document
+    create_template(root, "separated-placeholders", """# Listing Generator 
 
-## Section A
+## Расширенная документация
 
-### Subsection: API Documentation  
+### Шаблоны, контексты и каскадные включения
 
 ${md:docs/api}
 
-### Another Subsection
-
-Some other content.
-""")
-    
-    result = render_template(root, "ctx:h3-context-test")
-    
-    # H1 из api.md должен стать H4 (H3 + 1)
-    assert_heading_level(result, "API Reference", 4)
-    
-    # H2 из api.md должны стать H5
-    assert_heading_level(result, "Authentication", 5)
-    assert_heading_level(result, "Endpoints", 5)
-    
-    # H3 из api.md должны стать H6  
-    assert_heading_level(result, "GET /users", 6)
-
-
-def test_contextual_heading_level_from_h2_position(md_project):
-    """Тест автоматического определения max_heading_level=3 при вставке под H2."""
-    root = md_project
-    
-    create_template(root, "h2-context-test", """# Project Documentation
-
-## User Guide
+### Руководство по работе с Markdown
 
 ${md:docs/guide}
 
-## Other Section
+### Языковые адаптеры
+
+${md:docs/changelog}
+
+## Лицензия
 """)
     
-    result = render_template(root, "ctx:h2-context-test")
+    result = render_template(root, "ctx:separated-placeholders")
     
-    # H1 из guide.md должен стать H3 (H2 + 1)
-    assert_heading_level(result, "User Guide", 3)
+    # Плейсхолдеры разделены заголовками H3 родительского шаблона
+    # Поэтому strip_h1=true, max_heading_level=4 (H3+1)
     
-    # H2 из guide.md должны стать H4
-    assert_heading_level(result, "Installation", 4)
-    assert_heading_level(result, "Usage", 4)
+    # H1 заголовки из файлов должны быть удалены
+    assert_heading_not_present(result, "API Reference")
+    assert_heading_not_present(result, "User Guide")
+    # changelog.md не имеет H1, поэтому ничего не удаляется
+    
+    # H2 заголовки из файлов становятся H4 (под H3 родительского шаблона)
+    assert_heading_level(result, "Authentication", 4)  # из api.md
+    assert_heading_level(result, "Endpoints", 4)       # из api.md
+    assert_heading_level(result, "Installation", 4)    # из guide.md
+    assert_heading_level(result, "Usage", 4)           # из guide.md
+    assert_heading_level(result, "v1.0.0", 4)         # из changelog.md
+    assert_heading_level(result, "v0.9.0", 4)         # из changelog.md
+    
+    # Заголовки из родительского шаблона должны остаться на своих местах
+    assert_heading_level(result, "Listing Generator", 1)
+    assert_heading_level(result, "Расширенная документация", 2)
+    assert_heading_level(result, "Шаблоны, контексты и каскадные включения", 3)
+    assert_heading_level(result, "Руководство по работе с Markdown", 3)
+    assert_heading_level(result, "Языковые адаптеры", 3)
+    assert_heading_level(result, "Лицензия", 2)
 
 
-def test_contextual_strip_h1_when_parent_heading_exists(md_project):
-    """Тест автоматической установки strip_h1=true при наличии родительского заголовка."""
+def test_placeholders_separated_by_h2_headings(md_project):
+    """
+    Тест случая strip_h1=true с заголовками H2 в качестве разделителей.
+    """
     root = md_project
     
-    create_template(root, "strip-h1-test", """# Main Documentation
+    create_template(root, "h2-separated", """# Project Documentation
 
 ## API Reference Section
 
 ${md:docs/api}
 
-## Guide Section  
+## User Guide Section
 
 ${md:docs/guide}
+
+## Changelog Section
+
+${md:docs/changelog}
+
+## Summary
 """)
     
-    result = render_template(root, "ctx:strip-h1-test")
+    result = render_template(root, "ctx:h2-separated")
     
-    # Проверяем наличие заголовков секций из шаблона
-    assert_heading_level(result, "API Reference Section", 2)
-    assert_heading_level(result, "Guide Section", 2)
+    # Плейсхолдеры разделены заголовками H2
+    # strip_h1=true, max_heading_level=3 (H2+1)
     
-    # Оригинальные H1 из файлов должны быть удалены (strip_h1=true)
+    # H1 заголовки из файлов удалены
     assert_heading_not_present(result, "API Reference")
     assert_heading_not_present(result, "User Guide")
     
-    # Но содержимое H2+ должно присутствовать на правильных уровнях
-    # Под H2 секциями содержимое начинается с H3
-    assert_heading_level(result, "Authentication", 3)  # было H2, стало H3
-    assert_heading_level(result, "Installation", 3)    # было H2, стало H3
+    # H2 заголовки из файлов становятся H3
+    assert_heading_level(result, "Authentication", 3)
+    assert_heading_level(result, "Installation", 3)
+    assert_heading_level(result, "v1.0.0", 3)
 
 
-def test_contextual_no_strip_h1_when_no_parent_heading(md_project):
-    """Тест НЕ установки strip_h1 когда нет родительского заголовка."""
+# ===== Тесты для strip_h1=false (плейсхолдеры образуют цепочку) =====
+
+def test_placeholders_continuous_chain_strip_h1_false(md_project):
+    """
+    Тест случая strip_h1=false: плейсхолдеры образуют непрерывную цепочку.
+    
+    Соответствует второму примеру из ТЗ:
+    ## Расширенная документация
+    ${md:docs/templates}
+    ${md:docs/markdown}
+    ${md:docs/markdown}
+    """
     root = md_project
     
-    create_template(root, "no-strip-test", """# Main Documentation
+    create_template(root, "continuous-chain", """# Listing Generator 
 
-Some intro text.
+## Расширенная документация
 
 ${md:docs/api}
 
 ${md:docs/guide}
 
-End of document.
+${md:docs/changelog}
+
+## Лицензия
 """)
     
-    result = render_template(root, "ctx:no-strip-test")
+    result = render_template(root, "ctx:continuous-chain")
     
-    # H1 заголовки должны сохраниться, но стать H3 (под главным H1)
-    assert_heading_level(result, "API Reference", 3)  # было H1, стало H3, сохранилось
-    assert_heading_level(result, "User Guide", 3)     # было H1, стало H3, сохранилось
+    # Плейсхолдеры образуют непрерывную цепочку под H2
+    # strip_h1=false, max_heading_level=3 (H2+1)
     
-    # H2 из документов становятся H4
-    assert_heading_level(result, "Authentication", 4) # было H2, стало H4
-    assert_heading_level(result, "Installation", 4)   # было H2, стало H4
+    # H1 заголовки из файлов сохраняются, но становятся H3
+    assert_heading_level(result, "API Reference", 3)   # было H1, стало H3
+    assert_heading_level(result, "User Guide", 3)      # было H1, стало H3
+    # changelog.md не имеет H1
+    
+    # H2 заголовки из файлов становятся H4
+    assert_heading_level(result, "Authentication", 4)  # было H2, стало H4
+    assert_heading_level(result, "Installation", 4)    # было H2, стало H4
+    assert_heading_level(result, "v1.0.0", 4)         # было H2, стало H4
+    
+    # Заголовки из родительского шаблона сохраняются
+    assert_heading_level(result, "Listing Generator", 1)
+    assert_heading_level(result, "Расширенная документация", 2)
+    assert_heading_level(result, "Лицензия", 2)
 
 
-def test_placeholder_inside_heading_with_contextual_analysis(md_project):
-    """Тест контекстуального анализа для плейсхолдеров внутри заголовков."""
+def test_continuous_chain_starting_immediately(md_project):
+    """
+    Тест непрерывной цепочки, начинающейся сразу после заголовка секции.
+    """
     root = md_project
     
-    create_template(root, "inline-placeholder-test", """# Listing Generator 
+    create_template(root, "immediate-chain", """# Main Document
+
+## Documentation Section
+${md:docs/api}
+${md:docs/guide}
+${md:docs/changelog}
+
+## Other Section
+
+Some other content.
+""")
+    
+    result = render_template(root, "ctx:immediate-chain")
+    
+    # Плейсхолдеры образуют цепочку под H2
+    # strip_h1=false, max_heading_level=3
+    
+    # H1 заголовки сохраняются на уровне H3
+    assert_heading_level(result, "API Reference", 3)
+    assert_heading_level(result, "User Guide", 3)
+    
+    # H2 заголовки на уровне H4
+    assert_heading_level(result, "Authentication", 4)
+    assert_heading_level(result, "Installation", 4)
+
+
+def test_mixed_content_between_placeholders_breaks_chain(md_project):
+    """
+    Тест что произвольный контент между плейсхолдерами прерывает цепочку.
+    
+    Если между плейсхолдерами есть другой контент, это может изменить логику.
+    Уточним поведение: текст между плейсхолдерами НЕ прерывает цепочку,
+    только заголовки прерывают.
+    """
+    root = md_project
+    
+    create_template(root, "mixed-content", """# Main Document
+
+## Documentation Section
+
+${md:docs/api}
+
+Some explanatory text between placeholders.
+
+${md:docs/guide}
+
+More text.
+
+${md:docs/changelog}
+
+## Other Section
+""")
+    
+    result = render_template(root, "ctx:mixed-content")
+    
+    # Текст между плейсхолдерами НЕ прерывает цепочку
+    # strip_h1=false, max_heading_level=3
+    
+    assert_heading_level(result, "API Reference", 3)
+    assert_heading_level(result, "User Guide", 3)
+
+
+# ===== Тесты для определения max_heading_level =====
+
+def test_max_heading_level_from_h4_context(md_project):
+    """
+    Тест автоматического определения max_heading_level=5 при вставке под H4.
+    """
+    root = md_project
+    
+    create_template(root, "h4-context", """# Main
+
+## Part 1
+
+### Chapter 1
+
+#### Section: API Documentation
+
+${md:docs/api}
+
+#### Another Section
+
+Some content.
+""")
+    
+    result = render_template(root, "ctx:h4-context")
+    
+    # Плейсхолдер под H4, разделен от других заголовком
+    # strip_h1=true, max_heading_level=5 (H4+1)
+    
+    # H1 удален
+    assert_heading_not_present(result, "API Reference")
+    
+    # H2 заголовки становятся H5
+    assert_heading_level(result, "Authentication", 5)
+    assert_heading_level(result, "Endpoints", 5)
+
+
+def test_max_heading_level_limits_at_h6(md_project):
+    """
+    Тест ограничения максимального уровня заголовков на H6.
+    """
+    root = md_project
+    
+    create_template(root, "h6-limit", """# Level 1
+
+## Level 2
+
+### Level 3
+
+#### Level 4
+
+##### Level 5
+
+###### Level 6 Section
+
+${md:docs/api}
+""")
+    
+    result = render_template(root, "ctx:h6-limit")
+    
+    # При попытке установить max_heading_level=7, система должна ограничить до H6
+    # или применить другую логику для предотвращения недопустимых заголовков
+    
+    lines = result.split('\n')
+    invalid_headings = [line for line in lines if line.startswith('#######')]
+    assert len(invalid_headings) == 0, f"Found invalid H7+ headings: {invalid_headings}"
+    
+    # Содержимое файлов должно присутствовать
+    assert "Authentication" in result
+    assert "Endpoints" in result
+
+
+# ===== Тесты для плейсхолдеров внутри заголовков =====
+
+def test_placeholder_inside_heading_replaces_heading_text(md_project):
+    """
+    Тест плейсхолдера внутри заголовка - заменяет текст заголовка.
+    
+    ### ${md:docs/api}
+    
+    Здесь H1 из api.md становится содержимым заголовка H3.
+    """
+    root = md_project
+    
+    create_template(root, "inline-heading", """# Listing Generator 
 
 ## Расширенная документация
 
@@ -189,122 +373,105 @@ def test_placeholder_inside_heading_with_contextual_analysis(md_project):
 ## Заключение
 """)
     
-    result = render_template(root, "ctx:inline-placeholder-test")
+    result = render_template(root, "ctx:inline-heading")
     
-    # Плейсхолдеры заменяются содержимым H1 из файлов
-    # При этом strip_h1=true (есть родительский заголовок H3), max_heading_level=4
-    assert_heading_level(result, "API Reference", 3)  # заголовок H3 принимает содержимое H1 из файла
-    assert_heading_level(result, "User Guide", 3)     # заголовок H3 принимает содержимое H1 из файла
+    # Плейсхолдеры внутри заголовков H3
+    # H1 из файлов заменяет содержимое заголовков H3
+    # strip_h1=true (H1 использован для заголовка), max_heading_level=4
     
-    # Остальное содержимое файлов начинается с H4
-    assert_heading_level(result, "Authentication", 4) # было H2, стало H4
-    assert_heading_level(result, "Installation", 4)   # было H2, стало H4
+    assert_heading_level(result, "API Reference", 3)   # H1 из api.md стал H3
+    assert_heading_level(result, "User Guide", 3)      # H1 из guide.md стал H3
+    
+    # H2 заголовки из файлов становятся H4
+    assert_heading_level(result, "Authentication", 4)
+    assert_heading_level(result, "Installation", 4)
 
 
-def test_placeholder_inside_heading_multiple_levels(md_project):
-    """Тест плейсхолдеров на разных уровнях заголовков."""
+def test_placeholder_inside_h2_heading(md_project):
+    """
+    Тест плейсхолдера внутри заголовка H2.
+    """
     root = md_project
     
-    create_template(root, "multi-level-inline-test", """# Project Manual
+    create_template(root, "h2-inline", """# Project Manual
 
-## Part I: ${md:docs/api}
+## API: ${md:docs/api}
 
-### Details
-
-Some details here.
-
-## Part II: ${md:docs/guide}
-
-### More Details
-
-More details here.
-""")
-    
-    result = render_template(root, "ctx:multi-level-inline-test")
-    
-    # H2 заголовки получают содержимое H1 из файлов
-    assert_heading_level(result, "Part I: API Reference", 2)
-    assert_heading_level(result, "Part II: User Guide", 2)
-    
-    # Остальное содержимое файлов размещается на уровне H3+
-    assert_heading_level(result, "Authentication", 3)  # было H2, стало H3
-    assert_heading_level(result, "Installation", 3)    # было H2, стало H3
-
-
-def test_contextual_analysis_with_multiple_heading_levels(md_project):
-    """Тест сложного контекстуального анализа с разными уровнями заголовков."""
-    root = md_project
-    
-    create_template(root, "complex-levels-test", """# Project Manual
-
-## Part I: API
-
-### Chapter 1: Reference
-
-${md:docs/api}
-
-### Chapter 2: Examples
-
-Some examples here.
-
-## Part II: Guides  
-
-### Chapter 3: User Guide
-
-${md:docs/guide}
-
-#### Section 3.1: Advanced Usage
-
-${md:docs/changelog}
+## Guide: ${md:docs/guide}
 
 ## Summary
 """)
     
-    result = render_template(root, "ctx:complex-levels-test")
+    result = render_template(root, "ctx:h2-inline")
     
-    # api.md под H3 → max_heading_level=4, strip_h1=true  
-    assert_heading_level(result, "Authentication", 4)   # было H2 в api.md, стало H4
-    assert_heading_level(result, "Endpoints", 4)        # было H2 в api.md, стало H4
+    # H1 из файлов становится частью H2 заголовков
+    assert_heading_level(result, "API: API Reference", 2)
+    assert_heading_level(result, "Guide: User Guide", 2)
     
-    # guide.md под H3 → max_heading_level=4, strip_h1=true
-    assert_heading_level(result, "Installation", 4)     # было H2 в guide.md, стало H4  
-    assert_heading_level(result, "Usage", 4)            # было H2 в guide.md, стало H4
-    
-    # changelog.md под H4 → max_heading_level=5, strip_h1=false (нет H1 в changelog.md)
-    assert_heading_level(result, "v1.0.0", 5)          # было H2 в changelog.md, стало H5
-    assert_heading_level(result, "v0.9.0", 5)          # было H2 в changelog.md, стало H5
+    # H2 заголовки из файлов становятся H3
+    assert_heading_level(result, "Authentication", 3)
+    assert_heading_level(result, "Installation", 3)
 
 
-def test_contextual_analysis_ignores_content_in_fenced_blocks(md_project):
-    """Тест что контекстуальный анализ игнорирует заголовки в fenced-блоках."""
+# ===== Тесты для явных параметров =====
+
+def test_explicit_parameters_override_contextual_analysis(md_project):
+    """
+    Тест что явные параметры переопределяют контекстуальный анализ.
+    """
     root = md_project
     
-    create_template(root, "fenced-ignore-test", """# Documentation
+    create_template(root, "explicit-override", """# Main
 
-## Configuration
+## Section
 
-Example config:
+### Subsection
 
-```yaml  
-# This is not a real heading
-## This is also not a heading  
-### Neither is this
-```
-
-### Actual Section
-
-${md:docs/api}
+${md:docs/api, level:2, strip_h1:false}
 """)
     
-    result = render_template(root, "ctx:fenced-ignore-test")
+    result = render_template(root, "ctx:explicit-override")
     
-    # Должен анализировать только "### Actual Section", игнорируя содержимое в ```
-    # Поэтому api.md должен иметь max_heading_level=4
-    assert_heading_level(result, "Authentication", 4)  # было H2, стало H4
+    # Явные параметры должны переопределить автоматический анализ
+    # level:2 означает max_heading_level=2
+    # strip_h1:false означает сохранить H1
+    
+    assert_heading_level(result, "API Reference", 2)    # H1→H2 (явно задано)
+    assert_heading_level(result, "Authentication", 3)   # H2→H3
 
 
-def test_contextual_analysis_with_setext_headings(md_project):
-    """Тест контекстуального анализа с Setext заголовками (подчеркивания)."""
+def test_explicit_strip_h1_true_overrides_chain_logic(md_project):
+    """
+    Тест что явный strip_h1:true переопределяет логику цепочки.
+    """
+    root = md_project
+    
+    create_template(root, "explicit-strip", """# Main
+
+## Documentation
+
+${md:docs/api, strip_h1:true}
+
+${md:docs/guide, strip_h1:true}
+""")
+    
+    result = render_template(root, "ctx:explicit-strip")
+    
+    # Несмотря на цепочку плейсхолдеров, явный strip_h1:true должен сработать
+    assert_heading_not_present(result, "API Reference")
+    assert_heading_not_present(result, "User Guide")
+    
+    # Содержимое начинается с H3 (под H2)
+    assert_heading_level(result, "Authentication", 3)
+    assert_heading_level(result, "Installation", 3)
+
+
+# ===== Специальные случаи =====
+
+def test_setext_headings_in_contextual_analysis(md_project):
+    """
+    Тест контекстуального анализа с Setext заголовками (подчеркивания).
+    """
     root = md_project
     
     create_template(root, "setext-test", """Project Guide
@@ -323,158 +490,75 @@ ${md:docs/guide}
     
     result = render_template(root, "ctx:setext-test")
     
-    # "API Documentation" это H2 (---), поэтому api.md → max_heading_level=3
-    # "User Guide" это тоже H2, поэтому guide.md → max_heading_level=3
-    assert_heading_level(result, "Authentication", 3)   # было H2, стало H3
-    assert_heading_level(result, "Installation", 3)     # было H2, стало H3
-
-
-def test_contextual_analysis_edge_case_h6_limit(md_project):
-    """Тест ограничения H6 при глубокой вложенности."""
-    root = md_project
+    # Setext заголовки: "Project Guide" = H1, "API Documentation" = H2
+    # Плейсхолдеры разделены заголовками H2
+    # strip_h1=true, max_heading_level=3
     
-    create_template(root, "h6-limit-test", """# Level 1
-
-## Level 2  
-
-### Level 3
-
-#### Level 4
-
-##### Level 5
-
-###### Level 6 Section
-
-${md:docs/api}
-""")
+    assert_heading_not_present(result, "API Reference")
+    assert_heading_not_present(result, "User Guide")
     
-    result = render_template(root, "ctx:h6-limit-test")
-    
-    # Проверим что не создались недопустимые H7+ заголовки
-    lines = result.split('\n')
-    invalid_headings = [line for line in lines if line.startswith('#######')]
-    assert len(invalid_headings) == 0, f"Found invalid H7+ headings: {invalid_headings}"
-    
-    # В зависимости от реализации, заголовки могут остаться на уровне H6 
-    # или система может отказаться от нормализации вообще
-    # Проверим что хотя бы базовая структура сохранена
-    assert "API Reference" in result, "API Reference content should be present"
-    assert "Authentication" in result, "Authentication content should be present"
-
-
-def test_no_contextual_analysis_for_explicit_parameters(md_project):
-    """Тест что явные параметры отключают контекстуальный анализ."""
-    root = md_project
-    
-    create_template(root, "explicit-params-test", """# Main
-
-## Section
-
-### Subsection  
-
-${md:docs/api, level:2, strip_h1:false}
-""")
-    
-    result = render_template(root, "ctx:explicit-params-test")
-    
-    # Явные параметры должны переопределить контекстуальный анализ
-    # level:2 означает H1→H2, strip_h1:false означает сохранить H1
-    assert_heading_level(result, "API Reference", 2)    # было H1, стало H2 (явно задано)
-    assert_heading_level(result, "Authentication", 3)   # было H2, стало H3
-
-
-def test_contextual_analysis_with_multiple_placeholders_same_level(md_project):
-    """Тест контекстуального анализа для нескольких плейсхолдеров на одном уровне."""
-    root = md_project
-    
-    create_template(root, "same-level-test", """# Documentation
-
-## API References
-
-${md:docs/api}
-
-## User Guides
-
-${md:docs/guide}  
-
-## Changelog
-
-${md:docs/changelog}
-""")
-    
-    result = render_template(root, "ctx:same-level-test")
-    
-    # Все плейсхолдеры под H2, поэтому max_heading_level=3, strip_h1=true
-    assert_heading_level(result, "Authentication", 3)   # из api.md, было H2→H3
-    assert_heading_level(result, "Installation", 3)     # из guide.md, было H2→H3
-    assert_heading_level(result, "v1.0.0", 3)          # из changelog.md, было H2→H3
-
-
-def test_placeholder_in_heading_with_mixed_content(md_project):
-    """Тест плейсхолдера внутри заголовка в смешанном контенте."""
-    root = md_project
-    
-    create_template(root, "mixed-content-test", """# Project Documentation
-
-## Introduction
-
-Some introduction text here.
-
-## ${md:docs/api}
-
-Some additional context after API section.
-
-## ${md:docs/guide}
-
-## Conclusion
-
-Final thoughts.
-""")
-    
-    result = render_template(root, "ctx:mixed-content-test")
-    
-    # H2 заголовки должны принять содержимое H1 из файлов
-    assert_heading_level(result, "API Reference", 2)
-    assert_heading_level(result, "User Guide", 2)
-    
-    # Остальное содержимое на уровне H3
     assert_heading_level(result, "Authentication", 3)
     assert_heading_level(result, "Installation", 3)
-    
-    # Заголовки из шаблона должны остаться на своих уровнях
-    assert_heading_level(result, "Introduction", 2)
-    assert_heading_level(result, "Conclusion", 2)
 
 
-def test_nested_placeholders_in_headings(md_project):
-    """Тест вложенных плейсхолдеров в заголовках разных уровней."""
+def test_fenced_blocks_ignored_in_contextual_analysis(md_project):
+    """
+    Тест что заголовки в fenced-блоках игнорируются при анализе контекста.
+    """
     root = md_project
     
-    create_template(root, "nested-test", """# Main Guide
+    create_template(root, "fenced-ignore", """# Documentation
 
-## Part 1: ${md:docs/api}
+## Configuration Example
 
-### Section 1.1: Details
+```yaml
+# This is not a real heading
+## This is also not a heading  
+### Neither is this
+```
 
-Some details about API.
+### Actual Section
 
-#### ${md:docs/guide}
+${md:docs/api}
 
-### Section 1.2: More Info
+### Another Section
 
-More information here.
-
-## Part 2: Other Content
-
-Regular content.
+More content.
 """)
     
-    result = render_template(root, "ctx:nested-test")
+    result = render_template(root, "ctx:fenced-ignore")
     
-    # Проверяем корректную интеграцию содержимого на разных уровнях
-    assert_heading_level(result, "Part 1: API Reference", 2)   # H2 принял H1 из api.md
-    assert_heading_level(result, "User Guide", 4)              # H4 принял H1 из guide.md
+    # Должен анализировать только реальные заголовки, игнорируя ```-блоки
+    # Плейсхолдер разделен заголовками H3
+    # strip_h1=true, max_heading_level=4
     
-    # Вложенное содержимое должно быть на правильных уровнях
-    assert_heading_level(result, "Authentication", 3)          # из api.md под H2
-    assert_heading_level(result, "Installation", 5)            # из guide.md под H4
+    assert_heading_not_present(result, "API Reference")
+    assert_heading_level(result, "Authentication", 4)
+
+
+def test_empty_placeholders_do_not_affect_chain_logic(md_project):
+    """
+    Тест что пустые плейсхолдеры или несуществующие файлы не влияют на логику цепочки.
+    """
+    root = md_project
+    
+    create_template(root, "empty-placeholders", """# Main
+
+## Documentation
+
+${md:docs/api}
+
+${md:nonexistent}
+
+${md:docs/guide}
+
+## Other
+""")
+    
+    result = render_template(root, "ctx:empty-placeholders")
+    
+    # Плейсхолдеры все еще формируют цепочку, даже если один из них пустой
+    # strip_h1=false, max_heading_level=3
+    
+    assert_heading_level(result, "API Reference", 3)
+    assert_heading_level(result, "User Guide", 3)
