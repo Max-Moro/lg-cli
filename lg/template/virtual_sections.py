@@ -26,7 +26,7 @@ class VirtualSectionFactory:
     
     def __init__(self):
         """Инициализирует фабрику."""
-        pass
+        self._counter = 0
     
     def create_for_markdown_file(
         self, 
@@ -86,15 +86,25 @@ class VirtualSectionFactory:
             # Для тестирования без реальных путей
             scope_dir = Path("/fake/root")
             scope_rel = node.origin if node.origin != "self" else ""
-        
+
         section_ref = SectionRef(
-            name="",
+            name=self._generate_name(),
             scope_rel=scope_rel,
             scope_dir=scope_dir
         )
         
         return section_config, section_ref
-    
+
+    def _generate_name(self) -> str:
+        """
+        Генерирует уникальное имя для виртуальной секции.
+
+        Returns:
+            Строка вида "_virtual_<counter>"
+        """
+        self._counter += 1
+        return f"_virtual_{self._counter}"
+
     def _normalize_file_paths(self, path: str, origin: str, is_glob: bool) -> list[str]:
         """
         Нормализует путь(и) к файлу(ам) для создания фильтра.
