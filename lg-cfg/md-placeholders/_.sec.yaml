@@ -16,7 +16,7 @@ src:
           - "/config/"
           - "/template/"
           - "/adapters/"
-          - "/markdown/model.py"
+          - "/markdown/"
         children:
           config:
             mode: allow
@@ -39,6 +39,11 @@ src:
               - "/context.py"
               - "/virtual_sections.py"
               - "/heading_context.py"
+          markdown:
+            mode: allow
+            allow:
+              - "/model.py"
+              - "/normalize.py"
 
 tests:
   extensions: [".py"]
