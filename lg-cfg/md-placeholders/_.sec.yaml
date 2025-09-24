@@ -38,12 +38,11 @@ src:
               - "/nodes.py"
               - "/context.py"
               - "/virtual_sections.py"
-              - "/heading_context.py"
+              - "/common.py"
           markdown:
             mode: allow
             allow:
               - "/model.py"
-              - "/normalize.py"
 
 tests:
   extensions: [".py"]
@@ -62,4 +61,4 @@ tests:
             mode: allow
             allow:
               - "/conftest.py"
-              - "/test_contextual_analysis.py"
+              - "/test_addressed_placeholders.py"
