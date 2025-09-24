@@ -27,6 +27,27 @@ class MarkdownCfg:
     # включение обработки условных конструкций в HTML-комментариях
     enable_templating: bool = True
 
+    def to_dict(self) -> Dict[str, Any]:
+        """Сериализует конфигурацию в словарь."""
+        result = {}
+        
+        if self.max_heading_level is not None:
+            result["max_heading_level"] = self.max_heading_level
+        
+        if self.strip_single_h1:
+            result["strip_single_h1"] = self.strip_single_h1
+        
+        if self.drop is not None:
+            result["drop"] = self.drop.to_dict()
+        
+        if self.keep is not None:
+            result["keep"] = self.keep.to_dict()
+        
+        if not self.enable_templating:  # только если False (True - дефолт)
+            result["enable_templating"] = self.enable_templating
+        
+        return result
+
     @staticmethod
     def from_dict(d: Optional[Dict[str, Any]]) -> MarkdownCfg:
         if not d:
@@ -69,6 +90,18 @@ class SectionMatch:
     pattern: str
     flags: Optional[str] = None           # для regex: напр. "i", "ms"
 
+    def to_dict(self) -> Dict[str, Any]:
+        """Сериализует правило соответствия секций в словарь."""
+        result = {
+            "kind": self.kind,
+            "pattern": self.pattern
+        }
+        
+        if self.flags:
+            result["flags"] = self.flags
+        
+        return result
+
     @staticmethod
     def from_dict(d: Dict[str, Any]) -> SectionMatch:
         if not isinstance(d, dict):
@@ -97,6 +130,33 @@ class SectionRule:
     # Мета
     reason: Optional[str] = None
     placeholder: Optional[str] = None     # локальный шаблон плейсхолдера
+
+    def to_dict(self) -> Dict[str, Any]:
+        """Сериализует правило секции в словарь."""
+        result = {}
+        
+        if self.match:
+            result["match"] = self.match.to_dict()
+        
+        if self.path:
+            result["path"] = self.path
+        
+        if self.level_exact is not None:
+            result["level_exact"] = self.level_exact
+        
+        if self.level_at_most is not None:
+            result["level_at_most"] = self.level_at_most
+        
+        if self.level_at_least is not None:
+            result["level_at_least"] = self.level_at_least
+        
+        if self.reason:
+            result["reason"] = self.reason
+        
+        if self.placeholder:
+            result["placeholder"] = self.placeholder
+        
+        return result
 
     @staticmethod
     def from_dict(d: Dict[str, Any]) -> SectionRule:
@@ -147,6 +207,18 @@ class PlaceholderPolicy:
     mode: Literal["none", "summary"] = "none"
     template: Optional[str] = "> *(Опущено: {title}; −{lines} строк)*"
 
+    def to_dict(self) -> Dict[str, Any]:
+        """Сериализует политику плейсхолдеров в словарь."""
+        result = {}
+        
+        if self.mode != "none":
+            result["mode"] = self.mode
+        
+        if self.template != "> *(Опущено: {title}; −{lines} строк)*":
+            result["template"] = self.template
+        
+        return result
+
     @staticmethod
     def from_dict(d: Optional[Dict[str, Any]]) -> PlaceholderPolicy:
         if not d:
@@ -165,6 +237,22 @@ class MarkdownDropCfg:
     sections: List[SectionRule] = field(default_factory=list)
     frontmatter: bool = True # False = keep frontmatter
     placeholder: PlaceholderPolicy = field(default_factory=PlaceholderPolicy)
+
+    def to_dict(self) -> Dict[str, Any]:
+        """Сериализует конфигурацию drop в словарь."""
+        result = {}
+        
+        if self.sections:
+            result["sections"] = [section.to_dict() for section in self.sections]
+        
+        if not self.frontmatter:  # только если False (True - дефолт)
+            result["frontmatter"] = self.frontmatter
+        
+        placeholder_dict = self.placeholder.to_dict()
+        if placeholder_dict:
+            result["placeholder"] = placeholder_dict
+        
+        return result
 
     @staticmethod
     def from_dict(d: Optional[Dict[str, Any]]) -> MarkdownDropCfg:
@@ -195,6 +283,18 @@ class MarkdownDropCfg:
 class MarkdownKeepCfg:
     sections: List[SectionRule] = field(default_factory=list)
     frontmatter: bool = False  # True = keep frontmatter
+
+    def to_dict(self) -> Dict[str, Any]:
+        """Сериализует конфигурацию keep в словарь."""
+        result = {}
+        
+        if self.sections:
+            result["sections"] = [section.to_dict() for section in self.sections]
+        
+        if self.frontmatter:  # только если True (False - дефолт для keep)
+            result["frontmatter"] = self.frontmatter
+        
+        return result
 
     @staticmethod
     def from_dict(d: Optional[Dict[str, Any]]) -> MarkdownKeepCfg:

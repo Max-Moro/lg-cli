@@ -262,12 +262,12 @@ class TemplateProcessor:
         """Оценивает AST и возвращает отрендеренный текст."""
         result_parts = []
         
-        for node in ast:
-            result_parts.append(self._evaluate_node(node))
+        for node_index, node in enumerate(ast):
+            result_parts.append(self._evaluate_node(node, ast, node_index))
         
         return "".join(result_parts)
     
-    def _evaluate_node(self, node: TemplateNode) -> str:
+    def _evaluate_node(self, node: TemplateNode, ast: TemplateAST, node_index) -> str:
         """Оценивает один узел AST."""
         if isinstance(node, TextNode):
             return node.text
@@ -339,9 +339,14 @@ class TemplateProcessor:
             if self.section_handler:
                 # Создаем конфигурацию для виртуальной секции
                 try:
+                    # Анализ контекста заголовков
+                    from .heading_context import detect_heading_context_for_node
+                    heading_context = detect_heading_context_for_node(node, ast, node_index)
+
                     section_config, section_ref = self.virtual_factory.create_for_markdown_file(
                         node=node,
-                        repo_root=self.run_ctx.root
+                        repo_root=self.run_ctx.root,
+                        heading_context=heading_context
                     )
                     
                     # Устанавливаем виртуальную секцию в контекст

@@ -8,8 +8,8 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Optional
 
+from .heading_context import HeadingContext
 from .nodes import MarkdownFileNode
 from ..config.model import SectionCfg, AdapterConfig
 from ..io.model import FilterNode
@@ -32,7 +32,8 @@ class VirtualSectionFactory:
     def create_for_markdown_file(
         self, 
         node: MarkdownFileNode,
-        repo_root: Optional[Path] = None
+        repo_root: Path,
+        heading_context: HeadingContext
     ) -> tuple[SectionCfg, SectionRef]:
         """
         Создает виртуальную секцию для Markdown-файла или набора файлов.
@@ -40,6 +41,7 @@ class VirtualSectionFactory:
         Args:
             node: Узел MarkdownFileNode с полной информацией о включаемом файле
             repo_root: Корень репозитория для резолвинга путей
+            heading_context: Контекст заголовков
             
         Returns:
             Кортеж (section_config, section_ref)
@@ -54,7 +56,7 @@ class VirtualSectionFactory:
         filters = self._create_file_filter(normalized_paths, node.origin)
         
         # Создаем конфигурацию Markdown-адаптера
-        markdown_config_raw = self._create_markdown_config(node).to_dict()
+        markdown_config_raw = self._create_markdown_config(node, heading_context).to_dict()
 
         # Создаем полную конфигурацию секции
         section_config = SectionCfg(
@@ -65,17 +67,12 @@ class VirtualSectionFactory:
         )
         
         # Создаем SectionRef
-        if repo_root:
-            if node.origin == "self":
-                scope_dir = repo_root.resolve()
-                scope_rel = ""
-            else:
-                scope_dir = (repo_root / node.origin).resolve()
-                scope_rel = node.origin
+        if node.origin == "self":
+            scope_dir = repo_root.resolve()
+            scope_rel = ""
         else:
-            # Для тестирования без реальных путей
-            scope_dir = Path("/fake/root")
-            scope_rel = node.origin if node.origin != "self" else ""
+            scope_dir = (repo_root / node.origin).resolve()
+            scope_rel = node.origin
 
         section_ref = SectionRef(
             name=self._generate_name(),
@@ -159,7 +156,8 @@ class VirtualSectionFactory:
     
     def _create_markdown_config(
         self, 
-        node: MarkdownFileNode
+        node: MarkdownFileNode,
+        heading_context: HeadingContext
     ) -> MarkdownCfg:
         """
         Создает конфигурацию Markdown-адаптера.
@@ -170,10 +168,38 @@ class VirtualSectionFactory:
         Returns:
             Типизированная конфигурация Markdown-адаптера
         """
-
-        # TODO
+        # Получаем эффективные значения с учетом приоритета: явные > контекстуальные
+        effective_heading_level = node.heading_level if node.heading_level is not None else heading_context.heading_level
+        effective_strip_h1 = node.strip_h1 if node.strip_h1 is not None else heading_context.strip_h1
         
-        return MarkdownCfg()
+        # Создаем базовую конфигурацию
+        config = MarkdownCfg(
+            max_heading_level=effective_heading_level,
+            strip_single_h1=effective_strip_h1 if effective_strip_h1 is not None else False,
+            drop=None,
+            keep=None,
+            enable_templating=True  # Включаем шаблонизацию для поддержки условных конструкций
+        )
+        
+        # Если есть якорь (anchor), создаем keep-конфигурацию для включения только нужной секции
+        if node.anchor:
+            from ..markdown.model import MarkdownKeepCfg, SectionRule, SectionMatch
+            
+            # Создаем правило для включения секции по названию
+            section_rule = SectionRule(
+                match=SectionMatch(
+                    kind="text",
+                    pattern=node.anchor
+                ),
+                reason=f"md placeholder anchor: #{node.anchor}"
+            )
+            
+            config.keep = MarkdownKeepCfg(
+                sections=[section_rule],
+                frontmatter=False  # По умолчанию не включаем frontmatter для якорных вставок
+            )
+        
+        return config
 
 
 __all__ = ["VirtualSectionFactory"]
