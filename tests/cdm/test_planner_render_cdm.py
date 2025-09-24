@@ -3,7 +3,8 @@ from __future__ import annotations
 from pathlib import Path
 
 from lg.adapters.processor import process_files
-from lg.manifest.builder import build_section_manifest
+from lg.manifest.builder import build_section_manifest_from_config
+from lg.config import load_config
 from lg.plan.planner import build_section_plan
 from lg.render.renderer import render_section
 from lg.template.context import TemplateContext
@@ -42,8 +43,12 @@ def _process_section(
     )
     
     # 1. Строим манифест
-    manifest = build_section_manifest(
+    config = load_config(scope_dir)
+    section_cfg = config.sections.get(section_ref.name)
+    
+    manifest = build_section_manifest_from_config(
         section_ref=section_ref,
+        section_config=section_cfg,
         template_ctx=template_ctx,
         root=root,
         vcs=vcs or rc.vcs,

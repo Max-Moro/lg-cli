@@ -5,7 +5,8 @@ from pathlib import Path
 from lg.cache.fs_cache import Cache
 from lg.config.adaptive_loader import AdaptiveConfigLoader
 from lg.config.adaptive_model import ModeOptions
-from lg.manifest.builder import build_section_manifest
+from lg.manifest.builder import build_section_manifest_from_config
+from lg.config import load_config
 from lg.run_context import RunContext
 from lg.stats import TokenService
 from lg.template.context import TemplateContext
@@ -74,9 +75,13 @@ py-files:
         scope_dir=tmp_path
     )
     
-    # Строим манифест
-    manifest = build_section_manifest(
+    # Загружаем конфигурацию и строим манифест
+    config = load_config(tmp_path)
+    section_cfg = config.sections.get(section_ref.name)
+    
+    manifest = build_section_manifest_from_config(
         section_ref=section_ref,
+        section_config=section_cfg,
         template_ctx=template_ctx,
         root=tmp_path,
         vcs=vcs,
@@ -126,8 +131,12 @@ all-files:
     
     section_ref = SectionRef(name="all-files", scope_rel="", scope_dir=tmp_path)
     
-    manifest = build_section_manifest(
+    config = load_config(tmp_path)
+    section_cfg = config.sections.get(section_ref.name)
+    
+    manifest = build_section_manifest_from_config(
         section_ref=section_ref,
+        section_config=section_cfg,
         template_ctx=template_ctx,
         root=tmp_path,
         vcs=NullVcs(),
@@ -143,8 +152,12 @@ all-files:
     run_ctx = _create_run_context(tmp_path, active_tags={"tests"})
     template_ctx = TemplateContext(run_ctx)
     
-    manifest = build_section_manifest(
+    config = load_config(tmp_path)
+    section_cfg = config.sections.get(section_ref.name)
+    
+    manifest = build_section_manifest_from_config(
         section_ref=section_ref,
+        section_config=section_cfg,
         template_ctx=template_ctx,
         root=tmp_path,
         vcs=NullVcs(),

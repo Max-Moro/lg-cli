@@ -1,3 +1,3 @@
-from .builder import build_section_manifest
+from .builder import build_section_manifest_from_config
 
-__all__ = ["build_section_manifest"]
+__all__ = ["build_section_manifest_from_config"]

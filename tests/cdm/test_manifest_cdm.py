@@ -6,7 +6,8 @@ from pathlib import Path
 import pytest
 from ruamel.yaml import YAML
 
-from lg.manifest.builder import build_section_manifest
+from lg.manifest.builder import build_section_manifest_from_config
+from lg.config import load_config
 from lg.template.context import TemplateContext
 from lg.types import SectionRef
 from lg.vcs import VcsProvider
@@ -57,8 +58,19 @@ def _build_section_manifest(
         scope_dir=scope_dir
     )
     
-    return build_section_manifest(
+    config = load_config(scope_dir)
+    section_cfg = config.sections.get(section_ref.name)
+    
+    if not section_cfg:
+        available = list(config.sections.keys())
+        raise RuntimeError(
+            f"Section '{section_ref.name}' not found in {scope_dir}. "
+            f"Available: {', '.join(available) if available else '(none)'}"
+        )
+    
+    return build_section_manifest_from_config(
         section_ref=section_ref,
+        section_config=section_cfg,
         template_ctx=template_ctx,
         root=root,
         vcs=vcs or rc.vcs,

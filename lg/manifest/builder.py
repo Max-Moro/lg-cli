@@ -11,7 +11,7 @@ from pathlib import Path
 from typing import Dict, List, Set, cast
 
 from ..adapters.registry import get_adapter_for_path
-from ..config import SectionCfg, load_config, EmptyPolicy
+from ..config import SectionCfg, EmptyPolicy
 from ..config.paths import is_cfg_relpath
 from ..io.filters import FilterEngine
 from ..io.fs import build_gitignore_spec, iter_files
@@ -75,44 +75,6 @@ def build_section_manifest_from_config(
         path_labels=section_config.path_labels,
         adapters_cfg=adapters_cfg
     )
-
-
-def build_section_manifest(
-    section_ref: SectionRef, 
-    template_ctx: TemplateContext,
-    root: Path,
-    vcs: VcsProvider,
-    vcs_mode: str
-) -> SectionManifest:
-    """
-    Строит манифест одной секции с учетом активного контекста.
-    
-    Args:
-        section_ref: Ссылка на секцию
-        template_ctx: Контекст шаблона с активными режимами/тегами
-        root: Корень репозитория
-        vcs: VCS провайдер
-        vcs_mode: Режим VCS ("all" или "changes")
-        
-    Returns:
-        Манифест секции с отфильтрованными файлами
-        
-    Raises:
-        RuntimeError: Если секция не найдена
-    """
-    # Загружаем конфигурацию секции
-    scope_dir = section_ref.scope_dir
-    config = load_config(scope_dir)
-    section_cfg = config.sections.get(section_ref.name)
-    
-    if not section_cfg:
-        available = list(config.sections.keys())
-        raise RuntimeError(
-            f"Section '{section_ref.name}' not found in {scope_dir}. "
-            f"Available: {', '.join(available) if available else '(none)'}"
-        )
-    
-    return build_section_manifest_from_config(section_ref, section_cfg, template_ctx, root, vcs, vcs_mode)
 
 
 def _compute_final_adapter_configs(section_cfg: SectionCfg, template_ctx: TemplateContext) -> Dict[str, Dict]:

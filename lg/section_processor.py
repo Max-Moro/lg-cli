@@ -6,8 +6,12 @@
 
 from __future__ import annotations
 
+from pathlib import Path
+from typing import Dict
+
 from .adapters.processor import process_files
-from .manifest.builder import build_section_manifest, build_section_manifest_from_config
+from .config import Config, load_config
+from .manifest.builder import build_section_manifest_from_config
 from .plan.planner import build_section_plan
 from .render.renderer import render_section
 from .run_context import RunContext
@@ -31,6 +35,22 @@ class SectionProcessor:
         """
         self.run_ctx = run_ctx
         self.stats_collector = stats_collector
+        # Кэшируем конфигурации для каждого scope_dir
+        self._config_cache: Dict[Path, Config] = {}
+
+    def _get_config(self, scope_dir: Path) -> Config:
+        """
+        Получает конфигурацию для указанного scope_dir с кэшированием.
+        
+        Args:
+            scope_dir: Директория с конфигурацией
+            
+        Returns:
+            Загруженная конфигурация
+        """
+        if scope_dir not in self._config_cache:
+            self._config_cache[scope_dir] = load_config(scope_dir)
+        return self._config_cache[scope_dir]
 
     def process_section(self, section_ref: SectionRef, template_ctx: TemplateContext) -> RenderedSection:
         """
@@ -57,9 +77,21 @@ class SectionProcessor:
                 vcs_mode=template_ctx.current_state.mode_options.vcs_mode
             )
         else:
-            # Обрабатываем обычную секцию
-            manifest = build_section_manifest(
+            # Получаем конфигурацию с кэшированием
+            config = self._get_config(section_ref.scope_dir)
+            section_cfg = config.sections.get(section_ref.name)
+            
+            if not section_cfg:
+                available = list(config.sections.keys())
+                raise RuntimeError(
+                    f"Section '{section_ref.name}' not found in {section_ref.scope_dir}. "
+                    f"Available: {', '.join(available) if available else '(none)'}"
+                )
+            
+            # Строим манифест на основе готовой конфигурации
+            manifest = build_section_manifest_from_config(
                 section_ref=section_ref,
+                section_config=section_cfg,
                 template_ctx=template_ctx,
                 root=self.run_ctx.root,
                 vcs=self.run_ctx.vcs,
