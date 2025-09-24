@@ -57,7 +57,7 @@ tests:
         allow:
           - "/md_placeholders/"
         children:
-          md-placeholders:
+          md_placeholders:
             mode: allow
             allow:
               - "/conftest.py"
