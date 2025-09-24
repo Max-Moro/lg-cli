@@ -3,7 +3,7 @@ from __future__ import annotations
 from typing import Tuple
 
 from .intervals import build_drop_intervals
-from .model import MarkdownCfg, MarkdownDropCfg, PlaceholderPolicy
+from .model import MarkdownCfg, MarkdownDropCfg, MarkdownKeepCfg, PlaceholderPolicy
 from .normalize import normalize_markdown
 from .parser import parse_markdown
 from .transform import apply_intervals_with_placeholders
@@ -13,44 +13,67 @@ def process_markdown(text: str, cfg: MarkdownCfg, *, group_size: int, mixed: boo
     """
     Пайплайн адаптера:
       1) parse_markdown → ParsedDoc
-      2) (если есть cfg.drop) построить интервалы удаления (sections/frontmatter) и применить
-         с плейсхолдерами
+      2) (если есть cfg.drop или cfg.keep) построить интервалы удаления (sections/frontmatter) и применить
+         с плейсхолдерами (только в drop режиме)
       3) normalize_markdown (снятие H1, max_heading_level)
       4) meta агрегируем
     """
     max_lvl = cfg.max_heading_level
     strip_single_h1 = cfg.strip_single_h1
     drop_cfg: MarkdownDropCfg | None = cfg.drop
-
+    keep_cfg: MarkdownKeepCfg | None = cfg.keep
+    
+    # Determine mode
+    keep_mode = keep_cfg is not None
+    
     meta: dict = {
         "md.removed_h1": 0,
         "md.shifted": False,
         "md.placeholders": 0,
         "md.removed.frontmatter": False,
         "md.removed.sections": 0,
+        "md.mode": "keep" if keep_mode else "drop",
     }
 
     # 1) parse
     doc = parse_markdown(text)
 
-    # 2) drop
+    # 2) Process content based on mode
     current_text = text
-    if drop_cfg:
-        intervals = build_drop_intervals(
-            doc,
-            section_rules=drop_cfg.sections,
-            drop_frontmatter=drop_cfg.frontmatter,
-        )
-        # счётчики из интервалов
+    if drop_cfg or keep_cfg:
+        # Build intervals based on appropriate config
+        if keep_mode:
+            intervals = build_drop_intervals(
+                doc,
+                section_rules=keep_cfg.sections,
+                drop_frontmatter=False,  # Special handling for keep mode
+                keep_mode=True,
+                keep_frontmatter=keep_cfg.frontmatter,
+            )
+        else:
+            # drop_cfg is guaranteed to be not None here
+            assert drop_cfg is not None, "drop_cfg must not be None in drop mode"
+            intervals = build_drop_intervals(
+                doc,
+                section_rules=drop_cfg.sections,
+                drop_frontmatter=drop_cfg.frontmatter,
+            )
+            
+        # Process intervals
         if intervals:
-            # грубая оценка: посчитать виды
+            # Count removals
             for _, _, m in intervals:
                 k = m.get("kind")
                 if k == "frontmatter":
                     meta["md.removed.frontmatter"] = True
-                elif k == "section":
+                elif k in ("section", "inverse"):
                     meta["md.removed.sections"] = int(meta["md.removed.sections"]) + 1
-            ph_policy: PlaceholderPolicy = drop_cfg.placeholder
+                    
+            # Apply placeholder policy (only in drop mode)
+            ph_policy = PlaceholderPolicy(mode="none")
+            if not keep_mode and drop_cfg is not None and drop_cfg.placeholder.mode != "none":
+                ph_policy = drop_cfg.placeholder
+                
             current_text, ph_meta = apply_intervals_with_placeholders(doc.lines, intervals, ph_policy)
             meta.update(ph_meta)
         else:

@@ -22,6 +22,8 @@ class MarkdownCfg:
     strip_single_h1: bool = False
     # блок drop: секции/маркеры/frontmatter/политика плейсхолдеров
     drop: MarkdownDropCfg | None = None
+    # блок keep: секции которые нужно оставить
+    keep: MarkdownKeepCfg | None = None
     # включение обработки условных конструкций в HTML-комментариях
     enable_templating: bool = True
 
@@ -33,19 +35,29 @@ class MarkdownCfg:
                 max_heading_level=None,
                 strip_single_h1=False,
                 drop=None,
+                keep=None,
                 enable_templating=True
             )
-        _assert_only_keys(d, ["max_heading_level", "strip_single_h1", "drop", "enable_templating"], ctx="MarkdownCfg")
+        _assert_only_keys(d, ["max_heading_level", "strip_single_h1", "drop", "keep", "enable_templating"], ctx="MarkdownCfg")
         max_heading_level = d.get("max_heading_level", None)
         strip_single_h1 = d.get("strip_single_h1", False)
         enable_templating = d.get("enable_templating", True)
         drop_cfg = d.get("drop", None)
+        keep_cfg = d.get("keep", None)
+        
+        # Обеспечиваем взаимоисключение drop и keep
+        if drop_cfg and keep_cfg:
+            raise ValueError("Cannot use both 'drop' and 'keep' modes simultaneously")
+            
         # Если блок drop не задан — None.
         drop = MarkdownDropCfg.from_dict(drop_cfg) if drop_cfg is not None else None
+        keep = MarkdownKeepCfg.from_dict(keep_cfg) if keep_cfg is not None else None
+        
         return MarkdownCfg(
             max_heading_level=max_heading_level if max_heading_level is None else int(max_heading_level),
             strip_single_h1=strip_single_h1,
             drop=drop,
+            keep=keep,
             enable_templating=enable_templating,
         )
 
@@ -151,7 +163,7 @@ class PlaceholderPolicy:
 @dataclass
 class MarkdownDropCfg:
     sections: List[SectionRule] = field(default_factory=list)
-    frontmatter: bool = False
+    frontmatter: bool = True # False = keep frontmatter
     placeholder: PlaceholderPolicy = field(default_factory=PlaceholderPolicy)
 
     @staticmethod
@@ -171,12 +183,38 @@ class MarkdownDropCfg:
         if not isinstance(sections_raw, Iterable):
             raise TypeError("drop.sections must be a list")
         sections = [SectionRule.from_dict(x) for x in sections_raw]
-        frontmatter = bool(d.get("frontmatter", False))
+        frontmatter = bool(d.get("frontmatter", True))
         placeholder = PlaceholderPolicy.from_dict(d.get("placeholder", None))
         return MarkdownDropCfg(
             sections=sections,
             frontmatter=frontmatter,
             placeholder=placeholder,
+        )
+
+@dataclass
+class MarkdownKeepCfg:
+    sections: List[SectionRule] = field(default_factory=list)
+    frontmatter: bool = False  # True = keep frontmatter
+
+    @staticmethod
+    def from_dict(d: Optional[Dict[str, Any]]) -> MarkdownKeepCfg:
+        """
+        Разбор блока keep:
+          - sections: list[SectionRule]
+          - frontmatter: bool
+        Допускает d=None → вернётся пустой конфиг.
+        """
+        if not d:
+            return MarkdownKeepCfg()
+        _assert_only_keys(d, ["sections", "frontmatter"], ctx="MarkdownKeepCfg")
+        sections_raw = d.get("sections", []) or []
+        if not isinstance(sections_raw, Iterable):
+            raise TypeError("keep.sections must be a list")
+        sections = [SectionRule.from_dict(x) for x in sections_raw]
+        frontmatter = bool(d.get("frontmatter", False))
+        return MarkdownKeepCfg(
+            sections=sections,
+            frontmatter=frontmatter,
         )
 
 # ---------- Markdown Pipeline Intermediate Representation ----------

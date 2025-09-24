@@ -36,6 +36,7 @@ def normalize_markdown(text: str, *, max_heading_level: int | None, strip_single
     lines = text.splitlines()
 
     # 1) снять единственный верхний H1
+    removed_h1 = False
     if strip_single_h1:
         lines, removed_h1 = _strip_single_h1_if_needed(lines, group_size)
         if removed_h1:
