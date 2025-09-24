@@ -101,32 +101,7 @@ class MarkdownFileNode(TemplateNode):
     
     # Поддержка глобов
     is_glob: bool = False                  # True если path содержит глобы (* или ?)
-    
-    # Контекстуально определенные параметры (заполняются HeadingContextDetector)
-    contextual_heading_level: Optional[int] = None
-    contextual_strip_h1: Optional[bool] = None
-    context_analysis_reason: str = ""      # Причина выбора контекстуальных параметров
 
-    def get_effective_heading_level(self) -> Optional[int]:
-        """
-        Возвращает эффективный уровень заголовка.
-        
-        Приоритет: явно указанный > контекстуальный > None
-        """
-        if self.heading_level is not None:
-            return self.heading_level
-        return self.contextual_heading_level
-    
-    def get_effective_strip_h1(self) -> Optional[bool]:
-        """
-        Возвращает эффективный флаг удаления H1.
-        
-        Приоритет: явно указанный > контекстуальный > None
-        """
-        if self.strip_h1 is not None:
-            return self.strip_h1
-        return self.contextual_strip_h1
-    
     def canon_key(self) -> str:
         """
         Возвращает канонический ключ для кэширования и дедупликации.
@@ -134,13 +109,11 @@ class MarkdownFileNode(TemplateNode):
         params = []
         
         # Используем эффективные значения для ключа
-        effective_level = self.get_effective_heading_level()
-        if effective_level is not None:
-            params.append(f"level:{effective_level}")
+        if self.heading_level is not None:
+            params.append(f"level:{self.heading_level}")
             
-        effective_strip_h1 = self.get_effective_strip_h1()
-        if effective_strip_h1 is not None:
-            params.append(f"strip_h1:{str(effective_strip_h1).lower()}")
+        if self.strip_h1 is not None:
+            params.append(f"strip_h1:{self.strip_h1}")
         
         # Добавляем условие в ключ
         if self.condition:

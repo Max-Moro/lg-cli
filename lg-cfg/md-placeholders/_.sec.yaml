@@ -38,3 +38,4 @@ src:
               - "/nodes.py"
               - "/context.py"
               - "/virtual_sections.py"
+              - "/heading_context.py"
