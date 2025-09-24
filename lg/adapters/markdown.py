@@ -31,8 +31,7 @@ class MarkdownAdapter(BaseAdapter[MarkdownCfg]):
             templated_text, 
             self.cfg, 
             group_size=lightweight_ctx.group_size, 
-            mixed=lightweight_ctx.mixed,
-            placeholder_inside_heading=self.cfg.placeholder_inside_heading
+            mixed=lightweight_ctx.mixed
         )
         
         # Объединяем метаданные

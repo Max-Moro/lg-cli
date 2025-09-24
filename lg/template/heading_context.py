@@ -25,7 +25,7 @@ class HeadingContext:
     """
     # Информация о контексте (можно расширять, есть потребуется)
     placeholders_continuous_chain: bool      # Плейсхолдеры образуют непрерывную цепочку / иначе разделены заголовками родительского шаблона
-    placeholder_inside_heading: bool         # Плейсхолдер внутри заголовка - заменяет текст заголовка
+    placeholder_inside_heading: bool         # Плейсхолдер внутри заголовка
 
     # Контекстуально определенные параметры для MarkdownCfg
     heading_level: int    # Рекомендуемый max_heading_level
