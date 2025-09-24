@@ -62,3 +62,4 @@ tests:
             allow:
               - "/conftest.py"
               - "/test_addressed_placeholders.py"
+              - "/test_basic_placeholders.py"

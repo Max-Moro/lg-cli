@@ -8,6 +8,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+from typing import Optional
 
 from .heading_context import HeadingContext
 from .nodes import MarkdownFileNode
@@ -50,10 +51,10 @@ class VirtualSectionFactory:
             ValueError: При некорректных параметрах
         """
         # Нормализуем путь к файлу(ам)
-        normalized_paths = self._normalize_file_paths(node.path, node.origin, node.is_glob)
+        normalized_path = self._normalize_file_path(node.path, node.origin, node.is_glob)
         
         # Создаем конфигурацию фильтров
-        filters = self._create_file_filter(normalized_paths, node.origin)
+        filters = self._create_file_filter(normalized_path)
         
         # Создаем конфигурацию Markdown-адаптера
         markdown_config_raw = self._create_markdown_config(node, heading_context).to_dict()
@@ -94,9 +95,9 @@ class VirtualSectionFactory:
         self._counter += 1
         return f"_virtual_{self._counter}"
 
-    def _normalize_file_paths(self, path: str, origin: str, is_glob: bool) -> list[str]:
+    def _normalize_file_path(self, path: str, origin: Optional[str], is_glob: bool) -> str:
         """
-        Нормализует путь(и) к файлу(ам) для создания фильтра.
+        Нормализует путь к файлу для создания фильтра.
         
         Args:
             path: Исходный путь к файлу или паттерн глоба
@@ -106,70 +107,16 @@ class VirtualSectionFactory:
         Returns:
             Список нормализованных путей для фильтра allow
         """
-        # Обрабатываем глобы
-        if is_glob:
-            # Для глобов добавляем .md в конце если нет расширения
-            if not path.endswith('.md') and not path.endswith('/*') and '.' not in Path(path).name:
-                path = f"{path}.md"
-            # Для глобов типа "docs/*" автоматически добавляем фильтр для .md файлов
-            elif path.endswith('/*'):
-                path = f"{path}.md"
-        else:
-            # Для обычных файлов добавляем расширение .md если не указано
-            if not path.endswith('.md') and '.' not in Path(path).name:
-                path = f"{path}.md"
-        
-        # Для ${md:file} без origin - ищем в корне текущей области
-        if origin is None:
-            if not path.startswith('/'):
-                path = f"/{path}"
-            return [path]
-        
-        # Для origin="self" путь считается относительно lg-cfg/
-        if origin == "self":
-            # Файлы ищутся в lg-cfg/ текущего скоупа
-            if not path.startswith('/'):
-                path = f"/lg-cfg/{path}"
-            else:
-                path = f"/lg-cfg{path}"
-            return [path]
-        
-        # Для других скоупов (федеративные) путь относительно скоупа
-        # НЕ относительно корня репозитория
-        if path.startswith('lg-cfg/'):
-            # Файл в lg-cfg другого скоупа - остается как есть
-            return [f"/{path}"]
-        else:
-            # Для федеративных скоупов файлы ищутся в корне скоупа или подпапке
-            # Если файл не содержит расширения и не является глобом, добавляем .md
-            if not is_glob and not path.endswith('.md') and '.' not in Path(path).name:
-                path = f"{path}.md"
-            
-            # Для федеративных скоупов файлы без префикса lg-cfg/ ищутся в корне скоупа
-            # НО если файл не найден в корне, возможно он в lg-cfg/ скоупа
-            # Поэтому добавляем оба варианта для поиска
-            paths = []
-            
-            # Вариант 1: файл в корне скоупа
-            if not path.startswith('/'):
-                paths.append(f"/{path}")
-            else:
-                paths.append(path)
-            
-            # Вариант 2: файл в lg-cfg/ скоупа (если это не глоб)
-            if not is_glob:
-                lg_cfg_path = f"/lg-cfg/{Path(path).name}"
-                if lg_cfg_path not in paths:
-                    paths.append(lg_cfg_path)
-            
-            return paths
+        # TODO Разработка логики метода
+
+        return path
     
-    def _create_file_filter(self, normalized_paths: list[str], origin: str) -> FilterNode:
+    def _create_file_filter(self, normalized_path: str) -> FilterNode:
         """
         Создает фильтр для включения указанных файлов.
         
         Args:
-            normalized_paths: Список нормализованных путей к файлам
+            normalized_paths: Нормализованный путь к файлу
             origin: Скоуп файла
             
         Returns:
@@ -177,7 +124,7 @@ class VirtualSectionFactory:
         """
         return FilterNode(
             mode="allow",
-            allow=normalized_paths,
+            allow=[normalized_path],
             block=[]
         )
     
