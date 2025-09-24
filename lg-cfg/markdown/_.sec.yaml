@@ -31,8 +31,12 @@ src:
               - "/base.py"
               - "/processor.py"
               - "/markdown.py"
+          markdown:
+            mode: block
+            block:
+              - "/templating/"
 
-src-markdown-ast:
+src-ast:
   extensions: [".py", ".toml"]
   filters:
     mode: allow
@@ -75,6 +79,27 @@ src-markdown-ast:
             allow:
               - "/templating/"
               - "/model.py"
+
+tests:
+  extensions: [".py"]
+  path_labels: relative
+  filters:
+    mode: allow
+    allow:
+      - "/tests/"
+    children:
+      tests:
+        mode: allow
+        allow:
+          - "/conftest.py"
+          - "/markdown/"
+        children:
+          markdown:
+            mode: allow
+            allow:
+              - "/conftest.py"
+              - "/test_parser_basic.py"
+              - "/test_drop_sections.py"
 
 docs-design:
   extensions: [".md"]
