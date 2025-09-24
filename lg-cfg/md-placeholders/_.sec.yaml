@@ -39,3 +39,22 @@ src:
               - "/context.py"
               - "/virtual_sections.py"
               - "/heading_context.py"
+
+tests:
+  extensions: [".py"]
+  path_labels: relative
+  filters:
+    mode: allow
+    allow:
+      - "/tests/"
+    children:
+      tests:
+        mode: allow
+        allow:
+          - "/md-placeholders/"
+        children:
+          md-placeholders:
+            mode: allow
+            allow:
+              - "/conftest.py"
+              - "/test_contextual_analysis.py"
