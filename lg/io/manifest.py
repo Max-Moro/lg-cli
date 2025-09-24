@@ -192,7 +192,9 @@ def _collect_section_files(
             # Глобальный скоуп (корень репо): применяем фильтры везде
             sub_rel = rel_dir
             if is_cfg_relpath(sub_rel):
-                return False
+                # Для виртуальных секций проверяем, может ли фильтр включать lg-cfg файлы
+                # Если в allow есть пути, начинающиеся с /lg-cfg/, разрешаем спуск
+                return filter_engine.may_descend(sub_rel)
             return filter_engine.may_descend(sub_rel)
         
         if rel_dir == "":
@@ -213,7 +215,9 @@ def _collect_section_files(
         # Мы в пределах scope_rel: применяем фильтры секции
         sub_rel = rel_for_engine(rel_dir)
         if is_cfg_relpath(sub_rel):
-            return False
+            # Для виртуальных секций проверяем, может ли фильтр включать lg-cfg файлы
+            # Если в allow есть пути, начинающиеся с /lg-cfg/, разрешаем спуск
+            return filter_engine.may_descend(sub_rel)
         return filter_engine.may_descend(sub_rel)
     
     # Собираем файлы

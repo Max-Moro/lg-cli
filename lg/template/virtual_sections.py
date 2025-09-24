@@ -67,10 +67,12 @@ class VirtualSectionFactory:
         )
         
         # Создаем SectionRef
-        if node.origin == "self":
+        if node.origin is None or node.origin == "self":
+            # Для md: или md@self: используем текущий скоуп
             scope_dir = repo_root.resolve()
             scope_rel = ""
         else:
+            # Для md@origin: используем указанный скоуп
             scope_dir = (repo_root / node.origin).resolve()
             scope_rel = node.origin
 
@@ -98,7 +100,7 @@ class VirtualSectionFactory:
         
         Args:
             path: Исходный путь к файлу или паттерн глоба
-            origin: Скоуп ("self" или путь к области)
+            origin: Скоуп ("self" или путь к области, None для обычных md:)
             is_glob: True если path содержит символы глобов
             
         Returns:
@@ -117,24 +119,30 @@ class VirtualSectionFactory:
             if not path.endswith('.md') and '.' not in Path(path).name:
                 path = f"{path}.md"
         
-        # Для origin="self" путь считается относительно корня репо
-        if origin == "self":
+        # Для ${md:file} без origin - ищем в корне текущей области
+        if origin is None:
             if not path.startswith('/'):
                 path = f"/{path}"
             return [path]
         
-        # Для других скоупов путь может быть:
-        # 1. Относительно lg-cfg (специальный случай @self:)
-        # 2. Относительно корня области
-        if path.startswith('lg-cfg/'):
-            # Специальный случай для файлов в lg-cfg
-            return [f"/{origin}/{path}"]
-        else:
-            # Обычный случай - файл в области
+        # Для origin="self" путь считается относительно lg-cfg/
+        if origin == "self":
+            # Файлы ищутся в lg-cfg/ текущего скоупа
             if not path.startswith('/'):
-                path = f"/{origin}/lg-cfg/{path}"
+                path = f"/lg-cfg/{path}"
             else:
-                path = f"/{origin}{path}"
+                path = f"/lg-cfg{path}"
+            return [path]
+        
+        # Для других скоупов (федеративные) путь относительно скоупа
+        # НЕ относительно корня репозитория
+        if path.startswith('lg-cfg/'):
+            # Файл в lg-cfg другого скоупа - остается как есть
+            return [f"/{path}"]
+        else:
+            # Обычный файл в корне другого скоупа или подпапке
+            if not path.startswith('/'):
+                path = f"/{path}"
             return [path]
     
     def _create_file_filter(self, normalized_paths: list[str], origin: str) -> FilterNode:

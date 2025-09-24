@@ -87,7 +87,7 @@ class MarkdownFileNode(TemplateNode):
     - ${md@origin:path} - адресные включения
     """
     path: str                      # Путь к документу(ам) относительно скоупа (поддерживает глобы)
-    origin: str = "self"           # Скоуп (self или путь к области)
+    origin: Optional[str] = None   # Скоуп (self или путь к области, None для обычных md:)
     
     # Явно указанные параметры (переопределяют контекстуальные)
     heading_level: Optional[int] = None    # Желаемый уровень заголовка

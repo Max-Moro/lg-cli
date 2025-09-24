@@ -215,7 +215,7 @@ class TemplateParser:
         # Определяем, простое это включение или адресное
         if len(tokens) >= 3 and tokens[1].type == TokenType.COLON:
             # Простое включение: md:path[,params...]
-            origin = "self"
+            origin = None  # Для обычных md: плейсхолдеров origin не задан
             path_and_params = tokens[2:]
         elif len(tokens) >= 4 and tokens[1].type == TokenType.AT:
             # Адресное включение: md@origin:path[,params...]
