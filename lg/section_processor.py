@@ -17,7 +17,7 @@ from .render.renderer import render_section
 from .run_context import RunContext
 from .stats.collector import StatsCollector
 from .template.context import TemplateContext
-from .types import RenderedSection, SectionRef
+from .types import RenderedSection, SectionRef, SectionManifest
 
 
 class SectionProcessor:
@@ -52,6 +52,45 @@ class SectionProcessor:
             self._config_cache[scope_dir] = load_config(scope_dir)
         return self._config_cache[scope_dir]
 
+    def _build_manifest(self, section_ref: SectionRef, template_ctx: TemplateContext) -> SectionManifest:
+        """
+        Строит манифест секции с использованием кэшированной конфигурации.
+        
+        Args:
+            section_ref: Ссылка на секцию
+            template_ctx: Контекст шаблона
+            
+        Returns:
+            Манифест секции
+        """
+        # Проверяем, есть ли в контексте виртуальная секция
+        virtual_section_config = template_ctx.get_virtual_section()
+        
+        if virtual_section_config is not None:
+            # Используем виртуальную секцию
+            section_config = virtual_section_config
+        else:
+            # Получаем конфигурацию с кэшированием
+            config = self._get_config(section_ref.scope_dir)
+            section_config = config.sections.get(section_ref.name)
+            
+            if not section_config:
+                available = list(config.sections.keys())
+                raise RuntimeError(
+                    f"Section '{section_ref.name}' not found in {section_ref.scope_dir}. "
+                    f"Available: {', '.join(available) if available else '(none)'}"
+                )
+        
+        # Строим манифест на основе конфигурации
+        return build_section_manifest_from_config(
+            section_ref=section_ref,
+            section_config=section_config,
+            template_ctx=template_ctx,
+            root=self.run_ctx.root,
+            vcs=self.run_ctx.vcs,
+            vcs_mode=template_ctx.current_state.mode_options.vcs_mode
+        )
+
     def process_section(self, section_ref: SectionRef, template_ctx: TemplateContext) -> RenderedSection:
         """
         Обрабатывает одну секцию и возвращает её отрендеренное содержимое.
@@ -63,40 +102,7 @@ class SectionProcessor:
         Returns:
             Отрендеренная секция
         """
-        # Проверяем, есть ли в контексте виртуальная секция
-        virtual_section_config = template_ctx.get_virtual_section()
-        
-        if virtual_section_config is not None:
-            # Используем виртуальную секцию вместо обычной загрузки конфигурации
-            manifest = build_section_manifest_from_config(
-                section_ref=section_ref,
-                section_config=virtual_section_config,
-                template_ctx=template_ctx,
-                root=self.run_ctx.root,
-                vcs=self.run_ctx.vcs,
-                vcs_mode=template_ctx.current_state.mode_options.vcs_mode
-            )
-        else:
-            # Получаем конфигурацию с кэшированием
-            config = self._get_config(section_ref.scope_dir)
-            section_cfg = config.sections.get(section_ref.name)
-            
-            if not section_cfg:
-                available = list(config.sections.keys())
-                raise RuntimeError(
-                    f"Section '{section_ref.name}' not found in {section_ref.scope_dir}. "
-                    f"Available: {', '.join(available) if available else '(none)'}"
-                )
-            
-            # Строим манифест на основе готовой конфигурации
-            manifest = build_section_manifest_from_config(
-                section_ref=section_ref,
-                section_config=section_cfg,
-                template_ctx=template_ctx,
-                root=self.run_ctx.root,
-                vcs=self.run_ctx.vcs,
-                vcs_mode=template_ctx.current_state.mode_options.vcs_mode
-            )
+        manifest = self._build_manifest(section_ref, template_ctx)
         
         plan = build_section_plan(manifest, template_ctx)
         
