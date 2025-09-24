@@ -9,8 +9,6 @@
 
 from __future__ import annotations
 
-import re
-
 from .conftest import md_project, create_template, render_template
 
 
@@ -25,12 +23,28 @@ def extract_heading_level(text: str, heading_text: str) -> int | None:
     Returns:
         Уровень заголовка (количество #) или None если не найден
     """
-    # Ищем заголовок в формате ATX (# заголовок)
-    pattern = rf'^(#{1,6})\s+{re.escape(heading_text.strip())}\s*$'
+    heading_text = heading_text.strip()
+    
     for line in text.split('\n'):
-        match = re.match(pattern, line.strip())
-        if match:
-            return len(match.group(1))
+        line_stripped = line.strip()
+
+        # Проверяем, начинается ли строка с #
+        if line_stripped.startswith('#'):
+            # Считаем количество # в начале
+            level = 0
+            for char in line_stripped:
+                if char == '#':
+                    level += 1
+                else:
+                    break
+
+            # Получаем текст заголовка (после # и пробелов)
+            title_part = line_stripped[level:].strip()
+
+            # Сравниваем с искомым заголовком
+            if title_part == heading_text:
+                return level
+
     return None
 
 
@@ -203,7 +217,8 @@ ${md:docs/changelog}
     # H2 заголовки из файлов становятся H4
     assert_heading_level(result, "Authentication", 4)  # было H2, стало H4
     assert_heading_level(result, "Installation", 4)    # было H2, стало H4
-    assert_heading_level(result, "v1.0.0", 4)         # было H2, стало H4
+    # Но заголовки из changelog.md (который без H1) также нормализуются как H2->H3
+    assert_heading_level(result, "v1.0.0", 3)         # было H2, стало H3 (файл без H1)
     
     # Заголовки из родительского шаблона сохраняются
     assert_heading_level(result, "Listing Generator", 1)

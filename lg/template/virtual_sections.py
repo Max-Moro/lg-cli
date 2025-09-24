@@ -164,6 +164,7 @@ class VirtualSectionFactory:
         
         Args:
             node: Узел MarkdownFileNode с полной информацией о включаемом файле
+            heading_context: Контекст заголовков для определения параметров
             
         Returns:
             Типизированная конфигурация Markdown-адаптера

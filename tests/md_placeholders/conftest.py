@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import textwrap
 from pathlib import Path
-from typing import Dict, Any, Optional
+from typing import Dict, Optional
 
 import pytest
 

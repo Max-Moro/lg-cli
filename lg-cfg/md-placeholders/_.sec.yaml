@@ -51,7 +51,7 @@ tests:
       tests:
         mode: allow
         allow:
-          - "/md-placeholders/"
+          - "/md_placeholders/"
         children:
           md-placeholders:
             mode: allow

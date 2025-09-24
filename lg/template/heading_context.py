@@ -10,9 +10,9 @@ from __future__ import annotations
 
 import re
 from dataclasses import dataclass
-from typing import Optional, List, Tuple
+from typing import List
 
-from .nodes import TemplateAST, MarkdownFileNode, TextNode, TemplateNode
+from .nodes import TemplateAST, MarkdownFileNode, TextNode
 
 
 @dataclass(frozen=True)
@@ -30,6 +30,21 @@ class HeadingContext:
     # Контекстуально определенные параметры для MarkdownCfg
     heading_level: int    # Рекомендуемый max_heading_level
     strip_h1: bool        # Рекомендуемый strip_single_h1
+
+@dataclass(frozen=True)
+class HeadingInfo:
+    """Информация о заголовке в шаблоне."""
+    line_number: int
+    level: int
+    title: str
+    heading_type: str  # 'atx' или 'setext'
+
+
+@dataclass(frozen=True)
+class PlaceholderInfo:
+    """Информация о позиции плейсхолдера."""
+    line_number: int
+    inside_heading: bool
 
 
 class HeadingContextDetector:
@@ -84,7 +99,7 @@ class HeadingContextDetector:
             strip_h1=strip_h1
         )
     
-    def _parse_template_headings(self, ast: TemplateAST) -> List['HeadingInfo']:
+    def _parse_template_headings(self, ast: TemplateAST) -> List[HeadingInfo]:
         """
         Парсит все заголовки из текстовых узлов шаблона.
         
@@ -154,7 +169,7 @@ class HeadingContextDetector:
         
         return headings
     
-    def _analyze_placeholder_position(self, target_node: MarkdownFileNode, ast: TemplateAST, node_index: int) -> 'PlaceholderInfo':
+    def _analyze_placeholder_position(self, target_node: MarkdownFileNode, ast: TemplateAST, node_index: int) -> PlaceholderInfo:
         """
         Анализирует позицию плейсхолдера в тексте шаблона.
         
@@ -220,7 +235,7 @@ class HeadingContextDetector:
         
         return False
     
-    def _find_parent_heading_level(self, placeholder_info: 'PlaceholderInfo', headings: List['HeadingInfo']) -> int:
+    def _find_parent_heading_level(self, placeholder_info: PlaceholderInfo, headings: List[HeadingInfo]) -> int:
         """
         Находит уровень ближайшего родительского заголовка.
         
@@ -242,7 +257,7 @@ class HeadingContextDetector:
         
         return parent_level
     
-    def _analyze_placeholder_chain(self, target_node: MarkdownFileNode, ast: TemplateAST, node_index: int, headings: List['HeadingInfo']) -> bool:
+    def _analyze_placeholder_chain(self, target_node: MarkdownFileNode, ast: TemplateAST, node_index: int, headings: List[HeadingInfo]) -> bool:
         """
         Анализирует, образуют ли плейсхолдеры непрерывную цепочку.
         
@@ -285,7 +300,7 @@ class HeadingContextDetector:
         
         return True
     
-    def _has_headings_between_nodes(self, ast: TemplateAST, start_idx: int, end_idx: int, headings: List['HeadingInfo']) -> bool:
+    def _has_headings_between_nodes(self, ast: TemplateAST, start_idx: int, end_idx: int, headings: List[HeadingInfo]) -> bool:
         """
         Проверяет наличие заголовков между двумя узлами AST.
         
@@ -321,22 +336,6 @@ class HeadingContextDetector:
                 return True
         
         return False
-
-
-@dataclass(frozen=True)
-class HeadingInfo:
-    """Информация о заголовке в шаблоне."""
-    line_number: int
-    level: int
-    title: str
-    heading_type: str  # 'atx' или 'setext'
-
-
-@dataclass(frozen=True) 
-class PlaceholderInfo:
-    """Информация о позиции плейсхолдера."""
-    line_number: int
-    inside_heading: bool
 
 
 def detect_heading_context_for_node(node: MarkdownFileNode, ast: TemplateAST, node_index: int) -> HeadingContext:
