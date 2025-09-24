@@ -26,6 +26,8 @@ class MarkdownCfg:
     keep: MarkdownKeepCfg | None = None
     # включение обработки условных конструкций в HTML-комментариях
     enable_templating: bool = True
+    # флаг что плейсхолдер находится внутри заголовка (влияет на обработку H1)
+    placeholder_inside_heading: bool = False
 
     def to_dict(self) -> Dict[str, Any]:
         """Сериализует конфигурацию в словарь."""
@@ -46,6 +48,9 @@ class MarkdownCfg:
         if not self.enable_templating:  # только если False (True - дефолт)
             result["enable_templating"] = self.enable_templating
         
+        if self.placeholder_inside_heading:  # только если True (False - дефолт)
+            result["placeholder_inside_heading"] = self.placeholder_inside_heading
+        
         return result
 
     @staticmethod
@@ -57,12 +62,14 @@ class MarkdownCfg:
                 strip_single_h1=False,
                 drop=None,
                 keep=None,
-                enable_templating=True
+                enable_templating=True,
+                placeholder_inside_heading=False
             )
-        _assert_only_keys(d, ["max_heading_level", "strip_single_h1", "drop", "keep", "enable_templating"], ctx="MarkdownCfg")
+        _assert_only_keys(d, ["max_heading_level", "strip_single_h1", "drop", "keep", "enable_templating", "placeholder_inside_heading"], ctx="MarkdownCfg")
         max_heading_level = d.get("max_heading_level", None)
         strip_single_h1 = d.get("strip_single_h1", False)
         enable_templating = d.get("enable_templating", True)
+        placeholder_inside_heading = d.get("placeholder_inside_heading", False)
         drop_cfg = d.get("drop", None)
         keep_cfg = d.get("keep", None)
         
@@ -80,6 +87,7 @@ class MarkdownCfg:
             drop=drop,
             keep=keep,
             enable_templating=enable_templating,
+            placeholder_inside_heading=placeholder_inside_heading,
         )
 
 MatchKind = Literal["text", "slug", "regex"]

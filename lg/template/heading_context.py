@@ -90,6 +90,8 @@ class HeadingContextDetector:
         
         # 5. Определяем итоговые параметры
         heading_level = min(parent_heading_level + 1, 6)  # Ограничиваем до H6
+        # strip_h1=true когда плейсхолдеры разделены заголовками (НЕ цепочка)
+        # и плейсхолдер не внутри заголовка (там особая логика)
         strip_h1 = not is_continuous_chain and not placeholder_info.inside_heading
         
         return HeadingContext(
@@ -203,8 +205,8 @@ class HeadingContextDetector:
         """
         Проверяет, находится ли плейсхолдер внутри заголовка.
         
-        Анализирует текстовые узлы до и после плейсхолдера для определения
-        контекста заголовка.
+        Ищет паттерны типа: "### ${md:docs/api}" где плейсхолдер находится 
+        в той же строке что и символы заголовка.
         
         Args:
             target_node: Целевой узел плейсхолдера
@@ -214,23 +216,35 @@ class HeadingContextDetector:
         Returns:
             True если плейсхолдер находится внутри заголовка
         """
-        # Проверяем предыдущий узел
+        # Проверяем предыдущий узел на наличие символов заголовка без перевода строки
         if node_index > 0:
             prev_node = ast[node_index - 1]
             if isinstance(prev_node, TextNode):
                 # Получаем последнюю строку предыдущего текста
                 lines = prev_node.text.split('\n')
                 if lines:
-                    last_line = lines[-1].strip()
-                    # Если последняя строка начинается с #, это может быть заголовок
-                    if last_line.startswith('#'):
-                        # Проверяем следующий узел для завершения заголовка
-                        if node_index + 1 < len(ast):
-                            next_node = ast[node_index + 1]
-                            if isinstance(next_node, TextNode):
-                                next_lines = next_node.text.split('\n')
-                                if next_lines and not next_lines[0].strip():
-                                    # Пустая строка после плейсхолдера - вероятно заголовок
+                    last_line = lines[-1]  # не strip() - важны пробелы
+                    # Если последняя строка содержит только символы заголовка и пробелы
+                    # и НЕ заканчивается переводом строки, значит плейсхолдер на той же строке
+                    if re.match(r'^#{1,6}\s*$', last_line):
+                        return True
+        
+        # Проверяем следующий узел - если там есть продолжение в той же строке
+        if node_index + 1 < len(ast):
+            next_node = ast[node_index + 1]
+            if isinstance(next_node, TextNode):
+                lines = next_node.text.split('\n')
+                if lines:
+                    first_line = lines[0]
+                    # Если первая строка не начинается с перевода строки,
+                    # значит плейсхолдер и следующий текст на одной строке
+                    if first_line and not next_node.text.startswith('\n'):
+                        # Дополнительная проверка - есть ли заголовочные символы в предыдущем узле
+                        if node_index > 0:
+                            prev_node = ast[node_index - 1]
+                            if isinstance(prev_node, TextNode):
+                                prev_lines = prev_node.text.split('\n')
+                                if prev_lines and re.search(r'#{1,6}\s*$', prev_lines[-1]):
                                     return True
         
         return False

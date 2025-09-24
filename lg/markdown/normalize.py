@@ -4,12 +4,12 @@ import re
 from typing import Tuple
 
 
-def _strip_single_h1_if_needed(lines: list[str], group_size: int) -> Tuple[list[str], bool]:
+def _strip_single_h1_if_needed(lines: list[str], group_size: int, force_strip: bool = False) -> Tuple[list[str], bool]:
     """
-    Удаляет верхний H1 (ATX или setext) только если файл одиночный в группе.
+    Удаляет верхний H1 (ATX или setext) только если файл одиночный в группе ИЛИ force_strip=True.
     Возвращает (новые_строки, removed_h1_flag).
     """
-    if group_size != 1 or not lines:
+    if (group_size != 1 and not force_strip) or not lines:
         return lines, False
 
     # ATX: "# Title"
@@ -23,9 +23,15 @@ def _strip_single_h1_if_needed(lines: list[str], group_size: int) -> Tuple[list[
     return lines, False
 
 
-def normalize_markdown(text: str, *, max_heading_level: int | None, strip_single_h1: bool, group_size: int, mixed: bool) -> tuple[str, dict]:
+def normalize_markdown(
+    text: str, *, 
+    max_heading_level: int | None, 
+    strip_single_h1: bool, 
+    group_size: int, 
+    mixed: bool, 
+    placeholder_inside_heading: bool = False
+) -> tuple[str, dict]:
     """
-    Ровно та же семантика, что была в исходном MarkdownAdapter.process:
       • Если mixed=True или max_heading_level=None → не трогаем (кроме снятия H1).
       • Если group_size == 1 → снимаем верхний H1 (ATX/Setext).
       • Сдвиг уровней заголовков вне fenced-блоков так,
@@ -38,7 +44,9 @@ def normalize_markdown(text: str, *, max_heading_level: int | None, strip_single
     # 1) снять единственный верхний H1
     removed_h1 = False
     if strip_single_h1:
-        lines, removed_h1 = _strip_single_h1_if_needed(lines, group_size)
+        # Для плейсхолдеров внутри заголовков всегда удаляем H1
+        force_strip = placeholder_inside_heading
+        lines, removed_h1 = _strip_single_h1_if_needed(lines, group_size, force_strip)
         if removed_h1:
             meta["md.removed_h1"] = 1
 
@@ -85,7 +93,11 @@ def normalize_markdown(text: str, *, max_heading_level: int | None, strip_single
             continue
         m = head_pat.match(ln)
         if m:
-            new_hashes = "#" * (len(m.group(1)) + shift)
+            new_level = len(m.group(1)) + shift
+            # Ограничиваем максимальный уровень заголовков до H6
+            if new_level > 6:
+                new_level = 6
+            new_hashes = "#" * new_level
             out.append(f"{new_hashes} {ln[m.end():]}")
         else:
             out.append(ln)

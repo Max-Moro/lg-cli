@@ -174,13 +174,17 @@ class VirtualSectionFactory:
         effective_strip_h1 = node.strip_h1 if node.strip_h1 is not None else heading_context.strip_h1
         
         # Создаем базовую конфигурацию
-        config = MarkdownCfg(
-            max_heading_level=effective_heading_level,
-            strip_single_h1=effective_strip_h1 if effective_strip_h1 is not None else False,
-            drop=None,
-            keep=None,
-            enable_templating=True  # Включаем шаблонизацию для поддержки условных конструкций
-        )
+        config_dict = {
+            "max_heading_level": effective_heading_level,
+            "strip_single_h1": effective_strip_h1 if effective_strip_h1 is not None else False,
+            "drop": None,
+            "keep": None,
+            "enable_templating": True,  # Включаем шаблонизацию для поддержки условных конструкций
+            # Передаем информацию о плейсхолдере внутри заголовка
+            "placeholder_inside_heading": heading_context.placeholder_inside_heading
+        }
+        
+        config = MarkdownCfg.from_dict(config_dict)
         
         # Если есть якорь (anchor), создаем keep-конфигурацию для включения только нужной секции
         if node.anchor:

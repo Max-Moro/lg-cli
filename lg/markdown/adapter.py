@@ -9,7 +9,7 @@ from .parser import parse_markdown
 from .transform import apply_intervals_with_placeholders
 
 
-def process_markdown(text: str, cfg: MarkdownCfg, *, group_size: int, mixed: bool) -> Tuple[str, dict]:
+def process_markdown(text: str, cfg: MarkdownCfg, *, group_size: int, mixed: bool, placeholder_inside_heading: bool = False) -> Tuple[str, dict]:
     """
     Пайплайн адаптера:
       1) parse_markdown → ParsedDoc
@@ -87,6 +87,7 @@ def process_markdown(text: str, cfg: MarkdownCfg, *, group_size: int, mixed: boo
         strip_single_h1=strip_single_h1,
         group_size=group_size,
         mixed=mixed,
+        placeholder_inside_heading=placeholder_inside_heading,
     )
     meta.update(norm_meta)
     return norm_text, meta
