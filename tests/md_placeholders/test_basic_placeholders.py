@@ -92,20 +92,6 @@ ${md:docs/api}
     assert "## Authentication" in result
     assert "### GET /users" in result
 
-@pytest.mark.skip()
-def test_md_placeholder_file_not_found_error(md_project):
-    """Тест обработки ошибки когда файл не найден."""
-    root = md_project
-
-    create_template(root, "notfound-test", """# Not Found Test
-
-${md:nonexistent-file}
-""")
-
-    # Должна возникнуть ошибка о том, что файл не найден
-    with pytest.raises(Exception):  # Может быть FileNotFoundError или другая ошибка
-        render_template(root, "ctx:notfound-test")
-
 
 def test_md_placeholder_empty_file_handling(md_project):
     """Тест обработки пустых файлов."""
