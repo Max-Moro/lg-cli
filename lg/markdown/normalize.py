@@ -84,8 +84,10 @@ class MarkdownNormalizer:
             content_lines = self._skip_empty_lines(heading_info.remaining_lines)
             
             if content_lines and max_heading_level is not None:
-                # Применяем сдвиг заголовков к контенту
-                shifted_lines = self._shift_headings(content_lines, max_heading_level + 1)
+                # Для плейсхолдеров внутри заголовков сдвигаем контент к уровню заголовка + 1
+                # max_heading_level здесь означает уровень самого заголовка
+                target_level = max_heading_level + 1
+                shifted_lines = self._shift_headings(content_lines, target_level)
                 result_parts.append("")  # Разделитель
                 result_parts.extend(shifted_lines)
             elif content_lines:

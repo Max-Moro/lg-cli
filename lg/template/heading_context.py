@@ -89,7 +89,13 @@ class HeadingContextDetector:
         is_continuous_chain = self._analyze_placeholder_chain(target_node, ast, node_index, template_headings)
         
         # 5. Определяем итоговые параметры
-        heading_level = min(parent_heading_level + 1, 6)  # Ограничиваем до H6
+        if placeholder_info.inside_heading:
+            # Для плейсхолдеров внутри заголовков используем уровень родительского заголовка
+            heading_level = parent_heading_level
+        else:
+            # Для обычных плейсхолдеров - родительский уровень + 1
+            heading_level = min(parent_heading_level + 1, 6)  # Ограничиваем до H6
+        
         # strip_h1=true когда плейсхолдеры разделены заголовками (НЕ цепочка)
         # и плейсхолдер не внутри заголовка (там особая логика)
         strip_h1 = not is_continuous_chain and not placeholder_info.inside_heading
@@ -104,6 +110,7 @@ class HeadingContextDetector:
     def _parse_template_headings(self, ast: TemplateAST) -> List[HeadingInfo]:
         """
         Парсит все заголовки из текстовых узлов шаблона.
+        Также обнаруживает заголовки с плейсхолдерами (например, "### ${md:docs/api}").
         
         Args:
             ast: AST шаблона для парсинга
@@ -115,7 +122,7 @@ class HeadingContextDetector:
         current_line = 0
         in_fenced_block = False
         
-        for node in ast:
+        for node_idx, node in enumerate(ast):
             if isinstance(node, TextNode):
                 lines = node.text.split('\n')
                 
@@ -141,6 +148,25 @@ class HeadingContextDetector:
                             line_number=current_line,
                             level=level,
                             title=title,
+                            heading_type='atx'
+                        ))
+                        current_line += 1
+                        continue
+                    
+                    # Проверяем потенциальные заголовки с плейсхолдерами
+                    # Паттерн: "### " в конце строки + следующий узел может быть MarkdownFileNode
+                    if (re.match(r'^#{1,6}\s*$', line_stripped) and 
+                        node_idx + 1 < len(ast) and 
+                        isinstance(ast[node_idx + 1], MarkdownFileNode) and
+                        i == len(lines) - 1):  # это последняя строка текстового узла
+                        
+                        level = len(line_stripped.rstrip())
+                        # Для заголовков с плейсхолдерами используем "placeholder" как заголовок
+                        # (поскольку реальный заголовок будет извлечен из файла)
+                        headings.append(HeadingInfo(
+                            line_number=current_line,
+                            level=level,
+                            title="[placeholder]",
                             heading_type='atx'
                         ))
                         current_line += 1
@@ -224,10 +250,12 @@ class HeadingContextDetector:
                 lines = prev_node.text.split('\n')
                 if lines:
                     last_line = lines[-1]  # не strip() - важны пробелы
-                    # Если последняя строка содержит только символы заголовка и пробелы
-                    # и НЕ заканчивается переводом строки, значит плейсхолдер на той же строке
-                    if re.match(r'^#{1,6}\s*$', last_line):
-                        return True
+                    # Проверяем, содержит ли последняя строка заголовочные символы
+                    # Может быть как "### " так и "## API: "
+                    if re.search(r'^#{1,6}\s+.*?$', last_line) or re.match(r'^#{1,6}\s*$', last_line):
+                        # Дополнительно проверяем, что предыдущий текст не заканчивается переводом строки
+                        if not prev_node.text.endswith('\n'):
+                            return True
         
         # Проверяем следующий узел - если там есть продолжение в той же строке
         if node_index + 1 < len(ast):
@@ -297,8 +325,9 @@ class HeadingContextDetector:
                 md_placeholder_indices.append(i)
         
         if len(md_placeholder_indices) <= 1:
-            # Единственный плейсхолдер считаем цепочкой
-            return True
+            # Для единственного плейсхолдера анализируем его окружение
+            # Если плейсхолдер "окружен" заголовками (до и после), считаем его разделенным
+            return self._is_single_placeholder_in_chain(target_node, ast, node_index, headings)
         
         current_index_in_chain = md_placeholder_indices.index(node_index)
         
@@ -350,6 +379,52 @@ class HeadingContextDetector:
                 return True
         
         return False
+
+
+    def _is_single_placeholder_in_chain(self, target_node: MarkdownFileNode, ast: TemplateAST, node_index: int, headings: List[HeadingInfo]) -> bool:
+        """
+        Анализирует, образует ли единственный плейсхолдер "цепочку" или разделен заголовками.
+        
+        Логика:
+        - Если перед и после плейсхолдера есть заголовки того же или более высокого уровня,
+          то плейсхолдер считается "разделенным" (не цепочка)
+        - Иначе - цепочка
+        
+        Args:
+            target_node: Целевой узел плейсхолдера
+            ast: AST шаблона
+            node_index: Индекс узла в AST
+            headings: Список заголовков шаблона
+            
+        Returns:
+            True если единственный плейсхолдер считается цепочкой
+        """
+        # Определяем позицию плейсхолдера
+        placeholder_line = 0
+        for i, node in enumerate(ast):
+            if i == node_index:
+                break
+            if isinstance(node, TextNode):
+                placeholder_line += len(node.text.split('\n'))
+            else:
+                placeholder_line += 1
+        
+        # Ищем заголовки до и после плейсхолдера
+        headings_before = [h for h in headings if h.line_number < placeholder_line]
+        headings_after = [h for h in headings if h.line_number > placeholder_line]
+        
+        # Если есть заголовки и до и после плейсхолдера
+        if headings_before and headings_after:
+            # Получаем последний заголовок перед и первый после
+            last_before = headings_before[-1]
+            first_after = headings_after[0]
+            
+            # Если заголовки одного уровня или выше родительского - плейсхолдер разделен
+            parent_level = last_before.level
+            if first_after.level <= parent_level:
+                return False  # Разделен, не цепочка
+        
+        return True  # По умолчанию считаем цепочкой
 
 
 def detect_heading_context_for_node(node: MarkdownFileNode, ast: TemplateAST, node_index: int) -> HeadingContext:
