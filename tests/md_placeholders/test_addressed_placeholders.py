@@ -62,8 +62,8 @@ ${md@self:test-file}
     result = render_template(root, "ctx:origin-comparison")
     
     # Должны быть оба файла (содержимое, но не заголовки H1 - они удаляются strip_h1)
-    assert "Root Version" not in result  # Заголовки H1 удаляются из-за strip_h1
-    assert "LG-CFG Version" not in result  # Заголовки H1 удаляются из-за strip_h1
+    assert "Root Version" not in result
+    assert "LG-CFG Version" not in result
     assert "This is the root version" in result
     assert "This is the lg-cfg version" in result
 
@@ -99,46 +99,15 @@ ${md@apps/web:deployment}
     assert "## Components" in result
     
     # Проверяем содержимое из libs/utils
-    assert "Utility Library" not in result
+    assert "Utility Library" in result
     assert "Shared utility functions." in result
     assert "## Math Utils" in result
     assert "## String Utils" in result
     
     # Проверяем файл из lg-cfg дочернего скоупа
-    assert "Web Deployment Guide" not in result
+    assert "Web Deployment Guide" in result
     assert "How to deploy the web app." in result
     assert "npm run build" in result
-
-
-@pytest.mark.skip(reason="Двоеточие в именах директорий не поддерживается в Windows")
-def test_md_placeholder_with_bracketed_origin(federated_md_project):
-    """Тест ${md@[origin]:file} со скобочной формой origin."""
-    root = federated_md_project
-    
-    # Создаем дополнительный скоуп с двоеточием в пути
-    write_markdown(root / "apps" / "web:legacy" / "legacy.md",
-                  title="Legacy Web App",
-                  content="Old version documentation.")
-    
-    # Создаем lg-cfg для этого скоупа
-    from .conftest import create_basic_lg_cfg
-    create_basic_lg_cfg(root / "apps" / "web:legacy")
-    
-    create_template(root, "bracketed-test", """# Bracketed Origin Test
-
-## Regular Origin
-${md@apps/web:web-readme}
-
-## Bracketed Origin (with colon in path)
-${md@[apps/web:legacy]:legacy}
-""")
-    
-    result = render_template(root, "ctx:bracketed-test")
-    
-    # Проверяем оба включения
-    assert "Web Application" in result  # обычная форма
-    assert "Legacy Web App" in result   # скобочная форма
-    assert "Old version documentation." in result
 
 
 @pytest.mark.skip(reason="Относительные пути вида ../../ пока не поддерживаются")
@@ -152,11 +121,11 @@ def test_md_placeholder_nested_federated_access(federated_md_project):
 ## Our Web App
 ${md:web-readme}
 
-    ## Shared Utilities (from libs)
-    ${md@../../libs/utils:utils-readme}
+## Shared Utilities (from libs)
+${md@../../libs/utils:utils-readme}
 
-    ## Main Project Overview
-    ${md@../../:README}
+## Main Project Overview
+${md@../../:README}
 """, template_type="ctx")
     
     result = render_template(root / "apps" / "web", "ctx:cross-reference") 

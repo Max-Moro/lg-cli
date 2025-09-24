@@ -65,7 +65,7 @@ class VirtualSectionFactory:
             code_fence=False,
             adapters={"markdown": AdapterConfig(base_options=markdown_config_raw)}
         )
-        
+
         # Создаем SectionRef
         if node.origin is None or node.origin == "self":
             # Для md: или md@self: используем текущий скоуп
@@ -140,10 +140,29 @@ class VirtualSectionFactory:
             # Файл в lg-cfg другого скоупа - остается как есть
             return [f"/{path}"]
         else:
-            # Обычный файл в корне другого скоупа или подпапке
+            # Для федеративных скоупов файлы ищутся в корне скоупа или подпапке
+            # Если файл не содержит расширения и не является глобом, добавляем .md
+            if not is_glob and not path.endswith('.md') and '.' not in Path(path).name:
+                path = f"{path}.md"
+            
+            # Для федеративных скоупов файлы без префикса lg-cfg/ ищутся в корне скоупа
+            # НО если файл не найден в корне, возможно он в lg-cfg/ скоупа
+            # Поэтому добавляем оба варианта для поиска
+            paths = []
+            
+            # Вариант 1: файл в корне скоупа
             if not path.startswith('/'):
-                path = f"/{path}"
-            return [path]
+                paths.append(f"/{path}")
+            else:
+                paths.append(path)
+            
+            # Вариант 2: файл в lg-cfg/ скоупа (если это не глоб)
+            if not is_glob:
+                lg_cfg_path = f"/lg-cfg/{Path(path).name}"
+                if lg_cfg_path not in paths:
+                    paths.append(lg_cfg_path)
+            
+            return paths
     
     def _create_file_filter(self, normalized_paths: list[str], origin: str) -> FilterNode:
         """
