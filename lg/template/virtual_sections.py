@@ -8,11 +8,12 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Dict, Any, Optional
+from typing import Optional
 
 from .nodes import MarkdownFileNode
 from ..config.model import SectionCfg, AdapterConfig
 from ..io.model import FilterNode
+from ..markdown import MarkdownCfg
 from ..types import SectionRef
 
 
@@ -46,10 +47,6 @@ class VirtualSectionFactory:
         Raises:
             ValueError: При некорректных параметрах
         """
-        # Получаем эффективные параметры из ноды
-        heading_level = node.get_effective_heading_level()
-        strip_h1 = node.get_effective_strip_h1()
-        
         # Нормализуем путь к файлу(ам)
         normalized_paths = self._normalize_file_paths(node.path, node.origin, node.is_glob)
         
@@ -57,21 +54,14 @@ class VirtualSectionFactory:
         filters = self._create_file_filter(normalized_paths, node.origin)
         
         # Создаем конфигурацию Markdown-адаптера
-        markdown_config = self._create_markdown_config(heading_level, strip_h1, node.anchor)
-        
-        # Создаем адаптеры
-        adapters = {}
-        if markdown_config:
-            adapters["markdown"] = AdapterConfig.from_dict(markdown_config)
+        markdown_config_raw = self._create_markdown_config(node).to_dict()
 
         # Создаем полную конфигурацию секции
         section_config = SectionCfg(
             extensions=[".md"],
             filters=filters,
-            skip_empty=True,
-            code_fence=True,
-            path_labels="relative",
-            adapters=adapters
+            code_fence=False,
+            adapters={"markdown": AdapterConfig(base_options=markdown_config_raw)}
         )
         
         # Создаем SectionRef
@@ -169,54 +159,21 @@ class VirtualSectionFactory:
     
     def _create_markdown_config(
         self, 
-        heading_level: Optional[int], 
-        strip_h1: Optional[bool],
-        anchor: Optional[str] = None
-    ) -> Optional[Dict[str, Any]]:
+        node: MarkdownFileNode
+    ) -> MarkdownCfg:
         """
         Создает конфигурацию Markdown-адаптера.
         
         Args:
-            heading_level: Желаемый максимальный уровень заголовков
-            strip_h1: Флаг удаления H1 заголовка
-            anchor: Якорь для включения только части документа
+            node: Узел MarkdownFileNode с полной информацией о включаемом файле
             
         Returns:
-            Словарь конфигурации адаптера или None если параметры не заданы
+            Типизированная конфигурация Markdown-адаптера
         """
-        config = {}
+
+        # TODO
         
-        if heading_level is not None:
-            if not isinstance(heading_level, int) or heading_level < 1 or heading_level > 6:
-                raise ValueError(f"heading_level must be integer between 1 and 6, got {heading_level}")
-            config["max_heading_level"] = heading_level
-        
-        if strip_h1 is not None:
-            if not isinstance(strip_h1, bool):
-                raise ValueError(f"strip_h1 must be boolean, got {type(strip_h1)}")
-            config["strip_single_h1"] = strip_h1
-        
-        # Обработка якоря - создаем правила drop с инверсией
-        if anchor:
-            if not isinstance(anchor, str) or not anchor.strip():
-                raise ValueError(f"anchor must be non-empty string, got {anchor}")
-            
-            # Создаем drop-правило для включения только указанной секции
-            # Используем инверсию: удаляем все, кроме целевой секции
-            config["drop"] = {
-                "sections": [
-                    {
-                        "match": {
-                            "kind": "text",
-                            "pattern": anchor.strip()
-                        },
-                        "reason": f"include_only_{anchor}",
-                        "invert": True  # Специальный флаг для инверсии логики
-                    }
-                ]
-            }
-        
-        return config if config else None
+        return MarkdownCfg()
 
 
 __all__ = ["VirtualSectionFactory"]

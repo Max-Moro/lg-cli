@@ -16,7 +16,6 @@ src:
           - "/config/"
           - "/template/"
           - "/adapters/"
-          - "/manifest/"
           - "/markdown/model.py"
         children:
           config:
@@ -38,7 +37,4 @@ src:
               - "/processor.py"
               - "/nodes.py"
               - "/context.py"
-              - "/resolver.py"
-              - "/common.py"
-              - "/parser.py"
               - "/virtual_sections.py"
