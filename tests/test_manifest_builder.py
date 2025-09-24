@@ -5,7 +5,7 @@ from pathlib import Path
 from lg.cache.fs_cache import Cache
 from lg.config.adaptive_loader import AdaptiveConfigLoader
 from lg.config.adaptive_model import ModeOptions
-from lg.manifest.builder import build_section_manifest_from_config
+from lg.io.manifest import build_section_manifest
 from lg.config import load_config
 from lg.run_context import RunContext
 from lg.stats import TokenService
@@ -79,7 +79,7 @@ py-files:
     config = load_config(tmp_path)
     section_cfg = config.sections.get(section_ref.name)
     
-    manifest = build_section_manifest_from_config(
+    manifest = build_section_manifest(
         section_ref=section_ref,
         section_config=section_cfg,
         template_ctx=template_ctx,
@@ -134,7 +134,7 @@ all-files:
     config = load_config(tmp_path)
     section_cfg = config.sections.get(section_ref.name)
     
-    manifest = build_section_manifest_from_config(
+    manifest = build_section_manifest(
         section_ref=section_ref,
         section_config=section_cfg,
         template_ctx=template_ctx,
@@ -155,7 +155,7 @@ all-files:
     config = load_config(tmp_path)
     section_cfg = config.sections.get(section_ref.name)
     
-    manifest = build_section_manifest_from_config(
+    manifest = build_section_manifest(
         section_ref=section_ref,
         section_config=section_cfg,
         template_ctx=template_ctx,

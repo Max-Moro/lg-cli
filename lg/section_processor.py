@@ -11,7 +11,7 @@ from typing import Dict
 
 from .adapters.processor import process_files
 from .config import Config, load_config
-from .manifest.builder import build_section_manifest_from_config
+from .io.manifest import build_section_manifest
 from .plan.planner import build_section_plan
 from .render.renderer import render_section
 from .run_context import RunContext
@@ -81,8 +81,7 @@ class SectionProcessor:
                     f"Available: {', '.join(available) if available else '(none)'}"
                 )
         
-        # Строим манифест на основе конфигурации
-        return build_section_manifest_from_config(
+        return build_section_manifest(
             section_ref=section_ref,
             section_config=section_config,
             template_ctx=template_ctx,

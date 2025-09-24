@@ -6,7 +6,7 @@ from pathlib import Path
 import pytest
 from ruamel.yaml import YAML
 
-from lg.manifest.builder import build_section_manifest_from_config
+from lg.io.manifest import build_section_manifest
 from lg.config import load_config
 from lg.template.context import TemplateContext
 from lg.types import SectionRef
@@ -68,7 +68,7 @@ def _build_section_manifest(
             f"Available: {', '.join(available) if available else '(none)'}"
         )
     
-    return build_section_manifest_from_config(
+    return build_section_manifest(
         section_ref=section_ref,
         section_config=section_cfg,
         template_ctx=template_ctx,
