@@ -105,26 +105,48 @@ class VirtualSectionFactory:
             is_glob: True если path содержит символы глобов
             
         Returns:
-            Список нормализованных путей для фильтра allow
+            Нормализованный путь для фильтра allow
         """
-        # TODO Разработка логики метода
-
-        return path
+        # Нормализуем путь
+        normalized = path.strip()
+        
+        # Автоматически добавляем расширение .md, если оно отсутствует
+        if not is_glob:
+            # Для обычных файлов проверяем и добавляем .md
+            if not normalized.endswith('.md') and not normalized.endswith('.markdown'):
+                normalized += '.md'
+        else:
+            # Для глобов не добавляем расширение автоматически
+            pass
+        
+        # Для разных типов origin формируем разные пути
+        if origin is not None:
+            # Для @origin: файлы ВСЕГДА ищутся в lg-cfg/ области скоупа origin
+            if normalized.startswith('/'):
+                return f"/lg-cfg{normalized}"
+            else:
+                return f"/lg-cfg/{normalized}"
+            
+        else:
+            # Для обычных md: файлы ищутся относительно корня репы
+            if normalized.startswith('/'):
+                return normalized
+            else:
+                return f"/{normalized}"
     
-    def _create_file_filter(self, normalized_path: str) -> FilterNode:
+    def _create_file_filter(self, path: str) -> FilterNode:
         """
         Создает фильтр для включения указанных файлов.
         
         Args:
-            normalized_paths: Нормализованный путь к файлу
-            origin: Скоуп файла
+            path: Нормализованный путь к файлу
             
         Returns:
             FilterNode с режимом allow для указанных файлов
         """
         return FilterNode(
             mode="allow",
-            allow=[normalized_path],
+            allow=[path],
             block=[]
         )
     

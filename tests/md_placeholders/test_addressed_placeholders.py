@@ -78,10 +78,10 @@ def test_md_placeholder_federated_origin(federated_md_project):
 ${md:README}
 
 ## Web App Documentation  
-${md@apps/web:web-readme}
+${md:apps/web/web-readme}
 
 ## Utility Library
-${md@libs/utils:utils-readme}
+${md:libs/utils/utils-readme}
 
 ## Web Deployment Guide (from web's lg-cfg)
 ${md@apps/web:deployment}
@@ -142,9 +142,17 @@ def test_md_placeholder_federated_parametrized(federated_md_project, origin, fil
     """Параметризованный тест федеративных md-плейсхолдеров."""
     root = federated_md_project
 
+    # Определяем правильный синтаксис в зависимости от типа файла
+    if filename == "deployment":
+        # Файлы в lg-cfg используют @ синтаксис
+        placeholder = f"${{md@{origin}:{filename}}}"
+    else:
+        # Обычные файлы используют обычный синтаксис с путем
+        placeholder = f"${{md:{origin}/{filename}}}"
+
     create_template(root, f"param-federated-{origin.replace('/', '-')}-{filename}", f"""# Parametrized Test
 
-${{md@{origin}:{filename}}}
+{placeholder}
 """)
     
     result = render_template(root, f"ctx:param-federated-{origin.replace('/', '-')}-{filename}")
@@ -163,7 +171,7 @@ ${md:README}
 ## Applications
 
 ### Web Frontend  
-${md@apps/web:web-readme}
+${md:apps/web/web-readme}
 
 #### Deployment
 ${md@apps/web:deployment}
@@ -171,7 +179,7 @@ ${md@apps/web:deployment}
 ## Libraries
 
 ### Utilities
-${md@libs/utils:utils-readme}
+${md:libs/utils/utils-readme}
 
 ## Internal Documentation
 ${md@self:internal}
