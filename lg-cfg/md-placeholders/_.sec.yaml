@@ -62,4 +62,4 @@ tests:
             mode: allow
             allow:
               - "/conftest.py"
-              - "/test_contextual_analysis.py"
+              - "/test_glob_patterns.py"
