@@ -62,6 +62,9 @@ class TokenType(enum.Enum):
     # Квадратные скобки для адресации
     LBRACKET = "LBRACKET"                    # [
     RBRACKET = "RBRACKET"                    # ]
+    
+    # Якорные ссылки для md-плейсхолдеров
+    HASH = "HASH"                            # #
 
 
 @dataclass(frozen=True)
@@ -118,6 +121,7 @@ class TemplateLexer:
         TokenType.RPAREN: re.compile(r'\)'),
         TokenType.LBRACKET: re.compile(r'\['),
         TokenType.RBRACKET: re.compile(r'\]'),
+        TokenType.HASH: re.compile(r'#'),
         
         # Пробельные символы
         TokenType.NEWLINE: re.compile(r'\r?\n'),
@@ -155,10 +159,23 @@ class TemplateLexer:
         
         while self.position < self.length:
             token = self.next_token()
-            if token.type != TokenType.EOF:
+            if token.type == TokenType.EOF:
+                break
+            elif token.type == TokenType.PLACEHOLDER_START:
+                # Токенизируем содержимое плейсхолдера
+                tokens.append(token)
+                # Находим конец плейсхолдера
+                end_pos = self._find_next_special_sequence()
+                if end_pos > self.position:
+                    content = self.text[self.position:end_pos]
+                    self._advance(len(content))
+                    # Токенизируем содержимое
+                    content_tokens = self.tokenize_placeholder_content(content)
+                    tokens.extend(content_tokens)
+            elif token.type == TokenType.PLACEHOLDER_END:
                 tokens.append(token)
             else:
-                break
+                tokens.append(token)
         
         # Добавляем EOF токен
         tokens.append(Token(TokenType.EOF, "", self.position, self.line, self.column))
@@ -306,13 +323,24 @@ class TemplateLexer:
                 return self._tokenize_inside_placeholder()  # Рекурсивно продолжаем
         
         # Проверяем специальные символы
-        for token_type in [TokenType.COLON, TokenType.AT, TokenType.COMMA, TokenType.LBRACKET, TokenType.RBRACKET]:
+        for token_type in [TokenType.COLON, TokenType.AT, TokenType.COMMA, TokenType.LBRACKET, TokenType.RBRACKET, TokenType.HASH]:
             pattern = self._PATTERNS[token_type]
             match = pattern.match(self.text, self.position)
             if match:
                 value = match.group(0)
                 self._advance(len(value))
                 return Token(token_type, value, start_pos, start_line, start_column)
+        
+        # Проверяем специальные символы для якорных ссылок
+        # Если мы находимся после #, то обрабатываем как текст до запятой
+        # Но только если это не параметр (не содержит :)
+        if self._is_after_hash() and not self._has_colon_ahead():
+            # Собираем все символы до запятой или конца как текст
+            text_end = self._find_next_comma_or_end()
+            if text_end > self.position:
+                value = self.text[self.position:text_end]
+                self._advance(len(value))
+                return Token(TokenType.TEXT, value, start_pos, start_line, start_column)
         
         # Проверяем идентификаторы
         pattern = self._PATTERNS[TokenType.IDENTIFIER]
@@ -328,6 +356,34 @@ class TemplateLexer:
             f"Unexpected character in placeholder: {char!r}",
             self.line, self.column, self.position
         )
+    
+    def _is_after_hash(self) -> bool:
+        """Проверяет, находимся ли мы после символа # в плейсхолдере."""
+        # Ищем назад до начала плейсхолдера
+        for i in range(self.position - 1, -1, -1):
+            if self.text[i] == '#':
+                return True
+            elif self.text[i] in ['{', '$']:
+                return False
+        return False
+    
+    def _find_next_comma_or_end(self) -> int:
+        """Находит следующую запятую или конец плейсхолдера."""
+        for i in range(self.position, self.length):
+            if self.text[i] == ',':
+                return i
+            elif self.text[i] == '}':
+                return i
+        return self.length
+    
+    def _has_colon_ahead(self) -> bool:
+        """Проверяет, есть ли двоеточие впереди до запятой или конца."""
+        for i in range(self.position, self.length):
+            if self.text[i] == ':':
+                return True
+            elif self.text[i] == ',' or self.text[i] == '}':
+                return False
+        return False
     
     def _tokenize_inside_directive(self) -> Token:
         """Токенизирует содержимое внутри директивы."""

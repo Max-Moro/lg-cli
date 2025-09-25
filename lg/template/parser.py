@@ -304,6 +304,45 @@ class TemplateParser:
         
         return origin, remaining_tokens
     
+    def _parse_path_and_anchor(self, tokens: List[Token]) -> Tuple[str, Optional[str], int]:
+        """
+        Парсит путь и якорь из токенов.
+        
+        Args:
+            tokens: Список токенов для парсинга
+            
+        Returns:
+            Кортеж (path, anchor, next_index) где:
+            - path: путь к файлу
+            - anchor: якорь (может быть None)
+            - next_index: индекс следующего токена для обработки
+        """
+        if not tokens:
+            raise ParserError("Missing path in markdown placeholder", 
+                           Token(TokenType.EOF, "", 0, 1, 1))
+        
+        # Первый токен - это путь
+        path = tokens[0].value
+        i = 1
+        
+        # Проверяем, есть ли якорь
+        if i < len(tokens) and tokens[i].type == TokenType.HASH:
+            i += 1  # Пропускаем #
+            
+            # Собираем все токены до запятой или конца как якорь
+            # Принимаем любые токены, кроме запятой
+            anchor_parts = []
+            while i < len(tokens) and tokens[i].type != TokenType.COMMA:
+                # Добавляем все токены в якорь, включая специальные символы
+                anchor_parts.append(tokens[i].value)
+                i += 1
+            
+            anchor = ''.join(anchor_parts).strip() if anchor_parts else None
+        else:
+            anchor = None
+        
+        return path, anchor, i
+    
     def _parse_markdown_path_and_params(self, tokens: List[Token]) -> Tuple[str, dict]:
         """
         Парсит путь и параметры из токенов.
@@ -315,22 +354,20 @@ class TemplateParser:
             raise ParserError("Missing path in markdown placeholder", 
                            Token(TokenType.EOF, "", 0, 1, 1))
         
-        # Первый токен - это путь (может содержать якорь)
-        path_with_anchor = tokens[0].value
-        
-        # Разделяем путь и якорь
-        path, anchor = self._split_path_and_anchor(path_with_anchor)
+        # Парсим путь и якорь
+        path, anchor, i = self._parse_path_and_anchor(tokens)
         
         # Парсим параметры если они есть
         params = {}
         if anchor:
             params["anchor"] = anchor
         
-        i = 1
+        # Флаг для отслеживания первого параметра
+        first_param = True
         
         while i < len(tokens):
             # Ожидаем запятую (кроме первого параметра)
-            if i > 1 and tokens[i].type != TokenType.COMMA:
+            if not first_param and tokens[i].type != TokenType.COMMA:
                 raise ParserError(f"Expected comma before parameter, got {tokens[i].type.name}", tokens[i])
             if tokens[i].type == TokenType.COMMA:
                 i += 1
@@ -349,7 +386,7 @@ class TemplateParser:
             i += 1
             
             # Ожидаем значение параметра (может быть составным, например "tag:advanced")
-            if i >= len(tokens) or tokens[i].type != TokenType.IDENTIFIER:
+            if i >= len(tokens) or tokens[i].type not in [TokenType.IDENTIFIER, TokenType.TEXT]:
                 raise ParserError(f"Expected parameter value after '{param_name}:'", 
                                tokens[i] if i < len(tokens) else tokens[-1])
 
@@ -361,7 +398,7 @@ class TemplateParser:
             while (i < len(tokens) and
                    tokens[i].type == TokenType.COLON and
                    i + 1 < len(tokens) and
-                   tokens[i + 1].type == TokenType.IDENTIFIER):
+                   tokens[i + 1].type in [TokenType.IDENTIFIER, TokenType.TEXT]):
                 value_parts.append(':')
                 value_parts.append(tokens[i + 1].value)
                 i += 2
@@ -371,6 +408,9 @@ class TemplateParser:
             # Конвертируем значение в правильный тип
             param_value = self._convert_param_value(param_name, param_value_str, tokens[i-1])
             params[param_name] = param_value
+            
+            # Обновляем флаг после обработки первого параметра
+            first_param = False
         
         return path, params
     

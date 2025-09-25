@@ -175,14 +175,18 @@ class VirtualSectionFactory:
         # Если есть якорь (anchor), создаем keep-конфигурацию для включения только нужной секции
         if node.anchor:
             from ..markdown.model import MarkdownKeepCfg, SectionRule, SectionMatch
+            from ..markdown.slug import slugify_github
             
             # Создаем правило для включения секции по названию
+            # Используем slug-сопоставление для более гибкого поиска
+            # Преобразуем якорь в slug для сопоставления
+            anchor_slug = slugify_github(node.anchor)
             section_rule = SectionRule(
                 match=SectionMatch(
-                    kind="text",
-                    pattern=node.anchor
+                    kind="slug",
+                    pattern=anchor_slug
                 ),
-                reason=f"md placeholder anchor: #{node.anchor}"
+                reason=f"md placeholder anchor: #{node.anchor} (slug: {anchor_slug})"
             )
             
             config.keep = MarkdownKeepCfg(
