@@ -55,7 +55,7 @@ class VirtualSectionFactory:
         
         # Создаем конфигурацию фильтров
         filters = self._create_file_filter(normalized_path)
-        
+
         # Создаем конфигурацию Markdown-адаптера
         markdown_config_raw = self._create_markdown_config(node, heading_context).to_dict()
 
@@ -82,7 +82,7 @@ class VirtualSectionFactory:
             scope_rel=scope_rel,
             scope_dir=scope_dir
         )
-        
+
         return section_config, section_ref
 
     def _generate_name(self) -> str:
@@ -98,18 +98,18 @@ class VirtualSectionFactory:
     def _normalize_file_path(self, path: str, origin: Optional[str], is_glob: bool) -> str:
         """
         Нормализует путь к файлу для создания фильтра.
-        
+
         Args:
             path: Исходный путь к файлу или паттерн глоба
             origin: Скоуп ("self" или путь к области, None для обычных md:)
             is_glob: True если path содержит символы глобов
-            
+
         Returns:
             Нормализованный путь для фильтра allow
         """
         # Нормализуем путь
         normalized = path.strip()
-        
+
         # Автоматически добавляем расширение .md, если оно отсутствует
         if not is_glob:
             # Для обычных файлов проверяем и добавляем .md
@@ -118,7 +118,7 @@ class VirtualSectionFactory:
         else:
             # Для глобов не добавляем расширение автоматически
             pass
-        
+
         # Для разных типов origin формируем разные пути
         if origin is not None:
             # Для @origin: файлы ВСЕГДА ищутся в lg-cfg/ области скоупа origin
@@ -126,29 +126,25 @@ class VirtualSectionFactory:
                 return f"/lg-cfg{normalized}"
             else:
                 return f"/lg-cfg/{normalized}"
-            
+
         else:
             # Для обычных md: файлы ищутся относительно корня репы
             if normalized.startswith('/'):
                 return normalized
             else:
                 return f"/{normalized}"
-    
+
     def _create_file_filter(self, path: str) -> FilterNode:
         """
         Создает фильтр для включения указанных файлов.
-        
+
         Args:
             path: Нормализованный путь к файлу
-            
+
         Returns:
             FilterNode с режимом allow для указанных файлов
         """
-        return FilterNode(
-            mode="allow",
-            allow=[path],
-            block=[]
-        )
+        return FilterNode(mode="allow", allow=[path])
     
     def _create_markdown_config(
         self, 

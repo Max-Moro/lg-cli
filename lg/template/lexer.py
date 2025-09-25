@@ -123,8 +123,8 @@ class TemplateLexer:
         TokenType.NEWLINE: re.compile(r'\r?\n'),
         TokenType.WHITESPACE: re.compile(r'[ \t]+'),
         
-        # Идентификаторы (Unicode буквы, цифры, подчёркивание, дефис, слеш, точка)
-        TokenType.IDENTIFIER: re.compile(r'[\w\-/.]+', re.UNICODE),
+        # Идентификаторы (Unicode буквы, цифры, подчёркивание, дефис, слеш, точка, звездочка, вопросительный знак)
+        TokenType.IDENTIFIER: re.compile(r'[\w\-/.*?]+', re.UNICODE),
     }
     
     # Ключевые слова

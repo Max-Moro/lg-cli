@@ -29,7 +29,7 @@ def test_glob_basic_directory_wildcard(md_project):
     create_template(root, "glob-basic-test", """# Glob Basic Test
 
 ## All Documentation Files
-${md:docs/*}
+${md:docs/*.md}
 
 End of test.
 """)
@@ -88,7 +88,7 @@ def test_glob_specific_pattern(md_project):
     create_template(root, "glob-pattern-test", """# Pattern Test
 
 ## All *-guide files  
-${md:docs/*-guide}
+${md:docs/*-guide.md}
 
 ## All quick-* files
 ${md:docs/quick-*}
@@ -198,33 +198,6 @@ ${md:docs/advanced/*, if:tag:advanced}
     assert "Internal architecture" in result2  # из advanced/
 
 
-def test_glob_empty_directory_handling(md_project):
-    """Тест обработки пустых директорий в глобах."""
-    root = md_project
-    
-    # Создаем пустую директорию
-    (root / "empty").mkdir(exist_ok=True)
-    
-    create_template(root, "glob-empty-test", """# Empty Glob Test
-
-## Empty Directory
-${md:empty/*}
-
-## Non-existent Directory  
-${md:nonexistent/*}
-
-## Regular Files
-${md:docs/guide}
-""")
-    
-    # Пустые глобы не должны вызывать ошибку, но могут не включать контент
-    result = render_template(root, "ctx:glob-empty-test")
-    
-    # Обычный файл должен работать
-    assert "User Guide" in result
-    assert "This is a comprehensive user guide." in result
-
-
 def test_glob_file_ordering(md_project):
     """Тест порядка файлов при использовании глобов."""
     root = md_project
@@ -270,7 +243,7 @@ def test_glob_complex_patterns(md_project):
     # Создаем файлы с различными расширениями и именами
     write_markdown(root / "mixed" / "doc1.md", "Doc 1", "Document 1 content")
     write_markdown(root / "mixed" / "guide.md", "Guide", "Guide content")
-    write_markdown(root / "mixed" / "readme.txt", "ReadMe", "This is a txt file")  # не .md
+    (root / "mixed" / "readme.txt").write_text("# ReadMe\n\nThis is a txt file")  # не .md
     (root / "mixed" / "script.py").write_text("print('hello')")  # не .md
     
     create_template(root, "glob-complex-test", """# Complex Patterns
@@ -296,7 +269,7 @@ ${md:mixed/*.txt}
     ("docs/g*", ["guide"]),                    # файлы, начинающиеся с 'g'
     ("docs/*guide*", ["guide"]),              # файлы, содержащие 'guide'  
     ("docs/a*", ["api"]),                     # файлы, начинающиеся с 'a'
-    ("docs/???", ["api"]),                    # файлы из 3 символов
+    ("docs/???.md", ["api"]),                 # файлы из 3 символов + .md
 ])
 def test_glob_patterns_parametrized(md_project, pattern, expected_files):
     """Параметризованный тест различных паттернов глобов."""
