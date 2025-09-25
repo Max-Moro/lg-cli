@@ -243,9 +243,15 @@ class ChainAnalyzer:
         Определяет, образуют ли плейсхолдеры непрерывную цепочку.
         
         Логика:
+        - Плейсхолдеры с глобами всегда считаются непрерывной цепочкой (вставляют несколько документов)
         - Если между md-плейсхолдерами есть заголовки, то они НЕ образуют цепочку
         - Если между ними только текст или другие плейсхолдеры - цепочка
         """
+        # Специальный случай: плейсхолдер с глобами всегда образует цепочку
+        target_node = ast[target_index]
+        if isinstance(target_node, MarkdownFileNode) and target_node.is_glob:
+            return True
+        
         md_indices = self._find_markdown_placeholder_indices(ast)
         
         if len(md_indices) <= 1:
@@ -285,8 +291,14 @@ class ChainAnalyzer:
         """
         Анализирует единственный плейсхолдер на предмет "цепочности".
         
+        Плейсхолдеры с глобами всегда считаются цепочкой.
         Если плейсхолдер окружен заголовками одного уровня - он разделен.
         """
+        # Специальный случай: плейсхолдер с глобами всегда образует цепочку
+        target_node = ast[node_index]
+        if isinstance(target_node, MarkdownFileNode) and target_node.is_glob:
+            return True
+        
         placeholder_line = self._calculate_node_line(ast, node_index)
         
         headings_before = [h for h in headings if h.line_number < placeholder_line]
@@ -303,7 +315,7 @@ class ChainAnalyzer:
         return True
 
 
-class HeadingContextDetectorV2:
+class HeadingContextDetector:
     """
     Детектор контекста заголовков.
     """
@@ -466,5 +478,5 @@ def detect_heading_context_for_node(node: MarkdownFileNode, ast: TemplateAST, no
     Returns:
         HeadingContext с рекомендациями
     """
-    detector = HeadingContextDetectorV2()
+    detector = HeadingContextDetector()
     return detector.detect_context(node, ast, node_index)

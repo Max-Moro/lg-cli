@@ -39,6 +39,7 @@ src:
               - "/context.py"
               - "/virtual_sections.py"
               - "/common.py"
+              - "/heading_context.py"
           markdown:
             mode: allow
             allow:
@@ -61,5 +62,4 @@ tests:
             mode: allow
             allow:
               - "/conftest.py"
-              - "/test_addressed_placeholders.py"
-              - "/test_basic_placeholders.py"
+              - "/test_contextual_analysis.py"
