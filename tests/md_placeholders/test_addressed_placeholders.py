@@ -110,35 +110,6 @@ ${md@apps/web:deployment}
     assert "npm run build" in result
 
 
-@pytest.mark.skip(reason="Относительные пути вида ../../ пока не поддерживаются")
-def test_md_placeholder_nested_federated_access(federated_md_project):
-    """Тест вложенных федеративных включений (скоуп обращается к другому скоупу)."""
-    root = federated_md_project
-    
-    # Создаем шаблон в apps/web, который включает файлы из libs/utils
-    create_template(root / "apps" / "web", "cross-reference", """# Web Cross-Reference
-
-## Our Web App
-${md:web-readme}
-
-## Shared Utilities (from libs)
-${md@../../libs/utils:utils-readme}
-
-## Main Project Overview
-${md@../../:README}
-""", template_type="ctx")
-    
-    result = render_template(root / "apps" / "web", "ctx:cross-reference") 
-    
-    # Проверяем, что включились файлы из разных скоупов (заголовки H1 удаляются strip_h1)
-    assert "Web Application" not in result
-    assert "Utility Library" not in result
-    assert "Federated Project" not in result
-    assert "Frontend web application." in result    # содержимое из apps/web
-    assert "Shared utility functions." in result    # содержимое из libs/utils
-    assert "Main project in a monorepo structure." in result  # содержимое из корня
-
-
 def test_md_placeholder_origin_not_found_error(md_project):
     """Тест обработки ошибки когда origin не существует."""
     root = md_project
