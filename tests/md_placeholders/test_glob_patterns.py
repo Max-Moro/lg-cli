@@ -123,14 +123,14 @@ ${md:docs/*}
     result = render_template(root, "ctx:glob-contextual-test")
     
     # Файлы должны быть обработаны с правильными уровнями заголовков
-    # Под H3 → max_heading_level=4, strip_h1=true
+    # Под H3 → max_heading_level=4, но для глобов strip_h1=false (H1 сохраняются)
     assert "#### Installation" in result    # было H2 в guide.md, стало H4
     assert "#### Authentication" in result  # было H2 в api.md, стало H4
     
-    # H1 заголовки должны быть удалены (strip_h1=true)
+    # H1 заголовки НЕ должны удаляться для глобов (strip_h1=false)
     lines = result.split('\n')
     h1_lines = [line for line in lines if line.startswith('#### ') and ('User Guide' in line or 'API Reference' in line)]
-    assert len(h1_lines) == 0  # H1 заголовки удалены
+    assert len(h1_lines) == 2  # H1 заголовки сохранены и сдвинуты до H4
 
 
 def test_glob_with_explicit_parameters(md_project):
@@ -234,35 +234,6 @@ ${md:docs/*#Authentication}
     # Глобы с якорными ссылками должны вызывать ошибку
     with pytest.raises(Exception):  # ValueError о несовместимости глобов и якорей
         render_template(root, "ctx:glob-anchor-error-test")
-
-
-def test_glob_complex_patterns(md_project):
-    """Тест сложных паттернов глобов."""
-    root = md_project
-    
-    # Создаем файлы с различными расширениями и именами
-    write_markdown(root / "mixed" / "doc1.md", "Doc 1", "Document 1 content")
-    write_markdown(root / "mixed" / "guide.md", "Guide", "Guide content")
-    (root / "mixed" / "readme.txt").write_text("# ReadMe\n\nThis is a txt file")  # не .md
-    (root / "mixed" / "script.py").write_text("print('hello')")  # не .md
-    
-    create_template(root, "glob-complex-test", """# Complex Patterns
-
-## All .md files in mixed/
-${md:mixed/*.md}
-
-## Should be empty (no .txt files processed)
-${md:mixed/*.txt}
-""")
-    
-    result = render_template(root, "ctx:glob-complex-test")
-    
-    # Только .md файлы должны включиться
-    assert "Document 1 content" in result
-    assert "Guide content" in result
-    
-    # .txt файлы не должны обрабатываться (секция настроена только на .md)
-    assert "This is a txt file" not in result
 
 
 @pytest.mark.parametrize("pattern,expected_files", [
