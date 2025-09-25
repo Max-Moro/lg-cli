@@ -81,7 +81,7 @@ class SectionProcessor:
                     f"Available: {', '.join(available) if available else '(none)'}"
                 )
         
-        return build_section_manifest(
+        manifest = build_section_manifest(
             section_ref=section_ref,
             section_config=section_config,
             template_ctx=template_ctx,
@@ -89,6 +89,27 @@ class SectionProcessor:
             vcs=self.run_ctx.vcs,
             vcs_mode=template_ctx.current_state.mode_options.vcs_mode
         )
+
+        # Для виртуальных секций (md-плейсхолдеров) проверяем наличие файлов
+        if virtual_section_config is not None and not manifest.files:
+            # Это наша виртуальная секция для md-плейсхолдера
+            # Попробуем восстановить информацию о плейсхолдере из фильтров
+            if manifest.ref.scope_rel:
+                # Адресный плейсхолдер
+                raise RuntimeError(f"No markdown files found for `md@{manifest.ref.scope_rel}:` placeholder")
+            else:
+                # Обычный плейсхолдер, пробуем получить путь из конфигурации секции
+                virtual_cfg = template_ctx.get_virtual_section()
+                if virtual_cfg and virtual_cfg.filters.allow:
+                    file_path = virtual_cfg.filters.allow[0].lstrip('/')
+                    if file_path.startswith('lg-cfg/'):
+                        raise RuntimeError(f"No markdown files found for `md@self:{file_path[7:]}` placeholder")
+                    else:
+                        raise RuntimeError(f"No markdown files found for `md:{file_path}` placeholder")
+                else:
+                    raise RuntimeError("No markdown files found for `md:` placeholder")
+
+        return manifest
 
     def process_section(self, section_ref: SectionRef, template_ctx: TemplateContext) -> RenderedSection:
         """

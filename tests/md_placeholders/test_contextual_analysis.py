@@ -549,31 +549,3 @@ More content.
     
     assert_heading_not_present(result, "API Reference")
     assert_heading_level(result, "Authentication", 4)
-
-
-def test_empty_placeholders_do_not_affect_chain_logic(md_project):
-    """
-    Тест что пустые плейсхолдеры или несуществующие файлы не влияют на логику цепочки.
-    """
-    root = md_project
-    
-    create_template(root, "empty-placeholders", """# Main
-
-## Documentation
-
-${md:docs/api}
-
-${md:nonexistent}
-
-${md:docs/guide}
-
-## Other
-""")
-    
-    result = render_template(root, "ctx:empty-placeholders")
-    
-    # Плейсхолдеры все еще формируют цепочку, даже если один из них пустой
-    # strip_h1=false, max_heading_level=3
-    
-    assert_heading_level(result, "API Reference", 3)
-    assert_heading_level(result, "User Guide", 3)

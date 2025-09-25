@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import pytest
 
+from lg.template.processor import TemplateProcessingError
 from .conftest import md_project, create_template, render_template
 
 
@@ -93,14 +94,28 @@ ${md:docs/api}
     assert "### GET /users" in result
 
 
-def test_md_placeholder_empty_file_handling(md_project):
-    """Тест обработки пустых файлов."""
+def test_md_placeholder_file_not_found_error(md_project):
+    """Тест обработки ошибки когда файл не найден."""
     root = md_project
-    
+
+    create_template(root, "notfound-test", """# Not Found Test
+
+${md:nonexistent-file}
+""")
+
+    # Должна возникнуть ошибка о том, что файл не найден
+    with pytest.raises(TemplateProcessingError, match=r"No markdown files found for `md:nonexistent-file.md` placeholder"):
+        render_template(root, "ctx:notfound-test")
+
+
+def test_md_placeholder_empty_file_handling(md_project):
+    """Тест обработки пустых файлов - должны вызывать ошибку."""
+    root = md_project
+
     # Создаем пустой файл
     from .conftest import write
     write(root / "empty.md", "")
-    
+
     create_template(root, "empty-test", """# Empty Test
 
 Before empty file.
@@ -110,11 +125,9 @@ ${md:empty}
 After empty file.
 """)
     
-    result = render_template(root, "ctx:empty-test")
-    
-    assert "Before empty file." in result
-    assert "After empty file." in result
-    # Пустой файл не должен добавлять содержимого
+    # Пустой файл должен вызывать ошибку
+    with pytest.raises(TemplateProcessingError, match=r"No markdown files found for `md:empty.md` placeholder"):
+        render_template(root, "ctx:empty-test")
 
 
 def test_md_placeholder_with_file_without_h1(md_project):

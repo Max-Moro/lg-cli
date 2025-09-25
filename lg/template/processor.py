@@ -326,47 +326,36 @@ class TemplateProcessor:
         elif isinstance(node, MarkdownFileNode):
             # Проверяем условие включения если оно задано
             if node.condition:
-                try:
-                    should_include = self.template_ctx.evaluate_condition_text(node.condition)
-                    if not should_include:
-                        # Условие не выполнено - пропускаем узел
-                        return ""
-                except Exception as e:
-                    # Ошибка при вычислении условия - возвращаем комментарий об ошибке
-                    return f"<!-- Error evaluating condition '{node.condition}': {e} -->"
-            
+                should_include = self.template_ctx.evaluate_condition_text(node.condition)
+                if not should_include:
+                    # Условие не выполнено - пропускаем узел
+                    return ""
+
             # Обрабатываем Markdown-файл через виртуальную секцию
             if self.section_handler:
-                # Создаем конфигурацию для виртуальной секции
-                try:
-                    # Анализ контекста заголовков
-                    from .heading_context import detect_heading_context_for_node
-                    heading_context = detect_heading_context_for_node(node, ast, node_index)
+                # Анализ контекста заголовков
+                from .heading_context import detect_heading_context_for_node
+                heading_context = detect_heading_context_for_node(node, ast, node_index)
 
-                    section_config, section_ref = self.virtual_factory.create_for_markdown_file(
-                        node=node,
-                        repo_root=self.run_ctx.root,
-                        heading_context=heading_context
-                    )
-                    
-                    # Устанавливаем виртуальную секцию в контекст
-                    self.template_ctx.set_virtual_section(section_config)
-                    
-                    try:
-                        # Обрабатываем через section_handler
-                        result = self.section_handler(section_ref, self.template_ctx)
-                    finally:
-                        # Всегда очищаем виртуальную секцию после обработки
-                        self.template_ctx.clear_virtual_section()
-                    
-                    return result
-                    
-                except Exception as e:
-                    # В случае ошибки очищаем контекст и возвращаем плейсхолдер
+                section_config, section_ref = self.virtual_factory.create_for_markdown_file(
+                    node=node,
+                    repo_root=self.run_ctx.root,
+                    heading_context=heading_context
+                )
+
+                # Устанавливаем виртуальную секцию в контекст
+                self.template_ctx.set_virtual_section(section_config)
+
+                try:
+                    # Обрабатываем через section_handler
+                    result = self.section_handler(section_ref, self.template_ctx)
+                finally:
+                    # Всегда очищаем виртуальную секцию после обработки
                     self.template_ctx.clear_virtual_section()
-                    return f"<!-- Error processing {node.canon_key()}: {e} -->"
+
+                return result
             else:
-                # Если виртуальная секция не создана или нет обработчика, возвращаем плейсхолдер
+                # Если нет обработчика секций, возвращаем плейсхолдер
                 return f"${{{node.canon_key()}}}"
         
         elif isinstance(node, CommentNode):

@@ -192,6 +192,11 @@ def federated_md_project(tmp_path: Path) -> Path:
                   title="Federated Project", 
                   content="Main project in a monorepo structure.")
     
+    # Внутренняя документация в lg-cfg
+    write_markdown(root / "lg-cfg" / "internal.md",
+                  title="Internal Documentation",
+                  content="Internal documentation for the federated project.")
+    
     # === Дочерний скоуп: apps/web ===
     create_basic_lg_cfg(root / "apps" / "web")
     

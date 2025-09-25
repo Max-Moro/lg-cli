@@ -12,7 +12,7 @@ from __future__ import annotations
 import pytest
 
 from .conftest import (
-    federated_md_project, md_project, create_template, 
+    federated_md_project, md_project, create_template,
     render_template, write_markdown
 )
 
@@ -108,6 +108,86 @@ ${md@apps/web:deployment}
     assert "Web Deployment Guide" in result
     assert "How to deploy the web app." in result
     assert "npm run build" in result
+
+
+@pytest.mark.skip(reason="Относительные пути вида ../../ пока не поддерживаются")
+def test_md_placeholder_nested_federated_access(federated_md_project):
+    """Тест вложенных федеративных включений (скоуп обращается к другому скоупу)."""
+    root = federated_md_project
+    
+    # Создаем шаблон в apps/web, который включает файлы из libs/utils
+    create_template(root / "apps" / "web", "cross-reference", """# Web Cross-Reference
+
+## Our Web App
+${md:web-readme}
+
+## Shared Utilities (from libs)
+${md@../../libs/utils:utils-readme}
+
+## Main Project Overview
+${md@../../:README}
+""", template_type="ctx")
+    
+    result = render_template(root / "apps" / "web", "ctx:cross-reference") 
+    
+    # Проверяем, что включились файлы из разных скоупов (заголовки H1 удаляются strip_h1)
+    assert "Web Application" not in result
+    assert "Utility Library" not in result
+    assert "Federated Project" not in result
+    assert "Frontend web application." in result    # содержимое из apps/web
+    assert "Shared utility functions." in result    # содержимое из libs/utils
+    assert "Main project in a monorepo structure." in result  # содержимое из корня
+
+
+def test_md_placeholder_origin_not_found_error(md_project):
+    """Тест обработки ошибки когда origin не существует."""
+    root = md_project
+    
+    create_template(root, "bad-origin-test", """# Bad Origin Test
+
+${md@nonexistent/module:some-file}
+""")
+    
+    # Должна возникнуть ошибка о том, что origin не найден
+    with pytest.raises(Exception):  # RuntimeError или другая ошибка
+        render_template(root, "ctx:bad-origin-test")
+
+
+def test_md_placeholder_file_not_found_in_origin(federated_md_project):
+    """Тест обработки ошибки когда файл не найден в указанном origin."""
+    root = federated_md_project
+    
+    create_template(root, "file-not-found-test", """# File Not Found Test
+
+${md@apps/web:nonexistent-file}
+""")
+    
+    # Должна возникнуть ошибка о том, что файл не найден в скоупе
+    with pytest.raises(Exception):
+        render_template(root, "ctx:file-not-found-test")
+
+
+def test_md_placeholder_origin_without_lg_cfg(tmp_path):
+    """Тест обработки ошибки когда в origin нет lg-cfg/."""
+    root = tmp_path
+    
+    # Создаем базовый проект
+    from .conftest import create_basic_lg_cfg
+    create_basic_lg_cfg(root)
+    
+    # Создаем директорию без lg-cfg/
+    write_markdown(root / "no-cfg" / "test.md",
+                  title="Test File", 
+                  content="Test content")
+    
+    create_template(root, "no-cfg-test", """# No Config Test
+
+${md@no-cfg:test}
+""")
+    
+    # Должна возникнуть ошибка о том, что lg-cfg не найден
+    with pytest.raises(Exception):  # RuntimeError: Child lg-cfg not found
+        render_template(root, "ctx:no-cfg-test")
 
 
 def test_md_placeholder_self_with_subdirectories(md_project):
