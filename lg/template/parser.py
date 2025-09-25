@@ -417,7 +417,7 @@ class TemplateParser:
             elif value_str.lower() in ('false', '0', 'no'):
                 return False
             else:
-                raise ParserError(f"strip_h1 must be boolean (true/false), got '{value_str}'", token)
+                raise ParserError(f"strip_h1 must be boolean (true/false/1/0/yes/no), got '{value_str}'", token)
         
         elif param_name == 'if':
             # Условие включения - возвращаем как строку для дальнейшей обработки
@@ -425,9 +425,15 @@ class TemplateParser:
                 raise ParserError(f"Condition cannot be empty", token)
             return value_str
         
-        else:
-            # Неизвестный параметр - возвращаем как строку
+        elif param_name == 'anchor':
+            # Якорь для частичного включения - возвращаем как строку
+            if not value_str.strip():
+                raise ParserError(f"Anchor cannot be empty", token)
             return value_str
+        
+        else:
+            # Неизвестный параметр - вызываем ошибку
+            raise ParserError(f"Unknown parameter '{param_name}'. Supported parameters: level, strip_h1, if, anchor", token)
     
     def _path_contains_globs(self, path: str) -> bool:
         """

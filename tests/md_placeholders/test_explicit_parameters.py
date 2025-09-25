@@ -33,27 +33,18 @@ ${md:docs/guide, level:2}
     
     result = render_template(root, "ctx:explicit-level-test")
     
-    # Первое включение: контекстуальный анализ (под H2 → max_heading_level=3)
-    api_occurrences = []
-    guide_occurrences = []
+    # Первое включение: контекстуальный анализ (под H2 → max_heading_level=3, strip_h1=true)
+    # H1 заголовки удаляются, остаются только H2 заголовки как H3
     
-    lines = result.split('\n')
-    for line in lines:
-        if 'API Reference' in line:
-            api_occurrences.append(line.strip())
-        elif 'User Guide' in line:
-            guide_occurrences.append(line.strip())
+    # Проверяем, что H1 заголовки удалены (контекстуальный анализ)
+    assert "### API Reference" not in result  # H1 удален
+    assert "### User Guide" not in result    # H1 удален
     
-    # Должно быть 2 включения API Reference
-    assert len(api_occurrences) >= 2
-    
-    # Проверяем уровни заголовков для разных параметров level
-    assert any(line.startswith('### ') for line in api_occurrences)  # контекстуальный (level 3)
-    assert any(line.startswith('##### ') for line in api_occurrences)  # explicit level 5
-    
-    # Guide с явным level:2
-    assert len(guide_occurrences) >= 1
-    assert any(line.startswith('## ') for line in guide_occurrences)  # explicit level 2
+    # Проверяем, что H2 заголовки присутствуют на правильных уровнях
+    assert "### Authentication" in result    # из api.md, стало H3 (контекстуальный)
+    assert "##### Authentication" in result   # из api.md, стало H5 (explicit level:5)
+    assert "## Installation" in result      # из guide.md, стало H2 (explicit level:2)
+    assert "## Usage" in result              # из guide.md, стало H2 (explicit level:2)
 
 
 def test_explicit_strip_h1_parameter(md_project):
@@ -155,12 +146,15 @@ ${md:docs/guide, level:6}
     
     result = render_template(root, "ctx:level-edges-test")
     
-    # level:1 - минимальный уровень
-    assert "# API Reference" in result      # H1→H1 (остался как есть)
-    assert "## Authentication" in result    # H2→H2
+    # level:1 - минимальный уровень, но H1 удаляется контекстуальным анализом
+    assert "# API Reference" not in result  # H1 удален контекстуальным анализом
+    assert "# Authentication" in result      # H2→H1 (level:1, но H1 удален)
     
-    # level:6 - максимальный уровень
-    assert "###### User Guide" in result    # H1→H6
+    # level:6 - максимальный уровень, но H1 удаляется контекстуальным анализом  
+    assert "###### User Guide" not in result  # H1 удален контекстуальным анализом
+    assert "###### Installation" in result    # H2→H6 (level:6, но H1 удален)
+    assert "###### Usage" in result            # H2→H6 (level:6, но H1 удален)
+    
     # H2 не может стать H7 (невалидно), должен остаться H6 или обрабатываться по-другому
     lines = result.split('\n')
     h7_lines = [line for line in lines if line.startswith('#######')]
@@ -195,9 +189,8 @@ def test_invalid_strip_h1_parameter_error(md_project):
     root = md_project
     
     test_cases = [
-        "${md:docs/api, strip_h1:yes}",    # не boolean
-        "${md:docs/api, strip_h1:1}",      # число вместо boolean
-        "${md:docs/api, strip_h1:}",       # пустое значение
+        "${md:docs/api, strip_h1:invalid}",  # недопустимое значение
+        "${md:docs/api, strip_h1:}",          # пустое значение
     ]
     
     for i, invalid_placeholder in enumerate(test_cases):
@@ -208,6 +201,37 @@ def test_invalid_strip_h1_parameter_error(md_project):
         
         with pytest.raises(Exception):  # ValueError или другая ошибка валидации
             render_template(root, f"ctx:invalid-strip-{i}")
+
+
+def test_valid_strip_h1_parameter_values(md_project):
+    """Тест всех допустимых значений параметра strip_h1."""
+    root = md_project
+    
+    # Тестируем все допустимые значения для strip_h1
+    valid_true_values = ["true", "1", "yes"]
+    valid_false_values = ["false", "0", "no"]
+    
+    for value in valid_true_values:
+        create_template(root, f"strip-true-{value}", f"""# Strip H1 True Test
+
+${{md:docs/api, strip_h1:{value}}}
+""")
+        
+        result = render_template(root, f"ctx:strip-true-{value}")
+        # strip_h1:true - H1 должен быть удален
+        assert "### API Reference" not in result  # H1 удален
+        assert "## Authentication" in result       # H2 остался H2 (контекстуальный анализ не применяется)
+    
+    for value in valid_false_values:
+        create_template(root, f"strip-false-{value}", f"""# Strip H1 False Test
+
+${{md:docs/api, strip_h1:{value}}}
+""")
+        
+        result = render_template(root, f"ctx:strip-false-{value}")
+        # strip_h1:false - H1 должен сохраниться
+        assert "## API Reference" in result      # H1 сохранен как H2 (контекстуальный анализ не применяется)
+        assert "### Authentication" in result     # H2 стал H3
 
 
 def test_parameter_parsing_with_spaces(md_project):
