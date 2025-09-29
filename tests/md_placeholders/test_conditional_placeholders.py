@@ -101,7 +101,7 @@ ${md:deployment/onprem, if:NOT (tag:cloud AND tag:onprem)}
     result1 = render_template(root, "ctx:conditional-complex-test", options_both)
     assert "Instructions for cloud deployment." in result1  # cloud AND basic = true
     assert "Basic introduction to the project." in result1   # cloud OR onprem = true
-    assert "Instructions for on-premises deployment." not in result1  # NOT (cloud AND onprem) = true (onprem не активен)
+    assert "Instructions for on-premises deployment." in result1  # NOT (cloud AND onprem) = NOT(true AND false) = NOT false = true
     
     # Тест только cloud (без basic)
     options_cloud = make_run_options(extra_tags={"cloud"})

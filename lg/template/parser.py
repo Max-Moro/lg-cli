@@ -381,8 +381,8 @@ class TemplateParser:
             if tokens[i].type == TokenType.COMMA:
                 i += 1
             
-            # Ожидаем имя параметра
-            if i >= len(tokens) or tokens[i].type != TokenType.IDENTIFIER:
+            # Ожидаем имя параметра (может быть IDENTIFIER или IF)
+            if i >= len(tokens) or tokens[i].type not in [TokenType.IDENTIFIER, TokenType.IF]:
                 raise ParserError("Expected parameter name after comma", 
                                tokens[i] if i < len(tokens) else tokens[-1])
             param_name = tokens[i].value
@@ -394,25 +394,55 @@ class TemplateParser:
                                tokens[i] if i < len(tokens) else tokens[-1])
             i += 1
             
-            # Ожидаем значение параметра (может быть составным, например "tag:advanced")
-            if i >= len(tokens) or tokens[i].type not in [TokenType.IDENTIFIER, TokenType.TEXT]:
-                raise ParserError(f"Expected parameter value after '{param_name}:'", 
-                               tokens[i] if i < len(tokens) else tokens[-1])
+            # Специальная обработка для условных параметров
+            if param_name == 'if':
+                # Для параметра if собираем все токены до следующей запятой или конца
+                start_pos = i
+                while i < len(tokens) and tokens[i].type != TokenType.COMMA:
+                    i += 1
+                
+                if start_pos >= i:
+                    raise ParserError(f"Expected condition after 'if:'",
+                                   tokens[i] if i < len(tokens) else tokens[-1])
+                
+                # Соединяем все токены в строку условия с правильными пробелами
+                value_parts = []
+                for j in range(start_pos, i):
+                    current_token = tokens[j]
+                    
+                    # Добавляем пробел перед токеном, если это не первый токен
+                    # и если это не специальный символ, который должен прилипать
+                    if j > start_pos:
+                        prev_token = tokens[j-1]
+                        # НЕ добавляем пробел перед или после двоеточия :
+                        # НЕ добавляем пробел перед или после скобок ( )
+                        if not (current_token.value in [":", "(", ")"] or 
+                               prev_token.value in [":", "(", ")"]):
+                            value_parts.append(" ")
+                    
+                    value_parts.append(current_token.value)
+                
+                param_value_str = ''.join(value_parts)
+            else:
+                # Ожидаем значение параметра (может быть составным, например "tag:advanced")
+                if i >= len(tokens) or tokens[i].type not in [TokenType.IDENTIFIER, TokenType.TEXT]:
+                    raise ParserError(f"Expected parameter value after '{param_name}:'", 
+                                   tokens[i] if i < len(tokens) else tokens[-1])
 
-            # Собираем значение параметра, включая возможные двоеточия
-            value_parts = [tokens[i].value]
-            i += 1
-            
-            # Проверяем, есть ли двоеточие и следующий идентификатор (составное значение)
-            while (i < len(tokens) and
-                   tokens[i].type == TokenType.COLON and
-                   i + 1 < len(tokens) and
-                   tokens[i + 1].type in [TokenType.IDENTIFIER, TokenType.TEXT]):
-                value_parts.append(':')
-                value_parts.append(tokens[i + 1].value)
-                i += 2
+                # Собираем значение параметра, включая возможные двоеточия
+                value_parts = [tokens[i].value]
+                i += 1
+                
+                # Проверяем, есть ли двоеточие и следующий идентификатор (составное значение)
+                while (i < len(tokens) and
+                       tokens[i].type == TokenType.COLON and
+                       i + 1 < len(tokens) and
+                       tokens[i + 1].type in [TokenType.IDENTIFIER, TokenType.TEXT]):
+                    value_parts.append(':')
+                    value_parts.append(tokens[i + 1].value)
+                    i += 2
 
-            param_value_str = ''.join(value_parts)
+                param_value_str = ''.join(value_parts)
 
             # Конвертируем значение в правильный тип
             param_value = self._convert_param_value(param_name, param_value_str, tokens[i-1])
@@ -851,8 +881,24 @@ class TemplateParser:
             content_parts.append(current.value)
             self._advance()
         
-        # Токенизируем собранное содержимое
-        content_text = ''.join(content_parts)
+        # Токенизируем собранное содержимое с сохранением пробелов
+        # ИСПРАВЛЕНИЕ: Правильно восстанавливаем пробелы между токенами
+        if not content_parts:
+            content_text = ""
+        else:
+            # Соединяем токены с пробелами, НО НЕ рядом с : , ( )
+            content_text = ""
+            for i, part in enumerate(content_parts):
+                if i > 0:
+                    prev_part = content_parts[i-1]
+                    # НЕ добавляем пробел:
+                    # - перед или после двоеточия :
+                    # - перед или после запятой , 
+                    # - перед или после скобок ( )
+                    if not (part in [":", ",", "(", ")"] or 
+                           prev_part in [":", ",", "(", ")"]):
+                        content_text += " "
+                content_text += part
         
         # ИСПРАВЛЕНИЕ: Сохраняем оригинальный текст для восстановления якорей с пробелами
         self._current_placeholder_content = content_text

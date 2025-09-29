@@ -323,7 +323,7 @@ class TemplateLexer:
                 return self._tokenize_inside_placeholder()  # Рекурсивно продолжаем
         
         # Проверяем специальные символы
-        for token_type in [TokenType.COLON, TokenType.AT, TokenType.COMMA, TokenType.LBRACKET, TokenType.RBRACKET, TokenType.HASH]:
+        for token_type in [TokenType.COLON, TokenType.AT, TokenType.COMMA, TokenType.LBRACKET, TokenType.RBRACKET, TokenType.HASH, TokenType.LPAREN, TokenType.RPAREN]:
             pattern = self._PATTERNS[token_type]
             match = pattern.match(self.text, self.position)
             if match:
@@ -342,12 +342,18 @@ class TemplateLexer:
                 self._advance(len(value))
                 return Token(TokenType.TEXT, value, start_pos, start_line, start_column)
         
-        # Проверяем идентификаторы
+        # Проверяем идентификаторы и ключевые слова
         pattern = self._PATTERNS[TokenType.IDENTIFIER]
         match = pattern.match(self.text, self.position)
         if match:
             value = match.group(0)
             self._advance(len(value))
+            
+            # Проверяем ключевые слова
+            keyword_type = self._KEYWORDS.get(value)
+            if keyword_type:
+                return Token(keyword_type, value, start_pos, start_line, start_column)
+            
             return Token(TokenType.IDENTIFIER, value, start_pos, start_line, start_column)
         
         # Неожиданный символ
