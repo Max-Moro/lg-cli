@@ -140,7 +140,7 @@ Minimum specs.
 
 Required packages.
 
-### Download
+#### Download
 
 Get the installer.
 
@@ -167,7 +167,7 @@ ${md:nested#Hardware}
     assert "Get the installer." in result
     
     # Hardware должен быть только минимальные specs
-    assert result.count("Minimum specs.") >= 2  # встречается в обеих секциях
+    assert result.count("Minimum specs.") == 2  # встречается в обеих секциях
 
 
 def test_anchor_nonexistent_section_error(md_project):
@@ -179,9 +179,77 @@ def test_anchor_nonexistent_section_error(md_project):
 ${md:docs/api#NonexistentSection}
 """)
     
-    # Должна возникнуть ошибка о том, что секция не найдена
-    with pytest.raises(Exception):  # RuntimeError или другая ошибка
+    # Должна возникнуть TemplateProcessingError с информативным сообщением
+    from lg.template.processor import TemplateProcessingError
+    with pytest.raises(TemplateProcessingError) as exc_info:
         render_template(root, "ctx:anchor-notfound-test")
+    
+    # Проверяем что сообщение содержит информацию о проблеме
+    error_message = str(exc_info.value)
+    assert "NonexistentSection" in error_message
+    assert "not found" in error_message
+    assert "Available sections" in error_message
+    # Проверяем что показываются доступные секции
+    assert "Authentication" in error_message
+    assert "Endpoints" in error_message
+
+
+def test_anchor_error_document_without_headings(md_project):
+    """Тест ошибки при попытке найти якорь в документе без заголовков."""
+    root = md_project
+
+    # Создаем документ без заголовков
+    write_markdown(root / "no-headings.md",
+                   title="",
+                   content="Just plain text without any headings.\n\nMore text here.")
+
+    create_template(root, "anchor-no-headings-test", """# No Headings Test
+
+${md:no-headings#SomeSection}
+""")
+
+    from lg.template.processor import TemplateProcessingError
+    with pytest.raises(TemplateProcessingError) as exc_info:
+        render_template(root, "ctx:anchor-no-headings-test")
+
+    error_message = str(exc_info.value)
+    assert "SomeSection" in error_message
+    assert "document has no sections" in error_message
+
+
+def test_anchor_error_with_similar_headings(md_project):
+    """Тест ошибки якоря с показом похожих заголовков для помощи пользователю."""
+    root = md_project
+
+    write_markdown(root / "similar.md",
+                   title="Document",
+                   content="""## Authorization
+
+Authentication using tokens.
+
+## Authentification  
+
+Misspelled section.
+
+## Authentication Guide
+
+Extended auth guide.
+""")
+
+    create_template(root, "anchor-similar-test", """# Similar Test
+
+${md:similar#Authentication}
+""")
+
+    from lg.template.processor import TemplateProcessingError
+    with pytest.raises(TemplateProcessingError) as exc_info:
+        render_template(root, "ctx:anchor-similar-test")
+
+    error_message = str(exc_info.value)
+    assert "Authentication" in error_message
+    assert "not found" in error_message
+    # Должны показаться доступные заголовки для диагностики
+    assert "Authorization" in error_message or "Authentification" in error_message
 
 
 def test_anchor_case_insensitive_matching(md_project):

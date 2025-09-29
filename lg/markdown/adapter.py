@@ -1,11 +1,12 @@
 from __future__ import annotations
 
-from typing import Tuple
+from typing import List, Tuple
 
 from .intervals import build_drop_intervals
-from .model import MarkdownCfg, MarkdownDropCfg, MarkdownKeepCfg, PlaceholderPolicy
+from .model import MarkdownCfg, MarkdownDropCfg, MarkdownKeepCfg, PlaceholderPolicy, ParsedDoc, SectionRule
 from .normalize import normalize_markdown
 from .parser import parse_markdown
+from .selectors import select_section_intervals
 from .transform import apply_intervals_with_placeholders
 
 
@@ -50,6 +51,8 @@ def process_markdown(text: str, cfg: MarkdownCfg, *, group_size: int, mixed: boo
                 keep_mode=True,
                 keep_frontmatter=keep_cfg.frontmatter,
             )
+            # Validate anchor links in keep mode
+            _validate_anchor_sections_found(doc, keep_cfg.sections, intervals)
         else:
             # drop_cfg is guaranteed to be not None here
             assert drop_cfg is not None, "drop_cfg must not be None in drop mode"
@@ -91,3 +94,46 @@ def process_markdown(text: str, cfg: MarkdownCfg, *, group_size: int, mixed: boo
     )
     meta.update(norm_meta)
     return norm_text, meta
+
+
+def _validate_anchor_sections_found(doc: ParsedDoc, section_rules: List[SectionRule], intervals: list) -> None:
+    """
+    Валидирует что все якорные ссылки найдены в документе.
+    Для keep-режима проверяет что каждое правило нашло хотя бы один заголовок.
+
+    Args:
+        doc: Разобранный документ
+        section_rules: Список правил для поиска секций
+        intervals: Интервалы которые были найдены
+
+    Raises:
+        RuntimeError: Если якорь не найден в документе
+    """
+    if not section_rules:
+        return
+
+    # Проверяем каждое правило индивидуально
+    for rule in section_rules:
+        # Проверяем есть ли правило с anchor-подсказкой в reason
+        if rule.reason and "md placeholder anchor:" in rule.reason:
+            # Находим все интервалы которые создало это правило
+            rule_intervals = select_section_intervals(doc, [rule])
+
+            if not rule_intervals:
+                # Извлекаем информацию об якоре из reason
+                import re
+                anchor_match = re.search(r'md placeholder anchor: #([^(]+)', rule.reason)
+                anchor_name = anchor_match.group(1).strip() if anchor_match else "unknown"
+
+                # Собираем список доступных заголовков для диагностики
+                available_headings = [h.title for h in doc.headings] if doc.headings else []
+
+                if available_headings:
+                    error_msg = (
+                        f"Anchor section '#{anchor_name}' not found in markdown document. "
+                        f"Available sections: {', '.join(available_headings[:5])}{'...' if len(available_headings) > 5 else ''}"
+                    )
+                else:
+                    error_msg = f"Anchor section '#{anchor_name}' not found - document has no sections"
+
+                raise RuntimeError(error_msg)
