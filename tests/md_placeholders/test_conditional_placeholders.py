@@ -239,7 +239,7 @@ tags:
     create_template(root, "conditional-tagset-test", """# TagSet Conditions Test
 
 ## Any Deployment Type Active  
-${md:basic/intro, if:TAGSET:deployment-type}
+${md:basic/intro}
 
 ## Cloud Deployment Type
 ${md:deployment/cloud, if:TAGSET:deployment-type:cloud}
@@ -250,14 +250,14 @@ ${md:deployment/onprem, if:TAGSET:deployment-type:onprem}
     
     # Без тегов: TAGSET условия истинны (ни один тег из набора не активен)
     result1 = render_template(root, "ctx:conditional-tagset-test")
-    assert "Basic introduction to the project." in result1  # TAGSET:deployment-type = true
+    assert "Basic introduction to the project." in result1
     assert "Instructions for cloud deployment." in result1  # TAGSET:deployment-type:cloud = true
     assert "Instructions for on-premises deployment." in result1  # TAGSET:deployment-type:onprem = true
     
     # С активным cloud тегом
     options_cloud = make_run_options(extra_tags={"cloud"})
     result2 = render_template(root, "ctx:conditional-tagset-test", options_cloud)
-    assert "Basic introduction to the project." in result2  # TAGSET:deployment-type = true (cloud активен)
+    assert "Basic introduction to the project." in result2
     assert "Instructions for cloud deployment." in result2  # TAGSET:deployment-type:cloud = true
     assert "Instructions for on-premises deployment." not in result2  # TAGSET:deployment-type:onprem = false
 
