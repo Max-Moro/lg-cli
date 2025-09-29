@@ -29,7 +29,7 @@ class VirtualSectionFactory:
     def __init__(self):
         """Инициализирует фабрику."""
         self._counter = 0
-    
+
     def create_for_markdown_file(
         self, 
         node: MarkdownFileNode,
@@ -179,8 +179,9 @@ class VirtualSectionFactory:
             
             # Создаем правило для включения секции по названию
             # Используем slug-сопоставление для более гибкого поиска
-            # Преобразуем якорь в slug для сопоставления
-            anchor_slug = slugify_github(node.anchor)
+            # Нормализуем якорь перед созданием slug (добавляем пробелы в разумных местах)
+            normalized_anchor = self._normalize_anchor_for_slug(node.anchor)
+            anchor_slug = slugify_github(normalized_anchor)
             section_rule = SectionRule(
                 match=SectionMatch(
                     kind="slug",
@@ -195,6 +196,34 @@ class VirtualSectionFactory:
             )
         
         return config
+
+    def _normalize_anchor_for_slug(self, anchor: str) -> str:
+        """
+        Нормализует якорь для создания согласованного slug.
+
+        Добавляет пробелы после двоеточий и других разделителей,
+        чтобы slug от якоря соответствовал slug от реального заголовка.
+
+        Args:
+            anchor: Исходный якорь из плейсхолдера
+
+        Returns:
+            Нормализованный якорь
+        """
+        import re
+
+        # Добавляем пробел после двоеточия, если его нет
+        # FAQ:Common Questions -> FAQ: Common Questions
+        normalized = re.sub(r':(?!\s)', ': ', anchor)
+
+        # Добавляем пробел после амперсанда, если его нет
+        # API&Usage -> API & Usage
+        normalized = re.sub(r'&(?!\s)', ' & ', normalized)
+
+        # Убираем лишние пробелы
+        normalized = re.sub(r'\s+', ' ', normalized).strip()
+
+        return normalized
 
 
 __all__ = ["VirtualSectionFactory"]
