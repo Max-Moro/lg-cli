@@ -40,6 +40,7 @@ class TemplateParser:
         self.tokens = tokens
         self.position = 0
         self.condition_parser = ConditionParser()
+        self._current_placeholder_content = ""  # Для сохранения оригинального текста плейсхолдера
         
     def parse(self) -> TemplateAST:
         """
@@ -96,8 +97,17 @@ class TemplateParser:
         """
         self._consume(TokenType.PLACEHOLDER_START)
         
+        # ИСПРАВЛЕНИЕ: Сохраняем исходный TEXT токен перед его разбором
+        original_text_token = None
+        if not self._is_at_end() and self._current_token().type == TokenType.TEXT:
+            original_text_token = self._current_token()
+        
         # Токенизируем содержимое плейсхолдера
         content_tokens = self._collect_placeholder_content()
+        
+        # Если у нас есть исходный TEXT токен, используем его для восстановления пробелов
+        if original_text_token:
+            self._current_placeholder_content = original_text_token.value
         
         self._consume(TokenType.PLACEHOLDER_END)
         
@@ -330,7 +340,6 @@ class TemplateParser:
             i += 1  # Пропускаем #
             
             # Собираем все токены до запятой или конца как якорь
-            # Принимаем любые токены, кроме запятой
             anchor_parts = []
             while i < len(tokens) and tokens[i].type != TokenType.COMMA:
                 # Добавляем все токены в якорь, включая специальные символы
@@ -844,6 +853,10 @@ class TemplateParser:
         
         # Токенизируем собранное содержимое
         content_text = ''.join(content_parts)
+        
+        # ИСПРАВЛЕНИЕ: Сохраняем оригинальный текст для восстановления якорей с пробелами
+        self._current_placeholder_content = content_text
+        
         if content_text.strip():
             # Создаем новый лексер и используем правильный метод токенизации
             temp_lexer = TemplateLexer(content_text)

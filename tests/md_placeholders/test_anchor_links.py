@@ -287,7 +287,7 @@ ${md:case-test#API REFERENCE}
 
 
 def test_anchor_with_special_characters(md_project):
-    """Тест якорей с специальными символами."""
+    """Тест якорей с специальными символами - должны использоваться slug-стиль."""
     root = md_project
     
     write_markdown(root / "special.md",
@@ -312,16 +312,16 @@ Special formatting.
     create_template(root, "anchor-special-test", """# Special Characters Test
 
 ## Overview section
-${md:special#Section 1: Overview}
+${md:special#section-1-overview}
 
 ## Advanced section (with dash and dot)
-${md:special#Section 2.1 - Advanced}
+${md:special#section-21-advanced}
 
 ## FAQ with parentheses
-${md:special#FAQ (Frequently Asked Questions)}
+${md:special#faq-frequently-asked-questions}
 
 ## Quoted section
-${md:special#"Quoted Section" Title}
+${md:special#quoted-section-title}
 """)
     
     result = render_template(root, "ctx:anchor-special-test")
