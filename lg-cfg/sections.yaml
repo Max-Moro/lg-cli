@@ -30,8 +30,23 @@ src-short:
           - "/cli.py"
           - "/types.py"
           - "/engine.py"
-          - "/config/model.py"
-          - "/config/load.py"
+          - "/section_processor.py"
+          - "/config/"
+          - "/adapters/"
+        children:
+          config:
+            mode: allow
+            allow:
+              - "/load.py"
+              - "/model.py"
+          adapters:
+            mode: allow
+            allow:
+              - "/__init__.py"
+              - "/registry.py"
+              - "/base.py"
+              - "/processor.py"
+              - "/markdown.py"
 
 migrations:
   extensions: [".py"]
