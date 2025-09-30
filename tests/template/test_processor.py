@@ -176,7 +176,7 @@ class TestSectionHandling:
     @pytest.fixture
     def processor(self, mock_run_ctx):
         """Создает процессор с мок обработчиком секций."""
-        processor = TemplateProcessor(mock_run_ctx)
+        processor = TemplateProcessor(mock_run_ctx, validate_paths=False)
         
         # Мок обработчик секций
         def mock_section_handler(section_ref, template_ctx):

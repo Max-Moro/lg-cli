@@ -63,6 +63,9 @@ class TemplateResolver:
         self.current_cfg_root = run_ctx.root / "lg-cfg"
         self.validate_paths = validate_paths
         
+        # Стек origin'ов для поддержки вложенных включений
+        self._origin_stack: List[str] = ["self"]
+        
         # Функции загрузки (можно переопределить для тестирования)
         if load_template_fn is not None:
             self.load_template_fn = load_template_fn
@@ -309,8 +312,10 @@ class TemplateResolver:
             cfg_root = self._resolve_cfg_root_safe(origin)
             return cfg_root, name
         else:
-            # Простая ссылка без адресности
-            return self.current_cfg_root, section_name
+            # Простая ссылка без адресности - использует текущий origin из стека
+            current_origin = self._origin_stack[-1] if self._origin_stack else "self"
+            cfg_root = self._resolve_cfg_root_safe(current_origin)
+            return cfg_root, section_name
     
     def _load_and_parse_include(self, node: IncludeNode, context: str) -> ResolvedInclude:
         """
@@ -354,9 +359,13 @@ class TemplateResolver:
         except Exception as e:
             raise ResolverError(f"Failed to parse {node.kind} '{locator.resource}': {e}", context)
         
-        # Рекурсивно резолвим включение
+        # Рекурсивно резолвим включение с новым origin в стеке
         include_context = f"{context}/{node.kind}:{locator.resource}"
-        resolved_ast = self._resolve_ast_recursive(include_ast, include_context)
+        self._origin_stack.append(locator.origin)
+        try:
+            resolved_ast = self._resolve_ast_recursive(include_ast, include_context)
+        finally:
+            self._origin_stack.pop()
         
         return ResolvedInclude(
             kind=node.kind,

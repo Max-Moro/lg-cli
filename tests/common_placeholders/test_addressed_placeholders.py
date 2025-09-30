@@ -246,13 +246,6 @@ ${tpl@apps/web:web-with-core}
     assert "def get_client():" in result  # из core-api
 
 
-def test_addressed_placeholder_relative_vs_absolute_paths():
-    """Тест относительных vs абсолютных путей в адресации."""
-    # Все пути в адресации считаются относительно корня репозитория
-    # Этот тест должен проверить, что различные способы записи пути дают одинаковый результат
-    pass  # Детальная логика зависит от реализации resolver'а
-
-
 @pytest.mark.parametrize("origin,section,expected_content", [
     ("apps/web", "web-src", "export const App"),
     ("apps/web", "web-docs", "Deployment instructions"), 
