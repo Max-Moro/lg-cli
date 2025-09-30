@@ -59,4 +59,4 @@ tests:
             mode: allow
             allow:
               - "/conftest.py"
-              - "/test_basic_section_placeholders.py"
+              - "/test_addressed_placeholders.py"
