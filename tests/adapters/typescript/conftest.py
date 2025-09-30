@@ -5,7 +5,8 @@ Shared fixtures and utilities for TypeScript adapter tests.
 import pytest
 
 from lg.adapters.typescript import TypeScriptCfg
-from tests.conftest import lctx_ts, lctx, stub_tokenizer  # noqa: F401
+from tests.conftest import lctx_ts, lctx  # noqa: F401
+from tests.infrastructure.testing_utils import stub_tokenizer
 from ..golden_utils import assert_golden_match, load_sample_code  # noqa: F401
 
 # Импорт из унифицированной инфраструктуры

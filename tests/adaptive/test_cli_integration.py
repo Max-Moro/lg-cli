@@ -77,7 +77,7 @@ def test_list_tag_sets_cli(adaptive_project, monkeypatch):
 
 def test_render_with_mode_flags(adaptive_project, monkeypatch):
     """Тест рендеринга с флагами --mode.""" 
-    from tests.conftest import write
+    from tests.infrastructure.file_utils import write
     
     root = adaptive_project
     monkeypatch.chdir(root)
@@ -121,7 +121,7 @@ ${src}
 
 def test_render_with_tags_flags(adaptive_project, monkeypatch):
     """Тест рендеринга с флагом --tags."""
-    from tests.conftest import write
+    from tests.infrastructure.file_utils import write
     
     root = adaptive_project
     monkeypatch.chdir(root)
@@ -167,7 +167,7 @@ ${docs}
 
 def test_combined_modes_and_tags_cli(adaptive_project, monkeypatch):
     """Тест комбинированного использования --mode и --tags."""
-    from tests.conftest import write
+    from tests.infrastructure.file_utils import write
     
     root = adaptive_project
     monkeypatch.chdir(root)
@@ -275,7 +275,7 @@ def test_federated_modes_cli(federated_project, monkeypatch):
 
 def test_federated_rendering_cli(federated_project, monkeypatch):
     """Тест рендеринга с режимами из дочерних скоупов через CLI."""
-    from tests.conftest import write
+    from tests.infrastructure.file_utils import write
     
     root = federated_project
     monkeypatch.chdir(root)
@@ -321,7 +321,7 @@ def test_empty_tags_parameter(adaptive_project, monkeypatch):
 
 def test_whitespace_in_tags_parameter(adaptive_project, monkeypatch):
     """Тест обработки пробелов в параметре --tags."""
-    from tests.conftest import write
+    from tests.infrastructure.file_utils import write
     
     root = adaptive_project  
     monkeypatch.chdir(root)
@@ -346,7 +346,7 @@ def test_whitespace_in_tags_parameter(adaptive_project, monkeypatch):
 
 def test_multiple_mode_parameters(adaptive_project, monkeypatch):
     """Тест множественных параметров --mode."""
-    from tests.conftest import write
+    from tests.infrastructure.file_utils import write
     
     root = adaptive_project
     monkeypatch.chdir(root)

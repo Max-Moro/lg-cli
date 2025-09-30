@@ -16,6 +16,7 @@
 # Основные утилиты, которые должны быть доступны везде
 from .file_utils import write, write_source_file, write_markdown
 from .rendering_utils import render_template, make_run_options, make_engine
+from .testing_utils import stub_tokenizer, TokenServiceStub
 from .config_builders import (
     create_sections_yaml, create_section_fragment, create_modes_yaml, create_tags_yaml,
     create_basic_lg_cfg, create_basic_sections_yaml, create_template,
@@ -36,6 +37,9 @@ __all__ = [
     
     # Rendering utilities  
     "render_template", "make_run_options", "make_engine",
+    
+    # Testing utilities
+    "stub_tokenizer", "TokenServiceStub",
     
     # Config builders
     "create_sections_yaml", "create_modes_yaml", "create_tags_yaml",

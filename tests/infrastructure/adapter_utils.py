@@ -15,7 +15,7 @@ from lg.adapters.python import PythonAdapter, PythonCfg
 from lg.adapters.typescript import TypeScriptAdapter, TypeScriptCfg
 from lg.adapters.markdown import MarkdownAdapter
 from lg.stats.tokenizer import default_tokenizer
-from tests.conftest import stub_tokenizer
+from .testing_utils import stub_tokenizer
 
 
 # ===== Python Adapter Utils =====

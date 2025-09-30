@@ -10,11 +10,10 @@ import pytest
 from lg.adapters.context import LightweightContext
 from lg.stats import TokenService
 
+# Импорт из унифицированной инфраструктуры
+from tests.infrastructure.file_utils import write
+from tests.infrastructure.testing_utils import TokenServiceStub, stub_tokenizer
 
-def write(p: Path, text: str) -> Path:
-    p.parent.mkdir(parents=True, exist_ok=True)
-    p.write_text(text, encoding="utf-8")
-    return p
 
 @pytest.fixture
 def tmpproj(tmp_path: Path):
@@ -106,24 +105,7 @@ def jload(s: str):
     return json.loads(s)
 
 # ==== Заглушки для энкодинга токенов ====
-
-class TokenServiceStub(TokenService):
-    """Тестовый стаб TokenService с дефолтным энкодером."""
-
-    def is_economical(self, original: str, replacement: str, *, min_ratio: float, replacement_is_none: bool,
-                      min_abs_savings_if_none: int) -> bool:
-        """Позволяет в тестах делать замену плейсхолдеров всегда."""
-        return True
-
-def stub_tokenizer() -> TokenService:
-    """Быстрое создание сервиса токенизации без обращения к конфигу."""
-    import tiktoken
-    from lg.stats.tokenizer import DEFAULT_ENCODER
-    return TokenServiceStub(
-        root=None,
-        model_id=None,
-        encoder=tiktoken.get_encoding(DEFAULT_ENCODER)
-    )
+# Перенесены в tests.infrastructure.testing_utils
 
 # Экспортируем хелперы для использования в других тестах
-__all__ = ["lctx", "lctx_py", "lctx_ts", "lctx_md", "write", "run_cli", "jload", "stub_tokenizer"]
+__all__ = ["lctx", "lctx_py", "lctx_ts", "lctx_md", "run_cli", "jload", "stub_tokenizer"]

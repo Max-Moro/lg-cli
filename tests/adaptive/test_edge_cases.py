@@ -18,7 +18,7 @@ from .conftest import (
 
 def test_empty_configuration_defaults(tmp_path):
     """Тест поведения при отсутствии конфигурации адаптивных возможностей."""
-    from tests.conftest import write
+    from tests.infrastructure.file_utils import write
     
     root = tmp_path
     
@@ -53,7 +53,7 @@ test-section:
 
 def test_circular_includes_prevention(tmp_path):
     """Тест предотвращения циклических включений в федеративной структуре.""" 
-    from tests.conftest import write
+    from tests.infrastructure.file_utils import write
     
     root = tmp_path
     

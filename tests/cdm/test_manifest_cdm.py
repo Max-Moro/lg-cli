@@ -11,7 +11,7 @@ from lg.config import load_config
 from lg.template.context import TemplateContext
 from lg.types import SectionRef
 from lg.vcs import VcsProvider
-from tests.conftest import write
+from tests.infrastructure.file_utils import write
 from .conftest import mk_run_ctx
 
 
