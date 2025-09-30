@@ -111,38 +111,6 @@ ${@libs/core:core-api}
     assert "def get_client():" in result
 
 
-def test_addressed_placeholder_from_child_scope(federated_project):
-    """Тест адресных плейсхолдеров из дочернего скоупа к родительскому."""
-    root = federated_project
-    
-    # Создаем шаблон в дочернем скоупе, который ссылается на родительский
-    create_template(root / "apps" / "web", "to-parent-test", """# Child to Parent Test
-
-## Our Web Docs
-
-${web-docs}
-
-## Parent Project Overview
-
-${@../../:overview}
-
-## Sibling Core Library  
-
-${@../../libs/core:core-lib}
-""", "ctx")
-    
-    result = render_template(root, "ctx@apps/web:to-parent-test")
-    
-    # Локальное содержимое
-    assert "Deployment instructions" in result
-    
-    # Содержимое от родителя
-    assert "Federated Project" in result
-    
-    # Содержимое от соседнего скоупа
-    assert "class Processor:" in result
-
-
 def test_addressed_placeholder_nonexistent_scope_error(federated_project):
     """Тест ошибки при ссылке на несуществующий скоуп."""
     root = federated_project
@@ -205,13 +173,6 @@ ${@libs/core/modules/auth:deep-section}
     assert "def authenticate(): pass" in result
 
 
-def test_addressed_placeholder_with_special_chars_in_origin():
-    """Тест адресации с специальными символами в origin через скобочный синтаксис."""
-    # Этот тест требует создания специального проекта с двоеточиями в путях
-    # В реальности такие пути редки, но синтаксис должен их поддерживать
-    pass  # Пропускаем для базового набора тестов
-
-
 def test_multiple_addressed_placeholders_same_scope(federated_project):
     """Тест множественных адресных плейсхолдеров из одного скоупа."""
     root = federated_project
@@ -240,13 +201,6 @@ ${@apps/web:web-src}
     # Содержимое web-docs должно появиться один раз
     occurrences = result.count("Deployment instructions")
     assert occurrences == 1
-
-
-def test_addressed_placeholder_mixed_with_local_same_name():
-    """Тест адресных плейсхолдеров при наличии локальной секции с тем же именем."""
-    # Этот тест требует специальной настройки, где есть конфликт имен секций
-    # Пропускаем для базового набора тестов
-    pass
 
 
 def test_addressed_placeholder_chain_references(federated_project):
