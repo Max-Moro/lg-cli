@@ -22,233 +22,20 @@ from lg.run_context import RunContext
 from lg.stats.tokenizer import default_tokenizer
 from lg.types import RunOptions, ModelName
 from lg.vcs import NullVcs
-from tests.conftest import write  # используем уже существующий хелпер
 
-
-# ====================== Типы для конфигурации ======================
-
-@dataclass
-class ModeConfig:
-    """Конфигурация одного режима."""
-    title: str
-    description: str = ""
-    tags: List[str] = field(default_factory=list)
-    options: Dict[str, Any] = field(default_factory=dict)
-
-@dataclass  
-class ModeSetConfig:
-    """Конфигурация набора режимов."""
-    title: str
-    modes: Dict[str, ModeConfig]
-
-@dataclass
-class TagConfig:
-    """Конфигурация одного тега.""" 
-    title: str
-    description: str = ""
-
-@dataclass
-class TagSetConfig:
-    """Конфигурация набора тегов."""
-    title: str
-    tags: Dict[str, TagConfig]
+# Импортируем из унифицированной инфраструктуры
+from tests.infrastructure import (
+    write, write_modes_yaml, write_tags_yaml, create_basic_sections_yaml,
+    ModeConfig, ModeSetConfig, TagConfig, TagSetConfig,
+    make_run_options as base_make_run_options
+)
 
 
 # ====================== Хелперы для создания конфигурации ======================
-
-def write_modes_yaml(root: Path, mode_sets: Dict[str, ModeSetConfig], include: Optional[List[str]] = None, append: bool = False) -> Path:
-    """
-    Создает файл modes.yaml с указанными наборами режимов.
-    
-    Args:
-        root: Корень проекта
-        mode_sets: Словарь наборов режимов
-        include: Список дочерних скоупов для включения
-        append: Если True, дополняет существующую конфигурацию
-        
-    Returns:
-        Путь к созданному файлу
-    """
-    from ruamel.yaml import YAML
-    
-    modes_file = root / "lg-cfg" / "modes.yaml"
-    yaml = YAML()
-    yaml.preserve_quotes = True
-    
-    # Загружаем существующую конфигурацию если append=True
-    existing_data = {}
-    if append and modes_file.exists():
-        with modes_file.open(encoding="utf-8") as f:
-            existing_data = yaml.load(f) or {}
-    
-    # Преобразуем наши mode_sets в формат YAML
-    new_data = {}
-    
-    if mode_sets:
-        new_mode_sets = {}
-        for set_name, mode_set in mode_sets.items():
-            modes_dict = {}
-            for mode_name, mode in mode_set.modes.items():
-                mode_dict = {"title": mode.title}
-                if mode.description:
-                    mode_dict["description"] = mode.description
-                if mode.tags:
-                    mode_dict["tags"] = mode.tags
-                mode_dict.update(mode.options)
-                modes_dict[mode_name] = mode_dict
-            
-            new_mode_sets[set_name] = {
-                "title": mode_set.title,
-                "modes": modes_dict
-            }
-        new_data["mode-sets"] = new_mode_sets
-    
-    if include:
-        new_data["include"] = include
-    
-    # Объединяем с существующими данными если append=True
-    if append:
-        if "mode-sets" in existing_data and "mode-sets" in new_data:
-            existing_data["mode-sets"].update(new_data["mode-sets"])
-        elif "mode-sets" in new_data:
-            existing_data["mode-sets"] = new_data["mode-sets"]
-        
-        if "include" in new_data:
-            existing_data["include"] = new_data["include"]
-        
-        final_data = existing_data
-    else:
-        final_data = new_data
-    
-    # Записываем обратно
-    modes_file.parent.mkdir(parents=True, exist_ok=True)
-    with modes_file.open("w", encoding="utf-8") as f:
-        yaml.dump(final_data, f)
-    
-    return modes_file
+# Все YAML билдеры теперь импортированы из tests.infrastructure
 
 
-def write_tags_yaml(
-    root: Path, 
-    tag_sets: Optional[Dict[str, TagSetConfig]] = None,
-    global_tags: Optional[Dict[str, TagConfig]] = None, 
-    include: Optional[List[str]] = None,
-    append: bool = False
-) -> Path:
-    """
-    Создает файл tags.yaml с указанными наборами тегов.
-    
-    Args:
-        root: Корень проекта
-        tag_sets: Словарь наборов тегов
-        global_tags: Словарь глобальных тегов
-        include: Список дочерних скоупов для включения
-        append: Если True, дополняет существующую конфигурацию
-        
-    Returns:
-        Путь к созданному файлу
-    """
-    from ruamel.yaml import YAML
-    
-    tags_file = root / "lg-cfg" / "tags.yaml"
-    yaml = YAML()
-    yaml.preserve_quotes = True
-    
-    # Загружаем существующую конфигурацию если append=True
-    existing_data = {}
-    if append and tags_file.exists():
-        with tags_file.open(encoding="utf-8") as f:
-            existing_data = yaml.load(f) or {}
-    
-    # Преобразуем наши данные в формат YAML
-    new_data = {}
-    
-    if tag_sets:
-        new_tag_sets = {}
-        for set_name, tag_set in tag_sets.items():
-            tags_dict = {}
-            for tag_name, tag in tag_set.tags.items():
-                tag_dict = {"title": tag.title}
-                if tag.description:
-                    tag_dict["description"] = tag.description
-                tags_dict[tag_name] = tag_dict
-            
-            new_tag_sets[set_name] = {
-                "title": tag_set.title,
-                "tags": tags_dict
-            }
-        new_data["tag-sets"] = new_tag_sets
-    
-    if global_tags:
-        new_global_tags = {}
-        for tag_name, tag in global_tags.items():
-            tag_dict = {"title": tag.title}
-            if tag.description:
-                tag_dict["description"] = tag.description
-            new_global_tags[tag_name] = tag_dict
-        new_data["tags"] = new_global_tags
-    
-    if include:
-        new_data["include"] = include
-    
-    # Объединяем с существующими данными если append=True
-    if append:
-        if "tag-sets" in existing_data and "tag-sets" in new_data:
-            existing_data["tag-sets"].update(new_data["tag-sets"])
-        elif "tag-sets" in new_data:
-            existing_data["tag-sets"] = new_data["tag-sets"]
-        
-        if "tags" in existing_data and "tags" in new_data:
-            existing_data["tags"].update(new_data["tags"])
-        elif "tags" in new_data:
-            existing_data["tags"] = new_data["tags"]
-        
-        if "include" in new_data:
-            existing_data["include"] = new_data["include"]
-        
-        final_data = existing_data
-    else:
-        final_data = new_data
-    
-    # Записываем обратно
-    tags_file.parent.mkdir(parents=True, exist_ok=True)
-    with tags_file.open("w", encoding="utf-8") as f:
-        yaml.dump(final_data, f)
-    
-    return tags_file
-
-
-def create_basic_sections_yaml(root: Path) -> Path:
-    """Создает базовый sections.yaml для тестов."""
-    content = textwrap.dedent("""
-    src:
-      extensions: [".py", ".md"]
-      code_fence: true
-      filters:
-        mode: allow
-        allow:
-          - "/src/**"
-    
-    docs:
-      extensions: [".md"]
-      code_fence: false
-      markdown:
-        max_heading_level: 2
-      filters:
-        mode: allow  
-        allow:
-          - "/docs/**"
-    
-    tests:
-      extensions: [".py"]
-      code_fence: true
-      filters:
-        mode: allow
-        allow:
-          - "/tests/**"
-    """).strip() + "\n"
-    
-    return write(root / "lg-cfg" / "sections.yaml", content)
+# write_tags_yaml и create_basic_sections_yaml теперь импортированы из infrastructure
 
 
 # ====================== Готовые конфигурации ======================
@@ -337,7 +124,7 @@ def make_run_options(
     extra_tags: Optional[Set[str]] = None
 ) -> RunOptions:
     """
-    Создает RunOptions с указанными параметрами.
+    Создает RunOptions с указанными параметрами для адаптивных тестов.
     
     Args:
         model: Модель для токенизации
@@ -347,9 +134,10 @@ def make_run_options(
     Returns:
         Настроенный RunOptions
     """
-    return RunOptions(
-        model=ModelName(model),
-        modes=modes or {},
+    # Используем базовую функцию с адаптацией типов
+    return base_make_run_options(
+        model=model,
+        modes=modes,
         extra_tags=extra_tags or set()
     )
 

@@ -391,12 +391,184 @@ def get_multilang_sections_config() -> Dict[str, Dict[str, Any]]:
     }
 
 
+def write_modes_yaml(root: Path, mode_sets, include: Optional[List[str]] = None, append: bool = False) -> Path:
+    """
+    Создает файл modes.yaml с поддержкой ModeSetConfig классов.
+    
+    Args:
+        root: Корень проекта
+        mode_sets: Словарь наборов режимов (ModeSetConfig или dict)
+        include: Список дочерних скоупов для включения
+        append: Если True, дополняет существующую конфигурацию
+        
+    Returns:
+        Путь к созданному файлу
+    """
+    from ruamel.yaml import YAML
+    
+    modes_file = root / "lg-cfg" / "modes.yaml"
+    yaml = YAML()
+    yaml.preserve_quotes = True
+    
+    # Загружаем существующую конфигурацию если append=True
+    existing_data = {}
+    if append and modes_file.exists():
+        with modes_file.open(encoding="utf-8") as f:
+            existing_data = yaml.load(f) or {}
+    
+    # Преобразуем наши mode_sets в формат YAML
+    new_data = {}
+    
+    if mode_sets:
+        # Проверяем, являются ли значения ModeSetConfig объектами
+        if hasattr(list(mode_sets.values())[0], 'title') and hasattr(list(mode_sets.values())[0], 'modes'):
+            # Это ModeSetConfig объекты
+            new_mode_sets = {}
+            for set_name, mode_set in mode_sets.items():
+                modes_dict = {}
+                for mode_name, mode in mode_set.modes.items():
+                    mode_dict = {"title": mode.title}
+                    if mode.description:
+                        mode_dict["description"] = mode.description
+                    if mode.tags:
+                        mode_dict["tags"] = mode.tags
+                    mode_dict.update(mode.options)
+                    modes_dict[mode_name] = mode_dict
+                
+                new_mode_sets[set_name] = {
+                    "title": mode_set.title,
+                    "modes": modes_dict
+                }
+            new_data["mode-sets"] = new_mode_sets
+        else:
+            # Это обычные dict - используем существующую логику
+            new_data["mode-sets"] = mode_sets
+    
+    if include:
+        new_data["include"] = include
+    
+    # Объединяем с существующими данными если append=True
+    if append:
+        if "mode-sets" in existing_data and "mode-sets" in new_data:
+            existing_data["mode-sets"].update(new_data["mode-sets"])
+        elif "mode-sets" in new_data:
+            existing_data["mode-sets"] = new_data["mode-sets"]
+        
+        if "include" in new_data:
+            existing_data["include"] = new_data["include"]
+        
+        final_data = existing_data
+    else:
+        final_data = new_data
+    
+    # Записываем обратно
+    modes_file.parent.mkdir(parents=True, exist_ok=True)
+    with modes_file.open("w", encoding="utf-8") as f:
+        yaml.dump(final_data, f)
+    
+    return modes_file
+
+
+def write_tags_yaml(
+    root: Path, 
+    tag_sets=None,
+    global_tags=None, 
+    include: Optional[List[str]] = None,
+    append: bool = False
+) -> Path:
+    """
+    Создает файл tags.yaml с поддержкой TagSetConfig классов.
+    
+    Args:
+        root: Корень проекта
+        tag_sets: Словарь наборов тегов (TagSetConfig или dict)
+        global_tags: Словарь глобальных тегов (TagConfig или dict)
+        include: Список дочерних скоупов для включения
+        append: Если True, дополняет существующую конфигурацию
+        
+    Returns:
+        Путь к созданному файлу
+    """
+    from ruamel.yaml import YAML
+    
+    tags_file = root / "lg-cfg" / "tags.yaml"
+    yaml = YAML()
+    yaml.preserve_quotes = True
+    
+    # Загружаем существующую конфигурацию если append=True
+    existing_data = {}
+    if append and tags_file.exists():
+        with tags_file.open(encoding="utf-8") as f:
+            existing_data = yaml.load(f) or {}
+    
+    new_data = {}
+    
+    if tag_sets:
+        # Проверяем, являются ли значения TagSetConfig объектами
+        if hasattr(list(tag_sets.values())[0], 'title') and hasattr(list(tag_sets.values())[0], 'tags'):
+            new_tag_sets = {}
+            for set_name, tag_set in tag_sets.items():
+                tags_dict = {}
+                for tag_name, tag in tag_set.tags.items():
+                    tag_dict = {"title": tag.title}
+                    if tag.description:
+                        tag_dict["description"] = tag.description
+                    tags_dict[tag_name] = tag_dict
+                
+                new_tag_sets[set_name] = {
+                    "title": tag_set.title,
+                    "tags": tags_dict
+                }
+            new_data["tag-sets"] = new_tag_sets
+        else:
+            # Это обычные dict
+            new_data["tag-sets"] = tag_sets
+    
+    if global_tags:
+        # Аналогично для глобальных тегов
+        if hasattr(list(global_tags.values())[0], 'title'):
+            tags_dict = {}
+            for tag_name, tag in global_tags.items():
+                tag_dict = {"title": tag.title}
+                if tag.description:
+                    tag_dict["description"] = tag.description
+                tags_dict[tag_name] = tag_dict
+            new_data["tags"] = tags_dict
+        else:
+            new_data["tags"] = global_tags
+    
+    if include:
+        new_data["include"] = include
+    
+    # Объединяем с существующими данными если append=True
+    if append:
+        for key in ["tag-sets", "tags", "include"]:
+            if key in new_data:
+                if key in existing_data and isinstance(existing_data[key], dict) and isinstance(new_data[key], dict):
+                    existing_data[key].update(new_data[key])
+                else:
+                    existing_data[key] = new_data[key]
+        final_data = existing_data
+    else:
+        final_data = new_data
+    
+    # Записываем обратно
+    tags_file.parent.mkdir(parents=True, exist_ok=True)
+    with tags_file.open("w", encoding="utf-8") as f:
+        yaml.dump(final_data, f)
+    
+    return tags_file
+
+
 __all__ = [
     # YAML builders
     "create_sections_yaml", "create_section_fragment", "create_modes_yaml", "create_tags_yaml",
     
     # Simple builders
     "create_basic_lg_cfg", "create_basic_sections_yaml", "create_template",
+    
+    # Adaptive builders (поддерживают классы конфигурации)
+    "write_modes_yaml", "write_tags_yaml",
     
     # Predefined configs
     "get_basic_sections_config", "get_multilang_sections_config"

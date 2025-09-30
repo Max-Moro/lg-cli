@@ -19,6 +19,7 @@ from .rendering_utils import render_template, make_run_options, make_engine
 from .config_builders import (
     create_sections_yaml, create_section_fragment, create_modes_yaml, create_tags_yaml,
     create_basic_lg_cfg, create_basic_sections_yaml, create_template,
+    write_modes_yaml, write_tags_yaml,
     get_basic_sections_config, get_multilang_sections_config
 )
 from .adapter_utils import make_adapter, make_adapter_real, is_tree_sitter_available
@@ -26,6 +27,9 @@ from .project_builders import ProjectBuilder, create_basic_project, create_adapt
 
 # Основные фикстуры 
 from .fixtures import tmp_project, make_run_context
+
+# Адаптивные конфигурации
+from .adaptive_config import ModeConfig, ModeSetConfig, TagConfig, TagSetConfig
 
 __all__ = [
     # File utilities
@@ -35,7 +39,8 @@ __all__ = [
     "render_template", "make_run_options", "make_engine",
     
     # Config builders
-    "create_sections_yaml", "create_modes_yaml", "create_tags_yaml",
+    "create_sections_yaml", "create_modes_yaml", "create_tags_yaml", 
+    "write_modes_yaml", "write_tags_yaml",
     
     # Adapter utilities
     "make_adapter", "make_adapter_real", "is_tree_sitter_available",
@@ -45,4 +50,7 @@ __all__ = [
     
     # Fixtures
     "tmp_project", "make_run_context",
+    
+    # Adaptive config classes
+    "ModeConfig", "ModeSetConfig", "TagConfig", "TagSetConfig",
 ]
