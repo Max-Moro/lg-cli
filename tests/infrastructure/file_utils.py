@@ -7,9 +7,7 @@
 
 from __future__ import annotations
 
-import textwrap
 from pathlib import Path
-from typing import Optional
 
 
 def write(p: Path, text: str) -> Path:
@@ -88,10 +86,6 @@ def write_markdown(p: Path, title: str = "", content: str = "", h1_prefix: str =
         lines.append(content.strip())
     
     return write(p, "\n".join(lines) + "\n")
-
-
-# Удалены дублирующие функции create_temp_file и write_text_file
-# Используйте write() напрямую
 
 
 __all__ = [

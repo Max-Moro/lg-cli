@@ -391,12 +391,6 @@ def get_multilang_sections_config() -> Dict[str, Dict[str, Any]]:
     }
 
 
-# create_modes_yaml удален - используйте create_modes_yaml, который поддерживает все типы
-
-
-# create_tags_yaml удален - используйте create_tags_yaml, который поддерживает все типы
-
-
 __all__ = [
     # YAML builders (все поддерживают классы конфигурации)
     "create_sections_yaml", "create_section_fragment", "create_modes_yaml", "create_tags_yaml",

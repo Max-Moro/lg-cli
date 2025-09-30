@@ -9,8 +9,6 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Optional
 
-import pytest
-
 from lg.cache.fs_cache import Cache
 from lg.config.adaptive_loader import AdaptiveConfigLoader, process_adaptive_options
 from lg.run_context import RunContext
@@ -55,6 +53,4 @@ def make_run_context(root: Path, options: Optional[RunOptions] = None) -> RunCon
         active_tags=active_tags
     )
 
-__all__ = [
-    "tmp_project", "make_run_context"
-]
+__all__ = ["make_run_context"]

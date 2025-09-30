@@ -22,7 +22,6 @@ from .config_builders import (
     get_basic_sections_config, get_multilang_sections_config
 )
 from .adapter_utils import is_tree_sitter_available
-from .project_builders import ProjectBuilder, create_basic_project, create_adaptive_project
 from .run_context import make_run_context
 
 # Адаптивные конфигурации
@@ -43,10 +42,7 @@ __all__ = [
     
     # Adapter utilities
     "is_tree_sitter_available",
-    
-    # Project builders
-    "ProjectBuilder", "create_basic_project", "create_adaptive_project",
-    
+
     # RunContext
     "make_run_context",
     

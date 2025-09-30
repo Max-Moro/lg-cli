@@ -9,26 +9,55 @@ from __future__ import annotations
 
 import textwrap
 from pathlib import Path
-from typing import Dict, Optional
 
 import pytest
 
 # Импорт из унифицированной инфраструктуры
-from tests.infrastructure import (
-    write, write_markdown, render_template, make_run_options,
-    create_basic_project, create_adaptive_project  
-)
+from tests.infrastructure import write, write_markdown, render_template, make_run_options
 from tests.infrastructure.config_builders import create_basic_lg_cfg, create_template
-from tests.infrastructure.project_builders import create_md_project
 
 
 # ====================== Основные фикстуры ======================
 
-# Используем фикстуры из унифицированной инфраструктуры
 @pytest.fixture
 def md_project(tmp_path: Path) -> Path:
-    """Создает базовый проект для тестирования md-плейсхолдеров."""
-    return create_md_project(tmp_path)
+    """
+    Создает базовый проект для тестирования md-плейсхолдеров.
+
+    Включает:
+    - Минимальную конфигурацию lg-cfg
+    - Несколько тестовых Markdown-файлов
+    - Базовую структуру директорий
+    """
+    root = tmp_path
+
+    # Создаем базовую конфигурацию
+    create_basic_lg_cfg(root)
+
+    # Создаем тестовые Markdown-файлы
+    write_markdown(root / "README.md",
+                   title="Main Project",
+                   content="This is the main project documentation.\n\n## Features\n\n- Feature A\n- Feature B")
+
+    write_markdown(root / "docs" / "guide.md",
+                   title="User Guide",
+                   content="This is a comprehensive user guide.\n\n## Installation\n\nRun the installer.\n\n## Usage\n\nUse the app.")
+
+    write_markdown(root / "docs" / "api.md",
+                   title="API Reference",
+                   content="API documentation.\n\n## Authentication\n\nUse API keys.\n\n## Endpoints\n\n### GET /users\n\nGet users list.")
+
+    # Файл без H1 для тестов strip_h1
+    write_markdown(root / "docs" / "changelog.md",
+                   title="",
+                   content="## v1.0.0\n\n- Initial release\n\n## v0.9.0\n\n- Beta version")
+
+    # Файл в lg-cfg для тестов @self:
+    write_markdown(root / "lg-cfg" / "internal.md",
+                   title="Internal Documentation",
+                   content="This is internal documentation stored in lg-cfg.")
+
+    return root
 
 
 @pytest.fixture  
