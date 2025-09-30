@@ -535,7 +535,7 @@ def fragments_project(tmp_path: Path) -> Path:
             }
         }
     }
-    create_section_fragment(root, "security/security", fragment2)
+    create_section_fragment(root, "security", fragment2)
     
     # Фрагмент в подпапке
     fragment3 = {

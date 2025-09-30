@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import pytest
 
+from lg.template import TemplateProcessingError
 from .conftest import (
     basic_project, multilang_project, fragments_project,
     create_template, render_template
@@ -130,7 +131,7 @@ ${nonexistent-section}
 """)
     
     # Должна возникнуть ошибка о том, что секция не найдена
-    with pytest.raises(RuntimeError, match=r"Section 'nonexistent-section' not found"):
+    with pytest.raises(TemplateProcessingError, match=r"Section 'nonexistent-section' not found"):
         render_template(root, "ctx:notfound-test")
 
 
@@ -338,10 +339,11 @@ def test_section_placeholder_parametrized(basic_project, section_name, expected_
     """Параметризованный тест различных плейсхолдеров секций."""
     root = basic_project
     
-    create_template(root, f"param-test-{section_name}", f"""# Param Test
+    template_content = f"""# Param Test
 
-${{{{section_name}}}}
-""".replace("{{section_name}}", section_name))
+${{{section_name}}}
+"""
+    create_template(root, f"param-test-{section_name}", template_content)
     
     result = render_template(root, f"ctx:param-test-{section_name}")
     assert expected_content in result
@@ -389,5 +391,5 @@ ${src}
 ${SRC}
 """)
     
-    with pytest.raises(RuntimeError, match=r"Section 'SRC' not found"):
+    with pytest.raises(TemplateProcessingError, match=r"Section 'SRC' not found"):
         render_template(root, "ctx:case-error-test")
