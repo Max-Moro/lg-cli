@@ -44,6 +44,19 @@ src:
             mode: allow
             allow:
               - "/model.py"
+              - "/normalize.py"
+              - "/adapter.py"
+  targets:
+    - match:
+      - "/lg/template/processor.py"
+      - "/lg/template/nodes.py"
+      - "/lg/template/context.py"
+      - "/lg/template/virtual_sections.py"
+      - "/lg/template/common.py"
+      - "/lg/template/heading_context.py"
+      python:
+        budget:
+          max_tokens_per_file: 1500
 
 tests:
   extensions: [".py"]
