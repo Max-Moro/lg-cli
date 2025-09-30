@@ -69,7 +69,7 @@ class TestTemplateLexer:
         
         expected_types = [
             TokenType.PLACEHOLDER_START,
-            TokenType.TEXT,  # "section" внутри плейсхолдера
+            TokenType.IDENTIFIER,  # "section" внутри плейсхолдера теперь токенизируется как IDENTIFIER
             TokenType.PLACEHOLDER_END,
             TokenType.EOF
         ]
@@ -77,6 +77,9 @@ class TestTemplateLexer:
         assert len(tokens) == len(expected_types)
         for token, expected_type in zip(tokens, expected_types):
             assert token.type == expected_type
+        
+        # Проверяем, что значение идентификатора корректно
+        assert tokens[1].value == "section"
 
     def test_directive_tokens(self):
         """Директивы {% ... %} должны правильно токенизироваться."""
@@ -137,10 +140,23 @@ class TestTemplateLexer:
         lexer = TemplateLexer(text)
         tokens = lexer.tokenize()
         
-        assert tokens[0].type == TokenType.PLACEHOLDER_START
-        assert tokens[1].type == TokenType.TEXT
-        assert tokens[1].value == "func(arg)"
-        assert tokens[2].type == TokenType.PLACEHOLDER_END
+        expected_types = [
+            TokenType.PLACEHOLDER_START,
+            TokenType.IDENTIFIER,  # "func"
+            TokenType.LPAREN,      # "("  
+            TokenType.IDENTIFIER,  # "arg"
+            TokenType.RPAREN,      # ")"
+            TokenType.PLACEHOLDER_END,
+            TokenType.EOF
+        ]
+        
+        assert len(tokens) == len(expected_types)
+        for token, expected_type in zip(tokens, expected_types):
+            assert token.type == expected_type
+            
+        # Проверяем значения ключевых токенов
+        assert tokens[1].value == "func"
+        assert tokens[3].value == "arg"
 
     def test_escaped_sequences(self):
         """Проверка обработки последовательностей, похожих на специальные."""
@@ -388,12 +404,17 @@ class TestAdvancedScenarios:
         # Проверяем, что все специальные последовательности правильно разделены
         types = [token.type for token in tokens if token.type != TokenType.EOF]
         expected_pattern = [
-            TokenType.PLACEHOLDER_START, TokenType.TEXT, TokenType.PLACEHOLDER_END,
-            TokenType.DIRECTIVE_START, TokenType.TEXT, TokenType.DIRECTIVE_END,
-            TokenType.COMMENT_START, TokenType.TEXT, TokenType.COMMENT_END
+            TokenType.PLACEHOLDER_START, TokenType.IDENTIFIER, TokenType.PLACEHOLDER_END,  # ${section}
+            TokenType.DIRECTIVE_START, TokenType.TEXT, TokenType.DIRECTIVE_END,             # {% if condition %}
+            TokenType.COMMENT_START, TokenType.TEXT, TokenType.COMMENT_END                  # {# comment #}
         ]
         
         assert types == expected_pattern
+        
+        # Дополнительная проверка содержимого токенов
+        assert tokens[1].value == "section"         # IDENTIFIER в плейсхолдере
+        assert " if condition " in tokens[4].value  # TEXT в директиве  
+        assert " comment " in tokens[7].value       # TEXT в комментарии
 
     def test_nested_structures(self):
         """Вложенные структуры с различными типами блоков."""
@@ -480,3 +501,161 @@ Content
             assert len(tokens) == 1
             assert tokens[0].type == TokenType.IDENTIFIER
             assert tokens[0].value == identifier
+
+
+class TestMarkdownPlaceholders:
+    """Тесты для токенизации md плейсхолдеров."""
+    
+    def test_simple_md_placeholder(self):
+        """Простой md плейсхолдер ${md:docs/api}."""
+        text = "${md:docs/api}"
+        lexer = TemplateLexer(text)
+        tokens = lexer.tokenize()
+        
+        expected_types = [
+            TokenType.PLACEHOLDER_START,
+            TokenType.IDENTIFIER,      # "md"
+            TokenType.COLON,           # ":"
+            TokenType.IDENTIFIER,      # "docs/api"
+            TokenType.PLACEHOLDER_END,
+            TokenType.EOF
+        ]
+        
+        assert len(tokens) == len(expected_types)
+        for token, expected_type in zip(tokens, expected_types):
+            assert token.type == expected_type
+        
+        assert tokens[1].value == "md"
+        assert tokens[3].value == "docs/api"
+
+    def test_md_placeholder_with_anchor(self):
+        """MD плейсхолдер с якорем ${md:docs/api#Authentication}."""
+        text = "${md:docs/api#Authentication}"
+        lexer = TemplateLexer(text)
+        tokens = lexer.tokenize()
+        
+        expected_types = [
+            TokenType.PLACEHOLDER_START,
+            TokenType.IDENTIFIER,      # "md"
+            TokenType.COLON,           # ":"
+            TokenType.IDENTIFIER,      # "docs/api" 
+            TokenType.HASH,            # "#"
+            TokenType.TEXT,            # "Authentication" (после # обрабатывается как TEXT)
+            TokenType.PLACEHOLDER_END,
+            TokenType.EOF
+        ]
+        
+        assert len(tokens) == len(expected_types)
+        for token, expected_type in zip(tokens, expected_types):
+            assert token.type == expected_type
+        
+        assert tokens[1].value == "md"
+        assert tokens[3].value == "docs/api"
+        assert tokens[5].value == "Authentication"
+
+    def test_md_placeholder_with_parameters(self):
+        """MD плейсхолдер с параметрами ${md:docs/api, level:3, strip_h1:true}."""
+        text = "${md:docs/api, level:3, strip_h1:true}"
+        lexer = TemplateLexer(text)
+        tokens = lexer.tokenize()
+        
+        expected_types = [
+            TokenType.PLACEHOLDER_START,
+            TokenType.IDENTIFIER,      # "md"
+            TokenType.COLON,           # ":"
+            TokenType.IDENTIFIER,      # "docs/api"
+            TokenType.COMMA,           # ","
+            TokenType.IDENTIFIER,      # "level"
+            TokenType.COLON,           # ":"
+            TokenType.IDENTIFIER,      # "3"
+            TokenType.COMMA,           # ","
+            TokenType.IDENTIFIER,      # "strip_h1" 
+            TokenType.COLON,           # ":"
+            TokenType.IDENTIFIER,      # "true"
+            TokenType.PLACEHOLDER_END,
+            TokenType.EOF
+        ]
+        
+        assert len(tokens) == len(expected_types)
+        for token, expected_type in zip(tokens, expected_types):
+            assert token.type == expected_type
+        
+        # Проверяем ключевые значения
+        assert tokens[1].value == "md"
+        assert tokens[3].value == "docs/api"
+        assert tokens[5].value == "level"
+        assert tokens[7].value == "3"
+        assert tokens[9].value == "strip_h1"
+        assert tokens[11].value == "true"
+
+    def test_md_placeholder_with_addressing(self):
+        """MD плейсхолдер с адресацией ${md@apps/web:intro}."""
+        text = "${md@apps/web:intro}"
+        lexer = TemplateLexer(text)
+        tokens = lexer.tokenize()
+        
+        expected_types = [
+            TokenType.PLACEHOLDER_START,
+            TokenType.IDENTIFIER,      # "md"
+            TokenType.AT,              # "@"
+            TokenType.IDENTIFIER,      # "apps/web"
+            TokenType.COLON,           # ":"
+            TokenType.IDENTIFIER,      # "intro"
+            TokenType.PLACEHOLDER_END,
+            TokenType.EOF
+        ]
+        
+        assert len(tokens) == len(expected_types)
+        for token, expected_type in zip(tokens, expected_types):
+            assert token.type == expected_type
+        
+        assert tokens[1].value == "md"
+        assert tokens[3].value == "apps/web"
+        assert tokens[5].value == "intro"
+
+    def test_md_placeholder_complex(self):
+        """Сложный MD плейсхолдер с адресацией, якорем и параметрами."""
+        text = "${md@apps/web:docs/api#Authentication, level:2}"
+        lexer = TemplateLexer(text)
+        tokens = lexer.tokenize()
+        
+        # Проверяем основную структуру токенов
+        types = [token.type for token in tokens if token.type != TokenType.EOF]
+        
+        assert TokenType.PLACEHOLDER_START in types
+        assert TokenType.IDENTIFIER in types
+        assert TokenType.AT in types
+        assert TokenType.HASH in types
+        assert TokenType.COMMA in types
+        assert TokenType.PLACEHOLDER_END in types
+        
+        # Находим ключевые токены
+        md_token = next(token for token in tokens if token.value == "md")
+        auth_token = next(token for token in tokens if token.type == TokenType.TEXT and "Authentication" in token.value)
+        level_token = next(token for token in tokens if token.value == "level")
+        
+        assert md_token.type == TokenType.IDENTIFIER
+        assert auth_token.type == TokenType.TEXT
+        assert level_token.type == TokenType.IDENTIFIER
+
+    def test_md_placeholder_glob_pattern(self):
+        """MD плейсхолдер с glob паттерном ${md:docs/*.md}."""
+        text = "${md:docs/*.md}"
+        lexer = TemplateLexer(text)
+        tokens = lexer.tokenize()
+        
+        expected_types = [
+            TokenType.PLACEHOLDER_START,
+            TokenType.IDENTIFIER,      # "md"
+            TokenType.COLON,           # ":"
+            TokenType.IDENTIFIER,      # "docs/*.md" (содержит специальные символы glob)
+            TokenType.PLACEHOLDER_END,
+            TokenType.EOF
+        ]
+        
+        assert len(tokens) == len(expected_types)
+        for token, expected_type in zip(tokens, expected_types):
+            assert token.type == expected_type
+        
+        assert tokens[1].value == "md"
+        assert tokens[3].value == "docs/*.md"
