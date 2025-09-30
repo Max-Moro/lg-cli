@@ -13,7 +13,7 @@
 
 # Основные утилиты, которые должны быть доступны везде
 from .file_utils import write, write_source_file, write_markdown
-from .rendering_utils import render_template, make_run_options, make_engine
+from .rendering_utils import render_template, make_run_options, make_run_context, make_engine
 from .testing_utils import stub_tokenizer, TokenServiceStub, lctx, lctx_py, lctx_ts, lctx_md
 from .cli_utils import run_cli, jload
 from .config_builders import (
@@ -22,7 +22,6 @@ from .config_builders import (
     get_basic_sections_config, get_multilang_sections_config
 )
 from .adapter_utils import is_tree_sitter_available
-from .run_context import make_run_context
 
 # Адаптивные конфигурации
 from .adaptive_config import ModeConfig, ModeSetConfig, TagConfig, TagSetConfig
@@ -32,7 +31,7 @@ __all__ = [
     "write", "write_source_file", "write_markdown",
     
     # Rendering utilities  
-    "render_template", "make_run_options", "make_engine",
+    "render_template", "make_run_options", "make_run_context", "make_engine",
     
     # Testing utilities
     "stub_tokenizer", "TokenServiceStub", "lctx", "lctx_py", "lctx_ts", "lctx_md",
