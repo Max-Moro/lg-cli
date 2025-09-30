@@ -8,11 +8,8 @@ from pathlib import Path
 import pytest
 
 from lg.adapters.context import LightweightContext
-from lg.stats import TokenService
-
-# Импорт из унифицированной инфраструктуры
-from tests.infrastructure.file_utils import write
-from tests.infrastructure.testing_utils import TokenServiceStub, stub_tokenizer
+from tests.infrastructure import stub_tokenizer
+from tests.infrastructure import write
 
 
 @pytest.fixture

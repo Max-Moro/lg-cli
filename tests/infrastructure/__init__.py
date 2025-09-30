@@ -10,7 +10,6 @@
 - adapter_utils: Утилиты для работы с языковыми адаптерами
 - config_builders: Билдеры конфигурации (sections, modes, tags)
 - rendering_utils: Утилиты для рендеринга шаблонов и секций
-- fixtures: Переиспользуемые фикстуры pytest
 """
 
 # Основные утилиты, которые должны быть доступны везде
@@ -24,9 +23,7 @@ from .config_builders import (
 )
 from .adapter_utils import is_tree_sitter_available
 from .project_builders import ProjectBuilder, create_basic_project, create_adaptive_project
-
-# Основные фикстуры 
-from .fixtures import tmp_project, make_run_context
+from .run_context import make_run_context
 
 # Адаптивные конфигурации
 from .adaptive_config import ModeConfig, ModeSetConfig, TagConfig, TagSetConfig
@@ -42,7 +39,7 @@ __all__ = [
     "stub_tokenizer", "TokenServiceStub",
     
     # Config builders
-    "create_sections_yaml", "create_modes_yaml", "create_tags_yaml",
+    "create_sections_yaml", "create_modes_yaml", "create_tags_yaml", "create_basic_sections_yaml",
     
     # Adapter utilities
     "is_tree_sitter_available",
@@ -50,8 +47,8 @@ __all__ = [
     # Project builders
     "ProjectBuilder", "create_basic_project", "create_adaptive_project",
     
-    # Fixtures
-    "tmp_project", "make_run_context",
+    # RunContext
+    "make_run_context",
     
     # Adaptive config classes
     "ModeConfig", "ModeSetConfig", "TagConfig", "TagSetConfig",

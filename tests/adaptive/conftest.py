@@ -10,35 +10,24 @@ from __future__ import annotations
 
 import textwrap
 from pathlib import Path
-from typing import Dict, Set, List, Optional, Any
-from dataclasses import dataclass, field
+from typing import Dict, List, Optional
 
 import pytest
 
 from lg.cache.fs_cache import Cache
 from lg.config.adaptive_loader import AdaptiveConfigLoader, process_adaptive_options
-from lg.engine import Engine
 from lg.run_context import RunContext
 from lg.stats.tokenizer import default_tokenizer
-from lg.types import RunOptions, ModelName
+from lg.types import RunOptions
 from lg.vcs import NullVcs
 
 # Импортируем из унифицированной инфраструктуры
 from tests.infrastructure import (
     write, create_modes_yaml, create_tags_yaml, create_basic_sections_yaml,
     ModeConfig, ModeSetConfig, TagConfig, TagSetConfig,
-    make_run_options as base_make_run_options, make_engine, render_template
+    make_run_options, make_engine, render_template
 )
 
-
-# ====================== Хелперы для создания конфигурации ======================
-# Все YAML билдеры теперь импортированы из tests.infrastructure
-
-
-# create_tags_yaml и create_basic_sections_yaml теперь импортированы из infrastructure
-
-
-# ====================== Готовые конфигурации ======================
 
 def get_default_modes_config() -> Dict[str, ModeSetConfig]:
     """Возвращает стандартную конфигурацию режимов для тестов."""
@@ -117,29 +106,6 @@ def get_default_tags_config() -> tuple[Dict[str, TagSetConfig], Dict[str, TagCon
 
 
 # ====================== Хелперы для RunOptions ======================
-
-def make_run_options(
-    model: str = "o3",
-    modes: Optional[Dict[str, str]] = None,
-    extra_tags: Optional[Set[str]] = None
-) -> RunOptions:
-    """
-    Создает RunOptions с указанными параметрами для адаптивных тестов.
-    
-    Args:
-        model: Модель для токенизации
-        modes: Словарь активных режимов {modeset: mode}
-        extra_tags: Дополнительные теги
-        
-    Returns:
-        Настроенный RunOptions
-    """
-    # Используем базовую функцию с адаптацией типов
-    return base_make_run_options(
-        model=model,
-        modes=modes,
-        extra_tags=extra_tags or set()
-    )
 
 
 def make_run_context(root: Path, options: Optional[RunOptions] = None) -> RunContext:
@@ -460,7 +426,7 @@ __all__ = [
     "get_default_modes_config", "get_default_tags_config",
     
     # Хелперы для RunOptions и контекстов
-    "make_run_options", "make_run_context",
+    "make_run_options", "make_run_context", "make_engine", "render_template",
     
     # Основные фикстуры
     "adaptive_project", "minimal_adaptive_project", "federated_project",

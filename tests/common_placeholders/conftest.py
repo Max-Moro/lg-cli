@@ -10,36 +10,18 @@ from __future__ import annotations
 
 import textwrap
 from pathlib import Path
-from typing import Dict, Optional, Any
+from typing import Dict
 
 import pytest
 
-from lg.engine import Engine
-from lg.types import RunOptions, ModelName
-
 # Импортируем из унифицированной инфраструктуры
 from tests.infrastructure import (
-    write, write_source_file, 
+    write, write_source_file,
     create_sections_yaml, create_template, create_section_fragment,
     render_template, make_run_options,
-    get_basic_sections_config, get_multilang_sections_config,
-    create_basic_project
+    get_basic_sections_config, get_multilang_sections_config
 )
 
-
-# ====================== Хелперы для создания файлов ======================
-# Все утилиты создания файлов теперь импортированы из tests.infrastructure
-
-
-# ====================== Хелперы для рендеринга ======================
-# Все рендеринг утилиты теперь импортированы из tests.infrastructure
-
-
-# ====================== Готовые конфигурации секций ======================
-# Все готовые конфигурации теперь импортированы из tests.infrastructure
-
-
-# ====================== Основные фикстуры ======================
 
 @pytest.fixture
 def basic_project(tmp_path: Path) -> Path:

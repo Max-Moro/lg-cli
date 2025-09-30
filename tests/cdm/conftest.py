@@ -7,7 +7,7 @@ import pytest
 
 # Импорт из унифицированной инфраструктуры  
 from tests.infrastructure import write
-from tests.infrastructure.fixtures import mk_run_ctx
+from tests.infrastructure import make_run_context as mk_run_ctx
 
 def _root_sections_yaml() -> str:
     # Корневой конфиг: хотя бы одна простая секция, но тесты CDM опираются на child-секции
@@ -112,3 +112,5 @@ def monorepo(tmp_path: Path) -> Path:
     write(root / "apps" / "web" / "docs" / "index.md", "# web docs\n")
 
     return root
+
+__all__ = ["mk_run_ctx"]

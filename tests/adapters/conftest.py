@@ -4,13 +4,12 @@ Language-specific fixtures are now in their respective subpackages.
 """
 
 import pytest
-from pathlib import Path
 
 # Импорт из корневого conftest.py (сохраняем для совместимости)
-from tests.conftest import lctx, lctx_py, lctx_ts, lctx_md # noqa: F401
+from tests.conftest import lctx, lctx_py, lctx_ts, lctx_md  # noqa: F401
 
 # Импорт из унифицированной инфраструктуры
-from tests.infrastructure.adapter_utils import is_tree_sitter_available, create_temp_file
+from tests.infrastructure.adapter_utils import is_tree_sitter_available
 
 
 @pytest.fixture
