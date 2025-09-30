@@ -10,8 +10,8 @@ from __future__ import annotations
 import textwrap
 
 from .conftest import (
-    adaptive_project, make_run_options, render_for_test,
-    create_conditional_template, TagConfig, write_tags_yaml,
+    adaptive_project, make_run_options, render_template,
+    create_conditional_template, TagConfig, create_tags_yaml,
     write
 )
 
@@ -32,7 +32,7 @@ def test_conditional_python_adapter_options(adaptive_project):
             description="Показывать даже тривиальные __init__.py в листингах"
         )
     }
-    write_tags_yaml(root, global_tags=special_tags, append=True)
+    create_tags_yaml(root, global_tags=special_tags, append=True)
     
     # Создаем структуру пакетов с __init__.py файлами
     write(root / "src" / "__init__.py", "pass")  # тривиальный 
@@ -84,7 +84,7 @@ ${python-with-inits}
     create_conditional_template(root, "adapter-options-test", template_content)
     
     # Тест 1: без активного тега - обе секции должны пропускать тривиальные __init__.py
-    result1 = render_for_test(root, "ctx:adapter-options-test", make_run_options())
+    result1 = render_template(root, "ctx:adapter-options-test", make_run_options())
     
     # Проверяем, что тривиальные __init__.py отсутствуют в обеих секциях
     init_markers = [
@@ -102,7 +102,7 @@ ${python-with-inits}
         assert "FILE: package1/module.py" in result1
         assert "FILE: package2/core.py" in result1    # Тест 2: с активным тегом - только вторая секция должна включать тривиальные __init__.py
     options = make_run_options(extra_tags={"include-inits"})
-    result2 = render_for_test(root, "ctx:adapter-options-test", options)
+    result2 = render_template(root, "ctx:adapter-options-test", options)
     
     # В первой секции (python-default) тривиальные __init__.py все еще должны отсутствовать
     # Во второй секции (python-with-inits) они должны присутствовать
@@ -134,7 +134,7 @@ def test_multiple_conditional_adapter_options(adaptive_project):
         "strip-bodies": TagConfig(title="Убрать тела функций"),
         "verbose-mode": TagConfig(title="Подробный режим")
     }
-    write_tags_yaml(root, global_tags=special_tags, append=True)
+    create_tags_yaml(root, global_tags=special_tags, append=True)
     
     # Создаем файлы с разным содержимым
     write(root / "src" / "__init__.py", "pass")
@@ -189,7 +189,7 @@ ${adaptive-python}
     create_conditional_template(root, "multiple-options-test", template_content)
     
     # Тест 1: только include-inits
-    result1 = render_for_test(root, "ctx:multiple-options-test", 
+    result1 = render_template(root, "ctx:multiple-options-test", 
                              make_run_options(extra_tags={"include-inits"}))
     
     assert "FILE: __init__.py" in result1  # __init__.py включен
@@ -197,7 +197,7 @@ ${adaptive-python}
     assert "internal_logic()" in result1
     
     # Тест 2: только strip-bodies (без verbose-mode)
-    result2 = render_for_test(root, "ctx:multiple-options-test",
+    result2 = render_template(root, "ctx:multiple-options-test",
                              make_run_options(extra_tags={"strip-bodies"}))
     
     assert "FILE: __init__.py" not in result2  # __init__.py пропущен
@@ -205,7 +205,7 @@ ${adaptive-python}
     assert "internal_logic()" not in result2      # тела функций убраны
     
     # Тест 3: strip-bodies + verbose-mode (verbose-mode отменяет strip-bodies)
-    result3 = render_for_test(root, "ctx:multiple-options-test",
+    result3 = render_template(root, "ctx:multiple-options-test",
                              make_run_options(extra_tags={"strip-bodies", "verbose-mode"}))
     
     assert "FILE: __init__.py" in result3     # __init__.py включен (verbose-mode)
@@ -213,7 +213,7 @@ ${adaptive-python}
     assert "internal_logic()" in result3          # тела функций сохранены (verbose-mode приоритетнее)
     
     # Тест 4: все три тега (verbose-mode должен доминировать)
-    result4 = render_for_test(root, "ctx:multiple-options-test",
+    result4 = render_template(root, "ctx:multiple-options-test",
                              make_run_options(extra_tags={"include-inits", "strip-bodies", "verbose-mode"}))
     
     assert "FILE: __init__.py" in result4     # __init__.py включен
@@ -236,7 +236,7 @@ def test_conditional_options_with_complex_conditions(adaptive_project):
         "api-docs": TagConfig(title="Документация API"),
         "internal-docs": TagConfig(title="Внутренняя документация")
     }
-    write_tags_yaml(root, global_tags=complex_tags, append=True)
+    create_tags_yaml(root, global_tags=complex_tags, append=True)
     
     # Создаем файлы
     write(root / "src" / "__init__.py", "pass")  # тривиальный
@@ -295,7 +295,7 @@ ${complex-conditions}
     create_conditional_template(root, "complex-conditions-test", template_content)
     
     # Тест 1: production без debug - максимальная компактность  
-    result1 = render_for_test(root, "ctx:complex-conditions-test",
+    result1 = render_template(root, "ctx:complex-conditions-test",
                              make_run_options(extra_tags={"production"}))
     
     assert "def debug_function():" in result1      # сигнатуры есть
@@ -304,7 +304,7 @@ ${complex-conditions}
     assert "get_production_data()" not in result1  # тела функций убраны (проверяем специфичную функцию из debug.py)
     
     # Тест 2: debug режим - все детали
-    result2 = render_for_test(root, "ctx:complex-conditions-test", 
+    result2 = render_template(root, "ctx:complex-conditions-test", 
                              make_run_options(extra_tags={"debug"}))
     
     assert "FILE: __init__.py" in result2        # __init__.py включен (изменили формат)
@@ -313,7 +313,7 @@ ${complex-conditions}
     assert "get_production_data()" in result2    # тела функций сохранены
     
     # Тест 3: api-docs без internal-docs - только сигнатуры
-    result3 = render_for_test(root, "ctx:complex-conditions-test",
+    result3 = render_template(root, "ctx:complex-conditions-test",
                              make_run_options(extra_tags={"api-docs"}))
     
     assert "def debug_function():" in result3     # сигнатуры есть  
@@ -321,7 +321,7 @@ ${complex-conditions}
     assert "get_production_data()" not in result3 # тела функций убраны
     
     # Тест 4: api-docs + internal-docs - internal-docs отменяет strip_function_bodies
-    result4 = render_for_test(root, "ctx:complex-conditions-test",
+    result4 = render_template(root, "ctx:complex-conditions-test",
                              make_run_options(extra_tags={"api-docs", "internal-docs"}))
     
     assert "FILE: __init__.py" in result4        # __init__.py включен (internal-docs)
@@ -344,7 +344,7 @@ def test_conditional_options_inheritance_and_priority(adaptive_project):
         "override-mode": TagConfig(title="Переопределяющий режим"),
         "final-mode": TagConfig(title="Финальный режим")
     }
-    write_tags_yaml(root, global_tags=priority_tags, append=True)
+    create_tags_yaml(root, global_tags=priority_tags, append=True)
     
     write(root / "src" / "__init__.py", "pass")
     write(root / "src" / "example.py", "def func(): pass\n")
@@ -382,25 +382,25 @@ ${priority-test}
     create_conditional_template(root, "priority-test", template_content)
     
     # Тест 1: только base-mode - первое правило активно
-    result1 = render_for_test(root, "ctx:priority-test",
+    result1 = render_template(root, "ctx:priority-test",
                              make_run_options(extra_tags={"base-mode"}))
     
     assert "FILE: __init__.py" in result1  # skip_trivial_inits: false
     
     # Тест 2: base-mode + override-mode - второе правило переопределяет первое
-    result2 = render_for_test(root, "ctx:priority-test", 
+    result2 = render_template(root, "ctx:priority-test", 
                              make_run_options(extra_tags={"base-mode", "override-mode"}))
     
     assert "FILE: __init__.py" not in result2  # skip_trivial_inits: true (переопределено)
     
     # Тест 3: все три тега - final-mode имеет высший приоритет
-    result3 = render_for_test(root, "ctx:priority-test",
+    result3 = render_template(root, "ctx:priority-test",
                              make_run_options(extra_tags={"base-mode", "override-mode", "final-mode"}))
     
     assert "FILE: __init__.py" in result3  # skip_trivial_inits: false (final-mode)
     
     # Тест 4: только final-mode - не зависит от других правил
-    result4 = render_for_test(root, "ctx:priority-test", 
+    result4 = render_template(root, "ctx:priority-test", 
                              make_run_options(extra_tags={"final-mode"}))
     
     assert "FILE: __init__.py" in result4  # skip_trivial_inits: false

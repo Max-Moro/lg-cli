@@ -11,7 +11,7 @@ import pytest
 from lg.engine import run_report
 from .conftest import (
     adaptive_project, make_run_options, make_engine,
-    create_conditional_template, render_for_test
+    create_conditional_template, render_template
 )
 
 
@@ -139,7 +139,7 @@ ${tests}
     
     # Тестируем без тегов
     options1 = make_run_options()
-    result1 = render_for_test(root, "ctx:adaptive-test", options1)
+    result1 = render_template(root, "ctx:adaptive-test", options1)
     
     assert "Full Mode" in result1
     assert "Minimal Mode" not in result1
@@ -147,14 +147,14 @@ ${tests}
     
     # Тестируем с тегом minimal
     options2 = make_run_options(extra_tags={"minimal"})
-    result2 = render_for_test(root, "ctx:adaptive-test", options2)
+    result2 = render_template(root, "ctx:adaptive-test", options2)
     
     assert "Minimal Mode" in result2
     assert "Full Mode" not in result2
     
     # Тестируем с тегом tests
     options3 = make_run_options(extra_tags={"tests"})
-    result3 = render_for_test(root, "ctx:adaptive-test", options3)
+    result3 = render_template(root, "ctx:adaptive-test", options3)
     
     assert "Testing Section" in result3
 
@@ -178,7 +178,7 @@ ${docs}
     
     # Рендерим без активации режима
     options1 = make_run_options()
-    result1 = render_for_test(root, "ctx:mode-block-test", options1)
+    result1 = render_template(root, "ctx:mode-block-test", options1)
     
     # В блоке режима должны активироваться теги agent и tools
     assert "Agent Mode Active" in result1
@@ -211,7 +211,7 @@ ${docs}
     
     # Тестируем без активных тегов языков
     options1 = make_run_options()
-    result1 = render_for_test(root, "ctx:tagset-test", options1)
+    result1 = render_template(root, "ctx:tagset-test", options1)
     
     # Если ни один тег из набора не активен, TAGSET условия истинны
     # NOT tag:javascript истинно, так как javascript тег не активен
@@ -221,7 +221,7 @@ ${docs}
     
     # Активируем python тег
     options2 = make_run_options(extra_tags={"python"})
-    result2 = render_for_test(root, "ctx:tagset-test", options2)
+    result2 = render_template(root, "ctx:tagset-test", options2)
     
     # Теперь TAGSET условие истинно только для python
     # NOT tag:javascript все еще истинно, так как javascript не активен
@@ -231,7 +231,7 @@ ${docs}
     
     # Активируем javascript тег
     options3 = make_run_options(extra_tags={"javascript"})
-    result3 = render_for_test(root, "ctx:tagset-test", options3)
+    result3 = render_template(root, "ctx:tagset-test", options3)
     
     # Теперь TAGSET:language:javascript истинно, остальные TAGSET ложны
     # NOT tag:javascript ложно, так как javascript активен
@@ -266,15 +266,15 @@ ${src}
     
     # Тестируем различные комбинации тегов
     options1 = make_run_options(extra_tags={"agent", "tests"})
-    result1 = render_for_test(root, "ctx:complex-test", options1)
+    result1 = render_template(root, "ctx:complex-test", options1)
     assert "Agent Testing Mode" in result1
     
     options2 = make_run_options(extra_tags={"minimal"})
-    result2 = render_for_test(root, "ctx:complex-test", options2)
+    result2 = render_template(root, "ctx:complex-test", options2)
     assert "Minimal or Review" in result2
     
     options3 = make_run_options(extra_tags={"agent"})  # без tools
-    result3 = render_for_test(root, "ctx:complex-test", options3)
+    result3 = render_template(root, "ctx:complex-test", options3)
     assert "Not Full Agent" in result3
 
 
@@ -297,7 +297,7 @@ def test_mode_activation_through_cli_like_interface(adaptive_project, monkeypatc
     
     # Тестируем активацию через режимы (как в CLI --mode ai-interaction:agent)
     options = make_run_options(modes={"ai-interaction": "agent", "dev-stage": "testing"})
-    result = render_for_test(root, "ctx:cli-test", options)
+    result = render_template(root, "ctx:cli-test", options)
     
     assert "Agent Active" in result
     assert "Tests Active" in result

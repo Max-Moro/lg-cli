@@ -25,7 +25,7 @@ from lg.vcs import NullVcs
 
 # Импортируем из унифицированной инфраструктуры
 from tests.infrastructure import (
-    write, write_modes_yaml, write_tags_yaml, create_basic_sections_yaml,
+    write, create_modes_yaml, create_tags_yaml, create_basic_sections_yaml,
     ModeConfig, ModeSetConfig, TagConfig, TagSetConfig,
     make_run_options as base_make_run_options
 )
@@ -35,7 +35,7 @@ from tests.infrastructure import (
 # Все YAML билдеры теперь импортированы из tests.infrastructure
 
 
-# write_tags_yaml и create_basic_sections_yaml теперь импортированы из infrastructure
+# create_tags_yaml и create_basic_sections_yaml теперь импортированы из infrastructure
 
 
 # ====================== Готовые конфигурации ======================
@@ -202,7 +202,7 @@ def make_engine(root: Path, options: Optional[RunOptions] = None) -> Engine:
         os.chdir(original_cwd)
 
 
-def render_for_test(root: Path, target: str, options: Optional[RunOptions] = None) -> str:
+def render_template(root: Path, target: str, options: Optional[RunOptions] = None) -> str:
     """
     Хелпер для рендеринга в тестах.
     
@@ -240,11 +240,11 @@ def adaptive_project(tmp_path: Path) -> Path:
     
     # Создаем конфигурацию режимов
     mode_sets = get_default_modes_config()
-    write_modes_yaml(root, mode_sets)
+    create_modes_yaml(root, mode_sets)
     
     # Создаем конфигурацию тегов
     tag_sets, global_tags = get_default_tags_config()
-    write_tags_yaml(root, tag_sets, global_tags)
+    create_tags_yaml(root, tag_sets, global_tags)
     
     # Создаем базовые секции
     create_basic_sections_yaml(root)
@@ -279,13 +279,13 @@ def minimal_adaptive_project(tmp_path: Path) -> Path:
             }
         )
     }
-    write_modes_yaml(root, mode_sets)
+    create_modes_yaml(root, mode_sets)
     
     # Минимальная конфигурация тегов
     global_tags = {
         "minimal": TagConfig(title="Минимальная версия")
     }
-    write_tags_yaml(root, global_tags=global_tags)
+    create_tags_yaml(root, global_tags=global_tags)
     
     # Простая секция
     write(root / "lg-cfg" / "sections.yaml", textwrap.dedent("""
@@ -329,13 +329,13 @@ def federated_project(tmp_path: Path) -> Path:
             }
         )
     }
-    write_modes_yaml(root, root_modes, include=["apps/web", "libs/core"])
+    create_modes_yaml(root, root_modes, include=["apps/web", "libs/core"])
     
     # Корневая конфигурация тегов
     root_tags = {
         "full-context": TagConfig(title="Полный контекст")
     }
-    write_tags_yaml(root, global_tags=root_tags, include=["apps/web", "libs/core"])
+    create_tags_yaml(root, global_tags=root_tags, include=["apps/web", "libs/core"])
     
     # Корневые секции
     write(root / "lg-cfg" / "sections.yaml", textwrap.dedent("""
@@ -365,7 +365,7 @@ def federated_project(tmp_path: Path) -> Path:
             }
         )
     }
-    write_modes_yaml(root / "apps" / "web", web_modes)
+    create_modes_yaml(root / "apps" / "web", web_modes)
     
     web_tag_sets = {
         "frontend-type": TagSetConfig(
@@ -379,7 +379,7 @@ def federated_project(tmp_path: Path) -> Path:
     web_global_tags = {
         "typescript": TagConfig(title="TypeScript код")
     }
-    write_tags_yaml(root / "apps" / "web", web_tag_sets, web_global_tags)
+    create_tags_yaml(root / "apps" / "web", web_tag_sets, web_global_tags)
     
     write(root / "apps" / "web" / "lg-cfg" / "sections.yaml", textwrap.dedent("""
     web-src:
@@ -407,14 +407,14 @@ def federated_project(tmp_path: Path) -> Path:
             }
         )
     }
-    write_modes_yaml(root / "libs" / "core", core_modes)
+    create_modes_yaml(root / "libs" / "core", core_modes)
     
     core_global_tags = {
         "python": TagConfig(title="Python код"),
         "api-only": TagConfig(title="Только публичный API"),
         "full-impl": TagConfig(title="Полная реализация")
     }
-    write_tags_yaml(root / "libs" / "core", global_tags=core_global_tags)
+    create_tags_yaml(root / "libs" / "core", global_tags=core_global_tags)
     
     write(root / "libs" / "core" / "lg-cfg" / "sections.yaml", textwrap.dedent("""
     core-lib:
@@ -500,13 +500,13 @@ __all__ = [
     "ModeConfig", "ModeSetConfig", "TagConfig", "TagSetConfig",
     
     # Хелперы для создания конфигурации
-    "write_modes_yaml", "write_tags_yaml", "create_basic_sections_yaml",
+    "create_modes_yaml", "create_tags_yaml", "create_basic_sections_yaml",
     
     # Готовые конфигурации
     "get_default_modes_config", "get_default_tags_config",
     
     # Хелперы для RunOptions и контекстов
-    "make_run_options", "make_run_context", "make_engine", "render_for_test",
+    "make_run_options", "make_run_context", "make_engine", "render_template",
     
     # Основные фикстуры
     "adaptive_project", "minimal_adaptive_project", "federated_project",

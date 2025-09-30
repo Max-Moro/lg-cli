@@ -1,7 +1,9 @@
 """
 Утилиты для рендеринга шаблонов и создания движков в тестах.
 
-Унифицирует все rendering-related функции из различных conftest.py.
+Унифицирует все rendering-__all__ = [
+    "make_run_options", "make_engine", "render_template"
+] различных conftest.py.
 """
 
 from __future__ import annotations
@@ -90,21 +92,6 @@ def render_template(root: Path, target: str, options: Optional[RunOptions] = Non
         os.chdir(original_cwd)
 
 
-def render_for_test(root: Path, target: str, options: Optional[RunOptions] = None) -> str:
-    """
-    Алиас для render_template для совместимости с adaptive тестами.
-    
-    Args:
-        root: Корень проекта
-        target: Цель для рендеринга
-        options: Опции выполнения
-        
-    Returns:
-        Отрендеренный текст
-    """
-    return render_template(root, target, options)
-
-
 __all__ = [
-    "make_run_options", "make_engine", "render_template", "render_for_test"
+    "make_run_options", "make_engine", "render_template"
 ]

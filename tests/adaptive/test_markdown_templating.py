@@ -11,8 +11,8 @@ import textwrap
 import pytest
 
 from .conftest import (
-    adaptive_project, make_run_options, render_for_test,
-    TagConfig, TagSetConfig, write_tags_yaml, write
+    adaptive_project, make_run_options, render_template,
+    TagConfig, TagSetConfig, create_tags_yaml, write
 )
 
 
@@ -70,7 +70,7 @@ def test_markdown_conditional_blocks_basic(adaptive_project):
     write(root / "lg-cfg" / "sections.yaml", sections_content)
     
     # Тест без активных тегов - условные блоки не должны появиться
-    result1 = render_for_test(root, "sec:docs-adaptive", make_run_options())
+    result1 = render_template(root, "sec:docs-adaptive", make_run_options())
     
     assert "Project Documentation" in result1
     assert "General Usage" in result1
@@ -81,7 +81,7 @@ def test_markdown_conditional_blocks_basic(adaptive_project):
     assert "npm install" not in result1
     
     # Тест с активным тегом python
-    result2 = render_for_test(root, "sec:docs-adaptive", make_run_options(extra_tags={"python"}))
+    result2 = render_template(root, "sec:docs-adaptive", make_run_options(extra_tags={"python"}))
     
     assert "Project Documentation" in result2
     assert "Python Setup" in result2
@@ -91,7 +91,7 @@ def test_markdown_conditional_blocks_basic(adaptive_project):
     assert "General Usage" in result2
     
     # Тест с активным тегом typescript
-    result3 = render_for_test(root, "sec:docs-adaptive", make_run_options(extra_tags={"typescript"}))
+    result3 = render_template(root, "sec:docs-adaptive", make_run_options(extra_tags={"typescript"}))
     
     assert "Project Documentation" in result3
     assert "TypeScript Setup" in result3
@@ -154,7 +154,7 @@ def test_markdown_if_else_blocks(adaptive_project):
     write(root / "lg-cfg" / "sections.yaml", sections_content)
     
     # Без тега minimal - показываем else блок
-    result1 = render_for_test(root, "sec:guide", make_run_options())
+    result1 = render_template(root, "sec:guide", make_run_options())
     
     assert "Development Guide" in result1
     assert "Complete Setup" in result1
@@ -165,7 +165,7 @@ def test_markdown_if_else_blocks(adaptive_project):
     assert "Next Steps" in result1
     
     # С тегом minimal - показываем if блок
-    result2 = render_for_test(root, "sec:guide", make_run_options(extra_tags={"minimal"}))
+    result2 = render_template(root, "sec:guide", make_run_options(extra_tags={"minimal"}))
     
     assert "Development Guide" in result2
     assert "Quick Start" in result2
@@ -238,7 +238,7 @@ def test_markdown_elif_chains(adaptive_project):
     """).strip() + "\n")
     
     # Тест agent тега (первое условие)
-    result1 = render_for_test(root, "sec:api-docs", make_run_options(extra_tags={"agent"}))
+    result1 = render_template(root, "sec:api-docs", make_run_options(extra_tags={"agent"}))
     assert "Agent Authentication" in result1
     assert "AgentClient" in result1
     assert "extended permissions" in result1
@@ -247,20 +247,20 @@ def test_markdown_elif_chains(adaptive_project):
     assert "StandardClient" not in result1
     
     # Тест review тега (elif)
-    result2 = render_for_test(root, "sec:api-docs", make_run_options(extra_tags={"review"}))
+    result2 = render_template(root, "sec:api-docs", make_run_options(extra_tags={"review"}))
     assert "Review Authentication" in result2
     assert "ReviewClient" in result2
     assert "readonly=True" in result2
     assert "AgentClient" not in result2
     
     # Тест minimal тега (elif)
-    result3 = render_for_test(root, "sec:api-docs", make_run_options(extra_tags={"minimal"}))
+    result3 = render_template(root, "sec:api-docs", make_run_options(extra_tags={"minimal"}))
     assert "Basic Authentication" in result3
     assert "BasicClient" in result3
     assert "ReviewClient" not in result3
     
     # Тест без тегов (else)
-    result4 = render_for_test(root, "sec:api-docs", make_run_options())
+    result4 = render_template(root, "sec:api-docs", make_run_options())
     assert "Standard Authentication" in result4
     assert "StandardClient" in result4
     assert "username/password" in result4
@@ -335,37 +335,37 @@ def test_markdown_complex_conditions(adaptive_project):
     """).strip() + "\n")
     
     # Тест AND условия
-    result1 = render_for_test(root, "sec:advanced", make_run_options(extra_tags={"agent", "python"}))
+    result1 = render_template(root, "sec:advanced", make_run_options(extra_tags={"agent", "python"}))
     assert "Python Agent Configuration" in result1
     assert "agent.configure_python_env()" in result1
     
-    result2 = render_for_test(root, "sec:advanced", make_run_options(extra_tags={"agent"}))  # только agent
+    result2 = render_template(root, "sec:advanced", make_run_options(extra_tags={"agent"}))  # только agent
     assert "Python Agent Configuration" not in result2
     
     # Тест OR условия
-    result3 = render_for_test(root, "sec:advanced", make_run_options(extra_tags={"tests"}))
+    result3 = render_template(root, "sec:advanced", make_run_options(extra_tags={"tests"}))
     assert "Quality Assurance" in result3
     assert "Enable linting" in result3
     
-    result4 = render_for_test(root, "sec:advanced", make_run_options(extra_tags={"review"}))
+    result4 = render_template(root, "sec:advanced", make_run_options(extra_tags={"review"}))
     assert "Quality Assurance" in result4
     
     # Тест NOT условия
-    result5 = render_for_test(root, "sec:advanced", make_run_options())  # без minimal
+    result5 = render_template(root, "sec:advanced", make_run_options())  # без minimal
     assert "Advanced Features" in result5
     assert "Performance Tuning" in result5
     assert "Monitoring Setup" in result5
     
-    result6 = render_for_test(root, "sec:advanced", make_run_options(extra_tags={"minimal"}))
+    result6 = render_template(root, "sec:advanced", make_run_options(extra_tags={"minimal"}))
     assert "Advanced Features" not in result6
     assert "Performance Tuning" not in result6
     
     # Тест TAGSET + NOT комбинации
-    result7 = render_for_test(root, "sec:advanced", make_run_options(extra_tags={"typescript"}))
+    result7 = render_template(root, "sec:advanced", make_run_options(extra_tags={"typescript"}))
     assert "TypeScript Advanced" in result7
     assert "strictMode: true" in result7
     
-    result8 = render_for_test(root, "sec:advanced", make_run_options(extra_tags={"typescript", "minimal"}))
+    result8 = render_template(root, "sec:advanced", make_run_options(extra_tags={"typescript", "minimal"}))
     assert "TypeScript Advanced" not in result8  # minimal блокирует
 
 
@@ -415,7 +415,7 @@ def test_markdown_comment_instructions(adaptive_project):
     """).strip() + "\n")
     
     # Тест без тегов - комментарии должны быть исключены
-    result1 = render_for_test(root, "sec:readme", make_run_options())
+    result1 = render_template(root, "sec:readme", make_run_options())
     
     assert "Project README" in result1
     assert "This is the main project documentation" in result1
@@ -431,7 +431,7 @@ def test_markdown_comment_instructions(adaptive_project):
     assert "Python Features" not in result1
     
     # Тест с тегом python - условные блоки работают, комментарии исключены
-    result2 = render_for_test(root, "sec:readme", make_run_options(extra_tags={"python"}))
+    result2 = render_template(root, "sec:readme", make_run_options(extra_tags={"python"}))
     
     assert "Python Features" in result2
     assert "Python-specific functionality" in result2
@@ -505,7 +505,7 @@ def test_markdown_templating_with_regular_drop_rules(adaptive_project):
     """).strip() + "\n")
     
     # Тест без тегов - шаблонизация не активирует блоки, drop правила работают
-    result1 = render_for_test(root, "sec:complete-guide", make_run_options())
+    result1 = render_template(root, "sec:complete-guide", make_run_options())
     
     assert "Complete Guide" in result1
     assert "Introduction" in result1
@@ -525,7 +525,7 @@ def test_markdown_templating_with_regular_drop_rules(adaptive_project):
     assert "Basic usage examples" not in result1
     
     # Тест с тегами - шаблонизация активирует блоки, drop правила работают
-    result2 = render_for_test(root, "sec:complete-guide", 
+    result2 = render_template(root, "sec:complete-guide", 
                              make_run_options(extra_tags={"python", "minimal"}))
     
     assert "Python Setup" in result2
@@ -574,7 +574,7 @@ def test_markdown_templating_disabled(adaptive_project):
           - "/docs/notemplating.md"
     """).strip() + "\n")
     
-    result = render_for_test(root, "sec:no-templating", make_run_options(extra_tags={"python"}))
+    result = render_template(root, "sec:no-templating", make_run_options(extra_tags={"python"}))
     
     # HTML-комментарии должны остаться как есть
     assert "<!-- lg:if tag:python -->" in result
@@ -618,7 +618,7 @@ def test_markdown_templating_error_handling(adaptive_project):
     
     # Должна возникнуть ошибка при обработке невалидного шаблона
     with pytest.raises(Exception):  # Конкретный тип ошибки зависит от реализации
-        render_for_test(root, "sec:invalid-template", make_run_options())
+        render_template(root, "sec:invalid-template", make_run_options())
 
 
 @pytest.mark.parametrize("condition,active_tags,should_appear", [
@@ -663,7 +663,7 @@ Regular content.
           - "/docs/condition_test.md"
     """).strip() + "\n")
     
-    result = render_for_test(root, "sec:condition-test", make_run_options(extra_tags=active_tags))
+    result = render_template(root, "sec:condition-test", make_run_options(extra_tags=active_tags))
     
     assert "Condition Test" in result
     assert "Always Visible" in result

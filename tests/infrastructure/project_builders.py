@@ -19,35 +19,8 @@ from .config_builders import (
 
 
 # ===== Configuration Classes =====
-
-@dataclass
-class ModeConfig:
-    """Конфигурация одного режима."""
-    title: str
-    description: str = ""
-    tags: List[str] = field(default_factory=list)
-    options: Dict[str, Any] = field(default_factory=dict)
-
-
-@dataclass  
-class ModeSetConfig:
-    """Конфигурация набора режимов."""
-    title: str
-    modes: Dict[str, ModeConfig]
-
-
-@dataclass
-class TagConfig:
-    """Конфигурация одного тега.""" 
-    title: str
-    description: str = ""
-
-
-@dataclass
-class TagSetConfig:
-    """Конфигурация набора тегов."""
-    title: str
-    tags: Dict[str, TagConfig]
+# Импортированы из adaptive_config.py
+from .adaptive_config import ModeConfig, ModeSetConfig, TagConfig, TagSetConfig
 
 
 # ===== Project Builders =====

@@ -57,40 +57,6 @@ def make_markdown_adapter(raw_cfg: Dict[str, Any]) -> MarkdownAdapter:
     return MarkdownAdapter().bind(raw_cfg, default_tokenizer())
 
 
-# ===== Generic Adapter Utils =====
-
-def make_adapter(adapter_class, cfg):
-    """
-    Универсальная функция для создания адаптера с заглушкой токенизатора.
-    
-    Args:
-        adapter_class: Класс адаптера (PythonAdapter, TypeScriptAdapter, etc.)
-        cfg: Конфигурация адаптера
-        
-    Returns:
-        Настроенный адаптер
-    """
-    adapter = adapter_class().bind(None, stub_tokenizer())
-    adapter._cfg = cfg
-    return adapter
-
-
-def make_adapter_real(adapter_class, cfg):
-    """
-    Универсальная функция для создания адаптера с реальным токенизатором.
-    
-    Args:
-        adapter_class: Класс адаптера (PythonAdapter, TypeScriptAdapter, etc.)
-        cfg: Конфигурация адаптера
-        
-    Returns:
-        Настроенный адаптер
-    """
-    adapter = adapter_class().bind(None, default_tokenizer())
-    adapter._cfg = cfg
-    return adapter
-
-
 # ===== Tree-sitter Utils =====
 
 def is_tree_sitter_available() -> bool:
@@ -133,9 +99,6 @@ __all__ = [
     
     # Markdown adapters
     "make_markdown_adapter",
-    
-    # Generic adapters
-    "make_adapter", "make_adapter_real",
     
     # Tree-sitter utils
     "is_tree_sitter_available", "skip_if_no_tree_sitter",

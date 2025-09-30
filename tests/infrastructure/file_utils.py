@@ -31,10 +31,6 @@ def write(p: Path, text: str) -> Path:
     return p
 
 
-# Алиас для совместимости с существующими тестами
-write_file = write
-
-
 def write_source_file(p: Path, content: str, language: str = "python") -> Path:
     """
     Создает исходный файл с содержимым для конкретного языка.
@@ -94,42 +90,10 @@ def write_markdown(p: Path, title: str = "", content: str = "", h1_prefix: str =
     return write(p, "\n".join(lines) + "\n")
 
 
-def create_temp_file(tmp_path: Path, filename: str, content: str) -> Path:
-    """
-    Создает временный файл с содержимым.
-    
-    Совместимость с adapters/conftest.py.
-    
-    Args:
-        tmp_path: Базовая директория
-        filename: Имя файла
-        content: Содержимое
-        
-    Returns:
-        Путь к созданному файлу
-    """
-    return write(tmp_path / filename, content)
-
-
-def write_text_file(p: Path, content: str, *, dedent: bool = True) -> Path:
-    """
-    Записывает текстовый файл с опциональным dedent.
-    
-    Args:
-        p: Путь к файлу
-        content: Содержимое
-        dedent: Применить ли textwrap.dedent
-        
-    Returns:
-        Путь к созданному файлу
-    """
-    if dedent and content:
-        content = textwrap.dedent(content).strip() + "\n"
-    
-    return write(p, content)
+# Удалены дублирующие функции create_temp_file и write_text_file
+# Используйте write() напрямую
 
 
 __all__ = [
-    "write", "write_file", "write_source_file", "write_markdown", 
-    "create_temp_file", "write_text_file"
+    "write", "write_source_file", "write_markdown"
 ]
