@@ -17,233 +17,26 @@ import pytest
 from lg.engine import Engine
 from lg.types import RunOptions, ModelName
 
+# Импортируем из унифицированной инфраструктуры
+from tests.infrastructure import (
+    write, write_source_file, 
+    create_sections_yaml, create_template, create_section_fragment,
+    render_template, make_run_options,
+    get_basic_sections_config, get_multilang_sections_config,
+    create_basic_project
+)
+
 
 # ====================== Хелперы для создания файлов ======================
-
-def write(p: Path, text: str) -> Path:
-    """Записывает текст в файл, создавая родительские директории при необходимости."""
-    p.parent.mkdir(parents=True, exist_ok=True)
-    p.write_text(text, encoding="utf-8")
-    return p
-
-
-def write_source_file(p: Path, content: str, language: str = "python") -> Path:
-    """
-    Создает исходный файл с содержимым для конкретного языка.
-    
-    Args:
-        p: Путь к файлу
-        content: Содержимое файла
-        language: Язык программирования для корректного комментария
-        
-    Returns:
-        Путь к созданному файлу
-    """
-    comment_map = {
-        "python": "# ",
-        "typescript": "// ",
-        "javascript": "// ",
-        "java": "// ",
-        "cpp": "// "
-    }
-    
-    comment_prefix = comment_map.get(language, "# ")
-    
-    lines = [f"{comment_prefix}Source file: {p.name}", ""]
-    
-    if content:
-        lines.append(content.strip())
-    
-    return write(p, "\n".join(lines) + "\n")
-
-
-def create_sections_yaml(root: Path, sections_config: Dict[str, Dict[str, Any]]) -> Path:
-    """
-    Создает lg-cfg/sections.yaml с указанными секциями.
-    
-    Args:
-        root: Корень проекта
-        sections_config: Словарь конфигурации секций
-        
-    Returns:
-        Путь к созданному файлу
-    """
-    from ruamel.yaml import YAML
-    
-    sections_file = root / "lg-cfg" / "sections.yaml"
-    yaml = YAML()
-    yaml.preserve_quotes = True
-    
-    sections_file.parent.mkdir(parents=True, exist_ok=True)
-    with sections_file.open("w", encoding="utf-8") as f:
-        yaml.dump(sections_config, f)
-    
-    return sections_file
-
-
-def create_section_fragment(root: Path, fragment_path: str, sections_config: Dict[str, Dict[str, Any]]) -> Path:
-    """
-    Создает фрагмент секций *.sec.yaml.
-    
-    Args:
-        root: Корень проекта
-        fragment_path: Путь к файлу фрагмента относительно lg-cfg/
-        sections_config: Словарь конфигурации секций
-        
-    Returns:
-        Путь к созданному файлу
-    """
-    from ruamel.yaml import YAML
-    
-    fragment_file = root / "lg-cfg" / f"{fragment_path}.sec.yaml"
-    yaml = YAML()
-    yaml.preserve_quotes = True
-    
-    fragment_file.parent.mkdir(parents=True, exist_ok=True)
-    with fragment_file.open("w", encoding="utf-8") as f:
-        yaml.dump(sections_config, f)
-    
-    return fragment_file
-
-
-def create_template(root: Path, name: str, content: str, template_type: str = "ctx") -> Path:
-    """
-    Создает шаблон или контекст.
-    
-    Args:
-        root: Корень проекта
-        name: Имя файла (без расширения)
-        content: Содержимое шаблона
-        template_type: Тип ("ctx" или "tpl")
-        
-    Returns:
-        Путь к созданному файлу
-    """
-    suffix = f".{template_type}.md"
-    return write(root / "lg-cfg" / f"{name}{suffix}", content)
+# Все утилиты создания файлов теперь импортированы из tests.infrastructure
 
 
 # ====================== Хелперы для рендеринга ======================
-
-def render_template(root: Path, target: str, options: Optional[RunOptions] = None) -> str:
-    """
-    Рендерит шаблон или секцию в указанном проекте.
-    
-    Args:
-        root: Корень проекта
-        target: Цель рендеринга (ctx:name, sec:name или name)
-        options: Опции выполнения
-        
-    Returns:
-        Отрендеренный текст
-    """
-    if options is None:
-        options = RunOptions(model=ModelName("o3"))
-    
-    # Создаем движок с правильной рабочей директорией
-    import os
-    original_cwd = os.getcwd()
-    try:
-        os.chdir(root)
-        
-        from lg.engine import _parse_target
-        engine = Engine(options)
-        target_spec = _parse_target(target, root)
-        return engine.render_text(target_spec)
-    finally:
-        os.chdir(original_cwd)
-
-
-def make_run_options(
-    model: str = "o3",
-    modes: Optional[Dict[str, str]] = None,
-    extra_tags: Optional[set] = None
-) -> RunOptions:
-    """Создает RunOptions с указанными параметрами."""
-    return RunOptions(
-        model=ModelName(model),
-        modes=modes or {},
-        extra_tags=extra_tags or set()
-    )
+# Все рендеринг утилиты теперь импортированы из tests.infrastructure
 
 
 # ====================== Готовые конфигурации секций ======================
-
-def get_basic_sections_config() -> Dict[str, Dict[str, Any]]:
-    """Возвращает базовую конфигурацию секций для тестов."""
-    return {
-        "src": {
-            "extensions": [".py"],
-            "code_fence": True,
-            "filters": {
-                "mode": "allow",
-                "allow": ["/src/**"]
-            }
-        },
-        "docs": {
-            "extensions": [".md"],
-            "code_fence": False,
-            "markdown": {
-                "max_heading_level": 2
-            },
-            "filters": {
-                "mode": "allow",
-                "allow": ["/docs/**"]
-            }
-        },
-        "all": {
-            "extensions": [".py", ".md", ".ts"],
-            "code_fence": True,
-            "filters": {
-                "mode": "allow",
-                "allow": ["/**"]
-            }
-        },
-        "tests": {
-            "extensions": [".py"],
-            "code_fence": True,
-            "filters": {
-                "mode": "allow",
-                "allow": ["/tests/**"]
-            }
-        }
-    }
-
-
-def get_multilang_sections_config() -> Dict[str, Dict[str, Any]]:
-    """Возвращает конфигурацию секций для многоязычных проектов."""
-    return {
-        "python-src": {
-            "extensions": [".py"],
-            "code_fence": True,
-            "python": {
-                "skip_trivial_inits": True
-            },
-            "filters": {
-                "mode": "allow",
-                "allow": ["/python/**"]
-            }
-        },
-        "typescript-src": {
-            "extensions": [".ts", ".tsx"],
-            "code_fence": True,
-            "filters": {
-                "mode": "allow",
-                "allow": ["/typescript/**"]
-            }
-        },
-        "shared-docs": {
-            "extensions": [".md"],
-            "code_fence": False,
-            "markdown": {
-                "max_heading_level": 3
-            },
-            "filters": {
-                "mode": "allow",
-                "allow": ["/shared-docs/**"]
-            }
-        }
-    }
+# Все готовые конфигурации теперь импортированы из tests.infrastructure
 
 
 # ====================== Основные фикстуры ======================

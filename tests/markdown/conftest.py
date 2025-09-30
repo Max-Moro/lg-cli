@@ -2,10 +2,10 @@
 Shared fixtures and utilities for Markdown adapter tests.
 """
 
-from lg.adapters.markdown import MarkdownAdapter
-from lg.stats.tokenizer import default_tokenizer
+# Импорт из унифицированной инфраструктуры
+from tests.infrastructure.adapter_utils import make_markdown_adapter
 
-
+# Для обратной совместимости
 def adapter(raw_cfg: dict):
     """Markdown adapter с предустановленным TokenService."""
-    return MarkdownAdapter().bind(raw_cfg, default_tokenizer())
+    return make_markdown_adapter(raw_cfg)
