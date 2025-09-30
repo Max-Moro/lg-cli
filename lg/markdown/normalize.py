@@ -41,41 +41,62 @@ def normalize_markdown(
 
     lines = text.splitlines()
 
-    # 1) снять единственный верхний H1
+    # 1) специальная обработка для плейсхолдеров внутри заголовков
     removed_h1 = False
-    if strip_single_h1:
-        # Для плейсхолдеров внутри заголовков всегда удаляем H1
-        force_strip = placeholder_inside_heading
-        lines, removed_h1 = _strip_single_h1_if_needed(lines, group_size, force_strip)
+    if placeholder_inside_heading and lines:
+        # Для плейсхолдеров внутри заголовков извлекаем только текст H1 без символов #
+        atx_match = re.match(r"^#\s+(.*)$", lines[0])
+        if atx_match:
+            # Заменяем H1 на просто текст
+            heading_text = atx_match.group(1).strip()
+            lines[0] = heading_text
+            removed_h1 = True
+            meta["md.removed_h1"] = 1
+        elif len(lines) >= 2 and lines[0].strip() and re.match(r"^={2,}\s*$", lines[1]):
+            # Setext заголовок - оставляем только текст, убираем подчеркивание
+            heading_text = lines[0].strip()
+            lines = [heading_text] + lines[2:]
+            removed_h1 = True
+            meta["md.removed_h1"] = 1
+    elif strip_single_h1:
+        # Обычная обработка strip_h1
+        lines, removed_h1 = _strip_single_h1_if_needed(lines, group_size, False)
         if removed_h1:
             meta["md.removed_h1"] = 1
 
     if max_heading_level is None:
-        return text, meta
+        return ("\n".join(lines), meta)
 
     max_lvl = int(max_heading_level)
 
     in_fence = False
     fence_pat = re.compile(r"^```")
     head_pat = re.compile(r"^(#+)\s")
-    # 2) собрать min_lvl вне fenced
-    min_lvl: int | None = None
-    for ln in lines:
-        if fence_pat.match(ln):
-            in_fence = not in_fence
-            continue
-        if in_fence:
-            continue
-        m = head_pat.match(ln)
-        if m:
-            lvl = len(m.group(1))
-            min_lvl = lvl if min_lvl is None else min(min_lvl, lvl)
+    
+    if placeholder_inside_heading and removed_h1:
+        # Специальная логика для плейсхолдеров внутри заголовков
+        # H2 должен стать уровнем max_heading_level + 1
+        shift = (max_lvl + 1) - 2  # H2 (уровень 2) становится max_lvl + 1
+    else:
+        # 2) собрать min_lvl вне fenced
+        min_lvl: int | None = None
+        for ln in lines:
+            if fence_pat.match(ln):
+                in_fence = not in_fence
+                continue
+            if in_fence:
+                continue
+            m = head_pat.match(ln)
+            if m:
+                lvl = len(m.group(1))
+                min_lvl = lvl if min_lvl is None else min(min_lvl, lvl)
 
-    if min_lvl is None:
-        # заголовков нет
-        return ("\n".join(lines), meta)
+        if min_lvl is None:
+            # заголовков нет
+            return ("\n".join(lines), meta)
 
-    shift = max_lvl - min_lvl
+        shift = max_lvl - min_lvl
+
     meta["md.shifted"] = bool(shift or removed_h1)
     if shift == 0:
         return ("\n".join(lines), meta)
