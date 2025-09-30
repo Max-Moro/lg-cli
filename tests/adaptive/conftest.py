@@ -27,7 +27,7 @@ from lg.vcs import NullVcs
 from tests.infrastructure import (
     write, create_modes_yaml, create_tags_yaml, create_basic_sections_yaml,
     ModeConfig, ModeSetConfig, TagConfig, TagSetConfig,
-    make_run_options as base_make_run_options
+    make_run_options as base_make_run_options, make_engine, render_template
 )
 
 
@@ -176,52 +176,6 @@ def make_run_context(root: Path, options: Optional[RunOptions] = None) -> RunCon
         mode_options=mode_options,
         active_tags=active_tags
     )
-
-
-def make_engine(root: Path, options: Optional[RunOptions] = None) -> Engine:
-    """
-    Создает Engine для тестирования.
-    
-    Args:
-        root: Корень проекта  
-        options: Опции выполнения
-        
-    Returns:
-        Настроенный Engine
-    """
-    if options is None:
-        options = make_run_options()
-    
-    # Временно меняем текущую директорию для Engine
-    import os
-    original_cwd = os.getcwd()
-    try:
-        os.chdir(root)
-        return Engine(options)
-    finally:
-        os.chdir(original_cwd)
-
-
-def render_template(root: Path, target: str, options: Optional[RunOptions] = None) -> str:
-    """
-    Хелпер для рендеринга в тестах.
-    
-    Args:
-        root: Корень проекта
-        target: Цель для рендеринга
-        options: Опции выполнения
-        
-    Returns:
-        Отрендеренный текст
-    """
-    from lg.engine import _parse_target
-    
-    if options is None:
-        options = make_run_options()
-    
-    engine = make_engine(root, options)
-    target_spec = _parse_target(target, root)
-    return engine.render_text(target_spec)
 
 
 # ====================== Основные фикстуры ======================
@@ -506,7 +460,7 @@ __all__ = [
     "get_default_modes_config", "get_default_tags_config",
     
     # Хелперы для RunOptions и контекстов
-    "make_run_options", "make_run_context", "make_engine", "render_template",
+    "make_run_options", "make_run_context",
     
     # Основные фикстуры
     "adaptive_project", "minimal_adaptive_project", "federated_project",
