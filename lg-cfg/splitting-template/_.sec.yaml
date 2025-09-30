@@ -35,7 +35,7 @@ src:
       - "/lg/template/*.py"
       python:
         budget:
-          max_tokens_per_file: 1500
+          max_tokens_per_file: 10000
 
 tests:
   extensions: [".py"]
@@ -51,6 +51,7 @@ tests:
           - "/conftest.py"
           - "/md_placeholders/"
           - "/adaptive/"
+          - "/common_placeholders/"
         children:
           md_placeholders:
             mode: allow
@@ -62,3 +63,8 @@ tests:
             allow:
               - "/conftest.py"
               - "/test_basic_functionality.py"
+          common_placeholders:
+            mode: allow
+            allow:
+              - "/conftest.py"
+              - "/test_basic_section_placeholders.py"
