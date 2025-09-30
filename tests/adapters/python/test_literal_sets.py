@@ -6,7 +6,7 @@ Ensures set literals are correctly identified and trimmed with proper bracket ty
 from lg.adapters.code_model import LiteralConfig
 from lg.adapters.python import PythonCfg
 from tests.adapters.python.conftest import make_adapter
-from tests.conftest import lctx_py
+from tests.infrastructure import lctx_py
 
 
 class TestPythonSetLiterals:

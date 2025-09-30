@@ -2,7 +2,7 @@ import re
 
 import pytest
 
-from tests.conftest import lctx_md
+from tests.infrastructure import lctx_md
 
 
 # Помощник: проверяем только ожидаемые поля, не требуя точного совпадения всех ключей.

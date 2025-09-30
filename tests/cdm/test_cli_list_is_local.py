@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from tests.conftest import run_cli, jload
+from tests.infrastructure import run_cli, jload
 
 
 def test_list_commands_are_local_to_self(monorepo: Path):

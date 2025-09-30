@@ -3,10 +3,7 @@ Test smart comment placement for literal optimization in TypeScript.
 Ensures comments don't break code structure when placed inline.
 """
 
-import pytest
-
 from lg.adapters.typescript import TypeScriptCfg
-from lg.adapters.optimizations.literals import LiteralOptimizer
 from .conftest import make_adapter
 
 
@@ -153,5 +150,5 @@ class TestLiteralCommentContext:
     
     def _make_context(self, code: str):
         """Helper to create LightweightContext for testing."""
-        from tests.conftest import lctx_ts
+        from tests.infrastructure import lctx_ts
         return lctx_ts(code)

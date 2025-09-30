@@ -4,7 +4,7 @@ Test literal trimming with correct indentation handling for TypeScript.
 
 from lg.adapters.typescript import TypeScriptCfg
 from tests.adapters.typescript.conftest import make_adapter
-from tests.conftest import lctx_ts
+from tests.infrastructure import lctx_ts
 
 
 def test_typescript_object_literal_indentation():

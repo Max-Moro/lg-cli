@@ -12,7 +12,7 @@ from lg.adapters.code_model import BudgetConfig
 from lg.adapters.python import PythonCfg
 from .conftest import make_adapter_real
 from ..golden_utils import assert_golden_match, load_sample_code
-from tests.conftest import lctx_py
+from tests.infrastructure import lctx_py
 
 
 BUDGET_STEPS = [829, 797, 666, 605, 591, 563, 464, 343, 255]

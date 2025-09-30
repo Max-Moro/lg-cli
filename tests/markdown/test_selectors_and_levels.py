@@ -1,6 +1,6 @@
 import re
 
-from tests.conftest import lctx_md
+from tests.infrastructure import lctx_md
 from .conftest import adapter
 
 MD = """\

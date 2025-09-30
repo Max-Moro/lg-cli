@@ -1,7 +1,7 @@
 import textwrap
 from pathlib import Path
 
-from .conftest import run_cli
+from .infrastructure import run_cli
 
 
 def _write(p: Path, text: str) -> None:

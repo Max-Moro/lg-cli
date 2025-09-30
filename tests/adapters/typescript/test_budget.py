@@ -12,7 +12,7 @@ from lg.adapters.code_model import BudgetConfig
 from lg.adapters.typescript import TypeScriptCfg
 from .conftest import make_adapter_real
 from ..golden_utils import assert_golden_match, load_sample_code
-from tests.conftest import lctx_ts
+from tests.infrastructure import lctx_ts
 
 
 BUDGET_STEPS = [642, 608, 513, 444, 423, 383, 358, 262, 185]

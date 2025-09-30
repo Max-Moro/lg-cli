@@ -1,4 +1,4 @@
-from .conftest import run_cli
+from .infrastructure import run_cli
 
 def test_cli_report_missing_context_exits_nonzero(tmpproj):
     # контекста ctx:missing нет → код возврата ненулевой, stderr содержит ошибку

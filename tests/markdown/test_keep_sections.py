@@ -1,4 +1,4 @@
-from tests.conftest import lctx_md
+from tests.infrastructure import lctx_md
 from .conftest import adapter
 
 def test_keep_section_by_text():

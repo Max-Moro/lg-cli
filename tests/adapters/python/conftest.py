@@ -5,8 +5,7 @@ Shared fixtures and utilities for Python adapter tests.
 import pytest
 
 from lg.adapters.python import PythonCfg
-from tests.conftest import lctx_py, lctx  # noqa: F401
-from tests.infrastructure.testing_utils import stub_tokenizer
+from tests.infrastructure import lctx_py, lctx  # noqa: F401
 from ..golden_utils import assert_golden_match, load_sample_code  # noqa: F401
 
 # Импорт из унифицированной инфраструктуры

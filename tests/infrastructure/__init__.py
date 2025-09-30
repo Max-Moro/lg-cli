@@ -1,12 +1,11 @@
 """
 Унифицированная тестовая инфраструктура для Listing Generator.
 
-Этот пакет содержит общие утилиты, билдеры проектов, фикстуры и хелперы,
+Этот пакет содержит общие утилиты и хелперы,
 которые используются во всех тестах для избежания дублирования кода.
 
 Модули:
 - file_utils: Утилиты для создания файлов и директорий
-- project_builders: Билдеры для различных типов тестовых проектов  
 - adapter_utils: Утилиты для работы с языковыми адаптерами
 - config_builders: Билдеры конфигурации (sections, modes, tags)
 - rendering_utils: Утилиты для рендеринга шаблонов и секций
@@ -15,7 +14,8 @@
 # Основные утилиты, которые должны быть доступны везде
 from .file_utils import write, write_source_file, write_markdown
 from .rendering_utils import render_template, make_run_options, make_engine
-from .testing_utils import stub_tokenizer, TokenServiceStub
+from .testing_utils import stub_tokenizer, TokenServiceStub, lctx, lctx_py, lctx_ts, lctx_md
+from .cli_utils import run_cli, jload
 from .config_builders import (
     create_sections_yaml, create_section_fragment, create_modes_yaml, create_tags_yaml,
     create_basic_lg_cfg, create_basic_sections_yaml, create_template,
@@ -35,7 +35,10 @@ __all__ = [
     "render_template", "make_run_options", "make_engine",
     
     # Testing utilities
-    "stub_tokenizer", "TokenServiceStub",
+    "stub_tokenizer", "TokenServiceStub", "lctx", "lctx_py", "lctx_ts", "lctx_md",
+    
+    # CLI utilities
+    "run_cli", "jload",
     
     # Config builders
     "create_sections_yaml", "create_modes_yaml", "create_tags_yaml", "create_basic_sections_yaml",

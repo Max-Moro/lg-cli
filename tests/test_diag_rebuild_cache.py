@@ -3,7 +3,7 @@ from pathlib import Path
 from lg.cache.fs_cache import Cache
 from lg.engine import run_report
 from lg.types import RunOptions
-from .conftest import run_cli, jload
+from .infrastructure import run_cli, jload
 
 
 def test_diag_rebuild_cache_clears_and_repairs(tmpproj: Path, monkeypatch):

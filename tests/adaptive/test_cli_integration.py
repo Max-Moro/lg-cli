@@ -7,7 +7,7 @@
 
 from __future__ import annotations
 
-from tests.conftest import run_cli, jload
+from tests.infrastructure import run_cli, jload
 from .conftest import adaptive_project, federated_project
 
 

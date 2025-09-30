@@ -3,10 +3,7 @@ Test smart comment placement for literal optimization in Python.
 Ensures comments don't break code structure when placed inline.
 """
 
-import pytest
-
 from lg.adapters.python import PythonCfg
-from lg.adapters.optimizations.literals import LiteralOptimizer
 from .conftest import make_adapter
 
 
@@ -123,5 +120,5 @@ and contains unnecessary verbose content.
     
     def _make_context(self, code: str):
         """Helper to create LightweightContext for testing."""
-        from tests.conftest import lctx_py
+        from tests.infrastructure import lctx_py
         return lctx_py(code)

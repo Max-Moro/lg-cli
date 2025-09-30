@@ -1,4 +1,4 @@
-from tests.conftest import lctx_md
+from tests.infrastructure import lctx_md
 from .conftest import adapter
 
 def test_drop_section_by_text_with_placeholder():

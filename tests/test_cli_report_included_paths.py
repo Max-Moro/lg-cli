@@ -1,5 +1,5 @@
 import textwrap
-from .conftest import run_cli, jload
+from .infrastructure import run_cli, jload
 
 def test_cli_report_included_paths(tmp_path, monkeypatch):
     monkeypatch.chdir(tmp_path)

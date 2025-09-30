@@ -1,5 +1,5 @@
 from lg.protocol import PROTOCOL_VERSION
-from .conftest import run_cli, jload
+from .infrastructure import run_cli, jload
 
 def test_cli_list_contexts(tmpproj):
     cp = run_cli(tmpproj, "list", "contexts")
