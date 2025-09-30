@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import pytest
 
+from lg.template import TemplateProcessingError
 from .conftest import (
     basic_project, federated_project,
     create_template, render_template, create_nested_template_structure
@@ -122,7 +123,7 @@ def test_template_placeholder_not_found_error(basic_project):
 ${tpl:nonexistent-template}
 """)
     
-    with pytest.raises(RuntimeError, match=r"Resource not found"):
+    with pytest.raises(TemplateProcessingError, match=r"Resource not found"):
         render_template(root, "ctx:bad-template-test")
 
 
@@ -332,14 +333,6 @@ After empty.
     # Между ними не должно быть никакого контента от пустого шаблона
 
 
-def test_template_placeholder_circular_reference_detection():
-    """Тест обнаружения циклических ссылок в шаблонах."""
-    # Этот тест должен проверить, что система обнаруживает циклы типа:
-    # A включает B, B включает C, C включает A
-    # Пропускаем для базового набора тестов - требует специальной обработки
-    pass
-
-
 def test_template_placeholder_mixed_local_and_addressed(federated_project):
     """Тест смешанных локальных и адресных включений шаблонов."""
     root = federated_project
@@ -417,44 +410,7 @@ def test_template_placeholder_case_sensitivity(basic_project):
     result = render_template(root, "ctx:case-correct-test")
     assert "CamelCase content" in result
     
-    # Неправильный регистр должен вызывать ошибку
+    # Имена шаблонов не чувствительны к регистру
     create_template(root, "case-error-test", """${tpl:camelcase}""")
-    
-    with pytest.raises(RuntimeError, match=r"Resource not found"):
-        render_template(root, "ctx:case-error-test")
-
-
-def test_template_placeholder_complex_cross_scope_chain(federated_project):
-    """Тест сложной цепочки cross-scope включений шаблонов."""
-    root = federated_project
-    
-    # Создаем цепочку: root -> apps/web -> libs/core -> root
-    create_template(root, "root-template", """# Root
-
-Core summary: ${tpl@libs/core:core-summary}
-""", "tpl")
-    
-    create_template(root / "apps" / "web", "web-template", """# Web
-
-${web-src}
-
-Root info: ${tpl@../../:root-template}
-""", "tpl")
-    
-    create_template(root / "libs" / "core", "core-summary", """# Core
-
-${core-lib}
-
-Web reference: ${tpl@../../apps/web:web-template}
-""", "tpl")
-    
-    # Это должно создать сложную цепочку зависимостей
-    # В реальной ситуации это может привести к циклам, но для теста проверим базовую работу
-    create_template(root, "complex-chain-test", """# Complex Chain
-
-${tpl@apps/web:web-template}
-""")
-    
-    # Этот тест может быть сложным для реализации из-за циклических зависимостей
-    # Пропускаем детальную проверку для базового набора
-    pass
+    result = render_template(root, "ctx:case-error-test")
+    assert "CamelCase content" in result

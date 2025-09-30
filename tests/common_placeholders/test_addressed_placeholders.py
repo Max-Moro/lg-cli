@@ -312,7 +312,7 @@ ${@apps/web:web-src}
     result = render_template(root, "ctx:case-correct-test")
     assert "export const App" in result
     
-    # Система не чувствительна к регистру - неправильный регистр тоже работает
+    # Пути не чувствительны к регистру
     create_template(root, "case-error-test", """# Case Error Test
 
 ${@Apps/Web:web-src}

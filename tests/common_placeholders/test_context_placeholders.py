@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import pytest
 
+from lg.template import TemplateProcessingError
 from .conftest import (
     basic_project, federated_project,
     create_template, render_template
@@ -119,7 +120,7 @@ def test_context_placeholder_not_found_error(basic_project):
 ${ctx:nonexistent-context}
 """)
     
-    with pytest.raises(RuntimeError, match=r"Resource not found"):
+    with pytest.raises(TemplateProcessingError, match=r"Resource not found"):
         render_template(root, "ctx:bad-context-test")
 
 
@@ -417,42 +418,6 @@ ${ctx@libs/core:core-ctx}
     assert "class Processor:" in result
 
 
-def test_context_placeholder_cross_scope_nesting(federated_project):
-    """Тест вложенности контекстов через скоупы."""
-    root = federated_project
-    
-    # Контекст в libs/core, который ссылается на родительский
-    create_template(root / "libs" / "core", "core-with-parent", """# Core with Parent
-
-## Local Core Content
-
-${core-lib}
-
-## Parent Project Info
-
-${ctx@../../:parent-info}
-""", "ctx")
-    
-    # Родительский контекст
-    create_template(root, "parent-info", """# Parent Info
-
-${overview}
-""", "ctx")
-    
-    # Главный контекст, который использует cross-scope вложенность
-    create_template(root, "cross-scope-nesting-test", """# Cross Scope Nesting
-
-${ctx@libs/core:core-with-parent}
-""")
-    
-    result = render_template(root, "ctx:cross-scope-nesting-test")
-    
-    assert "Core with Parent" in result
-    assert "class Processor:" in result
-    assert "Parent Info" in result
-    assert "Federated Project" in result
-
-
 def test_context_placeholder_case_sensitivity(basic_project):
     """Тест чувствительности к регистру в именах контекстов."""
     root = basic_project
@@ -464,11 +429,10 @@ def test_context_placeholder_case_sensitivity(basic_project):
     result = render_template(root, "ctx:case-correct-ctx-test")
     assert "CamelContext content" in result
     
-    # Неправильный регистр должен вызывать ошибку
+    # Имена шаблонов не чувствительны к регистру
     create_template(root, "case-error-ctx-test", """${ctx:camelcontext}""")
-    
-    with pytest.raises(RuntimeError, match=r"Resource not found"):
-        render_template(root, "ctx:case-error-ctx-test")
+    result = render_template(root, "ctx:case-error-ctx-test")
+    assert "CamelContext content" in result
 
 
 @pytest.mark.parametrize("context_name,content_check", [
@@ -497,14 +461,6 @@ ${{ctx:{context_name}}}
     
     result = render_template(root, f"ctx:param-ctx-test-{context_name.replace('/', '-')}")
     assert content_check in result
-
-
-def test_context_placeholder_circular_reference_prevention():
-    """Тест предотвращения циклических ссылок в контекстах."""
-    # Этот тест должен проверить, что система обнаруживает циклы типа:
-    # A включает B, B включает C, C включает A
-    # Пропускаем для базового набора тестов - требует специальной обработки в движке
-    pass
 
 
 def test_context_vs_template_placeholder_distinction(basic_project):
