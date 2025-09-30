@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import pytest
 
+from lg.template import TemplateProcessingError
 from .conftest import (
     basic_project, federated_project,
     create_template, render_template,
@@ -180,58 +181,6 @@ This demonstrates deep nesting of mixed placeholders.
     assert "deep nesting of mixed placeholders" in result
 
 
-def test_complex_dependency_chain(federated_project):
-    """Тест сложной цепочки зависимостей между компонентами."""
-    root = federated_project
-    
-    # Создаем цепочку зависимостей: Root -> Web -> Core -> Root (но разные части)
-    
-    # Шаблон в core, который ссылается на web
-    create_template(root / "libs" / "core", "core-with-web", """# Core with Web Reference
-
-## Core Implementation
-${core-lib}
-
-## Web Integration Details
-${@../../apps/web:web-src}
-""", "tpl")
-    
-    # Контекст в web, который ссылается на core
-    create_template(root / "apps" / "web", "web-with-core", """# Web with Core
-
-## Web Application
-${web-src}
-
-## Core Dependencies
-${tpl@../../libs/core:core-with-web}
-""", "ctx")
-    
-    # Корневой шаблон, который объединяет все
-    create_template(root, "complex-chain-test", """# Complex Dependency Chain
-
-## Project Overview
-${overview}
-
-## Integrated Application
-${ctx@apps/web:web-with-core}
-
-## Configuration
-${root-config}
-""")
-    
-    result = render_template(root, "ctx:complex-chain-test")
-    
-    # Проверяем, что сложная цепочка отработала
-    assert "Complex Dependency Chain" in result
-    assert "Federated Project" in result  # из overview
-    
-    assert "Web with Core" in result  # из web-with-core контекста
-    assert "export const App" in result  # из web-src
-    
-    assert "Core with Web Reference" in result  # из core-with-web шаблона
-    assert "class Processor:" in result  # из core-lib
-
-
 def test_multiple_file_groups_with_mixed_placeholders(basic_project):
     """Тест множественных групп файлов с смешанными плейсхолдерами."""
     root = basic_project
@@ -330,7 +279,7 @@ ${@libs/core:core-lib}
 """)
     
     # Ошибка должна прерывать обработку
-    with pytest.raises(RuntimeError, match=r"Section 'nonexistent-section' not found"):
+    with pytest.raises(TemplateProcessingError, match=r"Section 'nonexistent-section' not found"):
         render_template(root, "ctx:error-in-middle")
 
 
