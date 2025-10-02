@@ -11,6 +11,7 @@ import logging
 from typing import Any, Callable, Dict, List, Optional
 
 from .base import ProcessingError
+from .handlers import DefaultTemplateProcessorHandlers, TemplateProcessorHandlers
 from .lexer import ModularLexer
 from .nodes import TemplateNode, TemplateAST, TextNode
 from .parser import ModularParser
@@ -52,6 +53,9 @@ class TemplateProcessor:
         
         # Кэши для производительности
         self._template_cache: Dict[str, TemplateAST] = {}
+        
+        # Внутренние обработчики для плагинов
+        self.handlers = DefaultTemplateProcessorHandlers()
         
         # Обработчик секций (устанавливается извне)
         self.section_handler: Optional[Callable[[SectionRef, TemplateContext], str]] = None
@@ -290,32 +294,50 @@ def create_v2_template_processor(run_ctx: RunContext) -> TemplateProcessor:
     from .common_placeholders import CommonPlaceholdersPlugin
     registry.register_plugin(CommonPlaceholdersPlugin())
     
-    # Инициализируем плагины
-    registry.initialize_plugins()
-    
     # Создаем процессор
     processor = TemplateProcessor(run_ctx, registry)
     
-    # Настраиваем интеграцию с обработчиками
-    _setup_processor_integration(processor)
+    # Настраиваем типизированные обработчики
+    _setup_processor_handlers(processor)
+    
+    # Инициализируем плагины с передачей обработчиков
+    registry.initialize_plugins(processor.handlers)
     
     return processor
 
 
-def _setup_processor_integration(processor: TemplateProcessor) -> None:
+def _setup_processor_handlers(processor: TemplateProcessor) -> None:
     """
-    Настраивает интеграцию процессора с системой обработчиков.
+    Настраивает типизированные обработчики процессора.
     
     Args:
         processor: Процессор для настройки
     """
-    # Добавляем обработчик AST в контекст шаблона для включений
+    # Настраиваем обработчик узлов AST
     def ast_processor(node: TemplateNode, template_ctx: TemplateContext) -> str:
         return processor._evaluate_node(node, [], 0)
     
-    # Добавляем обработчики как атрибуты (обходим ограничения типизации)
-    setattr(processor.template_ctx, '_ast_processor', ast_processor)
-    setattr(processor.template_ctx, '_section_handler', processor.section_handler)
+    processor.handlers.set_ast_processor(ast_processor)
+    
+    # Настраиваем обработчик секций (будет установлен позже через set_section_handler)
+    def section_processor(section_ref: SectionRef, template_ctx: TemplateContext) -> str:
+        if processor.section_handler is None:
+            raise RuntimeError(f"No section handler set for processing section '{section_ref.name}'")
+        return processor.section_handler(section_ref, template_ctx)
+    
+    processor.handlers.set_section_processor(section_processor)
+    
+    # Настраиваем парсер шаблонов для включений
+    def template_parser(template_text: str, template_ctx: TemplateContext) -> str:
+        # Парсим и обрабатываем включаемый шаблон
+        ast = processor._parse_template(template_text, f"<included:{hash(template_text)}>")
+        resolved_ast = processor._resolve_template_references(ast, "<included>")
+        return processor._evaluate_ast(resolved_ast)
+    
+    processor.handlers.set_template_parser(template_parser)
+    
+    # Передаем обработчики в контекст шаблона для доступа из плагинов
+    setattr(processor.template_ctx, '_processor_handlers', processor.handlers)
 
 
 __all__ = ["TemplateProcessor", "TemplateProcessingError", "create_v2_template_processor"]

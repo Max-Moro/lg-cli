@@ -8,7 +8,10 @@
 from __future__ import annotations
 
 import logging
-from typing import Dict, List, Optional, Type
+from typing import Dict, List, Optional, Type, TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from .handlers import TemplateProcessorHandlers
 
 from .base import (
     TemplatePlugin, TokenSpec, ParsingRule, ProcessorRule,
@@ -106,9 +109,12 @@ class TemplateRegistry:
                 f"(priority: {processor_rule.priority})"
             )
     
-    def initialize_plugins(self) -> None:
+    def initialize_plugins(self, handlers: Optional['TemplateProcessorHandlers'] = None) -> None:
         """
         Инициализирует все зарегистрированные плагины.
+        
+        Args:
+            handlers: Обработчики ядра шаблонизатора для передачи плагинам
         
         Вызывается после регистрации всех плагинов для установки
         зависимостей и финальной настройки.
@@ -120,6 +126,12 @@ class TemplateRegistry:
         
         # Сортируем плагины по приоритету
         sorted_plugins = sorted(self.plugins, key=lambda p: p.priority, reverse=True)
+        
+        # Устанавливаем обработчики для плагинов
+        if handlers is not None:
+            for plugin in sorted_plugins:
+                plugin.set_handlers(handlers)
+                logger.debug(f"Handlers set for plugin '{plugin.name}'")
         
         # Инициализируем плагины в порядке приоритета
         for plugin in sorted_plugins:

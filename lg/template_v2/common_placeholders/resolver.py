@@ -216,10 +216,14 @@ class CommonPlaceholdersResolver:
             else:
                 raise RuntimeError(f"Unknown include kind: {node.kind}")
             
-            # Парсим загруженный шаблон
-            # Пока используем временную заглушку для включений
-            # В реальной интеграции это будет делегировано основному парсеру
+            # Парсим загруженный шаблон через основной парсер
+            # Получаем обработчики через глобальный контекст (временное решение)
+            # В идеале резолвер должен получать парсер извне
             from ..nodes import TextNode
+            
+            # TODO: Интегрировать с основным парсером
+            # Пока используем простую заглушку, в реальности нужно:
+            # ast = self.template_parser.parse(template_text)
             ast: TemplateAST = [TextNode(text=template_text)]
             
             resolved_include = ResolvedInclude(

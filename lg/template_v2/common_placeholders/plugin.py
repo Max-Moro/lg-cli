@@ -26,6 +26,10 @@ class CommonPlaceholdersPlugin(TemplatePlugin):
     - Адресные ссылки @origin:name для межскоуповых включений
     """
     
+    def __init__(self):
+        """Инициализирует плагин."""
+        super().__init__()
+    
     @property
     def name(self) -> str:
         """Возвращает имя плагина."""

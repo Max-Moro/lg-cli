@@ -10,7 +10,10 @@ from __future__ import annotations
 import enum
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
-from typing import Any, Callable, Dict, List, Optional, Pattern, Type
+from typing import Any, Callable, Dict, List, Optional, Pattern, Type, TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from .handlers import TemplateProcessorHandlers
 
 # Импортируем собственные типы
 from .nodes import TemplateNode
@@ -142,6 +145,10 @@ class TemplatePlugin(ABC):
     своих компонентов в системе шаблонизации.
     """
     
+    def __init__(self):
+        """Инициализирует плагин."""
+        self._handlers: Optional['TemplateProcessorHandlers'] = None
+    
     @property
     @abstractmethod
     def name(self) -> str:
@@ -152,6 +159,30 @@ class TemplatePlugin(ABC):
     def priority(self) -> PluginPriority:
         """Возвращает приоритет плагина (по умолчанию средний)."""
         return PluginPriority.PLACEHOLDER
+    
+    def set_handlers(self, handlers: 'TemplateProcessorHandlers') -> None:
+        """
+        Устанавливает обработчики ядра шаблонизатора.
+        
+        Args:
+            handlers: Внутренние обработчики для вызова функций ядра
+        """
+        self._handlers = handlers
+    
+    @property
+    def handlers(self) -> 'TemplateProcessorHandlers':
+        """
+        Возвращает обработчики ядра шаблонизатора.
+        
+        Returns:
+            Обработчики для вызова функций ядра
+            
+        Raises:
+            RuntimeError: Если обработчики не установлены
+        """
+        if self._handlers is None:
+            raise RuntimeError(f"Handlers not set for plugin '{self.name}'")
+        return self._handlers
     
     def register_tokens(self) -> List[TokenSpec]:
         """

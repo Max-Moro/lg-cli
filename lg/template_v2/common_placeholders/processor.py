@@ -20,8 +20,8 @@ def _process_section_node_impl(node: SectionNode, template_ctx: TemplateContext)
     """
     Обрабатывает узел секции.
     
-    Вызывает зарегистрированный обработчик секций для получения
-    отрендеренного содержимого секции.
+    Использует типизированные обработчики ядра шаблонизатора
+    для получения отрендеренного содержимого секции.
     
     Args:
         node: Узел секции для обработки
@@ -31,13 +31,15 @@ def _process_section_node_impl(node: SectionNode, template_ctx: TemplateContext)
         Отрендеренное содержимое секции
         
     Raises:
-        RuntimeError: Если обработчик секций не установлен или секция не найдена
+        RuntimeError: Если обработчики не доступны или секция не найдена
     """
-    # Получаем обработчик секций из контекста (устанавливается в основном процессоре)
-    section_handler = getattr(template_ctx, '_section_handler', None)
+    # Получаем обработчики из контекста плагина
+    # Плагин должен быть доступен через глобальное состояние или через контекст
+    # Пока используем временное решение с получением через контекст
+    handlers = getattr(template_ctx, '_processor_handlers', None)
     
-    if section_handler is None:
-        raise RuntimeError(f"No section handler registered for section '{node.section_name}'")
+    if handlers is None:
+        raise RuntimeError(f"No processor handlers available for section '{node.section_name}'")
     
     # Используем резолвленную ссылку если есть, иначе создаем простую
     if node.resolved_ref is not None:
@@ -51,8 +53,8 @@ def _process_section_node_impl(node: SectionNode, template_ctx: TemplateContext)
         )
     
     try:
-        # Вызываем обработчик секций
-        return section_handler(section_ref, template_ctx)
+        # Вызываем типизированный обработчик секций
+        return handlers.process_section_ref(section_ref, template_ctx)
     except Exception as e:
         raise RuntimeError(f"Failed to process section '{node.section_name}': {e}")
 
@@ -61,7 +63,8 @@ def _process_include_node_impl(node: IncludeNode, template_ctx: TemplateContext)
     """
     Обрабатывает узел включения шаблона/контекста.
     
-    Рендерит включенный AST в контексте текущего шаблона.
+    Использует типизированные обработчики ядра для рендеринга
+    включенного AST в контексте текущего шаблона.
     
     Args:
         node: Узел включения для обработки
@@ -76,21 +79,21 @@ def _process_include_node_impl(node: IncludeNode, template_ctx: TemplateContext)
     if node.children is None:
         raise RuntimeError(f"Include '{node.canon_key()}' not resolved (children is None)")
     
+    # Получаем обработчики из контекста
+    handlers = getattr(template_ctx, '_processor_handlers', None)
+    
+    if handlers is None:
+        raise RuntimeError("No processor handlers available in template context")
+    
     # Входим в скоуп включения для корректной обработки адресных ссылок
     template_ctx.enter_include_scope(node.origin)
     
     try:
-        # Получаем процессор AST из контекста
-        ast_processor = getattr(template_ctx, '_ast_processor', None)
-        
-        if ast_processor is None:
-            raise RuntimeError("No AST processor available in template context")
-        
-        # Рендерим включенный AST
+        # Рендерим включенный AST через типизированные обработчики
         result_parts = []
         
         for child_node in node.children:
-            rendered = ast_processor(child_node, template_ctx)
+            rendered = handlers.process_ast_node(child_node, template_ctx)
             if rendered:
                 result_parts.append(rendered)
         

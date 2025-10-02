@@ -132,7 +132,7 @@ def _parse_addressed_section(context: ParsingContext) -> SectionNode:
     origin, name = _parse_addressed_reference(context)
     
     # Создаем SectionNode с адресной ссылкой
-    # TODO: resolved_ref будет заполнен резолвером
+    # resolved_ref будет заполнен резолвером
     return SectionNode(section_name=f"@{origin}:{name}")
 
 
