@@ -32,4 +32,6 @@ adaptability:
     allow:
       - "/docs/adaptability.md"
   markdown:
+    strip_single_h1: false
+    max_heading_level: 2
     enable_templating: false
