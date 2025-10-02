@@ -14,7 +14,7 @@ from typing import Any, Callable, Dict, List, Optional, Pattern, Type
 
 # Импортируем собственные типы
 from .nodes import TemplateNode, TemplateAST
-from .tokens import Token, TokenType, ParserError
+from .tokens import Token, TokenType, DynamicTokenType, ParserError
 
 
 class PluginPriority(enum.IntEnum):
@@ -79,14 +79,14 @@ class ParsingContext:
         """Возвращает текущий токен."""
         if self.position >= self.length:
             # Возвращаем EOF токен
-            return Token(TokenType.EOF, "", self.position, 0, 0)
+            return Token(DynamicTokenType(TokenType.EOF), "", self.position, 0, 0)
         return self.tokens[self.position]
     
     def peek(self, offset: int = 1) -> Token:
         """Возвращает токен на указанном смещении от текущей позиции."""
         pos = self.position + offset
         if pos >= self.length:
-            return Token(TokenType.EOF, "", pos, 0, 0)
+            return Token(DynamicTokenType(TokenType.EOF), "", pos, 0, 0)
         return self.tokens[pos]
     
     def advance(self) -> Token:
@@ -98,7 +98,7 @@ class ParsingContext:
     
     def is_at_end(self) -> bool:
         """Проверяет, достигнут ли конец токенов."""
-        return self.position >= self.length or self.current().type == TokenType.EOF
+        return self.position >= self.length or self.current().type == DynamicTokenType(TokenType.EOF)
     
     def save_position(self) -> None:
         """Сохраняет текущую позицию в стек."""
@@ -114,11 +114,11 @@ class ParsingContext:
         if self._position_stack:
             self._position_stack.pop()
     
-    def match(self, *token_types: TokenType) -> bool:
+    def match(self, *token_types: DynamicTokenType) -> bool:
         """Проверяет, соответствует ли текущий токен одному из указанных типов."""
         return self.current().type in token_types
     
-    def consume(self, expected_type: TokenType) -> Token:
+    def consume(self, expected_type: DynamicTokenType) -> Token:
         """
         Потребляет токен ожидаемого типа.
         

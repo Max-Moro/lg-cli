@@ -8,10 +8,10 @@
 from __future__ import annotations
 
 import re
-from typing import Dict, List, Pattern, Union
+from typing import Dict, List, Pattern, Union, Optional
 
 from .registry import TemplateRegistry
-from .tokens import Token, TokenType, LexerError
+from .tokens import Token, TokenType, DynamicTokenType, LexerError
 
 
 class ModularLexer:
@@ -22,20 +22,23 @@ class ModularLexer:
     единого лексера, способного распознавать все типы конструкций.
     """
     
-    def __init__(self, registry: TemplateRegistry = None):
+    def __init__(self, registry: Optional[TemplateRegistry] = None):
         """
         Инициализирует лексер с указанным реестром.
         
         Args:
             registry: Реестр компонентов (по умолчанию - глобальный)
         """
+        if registry is None:
+            from .registry import TemplateRegistry
+            registry = TemplateRegistry()
         self.registry = registry
         
         # Паттерны токенов, отсортированные по приоритету
         self.token_patterns: List[tuple[str, Pattern[str]]] = []
         
-        # Карта имен токенов в типы
-        self.token_name_to_type: Dict[str, Union[TokenType, str]] = {}
+        # Карта имен токенов в динамические типы
+        self.token_name_to_type: Dict[str, DynamicTokenType] = {}
         
         # Инициализация паттернов
         self._initialize_patterns()
@@ -55,13 +58,16 @@ class ModularLexer:
         for token_spec in sorted_tokens:
             self.token_patterns.append((token_spec.name, token_spec.pattern))
             
-            # Пытаемся найти соответствующий TokenType
+            # Создаем DynamicTokenType для всех токенов
             try:
-                token_type = TokenType[token_spec.name]
-                self.token_name_to_type[token_spec.name] = token_type
+                # Пытаемся найти базовый TokenType
+                base_token_type = TokenType[token_spec.name]
+                dynamic_token = DynamicTokenType(base_token_type)
             except KeyError:
-                # Если токена нет в стандартном enum, создаем как строку
-                self.token_name_to_type[token_spec.name] = token_spec.name
+                # Создаем динамический токен
+                dynamic_token = DynamicTokenType(token_spec.name)
+            
+            self.token_name_to_type[token_spec.name] = dynamic_token
     
     def tokenize(self, text: str) -> List[Token]:
         """
@@ -91,7 +97,7 @@ class ModularLexer:
             tokens.append(token)
         
         # Добавляем EOF токен
-        tokens.append(Token(TokenType.EOF, "", self.position, self.line, self.column))
+        tokens.append(Token(DynamicTokenType(TokenType.EOF), "", self.position, self.line, self.column))
         
         return tokens
     
@@ -106,7 +112,7 @@ class ModularLexer:
             LexerError: При невозможности распознать токен
         """
         if self.position >= self.length:
-            return Token(TokenType.EOF, "", self.position, self.line, self.column)
+            return Token(DynamicTokenType(TokenType.EOF), "", self.position, self.line, self.column)
         
         start_pos = self.position
         start_line = self.line
@@ -120,14 +126,7 @@ class ModularLexer:
                 self._advance(len(value))
                 
                 # Получаем тип токена
-                token_type = self.token_name_to_type.get(token_name, TokenType.TEXT)
-                
-                # Если это строка, пытаемся получить TokenType
-                if isinstance(token_type, str):
-                    try:
-                        token_type = TokenType[token_type]
-                    except (KeyError, AttributeError):
-                        token_type = TokenType.TEXT
+                token_type = self.token_name_to_type.get(token_name, DynamicTokenType(TokenType.TEXT))
                 
                 return Token(token_type, value, start_pos, start_line, start_column)
         
@@ -136,7 +135,7 @@ class ModularLexer:
         if text_end > self.position:
             value = self.text[self.position:text_end]
             self._advance(len(value))
-            return Token(TokenType.TEXT, value, start_pos, start_line, start_column)
+            return Token(DynamicTokenType(TokenType.TEXT), value, start_pos, start_line, start_column)
         
         # Неожиданный символ
         char = self.text[self.position]
@@ -187,53 +186,15 @@ class ModularLexer:
 
 def create_default_lexer() -> ModularLexer:
     """
-    Создает лексер с базовыми токенами для совместимости со старой версией.
+    Создает лексер без предустановленных токенов.
+    Токены должны регистрироваться плагинами.
     
     Returns:
         Настроенный модульный лексер
     """
-    from .base import TokenSpec, PluginPriority
+    from .registry import TemplateRegistry
     
-    registry = get_registry()
-    
-    # Регистрируем базовые токены, если реестр пуст
-    if not registry.tokens:
-        base_tokens = [
-            TokenSpec(
-                name="PLACEHOLDER_START",
-                pattern=re.compile(r'\$\{'),
-                priority=PluginPriority.PLACEHOLDER
-            ),
-            TokenSpec(
-                name="PLACEHOLDER_END", 
-                pattern=re.compile(r'\}'),
-                priority=PluginPriority.PLACEHOLDER
-            ),
-            TokenSpec(
-                name="DIRECTIVE_START",
-                pattern=re.compile(r'\{\%'),
-                priority=PluginPriority.DIRECTIVE  
-            ),
-            TokenSpec(
-                name="DIRECTIVE_END",
-                pattern=re.compile(r'\%\}'),
-                priority=PluginPriority.DIRECTIVE
-            ),
-            TokenSpec(
-                name="COMMENT_START",
-                pattern=re.compile(r'\{\#'),
-                priority=PluginPriority.COMMENT
-            ),
-            TokenSpec(
-                name="COMMENT_END",
-                pattern=re.compile(r'\#\}'),
-                priority=PluginPriority.COMMENT
-            ),
-        ]
-        
-        for token_spec in base_tokens:
-            registry.tokens[token_spec.name] = token_spec
-    
+    registry = TemplateRegistry()
     return ModularLexer(registry)
 
 

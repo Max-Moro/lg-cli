@@ -225,13 +225,13 @@ class TemplateProcessor:
         """Загружает текст шаблона из файла."""
         try:
             # Попытка загрузить как контекст
-            from ..template.common import load_context_from
+            from .common_placeholders.common import load_context_from
             _, text = load_context_from(self.run_ctx.root / "lg-cfg", template_name)
             return text
         except FileNotFoundError:
             try:
                 # Попытка загрузить как шаблон
-                from ..template.common import load_template_from
+                from .common_placeholders.common import load_template_from
                 _, text = load_template_from(self.run_ctx.root / "lg-cfg", template_name)
                 return text
             except FileNotFoundError:

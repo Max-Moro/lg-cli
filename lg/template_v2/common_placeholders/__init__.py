@@ -15,7 +15,7 @@ from typing import List, Optional
 
 from ..base import TemplatePlugin, PluginPriority, TokenSpec, ParsingRule, ProcessorRule, ParsingContext
 from ..nodes import TextNode, TemplateNode
-from ..tokens import TokenType
+from ..tokens import DynamicTokenType
 
 class CommonPlaceholdersPlugin(TemplatePlugin):
     """
@@ -24,6 +24,14 @@ class CommonPlaceholdersPlugin(TemplatePlugin):
     Предоставляет базовую функциональность для обработки ${...} плейсхолдеров
     в модульном шаблонизаторе.
     """
+    
+    def __init__(self):
+        # Создаем динамические токены для плагина
+        from ..tokens import TokenRegistry
+        token_registry = TokenRegistry()
+        
+        self.PLACEHOLDER_START = token_registry.register_token("PLACEHOLDER_START")
+        self.PLACEHOLDER_END = token_registry.register_token("PLACEHOLDER_END")
     
     @property
     def name(self) -> str:
@@ -70,7 +78,7 @@ class CommonPlaceholdersPlugin(TemplatePlugin):
         Базовая заглушка - пока создает TextNode с содержимым плейсхолдера.
         В последующих фазах будет реализована полная логика.
         """
-        if not context.match(TokenType.PLACEHOLDER_START):
+        if not context.match(self.PLACEHOLDER_START):
             return None
         
         # Потребляем ${
@@ -78,12 +86,12 @@ class CommonPlaceholdersPlugin(TemplatePlugin):
         
         # Собираем содержимое до }
         content_parts = []
-        while not context.is_at_end() and not context.match(TokenType.PLACEHOLDER_END):
+        while not context.is_at_end() and not context.match(self.PLACEHOLDER_END):
             token = context.advance()
             content_parts.append(token.value)
         
         # Потребляем }
-        if context.match(TokenType.PLACEHOLDER_END):
+        if context.match(self.PLACEHOLDER_END):
             context.advance()
         
         # Пока просто возвращаем как текст (заглушка)

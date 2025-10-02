@@ -9,60 +9,121 @@ from __future__ import annotations
 
 import enum
 from dataclasses import dataclass
+from typing import Dict, Union, Optional
 
 
 class TokenType(enum.Enum):
-    """Базовые типы токенов в шаблоне."""
+    """Базовые типы токенов в шаблоне. Плагины регистрируют свои токены через TokenRegistry."""
     
-    # Текстовый контент
+    # Базовый текстовый контент
     TEXT = "TEXT"
     
-    # Разделители плейсхолдеров
-    PLACEHOLDER_START = "PLACEHOLDER_START"  # ${
-    PLACEHOLDER_END = "PLACEHOLDER_END"      # }
-    
-    # Разделители директив
-    DIRECTIVE_START = "DIRECTIVE_START"      # {%
-    DIRECTIVE_END = "DIRECTIVE_END"          # %}
-    
-    # Разделители комментариев
-    COMMENT_START = "COMMENT_START"          # {#
-    COMMENT_END = "COMMENT_END"              # #}
-    
-    # Идентификаторы и ключевые слова
+    # Базовые идентификаторы и разделители
     IDENTIFIER = "IDENTIFIER"
     COLON = "COLON"                          # :
     AT = "AT"                                # @
     COMMA = "COMMA"                          # ,
     
-    # Логические операторы
-    AND = "AND"
-    OR = "OR"
-    NOT = "NOT"
-    
-    # Ключевые слова директив
-    IF = "IF"
-    ELIF = "ELIF"
-    ELSE = "ELSE"
-    ENDIF = "ENDIF"
-    MODE = "MODE"
-    ENDMODE = "ENDMODE"
-    
-    # Специальные токены
-    WHITESPACE = "WHITESPACE"
-    NEWLINE = "NEWLINE"
-    EOF = "EOF"
-    
-    # Скобки для группировки в условиях
+    # Базовые скобки (используются в разных плагинах)
     LPAREN = "LPAREN"                        # (
     RPAREN = "RPAREN"                        # )
-    
-    # Квадратные скобки для адресации
     LBRACKET = "LBRACKET"                    # [
     RBRACKET = "RBRACKET"                    # ]
     
-    # Якорные ссылки для md-плейсхолдеров
-    HASH = "HASH"                            # #
+    # Служебные токены
+    WHITESPACE = "WHITESPACE"
+    NEWLINE = "NEWLINE"
+    EOF = "EOF"
+
+
+class DynamicTokenType:
+    """
+    Расширяемый тип токена, который может быть как базовым TokenType, так и динамически зарегистрированным.
+    
+    Используется лексером и парсером для работы с токенами плагинов.
+    """
+    
+    def __init__(self, value: Union[TokenType, str]):
+        if isinstance(value, TokenType):
+            self._value = value.value
+            self._is_base = True
+        else:
+            self._value = str(value)
+            self._is_base = False
+    
+    @property
+    def name(self) -> str:
+        """Возвращает имя токена."""
+        return self._value
+    
+    @property
+    def is_base(self) -> bool:
+        """Возвращает True если это базовый токен из TokenType enum."""
+        return self._is_base
+    
+    def __str__(self) -> str:
+        return self._value
+    
+    def __repr__(self) -> str:
+        prefix = "TokenType" if self._is_base else "DynamicToken"
+        return f"{prefix}({self._value})"
+    
+    def __eq__(self, other) -> bool:
+        if isinstance(other, DynamicTokenType):
+            return self._value == other._value
+        elif isinstance(other, TokenType):
+            return self._is_base and self._value == other.value
+        elif isinstance(other, str):
+            return self._value == other
+        return False
+    
+    def __hash__(self) -> int:
+        return hash(self._value)
+
+
+class TokenRegistry:
+    """
+    Реестр для динамической регистрации токенов плагинами.
+    
+    Позволяет плагинам регистрировать собственные токены без изменения базового TokenType enum.
+    """
+    
+    def __init__(self):
+        self._dynamic_tokens: Dict[str, DynamicTokenType] = {}
+        
+        # Предрегистрируем базовые токены
+        for base_token in TokenType:
+            self._dynamic_tokens[base_token.value] = DynamicTokenType(base_token)
+    
+    def register_token(self, name: str) -> DynamicTokenType:
+        """
+        Регистрирует новый динамический токен.
+        
+        Args:
+            name: Имя токена
+            
+        Returns:
+            DynamicTokenType для использования в плагине
+        """
+        if name not in self._dynamic_tokens:
+            self._dynamic_tokens[name] = DynamicTokenType(name)
+        return self._dynamic_tokens[name]
+    
+    def get_token(self, name: str) -> Optional[DynamicTokenType]:
+        """
+        Получает токен по имени (базовый или динамический).
+        
+        Args:
+            name: Имя токена
+            
+        Returns:
+            DynamicTokenType или None если токен не найден
+        """
+        return self._dynamic_tokens.get(name)
+    
+    def get_all_tokens(self) -> Dict[str, DynamicTokenType]:
+        """Возвращает все зарегистрированные токены."""
+        return dict(self._dynamic_tokens)
 
 
 @dataclass(frozen=True)
@@ -70,7 +131,7 @@ class Token:
     """
     Токен с позиционной информацией для точной диагностики ошибок.
     """
-    type: TokenType
+    type: DynamicTokenType
     value: str
     position: int        # Позиция в исходном тексте
     line: int           # Номер строки (начиная с 1)
@@ -100,4 +161,11 @@ class ParserError(Exception):
         self.column = token.column
 
 
-__all__ = ["TokenType", "Token", "LexerError", "ParserError"]
+__all__ = [
+    "TokenType", 
+    "DynamicTokenType", 
+    "TokenRegistry",
+    "Token", 
+    "LexerError", 
+    "ParserError"
+]

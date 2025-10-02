@@ -23,24 +23,12 @@ class TemplateRegistry:
     """
     Централизованный реестр всех компонентов шаблонизатора.
     
-    Singleton, управляющий регистрацией плагинов и их компонентов.
+    Управляет регистрацией плагинов и их компонентов.
     Обеспечивает правильный порядок инициализации и разрешение зависимостей.
     """
     
-    _instance: Optional[TemplateRegistry] = None
-    
-    def __new__(cls) -> TemplateRegistry:
-        """Обеспечивает singleton поведение."""
-        if cls._instance is None:
-            cls._instance = super().__new__(cls)
-        return cls._instance
-    
     def __init__(self):
-        """Инициализирует реестр только один раз."""
-        if hasattr(self, '_initialized'):
-            return
-            
-        self._initialized = True
+        """Инициализирует реестр."""
         
         # Реестры компонентов
         self.tokens: TokenRegistry = {}
@@ -54,16 +42,6 @@ class TemplateRegistry:
         self._plugins_initialized = False
         
         logger.debug("TemplateRegistry initialized")
-    
-    @classmethod
-    def get_instance(cls) -> TemplateRegistry:
-        """Возвращает экземпляр singleton."""
-        return cls()
-    
-    @classmethod
-    def reset(cls) -> None:
-        """Сбрасывает singleton (используется для тестирования)."""
-        cls._instance = None
     
     def register_plugin(self, plugin: TemplatePlugin) -> None:
         """
