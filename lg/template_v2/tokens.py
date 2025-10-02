@@ -9,30 +9,11 @@ from __future__ import annotations
 
 import enum
 from dataclasses import dataclass
-from typing import Dict, Union, Optional
 
 
 class TokenType(enum.Enum):
     """Базовые типы токенов в шаблоне. Плагины регистрируют свои токены через TokenRegistry."""
-    
-    # Базовый текстовый контент
     TEXT = "TEXT"
-    
-    # Базовые идентификаторы и разделители
-    IDENTIFIER = "IDENTIFIER"
-    COLON = "COLON"                          # :
-    AT = "AT"                                # @
-    COMMA = "COMMA"                          # ,
-    
-    # Базовые скобки (используются в разных плагинах)
-    LPAREN = "LPAREN"                        # (
-    RPAREN = "RPAREN"                        # )
-    LBRACKET = "LBRACKET"                    # [
-    RBRACKET = "RBRACKET"                    # ]
-    
-    # Служебные токены
-    WHITESPACE = "WHITESPACE"
-    NEWLINE = "NEWLINE"
     EOF = "EOF"
 
 
