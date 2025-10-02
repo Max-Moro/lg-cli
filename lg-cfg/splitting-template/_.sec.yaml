@@ -15,7 +15,7 @@ src:
           - "/section_processor.py"
           - "/config/"
           - "/adapters/"
-          - "/template/"
+#          - "/template/"
         children:
           config:
             mode: allow
