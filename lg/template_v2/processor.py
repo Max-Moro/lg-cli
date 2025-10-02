@@ -11,7 +11,7 @@ import logging
 from typing import Any, Callable, Dict, List, Optional
 
 from .base import ProcessingError
-from .handlers import DefaultTemplateProcessorHandlers
+from .handlers import TemplateProcessorHandlers
 from .lexer import ModularLexer
 from .nodes import TemplateNode, TemplateAST, TextNode
 from .parser import ModularParser
@@ -57,26 +57,20 @@ class TemplateProcessor:
         # Обработчик секций (устанавливается извне)
         self.section_handler: Optional[Callable[[SectionRef, TemplateContext], str]] = None
         
-        # Настраиваем внутренние обработчики через замыкания
-        self.handlers = DefaultTemplateProcessorHandlers()
+        # Создаем анонимный класс обработчиков прямо здесь
+        class ProcessorHandlers(TemplateProcessorHandlers):
+            def process_ast_node(self, node: TemplateNode) -> str:
+                return processor_self._evaluate_node(node, [], 0)
+            
+            def process_section_ref(self, section_ref: SectionRef) -> str:
+                if processor_self.section_handler is None:
+                    raise RuntimeError(f"No section handler set for processing section '{section_ref.name}'")
+                return processor_self.section_handler(section_ref, processor_self.template_ctx)
         
-        # Обработчик узлов AST - замыкание над методом _evaluate_node
-        self.handlers.set_ast_processor(
-            lambda node: self._evaluate_node(node, [], 0)
-        )
-        
-        # Обработчик секций - замыкание над внешним section_handler
-        self.handlers.set_section_processor(
-            lambda section_ref: (
-                self.section_handler(section_ref, self.template_ctx)
-                if self.section_handler is not None
-                else self._raise_no_section_handler_error(section_ref.name)
-            )
-        )
+        # Сохраняем ссылку на self для замыкания
+        processor_self = self
+        self.handlers = ProcessorHandlers()
 
-    def _raise_no_section_handler_error(self, section_name: str) -> str:
-        """Вспомогательный метод для чистой обработки ошибки в лямбде."""
-        raise RuntimeError(f"No section handler set for processing section '{section_name}'")
 
     def get_registry(self) -> TemplateRegistry:
         """Возвращает реестр для регистрации плагинов."""

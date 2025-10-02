@@ -82,7 +82,7 @@ class TemplateRegistry:
         # Регистрируем компоненты плагина
         self._register_plugin_tokens(plugin)
         self._register_plugin_parser_rules(plugin)
-        # Процессоры будут зарегистрированы позже через register_plugin_processors
+        self._register_plugin_processors(plugin)
         
         logger.debug(f"Plugin '{plugin.name}' registered successfully")
     
@@ -96,9 +96,7 @@ class TemplateRegistry:
         for plugin in self.plugins:
             # Устанавливаем обработчики в плагин
             plugin.set_handlers(handlers)
-            # Регистрируем процессоры плагина
-            self._register_plugin_processors(plugin)
-    
+
     def _register_plugin_tokens(self, plugin: TemplatePlugin) -> None:
         """Регистрирует токены плагина."""
         for token_spec in plugin.register_tokens():
