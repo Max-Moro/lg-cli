@@ -9,9 +9,11 @@ from __future__ import annotations
 
 from typing import List
 
+from .nodes import SectionNode, IncludeNode
 from .parser_rules import get_placeholder_parser_rules
 from .tokens import get_placeholder_token_specs
 from ..base import TemplatePlugin, TokenSpec, ParsingRule, ProcessorRule, PluginPriority
+from ..nodes import TemplateNode
 
 
 class CommonPlaceholdersPlugin(TemplatePlugin):
@@ -25,10 +27,6 @@ class CommonPlaceholdersPlugin(TemplatePlugin):
     - Адресные ссылки @origin:name для межскоуповых включений
     """
     
-    def __init__(self):
-        """Инициализирует плагин."""
-        super().__init__()
-    
     @property
     def name(self) -> str:
         """Возвращает имя плагина."""
@@ -40,42 +38,61 @@ class CommonPlaceholdersPlugin(TemplatePlugin):
         return PluginPriority.PLACEHOLDER
     
     def register_tokens(self) -> List[TokenSpec]:
-        """
-        Регистрирует токены для плейсхолдеров.
-        
-        Returns:
-            Список спецификаций токенов
-        """
+        """Регистрирует токены для плейсхолдеров."""
         return get_placeholder_token_specs()
     
     def register_parser_rules(self) -> List[ParsingRule]:
-        """
-        Регистрирует правила парсинга плейсхолдеров.
-        
-        Returns:
-            Список правил парсинга
-        """
+        """Регистрирует правила парсинга плейсхолдеров."""
         return get_placeholder_parser_rules()
     
     def register_processors(self) -> List[ProcessorRule]:
         """
         Регистрирует обработчики узлов AST.
         
-        Returns:
-            Список правил обработки
+        Создает замыкания над типизированными обработчиками для прямой обработки узлов.
         """
-        from .processor import CommonPlaceholdersProcessor, get_processor_rules
-        processor = CommonPlaceholdersProcessor(self.handlers)
-        return get_processor_rules(processor)
-    
-    def initialize(self) -> None:
-        """
-        Инициализирует плагин после регистрации всех компонентов.
+        def process_section_node(node: TemplateNode) -> str:
+            """Обрабатывает узел секции через типизированные обработчики."""
+            if not isinstance(node, SectionNode):
+                raise RuntimeError(f"Expected SectionNode, got {type(node)}")
+            
+            # Проверяем, что узел был резолвлен
+            if node.resolved_ref is None:
+                raise RuntimeError(f"Section node '{node.section_name}' not resolved")
+            
+            # Используем типизированный обработчик секций
+            return self.handlers.process_section_ref(node.resolved_ref)
         
-        Выполняет дополнительную настройку если необходимо.
-        """
-        # Пока дополнительной инициализации не требуется
-        pass
+        def process_include_node(node: TemplateNode) -> str:
+            """Обрабатывает узел включения через типизированные обработчики."""
+            if not isinstance(node, IncludeNode):
+                raise RuntimeError(f"Expected IncludeNode, got {type(node)}")
+            
+            # Проверяем, что включение было загружено
+            if node.children is None:
+                raise RuntimeError(f"Include '{node.canon_key()}' not resolved")
+            
+            # Рендерим дочерние узлы
+            result_parts = []
+            for child_node in node.children:
+                rendered = self.handlers.process_ast_node(child_node)
+                if rendered:
+                    result_parts.append(rendered)
+            
+            return "".join(result_parts)
+        
+        return [
+            ProcessorRule(
+                node_type=SectionNode,
+                processor_func=process_section_node,
+                priority=100
+            ),
+            ProcessorRule(
+                node_type=IncludeNode,
+                processor_func=process_include_node,
+                priority=100
+            )
+        ]
 
 
 __all__ = ["CommonPlaceholdersPlugin"]
