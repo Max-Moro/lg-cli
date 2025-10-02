@@ -10,7 +10,6 @@ from __future__ import annotations
 import re
 from typing import Dict, List, Pattern, Optional, Union
 
-from .base import TokenSpec
 from .registry import TemplateRegistry, get_registry
 from ..template.lexer import Token, TokenType, LexerError
 

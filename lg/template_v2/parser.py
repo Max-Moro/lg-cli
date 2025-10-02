@@ -11,9 +11,8 @@ from typing import List, Optional
 
 from .base import ParsingContext, ParsingRule
 from .registry import TemplateRegistry, get_registry
-from ..template.nodes import TemplateNode, TemplateAST, TextNode
 from ..template.lexer import Token, TokenType
-from ..template.parser import ParserError
+from ..template.nodes import TemplateNode, TemplateAST, TextNode
 
 logger = logging.getLogger(__name__)
 

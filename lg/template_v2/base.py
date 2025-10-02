@@ -10,11 +10,11 @@ from __future__ import annotations
 import enum
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
-from typing import Any, Callable, Dict, List, Optional, Pattern, Type, Union
+from typing import Any, Callable, Dict, List, Optional, Pattern, Type
 
-# Импортируем существующие типы для совместимости
-from ..template.nodes import TemplateNode, TemplateAST
 from ..template.lexer import Token, TokenType
+# Импортируем существующие типы для совместимости
+from ..template.nodes import TemplateNode
 
 
 class PluginPriority(enum.IntEnum):

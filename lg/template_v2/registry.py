@@ -11,7 +11,7 @@ import logging
 from typing import Dict, List, Optional, Type
 
 from .base import (
-    TemplatePlugin, PluginPriority, TokenSpec, ParsingRule, ProcessorRule,
+    TemplatePlugin, TokenSpec, ParsingRule, ProcessorRule,
     TokenRegistry, ParserRulesRegistry, ProcessorRegistry, PluginList
 )
 from ..template.nodes import TemplateNode

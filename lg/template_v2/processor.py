@@ -11,17 +11,16 @@ import logging
 from typing import Any, Callable, Dict, List, Optional
 
 from .base import ProcessingError
-from .registry import TemplateRegistry, get_registry
 from .lexer import ModularLexer, create_default_lexer
 from .parser import ModularParser, create_default_parser
-
+from .registry import get_registry
+from ..run_context import RunContext
 # Импортируем существующие компоненты для совместимости
 from ..template.context import TemplateContext
+from ..template.nodes import TemplateNode, TemplateAST, TextNode
 from ..template.processor import TemplateProcessingError
 from ..template.resolver import TemplateResolver
 from ..template.virtual_sections import VirtualSectionFactory
-from ..template.nodes import TemplateNode, TemplateAST, TextNode
-from ..run_context import RunContext
 from ..types import SectionRef
 
 logger = logging.getLogger(__name__)
