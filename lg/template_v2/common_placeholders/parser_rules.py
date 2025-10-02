@@ -81,18 +81,19 @@ def _parse_placeholder_content(context: ParsingContext) -> TemplateNode:
 
 
 def _check_include_prefix(context: ParsingContext) -> bool:
-    """Проверяет, начинается ли плейсхолдер с tpl: или ctx:."""
+    """Проверяет, начинается ли плейсхолдер с tpl: или ctx: (включая адресные формы tpl@origin:name)."""
     current = context.current()
     if current.type != DynamicTokenType("IDENTIFIER"):
         return False
     
+    # Проверяем, что идентификатор - это tpl или ctx
+    if current.value not in ["tpl", "ctx"]:
+        return False
+    
     # Проверяем следующий токен после идентификатора
     next_token = context.peek(1)
-    if next_token.type != DynamicTokenType("COLON"):
-        return False
-        
-    # Проверяем, что идентификатор - это tpl или ctx
-    return current.value in ["tpl", "ctx"]
+    # Допускаем как : (локальные ссылки tpl:name), так и @ (адресные ссылки tpl@origin:name)
+    return next_token.type in (DynamicTokenType("COLON"), DynamicTokenType("AT"))
 
 
 def _parse_include_placeholder(context: ParsingContext) -> IncludeNode:
