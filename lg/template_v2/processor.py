@@ -54,11 +54,29 @@ class TemplateProcessor:
         # Кэши для производительности
         self._template_cache: Dict[str, TemplateAST] = {}
         
-        # Внутренние обработчики для плагинов
-        self.handlers = DefaultTemplateProcessorHandlers()
-        
         # Обработчик секций (устанавливается извне)
         self.section_handler: Optional[Callable[[SectionRef, TemplateContext], str]] = None
+        
+        # Настраиваем внутренние обработчики через замыкания
+        self.handlers = DefaultTemplateProcessorHandlers()
+        
+        # Обработчик узлов AST - замыкание над методом _evaluate_node
+        self.handlers.set_ast_processor(
+            lambda node: self._evaluate_node(node, [], 0)
+        )
+        
+        # Обработчик секций - замыкание над внешним section_handler
+        self.handlers.set_section_processor(
+            lambda section_ref: (
+                self.section_handler(section_ref, self.template_ctx)
+                if self.section_handler is not None
+                else self._raise_no_section_handler_error(section_ref.name)
+            )
+        )
+
+    def _raise_no_section_handler_error(self, section_name: str) -> str:
+        """Вспомогательный метод для чистой обработки ошибки в лямбде."""
+        raise RuntimeError(f"No section handler set for processing section '{section_name}'")
 
     def get_registry(self) -> TemplateRegistry:
         """Возвращает реестр для регистрации плагинов."""
@@ -294,38 +312,13 @@ def create_v2_template_processor(run_ctx: RunContext) -> TemplateProcessor:
     from .common_placeholders import CommonPlaceholdersPlugin
     registry.register_plugin(CommonPlaceholdersPlugin())
     
-    # Создаем процессор
+    # Создаем процессор (обработчики настроятся автоматически в конструкторе)
     processor = TemplateProcessor(run_ctx, registry)
-    
-    # Настраиваем типизированные обработчики
-    _setup_processor_handlers(processor)
     
     # Регистрируем процессоры плагинов после установки обработчиков
     registry.register_plugin_processors(processor.handlers)
     
     return processor
-
-
-def _setup_processor_handlers(processor: TemplateProcessor) -> None:
-    """
-    Настраивает типизированные обработчики процессора.
-    
-    Args:
-        processor: Процессор для настройки
-    """
-    # Настраиваем обработчик узлов AST
-    def ast_processor(node: TemplateNode) -> str:
-        return processor._evaluate_node(node, [], 0)
-    
-    processor.handlers.set_ast_processor(ast_processor)
-    
-    # Настраиваем обработчик секций (будет установлен позже через set_section_handler)
-    def section_processor(section_ref: SectionRef) -> str:
-        if processor.section_handler is None:
-            raise RuntimeError(f"No section handler set for processing section '{section_ref.name}'")
-        return processor.section_handler(section_ref, processor.template_ctx)
-    
-    processor.handlers.set_section_processor(section_processor)
 
 
 __all__ = ["TemplateProcessor", "TemplateProcessingError", "create_v2_template_processor"]
