@@ -32,7 +32,7 @@ class TemplateProcessor:
     но использует модульную архитектуру с плагинами.
     """
     
-    def __init__(self, run_ctx: RunContext, registry: Optional[TemplateRegistry] = None):
+    def __init__(self, run_ctx: RunContext, registry: TemplateRegistry):
         """
         Инициализирует процессор шаблонов.
         
@@ -44,7 +44,7 @@ class TemplateProcessor:
         self.template_ctx = TemplateContext(run_ctx)
         
         # Используем переданный реестр или создаем новый
-        self.registry = registry or TemplateRegistry()
+        self.registry = registry
         
         # Инициализируем компоненты
         self.lexer = ModularLexer(self.registry)

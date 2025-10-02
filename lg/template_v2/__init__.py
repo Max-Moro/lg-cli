@@ -7,10 +7,9 @@
 
 from __future__ import annotations
 
-from .processor import TemplateProcessor, TemplateProcessingError
-from .registry import TemplateRegistry, get_registry
 from .base import TemplatePlugin, ProcessingError
-
+from .processor import TemplateProcessor, TemplateProcessingError
+from .registry import TemplateRegistry
 # Переэкспортируем все что нужно для совместимости
 from ..template.context import TemplateContext
 
@@ -19,7 +18,6 @@ __all__ = [
     "TemplateProcessingError", 
     "TemplateContext",
     "TemplateRegistry",
-    "get_registry",
     "TemplatePlugin",
     "ProcessingError",
 ]

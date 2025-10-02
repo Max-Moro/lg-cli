@@ -13,7 +13,7 @@ from dataclasses import dataclass
 from typing import Any, Callable, Dict, List, Optional, Pattern, Type
 
 # Импортируем собственные типы
-from .nodes import TemplateNode, TemplateAST
+from .nodes import TemplateNode
 from .tokens import Token, TokenType, DynamicTokenType, ParserError
 
 

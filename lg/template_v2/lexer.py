@@ -7,8 +7,7 @@
 
 from __future__ import annotations
 
-import re
-from typing import Dict, List, Pattern, Union, Optional
+from typing import Dict, List, Pattern
 
 from .registry import TemplateRegistry
 from .tokens import Token, TokenType, DynamicTokenType, LexerError
@@ -22,16 +21,13 @@ class ModularLexer:
     единого лексера, способного распознавать все типы конструкций.
     """
     
-    def __init__(self, registry: Optional[TemplateRegistry] = None):
+    def __init__(self, registry: TemplateRegistry):
         """
         Инициализирует лексер с указанным реестром.
         
         Args:
             registry: Реестр компонентов (по умолчанию - глобальный)
         """
-        if registry is None:
-            from .registry import TemplateRegistry
-            registry = TemplateRegistry()
         self.registry = registry
         
         # Паттерны токенов, отсортированные по приоритету
@@ -184,18 +180,4 @@ class ModularLexer:
         return min_pos if min_pos > current_pos else self.length
 
 
-def create_default_lexer() -> ModularLexer:
-    """
-    Создает лексер без предустановленных токенов.
-    Токены должны регистрироваться плагинами.
-    
-    Returns:
-        Настроенный модульный лексер
-    """
-    from .registry import TemplateRegistry
-    
-    registry = TemplateRegistry()
-    return ModularLexer(registry)
-
-
-__all__ = ["ModularLexer", "create_default_lexer"]
+__all__ = ["ModularLexer"]
