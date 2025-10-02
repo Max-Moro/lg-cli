@@ -14,8 +14,8 @@ import re
 from typing import List, Optional
 
 from ..base import TemplatePlugin, PluginPriority, TokenSpec, ParsingRule, ProcessorRule, ParsingContext
-from ...template.nodes import TextNode, TemplateNode
-from ...template.lexer import TokenType
+from ..nodes import TextNode, TemplateNode
+from ..tokens import TokenType
 
 class CommonPlaceholdersPlugin(TemplatePlugin):
     """

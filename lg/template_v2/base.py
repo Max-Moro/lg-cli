@@ -12,9 +12,9 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from typing import Any, Callable, Dict, List, Optional, Pattern, Type
 
-from ..template.lexer import Token, TokenType
-# Импортируем существующие типы для совместимости
-from ..template.nodes import TemplateNode
+# Импортируем собственные типы
+from .nodes import TemplateNode, TemplateAST
+from .tokens import Token, TokenType, ParserError
 
 
 class PluginPriority(enum.IntEnum):
@@ -127,7 +127,6 @@ class ParsingContext:
         """
         current = self.current()
         if current.type != expected_type:
-            from ..template.parser import ParserError
             raise ParserError(
                 f"Expected {expected_type.name}, got {current.type.name}", 
                 current

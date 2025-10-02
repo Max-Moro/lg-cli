@@ -11,7 +11,7 @@ import re
 from typing import Dict, List, Pattern, Optional, Union
 
 from .registry import TemplateRegistry, get_registry
-from ..template.lexer import Token, TokenType, LexerError
+from .tokens import Token, TokenType, LexerError
 
 
 class ModularLexer:

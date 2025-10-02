@@ -11,8 +11,8 @@ from typing import List, Optional
 
 from .base import ParsingContext, ParsingRule
 from .registry import TemplateRegistry, get_registry
-from ..template.lexer import Token, TokenType
-from ..template.nodes import TemplateNode, TemplateAST, TextNode
+from .nodes import TemplateNode, TemplateAST, TextNode
+from .tokens import Token, TokenType, ParserError
 
 logger = logging.getLogger(__name__)
 
@@ -153,7 +153,7 @@ def create_default_parser() -> ModularParser:
         Настроенный модульный парсер
     """
     from .base import ParsingRule, PluginPriority
-    from ..template.lexer import TokenType
+    from .tokens import TokenType
     
     registry = get_registry()
     
