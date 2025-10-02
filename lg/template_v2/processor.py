@@ -110,8 +110,11 @@ class TemplateProcessor:
             # 1. Парсим шаблон в AST
             ast = self._parse_template(template_text, template_name)
             
-            # 2. Обрабатываем AST (пока без резолвинга, это будет в плагинах)
-            return self._evaluate_ast(ast)
+            # 2. Резолвим ссылки в AST  
+            resolved_ast = self._resolve_template_references(ast, template_name)
+            
+            # 3. Обрабатываем резолвленный AST
+            return self._evaluate_ast(resolved_ast)
         
         return self._handle_template_errors(
             process_text,
@@ -237,6 +240,27 @@ class TemplateProcessor:
             except FileNotFoundError:
                 raise TemplateProcessingError(f"Template not found: {template_name}")
 
+    def _resolve_template_references(self, ast: TemplateAST, template_name: str = "") -> TemplateAST:
+        """
+        Резолвит все ссылки в AST с использованием резолвера плагинов.
+
+        Args:
+            ast: AST для резолвинга
+            template_name: Имя шаблона для диагностики
+
+        Returns:
+            AST с резолвленными ссылками
+        """
+        try:
+            # Создаем резолвер для базовых плейсхолдеров
+            from .common_placeholders.resolver import CommonPlaceholdersResolver
+            
+            resolver = CommonPlaceholdersResolver(self.run_ctx)
+            return resolver.resolve_ast(ast, template_name)
+            
+        except Exception as e:
+            raise TemplateProcessingError(f"Failed to resolve template references: {e}", template_name, e)
+
     def _handle_template_errors(self, func, template_name: str, error_message: str):
         """Общий обработчик ошибок для операций с шаблонами."""
         try:
@@ -263,14 +287,35 @@ def create_v2_template_processor(run_ctx: RunContext) -> TemplateProcessor:
     registry = TemplateRegistry()
     
     # Регистрируем доступные плагины
-    # from .common_placeholders import CommonPlaceholdersPlugin
-    # registry.register_plugin(CommonPlaceholdersPlugin())
+    from .common_placeholders import CommonPlaceholdersPlugin
+    registry.register_plugin(CommonPlaceholdersPlugin())
     
     # Инициализируем плагины
     registry.initialize_plugins()
     
-    # Создаем и возвращаем процессор
-    return TemplateProcessor(run_ctx, registry)
+    # Создаем процессор
+    processor = TemplateProcessor(run_ctx, registry)
+    
+    # Настраиваем интеграцию с обработчиками
+    _setup_processor_integration(processor)
+    
+    return processor
+
+
+def _setup_processor_integration(processor: TemplateProcessor) -> None:
+    """
+    Настраивает интеграцию процессора с системой обработчиков.
+    
+    Args:
+        processor: Процессор для настройки
+    """
+    # Добавляем обработчик AST в контекст шаблона для включений
+    def ast_processor(node: TemplateNode, template_ctx: TemplateContext) -> str:
+        return processor._evaluate_node(node, [], 0)
+    
+    # Добавляем обработчики как атрибуты (обходим ограничения типизации)
+    setattr(processor.template_ctx, '_ast_processor', ast_processor)
+    setattr(processor.template_ctx, '_section_handler', processor.section_handler)
 
 
 __all__ = ["TemplateProcessor", "TemplateProcessingError", "create_v2_template_processor"]
