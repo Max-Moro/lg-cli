@@ -16,7 +16,7 @@ from typing import List, Optional
 from .nodes import SectionNode, IncludeNode
 from ..base import ParsingContext, ParsingRule, PluginPriority
 from ..nodes import TemplateNode
-from ..tokens import DynamicTokenType, ParserError
+from ..tokens import TokenTypeName, ParserError
 
 
 def parse_placeholder(context: ParsingContext) -> Optional[TemplateNode]:
@@ -26,39 +26,27 @@ def parse_placeholder(context: ParsingContext) -> Optional[TemplateNode]:
     Возвращает SectionNode или IncludeNode в зависимости от содержимого.
     """
     # Проверяем начало плейсхолдера
-    if not context.match(DynamicTokenType("PLACEHOLDER_START")):
+    if not context.match("PLACEHOLDER_START"):
         return None
     
     # Сохраняем позицию для отката в случае ошибки
-    context.save_position()
+    saved_position = context.position
     
     try:
         # Потребляем ${
-        context.consume(DynamicTokenType("PLACEHOLDER_START"))
-        
-        # Пропускаем пробелы
-        _skip_whitespace(context)
+        context.consume("PLACEHOLDER_START")
         
         # Парсим содержимое плейсхолдера
         node = _parse_placeholder_content(context)
         
-        # Пропускаем пробелы перед закрывающей скобкой
-        _skip_whitespace(context)
-        
         # Потребляем }
-        context.consume(DynamicTokenType("PLACEHOLDER_END"))
+        context.consume("PLACEHOLDER_END")
         
-        # Успешно распарсили, убираем сохраненную позицию
-        context.discard_saved_position()
         return node
         
-    except ParserError:
+    except (ParserError, Exception):
         # Откатываемся при ошибке
-        context.restore_position()
-        return None
-    except Exception:
-        # Откатываемся при любой другой ошибке
-        context.restore_position()
+        context.position = saved_position
         return None
 
 
@@ -73,7 +61,7 @@ def _parse_placeholder_content(context: ParsingContext) -> TemplateNode:
         return _parse_include_placeholder(context)
     
     # Проверяем адресную ссылку @origin:name
-    if context.match(DynamicTokenType("AT")):
+    if context.match("AT"):
         return _parse_addressed_section(context)
     
     # Обычная секция
@@ -83,7 +71,7 @@ def _parse_placeholder_content(context: ParsingContext) -> TemplateNode:
 def _check_include_prefix(context: ParsingContext) -> bool:
     """Проверяет, начинается ли плейсхолдер с tpl: или ctx: (включая адресные формы tpl@origin:name)."""
     current = context.current()
-    if current.type != DynamicTokenType("IDENTIFIER"):
+    if current.type != "IDENTIFIER":
         return False
     
     # Проверяем, что идентификатор - это tpl или ctx
@@ -93,7 +81,7 @@ def _check_include_prefix(context: ParsingContext) -> bool:
     # Проверяем следующий токен после идентификатора
     next_token = context.peek(1)
     # Допускаем как : (локальные ссылки tpl:name), так и @ (адресные ссылки tpl@origin:name)
-    return next_token.type in (DynamicTokenType("COLON"), DynamicTokenType("AT"))
+    return next_token.type in ("COLON", "AT")
 
 
 def _parse_include_placeholder(context: ParsingContext) -> IncludeNode:
@@ -105,21 +93,21 @@ def _parse_include_placeholder(context: ParsingContext) -> IncludeNode:
     - tpl@[origin]:name
     """
     # Получаем тип включения
-    kind_token = context.consume(DynamicTokenType("IDENTIFIER"))
+    kind_token = context.consume("IDENTIFIER")
     kind = kind_token.value
     
     if kind not in ["tpl", "ctx"]:
         raise ParserError(f"Expected 'tpl' or 'ctx', got '{kind}'", kind_token)
     
     # Проверяем на адресную ссылку
-    if context.match(DynamicTokenType("AT")):
+    if context.match("AT"):
         # Адресная форма: tpl@origin:name или tpl@[origin]:name
         context.advance()  # потребляем @
         origin, name = _parse_addressed_reference(context)
         return IncludeNode(kind=kind, name=name, origin=origin)
     
     # Обычная форма: tpl:name
-    context.consume(DynamicTokenType("COLON"))
+    context.consume("COLON")
     name = _parse_identifier_path(context)
     
     return IncludeNode(kind=kind, name=name, origin="self")
@@ -129,7 +117,7 @@ def _parse_addressed_section(context: ParsingContext) -> SectionNode:
     """
     Парсит адресную ссылку на секцию @origin:name.
     """
-    context.consume(DynamicTokenType("AT"))  # потребляем @
+    context.consume("AT")  # потребляем @
     origin, name = _parse_addressed_reference(context)
     
     # Создаем SectionNode с адресной ссылкой
@@ -153,20 +141,20 @@ def _parse_addressed_reference(context: ParsingContext) -> tuple[str, str]:
         Кортеж (origin, name)
     """
     # Проверяем скобочную форму [origin]:name
-    if context.match(DynamicTokenType("LBRACKET")):
+    if context.match("LBRACKET"):
         context.advance()  # потребляем [
         
         # Парсим origin внутри скобок (может содержать :)
         origin_parts = []
-        while not context.match(DynamicTokenType("RBRACKET")) and not context.is_at_end():
+        while not context.match("RBRACKET") and not context.is_at_end():
             token = context.advance()
             origin_parts.append(token.value)
         
         if context.is_at_end():
             raise ParserError("Expected ']' to close bracketed origin", context.current())
             
-        context.consume(DynamicTokenType("RBRACKET"))  # потребляем ]
-        context.consume(DynamicTokenType("COLON"))     # потребляем :
+        context.consume("RBRACKET")  # потребляем ]
+        context.consume("COLON")     # потребляем :
         
         origin = "".join(origin_parts)
         name = _parse_identifier_path(context)
@@ -175,7 +163,7 @@ def _parse_addressed_reference(context: ParsingContext) -> tuple[str, str]:
     
     # Обычная форма origin:name
     origin = _parse_identifier_path(context)
-    context.consume(DynamicTokenType("COLON"))
+    context.consume("COLON")
     name = _parse_identifier_path(context)
     
     return origin, name
@@ -187,30 +175,12 @@ def _parse_identifier_path(context: ParsingContext) -> str:
     
     Например: docs/api или simple-name
     """
-    parts = []
-    
-    if not context.match(DynamicTokenType("IDENTIFIER")):
+    if not context.match("IDENTIFIER"):
         raise ParserError("Expected identifier", context.current())
     
-    # Первая часть
-    parts.append(context.advance().value)
-    
-    # Дополнительные части через / (для путей типа docs/api)
-    while (context.match(DynamicTokenType("IDENTIFIER")) and 
-           "/" in context.current().value):
-        # Если идентификатор содержит слеш, он уже включает путь
-        token = context.advance()
-        # Заменяем первую часть полным путем
-        parts[-1] = token.value
-        break
-    
-    return "".join(parts)
-
-
-def _skip_whitespace(context: ParsingContext) -> None:
-    """Пропускает пробельные символы."""
-    while context.match(DynamicTokenType("WHITESPACE")):
-        context.advance()
+    # Простая версия - берем один идентификатор
+    token = context.advance()
+    return token.value
 
 
 def get_placeholder_parser_rules() -> List[ParsingRule]:

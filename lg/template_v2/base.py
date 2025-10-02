@@ -15,7 +15,7 @@ from typing import Callable, Dict, List, Optional, Pattern, Type
 from .handlers import TemplateProcessorHandlers
 # Импортируем собственные типы
 from .nodes import TemplateNode
-from .tokens import Token, TokenType, DynamicTokenType, ParserError
+from .tokens import Token, TokenType, TokenTypeName, ParserError
 
 
 class PluginPriority(enum.IntEnum):
@@ -80,14 +80,14 @@ class ParsingContext:
         """Возвращает текущий токен."""
         if self.position >= self.length:
             # Возвращаем EOF токен
-            return Token(DynamicTokenType(TokenType.EOF), "", self.position, 0, 0)
+            return Token(TokenType.EOF.value, "", self.position, 0, 0)
         return self.tokens[self.position]
     
     def peek(self, offset: int = 1) -> Token:
         """Возвращает токен на указанном смещении от текущей позиции."""
         pos = self.position + offset
         if pos >= self.length:
-            return Token(DynamicTokenType(TokenType.EOF), "", pos, 0, 0)
+            return Token(TokenType.EOF.value, "", pos, 0, 0)
         return self.tokens[pos]
     
     def advance(self) -> Token:
@@ -99,27 +99,13 @@ class ParsingContext:
     
     def is_at_end(self) -> bool:
         """Проверяет, достигнут ли конец токенов."""
-        return self.position >= self.length or self.current().type == DynamicTokenType(TokenType.EOF)
+        return self.position >= self.length or self.current().type == TokenType.EOF.value
 
-    def save_position(self) -> None:
-        """Сохраняет текущую позицию в стек."""
-        self._position_stack.append(self.position)
-
-    def restore_position(self) -> None:
-        """Восстанавливает позицию из стека."""
-        if self._position_stack:
-            self.position = self._position_stack.pop()
-
-    def discard_saved_position(self) -> None:
-        """Удаляет сохраненную позицию без восстановления."""
-        if self._position_stack:
-            self._position_stack.pop()
-
-    def match(self, *token_types: DynamicTokenType) -> bool:
+    def match(self, *token_types: TokenTypeName) -> bool:
         """Проверяет, соответствует ли текущий токен одному из указанных типов."""
         return self.current().type in token_types
     
-    def consume(self, expected_type: DynamicTokenType) -> Token:
+    def consume(self, expected_type: TokenTypeName) -> Token:
         """
         Потребляет токен ожидаемого типа.
         
@@ -129,7 +115,7 @@ class ParsingContext:
         current = self.current()
         if current.type != expected_type:
             raise ParserError(
-                f"Expected {expected_type.name}, got {current.type.name}", 
+                f"Expected {expected_type}, got {current.type}", 
                 current
             )
         return self.advance()

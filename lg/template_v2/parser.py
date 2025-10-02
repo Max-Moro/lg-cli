@@ -12,7 +12,7 @@ from typing import List, Optional
 from .base import ParsingContext, ParsingRule
 from .nodes import TemplateNode, TemplateAST, TextNode
 from .registry import TemplateRegistry
-from .tokens import Token, TokenType
+from .tokens import Token, TokenType, TokenTypeName
 
 logger = logging.getLogger(__name__)
 
@@ -83,7 +83,7 @@ class ModularParser:
             Узел AST или None если ни одно правило не сработало
         """
         # Сохраняем позицию для возможного отката
-        context.save_position()
+        saved_position = context.position
         
         # Пробуем каждое правило в порядке приоритета
         for rule in self.parser_rules:
@@ -92,14 +92,11 @@ class ModularParser:
                 
             try:
                 # Восстанавливаем позицию перед каждой попыткой
-                context.restore_position()
-                context.save_position()
+                context.position = saved_position
                 
                 # Применяем правило
                 node = rule.parser_func(context)
                 if node is not None:
-                    # Правило сработало, убираем сохраненную позицию
-                    context.discard_saved_position()
                     logger.debug(f"Applied rule '{rule.name}' -> {type(node).__name__}")
                     return node
                     
@@ -109,7 +106,7 @@ class ModularParser:
                 continue
         
         # Ни одно правило не сработало, восстанавливаем позицию
-        context.restore_position()
+        context.position = saved_position
         return None
     
     def _handle_unparsed_token(self, context: ParsingContext, ast: List[TemplateNode]) -> None:
@@ -135,7 +132,7 @@ class ModularParser:
                 
         else:
             # Неожиданный токен - создаем ошибку или обрабатываем как текст
-            logger.warning(f"Unexpected token: {current_token.type.name} at {current_token.line}:{current_token.column}")
+            logger.warning(f"Unexpected token: {current_token.type} at {current_token.line}:{current_token.column}")
             
             # Обрабатываем как текст
             text_value = current_token.value
