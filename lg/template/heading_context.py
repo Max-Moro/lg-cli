@@ -238,6 +238,15 @@ class PlaceholderAnalyzer:
 class ChainAnalyzer:
     """Анализатор цепочек плейсхолдеров."""
     
+    def __init__(self, placeholder_analyzer: PlaceholderAnalyzer):
+        """
+        Инициализирует анализатор цепочек.
+        
+        Args:
+            placeholder_analyzer: Анализатор позиций плейсхолдеров
+        """
+        self.placeholder_analyzer = placeholder_analyzer
+    
     def is_continuous_chain(self, ast: TemplateAST, target_index: int, headings: List[HeadingInfo]) -> bool:
         """
         Определяет, образуют ли плейсхолдеры непрерывную цепочку.
@@ -246,27 +255,42 @@ class ChainAnalyzer:
         - Плейсхолдеры с глобами всегда считаются непрерывной цепочкой (вставляют несколько документов)
         - Если между md-плейсхолдерами есть заголовки, то они НЕ образуют цепочку
         - Если между ними только текст или другие плейсхолдеры - цепочка
+        - Плейсхолдеры внутри заголовков НЕ участвуют в анализе цепочек
         """
         # Специальный случай: плейсхолдер с глобами всегда образует цепочку
         target_node = ast[target_index]
         if isinstance(target_node, MarkdownFileNode) and target_node.is_glob:
             return True
         
-        md_indices = self._find_markdown_placeholder_indices(ast)
+        # Находим только "обычные" плейсхолдеры (не внутри заголовков)
+        regular_md_indices = self._find_regular_markdown_placeholder_indices(ast)
         
-        if len(md_indices) <= 1:
+        if len(regular_md_indices) <= 1:
             return self._analyze_single_placeholder(ast, target_index, headings)
         
-        # Проверяем заголовки между всеми соседними плейсхолдерами
-        for i in range(len(md_indices) - 1):
-            if self._has_headings_between(ast, md_indices[i], md_indices[i + 1], headings):
+        # Проверяем заголовки между всеми соседними "обычными" плейсхолдерами
+        for i in range(len(regular_md_indices) - 1):
+            if self._has_headings_between(ast, regular_md_indices[i], regular_md_indices[i + 1], headings):
                 return False
         
         return True
-    
-    def _find_markdown_placeholder_indices(self, ast: TemplateAST) -> List[int]:
-        """Находит все индексы Markdown плейсхолдеров."""
-        return [i for i, node in enumerate(ast) if isinstance(node, MarkdownFileNode)]
+
+    def _find_regular_markdown_placeholder_indices(self, ast: TemplateAST) -> List[int]:
+        """
+        Находит индексы только "обычных" Markdown плейсхолдеров (не внутри заголовков).
+        
+        Плейсхолдеры внутри заголовков не участвуют в анализе цепочек,
+        так как они имеют другую семантику - заменяют текст заголовка.
+        """        
+        regular_indices = []
+        for i, node in enumerate(ast):
+            if isinstance(node, MarkdownFileNode):
+                # Проверяем, находится ли плейсхолдер внутри заголовка
+                placeholder_pos = self.placeholder_analyzer.find_placeholder_position(ast, i)
+                if not placeholder_pos.inside_heading:
+                    regular_indices.append(i)
+        
+        return regular_indices
     
     def _has_headings_between(self, ast: TemplateAST, start_idx: int, end_idx: int, headings: List[HeadingInfo]) -> bool:
         """Проверяет наличие заголовков между двумя узлами."""
@@ -324,7 +348,7 @@ class HeadingContextDetector:
         self.patterns = MarkdownPatterns()
         self.text_processor = TextLineProcessor(self.patterns)
         self.placeholder_analyzer = PlaceholderAnalyzer(self.patterns)
-        self.chain_analyzer = ChainAnalyzer()
+        self.chain_analyzer = ChainAnalyzer(self.placeholder_analyzer)
     
     def detect_context(self, target_node: MarkdownFileNode, ast: TemplateAST, node_index: int) -> HeadingContext:
         """

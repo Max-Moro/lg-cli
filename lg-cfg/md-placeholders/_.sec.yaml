@@ -53,7 +53,6 @@ src:
       - "/lg/template/context.py"
       - "/lg/template/virtual_sections.py"
       - "/lg/template/common.py"
-      - "/lg/template/heading_context.py"
       python:
         budget:
           max_tokens_per_file: 1500
@@ -75,4 +74,4 @@ tests:
             mode: allow
             allow:
               - "/conftest.py"
-              - "/test_glob_patterns.py"
+              - "/test_contextual_analysis.py"

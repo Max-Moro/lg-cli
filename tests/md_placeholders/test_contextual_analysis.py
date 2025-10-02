@@ -294,6 +294,55 @@ ${md:docs/changelog}
     assert_heading_level(result, "User Guide", 3)
 
 
+def test_clear_demonstration_of_chain_logic_fix(md_project):
+    """
+    Четкая демонстрация исправления логики цепочек.
+    
+    Показывает разницу между случаями:
+    1) Плейсхолдеры разделены заголовками → strip_h1=true
+    2) Плейсхолдеры образуют цепочку (даже при наличии плейсхолдеров в заголовках) → strip_h1=false
+    """
+    root = md_project
+    
+    # Случай 1: плейсхолдеры разделены заголовками
+    create_template(root, "separated", """# Documentation
+
+## API Section
+${md:docs/api}
+
+## Guide Section  
+${md:docs/guide}
+""")
+    
+    separated_result = render_template(root, "ctx:separated")
+    
+    # Плейсхолдеры разделены → strip_h1=true
+    assert_heading_not_present(separated_result, "API Reference")
+    assert_heading_not_present(separated_result, "User Guide")
+    assert_heading_level(separated_result, "Authentication", 3)  # H2→H3
+    assert_heading_level(separated_result, "Installation", 3)    # H2→H3
+    
+    # Случай 2: плейсхолдеры образуют цепочку + плейсхолдер в заголовке
+    create_template(root, "chained", """# Documentation
+
+## Main Section
+${md:docs/api}
+${md:docs/guide}
+
+## ${md:README}
+""")
+    
+    chained_result = render_template(root, "ctx:chained") 
+    
+    # Плейсхолдеры api и guide образуют цепочку → strip_h1=false
+    assert_heading_level(chained_result, "API Reference", 3)    # H1→H3 (сохранен)
+    assert_heading_level(chained_result, "User Guide", 3)       # H1→H3 (сохранен) 
+    assert_heading_level(chained_result, "Authentication", 4)   # H2→H4
+    assert_heading_level(chained_result, "Installation", 4)     # H2→H4
+    
+    # Плейсхолдер в заголовке не влияет на цепочку обычных плейсхолдеров
+
+
 # ===== Тесты для определения max_heading_level =====
 
 def test_max_heading_level_from_h4_context(md_project):
