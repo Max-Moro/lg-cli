@@ -45,24 +45,9 @@ class TemplateProcessorHandlers(Protocol):
             Отрендеренное содержимое секции
         """
         ...
-    
-    def parse_and_process_template(self, template_text: str, template_name: str) -> str:
-        """
-        Парсит и обрабатывает текст шаблона.
-        
-        Используется для обработки включаемых шаблонов.
-        
-        Args:
-            template_text: Текст для парсинга и обработки
-            template_name: Имя шаблона для диагностики (например, "tpl:footer")
-            
-        Returns:
-            Отрендеренный результат
-        """
-        ...
 
 
-class DefaultTemplateProcessorHandlers:
+class DefaultTemplateProcessorHandlers(TemplateProcessorHandlers):
     """
     Реализация внутренних обработчиков шаблонизатора по умолчанию.
     
@@ -82,11 +67,7 @@ class DefaultTemplateProcessorHandlers:
     def set_section_processor(self, processor: Callable[[SectionRef], str]) -> None:
         """Устанавливает процессор секций."""
         self._section_processor = processor
-    
-    def set_template_parser(self, parser: Callable[[str, str], str]) -> None:
-        """Устанавливает парсер шаблонов (text, template_name) -> str."""
-        self._template_parser = parser
-    
+
     def process_ast_node(self, node: TemplateNode) -> str:
         """Обрабатывает один узел AST."""
         if self._ast_processor is None:
@@ -98,12 +79,6 @@ class DefaultTemplateProcessorHandlers:
         if self._section_processor is None:
             raise RuntimeError("Section processor not set")
         return self._section_processor(section_ref)
-    
-    def parse_and_process_template(self, template_text: str, template_name: str = "") -> str:
-        """Парсит и обрабатывает текст шаблона."""
-        if self._template_parser is None:
-            raise RuntimeError("Template parser not set")
-        return self._template_parser(template_text, template_name)
 
 
 __all__ = [

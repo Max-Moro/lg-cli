@@ -11,7 +11,7 @@ import logging
 from typing import Any, Callable, Dict, List, Optional
 
 from .base import ProcessingError
-from .handlers import DefaultTemplateProcessorHandlers, TemplateProcessorHandlers
+from .handlers import DefaultTemplateProcessorHandlers
 from .lexer import ModularLexer
 from .nodes import TemplateNode, TemplateAST, TextNode
 from .parser import ModularParser
@@ -326,15 +326,6 @@ def _setup_processor_handlers(processor: TemplateProcessor) -> None:
         return processor.section_handler(section_ref, processor.template_ctx)
     
     processor.handlers.set_section_processor(section_processor)
-    
-    # Настраиваем парсер шаблонов для включений
-    def template_parser(template_text: str, template_name: str) -> str:
-        # Парсим и обрабатываем включаемый шаблон с правильным именем
-        ast = processor._parse_template(template_text, template_name)
-        resolved_ast = processor._resolve_template_references(ast, template_name)
-        return processor._evaluate_ast(resolved_ast)
-    
-    processor.handlers.set_template_parser(template_parser)
 
 
 __all__ = ["TemplateProcessor", "TemplateProcessingError", "create_v2_template_processor"]
