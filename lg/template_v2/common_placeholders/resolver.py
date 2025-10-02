@@ -9,7 +9,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, TYPE_CHECKING
 
 from ..nodes import TemplateNode, TemplateAST
 from .nodes import SectionNode, IncludeNode
@@ -19,6 +19,9 @@ from .common import (
 )
 from ...run_context import RunContext
 from ...types import SectionRef
+
+if TYPE_CHECKING:
+    from ..handlers import TemplateProcessorHandlers
 
 
 @dataclass(frozen=True)
@@ -39,15 +42,17 @@ class CommonPlaceholdersResolver:
     и заполняет метаданные узлов для последующей обработки.
     """
     
-    def __init__(self, run_ctx: RunContext, validate_paths: bool = True):
+    def __init__(self, run_ctx: RunContext, handlers: Optional['TemplateProcessorHandlers'] = None, validate_paths: bool = True):
         """
         Инициализирует резолвер.
         
         Args:
             run_ctx: Контекст выполнения с настройками и путями
+            handlers: Типизированные обработчики для парсинга шаблонов
             validate_paths: Если False, не проверяет существование путей (для тестирования)
         """
         self.run_ctx = run_ctx
+        self.handlers = handlers
         self.repo_root = run_ctx.root
         self.current_cfg_root = run_ctx.root / "lg-cfg"
         self.validate_paths = validate_paths
@@ -216,15 +221,19 @@ class CommonPlaceholdersResolver:
             else:
                 raise RuntimeError(f"Unknown include kind: {node.kind}")
             
-            # Парсим загруженный шаблон через основной парсер
-            # Получаем обработчики через глобальный контекст (временное решение)
-            # В идеале резолвер должен получать парсер извне
-            from ..nodes import TextNode
-            
-            # TODO: Интегрировать с основным парсером
-            # Пока используем простую заглушку, в реальности нужно:
-            # ast = self.template_parser.parse(template_text)
-            ast: TemplateAST = [TextNode(text=template_text)]
+            # Парсим загруженный шаблон через типизированные обработчики
+            if self.handlers:
+                # Создаем временный TemplateContext для парсинга включений
+                from ...template import TemplateContext
+                temp_ctx = TemplateContext(run_ctx=self.run_ctx)
+                processed_text = self.handlers.parse_and_process_template(template_text, temp_ctx)
+                # Результат обработки - это строка, создаем текстовый узел
+                from ..nodes import TextNode
+                ast: TemplateAST = [TextNode(text=processed_text)]
+            else:
+                # Заглушка для случаев без обработчиков (тестирование)
+                from ..nodes import TextNode
+                ast: TemplateAST = [TextNode(text=template_text)]
             
             resolved_include = ResolvedInclude(
                 kind=node.kind,

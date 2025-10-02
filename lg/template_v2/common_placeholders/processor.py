@@ -7,7 +7,7 @@
 
 from __future__ import annotations
 
-from typing import List, Any
+from typing import List, Any, TYPE_CHECKING
 
 from ..base import ProcessorRule
 from ..nodes import TemplateNode
@@ -15,8 +15,11 @@ from .nodes import SectionNode, IncludeNode
 from ...template.context import TemplateContext
 from ...types import SectionRef
 
+if TYPE_CHECKING:
+    from ..handlers import TemplateProcessorHandlers
 
-def _process_section_node_impl(node: SectionNode, template_ctx: TemplateContext) -> str:
+
+def _process_section_node_impl(node: SectionNode, template_ctx: TemplateContext, handlers) -> str:
     """
     Обрабатывает узел секции.
     
@@ -26,20 +29,14 @@ def _process_section_node_impl(node: SectionNode, template_ctx: TemplateContext)
     Args:
         node: Узел секции для обработки
         template_ctx: Контекст шаблона
+        handlers: Типизированные обработчики ядра
         
     Returns:
         Отрендеренное содержимое секции
         
     Raises:
-        RuntimeError: Если обработчики не доступны или секция не найдена
+        RuntimeError: Если секция не найдена
     """
-    # Получаем обработчики из контекста плагина
-    # Плагин должен быть доступен через глобальное состояние или через контекст
-    # Пока используем временное решение с получением через контекст
-    handlers = getattr(template_ctx, '_processor_handlers', None)
-    
-    if handlers is None:
-        raise RuntimeError(f"No processor handlers available for section '{node.section_name}'")
     
     # Используем резолвленную ссылку если есть, иначе создаем простую
     if node.resolved_ref is not None:
@@ -59,7 +56,7 @@ def _process_section_node_impl(node: SectionNode, template_ctx: TemplateContext)
         raise RuntimeError(f"Failed to process section '{node.section_name}': {e}")
 
 
-def _process_include_node_impl(node: IncludeNode, template_ctx: TemplateContext) -> str:
+def _process_include_node_impl(node: IncludeNode, template_ctx: TemplateContext, handlers) -> str:
     """
     Обрабатывает узел включения шаблона/контекста.
     
@@ -69,6 +66,7 @@ def _process_include_node_impl(node: IncludeNode, template_ctx: TemplateContext)
     Args:
         node: Узел включения для обработки
         template_ctx: Контекст шаблона
+        handlers: Типизированные обработчики ядра
         
     Returns:
         Отрендеренное содержимое включения
@@ -78,12 +76,6 @@ def _process_include_node_impl(node: IncludeNode, template_ctx: TemplateContext)
     """
     if node.children is None:
         raise RuntimeError(f"Include '{node.canon_key()}' not resolved (children is None)")
-    
-    # Получаем обработчики из контекста
-    handlers = getattr(template_ctx, '_processor_handlers', None)
-    
-    if handlers is None:
-        raise RuntimeError("No processor handlers available in template context")
     
     # Входим в скоуп включения для корректной обработки адресных ссылок
     template_ctx.enter_include_scope(node.origin)
@@ -104,39 +96,58 @@ def _process_include_node_impl(node: IncludeNode, template_ctx: TemplateContext)
         template_ctx.exit_include_scope()
 
 
-def process_section_node(node: TemplateNode, context: Any) -> str:
-    """Обертка для обработчика узла секции."""
-    if not isinstance(node, SectionNode):
-        raise RuntimeError(f"Expected SectionNode, got {type(node)}")
-    return _process_section_node_impl(node, context)
+class CommonPlaceholdersProcessor:
+    """
+    Процессор узлов для базовых плейсхолдеров.
+    
+    Содержит обработчики ядра и предоставляет методы для
+    обработки секционных узлов и узлов включений.
+    """
+    
+    def __init__(self, handlers: 'TemplateProcessorHandlers'):
+        """
+        Инициализирует процессор.
+        
+        Args:
+            handlers: Типизированные обработчики ядра
+        """
+        self.handlers = handlers
+    
+    def process_section_node(self, node: TemplateNode, context: Any) -> str:
+        """Обрабатывает узел секции."""
+        if not isinstance(node, SectionNode):
+            raise RuntimeError(f"Expected SectionNode, got {type(node)}")
+        return _process_section_node_impl(node, context, self.handlers)
+
+    def process_include_node(self, node: TemplateNode, context: Any) -> str:
+        """Обрабатывает узел включения.""" 
+        if not isinstance(node, IncludeNode):
+            raise RuntimeError(f"Expected IncludeNode, got {type(node)}")
+        return _process_include_node_impl(node, context, self.handlers)
 
 
-def process_include_node(node: TemplateNode, context: Any) -> str:
-    """Обертка для обработчика узла включения.""" 
-    if not isinstance(node, IncludeNode):
-        raise RuntimeError(f"Expected IncludeNode, got {type(node)}")
-    return _process_include_node_impl(node, context)
-
-
-def get_processor_rules() -> List[ProcessorRule]:
+def get_processor_rules(processor: CommonPlaceholdersProcessor) -> List[ProcessorRule]:
     """
     Возвращает правила обработки для узлов базовых плейсхолдеров.
     
+    Args:
+        processor: Экземпляр процессора с настроенными обработчиками
+        
     Returns:
         Список правил обработки узлов
     """
     return [
         ProcessorRule(
             node_type=SectionNode,
-            processor_func=process_section_node,
+            processor_func=processor.process_section_node,
             priority=100
         ),
         ProcessorRule(
             node_type=IncludeNode, 
-            processor_func=process_include_node,
+            processor_func=processor.process_include_node,
             priority=100
         )
     ]
 
 
-__all__ = ["process_section_node", "process_include_node", "get_processor_rules"]
+__all__ = ["CommonPlaceholdersProcessor", "get_processor_rules"]

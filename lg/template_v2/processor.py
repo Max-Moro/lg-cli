@@ -300,8 +300,8 @@ def create_v2_template_processor(run_ctx: RunContext) -> TemplateProcessor:
     # Настраиваем типизированные обработчики
     _setup_processor_handlers(processor)
     
-    # Инициализируем плагины с передачей обработчиков
-    registry.initialize_plugins(processor.handlers)
+    # Регистрируем процессоры плагинов после установки обработчиков
+    registry.register_plugin_processors(processor.handlers)
     
     return processor
 
@@ -335,9 +335,6 @@ def _setup_processor_handlers(processor: TemplateProcessor) -> None:
         return processor._evaluate_ast(resolved_ast)
     
     processor.handlers.set_template_parser(template_parser)
-    
-    # Передаем обработчики в контекст шаблона для доступа из плагинов
-    setattr(processor.template_ctx, '_processor_handlers', processor.handlers)
 
 
 __all__ = ["TemplateProcessor", "TemplateProcessingError", "create_v2_template_processor"]
