@@ -35,7 +35,7 @@ src:
       - "/lg/template/*.py"
       python:
         budget:
-          max_tokens_per_file: 2500
+          max_tokens_per_file: 1
 
 src-v2:
   extensions: [".py"]

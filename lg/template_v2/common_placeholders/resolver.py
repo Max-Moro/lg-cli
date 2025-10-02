@@ -40,21 +40,19 @@ class CommonPlaceholdersResolver:
     и заполняет метаданные узлов для последующей обработки.
     """
     
-    def __init__(self, run_ctx: RunContext, handlers: TemplateProcessorHandlers, validate_paths: bool = True):
+    def __init__(self, run_ctx: RunContext, handlers: TemplateProcessorHandlers):
         """
         Инициализирует резолвер.
         
         Args:
             run_ctx: Контекст выполнения с настройками и путями
             handlers: Типизированные обработчики для парсинга шаблонов
-            validate_paths: Если False, не проверяет существование путей (для тестирования)
         """
         self.run_ctx = run_ctx
         self.handlers: TemplateProcessorHandlers = handlers
         self.repo_root = run_ctx.root
         self.current_cfg_root = run_ctx.root / "lg-cfg"
-        self.validate_paths = validate_paths
-        
+
         # Стек origin'ов для отслеживания вложенности включений
         self._origin_stack: List[str] = ["self"]
         
@@ -179,7 +177,11 @@ class CommonPlaceholdersResolver:
             return self.current_cfg_root, section_name
         
         # Резолвим cfg_root для указанного origin
-        cfg_root = self._resolve_cfg_root_safe(origin)
+        cfg_root = resolve_cfg_root(
+            origin,
+            current_cfg_root=self.current_cfg_root,
+            repo_root=self.repo_root
+        )
         return cfg_root, name
 
     def _load_and_parse_include(self, node: IncludeNode, context: str) -> ResolvedInclude:
@@ -209,7 +211,11 @@ class CommonPlaceholdersResolver:
         
         try:
             # Резолвим cfg_root
-            cfg_root = self._resolve_cfg_root_safe(node.origin)
+            cfg_root = resolve_cfg_root(
+                node.origin,
+                current_cfg_root=self.current_cfg_root,
+                repo_root=self.repo_root
+            )
             
             # Загружаем содержимое
             if node.kind == "ctx":
@@ -246,29 +252,6 @@ class CommonPlaceholdersResolver:
         finally:
             # Убираем из стека разрешения
             self._resolution_stack.pop()
-
-    def _resolve_cfg_root_safe(self, origin: str) -> Path:
-        """
-        Безопасное резолвинг cfg_root с поддержкой тестового режима.
-        
-        Args:
-            origin: Origin для резолвинга ('self' или имя директории)
-            
-        Returns:
-            Путь к lg-cfg директории
-        """
-        if not self.validate_paths:
-            # В тестовом режиме возвращаем фиктивный путь
-            if origin == "self":
-                return self.current_cfg_root
-            else:
-                return self.repo_root / origin / "lg-cfg"
-        
-        return resolve_cfg_root(
-            origin,
-            current_cfg_root=self.current_cfg_root,
-            repo_root=self.repo_root
-        )
 
 
 __all__ = ["CommonPlaceholdersResolver", "ResolvedInclude"]
