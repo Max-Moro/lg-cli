@@ -25,7 +25,7 @@ class ModularParser:
     в порядке приоритета для создания AST.
     """
     
-    def __init__(self, registry: TemplateRegistry = None):
+    def __init__(self, registry: Optional[TemplateRegistry] = None):
         """
         Инициализирует парсер с указанным реестром.
         
@@ -40,6 +40,8 @@ class ModularParser:
     
     def _initialize_rules(self) -> None:
         """Инициализирует правила парсинга из реестра."""
+        if self.registry is None:
+            raise RuntimeError("Registry is required for parser initialization")
         self.parser_rules = self.registry.get_sorted_parser_rules()
         logger.debug(f"Initialized parser with {len(self.parser_rules)} rules")
     
@@ -145,4 +147,36 @@ class ModularParser:
                 ast.append(TextNode(text=text_value))
 
 
-__all__ = ["ModularParser"]
+def parse_template(text: str, registry: Optional[TemplateRegistry] = None) -> TemplateAST:
+    """
+    Удобная функция для парсинга шаблона из текста.
+    
+    Args:
+        text: Исходный текст шаблона
+        registry: Реестр компонентов (если None, создает базовый)
+        
+    Returns:
+        AST шаблона
+        
+    Raises:
+        LexerError: При ошибке лексического анализа 
+        ParserError: При ошибке синтаксического анализа
+    """
+    if registry is None:
+        # Создаем минимальный реестр с базовыми плейсхолдерами
+        from .registry import TemplateRegistry
+        from .common_placeholders import CommonPlaceholdersPlugin
+        
+        registry = TemplateRegistry()
+        registry.register_plugin(CommonPlaceholdersPlugin())
+    
+    from .lexer import ModularLexer
+    
+    lexer = ModularLexer(registry)
+    tokens = lexer.tokenize(text)
+    
+    parser = ModularParser(registry)
+    return parser.parse(tokens)
+
+
+__all__ = ["ModularParser", "parse_template"]

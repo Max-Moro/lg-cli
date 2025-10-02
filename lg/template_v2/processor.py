@@ -259,7 +259,7 @@ class TemplateProcessor:
             # Создаем резолвер для базовых плейсхолдеров
             from .common_placeholders.resolver import CommonPlaceholdersResolver
             
-            resolver = CommonPlaceholdersResolver(self.run_ctx, self.handlers)
+            resolver = CommonPlaceholdersResolver(self.run_ctx, self.handlers, self.registry)
             return resolver.resolve_ast(ast, template_name)
             
         except Exception as e:

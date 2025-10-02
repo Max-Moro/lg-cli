@@ -40,20 +40,22 @@ class CommonPlaceholdersResolver:
     и заполняет метаданные узлов для последующей обработки.
     """
     
-    def __init__(self, run_ctx: RunContext, handlers: TemplateProcessorHandlers):
+    def __init__(self, run_ctx: RunContext, handlers: TemplateProcessorHandlers, registry=None):
         """
         Инициализирует резолвер.
         
         Args:
             run_ctx: Контекст выполнения с настройками и путями
             handlers: Типизированные обработчики для парсинга шаблонов
+            registry: Реестр компонентов для парсинга
         """
         self.run_ctx = run_ctx
         self.handlers: TemplateProcessorHandlers = handlers
+        self.registry = registry  # Добавляем реестр для парсинга
         self.repo_root = run_ctx.root
         self.current_cfg_root = run_ctx.root / "lg-cfg"
 
-        # Стек origin'ов для отслеживания вложенности включений
+        # Стек origin'ов для отслеживания вложенности включений (как в старом резолвере)
         self._origin_stack: List[str] = ["self"]
         
         # Кэш резолвленных включений
@@ -94,27 +96,24 @@ class CommonPlaceholdersResolver:
         Резолвит секционный узел, обрабатывая адресные ссылки.
         
         Поддерживает форматы:
-        - "section_name" → текущий скоуп
+        - "section_name" → текущий скоуп (использует стек origin как в старом резолвере)
         - "@origin:section_name" → указанный скоуп
         - "@[origin]:section_name" → скоуп с двоеточиями в имени
         """
         section_name = node.section_name
         
-        # Проверяем адресную ссылку
-        if section_name.startswith("@"):
+        try:
+            # Всегда используем _parse_section_reference (как в старом резолвере)
             cfg_root, resolved_name = self._parse_section_reference(section_name)
             
-            # Создаем SectionRef
-            if cfg_root == self.current_cfg_root:
-                scope_rel = ""
-                scope_dir = self.repo_root
-            else:
-                # Вычисляем относительный путь скоупа
-                scope_dir = cfg_root.parent
-                try:
-                    scope_rel = scope_dir.relative_to(self.repo_root).as_posix()
-                except ValueError:
-                    raise RuntimeError(f"Scope directory outside repository: {scope_dir}")
+            # Создаем SectionRef для использования в остальной части пайплайна
+            scope_dir = cfg_root.parent.resolve()
+            try:
+                scope_rel = scope_dir.relative_to(self.repo_root.resolve()).as_posix()
+                if scope_rel == ".":
+                    scope_rel = ""
+            except ValueError:
+                raise RuntimeError(f"Scope directory outside repository: {scope_dir}")
             
             section_ref = SectionRef(
                 name=resolved_name,
@@ -122,16 +121,10 @@ class CommonPlaceholdersResolver:
                 scope_dir=scope_dir
             )
             
-            return SectionNode(section_name=section_name, resolved_ref=section_ref)
-        else:
-            # Локальная секция
-            section_ref = SectionRef(
-                name=section_name,
-                scope_rel="",
-                scope_dir=self.repo_root
-            )
+            return SectionNode(section_name=resolved_name, resolved_ref=section_ref)
             
-            return SectionNode(section_name=section_name, resolved_ref=section_ref)
+        except Exception as e:
+            raise RuntimeError(f"Failed to resolve section '{section_name}': {e}")
 
     def _resolve_include_node(self, node: IncludeNode, context: str = "") -> IncludeNode:
         """
@@ -173,8 +166,14 @@ class CommonPlaceholdersResolver:
             origin = section_name[1:colon_pos]
             name = section_name[colon_pos + 1:]
         else:
-            # Не адресная ссылка
-            return self.current_cfg_root, section_name
+            # Простая ссылка без адресности - использует текущий origin из стека (как в старом резолвере!)
+            current_origin = self._origin_stack[-1] if self._origin_stack else "self"
+            cfg_root = resolve_cfg_root(
+                current_origin,
+                current_cfg_root=self.current_cfg_root,
+                repo_root=self.repo_root
+            )
+            return cfg_root, section_name
         
         # Резолвим cfg_root для указанного origin
         cfg_root = resolve_cfg_root(
@@ -225,16 +224,19 @@ class CommonPlaceholdersResolver:
             else:
                 raise RuntimeError(f"Unknown include kind: {node.kind}")
             
-            # Парсим загруженный шаблон через типизированные обработчики
-            # Формируем правильное имя шаблона как в старом резолвере
-            template_name = f"{node.kind}:{node.name}"
-            if node.origin != "self":
-                template_name = f"@{node.origin}:{template_name}"
-
-            processed_text = self.handlers.parse_and_process_template(template_text, template_name)
-            # Результат обработки - это строка, создаем текстовый узел
-            from ..nodes import TextNode
-            ast: TemplateAST = [TextNode(text=processed_text)]
+            # Парсим шаблон и рекурсивно резолвим с новым origin в стеке (как в старом резолвере)
+            from ..parser import parse_template
+            include_ast = parse_template(template_text, registry=self.registry)
+            
+            # Рекурсивно резолвим включение с новым origin в стеке
+            include_context = f"{context}/{node.kind}:{node.name}"
+            self._origin_stack.append(node.origin)
+            try:
+                resolved_ast = self.resolve_ast(include_ast, include_context)
+            finally:
+                self._origin_stack.pop()
+            
+            ast: TemplateAST = resolved_ast
             
             resolved_include = ResolvedInclude(
                 kind=node.kind,

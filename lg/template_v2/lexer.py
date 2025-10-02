@@ -90,7 +90,21 @@ class ModularLexer:
             token = self._next_token()
             if token.type == TokenType.EOF:
                 break
-            tokens.append(token)
+            elif token.type.name == "PLACEHOLDER_START":
+                # Токенизируем содержимое плейсхолдера (как в старом лексере)
+                tokens.append(token)
+                # Находим конец плейсхолдера
+                end_pos = self._find_placeholder_end()
+                if end_pos > self.position:
+                    content = self.text[self.position:end_pos]
+                    self._advance(len(content))
+                    # Токенизируем содержимое плейсхолдера
+                    content_tokens = self._tokenize_placeholder_content(content)
+                    tokens.extend(content_tokens)
+            elif token.type.name == "PLACEHOLDER_END":
+                tokens.append(token)
+            else:
+                tokens.append(token)
         
         # Добавляем EOF токен
         tokens.append(Token(DynamicTokenType(TokenType.EOF), "", self.position, self.line, self.column))
@@ -114,19 +128,24 @@ class ModularLexer:
         start_line = self.line
         start_column = self.column
         
-        # Пробуем каждый паттерн в порядке приоритета
-        for token_name, pattern in self.token_patterns:
-            match = pattern.match(self.text, self.position)
-            if match:
-                value = match.group(0)
-                self._advance(len(value))
-                
-                # Получаем тип токена
-                token_type = self.token_name_to_type.get(token_name, DynamicTokenType(TokenType.TEXT))
-                
-                return Token(token_type, value, start_pos, start_line, start_column)
+        # Сначала проверяем специальные разделители (как в старом лексере)
+        special_tokens = ["PLACEHOLDER_START", "DIRECTIVE_START", "COMMENT_START", 
+                         "PLACEHOLDER_END", "DIRECTIVE_END", "COMMENT_END"]
         
-        # Если ничего не подошло, пытаемся найти текст до следующего специального символа
+        for token_name in special_tokens:
+            if token_name in self.token_name_to_type:
+                pattern_spec = next((spec for spec in self.registry.get_tokens_by_priority() 
+                                  if spec.name == token_name), None)
+                if pattern_spec:
+                    match = pattern_spec.pattern.match(self.text, self.position)
+                    if match:
+                        value = match.group(0)
+                        self._advance(len(value))
+                        token_type = self.token_name_to_type[token_name]
+                        return Token(token_type, value, start_pos, start_line, start_column)
+        
+        # Если не нашли специальных разделителей, считаем это текстом
+        # Читаем до следующего специального символа или конца (как в старом лексере)
         text_end = self._find_next_special_sequence()
         if text_end > self.position:
             value = self.text[self.position:text_end]
@@ -162,22 +181,127 @@ class ModularLexer:
     
     def _find_next_special_sequence(self) -> int:
         """
-        Находит позицию следующей специальной последовательности.
-        
-        Returns:
-            Позицию следующего специального токена или конец текста
+        Находит позицию следующей специальной последовательности
+        (${, {%, {#, }, %}, #}) или конец текста.
+        Копирует логику из старого лексера.
         """
-        current_pos = self.position
+        pos = self.position
+        while pos < self.length:
+            char = self.text[pos]
+            
+            # Открывающие последовательности
+            if char == '$' and pos + 1 < self.length and self.text[pos + 1] == '{':
+                return pos  # Найден ${
+            elif char == '{' and pos + 1 < self.length:
+                next_char = self.text[pos + 1]
+                if next_char in '%#':
+                    return pos  # Найден {% или {#
+                    
+            # Закрывающие последовательности  
+            elif char == '}':
+                return pos  # Найден }
+            elif char == '%' and pos + 1 < self.length and self.text[pos + 1] == '}':
+                return pos  # Найден %}  
+            elif char == '#' and pos + 1 < self.length and self.text[pos + 1] == '}':
+                return pos  # Найден #}
+            
+            pos += 1
+        return self.length
+    
+    def _find_placeholder_end(self) -> int:
+        """Находит конец текущего плейсхолдера."""
+        pos = self.position
+        while pos < self.length:
+            if self.text[pos] == '}':
+                return pos
+            pos += 1
+        return self.length
+    
+    def _tokenize_placeholder_content(self, content: str) -> List[Token]:
+        """
+        Токенизирует содержимое плейсхолдера.
         
-        # Ищем ближайшее совпадение с любым паттерном
-        min_pos = self.length
+        Args:
+            content: Содержимое между ${ и }
+            
+        Returns:
+            Список токенов для содержимого плейсхолдера
+        """
+        if not content.strip():
+            return []
         
-        for _, pattern in self.token_patterns:
-            match = pattern.search(self.text, current_pos)
-            if match and match.start() < min_pos:
-                min_pos = match.start()
+        # Создаем временный лексер для содержимого
+        temp_lexer = ModularLexer(self.registry)
         
-        return min_pos if min_pos > current_pos else self.length
+        # Используем простую токенизацию внутри плейсхолдера
+        temp_lexer.text = content
+        temp_lexer.position = 0 
+        temp_lexer.line = 1
+        temp_lexer.column = 1
+        temp_lexer.length = len(content)
+        
+        tokens = []
+        
+        while temp_lexer.position < temp_lexer.length:
+            # Используем специальную токенизацию внутри плейсхолдера
+            token = temp_lexer._tokenize_inside_placeholder()
+            if token.type == DynamicTokenType(TokenType.EOF):
+                break
+            tokens.append(token)
+        
+        return tokens
+    
+    def _tokenize_inside_placeholder(self) -> Token:
+        """Токенизирует содержимое внутри плейсхолдера (адаптировано из старого лексера)."""
+        if self.position >= self.length:
+            return Token(DynamicTokenType(TokenType.EOF), "", self.position, self.line, self.column)
+        
+        start_pos = self.position
+        start_line = self.line
+        start_column = self.column
+        
+        # Пропускаем пробелы
+        import re
+        whitespace_pattern = re.compile(r'[ \t]+')
+        match = whitespace_pattern.match(self.text, self.position)
+        if match:
+            self._advance(len(match.group(0)))
+            return self._tokenize_inside_placeholder()  # Рекурсивно продолжаем
+        
+        # Проверяем специальные символы для плейсхолдеров
+        special_chars = {
+            ':': 'COLON',
+            '@': 'AT', 
+            ',': 'COMMA',
+            '[': 'LBRACKET',
+            ']': 'RBRACKET',
+            '#': 'HASH',
+            '(': 'LPAREN',
+            ')': 'RPAREN'
+        }
+        
+        char = self.text[self.position]
+        if char in special_chars:
+            self._advance(1)
+            token_type = self.token_name_to_type.get(special_chars[char], DynamicTokenType(special_chars[char]))
+            return Token(token_type, char, start_pos, start_line, start_column)
+        
+        # Проверяем идентификаторы
+        identifier_pattern = re.compile(r'[a-zA-Z_][a-zA-Z0-9_\-\/\.]*')
+        match = identifier_pattern.match(self.text, self.position)
+        if match:
+            value = match.group(0)
+            self._advance(len(value))
+            token_type = self.token_name_to_type.get('IDENTIFIER', DynamicTokenType('IDENTIFIER'))
+            return Token(token_type, value, start_pos, start_line, start_column)
+        
+        # Неожиданный символ
+        char = self.text[self.position]
+        from .tokens import LexerError
+        raise LexerError(
+            f"Unexpected character in placeholder: {char!r}",
+            self.line, self.column, self.position
+        )
 
 
 __all__ = ["ModularLexer"]
