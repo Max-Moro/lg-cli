@@ -10,9 +10,9 @@ import logging
 from typing import List, Optional
 
 from .base import ParsingContext, ParsingRule
-from .registry import TemplateRegistry, get_registry
 from .nodes import TemplateNode, TemplateAST, TextNode
-from .tokens import Token, TokenType, ParserError
+from .registry import TemplateRegistry
+from .tokens import Token, TokenType
 
 logger = logging.getLogger(__name__)
 
@@ -25,14 +25,14 @@ class ModularParser:
     в порядке приоритета для создания AST.
     """
     
-    def __init__(self, registry: Optional[TemplateRegistry] = None):
+    def __init__(self, registry: TemplateRegistry = None):
         """
         Инициализирует парсер с указанным реестром.
         
         Args:
             registry: Реестр компонентов (по умолчанию - глобальный)
         """
-        self.registry = registry or get_registry()
+        self.registry = registry
         
         # Получаем правила парсинга, отсортированные по приоритету
         self.parser_rules: List[ParsingRule] = []
@@ -145,36 +145,4 @@ class ModularParser:
                 ast.append(TextNode(text=text_value))
 
 
-def create_default_parser() -> ModularParser:
-    """
-    Создает парсер с базовыми правилами для совместимости.
-    
-    Returns:
-        Настроенный модульный парсер
-    """
-    from .base import ParsingRule, PluginPriority
-    from .tokens import TokenType
-    
-    registry = get_registry()
-    
-    # Добавляем базовое правило для текста, если нет других правил
-    if not registry.parser_rules:
-        def parse_text(context: ParsingContext) -> Optional[TemplateNode]:
-            """Базовое правило для парсинга текстовых токенов."""
-            if context.current().type == TokenType.TEXT:
-                token = context.advance()
-                return TextNode(text=token.value)
-            return None
-        
-        text_rule = ParsingRule(
-            name="parse_text",
-            priority=PluginPriority.TEXT,
-            parser_func=parse_text
-        )
-        
-        registry.parser_rules["parse_text"] = text_rule
-    
-    return ModularParser(registry)
-
-
-__all__ = ["ModularParser", "create_default_parser"]
+__all__ = ["ModularParser"]

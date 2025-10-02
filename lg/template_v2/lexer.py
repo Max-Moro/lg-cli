@@ -8,9 +8,9 @@
 from __future__ import annotations
 
 import re
-from typing import Dict, List, Pattern, Optional, Union
+from typing import Dict, List, Pattern, Union
 
-from .registry import TemplateRegistry, get_registry
+from .registry import TemplateRegistry
 from .tokens import Token, TokenType, LexerError
 
 
@@ -22,14 +22,14 @@ class ModularLexer:
     единого лексера, способного распознавать все типы конструкций.
     """
     
-    def __init__(self, registry: Optional[TemplateRegistry] = None):
+    def __init__(self, registry: TemplateRegistry = None):
         """
         Инициализирует лексер с указанным реестром.
         
         Args:
             registry: Реестр компонентов (по умолчанию - глобальный)
         """
-        self.registry = registry or get_registry()
+        self.registry = registry
         
         # Паттерны токенов, отсортированные по приоритету
         self.token_patterns: List[tuple[str, Pattern[str]]] = []

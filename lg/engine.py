@@ -100,8 +100,8 @@ class Engine:
         
         if use_v2:
             # Импортируем и используем новую версию
-            from .template_v2 import TemplateProcessor
-            return TemplateProcessor(self.run_ctx)
+            from .template_v2.processor import create_v2_template_processor
+            return create_v2_template_processor(self.run_ctx)
         else:
             # Используем текущую версию
             from .template import TemplateProcessor

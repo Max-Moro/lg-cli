@@ -14,7 +14,7 @@ from .base import (
     TemplatePlugin, TokenSpec, ParsingRule, ProcessorRule,
     TokenRegistry, ParserRulesRegistry, ProcessorRegistry, PluginList
 )
-from ..template.nodes import TemplateNode
+from .nodes import TemplateNode
 
 logger = logging.getLogger(__name__)
 
@@ -220,9 +220,4 @@ class TemplateRegistry:
         }
 
 
-def get_registry() -> TemplateRegistry:
-    """Удобная функция для получения экземпляра реестра."""
-    return TemplateRegistry.get_instance()
-
-
-__all__ = ["TemplateRegistry", "get_registry"]
+__all__ = ["TemplateRegistry"]
