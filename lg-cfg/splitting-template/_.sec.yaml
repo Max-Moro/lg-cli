@@ -35,7 +35,12 @@ src:
       - "/lg/template/*.py"
       python:
         budget:
-          max_tokens_per_file: 3000
+          max_tokens_per_file: 2500
+    - match:
+      - "/lg/template/parser.py"
+      python:
+        budget:
+          max_tokens_per_file: 4000
 
 tests:
   extensions: [".py"]

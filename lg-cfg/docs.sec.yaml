@@ -24,3 +24,12 @@ templates:
     mode: allow
     allow:
       - "/docs/templates.md"
+
+adaptability:
+  extensions: [".md"]
+  filters:
+    mode: allow
+    allow:
+      - "/docs/adaptability.md"
+  markdown:
+    enable_templating: false
