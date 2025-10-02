@@ -54,7 +54,6 @@ lg/template_v2/
 ├── lexer.py             # Основа лексера
 ├── parser.py            # Основа парсера
 ├── processor.py         # Оркестрирующий компонент
-├── errors.py            # Централизованная обработка ошибок
 ├── resolver.py          # Базовый резолвер ссылок
 │
 ├── common_placeholders/ # Блок №1
