@@ -65,6 +65,9 @@ class MarkdownPatterns:
     # Fenced блоки кода
     FENCED_BLOCK = re.compile(r'^```|^~~~')
     
+    # Горизонтальные черты (разделители контекста)
+    HORIZONTAL_RULE = re.compile(r'^(?:\s{0,3})(?:[-*_]){3,}(?:\s*)$')
+    
     # Заголовочные символы в строке (для определения inside_heading)
     HEADING_MARKERS_WITH_TEXT = re.compile(r'^#{1,6}\s+.*?$')
     HEADING_MARKERS_ONLY = re.compile(r'^#{1,6}\s*$')
@@ -150,6 +153,74 @@ class TextLineProcessor:
         line_stripped = line.strip()
         return (bool(self.patterns.HEADING_MARKERS_WITH_TEXT.match(line_stripped)) or 
                 bool(self.patterns.HEADING_MARKERS_ONLY.match(line_stripped)))
+    
+    def parse_horizontal_rules_from_text(self, text: str, start_line: int) -> List[int]:
+        """
+        Извлекает позиции горизонтальных черт из текстового блока.
+        
+        Args:
+            text: Текст для анализа
+            start_line: Номер начальной строки
+            
+        Returns:
+            Список номеров строк с горизонтальными чертами
+        """
+        horizontal_rules = []
+        lines = text.split('\n')
+        current_line = start_line
+        in_fenced_block = False
+        
+        for i, line in enumerate(lines):
+            line_stripped = line.strip()
+            
+            # Отслеживаем fenced блоки
+            if self.patterns.FENCED_BLOCK.match(line_stripped):
+                in_fenced_block = not in_fenced_block
+                current_line += 1
+                continue
+                
+            if in_fenced_block:
+                current_line += 1
+                continue
+            
+            # Проверяем горизонтальные черты (только вне fenced блоков)
+            if self.patterns.HORIZONTAL_RULE.match(line):
+                # Проверяем, что это НЕ подчеркивание Setext заголовка
+                if not self._is_setext_underline(lines, i):
+                    horizontal_rules.append(current_line)
+            
+            current_line += 1
+        
+        return horizontal_rules
+    
+    def _is_setext_underline(self, lines: List[str], line_index: int) -> bool:
+        """
+        Проверяет, является ли строка подчеркиванием Setext заголовка.
+        
+        Args:
+            lines: Список всех строк текста
+            line_index: Индекс проверяемой строки
+            
+        Returns:
+            True, если строка является подчеркиванием Setext заголовка
+        """
+        if line_index == 0:
+            return False
+            
+        # Проверяем предыдущую строку
+        prev_line = lines[line_index - 1].strip()
+        
+        # Предыдущая строка должна содержать текст (не быть пустой)
+        if not prev_line:
+            return False
+            
+        # Предыдущая строка не должна быть заголовком ATX или другой разметкой
+        if (self.patterns.ATX_HEADING.match(prev_line) or
+            self.patterns.FENCED_BLOCK.match(prev_line) or
+            self.patterns.HORIZONTAL_RULE.match(prev_line)):
+            return False
+            
+        return True
 
 
 class PlaceholderAnalyzer:
@@ -247,16 +318,19 @@ class ChainAnalyzer:
         """
         self.placeholder_analyzer = placeholder_analyzer
     
-    def is_continuous_chain(self, ast: TemplateAST, target_index: int, headings: List[HeadingInfo]) -> bool:
+    def is_continuous_chain(self, ast: TemplateAST, target_index: int, headings: List[HeadingInfo], horizontal_rules: Optional[List[int]] = None) -> bool:
         """
         Определяет, образуют ли плейсхолдеры непрерывную цепочку.
         
         Логика:
         - Плейсхолдеры с глобами всегда считаются непрерывной цепочкой (вставляют несколько документов)
-        - Если между md-плейсхолдерами есть заголовки, то они НЕ образуют цепочку
+        - Если между md-плейсхолдерами есть заголовки или горизонтальные черты, то они НЕ образуют цепочку
         - Если между ними только текст или другие плейсхолдеры - цепочка
         - Плейсхолдеры внутри заголовков НЕ участвуют в анализе цепочек
         """
+        if horizontal_rules is None:
+            horizontal_rules = []
+            
         # Специальный случай: плейсхолдер с глобами всегда образует цепочку
         target_node = ast[target_index]
         if isinstance(target_node, MarkdownFileNode) and target_node.is_glob:
@@ -266,11 +340,29 @@ class ChainAnalyzer:
         regular_md_indices = self._find_regular_markdown_placeholder_indices(ast)
         
         if len(regular_md_indices) <= 1:
-            return self._analyze_single_placeholder(ast, target_index, headings)
+            return self._analyze_single_placeholder(ast, target_index, headings, horizontal_rules)
         
-        # Проверяем заголовки между всеми соседними "обычными" плейсхолдерами
-        for i in range(len(regular_md_indices) - 1):
-            if self._has_headings_between(ast, regular_md_indices[i], regular_md_indices[i + 1], headings):
+        # Разделяем плейсхолдеры на сегменты горизонтальными чертами
+        segments = self._split_placeholders_by_horizontal_rules(ast, regular_md_indices, horizontal_rules)
+        
+        # Находим сегмент, содержащий целевой плейсхолдер
+        target_segment = None
+        for segment in segments:
+            if target_index in segment:
+                target_segment = segment
+                break
+        
+        if not target_segment:
+            return self._analyze_single_placeholder(ast, target_index, headings, horizontal_rules)
+        
+        # Если в сегменте только один плейсхолдер - он изолирован
+        if len(target_segment) <= 1:
+            return False
+        
+        # Проверяем заголовки между плейсхолдерами в пределах сегмента
+        for i in range(len(target_segment) - 1):
+            has_headings = self._has_headings_between(ast, target_segment[i], target_segment[i + 1], headings)
+            if has_headings:
                 return False
         
         return True
@@ -311,19 +403,30 @@ class ChainAnalyzer:
                 line += 1
         return line
     
-    def _analyze_single_placeholder(self, ast: TemplateAST, node_index: int, headings: List[HeadingInfo]) -> bool:
+    def _analyze_single_placeholder(self, ast: TemplateAST, node_index: int, headings: List[HeadingInfo], horizontal_rules: Optional[List[int]] = None) -> bool:
         """
         Анализирует единственный плейсхолдер на предмет "цепочности".
         
         Плейсхолдеры с глобами всегда считаются цепочкой.
-        Если плейсхолдер окружен заголовками одного уровня - он разделен.
+        Если плейсхолдер окружен заголовками одного уровня или горизонтальными чертами - он разделен.
         """
+        if horizontal_rules is None:
+            horizontal_rules = []
+            
         # Специальный случай: плейсхолдер с глобами всегда образует цепочку
         target_node = ast[node_index]
         if isinstance(target_node, MarkdownFileNode) and target_node.is_glob:
             return True
         
         placeholder_line = self._calculate_node_line(ast, node_index)
+        
+        # Проверяем наличие горизонтальных черт рядом с плейсхолдером
+        rules_before = [r for r in horizontal_rules if r < placeholder_line]
+        rules_after = [r for r in horizontal_rules if r > placeholder_line]
+        
+        # Если есть горизонтальные черты до и после плейсхолдера - он изолирован
+        if rules_before and rules_after:
+            return False
         
         headings_before = [h for h in headings if h.line_number < placeholder_line]
         headings_after = [h for h in headings if h.line_number > placeholder_line]
@@ -337,6 +440,78 @@ class ChainAnalyzer:
                 return False
         
         return True
+    
+    def _has_horizontal_rules_between(self, ast: TemplateAST, start_idx: int, end_idx: int, horizontal_rules: List[int]) -> bool:
+        """Проверяет наличие горизонтальных черт между двумя узлами."""
+        start_line = self._calculate_node_line(ast, start_idx)
+        end_line = self._calculate_node_line(ast, end_idx)
+        
+        return any(start_line < rule_line < end_line for rule_line in horizontal_rules)
+    
+    def _split_placeholders_by_horizontal_rules(self, ast: TemplateAST, placeholder_indices: List[int], horizontal_rules: List[int]) -> List[List[int]]:
+        """
+        Разделяет плейсхолдеры на сегменты горизонтальными чертами.
+        
+        Args:
+            ast: AST шаблона
+            placeholder_indices: Список индексов плейсхолдеров
+            horizontal_rules: Список номеров строк с горизонтальными чертами
+            
+        Returns:
+            Список сегментов, каждый сегмент - список индексов плейсхолдеров
+        """
+        if not horizontal_rules:
+            return [placeholder_indices]
+        
+        segments = []
+        current_segment = []
+        
+        for placeholder_idx in placeholder_indices:
+            placeholder_node = ast[placeholder_idx]
+            if not isinstance(placeholder_node, MarkdownFileNode):
+                continue
+            
+            # Получаем номер строки плейсхолдера
+            placeholder_line = self._get_node_line_number(ast, placeholder_idx)
+            
+            # Проверяем, есть ли горизонтальная черта перед этим плейсхолдером
+            # (если текущий сегмент не пустой)
+            if current_segment:
+                prev_placeholder_idx = current_segment[-1]
+                prev_placeholder_line = self._get_node_line_number(ast, prev_placeholder_idx)
+                
+                # Есть ли горизонтальная черта между предыдущим и текущим плейсхолдером?
+                has_rule_between = any(prev_placeholder_line < rule_line < placeholder_line 
+                                     for rule_line in horizontal_rules)
+                
+                if has_rule_between:
+                    # Начинаем новый сегмент
+                    if current_segment:
+                        segments.append(current_segment)
+                    current_segment = [placeholder_idx]
+                else:
+                    # Продолжаем текущий сегмент
+                    current_segment.append(placeholder_idx)
+            else:
+                # Первый плейсхолдер - начинаем сегмент
+                current_segment.append(placeholder_idx)
+        
+        # Добавляем последний сегмент
+        if current_segment:
+            segments.append(current_segment)
+        
+        return segments
+    
+    def _get_node_line_number(self, ast: TemplateAST, node_index: int) -> int:
+        """Получает номер строки узла в AST."""
+        line_number = 1
+        for i in range(node_index):
+            node = ast[i]
+            if isinstance(node, TextNode):
+                line_number += node.text.count('\n')
+            else:
+                line_number += 1
+        return line_number
 
 
 class HeadingContextDetector:
@@ -365,18 +540,28 @@ class HeadingContextDetector:
         # 1. Парсим все заголовки в шаблоне
         template_headings = self._parse_all_headings(ast)
         
-        # 2. Определяем позицию плейсхолдера
+        # 2. Парсим все горизонтальные черты в шаблоне
+        horizontal_rules = self._parse_all_horizontal_rules(ast)
+        
+        # 3. Определяем позицию плейсхолдера
         placeholder_pos = self.placeholder_analyzer.find_placeholder_position(ast, node_index)
         
-        # 3. Находим родительский заголовок
-        parent_level = self._find_parent_heading_level(placeholder_pos.line_number, template_headings)
+        # 4. Находим родительский заголовок с учетом горизонтальных черт
+        parent_level = self._find_parent_heading_level(placeholder_pos.line_number, template_headings, horizontal_rules)
         
-        # 4. Анализируем цепочки плейсхолдеров
-        is_chain = self.chain_analyzer.is_continuous_chain(ast, node_index, template_headings)
+        # 5. Анализируем цепочки плейсхолдеров с учетом горизонтальных черт
+        is_chain = self.chain_analyzer.is_continuous_chain(ast, node_index, template_headings, horizontal_rules)
         
-        # 5. Вычисляем итоговые параметры
+
+        
+        # 6. Проверяем, изолирован ли плейсхолдер горизонтальной чертой
+        isolated_by_hr = self._is_placeholder_isolated_by_horizontal_rule(
+            placeholder_pos.line_number, horizontal_rules, template_headings
+        )
+        
+        # 7. Вычисляем итоговые параметры
         heading_level, strip_h1 = self._calculate_parameters(
-            placeholder_pos.inside_heading, parent_level, is_chain
+            placeholder_pos.inside_heading, parent_level, is_chain, isolated_by_hr
         )
         
         return HeadingContext(
@@ -411,6 +596,27 @@ class HeadingContextDetector:
                 current_line += 1
         
         return headings
+    
+    def _parse_all_horizontal_rules(self, ast: TemplateAST) -> List[int]:
+        """
+        Парсит все горизонтальные черты из AST шаблона.
+        
+        Returns:
+            Список номеров строк с горизонтальными чертами
+        """
+        horizontal_rules = []
+        current_line = 0
+        
+        for node in ast:
+            if isinstance(node, TextNode):
+                # Парсим горизонтальные черты из текста
+                rules = self.text_processor.parse_horizontal_rules_from_text(node.text, current_line)
+                horizontal_rules.extend(rules)
+                current_line += len(node.text.split('\n'))
+            else:
+                current_line += 1
+        
+        return horizontal_rules
     
     def _check_placeholder_heading(self, ast: TemplateAST, node_idx: int, current_line: int) -> Optional[HeadingInfo]:
         """
@@ -452,19 +658,64 @@ class HeadingContextDetector:
         
         return None
     
-    def _find_parent_heading_level(self, placeholder_line: int, headings: List[HeadingInfo]) -> int:
-        """Находит уровень ближайшего родительского заголовка."""
+    def _find_parent_heading_level(self, placeholder_line: int, headings: List[HeadingInfo], horizontal_rules: List[int]) -> int:
+        """
+        Находит уровень ближайшего родительского заголовка с учетом горизонтальных черт.
+        
+        Горизонтальная черта сбрасывает контекст заголовков до уровня 1.
+        """
         parent_level = 1
         
-        for heading in headings:
-            if heading.line_number < placeholder_line:
-                parent_level = heading.level
+        # Находим ближайшую горизонтальную черту перед плейсхолдером
+        closest_rule = None
+        for rule_line in horizontal_rules:
+            if rule_line < placeholder_line:
+                closest_rule = rule_line
             else:
+                break
+        
+        # Если есть горизонтальная черта, анализируем только заголовки после неё
+        start_line = closest_rule if closest_rule is not None else 0
+        
+        for heading in headings:
+            if start_line < heading.line_number < placeholder_line:
+                parent_level = heading.level
+            elif heading.line_number >= placeholder_line:
                 break
         
         return parent_level
     
-    def _calculate_parameters(self, inside_heading: bool, parent_level: int, is_chain: bool) -> Tuple[int, bool]:
+    def _is_placeholder_isolated_by_horizontal_rule(self, placeholder_line: int, horizontal_rules: List[int], headings: List[HeadingInfo]) -> bool:
+        """
+        Проверяет, изолирован ли плейсхолдер горизонтальной чертой.
+        
+        Плейсхолдер считается изолированным горизонтальной чертой, если:
+        1. Есть горизонтальная черта перед ним
+        2. Между горизонтальной чертой и плейсхолдером нет заголовков
+        """
+        if not horizontal_rules:
+            return False
+            
+        # Находим ближайшую горизонтальную черту перед плейсхолдером
+        closest_rule = None
+        for rule_line in horizontal_rules:
+            if rule_line < placeholder_line:
+                closest_rule = rule_line
+            else:
+                break
+                
+        if closest_rule is None:
+            return False
+            
+        # Проверяем, есть ли заголовки между горизонтальной чертой и плейсхолдером
+        for heading in headings:
+            if closest_rule < heading.line_number < placeholder_line:
+                # Есть заголовок между чертой и плейсхолдером - не изолирован чертой
+                return False
+                
+        return True
+    
+    def _calculate_parameters(self, inside_heading: bool, parent_level: int, is_chain: bool, isolated_by_hr: bool = False) -> Tuple[int, bool]:
         """
         Вычисляет итоговые параметры heading_level и strip_h1.
         
@@ -479,6 +730,13 @@ class HeadingContextDetector:
         if inside_heading:
             # Для плейсхолдеров внутри заголовков используем уровень родительского заголовка
             heading_level = parent_level
+        elif isolated_by_hr:
+            # Особый случай: плейсхолдер изолирован горизонтальной чертой
+            # Он становится "корневым документом": heading_level=1, strip_h1=false
+            # (независимо от is_chain, так как горизонтальная черта имеет приоритет)
+            heading_level = 1
+            strip_h1 = False
+            return heading_level, strip_h1
         else:
             # Для обычных плейсхолдеров - родительский уровень + 1, ограничиваем до H6
             heading_level = min(parent_level + 1, 6)
