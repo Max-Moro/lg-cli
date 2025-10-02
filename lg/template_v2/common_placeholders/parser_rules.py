@@ -16,7 +16,7 @@ from typing import List, Optional
 from .nodes import SectionNode, IncludeNode
 from ..base import ParsingContext, ParsingRule, PluginPriority
 from ..nodes import TemplateNode
-from ..tokens import TokenTypeName, ParserError
+from ..tokens import ParserError
 
 
 def parse_placeholder(context: ParsingContext) -> Optional[TemplateNode]:
