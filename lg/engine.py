@@ -14,7 +14,7 @@ from .migrate import ensure_cfg_actual
 from .run_context import RunContext
 from .section_processor import SectionProcessor
 from .stats import RunResult, build_run_result_from_collector, StatsCollector, TokenService
-from .template import TemplateProcessor, TemplateProcessingError, TemplateContext
+from .template import TemplateProcessingError, TemplateContext
 from .types import RunOptions, TargetSpec, SectionRef
 from .vcs import NullVcs
 from .vcs.git import GitVcs
@@ -88,8 +88,24 @@ class Engine:
             stats_collector=self.stats_collector
         )
         
-        # Процессор шаблонов
-        self.template_processor = TemplateProcessor(self.run_ctx)
+        # Процессор шаблонов - поддержка переключения версий
+        self.template_processor = self._init_template_processor()
+    
+    def _init_template_processor(self):
+        """Инициализирует шаблонизатор нужной версии."""
+        import os
+        
+        # Определяем, какую версию использовать
+        use_v2 = os.environ.get("LG_USE_TEMPLATE_V2", "").lower() in ("1", "true", "yes")
+        
+        if use_v2:
+            # Импортируем и используем новую версию
+            from .template_v2 import TemplateProcessor
+            return TemplateProcessor(self.run_ctx)
+        else:
+            # Используем текущую версию
+            from .template import TemplateProcessor
+            return TemplateProcessor(self.run_ctx)
     
     def _setup_component_integration(self) -> None:
         """Настраивает взаимодействие между компонентами."""
