@@ -8,14 +8,16 @@
 from __future__ import annotations
 
 import logging
+import re
 from typing import Dict, List, Optional, Type
-from .handlers import TemplateProcessorHandlers
 
 from .base import (
     TemplatePlugin, TokenSpec, ParsingRule, ProcessorRule,
     TokenRegistry, ParserRulesRegistry, ProcessorRegistry, PluginList
 )
+from .handlers import TemplateProcessorHandlers
 from .nodes import TemplateNode
+from .tokens import TokenType
 
 logger = logging.getLogger(__name__)
 
@@ -42,7 +44,22 @@ class TemplateRegistry:
         # Флаг инициализации
         self._plugins_initialized = False
         
+        # Регистрируем базовые токены
+        self._register_builtin_tokens()
+        
         logger.debug("TemplateRegistry initialized")
+
+    def _register_builtin_tokens(self) -> None:
+        """Регистрирует встроенные токены, не зависящие от плагинов."""
+        # Токен для непрерывного текста (между специальными конструкциями)
+        # Захватывает один или более символов, не являющихся началом плейсхолдера
+        text_token = TokenSpec(
+            name=TokenType.TEXT.value,
+            pattern=re.compile(r'(?:\$(?!\{)|[^$])+'),  # $ не за которым следует {, или не-$ символы
+            priority=1  # Самый низкий приоритет - используется как fallback
+        )
+        self.tokens[TokenType.TEXT.value] = text_token
+        logger.debug("Registered builtin TEXT token")
     
     def register_plugin(self, plugin: TemplatePlugin) -> None:
         """

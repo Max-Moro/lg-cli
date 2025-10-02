@@ -12,7 +12,7 @@ from typing import List, Optional
 from .base import ParsingContext, ParsingRule
 from .nodes import TemplateNode, TemplateAST, TextNode
 from .registry import TemplateRegistry
-from .tokens import Token, TokenType, TokenTypeName
+from .tokens import Token, TokenType
 
 logger = logging.getLogger(__name__)
 
@@ -119,7 +119,7 @@ class ModularParser:
         """
         current_token = context.current()
         
-        if current_token.type == TokenType.TEXT:
+        if current_token.type == TokenType.TEXT.value:
             # Обычный текст - создаем TextNode
             text_value = current_token.value
             context.advance()

@@ -1,24 +1,37 @@
 """
-Упрощенный лексический анализатор для шаблонизатора.
+Модульный лексический анализатор для шаблонизатора.
 
-Выполняет базовую токенизацию шаблонов, выделяя текст и основные конструкции.
+Использует зарегистрированные токены из плагинов для универсальной токенизации,
+поддерживая как базовые конструкции, так и специализированные токены плагинов.
 """
 
 from __future__ import annotations
 
-from typing import List
+import logging
+from typing import List, Optional
 
+from .base import TokenSpec
 from .registry import TemplateRegistry
 from .tokens import Token, TokenType, LexerError
+
+logger = logging.getLogger(__name__)
 
 
 class ModularLexer:
     """
-    Упрощенный лексический анализатор для базовой токенизации шаблонов.
+    Модульный лексический анализатор использующий токены из плагинов.
+    
+    Использует зарегистрированные в TemplateRegistry спецификации токенов
+    для универсальной токенизации любых шаблонных конструкций.
     """
     
     def __init__(self, registry: TemplateRegistry):
-        """Инициализирует лексер."""
+        """
+        Инициализирует лексер с реестром плагинов.
+        
+        Args:
+            registry: Реестр с зарегистрированными токенами
+        """
         self.registry = registry
         
         # Позиционная информация
@@ -27,20 +40,25 @@ class ModularLexer:
         self.line = 1
         self.column = 1
         self.length = 0
+        
+        # Кэшированные спецификации токенов (обновляются при смене реестра)
+        self._cached_token_specs: Optional[List[TokenSpec]] = None
 
     def tokenize(self, text: str) -> List[Token]:
         """
-        Простая токенизация шаблонного текста.
+        Универсальная токенизация с использованием зарегистрированных токенов.
         
-        Разделяет текст на следующие типы токенов:
-        - ${...} плейсхолдеры
-        - Обычный текст между плейсхолдерами
+        Применяет все зарегистрированные токены в порядке приоритета,
+        автоматически обрабатывая специальные конструкции плагинов.
         
         Args:
             text: Исходный текст для токенизации
             
         Returns:
             Список токенов
+            
+        Raises:
+            LexerError: При ошибке токенизации
         """
         self.text = text
         self.position = 0
@@ -50,120 +68,76 @@ class ModularLexer:
         
         tokens: List[Token] = []
         
+        # Получаем отсортированные спецификации токенов
+        token_specs = self._get_token_specs()
+        
         while self.position < self.length:
-            # Ищем начало плейсхолдера
-            placeholder_start = self.text.find('${', self.position)
+            token = self._match_next_token(token_specs)
             
-            if placeholder_start == -1:
-                # Больше плейсхолдеров нет, весь оставшийся текст - это TEXT
-                if self.position < self.length:
-                    text_content = self.text[self.position:]
-                    start_line, start_column = self.line, self.column
-                    self._advance(len(text_content))
-                    tokens.append(Token(
-                        TokenType.TEXT.value, text_content, 
-                        self.position - len(text_content), start_line, start_column
-                    ))
-                break
-            
-            # Добавляем текст до плейсхолдера
-            if placeholder_start > self.position:
-                text_content = self.text[self.position:placeholder_start]
-                start_line, start_column = self.line, self.column
-                self._advance(len(text_content))
-                tokens.append(Token(
-                    TokenType.TEXT.value, text_content,
-                    placeholder_start - len(text_content), start_line, start_column
-                ))
-            
-            # Обрабатываем плейсхолдер
-            placeholder_tokens = self._tokenize_placeholder()
-            tokens.extend(placeholder_tokens)
+            if token is None:
+                # Не удалось найти подходящий токен - это ошибка
+                char = self.text[self.position] if self.position < self.length else 'EOF'
+                raise LexerError(
+                    f"Unexpected character '{char}'",
+                    self.line, self.column, self.position
+                )
+                
+            # Добавляем все токены (включая TEXT и пропуская пустые)
+            if token.value:  # Пропускаем токены с пустым содержимым
+                tokens.append(token)
         
         # Добавляем EOF токен
         tokens.append(Token(TokenType.EOF.value, "", self.position, self.line, self.column))
         
+        logger.debug(f"Tokenized text into {len(tokens)} tokens")
         return tokens
     
-    def _tokenize_placeholder(self) -> List[Token]:
-        """Токенизирует плейсхолдер ${...}."""
-        tokens = []
+    def _get_token_specs(self) -> List[TokenSpec]:
+        """
+        Получает отсортированные спецификации токенов из реестра.
+        
+        Returns:
+            Список TokenSpec в порядке убывания приоритета
+        """
+        if self._cached_token_specs is None:
+            self._cached_token_specs = self.registry.get_tokens_by_priority()
+            logger.debug(f"Cached {len(self._cached_token_specs)} token specs")
+        
+        return self._cached_token_specs
+    
+    def _match_next_token(self, token_specs: List[TokenSpec]) -> Optional[Token]:
+        """
+        Пытается найти подходящий токен в текущей позиции.
+        
+        Args:
+            token_specs: Отсортированные спецификации токенов
+            
+        Returns:
+            Найденный токен или None
+        """
         start_line, start_column = self.line, self.column
+        start_position = self.position
         
-        # ${
-        tokens.append(Token("PLACEHOLDER_START", "${", self.position, start_line, start_column))
-        self._advance(2)
-        
-        # Ищем конец плейсхолдера
-        end_pos = self.text.find('}', self.position)
-        if end_pos == -1:
-            raise LexerError(
-                "Unclosed placeholder",
-                self.line, self.column, self.position
-            )
-        
-        # Содержимое плейсхолдера
-        content = self.text[self.position:end_pos].strip()
-        if content:
-            content_tokens = self._tokenize_placeholder_content(content)
-            tokens.extend(content_tokens)
-        
-        # Перемещаемся к закрывающей скобке
-        self._advance(end_pos - self.position)
-        
-        # }
-        tokens.append(Token("PLACEHOLDER_END", "}", self.position, self.line, self.column))
-        self._advance(1)
-        
-        return tokens
-    
-    def _tokenize_placeholder_content(self, content: str) -> List[Token]:
-        """Простая токенизация содержимого плейсхолдера."""
-        tokens = []
-        pos = 0
-        
-        while pos < len(content):
-            # Пропускаем пробелы
-            while pos < len(content) and content[pos].isspace():
-                pos += 1
-            
-            if pos >= len(content):
-                break
-            
-            # Специальные символы
-            if content[pos] in ':@[]':
-                tokens.append(Token(
-                    self._get_special_token_type(content[pos]),
-                    content[pos], 
-                    self.position + pos, self.line, self.column
-                ))
-                pos += 1
-            else:
-                # Идентификатор
-                start_pos = pos
-                while (pos < len(content) and 
-                       (content[pos].isalnum() or content[pos] in '_-/.') and
-                       content[pos] not in ':@[]'):
-                    pos += 1
+        # Пробуем каждую спецификацию токена в порядке приоритета
+        for spec in token_specs:
+            match = spec.pattern.match(self.text, self.position)
+            if match:
+                matched_text = match.group(0)
+                self._advance(len(matched_text))
                 
-                if pos > start_pos:
-                    identifier = content[start_pos:pos]
-                    tokens.append(Token(
-                        "IDENTIFIER", identifier,
-                        self.position + start_pos, self.line, self.column
-                    ))
+                token = Token(
+                    spec.name,
+                    matched_text,
+                    start_position,
+                    start_line,
+                    start_column
+                )
+                
+                logger.debug(f"Matched token {spec.name}: '{matched_text}'")
+                return token
         
-        return tokens
-    
-    def _get_special_token_type(self, char: str) -> str:
-        """Возвращает тип токена для специального символа."""
-        mapping = {
-            ':': 'COLON',
-            '@': 'AT', 
-            '[': 'LBRACKET',
-            ']': 'RBRACKET'
-        }
-        return mapping.get(char, 'UNKNOWN')
+        return None
+
     
     def _advance(self, count: int) -> None:
         """Перемещает позицию на указанное количество символов."""
