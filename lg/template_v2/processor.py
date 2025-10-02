@@ -263,8 +263,8 @@ def create_v2_template_processor(run_ctx: RunContext) -> TemplateProcessor:
     registry = TemplateRegistry()
     
     # Регистрируем доступные плагины
-    from .common_placeholders import CommonPlaceholdersPlugin
-    registry.register_plugin(CommonPlaceholdersPlugin())
+    # from .common_placeholders import CommonPlaceholdersPlugin
+    # registry.register_plugin(CommonPlaceholdersPlugin())
     
     # Инициализируем плагины
     registry.initialize_plugins()
