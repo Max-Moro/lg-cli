@@ -10,7 +10,7 @@
 
 from __future__ import annotations
 
-from .plugin import CommonPlaceholdersPlugin
 from .nodes import SectionNode, IncludeNode
+from .plugin import CommonPlaceholdersPlugin
 
 __all__ = ["CommonPlaceholdersPlugin", "SectionNode", "IncludeNode"]

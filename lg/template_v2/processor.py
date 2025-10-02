@@ -214,7 +214,7 @@ class TemplateProcessor:
             if processors:
                 # Используем первый (наивысший приоритет) обработчик
                 processor_rule = processors[0]
-                return processor_rule.processor_func(node, self.template_ctx)
+                return processor_rule.processor_func(node)
             
             # Fallback для базовых узлов
             if isinstance(node, TextNode):

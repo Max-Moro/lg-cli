@@ -13,10 +13,10 @@ from __future__ import annotations
 
 from typing import List, Optional
 
+from .nodes import SectionNode, IncludeNode
 from ..base import ParsingContext, ParsingRule, PluginPriority
 from ..nodes import TemplateNode
-from ..tokens import DynamicTokenType, TokenType, ParserError
-from .nodes import SectionNode, IncludeNode
+from ..tokens import DynamicTokenType, ParserError
 
 
 def parse_placeholder(context: ParsingContext) -> Optional[TemplateNode]:

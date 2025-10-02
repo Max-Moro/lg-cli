@@ -9,7 +9,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Dict, List, Optional, TYPE_CHECKING
+from typing import Dict, List
 
 from .common import (
     resolve_cfg_root,
@@ -19,9 +19,7 @@ from .nodes import SectionNode, IncludeNode
 from ..nodes import TemplateNode, TemplateAST
 from ...run_context import RunContext
 from ...types import SectionRef
-
-if TYPE_CHECKING:
-    from ..handlers import TemplateProcessorHandlers
+from ..handlers import TemplateProcessorHandlers
 
 
 @dataclass(frozen=True)
@@ -42,7 +40,7 @@ class CommonPlaceholdersResolver:
     и заполняет метаданные узлов для последующей обработки.
     """
     
-    def __init__(self, run_ctx: RunContext, handlers: Optional['TemplateProcessorHandlers'] = None, validate_paths: bool = True):
+    def __init__(self, run_ctx: RunContext, handlers: TemplateProcessorHandlers, validate_paths: bool = True):
         """
         Инициализирует резолвер.
         
@@ -52,7 +50,7 @@ class CommonPlaceholdersResolver:
             validate_paths: Если False, не проверяет существование путей (для тестирования)
         """
         self.run_ctx = run_ctx
-        self.handlers = handlers
+        self.handlers: TemplateProcessorHandlers = handlers
         self.repo_root = run_ctx.root
         self.current_cfg_root = run_ctx.root / "lg-cfg"
         self.validate_paths = validate_paths
@@ -222,20 +220,15 @@ class CommonPlaceholdersResolver:
                 raise RuntimeError(f"Unknown include kind: {node.kind}")
             
             # Парсим загруженный шаблон через типизированные обработчики
-            if self.handlers:
-                # Формируем правильное имя шаблона как в старом резолвере
-                template_name = f"{node.kind}:{node.name}"
-                if node.origin != "self":
-                    template_name = f"@{node.origin}:{template_name}"
-                
-                processed_text = self.handlers.parse_and_process_template(template_text, template_name)
-                # Результат обработки - это строка, создаем текстовый узел
-                from ..nodes import TextNode
-                ast: TemplateAST = [TextNode(text=processed_text)]
-            else:
-                # Заглушка для случаев без обработчиков (тестирование)
-                from ..nodes import TextNode
-                ast: TemplateAST = [TextNode(text=template_text)]
+            # Формируем правильное имя шаблона как в старом резолвере
+            template_name = f"{node.kind}:{node.name}"
+            if node.origin != "self":
+                template_name = f"@{node.origin}:{template_name}"
+
+            processed_text = self.handlers.parse_and_process_template(template_text, template_name)
+            # Результат обработки - это строка, создаем текстовый узел
+            from ..nodes import TextNode
+            ast: TemplateAST = [TextNode(text=processed_text)]
             
             resolved_include = ResolvedInclude(
                 kind=node.kind,

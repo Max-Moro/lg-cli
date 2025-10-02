@@ -10,11 +10,9 @@ from __future__ import annotations
 import enum
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
-from typing import Any, Callable, Dict, List, Optional, Pattern, Type, TYPE_CHECKING
+from typing import Callable, Dict, List, Optional, Pattern, Type
 
-if TYPE_CHECKING:
-    from .handlers import TemplateProcessorHandlers
-
+from .handlers import TemplateProcessorHandlers
 # Импортируем собственные типы
 from .nodes import TemplateNode
 from .tokens import Token, TokenType, DynamicTokenType, ParserError
@@ -58,7 +56,7 @@ class ProcessorRule:
     Правило обработки узлов AST.
     """
     node_type: Type[TemplateNode]  # Тип узла, который обрабатывает правило
-    processor_func: Callable[[TemplateNode, Any], str]  # Функция обработки
+    processor_func: Callable[[TemplateNode], str]  # Функция обработки
     priority: int = 50            # Приоритет (для случаев множественных обработчиков)
 
 
@@ -74,10 +72,10 @@ class ParsingContext:
         self.tokens = tokens
         self.position = 0
         self.length = len(tokens)
-        
+
         # Стек для сохранения/восстановления позиции
         self._position_stack: List[int] = []
-    
+
     def current(self) -> Token:
         """Возвращает текущий токен."""
         if self.position >= self.length:
@@ -102,21 +100,21 @@ class ParsingContext:
     def is_at_end(self) -> bool:
         """Проверяет, достигнут ли конец токенов."""
         return self.position >= self.length or self.current().type == DynamicTokenType(TokenType.EOF)
-    
+
     def save_position(self) -> None:
         """Сохраняет текущую позицию в стек."""
         self._position_stack.append(self.position)
-    
+
     def restore_position(self) -> None:
         """Восстанавливает позицию из стека."""
         if self._position_stack:
             self.position = self._position_stack.pop()
-    
+
     def discard_saved_position(self) -> None:
         """Удаляет сохраненную позицию без восстановления."""
         if self._position_stack:
             self._position_stack.pop()
-    
+
     def match(self, *token_types: DynamicTokenType) -> bool:
         """Проверяет, соответствует ли текущий токен одному из указанных типов."""
         return self.current().type in token_types
@@ -147,7 +145,7 @@ class TemplatePlugin(ABC):
     
     def __init__(self):
         """Инициализирует плагин."""
-        self._handlers: Optional['TemplateProcessorHandlers'] = None
+        self._handlers: Optional[TemplateProcessorHandlers] = None
     
     @property
     @abstractmethod
@@ -160,7 +158,7 @@ class TemplatePlugin(ABC):
         """Возвращает приоритет плагина (по умолчанию средний)."""
         return PluginPriority.PLACEHOLDER
     
-    def set_handlers(self, handlers: 'TemplateProcessorHandlers') -> None:
+    def set_handlers(self, handlers: TemplateProcessorHandlers) -> None:
         """
         Устанавливает обработчики ядра шаблонизатора.
         
@@ -170,7 +168,7 @@ class TemplatePlugin(ABC):
         self._handlers = handlers
     
     @property
-    def handlers(self) -> 'TemplateProcessorHandlers':
+    def handlers(self) -> TemplateProcessorHandlers:
         """
         Возвращает обработчики ядра шаблонизатора.
         

@@ -9,10 +9,9 @@ from __future__ import annotations
 
 from typing import List
 
-from ..base import TemplatePlugin, TokenSpec, ParsingRule, ProcessorRule, PluginPriority
-from .tokens import get_placeholder_token_specs  
 from .parser_rules import get_placeholder_parser_rules
-# processor импорты будут выполнены в register_processors
+from .tokens import get_placeholder_token_specs
+from ..base import TemplatePlugin, TokenSpec, ParsingRule, ProcessorRule, PluginPriority
 
 
 class CommonPlaceholdersPlugin(TemplatePlugin):

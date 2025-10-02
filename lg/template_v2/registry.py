@@ -8,10 +8,8 @@
 from __future__ import annotations
 
 import logging
-from typing import Dict, List, Optional, Type, TYPE_CHECKING
-
-if TYPE_CHECKING:
-    from .handlers import TemplateProcessorHandlers
+from typing import Dict, List, Optional, Type
+from .handlers import TemplateProcessorHandlers
 
 from .base import (
     TemplatePlugin, TokenSpec, ParsingRule, ProcessorRule,
@@ -71,7 +69,7 @@ class TemplateRegistry:
         
         logger.debug(f"Plugin '{plugin.name}' registered successfully")
     
-    def register_plugin_processors(self, handlers: 'TemplateProcessorHandlers') -> None:
+    def register_plugin_processors(self, handlers: TemplateProcessorHandlers) -> None:
         """
         Регистрирует процессоры всех плагинов после установки обработчиков.
         
@@ -122,7 +120,7 @@ class TemplateRegistry:
                 f"(priority: {processor_rule.priority})"
             )
     
-    def initialize_plugins(self, handlers: Optional['TemplateProcessorHandlers'] = None) -> None:
+    def initialize_plugins(self, handlers: Optional[TemplateProcessorHandlers] = None) -> None:
         """
         Инициализирует все зарегистрированные плагины.
         

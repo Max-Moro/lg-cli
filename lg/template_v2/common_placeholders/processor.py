@@ -7,16 +7,11 @@
 
 from __future__ import annotations
 
-from typing import List, Any, TYPE_CHECKING
+from typing import List
 
+from .nodes import SectionNode, IncludeNode
 from ..base import ProcessorRule
 from ..nodes import TemplateNode
-from .nodes import SectionNode, IncludeNode
-from ...template.context import TemplateContext
-from ...types import SectionRef
-
-if TYPE_CHECKING:
-    from ..handlers import TemplateProcessorHandlers
 
 
 def _process_section_node_impl(node: SectionNode, handlers) -> str:
@@ -90,22 +85,25 @@ class CommonPlaceholdersProcessor:
     обработки секционных узлов и узлов включений.
     """
     
-    def __init__(self, handlers: 'TemplateProcessorHandlers'):
+    def __init__(self, handlers):
         """
         Инициализирует процессор.
         
         Args:
             handlers: Типизированные обработчики ядра
         """
-        self.handlers = handlers
+        # Внутренний импорт для избежания циклических зависимостей
+        from ..handlers import TemplateProcessorHandlers
+        
+        self.handlers: TemplateProcessorHandlers = handlers
     
-    def process_section_node(self, node: TemplateNode, context: Any) -> str:
+    def process_section_node(self, node: TemplateNode) -> str:
         """Обрабатывает узел секции."""
         if not isinstance(node, SectionNode):
             raise RuntimeError(f"Expected SectionNode, got {type(node)}")
         return _process_section_node_impl(node, self.handlers)
 
-    def process_include_node(self, node: TemplateNode, context: Any) -> str:
+    def process_include_node(self, node: TemplateNode) -> str:
         """Обрабатывает узел включения.""" 
         if not isinstance(node, IncludeNode):
             raise RuntimeError(f"Expected IncludeNode, got {type(node)}")
