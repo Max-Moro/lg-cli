@@ -11,12 +11,12 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Dict, List, Optional, TYPE_CHECKING
 
-from ..nodes import TemplateNode, TemplateAST
-from .nodes import SectionNode, IncludeNode
 from .common import (
-    Locator, parse_locator, resolve_cfg_root,
+    resolve_cfg_root,
     load_template_from, load_context_from
 )
+from .nodes import SectionNode, IncludeNode
+from ..nodes import TemplateNode, TemplateAST
 from ...run_context import RunContext
 from ...types import SectionRef
 
@@ -223,10 +223,12 @@ class CommonPlaceholdersResolver:
             
             # Парсим загруженный шаблон через типизированные обработчики
             if self.handlers:
-                # Создаем временный TemplateContext для парсинга включений
-                from ...template import TemplateContext
-                temp_ctx = TemplateContext(run_ctx=self.run_ctx)
-                processed_text = self.handlers.parse_and_process_template(template_text, temp_ctx)
+                # Формируем правильное имя шаблона как в старом резолвере
+                template_name = f"{node.kind}:{node.name}"
+                if node.origin != "self":
+                    template_name = f"@{node.origin}:{template_name}"
+                
+                processed_text = self.handlers.parse_and_process_template(template_text, template_name)
                 # Результат обработки - это строка, создаем текстовый узел
                 from ..nodes import TextNode
                 ast: TemplateAST = [TextNode(text=processed_text)]

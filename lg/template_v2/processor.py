@@ -314,24 +314,24 @@ def _setup_processor_handlers(processor: TemplateProcessor) -> None:
         processor: Процессор для настройки
     """
     # Настраиваем обработчик узлов AST
-    def ast_processor(node: TemplateNode, template_ctx: TemplateContext) -> str:
+    def ast_processor(node: TemplateNode) -> str:
         return processor._evaluate_node(node, [], 0)
     
     processor.handlers.set_ast_processor(ast_processor)
     
     # Настраиваем обработчик секций (будет установлен позже через set_section_handler)
-    def section_processor(section_ref: SectionRef, template_ctx: TemplateContext) -> str:
+    def section_processor(section_ref: SectionRef) -> str:
         if processor.section_handler is None:
             raise RuntimeError(f"No section handler set for processing section '{section_ref.name}'")
-        return processor.section_handler(section_ref, template_ctx)
+        return processor.section_handler(section_ref, processor.template_ctx)
     
     processor.handlers.set_section_processor(section_processor)
     
     # Настраиваем парсер шаблонов для включений
-    def template_parser(template_text: str, template_ctx: TemplateContext) -> str:
-        # Парсим и обрабатываем включаемый шаблон
-        ast = processor._parse_template(template_text, f"<included:{hash(template_text)}>")
-        resolved_ast = processor._resolve_template_references(ast, "<included>")
+    def template_parser(template_text: str, template_name: str) -> str:
+        # Парсим и обрабатываем включаемый шаблон с правильным именем
+        ast = processor._parse_template(template_text, template_name)
+        resolved_ast = processor._resolve_template_references(ast, template_name)
         return processor._evaluate_ast(resolved_ast)
     
     processor.handlers.set_template_parser(template_parser)
