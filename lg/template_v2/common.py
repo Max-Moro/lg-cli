@@ -97,7 +97,7 @@ def load_from_cfg(cfg_root: Path, resource: str, *, suffix: str) -> Tuple[Path, 
     """
     Единая загрузка файла из lg-cfg/: <cfg_root>/<resource><suffix>.
     """
-    from ...migrate import ensure_cfg_actual
+    from ..migrate import ensure_cfg_actual
     ensure_cfg_actual(cfg_root)
     p = (cfg_root / f"{resource}{suffix}").resolve()
     if not p.is_file():
@@ -119,7 +119,7 @@ def list_contexts(root: Path) -> List[str]:
     """
     Перечислить доступные контексты (ТОЛЬКО *.ctx.md) относительно lg-cfg/.
     """
-    from ...config.paths import cfg_root
+    from ..config.paths import cfg_root
     base = cfg_root(root)
     if not base.is_dir():
         return []

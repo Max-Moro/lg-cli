@@ -69,6 +69,10 @@ class TemplateProcessor:
             def parse_next_node(self, context) -> Optional[TemplateNode]:
                 """Делегирует парсинг к главному парсеру."""
                 return processor_self.parser._parse_next_node(context)
+            
+            def resolve_ast(self, ast, context: str = "") -> list:
+                """Делегирует резолвинг к процессору."""
+                return processor_self._resolve_template_references(ast, context)
         
         # Сохраняем ссылку на self для замыкания
         processor_self = self
@@ -365,10 +369,12 @@ def create_v2_template_processor(run_ctx: RunContext) -> TemplateProcessor:
     
     # Регистрируем доступные плагины (в порядке приоритета)
     from .common_placeholders import CommonPlaceholdersPlugin
-    from .adaptive import AdaptivePlugin
+    # TODO: Раскомментировать когда будет реализован AdaptivePlugin
+    # from .adaptive import AdaptivePlugin
     
     registry.register_plugin(CommonPlaceholdersPlugin(processor.template_ctx))
-    registry.register_plugin(AdaptivePlugin(processor.template_ctx))
+    # TODO: Раскомментировать когда будет реализован AdaptivePlugin
+    # registry.register_plugin(AdaptivePlugin(processor.template_ctx))
     
     # Инициализируем плагины после регистрации всех компонентов
     registry.initialize_plugins(processor.handlers)

@@ -145,7 +145,7 @@ class ModularParser:
                 ast.append(TextNode(text=text_value))
 
 
-def parse_template(text: str, registry: Optional[TemplateRegistry] = None) -> TemplateAST:
+def parse_template(text: str, registry: TemplateRegistry) -> TemplateAST:
     """
     Удобная функция для парсинга шаблона из текста.
     
@@ -160,14 +160,6 @@ def parse_template(text: str, registry: Optional[TemplateRegistry] = None) -> Te
         LexerError: При ошибке лексического анализа 
         ParserError: При ошибке синтаксического анализа
     """
-    if registry is None:
-        # Создаем минимальный реестр с базовыми плейсхолдерами
-        from .registry import TemplateRegistry
-        from .common_placeholders import CommonPlaceholdersPlugin
-        
-        registry = TemplateRegistry()
-        registry.register_plugin(CommonPlaceholdersPlugin())
-    
     from .lexer import ContextualLexer
     
     lexer = ContextualLexer(registry)

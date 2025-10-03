@@ -9,17 +9,19 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Dict, List
+from typing import Dict, List, cast
 
+from .nodes import SectionNode, IncludeNode
 from ..common import (
     resolve_cfg_root,
     load_template_from, load_context_from
 )
-from .nodes import SectionNode, IncludeNode
-from ..nodes import TemplateNode, TemplateAST
-from ...run_context import RunContext
-from ...types import SectionRef
 from ..handlers import TemplateProcessorHandlers
+from ..nodes import TemplateNode, TemplateAST
+from ..protocols import TemplateRegistryProtocol
+from ...run_context import RunContext
+from ...template import TemplateContext
+from ...types import SectionRef
 
 
 @dataclass(frozen=True)
@@ -40,7 +42,13 @@ class CommonPlaceholdersResolver:
     и заполняет метаданные узлов для последующей обработки.
     """
     
-    def __init__(self, run_ctx: RunContext, handlers: TemplateProcessorHandlers, registry=None):
+    def __init__(
+            self,
+            run_ctx: RunContext,
+            handlers: TemplateProcessorHandlers,
+            registry: TemplateRegistryProtocol,
+            template_ctx: TemplateContext
+    ):
         """
         Инициализирует резолвер.
         
@@ -48,15 +56,14 @@ class CommonPlaceholdersResolver:
             run_ctx: Контекст выполнения с настройками и путями
             handlers: Типизированные обработчики для парсинга шаблонов
             registry: Реестр компонентов для парсинга
+            template_ctx: Контекст шаблона с управлением состоянием (включая origin)
         """
         self.run_ctx = run_ctx
         self.handlers: TemplateProcessorHandlers = handlers
-        self.registry = registry  # Добавляем реестр для парсинга
+        self.registry = registry
+        self.template_ctx = template_ctx
         self.repo_root = run_ctx.root
         self.current_cfg_root = run_ctx.root / "lg-cfg"
-
-        # Стек origin'ов для отслеживания вложенности включений (как в старом резолвере)
-        self._origin_stack: List[str] = ["self"]
         
         # Кэш резолвленных включений
         self._resolved_includes: Dict[str, ResolvedInclude] = {}
@@ -151,8 +158,8 @@ class CommonPlaceholdersResolver:
             origin = section_name[1:colon_pos]
             name = section_name[colon_pos + 1:]
         else:
-            # Простая ссылка без адресности - использует текущий origin из стека (как в старом резолвере!)
-            current_origin = self._origin_stack[-1] if self._origin_stack else "self"
+            # Простая ссылка без адресности - использует текущий origin из template_ctx
+            current_origin = self.template_ctx.current_state.origin
             cfg_root = resolve_cfg_root(
                 current_origin,
                 current_cfg_root=self.current_cfg_root,
@@ -209,18 +216,16 @@ class CommonPlaceholdersResolver:
             else:
                 raise RuntimeError(f"Unknown include kind: {node.kind}")
             
-            # Парсим шаблон с новым origin в стеке (как в старом резолвере)
-            # Рекурсивный резолвинг будет выполнен процессором автоматически
+            # Парсим шаблон
             from ..parser import parse_template
+            from ..registry import TemplateRegistry
+            include_ast = parse_template(template_text, registry=cast(TemplateRegistry, self.registry))
             
-            self._origin_stack.append(node.origin)
-            try:
-                include_ast = parse_template(template_text, registry=self.registry)
-            finally:
-                self._origin_stack.pop()
-            
-            ast: TemplateAST = include_ast
-            
+            # Сохраняем текущее состояние и устанавливаем новый origin
+            self.template_ctx.current_state.origin = node.origin
+            # Ядро применит резолверы всех плагинов, включая наш
+            ast: TemplateAST = self.handlers.resolve_ast(include_ast, context)
+
             resolved_include = ResolvedInclude(
                 kind=node.kind,
                 name=node.name,

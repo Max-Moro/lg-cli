@@ -38,6 +38,8 @@ class CommonPlaceholdersPlugin(TemplatePlugin):
         """
         super().__init__()
         self.template_ctx = template_ctx
+        # Резолвер будет создан один раз при инициализации
+        self._resolver = None
 
     @property
     def name(self) -> str:
@@ -48,6 +50,13 @@ class CommonPlaceholdersPlugin(TemplatePlugin):
     def priority(self) -> PluginPriority:
         """Возвращает приоритет плагина."""
         return PluginPriority.PLACEHOLDER
+    
+    def initialize(self) -> None:
+        """Инициализирует резолвер после установки всех зависимостей."""
+        from .resolver import CommonPlaceholdersResolver
+        run_ctx = self.template_ctx.run_ctx
+        # Передаем template_ctx для управления origin через TemplateState
+        self._resolver = CommonPlaceholdersResolver(run_ctx, self.handlers, self.registry, self.template_ctx)
     
     def register_tokens(self) -> List[TokenSpec]:
         """Регистрирует токены для плейсхолдеров."""
@@ -128,12 +137,10 @@ class CommonPlaceholdersPlugin(TemplatePlugin):
                 # Не наш узел
                 return node
             
-            run_ctx = self.template_ctx.run_ctx
-
-            # Создаем резолвер с необходимыми зависимостями
-            from .resolver import CommonPlaceholdersResolver
-            resolver = CommonPlaceholdersResolver(run_ctx, self.handlers, self.registry)
-            return resolver.resolve_node(node, context)
+            # Используем единственный экземпляр резолвера (с сохраненным стеком)
+            if self._resolver is None:
+                raise RuntimeError("Resolver not initialized. Call initialize() first.")
+            return self._resolver.resolve_node(node, context)
         
         return [
             ResolverRule(
