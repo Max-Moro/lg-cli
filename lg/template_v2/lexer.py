@@ -8,11 +8,10 @@
 from __future__ import annotations
 
 import logging
-from dataclasses import dataclass
-from typing import Dict, List, Optional, Set, TYPE_CHECKING
+from typing import Dict, List, Optional, TYPE_CHECKING
 
 from .base import TokenSpec, TokenContext
-from .tokens import Token, TokenType, LexerError
+from .tokens import Token, TokenType
 
 if TYPE_CHECKING:
     from .registry import TemplateRegistry

@@ -60,7 +60,6 @@ class TemplateRegistry:
         text_token = TokenSpec(
             name=TokenType.TEXT.value,
             pattern=re.compile(r'(?:\$(?!\{)|[^$])+'),  # $ не за которым следует {, или не-$ символы
-            priority=1  # Самый низкий приоритет - используется как fallback
         )
         self.tokens[TokenType.TEXT.value] = text_token
         logger.debug("Registered builtin TEXT token")
@@ -149,7 +148,6 @@ class TemplateRegistry:
             close_tokens = context_spec["close_tokens"]
             inner_tokens = context_spec.get("inner_tokens", [])
             allow_nesting = context_spec.get("allow_nesting", False)
-            priority = context_spec.get("priority", 50)
             
             self.register_token_context(
                 name=name,
@@ -157,7 +155,6 @@ class TemplateRegistry:
                 close_tokens=close_tokens,
                 inner_tokens=inner_tokens,
                 allow_nesting=allow_nesting,
-                priority=priority
             )
             
             logger.debug(f"Registered token context '{name}' from plugin '{plugin.name}'")
@@ -222,12 +219,25 @@ class TemplateRegistry:
     
     def get_tokens_by_priority(self) -> List[TokenSpec]:
         """
-        Возвращает токены, отсортированные по приоритету.
+        Возвращает токены в правильном порядке для контекстуального лексера.
+        
+        Специальные токены (открывающие/закрывающие) должны проверяться раньше TEXT.
         
         Returns:
-            Список спецификаций токенов в порядке убывания приоритета
+            Список спецификаций токенов в правильном порядке
         """
-        return sorted(self.tokens.values(), key=lambda t: t.priority, reverse=True)
+        # Разделяем токены по типам
+        special_tokens = []
+        text_tokens = []
+        
+        for token_spec in self.tokens.values():
+            if token_spec.name == TokenType.TEXT.value:
+                text_tokens.append(token_spec)
+            else:
+                special_tokens.append(token_spec)
+        
+        # Специальные токены первыми, TEXT токены последними
+        return special_tokens + text_tokens
     
     def get_plugin_by_name(self, name: str) -> Optional[TemplatePlugin]:
         """
@@ -271,8 +281,7 @@ class TemplateRegistry:
         open_tokens: List[str], 
         close_tokens: List[str], 
         inner_tokens: Optional[List[str]] = None,
-        allow_nesting: bool = False, 
-        priority: int = 50
+        allow_nesting: bool = False
     ) -> None:
         """
         Регистрирует новый контекст токенов.
@@ -283,7 +292,6 @@ class TemplateRegistry:
             close_tokens: Токены, закрывающие контекст  
             inner_tokens: Токены, допустимые только в этом контексте
             allow_nesting: Разрешает/запрещает вложенные контексты
-            priority: Приоритет контекста
             
         Raises:
             ValueError: Если контекст с таким именем уже зарегистрирован
@@ -297,7 +305,6 @@ class TemplateRegistry:
             close_tokens=set(close_tokens),
             inner_tokens=set(inner_tokens or []),
             allow_nesting=allow_nesting,
-            priority=priority
         )
         
         logger.debug(
@@ -327,7 +334,6 @@ class TemplateRegistry:
             close_tokens=context.close_tokens,
             inner_tokens=context.inner_tokens | set(token_names),
             allow_nesting=context.allow_nesting,
-            priority=context.priority
         )
         
         logger.debug(f"Added {len(token_names)} tokens to context '{context_name}'")
@@ -337,9 +343,9 @@ class TemplateRegistry:
         Возвращает все зарегистрированные контексты токенов.
         
         Returns:
-            Список контекстов в порядке убывания приоритета
+            Список всех контекстов
         """
-        return sorted(self.token_contexts.values(), key=lambda c: c.priority, reverse=True)
+        return list(self.token_contexts.values())
     
     def get_token_context(self, name: str) -> Optional[TokenContext]:
         """

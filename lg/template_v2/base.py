@@ -35,7 +35,6 @@ class TokenSpec:
     """
     name: str                    # Имя токена (например, "PLACEHOLDER_START")
     pattern: Pattern[str]        # Скомпилированное регулярное выражение
-    priority: int = 50          # Приоритет применения паттерна
     context_sensitive: bool = False  # Зависит ли токен от контекста
 
 
@@ -134,7 +133,6 @@ class TokenContext:
     close_tokens: Set[str]       # Токены, закрывающие контекст
     inner_tokens: Set[str]       # Токены, допустимые только в этом контексте
     allow_nesting: bool = False  # Разрешает/запрещает вложенные контексты
-    priority: int = 50           # Приоритет (для разрешения конфликтов)
 
     def __post_init__(self):
         """Валидация настроек контекста."""

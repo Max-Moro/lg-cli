@@ -51,7 +51,6 @@ class CommonPlaceholdersPlugin(TemplatePlugin):
                 "IDENTIFIER", "COLON", "AT", "LBRACKET", "RBRACKET", "WHITESPACE"
             ],
             "allow_nesting": False,
-            "priority": 100
         }]
 
     def register_parser_rules(self) -> List[ParsingRule]:
