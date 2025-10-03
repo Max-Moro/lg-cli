@@ -15,7 +15,6 @@ src:
           - "/section_processor.py"
           - "/config/"
           - "/adapters/"
-          - "/template/"
         children:
           config:
             mode: allow
@@ -30,12 +29,6 @@ src:
               - "/base.py"
               - "/processor.py"
               - "/markdown.py"
-  targets:
-    - match:
-      - "/lg/template/*.py"
-      python:
-        budget:
-          max_tokens_per_file: 1
 
 src-v2:
   extensions: [".py"]
@@ -44,12 +37,14 @@ src-v2:
     mode: allow
     allow:
       - "/lg/template_v2/"
-  targets:
-    - match:
-      - "/lg/template_v2/*.py"
-      python:
-        budget:
-          max_tokens_per_file: 10000
+    children:
+      lg:
+        mode: block
+        children:
+          template_v2:
+            mode: block
+            block:
+              - "/common_placeholders/"
 
 tests:
   extensions: [".py"]
