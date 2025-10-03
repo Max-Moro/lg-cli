@@ -20,7 +20,6 @@ from ..handlers import TemplateProcessorHandlers
 from ..nodes import TemplateNode, TemplateAST
 from ..protocols import TemplateRegistryProtocol
 from ...run_context import RunContext
-from ...template import TemplateContext
 from ...types import SectionRef
 
 
@@ -47,7 +46,6 @@ class CommonPlaceholdersResolver:
             run_ctx: RunContext,
             handlers: TemplateProcessorHandlers,
             registry: TemplateRegistryProtocol,
-            template_ctx: TemplateContext
     ):
         """
         Инициализирует резолвер.
@@ -56,14 +54,15 @@ class CommonPlaceholdersResolver:
             run_ctx: Контекст выполнения с настройками и путями
             handlers: Типизированные обработчики для парсинга шаблонов
             registry: Реестр компонентов для парсинга
-            template_ctx: Контекст шаблона с управлением состоянием (включая origin)
         """
         self.run_ctx = run_ctx
         self.handlers: TemplateProcessorHandlers = handlers
         self.registry = registry
-        self.template_ctx = template_ctx
         self.repo_root = run_ctx.root
         self.current_cfg_root = run_ctx.root / "lg-cfg"
+        
+        # Стек origin'ов для поддержки вложенных включений (как в V1)
+        self._origin_stack: List[str] = ["self"]
         
         # Кэш резолвленных включений
         self._resolved_includes: Dict[str, ResolvedInclude] = {}
@@ -122,16 +121,38 @@ class CommonPlaceholdersResolver:
         """
         Резолвит узел включения, загружает и парсит включаемый шаблон.
         """
-        # Загружаем и парсим включение
-        resolved_include = self._load_and_parse_include(node, context)
+        # Создаем ключ кэша
+        cache_key = node.canon_key()
         
-        # Возвращаем узел с загруженным содержимым
-        return IncludeNode(
-            kind=node.kind,
-            name=node.name,
-            origin=node.origin,
-            children=resolved_include.ast
-        )
+        # Проверяем циклические зависимости
+        if cache_key in self._resolution_stack:
+            cycle_info = " -> ".join(self._resolution_stack + [cache_key])
+            raise RuntimeError(f"Circular include dependency: {cycle_info}")
+        
+        # Проверяем кэш (как в V1)
+        if cache_key in self._resolved_includes:
+            resolved_include = self._resolved_includes[cache_key]
+            return IncludeNode(
+                kind=node.kind,
+                name=node.name,
+                origin=node.origin,
+                children=resolved_include.ast
+            )
+        
+        # Резолвим включение
+        self._resolution_stack.append(cache_key)
+        try:
+            resolved_include = self._load_and_parse_include(node, context)
+            self._resolved_includes[cache_key] = resolved_include
+            
+            return IncludeNode(
+                kind=node.kind,
+                name=node.name,
+                origin=node.origin,
+                children=resolved_include.ast
+            )
+        finally:
+            self._resolution_stack.pop()
 
     def _parse_section_reference(self, section_name: str) -> tuple[Path, str]:
         """
@@ -158,8 +179,8 @@ class CommonPlaceholdersResolver:
             origin = section_name[1:colon_pos]
             name = section_name[colon_pos + 1:]
         else:
-            # Простая ссылка без адресности - использует текущий origin из template_ctx
-            current_origin = self.template_ctx.current_state.origin
+            # Простая ссылка без адресности - использует текущий origin из стека (как в V1)
+            current_origin = self._origin_stack[-1] if self._origin_stack else "self"
             cfg_root = resolve_cfg_root(
                 current_origin,
                 current_cfg_root=self.current_cfg_root,
@@ -186,62 +207,42 @@ class CommonPlaceholdersResolver:
         Returns:
             Резолвленное включение с AST
         """
-        # Создаем ключ кэша
-        cache_key = node.canon_key()
+        # Резолвим cfg_root
+        cfg_root = resolve_cfg_root(
+            node.origin,
+            current_cfg_root=self.current_cfg_root,
+            repo_root=self.repo_root
+        )
         
-        # Проверяем кэш
-        if cache_key in self._resolved_includes:
-            return self._resolved_includes[cache_key]
+        # Загружаем содержимое
+        if node.kind == "ctx":
+            _, template_text = load_context_from(cfg_root, node.name)
+        elif node.kind == "tpl":
+            _, template_text = load_template_from(cfg_root, node.name) 
+        else:
+            raise RuntimeError(f"Unknown include kind: {node.kind}")
         
-        # Проверяем циклические зависимости
-        if cache_key in self._resolution_stack:
-            cycle_info = " -> ".join(self._resolution_stack + [cache_key])
-            raise RuntimeError(f"Circular include dependency: {cycle_info}")
+        # Парсим шаблон
+        from ..parser import parse_template
+        from ..registry import TemplateRegistry
+        include_ast = parse_template(template_text, registry=cast(TemplateRegistry, self.registry))
         
-        self._resolution_stack.append(cache_key)
-        
+        # Рекурсивно резолвим включение с новым origin в стеке (как в V1)
+        self._origin_stack.append(node.origin)
         try:
-            # Резолвим cfg_root
-            cfg_root = resolve_cfg_root(
-                node.origin,
-                current_cfg_root=self.current_cfg_root,
-                repo_root=self.repo_root
-            )
-            
-            # Загружаем содержимое
-            if node.kind == "ctx":
-                _, template_text = load_context_from(cfg_root, node.name)
-            elif node.kind == "tpl":
-                _, template_text = load_template_from(cfg_root, node.name) 
-            else:
-                raise RuntimeError(f"Unknown include kind: {node.kind}")
-            
-            # Парсим шаблон
-            from ..parser import parse_template
-            from ..registry import TemplateRegistry
-            include_ast = parse_template(template_text, registry=cast(TemplateRegistry, self.registry))
-            
-            # Сохраняем текущее состояние и устанавливаем новый origin
-            self.template_ctx.current_state.origin = node.origin
             # Ядро применит резолверы всех плагинов, включая наш
             ast: TemplateAST = self.handlers.resolve_ast(include_ast, context)
-
-            resolved_include = ResolvedInclude(
-                kind=node.kind,
-                name=node.name,
-                origin=node.origin,
-                cfg_root=cfg_root,
-                ast=ast
-            )
-            
-            # Кэшируем результат
-            self._resolved_includes[cache_key] = resolved_include
-            
-            return resolved_include
-            
         finally:
-            # Убираем из стека разрешения
-            self._resolution_stack.pop()
+            # Восстанавливаем стек origin после резолвинга
+            self._origin_stack.pop()
+
+        return ResolvedInclude(
+            kind=node.kind,
+            name=node.name,
+            origin=node.origin,
+            cfg_root=cfg_root,
+            ast=ast
+        )
 
 
 __all__ = ["CommonPlaceholdersResolver", "ResolvedInclude"]

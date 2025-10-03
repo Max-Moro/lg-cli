@@ -56,7 +56,7 @@ class CommonPlaceholdersPlugin(TemplatePlugin):
         from .resolver import CommonPlaceholdersResolver
         run_ctx = self.template_ctx.run_ctx
         # Передаем template_ctx для управления origin через TemplateState
-        self._resolver = CommonPlaceholdersResolver(run_ctx, self.handlers, self.registry, self.template_ctx)
+        self._resolver = CommonPlaceholdersResolver(run_ctx, self.handlers, self.registry)
     
     def register_tokens(self) -> List[TokenSpec]:
         """Регистрирует токены для плейсхолдеров."""

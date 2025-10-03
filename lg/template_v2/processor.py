@@ -285,18 +285,15 @@ class TemplateProcessor:
         Использует резолверы плагинов для специфичных типов узлов,
         автоматически обрабатывает вложенные структуры через рефлексию.
         """
-        from dataclasses import fields, is_dataclass, replace
+        from dataclasses import fields, replace
         
         # Пытаемся применить специфичные резолверы плагинов
         resolved = self._apply_plugin_resolvers(node, context)
         if resolved is not node:
-            # Плагин обработал узел, продолжаем с резолвленной версией
-            node = resolved
-        
-        # Рекурсивно обрабатываем вложенные узлы через рефлексию
-        if not is_dataclass(node):
-            return node
-        
+            # Плагин обработал узел - возвращаем как есть БЕЗ рекурсивной обработки
+            # Это важно, так как резолвер плагина уже обработал вложенные узлы
+            return resolved
+
         has_changes = False
         updates = {}
         
