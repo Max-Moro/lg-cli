@@ -13,7 +13,7 @@ from typing import Dict, List, Optional, Type
 
 from .base import TemplatePlugin, PluginList
 from .protocols import TemplateRegistryProtocol
-from .types import TokenSpec, ParsingRule, ProcessorRule, TokenRegistry, ParserRulesRegistry, ProcessorRegistry, TokenContext
+from .types import TokenSpec, ParsingRule, ProcessorRule, ResolverRule, TokenRegistry, ParserRulesRegistry, ProcessorRegistry, ResolverRegistry, TokenContext
 from .handlers import TemplateProcessorHandlers
 from .nodes import TemplateNode
 from .tokens import TokenType
@@ -36,6 +36,7 @@ class TemplateRegistry(TemplateRegistryProtocol):
         self.tokens: TokenRegistry = {}
         self.parser_rules: ParserRulesRegistry = {}
         self.processors: ProcessorRegistry = {}
+        self.resolvers: ResolverRegistry = {}
         
         # Реестр контекстных групп токенов
         self.token_contexts: Dict[str, TokenContext] = {}
@@ -86,6 +87,7 @@ class TemplateRegistry(TemplateRegistryProtocol):
         self._register_plugin_token_contexts(plugin)
         self._register_plugin_parser_rules(plugin)
         self._register_plugin_processors(plugin)
+        self._register_plugin_resolvers(plugin)
 
         logger.debug(f"Plugin '{plugin.name}' registered successfully")
     
@@ -125,6 +127,22 @@ class TemplateRegistry(TemplateRegistryProtocol):
             logger.debug(
                 f"Registered processor for {node_type.__name__} "
                 f"(priority: {processor_rule.priority})"
+            )
+    
+    def _register_plugin_resolvers(self, plugin: TemplatePlugin) -> None:
+        """Регистрирует резолверы узлов плагина."""
+        for resolver_rule in plugin.register_resolvers():
+            node_type = resolver_rule.node_type
+            if node_type not in self.resolvers:
+                self.resolvers[node_type] = []
+            
+            # Вставляем с учетом приоритета
+            self.resolvers[node_type].append(resolver_rule)
+            self.resolvers[node_type].sort(key=lambda r: r.priority, reverse=True)
+            
+            logger.debug(
+                f"Registered resolver for {node_type.__name__} "
+                f"(priority: {resolver_rule.priority})"
             )
     
     def _register_plugin_token_contexts(self, plugin: TemplatePlugin) -> None:
@@ -196,6 +214,18 @@ class TemplateRegistry(TemplateRegistryProtocol):
         """
         return self.processors.get(node_type, [])
     
+    def get_resolvers_for_node(self, node_type: Type[TemplateNode]) -> List[ResolverRule]:
+        """
+        Возвращает резолверы для указанного типа узла.
+        
+        Args:
+            node_type: Тип узла для поиска резолверов
+            
+        Returns:
+            Список резолверов в порядке убывания приоритета
+        """
+        return self.resolvers.get(node_type, [])
+    
     def get_tokens_by_priority(self) -> List[TokenSpec]:
         """
         Возвращает токены в правильном порядке для контекстуального лексера.
@@ -264,12 +294,16 @@ class TemplateRegistry(TemplateRegistryProtocol):
         """
         processor_count = sum(len(rules) for rules in self.processors.values())
         
+        resolver_count = sum(len(rules) for rules in self.resolvers.values())
+        
         return {
             "plugins": len(self.plugins),
             "tokens": len(self.tokens),
             "parser_rules": len(self.parser_rules),
             "processors": processor_count,
             "node_types_with_processors": len(self.processors),
+            "resolvers": resolver_count,
+            "node_types_with_resolvers": len(self.resolvers),
             "token_contexts": len(self.token_contexts),
         }
     

@@ -13,7 +13,7 @@ from typing import Dict, List, Optional
 from .protocols import TemplateRegistryProtocol
 from .handlers import TemplateProcessorHandlers
 # Импортируем собственные типы
-from .types import PluginPriority, TokenSpec, ParsingRule, ProcessorRule
+from .types import PluginPriority, TokenSpec, ParsingRule, ProcessorRule, ResolverRule
 
 
 class TemplatePlugin(ABC):
@@ -121,6 +121,15 @@ class TemplatePlugin(ABC):
         
         Returns:
             Список правил обработки
+        """
+        return []
+    
+    def register_resolvers(self) -> List[ResolverRule]:
+        """
+        Регистрирует резолверы узлов AST.
+        
+        Returns:
+            Список правил резолвинга
         """
         return []
 

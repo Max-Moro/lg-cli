@@ -52,6 +52,16 @@ class ProcessorRule:
     priority: int = 50            # Приоритет (для случаев множественных обработчиков)
 
 
+@dataclass
+class ResolverRule:
+    """
+    Правило резолвинга узлов AST.
+    """
+    node_type: Type[TemplateNode]  # Тип узла, который резолвит правило
+    resolver_func: Callable[[TemplateNode, str], TemplateNode]  # Функция резолвинга (node, context) -> resolved_node
+    priority: int = 50  # Приоритет (для случаев множественных резолверов)
+
+
 class ParsingContext:
     """
     Контекст для парсинга токенов.
@@ -149,6 +159,7 @@ class TokenContext:
 TokenRegistry = Dict[str, TokenSpec]
 ParserRulesRegistry = Dict[str, ParsingRule]
 ProcessorRegistry = Dict[Type[TemplateNode], List[ProcessorRule]]
+ResolverRegistry = Dict[Type[TemplateNode], List[ResolverRule]]
 
 
 __all__ = [
@@ -156,9 +167,11 @@ __all__ = [
     "TokenSpec",
     "ParsingRule",
     "ProcessorRule",
+    "ResolverRule",
     "ParsingContext",
     "TokenContext",
     "TokenRegistry",
     "ParserRulesRegistry",
     "ProcessorRegistry",
+    "ResolverRegistry",
 ]

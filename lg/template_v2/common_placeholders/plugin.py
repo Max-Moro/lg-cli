@@ -13,7 +13,7 @@ from .nodes import SectionNode, IncludeNode
 from .parser_rules import get_placeholder_parser_rules
 from .tokens import get_placeholder_token_specs
 from ..base import TemplatePlugin
-from ..types import PluginPriority, TokenSpec, ParsingRule, ProcessorRule
+from ..types import PluginPriority, TokenSpec, ParsingRule, ProcessorRule, ResolverRule
 from ..nodes import TemplateNode
 
 
@@ -103,6 +103,40 @@ class CommonPlaceholdersPlugin(TemplatePlugin):
             ProcessorRule(
                 node_type=IncludeNode,
                 processor_func=process_include_node,
+                priority=100
+            )
+        ]
+    
+    def register_resolvers(self) -> List[ResolverRule]:
+        """
+        Регистрирует резолверы узлов AST для базовых плейсхолдеров.
+        """
+        def resolve_section_or_include(node: TemplateNode, context: str) -> TemplateNode:
+            """Резолвит узлы SectionNode и IncludeNode."""
+            if not isinstance(node, (SectionNode, IncludeNode)):
+                # Не наш узел
+                return node
+            
+            # Создаем резолвер с необходимыми зависимостями
+            from .resolver import CommonPlaceholdersResolver
+            
+            # Получаем run_ctx из registry (должен быть установлен в процессоре)
+            run_ctx = getattr(self.registry, '_run_ctx', None)
+            if run_ctx is None:
+                raise RuntimeError("run_ctx not set in registry")
+            
+            resolver = CommonPlaceholdersResolver(run_ctx, self.handlers, self.registry)
+            return resolver.resolve_node(node, context)
+        
+        return [
+            ResolverRule(
+                node_type=SectionNode,
+                resolver_func=resolve_section_or_include,
+                priority=100
+            ),
+            ResolverRule(
+                node_type=IncludeNode,
+                resolver_func=resolve_section_or_include,
                 priority=100
             )
         ]

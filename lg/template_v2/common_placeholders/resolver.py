@@ -62,34 +62,19 @@ class CommonPlaceholdersResolver:
         self._resolved_includes: Dict[str, ResolvedInclude] = {}
         self._resolution_stack: List[str] = []
 
-    def resolve_ast(self, ast: TemplateAST, template_name: str = "") -> TemplateAST:
+    def resolve_node(self, node: TemplateNode, context: str = "") -> TemplateNode:
         """
-        Резолвит все ссылки в AST шаблона.
+        Резолвит узел базового плейсхолдера (SectionNode или IncludeNode).
         
-        Args:
-            ast: AST для обработки
-            template_name: Имя шаблона для диагностики
-            
-        Returns:
-            AST с резолвленными ссылками
+        Публичный метод для использования процессором.
         """
-        resolved_nodes = []
-        
-        for node in ast:
-            resolved_node = self._resolve_node(node, template_name)
-            resolved_nodes.append(resolved_node)
-        
-        return resolved_nodes
-
-    def _resolve_node(self, node: TemplateNode, context: str = "") -> TemplateNode:
-        """Резолвит один узел AST."""
         if isinstance(node, SectionNode):
             return self._resolve_section_node(node, context)
         elif isinstance(node, IncludeNode):
             return self._resolve_include_node(node, context)
         else:
-            # Для других типов узлов проверяем, нужно ли резолвить вложенные узлы
-            return self._resolve_nested_nodes(node, context)
+            # Не наш узел - возвращаем как есть
+            return node
 
     def _resolve_section_node(self, node: SectionNode, context: str = "") -> SectionNode:
         """
@@ -140,49 +125,6 @@ class CommonPlaceholdersResolver:
             origin=node.origin,
             children=resolved_include.ast
         )
-    
-    def _resolve_nested_nodes(self, node: TemplateNode, context: str = "") -> TemplateNode:
-        """
-        Резолвит вложенные узлы в составных узлах (ConditionalBlockNode, ModeBlockNode и т.д.).
-        
-        Использует динамический подход через dataclass replace для сохранения immutability.
-        """
-        from dataclasses import replace
-        
-        # Импортируем типы узлов с вложенным содержимым
-        try:
-            from ..adaptive.nodes import ConditionalBlockNode, ElifBlockNode, ElseBlockNode, ModeBlockNode
-        except ImportError:
-            # Плагин adaptive не установлен
-            return node
-        
-        # Обрабатываем ConditionalBlockNode
-        if isinstance(node, ConditionalBlockNode):
-            resolved_body = [self._resolve_node(n, context) for n in node.body]
-            resolved_elif_blocks = []
-            for elif_block in node.elif_blocks:
-                resolved_elif_body = [self._resolve_node(n, context) for n in elif_block.body]
-                resolved_elif_blocks.append(replace(elif_block, body=resolved_elif_body))
-            
-            resolved_else_block = None
-            if node.else_block:
-                resolved_else_body = [self._resolve_node(n, context) for n in node.else_block.body]
-                resolved_else_block = replace(node.else_block, body=resolved_else_body)
-            
-            return replace(
-                node,
-                body=resolved_body,
-                elif_blocks=resolved_elif_blocks,
-                else_block=resolved_else_block
-            )
-        
-        # Обрабатываем ModeBlockNode
-        elif isinstance(node, ModeBlockNode):
-            resolved_body = [self._resolve_node(n, context) for n in node.body]
-            return replace(node, body=resolved_body)
-        
-        # Для других узлов возвращаем как есть
-        return node
 
     def _parse_section_reference(self, section_name: str) -> tuple[Path, str]:
         """
@@ -267,19 +209,17 @@ class CommonPlaceholdersResolver:
             else:
                 raise RuntimeError(f"Unknown include kind: {node.kind}")
             
-            # Парсим шаблон и рекурсивно резолвим с новым origin в стеке (как в старом резолвере)
+            # Парсим шаблон с новым origin в стеке (как в старом резолвере)
+            # Рекурсивный резолвинг будет выполнен процессором автоматически
             from ..parser import parse_template
-            include_ast = parse_template(template_text, registry=self.registry)
             
-            # Рекурсивно резолвим включение с новым origin в стеке
-            include_context = f"{context}/{node.kind}:{node.name}"
             self._origin_stack.append(node.origin)
             try:
-                resolved_ast = self.resolve_ast(include_ast, include_context)
+                include_ast = parse_template(template_text, registry=self.registry)
             finally:
                 self._origin_stack.pop()
             
-            ast: TemplateAST = resolved_ast
+            ast: TemplateAST = include_ast
             
             resolved_include = ResolvedInclude(
                 kind=node.kind,

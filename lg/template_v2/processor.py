@@ -256,7 +256,7 @@ class TemplateProcessor:
 
     def _resolve_template_references(self, ast: TemplateAST, template_name: str = "") -> TemplateAST:
         """
-        Резолвит все ссылки в AST с использованием резолвера плагинов.
+        Резолвит все ссылки в AST рекурсивно через плагины.
 
         Args:
             ast: AST для резолвинга
@@ -266,14 +266,74 @@ class TemplateProcessor:
             AST с резолвленными ссылками
         """
         try:
-            # Создаем резолвер для базовых плейсхолдеров
-            from .common_placeholders.resolver import CommonPlaceholdersResolver
-            
-            resolver = CommonPlaceholdersResolver(self.run_ctx, self.handlers, self.registry)
-            return resolver.resolve_ast(ast, template_name)
-            
+            resolved_nodes = []
+            for node in ast:
+                resolved_node = self._resolve_node(node, template_name)
+                resolved_nodes.append(resolved_node)
+            return resolved_nodes
         except Exception as e:
             raise TemplateProcessingError(f"Failed to resolve template references: {e}", template_name, e)
+    
+    def _resolve_node(self, node: TemplateNode, context: str = "") -> TemplateNode:
+        """
+        Резолвит один узел AST рекурсивно.
+        
+        Использует резолверы плагинов для специфичных типов узлов,
+        автоматически обрабатывает вложенные структуры через рефлексию.
+        """
+        from dataclasses import fields, is_dataclass, replace
+        
+        # Пытаемся применить специфичные резолверы плагинов
+        resolved = self._apply_plugin_resolvers(node, context)
+        if resolved is not node:
+            # Плагин обработал узел, продолжаем с резолвленной версией
+            node = resolved
+        
+        # Рекурсивно обрабатываем вложенные узлы через рефлексию
+        if not is_dataclass(node):
+            return node
+        
+        has_changes = False
+        updates = {}
+        
+        for field in fields(node):
+            field_value = getattr(node, field.name)
+            
+            # Обрабатываем списки узлов
+            if isinstance(field_value, list):
+                if field_value and all(isinstance(item, TemplateNode) for item in field_value):
+                    resolved_list = [self._resolve_node(n, context) for n in field_value]
+                    updates[field.name] = resolved_list
+                    has_changes = True
+                    
+            # Обрабатываем одиночные узлы
+            elif isinstance(field_value, TemplateNode):
+                resolved = self._resolve_node(field_value, context)
+                if resolved is not field_value:
+                    updates[field.name] = resolved
+                    has_changes = True
+        
+        if has_changes:
+            return replace(node, **updates)
+        
+        return node
+    
+    def _apply_plugin_resolvers(self, node: TemplateNode, context: str) -> TemplateNode:
+        """
+        Применяет резолверы плагинов к узлу через registry.
+        
+        Использует зарегистрированные резолверы для специфичных типов узлов.
+        """
+        # Получаем резолверы для типа узла
+        resolvers = self.registry.get_resolvers_for_node(type(node))
+        
+        if not resolvers:
+            # Нет зарегистрированных резолверов для этого типа
+            return node
+        
+        # Применяем резолвер с наивысшим приоритетом
+        resolver_rule = resolvers[0]
+        return resolver_rule.resolver_func(node, context)
 
     def _handle_template_errors(self, func, template_name: str, error_message: str):
         """Общий обработчик ошибок для операций с шаблонами."""
@@ -299,6 +359,9 @@ def create_v2_template_processor(run_ctx: RunContext) -> TemplateProcessor:
     """
     # Создаем новый реестр для этого процессора
     registry = TemplateRegistry()
+    
+    # Сохраняем run_ctx в registry для доступа из резолверов плагинов
+    registry._run_ctx = run_ctx
     
     # Создаем процессор (обработчики настроятся автоматически в конструкторе)
     processor = TemplateProcessor(run_ctx, registry)
