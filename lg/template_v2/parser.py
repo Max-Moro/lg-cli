@@ -167,9 +167,9 @@ def parse_template(text: str, registry: Optional[TemplateRegistry] = None) -> Te
         registry = TemplateRegistry()
         registry.register_plugin(CommonPlaceholdersPlugin())
     
-    from .lexer import ModularLexer
+    from .lexer import ContextualLexer
     
-    lexer = ModularLexer(registry)
+    lexer = ContextualLexer(registry)
     tokens = lexer.tokenize(text)
     
     parser = ModularParser(registry)

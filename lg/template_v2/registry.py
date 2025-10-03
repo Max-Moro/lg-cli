@@ -16,6 +16,7 @@ from .base import (
     TokenRegistry, ParserRulesRegistry, ProcessorRegistry, PluginList
 )
 from .handlers import TemplateProcessorHandlers
+from .base import TokenContext
 from .nodes import TemplateNode
 from .tokens import TokenType
 
@@ -37,6 +38,9 @@ class TemplateRegistry:
         self.tokens: TokenRegistry = {}
         self.parser_rules: ParserRulesRegistry = {}
         self.processors: ProcessorRegistry = {}
+        
+        # Реестр контекстных групп токенов
+        self.token_contexts: Dict[str, TokenContext] = {}
         
         # Зарегистрированные плагины
         self.plugins: PluginList = []
@@ -83,6 +87,7 @@ class TemplateRegistry:
         self._register_plugin_tokens(plugin)
         self._register_plugin_parser_rules(plugin)
         self._register_plugin_processors(plugin)
+        self._register_plugin_token_contexts(plugin)
         
         logger.debug(f"Plugin '{plugin.name}' registered successfully")
     
@@ -134,6 +139,28 @@ class TemplateRegistry:
                 f"Registered processor for {node_type.__name__} "
                 f"(priority: {processor_rule.priority})"
             )
+    
+    def _register_plugin_token_contexts(self, plugin: TemplatePlugin) -> None:
+        """Регистрирует контекстные группы токенов плагина."""
+        for context_spec in plugin.register_token_contexts():
+            # Контекстные спецификации приходят в виде словарей
+            name = context_spec["name"]
+            open_tokens = context_spec["open_tokens"]
+            close_tokens = context_spec["close_tokens"]
+            inner_tokens = context_spec.get("inner_tokens", [])
+            allow_nesting = context_spec.get("allow_nesting", False)
+            priority = context_spec.get("priority", 50)
+            
+            self.register_token_context(
+                name=name,
+                open_tokens=open_tokens,
+                close_tokens=close_tokens,
+                inner_tokens=inner_tokens,
+                allow_nesting=allow_nesting,
+                priority=priority
+            )
+            
+            logger.debug(f"Registered token context '{name}' from plugin '{plugin.name}'")
     
     def initialize_plugins(self, handlers: Optional[TemplateProcessorHandlers] = None) -> None:
         """
@@ -233,7 +260,98 @@ class TemplateRegistry:
             "parser_rules": len(self.parser_rules),
             "processors": processor_count,
             "node_types_with_processors": len(self.processors),
+            "token_contexts": len(self.token_contexts),
         }
+    
+    # Методы для работы с контекстными группами токенов
+    
+    def register_token_context(
+        self, 
+        name: str, 
+        open_tokens: List[str], 
+        close_tokens: List[str], 
+        inner_tokens: Optional[List[str]] = None,
+        allow_nesting: bool = False, 
+        priority: int = 50
+    ) -> None:
+        """
+        Регистрирует новый контекст токенов.
+        
+        Args:
+            name: Уникальное имя контекста
+            open_tokens: Токены, открывающие контекст
+            close_tokens: Токены, закрывающие контекст  
+            inner_tokens: Токены, допустимые только в этом контексте
+            allow_nesting: Разрешает/запрещает вложенные контексты
+            priority: Приоритет контекста
+            
+        Raises:
+            ValueError: Если контекст с таким именем уже зарегистрирован
+        """
+        if name in self.token_contexts:
+            raise ValueError(f"Token context '{name}' already registered")
+        
+        self.token_contexts[name] = TokenContext(
+            name=name,
+            open_tokens=set(open_tokens),
+            close_tokens=set(close_tokens),
+            inner_tokens=set(inner_tokens or []),
+            allow_nesting=allow_nesting,
+            priority=priority
+        )
+        
+        logger.debug(
+            f"Registered token context '{name}' with {len(open_tokens)} open, "
+            f"{len(close_tokens)} close, {len(inner_tokens or [])} inner tokens"
+        )
+    
+    def register_tokens_in_context(self, context_name: str, token_names: List[str]) -> None:
+        """
+        Добавляет токены в существующий контекст.
+        
+        Args:
+            context_name: Имя существующего контекста
+            token_names: Имена токенов для добавления в контекст
+            
+        Raises:
+            ValueError: Если контекст не найден
+        """
+        if context_name not in self.token_contexts:
+            raise ValueError(f"Token context '{context_name}' not found")
+        
+        context = self.token_contexts[context_name]
+        # Создаем новый контекст с обновленными токенами
+        self.token_contexts[context_name] = TokenContext(
+            name=context.name,
+            open_tokens=context.open_tokens,
+            close_tokens=context.close_tokens,
+            inner_tokens=context.inner_tokens | set(token_names),
+            allow_nesting=context.allow_nesting,
+            priority=context.priority
+        )
+        
+        logger.debug(f"Added {len(token_names)} tokens to context '{context_name}'")
+    
+    def get_all_token_contexts(self) -> List[TokenContext]:
+        """
+        Возвращает все зарегистрированные контексты токенов.
+        
+        Returns:
+            Список контекстов в порядке убывания приоритета
+        """
+        return sorted(self.token_contexts.values(), key=lambda c: c.priority, reverse=True)
+    
+    def get_token_context(self, name: str) -> Optional[TokenContext]:
+        """
+        Возвращает контекст токенов по имени.
+        
+        Args:
+            name: Имя контекста
+            
+        Returns:
+            Контекст или None если не найден
+        """
+        return self.token_contexts.get(name)
 
 
 __all__ = ["TemplateRegistry"]

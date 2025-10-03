@@ -12,7 +12,7 @@ from typing import Any, Callable, Dict, List, Optional
 
 from .base import ProcessingError
 from .handlers import TemplateProcessorHandlers
-from .lexer import ModularLexer
+from .lexer import ContextualLexer
 from .nodes import TemplateNode, TemplateAST, TextNode
 from .parser import ModularParser
 from .registry import TemplateRegistry
@@ -48,7 +48,7 @@ class TemplateProcessor:
         self.registry = registry
         
         # Инициализируем компоненты
-        self.lexer = ModularLexer(self.registry)
+        self.lexer = ContextualLexer(self.registry)
         self.parser = ModularParser(self.registry)
         
         # Кэши для производительности

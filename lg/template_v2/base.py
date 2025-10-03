@@ -10,7 +10,7 @@ from __future__ import annotations
 import enum
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
-from typing import Callable, Dict, List, Optional, Pattern, Type
+from typing import Any, Callable, Dict, List, Optional, Pattern, Set, Type
 
 from .handlers import TemplateProcessorHandlers
 # Импортируем собственные типы
@@ -121,6 +121,39 @@ class ParsingContext:
         return self.advance()
 
 
+@dataclass
+class TokenContext:
+    """
+    Контекст для токенизации с группами связанных токенов.
+    
+    Определяет область действия определенного набора токенов,
+    что позволяет избежать коллизий и повысить производительность.
+    """
+    name: str                    # Уникальное имя контекста
+    open_tokens: Set[str]        # Токены, открывающие контекст
+    close_tokens: Set[str]       # Токены, закрывающие контекст
+    inner_tokens: Set[str]       # Токены, допустимые только в этом контексте
+    allow_nesting: bool = False  # Разрешает/запрещает вложенные контексты
+    priority: int = 50           # Приоритет (для разрешения конфликтов)
+
+    def __post_init__(self):
+        """Валидация настроек контекста."""
+        if not self.name:
+            raise ValueError("Token context name cannot be empty")
+        
+        if not self.open_tokens and not self.close_tokens:
+            raise ValueError(f"Context '{self.name}' must have at least open or close tokens")
+        
+        # Проверяем пересечения между наборами токенов
+        if self.open_tokens & self.close_tokens:
+            overlapping = self.open_tokens & self.close_tokens
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.warning(
+                f"Context '{self.name}' has overlapping open/close tokens: {overlapping}"
+            )
+
+
 class TemplatePlugin(ABC):
     """
     Базовый интерфейс для плагинов шаблонизатора.
@@ -195,6 +228,15 @@ class TemplatePlugin(ABC):
         """
         return []
     
+    def register_token_contexts(self) -> List[Dict[str, Any]]:
+        """
+        Регистрирует контекстные группы токенов.
+        
+        Returns:
+            Список описаний контекстов в формате словарей
+        """
+        return []
+    
     def initialize(self) -> None:
         """
         Инициализирует плагин после регистрации всех компонентов.
@@ -241,6 +283,7 @@ __all__ = [
     "ParsingRule", 
     "ProcessorRule",
     "ProcessingError",
+    "TokenContext",
     "TokenRegistry",
     "ParserRulesRegistry",
     "ProcessorRegistry",

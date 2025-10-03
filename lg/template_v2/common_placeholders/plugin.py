@@ -7,7 +7,7 @@
 
 from __future__ import annotations
 
-from typing import List
+from typing import Any, Dict, List
 
 from .nodes import SectionNode, IncludeNode
 from .parser_rules import get_placeholder_parser_rules
@@ -44,6 +44,19 @@ class CommonPlaceholdersPlugin(TemplatePlugin):
     def register_parser_rules(self) -> List[ParsingRule]:
         """Регистрирует правила парсинга плейсхолдеров."""
         return get_placeholder_parser_rules()
+    
+    def register_token_contexts(self) -> List[Dict[str, Any]]:
+        """Регистрирует контексты токенов для плейсхолдеров."""
+        return [{
+            "name": "placeholder",
+            "open_tokens": ["PLACEHOLDER_START"],
+            "close_tokens": ["PLACEHOLDER_END"],
+            "inner_tokens": [
+                "IDENTIFIER", "COLON", "AT", "LBRACKET", "RBRACKET", "WHITESPACE"
+            ],
+            "allow_nesting": False,
+            "priority": 100
+        }]
     
     def register_processors(self) -> List[ProcessorRule]:
         """
