@@ -10,7 +10,7 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 from typing import Dict, List, Optional
 
-from .registry import TemplateRegistry
+from .protocols import TemplateRegistryProtocol
 from .handlers import TemplateProcessorHandlers
 # Импортируем собственные типы
 from .types import PluginPriority, TokenSpec, ParsingRule, ProcessorRule
@@ -27,7 +27,7 @@ class TemplatePlugin(ABC):
     def __init__(self):
         """Инициализирует плагин."""
         self._handlers: Optional[TemplateProcessorHandlers] = None
-        self._registry = None
+        self._registry: Optional[TemplateRegistryProtocol] = None
     
     @property
     @abstractmethod
@@ -64,7 +64,7 @@ class TemplatePlugin(ABC):
             raise RuntimeError(f"Handlers not set for plugin '{self.name}'")
         return self._handlers
     
-    def set_registry(self, registry: TemplateRegistry) -> None:
+    def set_registry(self, registry: TemplateRegistryProtocol) -> None:
         """
         Устанавливает реестр шаблонизатора для плагина.
         
@@ -74,7 +74,7 @@ class TemplatePlugin(ABC):
         self._registry = registry
     
     @property
-    def registry(self) -> TemplateRegistry:
+    def registry(self) -> TemplateRegistryProtocol:
         """
         Возвращает реестр шаблонизатора.
         

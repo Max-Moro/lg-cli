@@ -12,6 +12,7 @@ import re
 from typing import Dict, List, Optional, Type
 
 from .base import TemplatePlugin, PluginList
+from .protocols import TemplateRegistryProtocol
 from .types import TokenSpec, ParsingRule, ProcessorRule, TokenRegistry, ParserRulesRegistry, ProcessorRegistry, TokenContext
 from .handlers import TemplateProcessorHandlers
 from .nodes import TemplateNode
@@ -20,7 +21,7 @@ from .tokens import TokenType
 logger = logging.getLogger(__name__)
 
 
-class TemplateRegistry:
+class TemplateRegistry(TemplateRegistryProtocol):
     """
     Централизованный реестр всех компонентов шаблонизатора.
     
@@ -227,6 +228,27 @@ class TemplateRegistry:
             Плагин или None если не найден
         """
         return next((p for p in self.plugins if p.name == name), None)
+    
+    def has_plugin(self, name: str) -> bool:
+        """
+        Проверяет наличие плагина с указанным именем.
+        
+        Args:
+            name: Имя плагина для проверки
+            
+        Returns:
+            True если плагин зарегистрирован
+        """
+        return any(p.name == name for p in self.plugins)
+    
+    def get_plugin_names(self) -> List[str]:
+        """
+        Возвращает список имен всех зарегистрированных плагинов.
+        
+        Returns:
+            Список имен плагинов
+        """
+        return [p.name for p in self.plugins]
     
     def is_initialized(self) -> bool:
         """Проверяет, инициализированы ли плагины."""
