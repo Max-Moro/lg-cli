@@ -88,8 +88,8 @@ class CommonPlaceholdersResolver:
         elif isinstance(node, IncludeNode):
             return self._resolve_include_node(node, context)
         else:
-            # Для других типов узлов возвращаем как есть
-            return node
+            # Для других типов узлов проверяем, нужно ли резолвить вложенные узлы
+            return self._resolve_nested_nodes(node, context)
 
     def _resolve_section_node(self, node: SectionNode, context: str = "") -> SectionNode:
         """
@@ -140,6 +140,49 @@ class CommonPlaceholdersResolver:
             origin=node.origin,
             children=resolved_include.ast
         )
+    
+    def _resolve_nested_nodes(self, node: TemplateNode, context: str = "") -> TemplateNode:
+        """
+        Резолвит вложенные узлы в составных узлах (ConditionalBlockNode, ModeBlockNode и т.д.).
+        
+        Использует динамический подход через dataclass replace для сохранения immutability.
+        """
+        from dataclasses import replace
+        
+        # Импортируем типы узлов с вложенным содержимым
+        try:
+            from ..adaptive.nodes import ConditionalBlockNode, ElifBlockNode, ElseBlockNode, ModeBlockNode
+        except ImportError:
+            # Плагин adaptive не установлен
+            return node
+        
+        # Обрабатываем ConditionalBlockNode
+        if isinstance(node, ConditionalBlockNode):
+            resolved_body = [self._resolve_node(n, context) for n in node.body]
+            resolved_elif_blocks = []
+            for elif_block in node.elif_blocks:
+                resolved_elif_body = [self._resolve_node(n, context) for n in elif_block.body]
+                resolved_elif_blocks.append(replace(elif_block, body=resolved_elif_body))
+            
+            resolved_else_block = None
+            if node.else_block:
+                resolved_else_body = [self._resolve_node(n, context) for n in node.else_block.body]
+                resolved_else_block = replace(node.else_block, body=resolved_else_body)
+            
+            return replace(
+                node,
+                body=resolved_body,
+                elif_blocks=resolved_elif_blocks,
+                else_block=resolved_else_block
+            )
+        
+        # Обрабатываем ModeBlockNode
+        elif isinstance(node, ModeBlockNode):
+            resolved_body = [self._resolve_node(n, context) for n in node.body]
+            return replace(node, body=resolved_body)
+        
+        # Для других узлов возвращаем как есть
+        return node
 
     def _parse_section_reference(self, section_name: str) -> tuple[Path, str]:
         """

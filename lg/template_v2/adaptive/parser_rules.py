@@ -264,12 +264,26 @@ def _parse_mode_directive(content_tokens: List, context: ParsingContext) -> Mode
     if len(content_tokens) < 2:
         raise ParserError("Missing mode specification in mode directive", content_tokens[0])
     
-    # Пропускаем WHITESPACE после 'mode' и собираем спецификацию режима
-    mode_spec_tokens = [t for t in content_tokens[1:] if t.type != "WHITESPACE"]
-    if not mode_spec_tokens:
+    # Находим индекс токена 'mode'
+    mode_index = -1
+    for i, t in enumerate(content_tokens):
+        if t.type == "IDENTIFIER" and t.value.lower() == "mode":
+            mode_index = i
+            break
+    
+    if mode_index == -1 or mode_index + 1 >= len(content_tokens):
         raise ParserError("Missing mode specification in mode directive", content_tokens[0])
     
-    mode_spec = ''.join(t.value for t in mode_spec_tokens)
+    # Берем все токены после 'mode', исключая пробелы в начале
+    mode_spec_tokens = content_tokens[mode_index + 1:]
+    while mode_spec_tokens and mode_spec_tokens[0].type == "WHITESPACE":
+        mode_spec_tokens = mode_spec_tokens[1:]
+    
+    if not mode_spec_tokens:
+        raise ParserError("Missing mode specification in mode directive", content_tokens[mode_index])
+    
+    # Собираем спецификацию режима без пробелов
+    mode_spec = ''.join(t.value for t in mode_spec_tokens if t.type != "WHITESPACE")
     
     # Парсим спецификацию режима (формат: modeset:mode)
     if ':' not in mode_spec:
