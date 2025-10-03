@@ -11,7 +11,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Dict, List
 
-from .common import (
+from ..common import (
     resolve_cfg_root,
     load_template_from, load_context_from
 )
