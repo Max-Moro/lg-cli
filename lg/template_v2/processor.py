@@ -360,9 +360,6 @@ def create_v2_template_processor(run_ctx: RunContext) -> TemplateProcessor:
     # Создаем новый реестр для этого процессора
     registry = TemplateRegistry()
     
-    # Сохраняем run_ctx в registry для доступа из резолверов плагинов
-    registry._run_ctx = run_ctx
-    
     # Создаем процессор (обработчики настроятся автоматически в конструкторе)
     processor = TemplateProcessor(run_ctx, registry)
     
@@ -370,7 +367,7 @@ def create_v2_template_processor(run_ctx: RunContext) -> TemplateProcessor:
     from .common_placeholders import CommonPlaceholdersPlugin
     from .adaptive import AdaptivePlugin
     
-    registry.register_plugin(CommonPlaceholdersPlugin())
+    registry.register_plugin(CommonPlaceholdersPlugin(processor.template_ctx))
     registry.register_plugin(AdaptivePlugin(processor.template_ctx))
     
     # Инициализируем плагины после регистрации всех компонентов

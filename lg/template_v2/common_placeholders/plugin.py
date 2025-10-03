@@ -13,8 +13,9 @@ from .nodes import SectionNode, IncludeNode
 from .parser_rules import get_placeholder_parser_rules
 from .tokens import get_placeholder_token_specs
 from ..base import TemplatePlugin
-from ..types import PluginPriority, TokenSpec, ParsingRule, ProcessorRule, ResolverRule
 from ..nodes import TemplateNode
+from ..types import PluginPriority, TokenSpec, ParsingRule, ProcessorRule, ResolverRule
+from ...template import TemplateContext
 
 
 class CommonPlaceholdersPlugin(TemplatePlugin):
@@ -27,7 +28,17 @@ class CommonPlaceholdersPlugin(TemplatePlugin):
     - ${ctx:context_name} - включение контекстов  
     - Адресные ссылки @origin:name для межскоуповых включений
     """
-    
+
+    def __init__(self, template_ctx: TemplateContext):
+        """
+        Инициализирует плагин с контекстом шаблона.
+
+        Args:
+            template_ctx: Контекст шаблона для управления состоянием
+        """
+        super().__init__()
+        self.template_ctx = template_ctx
+
     @property
     def name(self) -> str:
         """Возвращает имя плагина."""
@@ -117,14 +128,10 @@ class CommonPlaceholdersPlugin(TemplatePlugin):
                 # Не наш узел
                 return node
             
+            run_ctx = self.template_ctx.run_ctx
+
             # Создаем резолвер с необходимыми зависимостями
             from .resolver import CommonPlaceholdersResolver
-            
-            # Получаем run_ctx из registry (должен быть установлен в процессоре)
-            run_ctx = getattr(self.registry, '_run_ctx', None)
-            if run_ctx is None:
-                raise RuntimeError("run_ctx not set in registry")
-            
             resolver = CommonPlaceholdersResolver(run_ctx, self.handlers, self.registry)
             return resolver.resolve_node(node, context)
         

@@ -6,13 +6,9 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
-
-from .nodes import ConditionalBlockNode, ElifBlockNode, ModeBlockNode, CommentNode
-
-if TYPE_CHECKING:
-    from ..handlers import TemplateProcessorHandlers
-    from ...template.context import TemplateContext
+from .nodes import ConditionalBlockNode, ModeBlockNode, CommentNode
+from ..handlers import TemplateProcessorHandlers
+from ...template.context import TemplateContext
 
 
 class AdaptiveProcessor:
@@ -22,7 +18,7 @@ class AdaptiveProcessor:
     Реализует вычисление условий, управление режимами и обработку комментариев.
     """
     
-    def __init__(self, handlers: TemplateProcessorHandlers, template_ctx: 'TemplateContext'):
+    def __init__(self, handlers: TemplateProcessorHandlers, template_ctx: TemplateContext):
         """
         Инициализирует процессор адаптивных конструкций.
         

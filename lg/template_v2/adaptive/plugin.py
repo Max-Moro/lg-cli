@@ -7,18 +7,16 @@
 
 from __future__ import annotations
 
-from typing import Any, Dict, List, TYPE_CHECKING
+from typing import Any, Dict, List
 
-from .nodes import ConditionalBlockNode, ElifBlockNode, ModeBlockNode, CommentNode
+from .nodes import ConditionalBlockNode, ModeBlockNode, CommentNode
 from .parser_rules import get_adaptive_parser_rules, set_parser_handlers
 from .processor import AdaptiveProcessor
 from .tokens import get_adaptive_token_specs
 from ..base import TemplatePlugin
 from ..types import PluginPriority, TokenSpec, ParsingRule, ProcessorRule
 from ..nodes import TemplateNode
-
-if TYPE_CHECKING:
-    from ...template.context import TemplateContext
+from ...template.context import TemplateContext
 
 
 class AdaptivePlugin(TemplatePlugin):
@@ -33,7 +31,7 @@ class AdaptivePlugin(TemplatePlugin):
     - Операторы условий: tag:name, TAGSET:set:tag, scope:local
     """
     
-    def __init__(self, template_ctx: 'TemplateContext'):
+    def __init__(self, template_ctx: TemplateContext):
         """
         Инициализирует плагин с контекстом шаблона.
         
