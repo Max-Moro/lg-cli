@@ -65,6 +65,10 @@ class TemplateProcessor:
                 if processor_self.section_handler is None:
                     raise RuntimeError(f"No section handler set for processing section '{section_ref.name}'")
                 return processor_self.section_handler(section_ref, processor_self.template_ctx)
+            
+            def parse_next_node(self, context) -> Optional[TemplateNode]:
+                """Делегирует парсинг к главному парсеру."""
+                return processor_self.parser._parse_next_node(context)
         
         # Сохраняем ссылку на self для замыкания
         processor_self = self
@@ -296,14 +300,17 @@ def create_v2_template_processor(run_ctx: RunContext) -> TemplateProcessor:
     # Создаем новый реестр для этого процессора
     registry = TemplateRegistry()
     
-    # Регистрируем доступные плагины
-    from .common_placeholders import CommonPlaceholdersPlugin
-    registry.register_plugin(CommonPlaceholdersPlugin())
-    
     # Создаем процессор (обработчики настроятся автоматически в конструкторе)
     processor = TemplateProcessor(run_ctx, registry)
     
-    # Регистрируем процессоры плагинов после установки обработчиков
+    # Регистрируем доступные плагины (в порядке приоритета)
+    from .common_placeholders import CommonPlaceholdersPlugin
+    from .adaptive import AdaptivePlugin
+    
+    registry.register_plugin(CommonPlaceholdersPlugin())
+    registry.register_plugin(AdaptivePlugin(processor.template_ctx))
+    
+    # Инициализируем плагины после регистрации всех компонентов
     registry.initialize_plugins(processor.handlers)
     
     return processor

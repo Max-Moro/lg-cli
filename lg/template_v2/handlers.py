@@ -45,6 +45,21 @@ class TemplateProcessorHandlers(Protocol):
             Отрендеренное содержимое секции
         """
         ...
+    
+    def parse_next_node(self, context) -> TemplateNode | None:
+        """
+        Парсит следующий узел из контекста парсинга.
+        
+        Применяет все зарегистрированные правила парсинга для текущей позиции.
+        Используется для рекурсивного парсинга вложенных структур.
+        
+        Args:
+            context: Контекст парсинга (ParsingContext)
+            
+        Returns:
+            Узел AST или None если ни одно правило не сработало
+        """
+        ...
 
 
 __all__ = ["TemplateProcessorHandlers"]

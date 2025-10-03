@@ -1,0 +1,145 @@
+"""
+Главный плагин для адаптивных возможностей шаблонизатора.
+
+Регистрирует все необходимые токены, правила парсинга и обработчики
+для поддержки условных конструкций, режимных блоков и комментариев.
+"""
+
+from __future__ import annotations
+
+from typing import Any, Dict, List, TYPE_CHECKING
+
+from .nodes import ConditionalBlockNode, ElifBlockNode, ModeBlockNode, CommentNode
+from .parser_rules import get_adaptive_parser_rules, set_parser_handlers
+from .processor import AdaptiveProcessor
+from .tokens import get_adaptive_token_specs
+from ..base import TemplatePlugin
+from ..types import PluginPriority, TokenSpec, ParsingRule, ProcessorRule
+from ..nodes import TemplateNode
+
+if TYPE_CHECKING:
+    from ...template.context import TemplateContext
+
+
+class AdaptivePlugin(TemplatePlugin):
+    """
+    Плагин для адаптивных возможностей шаблонизатора.
+    
+    Обеспечивает функциональность:
+    - {% if condition %}...{% elif %}...{% else %}...{% endif %} - условные конструкции
+    - {% mode modeset:mode %}...{% endmode %} - режимные блоки  
+    - {# комментарий #} - комментарии
+    - Логические операторы AND, OR, NOT
+    - Операторы условий: tag:name, TAGSET:set:tag, scope:local
+    """
+    
+    def __init__(self, template_ctx: 'TemplateContext'):
+        """
+        Инициализирует плагин с контекстом шаблона.
+        
+        Args:
+            template_ctx: Контекст шаблона для управления состоянием
+        """
+        super().__init__()
+        self.template_ctx = template_ctx
+        self._processor = None
+    
+    @property
+    def name(self) -> str:
+        """Возвращает имя плагина."""
+        return "adaptive"
+    
+    @property
+    def priority(self) -> PluginPriority:
+        """Возвращает приоритет плагина."""
+        return PluginPriority.DIRECTIVE
+    
+    def register_tokens(self) -> List[TokenSpec]:
+        """Регистрирует токены для адаптивных конструкций."""
+        return get_adaptive_token_specs()
+    
+    def register_token_contexts(self) -> List[Dict[str, Any]]:
+        """Регистрирует контексты токенов для адаптивных конструкций."""
+        return [
+            {
+                "name": "directive",
+                "open_tokens": ["DIRECTIVE_START"],
+                "close_tokens": ["DIRECTIVE_END"],
+                "inner_tokens": [
+                    "IDENTIFIER", "COLON", "LPAREN", "RPAREN", "WHITESPACE"
+                ],
+                "allow_nesting": False,
+            },
+            {
+                "name": "comment",
+                "open_tokens": ["COMMENT_START"],
+                "close_tokens": ["COMMENT_END"],
+                "inner_tokens": [],  # Внутри комментария все - текст
+                "allow_nesting": False,
+            }
+        ]
+    
+    def register_parser_rules(self) -> List[ParsingRule]:
+        """Регистрирует правила парсинга адаптивных конструкций."""
+        return get_adaptive_parser_rules()
+    
+    def register_processors(self) -> List[ProcessorRule]:
+        """
+        Регистрирует обработчики узлов AST.
+        
+        Создает замыкания над AdaptiveProcessor для обработки узлов.
+        """
+        # Создаем процессор при первом вызове
+        if self._processor is None:
+            self._processor = AdaptiveProcessor(self.handlers, self.template_ctx)
+        
+        def process_conditional_node(node: TemplateNode) -> str:
+            """Обрабатывает условный узел."""
+            if not isinstance(node, ConditionalBlockNode):
+                raise RuntimeError(f"Expected ConditionalBlockNode, got {type(node)}")
+            return self._processor.process_conditional(node)
+        
+        def process_mode_node(node: TemplateNode) -> str:
+            """Обрабатывает режимный узел."""
+            if not isinstance(node, ModeBlockNode):
+                raise RuntimeError(f"Expected ModeBlockNode, got {type(node)}")
+            return self._processor.process_mode_block(node)
+        
+        def process_comment_node(node: TemplateNode) -> str:
+            """Обрабатывает комментарий."""
+            if not isinstance(node, CommentNode):
+                raise RuntimeError(f"Expected CommentNode, got {type(node)}")
+            return self._processor.process_comment(node)
+        
+        return [
+            ProcessorRule(
+                node_type=ConditionalBlockNode,
+                processor_func=process_conditional_node,
+                priority=100
+            ),
+            ProcessorRule(
+                node_type=ModeBlockNode,
+                processor_func=process_mode_node,
+                priority=100
+            ),
+            ProcessorRule(
+                node_type=CommentNode,
+                processor_func=process_comment_node,
+                priority=100
+            ),
+            # ElifBlockNode не обрабатывается отдельно - он часть ConditionalBlockNode
+        ]
+    
+    def initialize(self) -> None:
+        """
+        Инициализирует плагин после регистрации всех компонентов.
+        
+        Устанавливает обработчики для правил парсинга, чтобы обеспечить
+        рекурсивный парсинг вложенных структур.
+        """
+        # Устанавливаем обработчики для использования в правилах парсинга
+        set_parser_handlers(self.handlers)
+
+
+__all__ = ["AdaptivePlugin"]
+
