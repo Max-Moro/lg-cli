@@ -40,11 +40,7 @@ class CommonPlaceholdersPlugin(TemplatePlugin):
     def register_tokens(self) -> List[TokenSpec]:
         """Регистрирует токены для плейсхолдеров."""
         return get_placeholder_token_specs()
-    
-    def register_parser_rules(self) -> List[ParsingRule]:
-        """Регистрирует правила парсинга плейсхолдеров."""
-        return get_placeholder_parser_rules()
-    
+
     def register_token_contexts(self) -> List[Dict[str, Any]]:
         """Регистрирует контексты токенов для плейсхолдеров."""
         return [{
@@ -57,7 +53,11 @@ class CommonPlaceholdersPlugin(TemplatePlugin):
             "allow_nesting": False,
             "priority": 100
         }]
-    
+
+    def register_parser_rules(self) -> List[ParsingRule]:
+        """Регистрирует правила парсинга плейсхолдеров."""
+        return get_placeholder_parser_rules()
+
     def register_processors(self) -> List[ProcessorRule]:
         """
         Регистрирует обработчики узлов AST.

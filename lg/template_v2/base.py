@@ -209,7 +209,16 @@ class TemplatePlugin(ABC):
             Список спецификаций токенов
         """
         return []
-    
+
+    def register_token_contexts(self) -> List[Dict[str, Any]]:
+        """
+        Регистрирует контекстные группы токенов.
+
+        Returns:
+            Список описаний контекстов в формате словарей
+        """
+        return []
+
     def register_parser_rules(self) -> List[ParsingRule]:
         """
         Регистрирует правила парсинга для создания узлов AST.
@@ -227,16 +236,7 @@ class TemplatePlugin(ABC):
             Список правил обработки
         """
         return []
-    
-    def register_token_contexts(self) -> List[Dict[str, Any]]:
-        """
-        Регистрирует контекстные группы токенов.
-        
-        Returns:
-            Список описаний контекстов в формате словарей
-        """
-        return []
-    
+
     def initialize(self) -> None:
         """
         Инициализирует плагин после регистрации всех компонентов.
