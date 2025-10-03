@@ -264,8 +264,11 @@ def _parse_mode_directive(content_tokens: List, context: ParsingContext) -> Mode
     if len(content_tokens) < 2:
         raise ParserError("Missing mode specification in mode directive", content_tokens[0])
     
-    # Собираем спецификацию режима (все токены после 'mode')
-    mode_spec_tokens = content_tokens[1:]
+    # Пропускаем WHITESPACE после 'mode' и собираем спецификацию режима
+    mode_spec_tokens = [t for t in content_tokens[1:] if t.type != "WHITESPACE"]
+    if not mode_spec_tokens:
+        raise ParserError("Missing mode specification in mode directive", content_tokens[0])
+    
     mode_spec = ''.join(t.value for t in mode_spec_tokens)
     
     # Парсим спецификацию режима (формат: modeset:mode)
@@ -378,13 +381,28 @@ def _reconstruct_condition_text(tokens: List) -> str:
 def _check_directive_keyword(context: ParsingContext, keyword: str) -> bool:
     """
     Проверяет, является ли следующая конструкция директивой с указанным ключевым словом.
+    
+    Проверяет последовательность: {% [WHITESPACE] keyword ... %}
     """
     if not context.match("DIRECTIVE_START"):
         return False
     
-    # Смотрим вперед, не меняя позицию
-    next_token = context.peek(1)  # Токен после {%
-    return next_token.value.lower() == keyword
+    # Смотрим вперед, пропуская пробелы
+    offset = 1
+    while True:
+        token = context.peek(offset)
+        
+        # Достигли конца
+        if token.type == "EOF":
+            return False
+        
+        # Нашли непробельный токен
+        if token.type != "WHITESPACE":
+            # Проверяем, является ли он нужным ключевым словом
+            return token.type == "IDENTIFIER" and token.value.lower() == keyword
+        
+        # Пропускаем пробел
+        offset += 1
 
 
 def _consume_directive_keyword(context: ParsingContext, keyword: str) -> None:
