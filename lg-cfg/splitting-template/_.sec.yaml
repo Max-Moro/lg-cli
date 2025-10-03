@@ -15,7 +15,7 @@ src:
           - "/section_processor.py"
           - "/config/"
           - "/adapters/"
-#          - "/template/"
+          - "/template/"
         children:
           config:
             mode: allow
@@ -36,6 +36,11 @@ src:
       python:
         budget:
           max_tokens_per_file: 1
+    - match:
+      - "/lg/template/lexer.py"
+      python:
+        budget:
+          max_tokens_per_file: 10000
 
 src-v2:
   extensions: [".py"]
