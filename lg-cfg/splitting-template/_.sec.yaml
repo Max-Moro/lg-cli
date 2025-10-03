@@ -15,7 +15,7 @@ src:
           - "/section_processor.py"
           - "/config/"
           - "/adapters/"
-          - "/template/"
+#          - "/template/"
         children:
           config:
             mode: allow
@@ -30,10 +30,6 @@ src:
               - "/base.py"
               - "/processor.py"
               - "/markdown.py"
-          template:
-            mode: allow
-            allow:
-              - "/lexer.py"
   targets:
     - match:
       - "/lg/template/*.py"

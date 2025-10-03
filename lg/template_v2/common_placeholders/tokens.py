@@ -10,7 +10,7 @@ from __future__ import annotations
 import re
 from typing import List
 
-from ..base import TokenSpec
+from ..types import TokenSpec
 
 
 def get_placeholder_token_specs() -> List[TokenSpec]:

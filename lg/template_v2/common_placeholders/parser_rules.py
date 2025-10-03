@@ -14,7 +14,7 @@ from __future__ import annotations
 from typing import List, Optional
 
 from .nodes import SectionNode, IncludeNode
-from ..base import ParsingContext, ParsingRule, PluginPriority
+from ..types import PluginPriority, ParsingRule, ParsingContext
 from ..nodes import TemplateNode
 from ..tokens import ParserError
 

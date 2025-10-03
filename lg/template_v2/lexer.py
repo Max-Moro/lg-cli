@@ -8,13 +8,11 @@
 from __future__ import annotations
 
 import logging
-from typing import Dict, List, Optional, TYPE_CHECKING
+from typing import Dict, List, Optional
 
-from .base import TokenSpec, TokenContext
+from .types import TokenSpec, TokenContext
 from .tokens import Token, TokenType
-
-if TYPE_CHECKING:
-    from .registry import TemplateRegistry
+from .registry import TemplateRegistry
 
 logger = logging.getLogger(__name__)
 
@@ -27,7 +25,7 @@ class ContextualLexer:
     что повышает производительность и предотвращает коллизии.
     """
     
-    def __init__(self, registry: "TemplateRegistry"):
+    def __init__(self, registry: TemplateRegistry):
         """
         Инициализирует лексер с реестром плагинов.
         

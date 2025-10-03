@@ -12,7 +12,8 @@ from typing import Any, Dict, List
 from .nodes import SectionNode, IncludeNode
 from .parser_rules import get_placeholder_parser_rules
 from .tokens import get_placeholder_token_specs
-from ..base import TemplatePlugin, TokenSpec, ParsingRule, ProcessorRule, PluginPriority
+from ..base import TemplatePlugin
+from ..types import PluginPriority, TokenSpec, ParsingRule, ProcessorRule
 from ..nodes import TemplateNode
 
 

@@ -11,12 +11,9 @@ import logging
 import re
 from typing import Dict, List, Optional, Type
 
-from .base import (
-    TemplatePlugin, TokenSpec, ParsingRule, ProcessorRule,
-    TokenRegistry, ParserRulesRegistry, ProcessorRegistry, PluginList
-)
+from .base import TemplatePlugin, PluginList
+from .types import TokenSpec, ParsingRule, ProcessorRule, TokenRegistry, ParserRulesRegistry, ProcessorRegistry, TokenContext
 from .handlers import TemplateProcessorHandlers
-from .base import TokenContext
 from .nodes import TemplateNode
 from .tokens import TokenType
 
@@ -90,17 +87,6 @@ class TemplateRegistry:
 
         logger.debug(f"Plugin '{plugin.name}' registered successfully")
     
-    def register_plugin_processors(self, handlers: TemplateProcessorHandlers) -> None:
-        """
-        Регистрирует процессоры всех плагинов после установки обработчиков.
-        
-        Args:
-            handlers: Типизированные обработчики для плагинов
-        """
-        for plugin in self.plugins:
-            # Устанавливаем обработчики в плагин
-            plugin.set_handlers(handlers)
-
     def _register_plugin_tokens(self, plugin: TemplatePlugin) -> None:
         """Регистрирует токены плагина."""
         for token_spec in plugin.register_tokens():
@@ -144,7 +130,7 @@ class TemplateRegistry:
         for context_spec in plugin.register_token_contexts():
             # Контекстные спецификации приходят в виде словарей
             name = context_spec["name"]
-            open_tokens = context_spec["open_tokens"]
+            open_tokens = context_spec["open_tokens"]  
             close_tokens = context_spec["close_tokens"]
             inner_tokens = context_spec.get("inner_tokens", [])
             allow_nesting = context_spec.get("allow_nesting", False)
@@ -159,7 +145,7 @@ class TemplateRegistry:
             
             logger.debug(f"Registered token context '{name}' from plugin '{plugin.name}'")
     
-    def initialize_plugins(self, handlers: Optional[TemplateProcessorHandlers] = None) -> None:
+    def initialize_plugins(self, handlers: TemplateProcessorHandlers) -> None:
         """
         Инициализирует все зарегистрированные плагины.
         
@@ -171,29 +157,20 @@ class TemplateRegistry:
         """
         if self._plugins_initialized:
             return
-            
-        logger.debug("Initializing plugins...")
-        
+
         # Сортируем плагины по приоритету
         sorted_plugins = sorted(self.plugins, key=lambda p: p.priority, reverse=True)
         
-        # Устанавливаем обработчики для плагинов
-        if handlers is not None:
-            for plugin in sorted_plugins:
-                plugin.set_handlers(handlers)
-                logger.debug(f"Handlers set for plugin '{plugin.name}'")
-        
-        # Инициализируем плагины в порядке приоритета
+        # Устанавливаем обработчики и сам регистратор для плагинов
         for plugin in sorted_plugins:
-            try:
-                plugin.initialize()
-                logger.debug(f"Plugin '{plugin.name}' initialized")
-            except Exception as e:
-                logger.error(f"Failed to initialize plugin '{plugin.name}': {e}")
-                raise
+            plugin.set_registry(self)
+            plugin.set_handlers(handlers)
+        
+        # Инициализируем плагины в порядке приоритета (они могут произвести дополнительную тонкую регистрацию)
+        for plugin in sorted_plugins:
+            plugin.initialize()
         
         self._plugins_initialized = True
-        logger.debug("All plugins initialized successfully")
     
     def get_sorted_parser_rules(self) -> List[ParsingRule]:
         """

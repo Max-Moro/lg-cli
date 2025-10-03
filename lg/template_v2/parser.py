@@ -9,7 +9,7 @@ from __future__ import annotations
 import logging
 from typing import List, Optional
 
-from .base import ParsingContext, ParsingRule
+from .types import ParsingRule, ParsingContext
 from .nodes import TemplateNode, TemplateAST, TextNode
 from .registry import TemplateRegistry
 from .tokens import Token, TokenType

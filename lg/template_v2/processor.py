@@ -10,7 +10,6 @@ from __future__ import annotations
 import logging
 from typing import Any, Callable, Dict, List, Optional
 
-from .base import ProcessingError
 from .handlers import TemplateProcessorHandlers
 from .lexer import ContextualLexer
 from .nodes import TemplateNode, TemplateAST, TextNode
@@ -219,26 +218,21 @@ class TemplateProcessor:
 
     def _evaluate_node(self, node: TemplateNode, ast: TemplateAST, node_index: int) -> str:
         """Оценивает один узел AST."""
-        try:
-            # Получаем обработчики для данного типа узла
-            processors = self.registry.get_processors_for_node(type(node))
-            
-            if processors:
-                # Используем первый (наивысший приоритет) обработчик
-                processor_rule = processors[0]
-                return processor_rule.processor_func(node)
-            
-            # Fallback для базовых узлов
-            if isinstance(node, TextNode):
-                return node.text
-            
-            # Неизвестный тип узла - возвращаем заглушку
-            logger.warning(f"No processor found for node type: {type(node).__name__}")
-            return f"[{type(node).__name__}]"
-            
-        except Exception as e:
-            node_info = f"{type(node).__name__} at index {node_index}"
-            raise ProcessingError(f"Failed to process node: {e}", node, node_info)
+        # Получаем обработчики для данного типа узла
+        processors = self.registry.get_processors_for_node(type(node))
+
+        if processors:
+            # Используем первый (наивысший приоритет) обработчик
+            processor_rule = processors[0]
+            return processor_rule.processor_func(node)
+
+        # Fallback для базовых узлов
+        if isinstance(node, TextNode):
+            return node.text
+
+        # Неизвестный тип узла - возвращаем заглушку
+        logger.warning(f"No processor found for node type: {type(node).__name__}")
+        return f"[{type(node).__name__}]"
 
     def _load_template_text(self, template_name: str) -> str:
         """Загружает текст шаблона из файла."""
@@ -310,7 +304,7 @@ def create_v2_template_processor(run_ctx: RunContext) -> TemplateProcessor:
     processor = TemplateProcessor(run_ctx, registry)
     
     # Регистрируем процессоры плагинов после установки обработчиков
-    registry.register_plugin_processors(processor.handlers)
+    registry.initialize_plugins(processor.handlers)
     
     return processor
 
