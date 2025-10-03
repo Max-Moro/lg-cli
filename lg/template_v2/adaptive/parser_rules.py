@@ -20,36 +20,30 @@ def parse_directive(context: ParsingContext) -> Optional[TemplateNode]:
     Парсит директиву {% ... %}.
     
     Может быть условием (if), режимом (mode) или их завершением.
+    
+    NOTE: Текущая реализация не полностью функциональна для блочных директив (if-endif).
+    Требуется переработка для корректной обработки вложенных блоков.
     """
     # Проверяем начало директивы
     if not context.match("DIRECTIVE_START"):
         return None
     
-    # Сохраняем позицию для отката в случае ошибки
-    saved_position = context.position
+    # Потребляем {%
+    context.consume("DIRECTIVE_START")
     
-    try:
-        # Потребляем {%
-        context.consume("DIRECTIVE_START")
-        
-        # Собираем токены содержимого директивы
-        content_tokens = []
-        while not context.is_at_end() and not context.match("DIRECTIVE_END"):
-            content_tokens.append(context.advance())
-        
-        if context.is_at_end():
-            raise ParserError("Unexpected end of tokens, expected %}", context.current())
-        
-        # Потребляем %}
-        context.consume("DIRECTIVE_END")
-        
-        # Парсим содержимое директивы
-        return _parse_directive_content(content_tokens, context)
-        
-    except (ParserError, Exception):
-        # Откатываемся при ошибке
-        context.position = saved_position
-        return None
+    # Собираем токены содержимого директивы
+    content_tokens = []
+    while not context.is_at_end() and not context.match("DIRECTIVE_END"):
+        content_tokens.append(context.advance())
+    
+    if context.is_at_end():
+        raise ParserError("Unexpected end of tokens, expected %}", context.current())
+    
+    # Потребляем %}
+    context.consume("DIRECTIVE_END")
+    
+    # Парсим содержимое директивы
+    return _parse_directive_content(content_tokens, context)
 
 
 def _parse_directive_content(content_tokens: List, context: ParsingContext) -> TemplateNode:
@@ -57,7 +51,12 @@ def _parse_directive_content(content_tokens: List, context: ParsingContext) -> T
     if not content_tokens:
         raise ParserError("Empty directive", context.current())
     
-    first_token = content_tokens[0]
+    # Пропускаем пробелы в начале
+    non_whitespace_tokens = [t for t in content_tokens if t.type != "WHITESPACE"]
+    if not non_whitespace_tokens:
+        raise ParserError("Empty directive (only whitespace)", context.current())
+    
+    first_token = non_whitespace_tokens[0]
     keyword = first_token.value.lower()
     
     if keyword == 'if':
@@ -81,11 +80,31 @@ def _parse_if_directive(content_tokens: List, context: ParsingContext) -> Condit
     """
     Парсит условную директиву {% if condition %} с поддержкой elif и else.
     """
-    # Извлекаем условие (все токены после 'if')
-    if len(content_tokens) < 2:
-        raise ParserError("Missing condition in if directive", content_tokens[0])
+    # Пропускаем пробелы и находим 'if'
+    non_whitespace = [t for t in content_tokens if t.type != "WHITESPACE"]
+    if not non_whitespace or non_whitespace[0].value.lower() != 'if':
+        raise ParserError("Expected 'if' keyword", content_tokens[0] if content_tokens else context.current())
     
-    condition_tokens = content_tokens[1:]
+    # Извлекаем условие (все токены после 'if', исключая пробелы в начале и конце)
+    # Находим индекс первого 'if' токена
+    if_index = -1
+    for i, t in enumerate(content_tokens):
+        if t.type == "IDENTIFIER" and t.value.lower() == "if":
+            if_index = i
+            break
+    
+    if if_index == -1 or if_index + 1 >= len(content_tokens):
+        raise ParserError("Missing condition in if directive", content_tokens[0] if content_tokens else context.current())
+    
+    # Берем все токены после 'if', исключая пробелы в начале
+    condition_tokens = content_tokens[if_index + 1:]
+    # Убираем начальные пробелы
+    while condition_tokens and condition_tokens[0].type == "WHITESPACE":
+        condition_tokens = condition_tokens[1:]
+    
+    if not condition_tokens:
+        raise ParserError("Missing condition in if directive", content_tokens[if_index])
+    
     condition_text = _reconstruct_condition_text(condition_tokens)
     
     # Парсим условие с помощью парсера условий

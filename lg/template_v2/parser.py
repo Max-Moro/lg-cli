@@ -25,7 +25,7 @@ class ModularParser:
     в порядке приоритета для создания AST.
     """
     
-    def __init__(self, registry: Optional[TemplateRegistry] = None):
+    def __init__(self, registry: TemplateRegistry):
         """
         Инициализирует парсер с указанным реестром.
         
@@ -33,17 +33,16 @@ class ModularParser:
             registry: Реестр компонентов (по умолчанию - глобальный)
         """
         self.registry = registry
-        
-        # Получаем правила парсинга, отсортированные по приоритету
-        self.parser_rules: List[ParsingRule] = []
-        self._initialize_rules()
     
-    def _initialize_rules(self) -> None:
-        """Инициализирует правила парсинга из реестра."""
-        if self.registry is None:
-            raise RuntimeError("Registry is required for parser initialization")
-        self.parser_rules = self.registry.get_sorted_parser_rules()
-        logger.debug(f"Initialized parser with {len(self.parser_rules)} rules")
+    @property
+    def parser_rules(self) -> List[ParsingRule]:
+        """
+        Возвращает правила парсинга, отсортированные по приоритету.
+        
+        Правила получаются динамически из реестра, что позволяет
+        регистрировать новые правила после создания парсера.
+        """
+        return self.registry.get_sorted_parser_rules()
     
     def parse(self, tokens: List[Token]) -> TemplateAST:
         """

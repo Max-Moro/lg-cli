@@ -88,28 +88,31 @@ class AdaptivePlugin(TemplatePlugin):
         Регистрирует обработчики узлов AST.
         
         Создает замыкания над AdaptiveProcessor для обработки узлов.
+        Процессор будет создан позже в initialize(), когда обработчики будут установлены.
         """
-        # Создаем процессор при первом вызове
-        if self._processor is None:
-            self._processor = AdaptiveProcessor(self.handlers, self.template_ctx)
+        # Используем ленивое создание процессора через замыкание
+        def get_processor():
+            if self._processor is None:
+                raise RuntimeError("Processor not initialized. Call initialize() first.")
+            return self._processor
         
         def process_conditional_node(node: TemplateNode) -> str:
             """Обрабатывает условный узел."""
             if not isinstance(node, ConditionalBlockNode):
                 raise RuntimeError(f"Expected ConditionalBlockNode, got {type(node)}")
-            return self._processor.process_conditional(node)
+            return get_processor().process_conditional(node)
         
         def process_mode_node(node: TemplateNode) -> str:
             """Обрабатывает режимный узел."""
             if not isinstance(node, ModeBlockNode):
                 raise RuntimeError(f"Expected ModeBlockNode, got {type(node)}")
-            return self._processor.process_mode_block(node)
+            return get_processor().process_mode_block(node)
         
         def process_comment_node(node: TemplateNode) -> str:
             """Обрабатывает комментарий."""
             if not isinstance(node, CommentNode):
                 raise RuntimeError(f"Expected CommentNode, got {type(node)}")
-            return self._processor.process_comment(node)
+            return get_processor().process_comment(node)
         
         return [
             ProcessorRule(
@@ -134,9 +137,12 @@ class AdaptivePlugin(TemplatePlugin):
         """
         Инициализирует плагин после регистрации всех компонентов.
         
-        Устанавливает обработчики для правил парсинга, чтобы обеспечить
-        рекурсивный парсинг вложенных структур.
+        Создает процессор и устанавливает обработчики для правил парсинга.
         """
+        # Создаем процессор теперь, когда обработчики установлены
+        if self._processor is None:
+            self._processor = AdaptiveProcessor(self.handlers, self.template_ctx)
+        
         # Устанавливаем обработчики для использования в правилах парсинга
         set_parser_handlers(self.handlers)
 

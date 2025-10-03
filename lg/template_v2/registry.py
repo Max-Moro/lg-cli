@@ -54,10 +54,11 @@ class TemplateRegistry(TemplateRegistryProtocol):
     def _register_builtin_tokens(self) -> None:
         """Регистрирует встроенные токены, не зависящие от плагинов."""
         # Токен для непрерывного текста (между специальными конструкциями)
-        # Захватывает один или более символов, не являющихся началом плейсхолдера
+        # Захватывает один или более символов, не являющихся началом специальных конструкций
+        # Останавливается перед: ${, {%, {#
         text_token = TokenSpec(
             name=TokenType.TEXT.value,
-            pattern=re.compile(r'(?:\$(?!\{)|[^$])+'),  # $ не за которым следует {, или не-$ символы
+            pattern=re.compile(r'(?:\$(?!\{)|\{(?![%#])|[^${])+'),  # Не $ перед {, не { перед % или #, или любой другой символ
         )
         self.tokens[TokenType.TEXT.value] = text_token
         logger.debug("Registered builtin TEXT token")
