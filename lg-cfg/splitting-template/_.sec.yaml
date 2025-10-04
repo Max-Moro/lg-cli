@@ -42,9 +42,9 @@ src-v2:
         mode: block
         children:
           template_v2:
-            mode: allow
-            allow:
-              - "/*.py"
+            mode: block
+            block:
+              - "/common_placeholders/"
               - "/md_placeholders/"
 
 tests:
