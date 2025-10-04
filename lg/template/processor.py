@@ -16,13 +16,20 @@ from .nodes import TemplateNode, TemplateAST, TextNode
 from .parser import ModularParser
 from .registry import TemplateRegistry
 from ..run_context import RunContext
-# Импортируем только разрешенные компоненты для совместимости
-from ..template.context import TemplateContext
-from ..template.processor import TemplateProcessingError
+from .context import TemplateContext
 from ..types import SectionRef
 from .types import ProcessingContext
 
 logger = logging.getLogger(__name__)
+
+
+class TemplateProcessingError(Exception):
+    """Общая ошибка обработки шаблона."""
+
+    def __init__(self, message: str, template_name: str = "", cause: Optional[Exception] = None):
+        super().__init__(f"Template processing error in '{template_name}': {message}")
+        self.template_name = template_name
+        self.cause = cause
 
 
 class TemplateProcessor:
@@ -382,7 +389,7 @@ def create_v2_template_processor(run_ctx: RunContext) -> TemplateProcessor:
     
     # Инициализируем плагины после регистрации всех компонентов
     registry.initialize_plugins(processor.handlers)
-    
+
     return processor
 
 
