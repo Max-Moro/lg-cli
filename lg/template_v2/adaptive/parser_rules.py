@@ -20,13 +20,12 @@ def parse_directive(context: ParsingContext) -> Optional[TemplateNode]:
     Парсит директиву {% ... %}.
     
     Может быть условием (if), режимом (mode) или их завершением.
-    
-    NOTE: Текущая реализация не полностью функциональна для блочных директив (if-endif).
-    Требуется переработка для корректной обработки вложенных блоков.
+    Рекурсивно обрабатывает вложенные директивы.
     """
     # Проверяем начало директивы
     if not context.match("DIRECTIVE_START"):
         return None
+    
     
     # Потребляем {%
     context.consume("DIRECTIVE_START")
@@ -145,7 +144,7 @@ def _parse_if_directive(content_tokens: List, context: ParsingContext) -> Condit
             break
         
         # Парсим следующий узел (рекурсивно применяем все правила парсинга)
-        # Используем вспомогательную функцию для парсинга произвольного узла
+        # _parse_any_node вызовет parse_directive для вложенных директив
         node = _parse_any_node(context)
         if node:
             body_nodes.append(node)
@@ -194,14 +193,29 @@ def _parse_elif_blocks(context: ParsingContext) -> List[ElifBlockNode]:
 
 def _parse_single_elif_directive(content_tokens: List, context: ParsingContext) -> ElifBlockNode:
     """Парсит одну elif директиву из уже извлеченных токенов содержимого."""
-    if not content_tokens or content_tokens[0].value.lower() != 'elif':
+    # Пропускаем пробелы в начале
+    non_whitespace = [t for t in content_tokens if t.type != "WHITESPACE"]
+    if not non_whitespace or non_whitespace[0].value.lower() != 'elif':
         raise ParserError("Expected 'elif' keyword", content_tokens[0] if content_tokens else context.current())
     
-    # Извлекаем условие (все токены после 'elif')
-    if len(content_tokens) < 2:
+    # Находим индекс первого 'elif' токена
+    elif_index = -1
+    for i, t in enumerate(content_tokens):
+        if t.type == "IDENTIFIER" and t.value.lower() == "elif":
+            elif_index = i
+            break
+    
+    if elif_index == -1 or elif_index + 1 >= len(content_tokens):
         raise ParserError("Missing condition in elif directive", content_tokens[0])
     
-    condition_tokens = content_tokens[1:]
+    # Берем все токены после 'elif', исключая пробелы в начале
+    condition_tokens = content_tokens[elif_index + 1:]
+    while condition_tokens and condition_tokens[0].type == "WHITESPACE":
+        condition_tokens = condition_tokens[1:]
+    
+    if not condition_tokens:
+        raise ParserError("Missing condition in elif directive", content_tokens[elif_index])
+    
     condition_text = _reconstruct_condition_text(condition_tokens)
     
     # Парсим условие с помощью парсера условий
@@ -220,6 +234,7 @@ def _parse_single_elif_directive(content_tokens: List, context: ParsingContext) 
             _check_directive_keyword(context, 'endif')):
             break
         
+        # Парсим следующий узел - вложенные директивы обрабатываются рекурсивно
         node = _parse_any_node(context)
         if node:
             elif_body.append(node)
