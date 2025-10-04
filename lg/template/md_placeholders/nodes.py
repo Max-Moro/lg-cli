@@ -1,7 +1,5 @@
 """
 AST узлы для Markdown-плейсхолдеров.
-
-Адаптированы из lg.template.nodes для модульной архитектуры v2.
 """
 
 from __future__ import annotations

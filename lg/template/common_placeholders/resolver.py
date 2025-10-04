@@ -1,8 +1,7 @@
 """
 Резолвер ссылок для базовых плейсхолдеров секций и шаблонов.
 
-Портирован из lg.template.resolver для обработки адресных ссылок
-и загрузки включаемых шаблонов из других lg-cfg скоупов.
+Обработка адресных ссылок и загрузки включаемых шаблонов из других lg-cfg скоупов.
 """
 
 from __future__ import annotations
@@ -61,7 +60,7 @@ class CommonPlaceholdersResolver:
         self.repo_root = run_ctx.root
         self.current_cfg_root = run_ctx.root / "lg-cfg"
         
-        # Стек origin'ов для поддержки вложенных включений (как в V1)
+        # Стек origin'ов для поддержки вложенных включений
         self._origin_stack: List[str] = ["self"]
         
         # Кэш резолвленных включений
@@ -87,14 +86,14 @@ class CommonPlaceholdersResolver:
         Резолвит секционный узел, обрабатывая адресные ссылки.
         
         Поддерживает форматы:
-        - "section_name" → текущий скоуп (использует стек origin как в старом резолвере)
+        - "section_name" → текущий скоуп (использует стек origin)
         - "@origin:section_name" → указанный скоуп
         - "@[origin]:section_name" → скоуп с двоеточиями в имени
         """
         section_name = node.section_name
         
         try:
-            # Всегда используем _parse_section_reference (как в старом резолвере)
+            # Всегда используем _parse_section_reference
             cfg_root, resolved_name = self._parse_section_reference(section_name)
             
             # Создаем SectionRef для использования в остальной части пайплайна
@@ -128,8 +127,8 @@ class CommonPlaceholdersResolver:
         if cache_key in self._resolution_stack:
             cycle_info = " -> ".join(self._resolution_stack + [cache_key])
             raise RuntimeError(f"Circular include dependency: {cycle_info}")
-        
-        # Проверяем кэш (как в V1)
+
+        # Проверяем кэш
         if cache_key in self._resolved_includes:
             resolved_include = self._resolved_includes[cache_key]
             return IncludeNode(
@@ -179,7 +178,7 @@ class CommonPlaceholdersResolver:
             origin = section_name[1:colon_pos]
             name = section_name[colon_pos + 1:]
         else:
-            # Простая ссылка без адресности - использует текущий origin из стека (как в V1)
+            # Простая ссылка без адресности - использует текущий origin из стека
             current_origin = self._origin_stack[-1] if self._origin_stack else "self"
             cfg_root = resolve_cfg_root(
                 current_origin,
@@ -227,7 +226,7 @@ class CommonPlaceholdersResolver:
         from ..registry import TemplateRegistry
         include_ast = parse_template(template_text, registry=cast(TemplateRegistry, self.registry))
         
-        # Рекурсивно резолвим включение с новым origin в стеке (как в V1)
+        # Рекурсивно резолвим включение с новым origin в стеке
         self._origin_stack.append(node.origin)
         try:
             # Ядро применит резолверы всех плагинов, включая наш

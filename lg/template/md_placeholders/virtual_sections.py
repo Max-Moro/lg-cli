@@ -1,7 +1,5 @@
 """
 Фабрика виртуальных секций для движка шаблонизации.
-
-Портировано из lg.template.virtual_sections для модульной архитектуры v2.
 """
 
 from __future__ import annotations
