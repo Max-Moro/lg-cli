@@ -34,34 +34,29 @@ def parse_md_placeholder(context: ParsingContext) -> Optional[TemplateNode]:
     # Сохраняем позицию для отката
     saved_position = context.position
     
-    try:
-        # Потребляем ${
-        context.consume("PLACEHOLDER_START")
-        
-        # Проверяем префикс 'md'
-        if not context.match("MD_PREFIX", "IDENTIFIER"):
-            context.position = saved_position
-            return None
-        
-        first_token = context.current()
-        if first_token.value != 'md':
-            context.position = saved_position
-            return None
-        
-        context.advance()  # Потребляем 'md'
-        
-        # Парсим содержимое плейсхолдера
-        node = _parse_md_content(context)
-        
-        # Потребляем }
-        context.consume("PLACEHOLDER_END")
-        
-        return node
-        
-    except (ParserError, Exception):
-        # Откатываемся при ошибке
+    # Потребляем ${
+    context.consume("PLACEHOLDER_START")
+    
+    # Проверяем префикс 'md'
+    if not context.match("MD_PREFIX", "IDENTIFIER"):
         context.position = saved_position
         return None
+    
+    first_token = context.current()
+    if first_token.value != 'md':
+        context.position = saved_position
+        return None
+    
+    # Теперь мы уверены что это MD-плейсхолдер - любые ошибки дальше должны пробрасываться!
+    context.advance()  # Потребляем 'md'
+    
+    # Парсим содержимое плейсхолдера (НЕ ловим исключения - пусть летят наверх)
+    node = _parse_md_content(context)
+    
+    # Потребляем }
+    context.consume("PLACEHOLDER_END")
+    
+    return node
 
 
 def _parse_md_content(context: ParsingContext) -> MarkdownFileNode:
@@ -284,19 +279,31 @@ def _parse_parameter(context: ParsingContext) -> Tuple[str, Any]:
     # Потребляем двоеточие
     context.consume("COLON")
     
+    # Пропускаем пробелы после двоеточия
+    while context.match("WHITESPACE"):
+        context.advance()
+    
     # Парсим значение параметра
     if param_name == 'if':
         # Для 'if' собираем всё до запятой или конца как условие
         param_value = _parse_condition_value(context)
-    elif param_name in ('level',):
+    elif param_name == 'level':
         # Числовые параметры
         param_value = _parse_number_value(context)
-    elif param_name in ('strip_h1',):
+    elif param_name == 'strip_h1':
         # Булевы параметры
         param_value = _parse_bool_value(context)
-    else:
-        # Строковые параметры
+    elif param_name == 'anchor':
+        # Якорь для частичного включения
         param_value = _parse_string_value(context)
+        if not param_value.strip():
+            raise ParserError("Anchor cannot be empty", param_token)
+    else:
+        # Неизвестный параметр - вызываем ошибку
+        raise ParserError(
+            f"Unknown parameter '{param_name}'. Supported parameters: level, strip_h1, if, anchor",
+            param_token
+        )
     
     return param_name, param_value
 
@@ -338,7 +345,11 @@ def _parse_number_value(context: ParsingContext) -> int:
     
     token = context.advance()
     try:
-        return int(token.value)
+        value = int(token.value)
+        # Валидация диапазона для level (должно быть от 1 до 6)
+        if not 1 <= value <= 6:
+            raise ParserError(f"Level must be between 1 and 6, got {value}", token)
+        return value
     except ValueError:
         raise ParserError(f"Invalid number: {token.value}", token)
 
@@ -353,16 +364,26 @@ def _parse_bool_value(context: ParsingContext) -> bool:
     elif current.type == "BOOL_FALSE":
         context.advance()
         return False
+    elif current.type == "NUMBER":
+        # Числа 1 и 0 как булевы значения
+        value = current.value
+        context.advance()
+        if value == "1":
+            return True
+        elif value == "0":
+            return False
+        else:
+            raise ParserError(f"Boolean number must be 0 or 1, got '{value}'", current)
     elif current.type == "IDENTIFIER":
         # Fallback для обычных идентификаторов
         value = current.value.lower()
         context.advance()
-        if value in ("true", "yes", "1"):
+        if value in ("true", "yes"):
             return True
-        elif value in ("false", "no", "0"):
+        elif value in ("false", "no"):
             return False
     
-    raise ParserError(f"Expected boolean value (true/false)", current)
+    raise ParserError(f"Expected boolean value (true/false/1/0/yes/no)", current)
 
 
 def _parse_string_value(context: ParsingContext) -> str:
