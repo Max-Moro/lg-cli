@@ -112,42 +112,61 @@ def _create_enhanced_filter_engine(section_cfg: SectionCfg, template_ctx: Templa
     """
     Создает движок фильтрации с учетом условных фильтров из контекста шаблона.
     
-    Применяет активные условные фильтры к базовому FilterNode секции,
+    Рекурсивно применяет активные условные фильтры ко всем узлам FilterNode,
     добавляя дополнительные allow/block правила при выполнении условий.
     """
     # Начинаем с базового фильтра секции
     base_filter = section_cfg.filters
     
-    # Если нет условных фильтров, возвращаем базовый движок
-    if not section_cfg.conditional_filters:
-        return FilterEngine(base_filter)
+    # Рекурсивно применяем условные фильтры ко всем узлам
+    enhanced_filter = _apply_conditional_filters_recursive(base_filter, template_ctx)
     
-    # Создаем копию базового фильтра для модификации
-    enhanced_filter = FilterNode(
-        mode=base_filter.mode,
-        allow=list(base_filter.allow),
-        block=list(base_filter.block),
-        children=dict(base_filter.children)  # Shallow copy достаточно для наших целей
+    return FilterEngine(enhanced_filter)
+
+
+def _apply_conditional_filters_recursive(node: FilterNode, template_ctx: TemplateContext) -> FilterNode:
+    """
+    Рекурсивно применяет условные фильтры к узлу и всем его дочерним узлам.
+    
+    Args:
+        node: Исходный узел фильтрации
+        template_ctx: Контекст шаблона для вычисления условий
+        
+    Returns:
+        Новый узел с примененными условными фильтрами
+    """
+    import logging
+    
+    # Создаем копию узла с базовыми правилами
+    enhanced_node = FilterNode(
+        mode=node.mode,
+        allow=list(node.allow),
+        block=list(node.block),
+        conditional_filters=list(node.conditional_filters),  # Сохраняем для информации
+        children={}  # Заполним позже
     )
     
-    # Применяем условные фильтры
-    for conditional_filter in section_cfg.conditional_filters:
+    # Применяем условные фильтры текущего узла
+    for conditional_filter in node.conditional_filters:
         try:
             # Вычисляем условие в контексте шаблона
             condition_met = template_ctx.evaluate_condition_text(conditional_filter.condition)
             
             if condition_met:
                 # Добавляем дополнительные правила фильтрации
-                enhanced_filter.allow.extend(conditional_filter.allow)
-                enhanced_filter.block.extend(conditional_filter.block)
+                enhanced_node.allow.extend(conditional_filter.allow)
+                enhanced_node.block.extend(conditional_filter.block)
         except Exception as e:
             # Логируем ошибку оценки условия, но не прерываем обработку
-            import logging
             logging.warning(
                 f"Failed to evaluate conditional filter condition '{conditional_filter.condition}': {e}"
             )
     
-    return FilterEngine(enhanced_filter)
+    # Рекурсивно обрабатываем дочерние узлы
+    for child_name, child_node in node.children.items():
+        enhanced_node.children[child_name] = _apply_conditional_filters_recursive(child_node, template_ctx)
+    
+    return enhanced_node
 
 
 def _collect_section_files(

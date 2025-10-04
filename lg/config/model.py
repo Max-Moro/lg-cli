@@ -3,7 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Dict, List, Literal, Any
 
-from ..io.model import FilterNode, ConditionalFilter
+from ..io.model import FilterNode
 from ..types import PathLabelMode
 
 
@@ -90,18 +90,15 @@ class SectionCfg:
 
     # Адресные оверрайды по путям
     targets: List[TargetRule] = field(default_factory=list)
-    
-    # Условные фильтры
-    conditional_filters: List[ConditionalFilter] = field(default_factory=list)
 
     @staticmethod
     def from_dict(name: str, node: dict) -> SectionCfg:
         # extensions
         exts = list(map(str, node.get("extensions", [".py"])))
-        # filters
+        # filters (теперь with-условия обрабатываются внутри FilterNode.from_dict)
         filters = FilterNode.from_dict(node.get("filters", {"mode": "block"}))
         # adapters config (всё, что не service keys)
-        service_keys = {"extensions", "filters", "skip_empty", "code_fence", "targets", "path_labels", "when"}
+        service_keys = {"extensions", "filters", "skip_empty", "code_fence", "targets", "path_labels"}
         adapters_cfg: Dict[str, AdapterConfig] = {}
         for k, v in node.items():
             if k in service_keys:
@@ -139,20 +136,6 @@ class SectionCfg:
                 adapter_cfgs[str(ak)] = dict(av)
             targets.append(TargetRule(match=match_list, adapter_cfgs=adapter_cfgs))
 
-        # conditional filters (when)
-        conditional_filters: List[ConditionalFilter] = []
-        when_raw = node.get("when", []) or []
-        if when_raw:
-            if not isinstance(when_raw, list):
-                raise RuntimeError(f"Section '{name}': 'when' must be a list")
-            for idx, when_item in enumerate(when_raw):
-                if not isinstance(when_item, dict):
-                    raise RuntimeError(f"Section '{name}': when[{idx}] must be a mapping")
-                try:
-                    conditional_filters.append(ConditionalFilter.from_dict(when_item))
-                except Exception as e:
-                    raise RuntimeError(f"Section '{name}': when[{idx}] - {e}")
-
         # path_labels
         path_labels = str(node.get("path_labels", "auto")).strip().lower()
         if path_labels not in ("auto", "relative", "basename", "off"):
@@ -166,7 +149,6 @@ class SectionCfg:
             path_labels=path_labels,
             adapters=adapters_cfg,
             targets=targets,
-            conditional_filters=conditional_filters,
         )
 
 @dataclass
