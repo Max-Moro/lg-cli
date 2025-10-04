@@ -95,7 +95,7 @@ class SectionCfg:
     conditional_filters: List[ConditionalFilter] = field(default_factory=list)
 
     @staticmethod
-    def from_dict(name: str, node: dict) -> "SectionCfg":
+    def from_dict(name: str, node: dict) -> SectionCfg:
         # extensions
         exts = list(map(str, node.get("extensions", [".py"])))
         # filters
