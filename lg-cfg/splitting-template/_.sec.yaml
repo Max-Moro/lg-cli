@@ -45,7 +45,7 @@ src-v2:
             mode: block
             block:
               - "/common_placeholders/"
-              - "/md_placeholders/"
+              - "/adaptive/"
 
 tests:
   extensions: [".py"]

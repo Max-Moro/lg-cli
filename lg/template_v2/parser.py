@@ -77,6 +77,11 @@ class ModularParser:
         
         Публичный метод для использования из плагинов через обработчики.
         
+        Правила парсинга должны:
+        - Вернуть узел AST если успешно распарсили
+        - Вернуть None если правило не подходит (позиция должна быть откачена самим правилом!)
+        - Бросить ParserError при фатальной синтаксической ошибке
+        
         Args:
             context: Контекст парсинга
             
@@ -86,37 +91,14 @@ class ModularParser:
         Raises:
             ParserError: При фатальной ошибке синтаксиса
         """
-        from .tokens import ParserError
-        
-        # Сохраняем позицию для возможного отката
-        saved_position = context.position
-        
         # Пробуем каждое правило в порядке приоритета
         for rule in self.parser_rules:
             if not rule.enabled:
                 continue
-                
-            try:
-                # Восстанавливаем позицию перед каждой попыткой
-                context.position = saved_position
-                
-                # Применяем правило
-                node = rule.parser_func(context)
-                if node is not None:
-                    logger.debug(f"Applied rule '{rule.name}' -> {type(node).__name__}")
-                    return node
-                    
-            except ParserError:
-                # ParserError означает фатальную ошибку синтаксиса
-                # Не пытаемся применить другие правила, сразу прокидываем исключение
-                raise
-            except Exception as e:
-                # Остальные исключения - правило просто не подошло
-                logger.debug(f"Rule '{rule.name}' failed: {e}")
-                continue
-        
-        # Ни одно правило не сработало, восстанавливаем позицию
-        context.position = saved_position
+            node = rule.parser_func(context)
+            if node is not None:
+                logger.debug(f"Applied rule '{rule.name}' -> {type(node).__name__}")
+                return node
         return None
     
     def _handle_unparsed_token(self, context: ParsingContext, ast: List[TemplateNode]) -> None:
