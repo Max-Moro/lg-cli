@@ -82,7 +82,12 @@ class ModularParser:
             
         Returns:
             Узел AST или None если ни одно правило не сработало
+            
+        Raises:
+            ParserError: При фатальной ошибке синтаксиса
         """
+        from .tokens import ParserError
+        
         # Сохраняем позицию для возможного отката
         saved_position = context.position
         
@@ -101,8 +106,12 @@ class ModularParser:
                     logger.debug(f"Applied rule '{rule.name}' -> {type(node).__name__}")
                     return node
                     
+            except ParserError:
+                # ParserError означает фатальную ошибку синтаксиса
+                # Не пытаемся применить другие правила, сразу прокидываем исключение
+                raise
             except Exception as e:
-                # Правило вызвало исключение, продолжаем с других правил
+                # Остальные исключения - правило просто не подошло
                 logger.debug(f"Rule '{rule.name}' failed: {e}")
                 continue
         
