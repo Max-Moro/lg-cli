@@ -42,9 +42,10 @@ src-v2:
         mode: block
         children:
           template_v2:
-            mode: block
-            block:
-              - "/common_placeholders/"
+            mode: allow
+            allow:
+              - "/*.py"
+              - "/md_placeholders/"
 
 tests:
   extensions: [".py"]
