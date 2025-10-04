@@ -270,6 +270,10 @@ def _parse_parameter(context: ParsingContext) -> Tuple[str, Any]:
     Returns:
         Кортеж (param_name, param_value)
     """
+    # Пропускаем пробелы перед именем параметра
+    while context.match("WHITESPACE"):
+        context.advance()
+    
     # Парсим имя параметра
     if not context.match("IDENTIFIER", "IF"):  # IF - специальный параметр
         raise ParserError("Expected parameter name", context.current())
