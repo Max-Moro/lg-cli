@@ -19,15 +19,15 @@ tag-sets:
       generated:
         title: "Сгенерированный код"
     
-  feature-slices:
-    title: "Функциональные блоки"
+  template-features:
+    title: "Возможности шаблонизатора"
     tags:
-      adaptability:
+      common-placeholders:
+        title: "Плейсхолдер секций и шаблонов"
+      adaptive:
         title: "Адаптивные возможности"
-      adapters:
-        title: "Языковые адаптеры"
-      stats:
-        title: "Статистика и токены"
+      md-placeholders:
+        title: "Плейсхолдер Markdown"
 
 # Глобальные теги (не входят в определенные наборы)
 tags:

@@ -1,0 +1,63 @@
+src:
+  extensions: [".py", ".toml"]
+  filters:
+    mode: allow
+    allow:
+      - "/pyproject.toml"
+      - "/lg/"
+    children:
+      lg:
+        mode: allow
+        allow:
+          - "/cli.py"
+          - "/types.py"
+          - "/engine.py"
+          - "/section_processor.py"
+          - "/config/"
+          - "/adapters/"
+          - "/template/"
+        children:
+          config:
+            mode: allow
+            allow:
+              - "/load.py"
+              - "/model.py"
+          adapters:
+            mode: allow
+            allow:
+              - "/__init__.py"
+              - "/registry.py"
+              - "/base.py"
+              - "/processor.py"
+              - "/markdown.py"
+          template:
+            mode: allow
+            allow:
+              - "/*.py"
+            when:
+              - condition: "TAGSET:template-features:common-placeholders"
+                allow: ["/common_placeholders/"]
+              - condition: "TAGSET:template-features:adaptive"
+                allow: ["/adaptive/"]
+              - condition: "TAGSET:template-features:md-placeholders"
+                allow: ["/md_placeholders/"]
+
+tests:
+  extensions: [".py"]
+  path_labels: relative
+  filters:
+    mode: allow
+    allow:
+      - "/tests/"
+    children:
+      tests:
+        mode: allow
+        allow:
+          - "/conftest.py"
+        when:
+          - condition: "TAGSET:template-features:common-placeholders"
+            allow: ["/common_placeholders/"]
+          - condition: "TAGSET:template-features:adaptive"
+            allow: ["/adaptive/"]
+          - condition: "TAGSET:template-features:md-placeholders"
+            allow: ["/md_placeholders/"]

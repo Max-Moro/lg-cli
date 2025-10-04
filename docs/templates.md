@@ -118,6 +118,7 @@ ${tpl@libs/math:dev/intro}         <!-- шаблон из libs/math/lg-cfg/dev/i
 ${ctx@services/auth:hardening}     <!-- контекст из services/auth/lg-cfg/hardening.ctx.md -->
 ```
 
+<!-- lg:if TAGSET:template-features:md-placeholders -->
 ## Вставка обычных Markdown-документов
 
 При составлении LG-контекстов часто есть необходимость вставки уже готовых Markdown-документов, которые изначально не создавались для LG. Такие документы можно вставлять двумя способами.
@@ -246,6 +247,8 @@ ${md:docs/deployment, if:tag:cloud}
 
 Включение документа на основе активных тегов или тегсетов.
 
+<!-- lg:endif --> <!-- lg:if TAGSET:template-features:adaptive -->
 ## Адаптивные возможности в обычных Markdown-документах
 
 [Подробнее](adaptability.md#использованием-адаптивных-возможностей-в-markdown-адаптере).
+<!-- lg:endif -->
