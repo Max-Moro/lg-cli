@@ -14,8 +14,7 @@ from .parser_rules import get_adaptive_parser_rules, set_parser_handlers
 from .processor import AdaptiveProcessor
 from .tokens import get_adaptive_token_specs
 from ..base import TemplatePlugin
-from ..nodes import TemplateNode
-from ..types import PluginPriority, TokenSpec, ParsingRule, ProcessorRule, TokenContext
+from ..types import PluginPriority, TokenSpec, ParsingRule, ProcessorRule, TokenContext, ProcessingContext
 from ...template.context import TemplateContext
 
 
@@ -94,20 +93,23 @@ class AdaptivePlugin(TemplatePlugin):
                 raise RuntimeError("Processor not initialized. Call initialize() first.")
             return self._processor
         
-        def process_conditional_node(node: TemplateNode) -> str:
+        def process_conditional_node(processing_context: ProcessingContext) -> str:
             """Обрабатывает условный узел."""
+            node = processing_context.get_node()
             if not isinstance(node, ConditionalBlockNode):
                 raise RuntimeError(f"Expected ConditionalBlockNode, got {type(node)}")
             return get_processor().process_conditional(node)
         
-        def process_mode_node(node: TemplateNode) -> str:
+        def process_mode_node(processing_context: ProcessingContext) -> str:
             """Обрабатывает режимный узел."""
+            node = processing_context.get_node()
             if not isinstance(node, ModeBlockNode):
                 raise RuntimeError(f"Expected ModeBlockNode, got {type(node)}")
             return get_processor().process_mode_block(node)
         
-        def process_comment_node(node: TemplateNode) -> str:
+        def process_comment_node(processing_context: ProcessingContext) -> str:
             """Обрабатывает комментарий."""
+            node = processing_context.get_node()
             if not isinstance(node, CommentNode):
                 raise RuntimeError(f"Expected CommentNode, got {type(node)}")
             return get_processor().process_comment(node)

@@ -20,6 +20,7 @@ from ..run_context import RunContext
 from ..template.context import TemplateContext
 from ..template.processor import TemplateProcessingError
 from ..types import SectionRef
+from .types import ProcessingContext
 
 logger = logging.getLogger(__name__)
 
@@ -58,8 +59,9 @@ class TemplateProcessor:
         
         # Создаем анонимный класс обработчиков прямо здесь
         class ProcessorHandlers(TemplateProcessorHandlers):
-            def process_ast_node(self, node: TemplateNode) -> str:
-                return processor_self._evaluate_node(node, [], 0)
+            def process_ast_node(self, context: ProcessingContext) -> str:
+                """Делегирует обработку узла с контекстом."""
+                return processor_self._evaluate_node(context.get_node(), context.ast, context.node_index)
             
             def process_section_ref(self, section_ref: SectionRef) -> str:
                 if processor_self.section_handler is None:
@@ -226,13 +228,18 @@ class TemplateProcessor:
 
     def _evaluate_node(self, node: TemplateNode, ast: TemplateAST, node_index: int) -> str:
         """Оценивает один узел AST."""
+        from .types import ProcessingContext
+        
+        # Создаем контекст обработки
+        processing_context = ProcessingContext(ast=ast, node_index=node_index)
+        
         # Получаем обработчики для данного типа узла
         processors = self.registry.get_processors_for_node(type(node))
 
         if processors:
             # Используем первый (наивысший приоритет) обработчик
             processor_rule = processors[0]
-            return processor_rule.processor_func(node)
+            return processor_rule.processor_func(processing_context)
 
         # Fallback для базовых узлов
         if isinstance(node, TextNode):

@@ -14,7 +14,7 @@ from .parser_rules import get_placeholder_parser_rules
 from .tokens import get_placeholder_token_specs
 from ..base import TemplatePlugin
 from ..nodes import TemplateNode
-from ..types import PluginPriority, TokenSpec, ParsingRule, ProcessorRule, ResolverRule, TokenContext
+from ..types import PluginPriority, TokenSpec, ParsingRule, ProcessorRule, ResolverRule, TokenContext, ProcessingContext
 from ...template import TemplateContext
 
 
@@ -84,8 +84,9 @@ class CommonPlaceholdersPlugin(TemplatePlugin):
         
         Создает замыкания над типизированными обработчиками для прямой обработки узлов.
         """
-        def process_section_node(node: TemplateNode) -> str:
+        def process_section_node(processing_context: ProcessingContext) -> str:
             """Обрабатывает узел секции через типизированные обработчики."""
+            node = processing_context.get_node()
             if not isinstance(node, SectionNode):
                 raise RuntimeError(f"Expected SectionNode, got {type(node)}")
             
@@ -96,8 +97,9 @@ class CommonPlaceholdersPlugin(TemplatePlugin):
             # Используем типизированный обработчик секций
             return self.handlers.process_section_ref(node.resolved_ref)
         
-        def process_include_node(node: TemplateNode) -> str:
+        def process_include_node(processing_context: ProcessingContext) -> str:
             """Обрабатывает узел включения через типизированные обработчики."""
+            node = processing_context.get_node()
             if not isinstance(node, IncludeNode):
                 raise RuntimeError(f"Expected IncludeNode, got {type(node)}")
             
@@ -105,10 +107,12 @@ class CommonPlaceholdersPlugin(TemplatePlugin):
             if node.children is None:
                 raise RuntimeError(f"Include '{node.canon_key()}' not resolved")
             
-            # Рендерим дочерние узлы
+            # Рендерим дочерние узлы с новым контекстом для вложенного AST
             result_parts = []
-            for child_node in node.children:
-                rendered = self.handlers.process_ast_node(child_node)
+            for child_index, child_node in enumerate(node.children):
+                # Создаем контекст для вложенного AST
+                child_context = ProcessingContext(ast=node.children, node_index=child_index)
+                rendered = self.handlers.process_ast_node(child_context)
                 if rendered:
                     result_parts.append(rendered)
             

@@ -10,6 +10,7 @@ from __future__ import annotations
 from typing import Protocol, runtime_checkable
 
 from .nodes import TemplateNode
+from .types import ProcessingContext
 from ..types import SectionRef
 
 
@@ -22,12 +23,12 @@ class TemplateProcessorHandlers(Protocol):
     из плагинов без нарушения инкапсуляции.
     """
     
-    def process_ast_node(self, node: TemplateNode) -> str:
+    def process_ast_node(self, context: ProcessingContext) -> str:
         """
-        Обрабатывает один узел AST.
+        Обрабатывает один узел AST с контекстом.
         
         Args:
-            node: Узел для обработки
+            context: Контекст обработки (ProcessingContext)
             
         Returns:
             Отрендеренное содержимое узла

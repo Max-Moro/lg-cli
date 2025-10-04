@@ -13,6 +13,7 @@ from typing import List, Optional, Tuple
 
 from .nodes import MarkdownFileNode
 from ..nodes import TemplateAST, TextNode
+from ..types import ProcessingContext
 
 
 @dataclass(frozen=True)
@@ -525,32 +526,30 @@ class HeadingContextDetector:
         self.placeholder_analyzer = PlaceholderAnalyzer(self.patterns)
         self.chain_analyzer = ChainAnalyzer(self.placeholder_analyzer)
     
-    def detect_context(self, target_node: MarkdownFileNode, ast: TemplateAST, node_index: int) -> HeadingContext:
+    def detect_context(self, processing_context: ProcessingContext) -> HeadingContext:
         """
         Анализирует контекст плейсхолдера и определяет оптимальные параметры.
         
         Args:
-            target_node: Узел MarkdownFileNode для анализа
-            ast: Полный AST шаблона
-            node_index: Индекс целевого узла в AST
+            processing_context:Контекст обработки узла AST
 
         Returns:
             HeadingContext с рекомендациями по параметрам
         """
         # 1. Парсим все заголовки в шаблоне
-        template_headings = self._parse_all_headings(ast)
+        template_headings = self._parse_all_headings(processing_context.ast)
         
         # 2. Парсим все горизонтальные черты в шаблоне
-        horizontal_rules = self._parse_all_horizontal_rules(ast)
+        horizontal_rules = self._parse_all_horizontal_rules(processing_context.ast)
         
         # 3. Определяем позицию плейсхолдера
-        placeholder_pos = self.placeholder_analyzer.find_placeholder_position(ast, node_index)
+        placeholder_pos = self.placeholder_analyzer.find_placeholder_position(processing_context.ast, processing_context.node_index)
         
         # 4. Находим родительский заголовок с учетом горизонтальных черт
         parent_level = self._find_parent_heading_level(placeholder_pos.line_number, template_headings, horizontal_rules)
         
         # 5. Анализируем цепочки плейсхолдеров с учетом горизонтальных черт
-        is_chain = self.chain_analyzer.is_continuous_chain(ast, node_index, template_headings, horizontal_rules)
+        is_chain = self.chain_analyzer.is_continuous_chain(processing_context.ast, processing_context.node_index, template_headings, horizontal_rules)
         
 
         
@@ -748,17 +747,15 @@ class HeadingContextDetector:
         return heading_level, strip_h1
 
 
-def detect_heading_context_for_node(node: MarkdownFileNode, ast: TemplateAST, node_index: int) -> HeadingContext:
+def detect_heading_context_for_node(processing_context: ProcessingContext) -> HeadingContext:
     """
     Удобная функция для анализа контекста заголовков для одного узла.
     
     Args:
-        node: Узел MarkdownFileNode для анализа
-        ast: Полный AST шаблона
-        node_index: Индекс узла в AST
+        processing_context:Контекст обработки узла AST
         
     Returns:
         HeadingContext с рекомендациями
     """
     detector = HeadingContextDetector()
-    return detector.detect_context(node, ast, node_index)
+    return detector.detect_context(processing_context)

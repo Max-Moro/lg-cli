@@ -14,8 +14,7 @@ from .parser_rules import get_md_parser_rules
 from .tokens import get_md_token_specs
 from .virtual_sections import VirtualSectionFactory
 from ..base import TemplatePlugin
-from ..nodes import TemplateNode
-from ..types import PluginPriority, TokenSpec, ParsingRule, ProcessorRule
+from ..types import PluginPriority, TokenSpec, ParsingRule, ProcessorRule, ProcessingContext
 from ...template import TemplateContext
 
 
@@ -77,8 +76,9 @@ class MdPlaceholdersPlugin(TemplatePlugin):
         
         Создает замыкания над типизированными обработчиками для обработки MD-узлов.
         """
-        def process_markdown_node(node: TemplateNode) -> str:
+        def process_markdown_node(processing_context: ProcessingContext) -> str:
             """Обрабатывает узел MarkdownFileNode через виртуальную секцию."""
+            node = processing_context.get_node()
             if not isinstance(node, MarkdownFileNode):
                 raise RuntimeError(f"Expected MarkdownFileNode, got {type(node)}")
             
@@ -89,15 +89,9 @@ class MdPlaceholdersPlugin(TemplatePlugin):
                     # Условие не выполнено - пропускаем узел
                     return ""
 
-            # TODO: Нужно получить AST и node_index для анализа контекста заголовков
-            # Пока используем дефолтные значения
-            from .heading_context import HeadingContext
-            heading_context = HeadingContext(
-                placeholders_continuous_chain=False,
-                placeholder_inside_heading=False,
-                heading_level=2,
-                strip_h1=True
-            )
+            # Используем ProcessingContext для анализа контекста заголовков
+            from .heading_context import detect_heading_context_for_node
+            heading_context = detect_heading_context_for_node(processing_context)
 
             section_config, section_ref = self.virtual_factory.create_for_markdown_file(
                 node=node,

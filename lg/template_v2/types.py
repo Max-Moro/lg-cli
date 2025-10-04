@@ -43,12 +43,39 @@ class ParsingRule:
 
 
 @dataclass
+class ProcessingContext:
+    """
+    Контекст обработки узла AST.
+    
+    Предоставляет плагинам доступ к состоянию обработки без нарушения инкапсуляции.
+    """
+    ast: List[TemplateNode]  # Текущий AST
+    node_index: int          # Индекс обрабатываемого узла
+    
+    def get_node(self) -> TemplateNode:
+        """Возвращает текущий обрабатываемый узел."""
+        return self.ast[self.node_index]
+    
+    def get_previous_node(self) -> Optional[TemplateNode]:
+        """Возвращает предыдущий узел или None."""
+        if self.node_index > 0:
+            return self.ast[self.node_index - 1]
+        return None
+    
+    def get_next_node(self) -> Optional[TemplateNode]:
+        """Возвращает следующий узел или None."""
+        if self.node_index + 1 < len(self.ast):
+            return self.ast[self.node_index + 1]
+        return None
+
+
+@dataclass
 class ProcessorRule:
     """
     Правило обработки узлов AST.
     """
     node_type: Type[TemplateNode]  # Тип узла, который обрабатывает правило
-    processor_func: Callable[[TemplateNode], str]  # Функция обработки
+    processor_func: Callable[[ProcessingContext], str]  # Функция обработки (node, context)
     priority: int = 50            # Приоритет (для случаев множественных обработчиков)
 
 
@@ -166,6 +193,7 @@ __all__ = [
     "PluginPriority",
     "TokenSpec",
     "ParsingRule",
+    "ProcessingContext",
     "ProcessorRule",
     "ResolverRule",
     "ParsingContext",
