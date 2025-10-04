@@ -100,10 +100,14 @@ class AdaptiveProcessor:
         Returns:
             Отрендеренное содержимое
         """
+        from ..types import ProcessingContext
+        
         result_parts = []
         
-        for child_node in body:
-            rendered = self.handlers.process_ast_node(child_node)
+        for i, child_node in enumerate(body):
+            # Создаем контекст обработки для каждого узла
+            processing_context = ProcessingContext(ast=body, node_index=i)
+            rendered = self.handlers.process_ast_node(processing_context)
             if rendered:
                 result_parts.append(rendered)
         
