@@ -116,13 +116,13 @@ all-files:
     allow:
       - "src/**"
       - "docs/**"
-  when:
-    - condition: "tag:tests"
-      allow:
-        - "**/*test*.py"
-    - condition: "NOT tag:tests"
-      block:
-        - "**/*test*.py"
+    when:
+      - condition: "tag:tests"
+        allow:
+          - "**/*test*.py"
+      - condition: "NOT tag:tests"
+        block:
+          - "**/*test*.py"
 """)
     
     # Тест 1: без тега tests - test файлы должны быть заблокированы

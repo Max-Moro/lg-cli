@@ -102,11 +102,11 @@ all-files:
     mode: allow
     allow:
       - "**"
-  when:
-    - condition: "tag:minimal"
-      block:
-        - "**/*test*.py"
-        - "docs/**"
+    when:
+      - condition: "tag:minimal"
+        block:
+          - "**/*test*.py"
+          - "docs/**"
 """)
     
     # Тест 1: без тега minimal - все файлы включены
