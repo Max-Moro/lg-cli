@@ -362,7 +362,7 @@ class TemplateProcessor:
             raise TemplateProcessingError(error_message, template_name, e)
 
 
-def create_v2_template_processor(run_ctx: RunContext) -> TemplateProcessor:
+def create_template_processor(run_ctx: RunContext) -> TemplateProcessor:
     """
     Создает процессор шаблонов версии 2 с уже установленными доступными плагинами.
     
@@ -393,4 +393,4 @@ def create_v2_template_processor(run_ctx: RunContext) -> TemplateProcessor:
     return processor
 
 
-__all__ = ["TemplateProcessor", "TemplateProcessingError", "create_v2_template_processor"]
+__all__ = ["TemplateProcessor", "TemplateProcessingError", "create_template_processor"]

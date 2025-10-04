@@ -14,7 +14,7 @@ from .migrate import ensure_cfg_actual
 from .run_context import RunContext
 from .section_processor import SectionProcessor
 from .stats import RunResult, build_run_result_from_collector, StatsCollector, TokenService
-from .template import TemplateProcessingError, TemplateContext
+from .template import create_template_processor, TemplateContext
 from .types import RunOptions, TargetSpec, SectionRef
 from .vcs import NullVcs
 from .vcs.git import GitVcs
@@ -24,48 +24,48 @@ from .version import tool_version
 class Engine:
     """
     Координирующий класс движка.
-    
+
     Управляет взаимодействием между компонентами:
     - TemplateProcessor для обработки шаблонов
-    - SectionProcessor для обработки секций 
+    - SectionProcessor для обработки секций
     - StatsCollector для сбора статистики
     """
-    
+
     def __init__(self, options: RunOptions):
         """
         Инициализирует движок с указанными опциями.
-        
+
         Args:
             options: Опции выполнения
         """
         self.options = options
         self.root = Path.cwd().resolve()
-        
+
         # Инициализируем сервисы
         self._init_services()
-        
+
         # Создаем процессоры
         self._init_processors()
-        
+
         # Настраиваем взаимодействие между компонентами
         self._setup_component_integration()
-    
+
     def _init_services(self) -> None:
         """Инициализирует базовые сервисы."""
         # Кэш
         tool_ver = tool_version()
         self.cache = Cache(self.root, enabled=None, fresh=False, tool_version=tool_ver)
-        
+
         # VCS
         self.vcs = GitVcs() if (self.root / ".git").is_dir() else NullVcs()
-        
+
         self.tokenizer = TokenService(self.root, self.options.model, cache=self.cache)
         active_tags, mode_options, adaptive_loader = process_adaptive_options(
             self.root,
             self.options.modes,
             self.options.extra_tags
         )
-        
+
         self.run_ctx = RunContext(
             root=self.root,
             options=self.options,
@@ -76,36 +76,20 @@ class Engine:
             mode_options=mode_options,
             active_tags=active_tags,
         )
-    
+
     def _init_processors(self) -> None:
         """Создает основные процессоры."""
         # Коллектор статистики
         self.stats_collector = StatsCollector(tokenizer=self.tokenizer)
-        
+
         # Процессор секций
         self.section_processor = SectionProcessor(
             run_ctx=self.run_ctx,
             stats_collector=self.stats_collector
         )
-        
-        # Процессор шаблонов - поддержка переключения версий
-        self.template_processor = self._init_template_processor()
-    
-    def _init_template_processor(self):
-        """Инициализирует шаблонизатор нужной версии."""
-        import os
-        
-        # Определяем, какую версию использовать
-        use_v2 = os.environ.get("LG_USE_TEMPLATE_V2", "").lower() in ("1", "true", "yes")
-        
-        if use_v2:
-            # Импортируем и используем новую версию
-            from .template_v2 import create_v2_template_processor
-            return create_v2_template_processor(self.run_ctx)
-        else:
-            # Используем текущую версию
-            from .template import TemplateProcessor
-            return TemplateProcessor(self.run_ctx)
+
+        # Процессор шаблонов
+        self.template_processor = create_template_processor(self.run_ctx)
     
     def _setup_component_integration(self) -> None:
         """Настраивает взаимодействие между компонентами."""
@@ -311,5 +295,4 @@ __all__ = [
     "Engine",
     "run_render",
     "run_report",
-    "TemplateProcessingError"
 ]

@@ -1,19 +1,17 @@
 """
-Модульный шаблонизатор для Listing Generator.
-
-Предоставляет тот же API что и lg.template, но с модульной архитектурой
-на основе плагинов для лучшей расширяемости и поддерживаемости.
+Шаблонизатор для Listing Generator.
 """
 
 from __future__ import annotations
 
-from .processor import TemplateProcessor, TemplateProcessingError, create_v2_template_processor
-# Переэкспортируем все что нужно для совместимости
-from ..template.context import TemplateContext
+from .processor import TemplateProcessor, TemplateProcessingError, create_template_processor
+from .context import TemplateContext
+from .common import list_contexts
 
 __all__ = [
     "TemplateProcessor",
     "TemplateProcessingError", 
     "TemplateContext",
-    "create_v2_template_processor",
+    "create_template_processor",
+    "list_contexts"
 ]
