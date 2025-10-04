@@ -13,7 +13,7 @@ from typing import Dict, List, Optional
 from .protocols import TemplateRegistryProtocol
 from .handlers import TemplateProcessorHandlers
 # Импортируем собственные типы
-from .types import PluginPriority, TokenSpec, ParsingRule, ProcessorRule, ResolverRule
+from .types import PluginPriority, TokenSpec, ParsingRule, ProcessorRule, ResolverRule, TokenContext
 
 
 class TemplatePlugin(ABC):
@@ -97,12 +97,12 @@ class TemplatePlugin(ABC):
         """
         return []
 
-    def register_token_contexts(self) -> List[Dict]:
+    def register_token_contexts(self) -> List[TokenContext]:
         """
         Регистрирует контекстные группы токенов.
 
         Returns:
-            Список описаний контекстов в формате словарей
+            Список контекстов токенов
         """
         return []
 

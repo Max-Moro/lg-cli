@@ -1,5 +1,5 @@
 """
-Главный плагин для адаптивных возможностей шаблонизатора.
+Плагин для адаптивных возможностей шаблонизатора.
 
 Регистрирует все необходимые токены, правила парсинга и обработчики
 для поддержки условных конструкций, режимных блоков и комментариев.
@@ -7,15 +7,15 @@
 
 from __future__ import annotations
 
-from typing import Any, Dict, List
+from typing import List
 
 from .nodes import ConditionalBlockNode, ModeBlockNode, CommentNode
 from .parser_rules import get_adaptive_parser_rules, set_parser_handlers
 from .processor import AdaptiveProcessor
 from .tokens import get_adaptive_token_specs
 from ..base import TemplatePlugin
-from ..types import PluginPriority, TokenSpec, ParsingRule, ProcessorRule
 from ..nodes import TemplateNode
+from ..types import PluginPriority, TokenSpec, ParsingRule, ProcessorRule, TokenContext
 from ...template.context import TemplateContext
 
 
@@ -56,25 +56,25 @@ class AdaptivePlugin(TemplatePlugin):
         """Регистрирует токены для адаптивных конструкций."""
         return get_adaptive_token_specs()
     
-    def register_token_contexts(self) -> List[Dict[str, Any]]:
+    def register_token_contexts(self) -> List[TokenContext]:
         """Регистрирует контексты токенов для адаптивных конструкций."""
         return [
-            {
-                "name": "directive",
-                "open_tokens": ["DIRECTIVE_START"],
-                "close_tokens": ["DIRECTIVE_END"],
-                "inner_tokens": [
+            TokenContext(
+                name="directive",
+                open_tokens={"DIRECTIVE_START"},
+                close_tokens={"DIRECTIVE_END"},
+                inner_tokens={
                     "IDENTIFIER", "COLON", "LPAREN", "RPAREN", "WHITESPACE"
-                ],
-                "allow_nesting": False,
-            },
-            {
-                "name": "comment",
-                "open_tokens": ["COMMENT_START"],
-                "close_tokens": ["COMMENT_END"],
-                "inner_tokens": [],  # Внутри комментария все - текст
-                "allow_nesting": False,
-            }
+                },
+                allow_nesting=False,
+            ),
+            TokenContext(
+                name="comment",
+                open_tokens={"COMMENT_START"},
+                close_tokens={"COMMENT_END"},
+                inner_tokens=set(),  # Внутри комментария все - текст
+                allow_nesting=False,
+            )
         ]
     
     def register_parser_rules(self) -> List[ParsingRule]:

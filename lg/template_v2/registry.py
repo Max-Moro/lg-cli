@@ -101,7 +101,13 @@ class TemplateRegistry(TemplateRegistryProtocol):
                 )
             self.tokens[token_spec.name] = token_spec
             logger.debug(f"Registered token: {token_spec.name}")
-    
+
+    def _register_plugin_token_contexts(self, plugin: TemplatePlugin) -> None:
+        """Регистрирует контекстные группы токенов плагина."""
+        for context in plugin.register_token_contexts():
+            self.token_contexts[context.name] = context
+            logger.debug(f"Registered token context '{context.name}' from plugin '{plugin.name}'")
+
     def _register_plugin_parser_rules(self, plugin: TemplatePlugin) -> None:
         """Регистрирует правила парсинга плагина."""
         for rule in plugin.register_parser_rules():
@@ -144,27 +150,7 @@ class TemplateRegistry(TemplateRegistryProtocol):
                 f"Registered resolver for {node_type.__name__} "
                 f"(priority: {resolver_rule.priority})"
             )
-    
-    def _register_plugin_token_contexts(self, plugin: TemplatePlugin) -> None:
-        """Регистрирует контекстные группы токенов плагина."""
-        for context_spec in plugin.register_token_contexts():
-            # Контекстные спецификации приходят в виде словарей
-            name = context_spec["name"]
-            open_tokens = context_spec["open_tokens"]  
-            close_tokens = context_spec["close_tokens"]
-            inner_tokens = context_spec.get("inner_tokens", [])
-            allow_nesting = context_spec.get("allow_nesting", False)
-            
-            self.register_token_context(
-                name=name,
-                open_tokens=open_tokens,
-                close_tokens=close_tokens,
-                inner_tokens=inner_tokens,
-                allow_nesting=allow_nesting,
-            )
-            
-            logger.debug(f"Registered token context '{name}' from plugin '{plugin.name}'")
-    
+
     def initialize_plugins(self, handlers: TemplateProcessorHandlers) -> None:
         """
         Инициализирует все зарегистрированные плагины.

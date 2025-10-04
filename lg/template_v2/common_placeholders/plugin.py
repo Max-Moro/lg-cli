@@ -1,5 +1,5 @@
 """
-Главный плагин для обработки базовых плейсхолдеров секций и шаблонов.
+Плагин для обработки базовых плейсхолдеров секций и шаблонов.
 
 Регистрирует все необходимые токены, правила парсинга и обработчики
 для поддержки ${section}, ${tpl:name}, ${ctx:name} и адресных ссылок.
@@ -7,14 +7,14 @@
 
 from __future__ import annotations
 
-from typing import Any, Dict, List
+from typing import List
 
 from .nodes import SectionNode, IncludeNode
 from .parser_rules import get_placeholder_parser_rules
 from .tokens import get_placeholder_token_specs
 from ..base import TemplatePlugin
 from ..nodes import TemplateNode
-from ..types import PluginPriority, TokenSpec, ParsingRule, ProcessorRule, ResolverRule
+from ..types import PluginPriority, TokenSpec, ParsingRule, ProcessorRule, ResolverRule, TokenContext
 from ...template import TemplateContext
 
 
@@ -62,17 +62,17 @@ class CommonPlaceholdersPlugin(TemplatePlugin):
         """Регистрирует токены для плейсхолдеров."""
         return get_placeholder_token_specs()
 
-    def register_token_contexts(self) -> List[Dict[str, Any]]:
+    def register_token_contexts(self) -> List[TokenContext]:
         """Регистрирует контексты токенов для плейсхолдеров."""
-        return [{
-            "name": "placeholder",
-            "open_tokens": ["PLACEHOLDER_START"],
-            "close_tokens": ["PLACEHOLDER_END"],
-            "inner_tokens": [
+        return [TokenContext(
+            name="placeholder",
+            open_tokens={"PLACEHOLDER_START"},
+            close_tokens={"PLACEHOLDER_END"},
+            inner_tokens={
                 "IDENTIFIER", "COLON", "AT", "LBRACKET", "RBRACKET", "WHITESPACE"
-            ],
-            "allow_nesting": False,
-        }]
+            },
+            allow_nesting=False,
+        )]
 
     def register_parser_rules(self) -> List[ParsingRule]:
         """Регистрирует правила парсинга плейсхолдеров."""
