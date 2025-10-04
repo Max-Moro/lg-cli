@@ -8,17 +8,17 @@
 from __future__ import annotations
 
 import logging
-from typing import Any, Callable, Dict, List, Optional
+from typing import Callable, Dict, Optional
 
+from .context import TemplateContext
 from .handlers import TemplateProcessorHandlers
 from .lexer import ContextualLexer
 from .nodes import TemplateNode, TemplateAST, TextNode
 from .parser import ModularParser
 from .registry import TemplateRegistry
-from ..run_context import RunContext
-from .context import TemplateContext
-from ..types import SectionRef
 from .types import ProcessingContext
+from ..run_context import RunContext
+from ..types import SectionRef
 
 logger = logging.getLogger(__name__)
 
@@ -153,56 +153,8 @@ class TemplateProcessor:
             template_name,
             "Unexpected error during processing"
         )
-    
-    def get_template_dependencies(self, template_name: str) -> Dict[str, Any]:
-        """
-        Анализирует зависимости шаблона.
-        
-        Args:
-            template_name: Имя шаблона для анализа
-            
-        Returns:
-            Словарь зависимостей
-        """
-        def analyze_dependencies():
-            template_text = self._load_template_text(template_name)
-            ast = self._parse_template(template_text, template_name)
-            
-            # Базовая заглушка - в реальности будет делегировать плагинам
-            return {
-                "sections": [],
-                "includes": [],
-                "conditional": False
-            }
-        
-        return self._handle_template_errors(
-            analyze_dependencies,
-            template_name,
-            "Failed to analyze dependencies"
-        )
-    
-    def prevalidate_template(self, template_name: str) -> List[str]:
-        """
-        Предварительная валидация шаблона.
-        
-        Args:
-            template_name: Имя шаблона для валидации
-            
-        Returns:
-            Список найденных проблем (пустой если проблем нет)
-        """
-        issues = []
-        
-        try:
-            template_text = self._load_template_text(template_name)
-            ast = self._parse_template(template_text, template_name)
-            # Валидация будет выполняться плагинами
-        except Exception as e:
-            issues.append(f"Failed to parse template: {e}")
-        
-        return issues
-    
-    # Внутренние методы
+
+    # ======= Внутренние методы =======
 
     def _parse_template(self, template_text: str, template_name: str) -> TemplateAST:
         """Парсит текст шаблона в AST с кэшированием."""
