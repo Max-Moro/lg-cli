@@ -366,12 +366,10 @@ def create_v2_template_processor(run_ctx: RunContext) -> TemplateProcessor:
     
     # Регистрируем доступные плагины (в порядке приоритета)
     from .common_placeholders import CommonPlaceholdersPlugin
-    # TODO: Раскомментировать когда будет реализован AdaptivePlugin
-    # from .adaptive import AdaptivePlugin
+    from .adaptive import AdaptivePlugin
     
     registry.register_plugin(CommonPlaceholdersPlugin(processor.template_ctx))
-    # TODO: Раскомментировать когда будет реализован AdaptivePlugin
-    # registry.register_plugin(AdaptivePlugin(processor.template_ctx))
+    registry.register_plugin(AdaptivePlugin(processor.template_ctx))
     
     # Инициализируем плагины после регистрации всех компонентов
     registry.initialize_plugins(processor.handlers)
