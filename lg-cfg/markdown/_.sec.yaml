@@ -12,9 +12,8 @@ src:
           - "/cli.py"
           - "/types.py"
           - "/engine.py"
-          - "/config/"
-          - "/template/processor.py"
           - "/section_processor.py"
+          - "/config/"
           - "/adapters/"
           - "/markdown/"
         children:
@@ -32,53 +31,12 @@ src:
               - "/processor.py"
               - "/markdown.py"
           markdown:
-            mode: block
-            block:
-              - "/templating/"
-
-src-ast:
-  extensions: [".py", ".toml"]
-  filters:
-    mode: allow
-    allow:
-      - "/pyproject.toml"
-      - "/lg/"
-    children:
-      lg:
-        mode: allow
-        allow:
-          - "/cli.py"
-          - "/types.py"
-          - "/engine.py"
-          - "/config/"
-          - "/section_processor.py"
-          - "/template/"
-          - "/adapters/"
-          - "/markdown/"
-        children:
-          config:
             mode: allow
-            allow:
-              - "/load.py"
-              - "/model.py"
-          adapters:
-            mode: allow
-            allow:
-              - "/__init__.py"
-              - "/registry.py"
-              - "/base.py"
-              - "/processor.py"
-              - "/markdown.py"
-          template:
-            mode: allow
-            allow:
-              - "/processor.py"
-              - "/context.py"
-          markdown:
-            mode: allow
-            allow:
-              - "/templating/"
-              - "/model.py"
+            when:
+              - condition: "TAGSET:markdown-features:common"
+                allow: ["/*.py"]
+              - condition: "TAGSET:markdown-features:adaptive"
+                allow: ["/templating/"]
 
 tests:
   extensions: [".py"]
@@ -92,18 +50,8 @@ tests:
         mode: allow
         allow:
           - "/conftest.py"
-          - "/markdown/"
-        children:
-          markdown:
-            mode: allow
-            allow:
-              - "/conftest.py"
-              - "/test_parser_basic.py"
-              - "/test_drop_sections.py"
-
-docs-design:
-  extensions: [".md"]
-  filters:
-    mode: allow
-    allow:
-      - "/docs/markdown.md"
+        when:
+          - condition: "TAGSET:markdown-features:common"
+            allow: ["/markdown/"]
+          - condition: "TAGSET:markdown-features:adaptive"
+            allow: ["/adaptive/test_markdown_templating.py"]

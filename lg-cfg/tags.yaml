@@ -31,6 +31,14 @@ tag-sets:
       md-placeholders:
         title: "Плейсхолдер Markdown"
 
+  markdown-features:
+    title: "Работа с Markdown"
+    tags:
+      common:
+        title: "Базовые возможности"
+      adaptive:
+        title: "Адаптивные возможности (HTML-комментарии)"
+
 # Глобальные теги (не входят в определенные наборы)
 tags:
   agent:
@@ -41,7 +49,5 @@ tags:
     title: "Архитектурная документация"
   docs:
     title: "Документация"
-  tests:
-    title: "Тестовый код"
   tools:
     title: "Инструменты"
