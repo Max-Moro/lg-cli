@@ -244,22 +244,3 @@ class TemplateContext:
                 self._tagsets_cache["global"] = set(tags_config.global_tags.keys())
 
         return self._tagsets_cache
-
-    def __enter__(self):
-        """Поддержка контекстного менеджера."""
-        return self
-
-    def __exit__(self, exc_type, exc_val, exc_tb):
-        """
-        Очистка при выходе из контекстного менеджера.
-
-        Проверяет, что все режимные блоки корректно закрыты.
-        """
-        if self.state_stack:
-            import warnings
-            warnings.warn(
-                f"Template context exiting with {len(self.state_stack)} "
-                f"unclosed mode blocks. This may indicate missing {{% endmode %}} directives.",
-                RuntimeWarning,
-                stacklevel=2
-            )

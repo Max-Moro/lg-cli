@@ -16,9 +16,9 @@ from __future__ import annotations
 from typing import Any, List, Optional, Tuple
 
 from .nodes import MarkdownFileNode
-from ..types import PluginPriority, ParsingRule, ParsingContext
 from ..nodes import TemplateNode
 from ..tokens import ParserError
+from ..types import PluginPriority, ParsingRule, ParsingContext
 
 
 def parse_md_placeholder(context: ParsingContext) -> Optional[TemplateNode]:

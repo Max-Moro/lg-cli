@@ -7,8 +7,6 @@
 
 from __future__ import annotations
 
-from typing import Set, Dict
-
 from ..conditions.evaluator import ConditionEvaluator, EvaluationError
 from ..conditions.model import Condition
 from ..run_context import ConditionContext

@@ -7,11 +7,10 @@ AST узлы для адаптивных возможностей шаблони
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Dict, List, Optional, Set
+from typing import List, Optional
 
 from ..nodes import TemplateNode
 from ...conditions.model import Condition
-from ...config.adaptive_model import ModeOptions
 
 
 @dataclass(frozen=True)
@@ -30,8 +29,6 @@ class ConditionalBlockNode(TemplateNode):
     
     # AST условия после парсинга (заполняется парсером условий)
     condition_ast: Optional[Condition] = None
-    # Результат вычисления (заполняется во время оценки)
-    evaluated: Optional[bool] = None
 
 
 @dataclass(frozen=True)
@@ -47,8 +44,6 @@ class ElifBlockNode(TemplateNode):
     
     # AST условия после парсинга (заполняется парсером условий)
     condition_ast: Optional[Condition] = None
-    # Результат вычисления (заполняется во время оценки)
-    evaluated: Optional[bool] = None
 
 
 @dataclass(frozen=True)
@@ -73,11 +68,6 @@ class ModeBlockNode(TemplateNode):
     modeset: str
     mode: str
     body: List[TemplateNode]
-    
-    # Сохраненное состояние контекста (заполняется во время выполнения)
-    original_mode_options: Optional[ModeOptions] = None
-    original_active_tags: Optional[Set[str]] = None
-    original_active_modes: Optional[Dict[str, str]] = None
 
 
 @dataclass(frozen=True)

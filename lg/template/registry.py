@@ -9,14 +9,15 @@ from __future__ import annotations
 
 import logging
 import re
-from typing import Dict, List, Optional, Type
+from typing import Dict, List, Type
 
 from .base import TemplatePlugin, PluginList
-from .protocols import TemplateRegistryProtocol
-from .types import TokenSpec, ParsingRule, ProcessorRule, ResolverRule, TokenRegistry, ParserRulesRegistry, ProcessorRegistry, ResolverRegistry, TokenContext
 from .handlers import TemplateProcessorHandlers
 from .nodes import TemplateNode
+from .protocols import TemplateRegistryProtocol
 from .tokens import TokenType
+from .types import TokenSpec, ParsingRule, ProcessorRule, ResolverRule, TokenRegistry, ParserRulesRegistry, \
+    ProcessorRegistry, ResolverRegistry, TokenContext
 
 logger = logging.getLogger(__name__)
 
@@ -254,18 +255,6 @@ class TemplateRegistry(TemplateRegistryProtocol):
             Список всех контекстов
         """
         return list(self.token_contexts.values())
-    
-    def get_token_context(self, name: str) -> Optional[TokenContext]:
-        """
-        Возвращает контекст токенов по имени.
-        
-        Args:
-            name: Имя контекста
-            
-        Returns:
-            Контекст или None если не найден
-        """
-        return self.token_contexts.get(name)
 
 
 __all__ = ["TemplateRegistry"]

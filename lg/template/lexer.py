@@ -10,9 +10,9 @@ from __future__ import annotations
 import logging
 from typing import Dict, List, Optional
 
-from .types import TokenSpec, TokenContext
-from .tokens import Token, TokenType
 from .registry import TemplateRegistry
+from .tokens import Token, TokenType
+from .types import TokenSpec, TokenContext
 
 logger = logging.getLogger(__name__)
 

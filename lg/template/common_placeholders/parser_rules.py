@@ -14,9 +14,9 @@ from __future__ import annotations
 from typing import List, Optional
 
 from .nodes import SectionNode, IncludeNode
-from ..types import PluginPriority, ParsingRule, ParsingContext
 from ..nodes import TemplateNode
 from ..tokens import ParserError
+from ..types import PluginPriority, ParsingRule, ParsingContext
 
 
 def parse_placeholder(context: ParsingContext) -> Optional[TemplateNode]:

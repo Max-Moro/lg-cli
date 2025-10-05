@@ -8,10 +8,10 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from typing import Dict, List, Optional
+from typing import List, Optional
 
-from .protocols import TemplateRegistryProtocol
 from .handlers import TemplateProcessorHandlers
+from .protocols import TemplateRegistryProtocol
 # Импортируем собственные типы
 from .types import PluginPriority, TokenSpec, ParsingRule, ProcessorRule, ResolverRule, TokenContext
 

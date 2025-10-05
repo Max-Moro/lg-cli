@@ -9,10 +9,10 @@ from __future__ import annotations
 import logging
 from typing import List, Optional
 
-from .types import ParsingRule, ParsingContext
 from .nodes import TemplateNode, TemplateAST, TextNode
 from .registry import TemplateRegistry
 from .tokens import Token, TokenType
+from .types import ParsingRule, ParsingContext
 
 logger = logging.getLogger(__name__)
 

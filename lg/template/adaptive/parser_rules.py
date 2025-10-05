@@ -10,9 +10,9 @@ from __future__ import annotations
 from typing import Callable, List, Optional
 
 from .nodes import ConditionalBlockNode, ElifBlockNode, ElseBlockNode, ModeBlockNode, CommentNode
-from ..types import PluginPriority, ParsingRule, ParsingContext
 from ..nodes import TemplateNode
 from ..tokens import ParserError
+from ..types import PluginPriority, ParsingRule, ParsingContext
 
 # Тип функтора для рекурсивного парсинга
 ParseNextNodeFunc = Callable[[ParsingContext], Optional[TemplateNode]]

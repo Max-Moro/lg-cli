@@ -4,9 +4,9 @@
 
 from __future__ import annotations
 
-from .processor import TemplateProcessor, TemplateProcessingError, create_template_processor
-from .context import TemplateContext
 from .common import list_contexts
+from .context import TemplateContext
+from .processor import TemplateProcessor, TemplateProcessingError, create_template_processor
 
 __all__ = [
     "TemplateProcessor",

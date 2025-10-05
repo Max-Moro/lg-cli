@@ -28,7 +28,6 @@ class TokenSpec:
     """
     name: str                    # Имя токена (например, "PLACEHOLDER_START")
     pattern: Pattern[str]        # Скомпилированное регулярное выражение
-    context_sensitive: bool = False  # Зависит ли токен от контекста
 
 
 @dataclass
