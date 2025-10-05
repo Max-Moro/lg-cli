@@ -68,7 +68,6 @@ class ModularParser:
                 # Если ни одно правило не сработало, пытаемся обработать как текст
                 self._handle_unparsed_token(context, ast)
         
-        logger.debug(f"Parsed AST with {len(ast)} nodes")
         return ast
     
     def _parse_next_node(self, context: ParsingContext) -> Optional[TemplateNode]:
@@ -97,7 +96,6 @@ class ModularParser:
                 continue
             node = rule.parser_func(context)
             if node is not None:
-                logger.debug(f"Applied rule '{rule.name}' -> {type(node).__name__}")
                 return node
         return None
     

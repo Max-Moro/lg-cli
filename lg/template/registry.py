@@ -50,8 +50,6 @@ class TemplateRegistry(TemplateRegistryProtocol):
         
         # Регистрируем базовые токены
         self._register_builtin_tokens()
-        
-        logger.debug("TemplateRegistry initialized")
 
     def _register_builtin_tokens(self) -> None:
         """Регистрирует встроенные токены, не зависящие от плагинов."""
@@ -63,8 +61,7 @@ class TemplateRegistry(TemplateRegistryProtocol):
             pattern=re.compile(r'(?:\$(?!\{)|\{(?![%#])|[^${])+'),  # Не $ перед {, не { перед % или #, или любой другой символ
         )
         self.tokens[TokenType.TEXT.value] = text_token
-        logger.debug("Registered builtin TEXT token")
-    
+
     def register_plugin(self, plugin: TemplatePlugin) -> None:
         """
         Регистрирует плагин и все его компоненты.
@@ -78,8 +75,6 @@ class TemplateRegistry(TemplateRegistryProtocol):
         if any(p.name == plugin.name for p in self.plugins):
             raise ValueError(f"Plugin '{plugin.name}' already registered")
         
-        logger.debug(f"Registering plugin: {plugin.name}")
-        
         # Добавляем плагин в список
         self.plugins.append(plugin)
         
@@ -90,8 +85,6 @@ class TemplateRegistry(TemplateRegistryProtocol):
         self._register_plugin_processors(plugin)
         self._register_plugin_resolvers(plugin)
 
-        logger.debug(f"Plugin '{plugin.name}' registered successfully")
-    
     def _register_plugin_tokens(self, plugin: TemplatePlugin) -> None:
         """Регистрирует токены плагина."""
         for token_spec in plugin.register_tokens():
@@ -101,13 +94,11 @@ class TemplateRegistry(TemplateRegistryProtocol):
                     f"overwrites existing token"
                 )
             self.tokens[token_spec.name] = token_spec
-            logger.debug(f"Registered token: {token_spec.name}")
 
     def _register_plugin_token_contexts(self, plugin: TemplatePlugin) -> None:
         """Регистрирует контекстные группы токенов плагина."""
         for context in plugin.register_token_contexts():
             self.token_contexts[context.name] = context
-            logger.debug(f"Registered token context '{context.name}' from plugin '{plugin.name}'")
 
     def _register_plugin_parser_rules(self, plugin: TemplatePlugin) -> None:
         """Регистрирует правила парсинга плагина."""
@@ -118,8 +109,7 @@ class TemplateRegistry(TemplateRegistryProtocol):
                     f"overwrites existing rule"
                 )
             self.parser_rules[rule.name] = rule
-            logger.debug(f"Registered parser rule: {rule.name}")
-    
+
     def _register_plugin_processors(self, plugin: TemplatePlugin) -> None:
         """Регистрирует обработчики узлов плагина."""
         for processor_rule in plugin.register_processors():
@@ -127,8 +117,7 @@ class TemplateRegistry(TemplateRegistryProtocol):
             if node_type not in self.processors:
                 self.processors[node_type] = []
             self.processors[node_type].append(processor_rule)
-            logger.debug(f"Registered processor for {node_type.__name__}")
-    
+
     def _register_plugin_resolvers(self, plugin: TemplatePlugin) -> None:
         """Регистрирует резолверы узлов плагина."""
         for resolver_rule in plugin.register_resolvers():
@@ -136,7 +125,6 @@ class TemplateRegistry(TemplateRegistryProtocol):
             if node_type not in self.resolvers:
                 self.resolvers[node_type] = []
             self.resolvers[node_type].append(resolver_rule)
-            logger.debug(f"Registered resolver for {node_type.__name__}")
 
     def initialize_plugins(self, handlers: TemplateProcessorHandlers) -> None:
         """
@@ -244,9 +232,7 @@ class TemplateRegistry(TemplateRegistryProtocol):
             inner_tokens=context.inner_tokens | set(token_names),
             allow_nesting=context.allow_nesting,
         )
-        
-        logger.debug(f"Added {len(token_names)} tokens to context '{context_name}'")
-    
+
     def get_all_token_contexts(self) -> List[TokenContext]:
         """
         Возвращает все зарегистрированные контексты токенов.

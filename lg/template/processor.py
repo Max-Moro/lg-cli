@@ -160,7 +160,6 @@ class TemplateProcessor:
                 tokens = self.lexer.tokenize(template_text)
                 ast = self.parser.parse(tokens)
                 self._template_cache[cache_key] = ast
-                logger.debug(f"Parsed template '{template_name}' -> {len(ast)} nodes")
             except Exception as e:
                 raise TemplateProcessingError(f"Failed to parse template: {e}", template_name, e)
         

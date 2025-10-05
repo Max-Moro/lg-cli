@@ -7,14 +7,11 @@
 
 from __future__ import annotations
 
-import logging
 from typing import Dict, List, Optional
 
 from .registry import TemplateRegistry
 from .tokens import Token, TokenType
 from .types import TokenSpec, TokenContext
-
-logger = logging.getLogger(__name__)
 
 
 class ContextualLexer:
@@ -82,7 +79,6 @@ class ContextualLexer:
         # Добавляем EOF токен
         tokens.append(Token(TokenType.EOF.value, "", self.position, self.line, self.column))
         
-        logger.debug(f"Tokenized text into {len(tokens)} tokens with {len(self.context_stack)} active contexts")
         return tokens
     
     def _initialize_tokenization(self, text: str) -> None:
@@ -96,9 +92,7 @@ class ContextualLexer:
         
         # Сбрасываем кэши контекстных токенов
         self._context_token_cache.clear()
-        
-        logger.debug(f"Initialized tokenization for text of length {self.length}")
-    
+
     def _match_next_token(self) -> Optional[Token]:
         """
         Пытается найти подходящий токен в текущей позиции.
@@ -130,7 +124,6 @@ class ContextualLexer:
                     start_column
                 )
                 
-                logger.debug(f"Matched token {spec.name}: '{matched_text}' in context {self._get_context_name()}")
                 return token
         
         return None
@@ -187,8 +180,7 @@ class ContextualLexer:
                     global_tokens.append(token_spec)
             
             self._global_token_cache = global_tokens
-            logger.debug(f"Built global token cache with {len(global_tokens)} tokens")
-        
+
         return self._global_token_cache
     
     def _build_context_tokens(self, context: TokenContext) -> List[TokenSpec]:
@@ -223,12 +215,7 @@ class ContextualLexer:
         for token_spec in all_tokens:
             if token_spec.name in available_token_names:
                 context_tokens.append(token_spec)
-        
-        logger.debug(
-            f"Built context tokens for '{context.name}': {len(context_tokens)} tokens, "
-            f"nesting={context.allow_nesting}"
-        )
-        
+
         return context_tokens
     
     def _is_global_token(self, token_spec: TokenSpec) -> bool:
@@ -260,8 +247,7 @@ class ContextualLexer:
         # Проверяем, является ли токен закрывающим для текущего контекста
         if self.context_stack and token.type in self.context_stack[-1].close_tokens:
             closed_context = self.context_stack.pop()
-            logger.debug(f"Closed context '{closed_context.name}' with token '{token.type}'")
-            
+
             # Очищаем кэш для закрытого контекста
             self._invalidate_context_cache()
             return
@@ -270,16 +256,10 @@ class ContextualLexer:
         for context in self.registry.get_all_token_contexts():
             if token.type in context.open_tokens:
                 self.context_stack.append(context)
-                logger.debug(f"Opened context '{context.name}' with token '{token.type}'")
-                
                 # Очищаем кэш для нового контекста
                 self._invalidate_context_cache()
                 return
-        
-        # Логируем, если контекст не изменился (для отладки)
-        if len(self.context_stack) == original_stack_size:
-            logger.debug(f"Token '{token.type}' did not change context (current: {self._get_context_name()})")
-    
+
     def _invalidate_context_cache(self) -> None:
         """Очищает кэш контекстных токенов при изменении стека контекстов."""
         self._context_token_cache.clear()
@@ -326,8 +306,7 @@ class ContextualLexer:
             start_line,
             start_column
         )
-        
-        logger.debug(f"Created TEXT token: '{collected_text[:20]}...' in context {self._get_context_name()}")
+
         return token
     
     def _could_be_special_token_start(self) -> bool:
