@@ -514,3 +514,141 @@ def test_condition_evaluation_performance(adaptive_project):
     # Проверяем, что неактивированные секции отсутствуют 
     for i in [1, 2, 3, 4]:
         assert f"Section {i:02d}" not in result
+
+
+def test_template_comments(adaptive_project):
+    """Тест шаблонных комментариев {# ... #}."""
+    root = adaptive_project
+    
+    template_content = """# Template Comments Test
+
+{# Это комментарий для разработчиков шаблонов #}
+## Visible Section
+
+Some visible content here.
+
+{# 
+   Многострочный комментарий
+   который не должен попасть в результат
+   Здесь могут быть TODO, заметки о структуре и т.п.
+#}
+
+{% if tag:minimal %}
+{# Этот комментарий внутри условного блока #}
+## Minimal Mode
+Content for minimal mode
+{% endif %}
+
+{# Комментарий между секциями #}
+
+## Another Section
+
+More visible content.
+
+{# Финальный комментарий в конце документа #}
+"""
+    
+    create_conditional_template(root, "comments-test", template_content)
+    
+    # Тест без активных тегов
+    result1 = render_template(root, "ctx:comments-test", make_run_options())
+    
+    # Проверяем, что видимый контент присутствует
+    assert "Template Comments Test" in result1
+    assert "Visible Section" in result1
+    assert "Some visible content here" in result1
+    assert "Another Section" in result1
+    assert "More visible content" in result1
+    
+    # Проверяем, что комментарии удалены
+    assert "Это комментарий для разработчиков" not in result1
+    assert "Многострочный комментарий" not in result1
+    assert "который не должен попасть в результат" not in result1
+    assert "TODO" not in result1
+    assert "Комментарий между секциями" not in result1
+    assert "Финальный комментарий" not in result1
+    assert "{#" not in result1
+    assert "#}" not in result1
+    
+    # Тест с активным тегом
+    options = make_run_options(extra_tags={"minimal"})
+    result2 = render_template(root, "ctx:comments-test", options)
+    
+    # Проверяем, что условный блок появился
+    assert "Minimal Mode" in result2
+    assert "Content for minimal mode" in result2
+    
+    # Проверяем, что комментарий внутри условного блока все равно удален
+    assert "Этот комментарий внутри условного блока" not in result2
+    assert "{#" not in result2
+    assert "#}" not in result2
+
+
+def test_comments_with_special_characters(adaptive_project):
+    """Тест комментариев со специальными символами."""
+    root = adaptive_project
+    
+    template_content = """# Special Characters Test
+
+{# Комментарий с ${плейсхолдером} внутри #}
+## Section 1
+
+{# Комментарий с {% директивой %} внутри #}
+## Section 2
+
+{# Комментарий с <html> тегами и "кавычками" 'разными' #}
+## Section 3
+
+{# Комментарий с символами: @, #, $, %, ^, &, * #}
+## Section 4
+"""
+    
+    create_conditional_template(root, "special-chars-test", template_content)
+    
+    result = render_template(root, "ctx:special-chars-test", make_run_options())
+    
+    # Проверяем, что секции присутствуют
+    assert "Section 1" in result
+    assert "Section 2" in result
+    assert "Section 3" in result
+    assert "Section 4" in result
+    
+    # Проверяем, что комментарии удалены
+    assert "плейсхолдером" not in result
+    assert "директивой" not in result
+    assert "<html>" not in result
+    assert "кавычками" not in result
+    # Проверяем, что не осталось маркеров комментариев в неожиданных местах
+    # (допускаем наличие '#}' в других контекстах, но проверяем что сами комментарии удалены)
+    assert "Комментарий с ${" not in result
+    assert "Комментарий с {%" not in result
+    assert "Комментарий с <html>" not in result
+    assert "Комментарий с символами" not in result
+
+
+def test_adjacent_comments_and_content(adaptive_project):
+    """Тест комментариев рядом с контентом без пробелов."""
+    root = adaptive_project
+    
+    template_content = """{# Комментарий в начале без переноса #}# Title
+{# Комментарий после заголовка #}
+Content line 1
+{# Встроенный комментарий #}Content line 2
+{# Комментарий перед концом #}"""
+    
+    create_conditional_template(root, "adjacent-test", template_content)
+    
+    result = render_template(root, "ctx:adjacent-test", make_run_options())
+    
+    # Проверяем корректность склейки контента
+    assert "# Title" in result
+    assert "Content line 1" in result
+    assert "Content line 2" in result
+    
+    # Проверяем, что комментарии удалены
+    assert "Комментарий в начале" not in result
+    assert "Комментарий после заголовка" not in result
+    assert "Встроенный комментарий" not in result
+    assert "Комментарий перед концом" not in result
+    assert "{#" not in result
+    assert "#}" not in result
