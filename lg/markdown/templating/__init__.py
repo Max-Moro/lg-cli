@@ -8,7 +8,6 @@
 from .processor import process_markdown_template, MarkdownTemplateProcessorError
 from .parser import parse_markdown_template, MarkdownTemplateParserError
 from .lexer import tokenize_markdown_template, CommentToken
-from .nodes import MarkdownAST, MarkdownNode, TextNode, ConditionalBlockNode
 
 __all__ = [
     # Основная функция для использования
@@ -21,11 +20,4 @@ __all__ = [
     # Низкоуровневые функции (для тестирования и отладки)
     "parse_markdown_template",
     "tokenize_markdown_template",
-    
-    # Типы данных
-    "MarkdownAST",
-    "MarkdownNode", 
-    "TextNode",
-    "ConditionalBlockNode",
-    "CommentToken"
 ]

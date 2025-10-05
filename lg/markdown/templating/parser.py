@@ -12,7 +12,7 @@ from typing import List, Optional
 from .lexer import CommentToken, MarkdownTemplateLexer
 from .nodes import (
     MarkdownAST, MarkdownNode, TextNode, ConditionalBlockNode,
-    ElifBlockNode, ElseBlockNode, CommentBlockNode
+    ElifBlockNode, ElseBlockNode, CommentBlockNode, RawBlockNode
 )
 
 
@@ -111,6 +111,17 @@ class MarkdownTemplateParser:
                 # Парсим блок комментария
                 comment_block, consumed_tokens = self._parse_comment_block(tokens, token_index)
                 ast.append(comment_block)
+                token_index += consumed_tokens
+                # Обновляем позицию на конец последнего обработанного токена
+                if token_index < len(tokens):
+                    current_pos = tokens[token_index - 1].end_pos
+                else:
+                    current_pos = tokens[-1].end_pos
+            
+            elif token.type == 'raw:start':
+                # Парсим raw-блок
+                raw_block, consumed_tokens = self._parse_raw_block(tokens, token_index)
+                ast.append(raw_block)
                 token_index += consumed_tokens
                 # Обновляем позицию на конец последнего обработанного токена
                 if token_index < len(tokens):
@@ -256,6 +267,47 @@ class MarkdownTemplateParser:
         
         consumed_tokens = end_index - start_index + 1
         return comment_block, consumed_tokens
+    
+    def _parse_raw_block(self, tokens: List[CommentToken], start_index: int) -> tuple[RawBlockNode, int]:
+        """
+        Парсит блок raw-текста raw:start...raw:end.
+        
+        Args:
+            tokens: Список всех токенов
+            start_index: Индекс токена 'raw:start'
+            
+        Returns:
+            Кортеж (узел raw-блока, количество обработанных токенов)
+        """
+        start_token = tokens[start_index]
+        if start_token.type != 'raw:start':
+            raise MarkdownTemplateParserError("Ожидался токен 'raw:start'", start_token)
+        
+        # Ищем соответствующий raw:end с учетом вложенности
+        end_index = -1
+        nesting_level = 1
+        
+        for i in range(start_index + 1, len(tokens)):
+            if tokens[i].type == 'raw:start':
+                nesting_level += 1
+            elif tokens[i].type == 'raw:end':
+                nesting_level -= 1
+                if nesting_level == 0:
+                    end_index = i
+                    break
+        
+        if end_index == -1:
+            raise MarkdownTemplateParserError("Не найден соответствующий 'raw:end'", start_token)
+        
+        # Извлекаем текст raw-блока БЕЗ обработки (as-is)
+        raw_start = start_token.end_pos
+        raw_end = tokens[end_index].start_pos
+        raw_text = self.text[raw_start:raw_end]
+        
+        raw_block = RawBlockNode(text=raw_text)
+        
+        consumed_tokens = end_index - start_index + 1
+        return raw_block, consumed_tokens
     
     def _parse_body_between_positions(self, all_tokens: List[CommentToken], 
                                     start_token_index: int, start_pos: int, end_pos: int) -> List[MarkdownNode]:

@@ -8,12 +8,10 @@
 from __future__ import annotations
 
 import textwrap
+
 import pytest
 
-from .conftest import (
-    adaptive_project, make_run_options, render_template,
-    TagConfig, TagSetConfig, create_tags_yaml, write
-)
+from .conftest import adaptive_project, make_run_options, render_template, write
 
 
 def test_markdown_conditional_blocks_basic(adaptive_project):
@@ -586,6 +584,444 @@ def test_markdown_templating_disabled(adaptive_project):
     assert "Regular content works normally." in result
 
 
+def test_markdown_raw_blocks_basic(adaptive_project):
+    """Тест базовых raw-блоков в Markdown - подавление обработки HTML-комментариев."""
+    root = adaptive_project
+    
+    markdown_content = textwrap.dedent("""
+    # Documentation with Examples
+    
+    ## Regular Conditional Section
+    
+    <!-- lg:if tag:python -->
+    This Python section WILL be processed by LG.
+    <!-- lg:endif -->
+    
+    ## Example of LG Syntax (Raw Block)
+    
+    Here is how you use LG conditional syntax in your documents:
+    
+    <!-- lg:raw:start -->
+    <!-- lg:if tag:python -->
+    Python-specific content goes here.
+    <!-- lg:endif -->
+    
+    <!-- lg:comment:start -->
+    This is a comment visible in Markdown viewers.
+    <!-- lg:comment:end -->
+    <!-- lg:raw:end -->
+    
+    The above example shows LG syntax without processing it.
+    
+    ## Another Regular Section
+    
+    <!-- lg:if tag:typescript -->
+    This TypeScript section WILL be processed.
+    <!-- lg:endif -->
+    """).strip() + "\n"
+    
+    write(root / "docs" / "examples.md", markdown_content)
+    
+    write(root / "lg-cfg" / "sections.yaml", textwrap.dedent("""
+    examples:
+      extensions: [".md"]
+      markdown:
+        enable_templating: true
+      filters:
+        mode: allow
+        allow:
+          - "/docs/examples.md"
+    """).strip() + "\n")
+    
+    # Тест с тегом python - условные блоки вне raw работают, внутри raw остаются как есть
+    result = render_template(root, "sec:examples", make_run_options(extra_tags={"python"}))
+    
+    assert "Documentation with Examples" in result
+    assert "Regular Conditional Section" in result
+    assert "This Python section WILL be processed by LG." in result
+    
+    # Внутри raw-блока все HTML-комментарии должны остаться нетронутыми
+    assert "<!-- lg:if tag:python -->" in result
+    assert "<!-- lg:endif -->" in result
+    assert "<!-- lg:comment:start -->" in result
+    assert "<!-- lg:comment:end -->" in result
+    assert "Python-specific content goes here." in result
+    assert "This is a comment visible in Markdown viewers." in result
+    
+    # Условные блоки вне raw не должны показываться (тег typescript не активен)
+    assert "This TypeScript section WILL be processed." not in result
+    
+    # Тест без тегов - условные блоки вне raw не показываются, raw-блок остается
+    result2 = render_template(root, "sec:examples", make_run_options())
+    
+    assert "Documentation with Examples" in result2
+    assert "This Python section WILL be processed by LG." not in result2
+    assert "This TypeScript section WILL be processed." not in result2
+    
+    # Raw-блок все еще присутствует со всеми HTML-комментариями
+    assert "<!-- lg:if tag:python -->" in result2
+    assert "<!-- lg:endif -->" in result2
+
+
+def test_markdown_raw_blocks_nested(adaptive_project):
+    """Тест вложенных raw-блоков."""
+    root = adaptive_project
+    
+    markdown_content = textwrap.dedent("""
+    # Nested Raw Blocks
+    
+    ## Outer Content
+    
+    <!-- lg:if tag:docs -->
+    This is processed.
+    <!-- lg:endif -->
+    
+    ## Examples Section
+    
+    <!-- lg:raw:start -->
+    ### Example 1: Basic Conditional
+    
+    <!-- lg:if tag:python -->
+    Python code here
+    <!-- lg:endif -->
+    
+    ### Example 2: Nested Raw
+    
+    <!-- lg:raw:start -->
+    This is a nested raw block showing raw syntax:
+    <!-- lg:if condition -->
+    Nested content
+    <!-- lg:endif -->
+    <!-- lg:raw:end -->
+    
+    Back to outer raw block.
+    <!-- lg:raw:end -->
+    
+    ## After Raw
+    
+    <!-- lg:if tag:typescript -->
+    TypeScript content is processed.
+    <!-- lg:endif -->
+    """).strip() + "\n"
+    
+    write(root / "docs" / "nested.md", markdown_content)
+    
+    write(root / "lg-cfg" / "sections.yaml", textwrap.dedent("""
+    nested:
+      extensions: [".md"]
+      markdown:
+        enable_templating: true
+      filters:
+        mode: allow
+        allow:
+          - "/docs/nested.md"
+    """).strip() + "\n")
+    
+    result = render_template(root, "sec:nested", 
+                            make_run_options(extra_tags={"docs", "typescript"}))
+    
+    assert "Nested Raw Blocks" in result
+    
+    # Условные блоки вне raw обрабатываются
+    assert "This is processed." in result
+    assert "TypeScript content is processed." in result
+    
+    # Содержимое внешнего raw-блока остается как есть
+    assert "<!-- lg:if tag:python -->" in result
+    assert "Python code here" in result
+    
+    # Вложенный raw-блок также остается как есть
+    assert "<!-- lg:raw:start -->" in result
+    assert "This is a nested raw block showing raw syntax:" in result
+    assert "<!-- lg:if condition -->" in result
+    assert "Nested content" in result
+    assert "<!-- lg:raw:end -->" in result
+    assert "Back to outer raw block." in result
+
+
+def test_markdown_raw_blocks_with_conditional_blocks(adaptive_project):
+    """Тест взаимодействия raw-блоков с условными блоками."""
+    root = adaptive_project
+    
+    markdown_content = textwrap.dedent("""
+    # Mixed Content
+    
+    <!-- lg:if tag:show-examples -->
+    ## LG Syntax Examples
+    
+    Below are examples of how to use LG conditional syntax:
+    
+    <!-- lg:raw:start -->
+    ### Example: Simple Condition
+    
+    ```markdown
+    <!-- lg:if tag:python -->
+    Python-specific documentation
+    <!-- lg:endif -->
+    ```
+    
+    ### Example: If-Else
+    
+    ```markdown
+    <!-- lg:if tag:minimal -->
+    Quick start guide
+    <!-- lg:else -->
+    Complete documentation
+    <!-- lg:endif -->
+    ```
+    <!-- lg:raw:end -->
+    
+    These examples will not be processed by LG.
+    <!-- lg:endif -->
+    
+    <!-- lg:if tag:python -->
+    ## Python Section
+    
+    This section IS processed and shows only when python tag is active.
+    <!-- lg:endif -->
+    """).strip() + "\n"
+    
+    write(root / "docs" / "mixed.md", markdown_content)
+    
+    write(root / "lg-cfg" / "sections.yaml", textwrap.dedent("""
+    mixed:
+      extensions: [".md"]
+      markdown:
+        enable_templating: true
+      filters:
+        mode: allow
+        allow:
+          - "/docs/mixed.md"
+    """).strip() + "\n")
+    
+    # Тест с show-examples - внешний условный блок активен, raw внутри него
+    result1 = render_template(root, "sec:mixed", 
+                             make_run_options(extra_tags={"show-examples"}))
+    
+    assert "LG Syntax Examples" in result1
+    assert "Below are examples" in result1
+    
+    # Raw-блок внутри условного блока остается нетронутым
+    assert "<!-- lg:if tag:python -->" in result1
+    assert "<!-- lg:endif -->" in result1
+    assert "<!-- lg:if tag:minimal -->" in result1
+    assert "<!-- lg:else -->" in result1
+    assert "Python-specific documentation" in result1
+    assert "Quick start guide" in result1
+    
+    assert "Python Section" not in result1  # python тег не активен
+    
+    # Тест без show-examples но с python
+    result2 = render_template(root, "sec:mixed", 
+                             make_run_options(extra_tags={"python"}))
+    
+    assert "LG Syntax Examples" not in result2  # условный блок не активен
+    assert "<!-- lg:if tag:python -->" not in result2  # raw-блок внутри неактивного условия
+    assert "Python Section" in result2
+    assert "This section IS processed" in result2
+    
+    # Тест со всеми тегами
+    result3 = render_template(root, "sec:mixed", 
+                             make_run_options(extra_tags={"show-examples", "python"}))
+    
+    assert "LG Syntax Examples" in result3
+    assert "<!-- lg:if tag:python -->" in result3  # raw-блок
+    assert "Python Section" in result3  # обычный условный блок
+
+
+def test_markdown_raw_blocks_empty(adaptive_project):
+    """Тест пустых и почти пустых raw-блоков."""
+    root = adaptive_project
+    
+    markdown_content = textwrap.dedent("""
+    # Raw Block Edge Cases
+    
+    ## Empty Raw Block
+    
+    <!-- lg:raw:start -->
+    <!-- lg:raw:end -->
+    
+    ## Raw Block with Only Whitespace
+    
+    <!-- lg:raw:start -->
+    
+    
+    <!-- lg:raw:end -->
+    
+    ## Raw Block with Only Comments
+    
+    <!-- lg:raw:start -->
+    <!-- lg:if tag:test -->
+    <!-- lg:endif -->
+    <!-- lg:raw:end -->
+    
+    ## Normal Content
+    
+    This is regular content.
+    """).strip() + "\n"
+    
+    write(root / "docs" / "edge.md", markdown_content)
+    
+    write(root / "lg-cfg" / "sections.yaml", textwrap.dedent("""
+    edge:
+      extensions: [".md"]
+      markdown:
+        enable_templating: true
+      filters:
+        mode: allow
+        allow:
+          - "/docs/edge.md"
+    """).strip() + "\n")
+    
+    result = render_template(root, "sec:edge", make_run_options())
+    
+    assert "Raw Block Edge Cases" in result
+    assert "Empty Raw Block" in result
+    assert "Raw Block with Only Whitespace" in result
+    assert "Raw Block with Only Comments" in result
+    assert "Normal Content" in result
+    assert "This is regular content." in result
+    
+    # Комментарии в raw-блоке должны остаться
+    assert "<!-- lg:if tag:test -->" in result
+    assert "<!-- lg:endif -->" in result
+
+
+def test_markdown_raw_blocks_complex_content(adaptive_project):
+    """Тест raw-блоков со сложным содержимым."""
+    root = adaptive_project
+    
+    markdown_content = textwrap.dedent("""
+    # Complex Raw Content
+    
+    ## Documentation Template Example
+    
+    <!-- lg:raw:start -->
+    # Project Title
+    
+    ## Setup Instructions
+    
+    <!-- lg:if TAGSET:language:python -->
+    ### Python Setup
+    ```bash
+    pip install -r requirements.txt
+    ```
+    <!-- lg:elif TAGSET:language:typescript -->
+    ### TypeScript Setup
+    ```bash
+    npm install
+    ```
+    <!-- lg:else -->
+    ### General Setup
+    Generic setup instructions.
+    <!-- lg:endif -->
+    
+    ## Advanced Configuration
+    
+    <!-- lg:if tag:agent AND NOT tag:minimal -->
+    Configure agent-specific settings:
+    
+    ```yaml
+    agent:
+      enabled: true
+      permissions: [read, write, execute]
+    ```
+    <!-- lg:endif -->
+    
+    <!-- lg:comment:start -->
+    TODO: Add more examples
+    TODO: Update configuration section
+    <!-- lg:comment:end -->
+    <!-- lg:raw:end -->
+    
+    The above template shows various LG features.
+    """).strip() + "\n"
+    
+    write(root / "docs" / "complex.md", markdown_content)
+    
+    write(root / "lg-cfg" / "sections.yaml", textwrap.dedent("""
+    complex:
+      extensions: [".md"]
+      markdown:
+        enable_templating: true
+      filters:
+        mode: allow
+        allow:
+          - "/docs/complex.md"
+    """).strip() + "\n")
+    
+    result = render_template(root, "sec:complex", make_run_options())
+    
+    assert "Complex Raw Content" in result
+    assert "Documentation Template Example" in result
+    
+    # Все HTML-комментарии и markdown внутри raw должны остаться
+    assert "<!-- lg:if TAGSET:language:python -->" in result
+    assert "<!-- lg:elif TAGSET:language:typescript -->" in result
+    assert "<!-- lg:else -->" in result
+    assert "<!-- lg:endif -->" in result
+    assert "<!-- lg:if tag:agent AND NOT tag:minimal -->" in result
+    assert "<!-- lg:comment:start -->" in result
+    assert "<!-- lg:comment:end -->" in result
+    
+    # Содержимое внутри директив также должно остаться
+    assert "### Python Setup" in result
+    assert "pip install -r requirements.txt" in result
+    assert "### TypeScript Setup" in result
+    assert "npm install" in result
+    assert "Configure agent-specific settings:" in result
+    assert "TODO: Add more examples" in result
+    assert "TODO: Update configuration section" in result
+    
+    assert "The above template shows various LG features." in result
+
+
+def test_markdown_raw_blocks_disabled_templating(adaptive_project):
+    """Тест raw-блоков при отключенной шаблонизации."""
+    root = adaptive_project
+    
+    markdown_content = textwrap.dedent("""
+    # Document with Raw
+    
+    <!-- lg:raw:start -->
+    <!-- lg:if tag:python -->
+    Python content
+    <!-- lg:endif -->
+    <!-- lg:raw:end -->
+    
+    <!-- lg:if tag:typescript -->
+    TypeScript content
+    <!-- lg:endif -->
+    """).strip() + "\n"
+    
+    write(root / "docs" / "notemplate_raw.md", markdown_content)
+    
+    write(root / "lg-cfg" / "sections.yaml", textwrap.dedent("""
+    notemplate-raw:
+      extensions: [".md"]
+      markdown:
+        enable_templating: false  # отключено
+      filters:
+        mode: allow
+        allow:
+          - "/docs/notemplate_raw.md"
+    """).strip() + "\n")
+    
+    result = render_template(root, "sec:notemplate-raw", 
+                            make_run_options(extra_tags={"python", "typescript"}))
+    
+    # При отключенной шаблонизации ВСЕ HTML-комментарии остаются как есть
+    assert "<!-- lg:raw:start -->" in result
+    assert "<!-- lg:raw:end -->" in result
+    assert "<!-- lg:if tag:python -->" in result
+    assert "<!-- lg:endif -->" in result
+    assert "<!-- lg:if tag:typescript -->" in result
+    
+    # Все содержимое присутствует
+    assert "Python content" in result
+    assert "TypeScript content" in result
+
+
 def test_markdown_templating_error_handling(adaptive_project):
     """Тест обработки ошибок в Markdown шаблонизации."""
     root = adaptive_project
@@ -619,6 +1055,41 @@ def test_markdown_templating_error_handling(adaptive_project):
     # Должна возникнуть ошибка при обработке невалидного шаблона
     with pytest.raises(Exception):  # Конкретный тип ошибки зависит от реализации
         render_template(root, "sec:invalid-template", make_run_options())
+
+
+def test_markdown_raw_blocks_error_unclosed(adaptive_project):
+    """Тест обработки ошибки незакрытого raw-блока."""
+    root = adaptive_project
+    
+    invalid_markdown = textwrap.dedent("""
+    # Invalid Raw Block
+    
+    <!-- lg:raw:start -->
+    This raw block is never closed.
+    
+    <!-- lg:if tag:python -->
+    Python content
+    <!-- lg:endif -->
+    
+    Missing lg:raw:end
+    """).strip() + "\n"
+    
+    write(root / "docs" / "invalid_raw.md", invalid_markdown)
+    
+    write(root / "lg-cfg" / "sections.yaml", textwrap.dedent("""
+    invalid-raw:
+      extensions: [".md"]
+      markdown:
+        enable_templating: true
+      filters:
+        mode: allow
+        allow:
+          - "/docs/invalid_raw.md"
+    """).strip() + "\n")
+    
+    # Должна возникнуть ошибка при обработке незакрытого raw-блока
+    with pytest.raises(Exception):
+        render_template(root, "sec:invalid-raw", make_run_options())
 
 
 @pytest.mark.parametrize("condition,active_tags,should_appear", [

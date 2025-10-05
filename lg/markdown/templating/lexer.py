@@ -37,6 +37,8 @@ class MarkdownTemplateLexer:
     - <!-- lg:endif -->
     - <!-- lg:comment:start -->
     - <!-- lg:comment:end -->
+    - <!-- lg:raw:start -->
+    - <!-- lg:raw:end -->
     """
     
     # Регулярное выражение для поиска LG-комментариев
@@ -156,7 +158,9 @@ class MarkdownTemplateLexer:
             'else',
             'endif',
             'comment:start',
-            'comment:end'
+            'comment:end',
+            'raw:start',
+            'raw:end'
         }
         
         return token_type in valid_types
@@ -218,6 +222,19 @@ class MarkdownTemplateLexer:
                 comment_blocks -= 1
                 if comment_blocks < 0:
                     errors.append(f"Token {i}: 'comment:end' без соответствующего 'comment:start' на позиции {token.start_pos}")
+            
+            elif token.type == 'raw:start':
+                if token.content:
+                    errors.append(f"Token {i}: 'raw:start' не должен иметь содержимого на позиции {token.start_pos}")
+                stack.append(('raw', i))
+            
+            elif token.type == 'raw:end':
+                if token.content:
+                    errors.append(f"Token {i}: 'raw:end' не должен иметь содержимого на позиции {token.start_pos}")
+                if not stack or stack[-1][0] != 'raw':
+                    errors.append(f"Token {i}: 'raw:end' без соответствующего 'raw:start' на позиции {token.start_pos}")
+                else:
+                    stack.pop()
         
         # Проверяем оставшиеся открытые блоки
         for block_type, token_index in stack:

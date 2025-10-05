@@ -11,7 +11,7 @@ from typing import Tuple, Optional
 
 from .nodes import (
     MarkdownAST, MarkdownNode, TextNode, ConditionalBlockNode,
-    CommentBlockNode
+    CommentBlockNode, RawBlockNode
 )
 from .parser import parse_markdown_template, MarkdownTemplateParserError
 
@@ -107,6 +107,10 @@ class MarkdownTemplateProcessor:
         elif isinstance(node, CommentBlockNode):
             # Комментарии удаляются при обработке
             return ""
+        
+        elif isinstance(node, RawBlockNode):
+            # Raw-блоки выводятся как есть без обработки
+            return node.text
         
         else:
             # Неизвестный тип узла - возвращаем как есть
@@ -211,6 +215,10 @@ class MarkdownTemplateProcessor:
             
             elif isinstance(node, CommentBlockNode):
                 meta["md.templating.comment_blocks"] += 1
+            
+            elif isinstance(node, RawBlockNode):
+                # Raw-блоки не считаем отдельно, но можем добавить метрику если нужно
+                pass
         
         for node in ast:
             analyze_node(node)

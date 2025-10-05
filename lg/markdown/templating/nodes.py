@@ -81,6 +81,18 @@ class CommentBlockNode(MarkdownNode):
     text: str
 
 
+@dataclass(frozen=True)
+class RawBlockNode(MarkdownNode):
+    """
+    Блок raw-текста <!-- lg:raw:start -->...<!-- lg:raw:end -->.
+    
+    Представляет блок текста, который должен быть выведен как есть,
+    без обработки вложенных LG-инструкций. Все HTML-комментарии внутри
+    такого блока сохраняются в итоговом выводе.
+    """
+    text: str
+
+
 # Тип для коллекции узлов Markdown
 MarkdownAST = List[MarkdownNode]
 
@@ -114,6 +126,9 @@ def collect_text_content(ast: MarkdownAST) -> str:
         elif isinstance(node, CommentBlockNode):
             # Комментарии не включаются в текстовый контент
             pass
+        elif isinstance(node, RawBlockNode):
+            # Raw-блоки выводятся как есть
+            result_parts.append(node.text)
     
     for node in ast:
         collect_from_node(node)
@@ -156,6 +171,9 @@ def format_ast_tree(ast: MarkdownAST, indent: int = 0) -> str:
         elif isinstance(node, CommentBlockNode):
             comment_preview = repr(node.text[:30] + "..." if len(node.text) > 30 else node.text)
             lines.append(f"{prefix}CommentBlockNode({comment_preview})")
+        elif isinstance(node, RawBlockNode):
+            raw_preview = repr(node.text[:30] + "..." if len(node.text) > 30 else node.text)
+            lines.append(f"{prefix}RawBlockNode({raw_preview})")
         else:
             lines.append(f"{prefix}{type(node).__name__}")
     
@@ -170,6 +188,7 @@ __all__ = [
     "ElifBlockNode", 
     "ElseBlockNode",
     "CommentBlockNode",
+    "RawBlockNode",
     "collect_text_content",
     "format_ast_tree"
 ]
