@@ -9,12 +9,11 @@ from __future__ import annotations
 
 from typing import List
 
-from .nodes import ConditionalBlockNode, ModeBlockNode, CommentNode
 from .parser_rules import get_adaptive_parser_rules
-from .processor import AdaptiveProcessor
+from .processor_rules import get_adaptive_processor_rules
 from .tokens import get_adaptive_token_specs
 from ..base import TemplatePlugin
-from ..types import PluginPriority, TokenSpec, ParsingRule, ProcessorRule, TokenContext, ProcessingContext
+from ..types import PluginPriority, TokenSpec, ParsingRule, ProcessorRule, TokenContext
 from ...template.context import TemplateContext
 
 
@@ -39,7 +38,6 @@ class AdaptivePlugin(TemplatePlugin):
         """
         super().__init__()
         self.template_ctx = template_ctx
-        self._processor = None
     
     @property
     def name(self) -> str:
@@ -88,61 +86,12 @@ class AdaptivePlugin(TemplatePlugin):
         """
         Регистрирует обработчики узлов AST.
         
-        Создает замыкания над AdaptiveProcessor для обработки узлов.
-        Процессор будет создан позже в initialize(), когда обработчики будут установлены.
+        Использует замыкания для ленивого доступа к handlers.
         """
-        # Используем ленивое создание процессора через замыкание
-        def get_processor():
-            if self._processor is None:
-                raise RuntimeError("Processor not initialized. Call initialize() first.")
-            return self._processor
-        
-        def process_conditional_node(processing_context: ProcessingContext) -> str:
-            """Обрабатывает условный узел."""
-            node = processing_context.get_node()
-            if not isinstance(node, ConditionalBlockNode):
-                raise RuntimeError(f"Expected ConditionalBlockNode, got {type(node)}")
-            return get_processor().process_conditional(node)
-        
-        def process_mode_node(processing_context: ProcessingContext) -> str:
-            """Обрабатывает режимный узел."""
-            node = processing_context.get_node()
-            if not isinstance(node, ModeBlockNode):
-                raise RuntimeError(f"Expected ModeBlockNode, got {type(node)}")
-            return get_processor().process_mode_block(node)
-        
-        def process_comment_node(processing_context: ProcessingContext) -> str:
-            """Обрабатывает комментарий."""
-            node = processing_context.get_node()
-            if not isinstance(node, CommentNode):
-                raise RuntimeError(f"Expected CommentNode, got {type(node)}")
-            return get_processor().process_comment(node)
-        
-        return [
-            ProcessorRule(
-                node_type=ConditionalBlockNode,
-                processor_func=process_conditional_node
-            ),
-            ProcessorRule(
-                node_type=ModeBlockNode,
-                processor_func=process_mode_node
-            ),
-            ProcessorRule(
-                node_type=CommentNode,
-                processor_func=process_comment_node
-            ),
-            # ElifBlockNode не обрабатывается отдельно - он часть ConditionalBlockNode
-        ]
-    
-    def initialize(self) -> None:
-        """
-        Инициализирует плагин после регистрации всех компонентов.
-        
-        Создает процессор для обработки узлов AST.
-        """
-        # Создаем процессор теперь, когда обработчики установлены
-        if self._processor is None:
-            self._processor = AdaptiveProcessor(self.handlers, self.template_ctx)
+        return get_adaptive_processor_rules(
+            process_ast_node=lambda ctx: self.handlers.process_ast_node(ctx),
+            template_ctx=self.template_ctx
+        )
 
 
 __all__ = ["AdaptivePlugin"]

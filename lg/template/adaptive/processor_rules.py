@@ -1,40 +1,50 @@
 """
-Обработчики узлов AST для адаптивных конструкций.
+Правила обработки для адаптивных конструкций в шаблонах.
 
-Реализует логику выполнения условных блоков, режимных блоков и комментариев.
+Обрабатывает условные блоки, режимные блоки и комментарии.
 """
 
 from __future__ import annotations
 
+from typing import Callable, List
+
 from .nodes import ConditionalBlockNode, ModeBlockNode, CommentNode
-from ..handlers import TemplateProcessorHandlers
+from ..types import ProcessorRule, ProcessingContext
 from ...template.context import TemplateContext
 
+# Тип функтора для обработки узла AST
+ProcessASTNodeFunc = Callable[[ProcessingContext], str]
 
-class AdaptiveProcessor:
+
+class AdaptiveProcessorRules:
     """
-    Процессор для обработки адаптивных узлов AST.
+    Класс правил обработки для адаптивных конструкций.
     
-    Реализует вычисление условий, управление режимами и обработку комментариев.
+    Инкапсулирует все правила обработки с доступом к функтору
+    обработки узлов через состояние экземпляра.
     """
     
-    def __init__(self, handlers: TemplateProcessorHandlers, template_ctx: TemplateContext):
+    def __init__(self, process_ast_node: ProcessASTNodeFunc, template_ctx: TemplateContext):
         """
-        Инициализирует процессор адаптивных конструкций.
+        Инициализирует правила обработки.
         
         Args:
-            handlers: Обработчики ядра шаблонизатора
+            process_ast_node: Функтор для обработки узлов AST
             template_ctx: Контекст шаблона для управления состоянием
         """
-        self.handlers = handlers
+        self.process_ast_node = process_ast_node
         self.template_ctx = template_ctx
     
-    def process_conditional(self, node: ConditionalBlockNode) -> str:
+    def process_conditional(self, processing_context: ProcessingContext) -> str:
         """
         Обрабатывает условный блок {% if ... %}.
         
         Вычисляет условие и возвращает соответствующее содержимое.
         """
+        node = processing_context.get_node()
+        if not isinstance(node, ConditionalBlockNode):
+            raise RuntimeError(f"Expected ConditionalBlockNode, got {type(node)}")
+        
         # Вычисляем основное условие
         if node.condition_ast:
             condition_result = self.template_ctx.evaluate_condition(node.condition_ast)
@@ -63,12 +73,16 @@ class AdaptiveProcessor:
         # Все условия ложны и нет else - возвращаем пустую строку
         return ""
     
-    def process_mode_block(self, node: ModeBlockNode) -> str:
+    def process_mode_block(self, processing_context: ProcessingContext) -> str:
         """
         Обрабатывает режимный блок {% mode ... %}.
         
         Переключает режим и обрабатывает тело блока с новым режимом.
         """
+        node = processing_context.get_node()
+        if not isinstance(node, ModeBlockNode):
+            raise RuntimeError(f"Expected ModeBlockNode, got {type(node)}")
+        
         # Входим в режимный блок
         self.template_ctx.enter_mode_block(node.modeset, node.mode)
         
@@ -81,12 +95,16 @@ class AdaptiveProcessor:
         
         return result
     
-    def process_comment(self, node: CommentNode) -> str:
+    def process_comment(self, processing_context: ProcessingContext) -> str:
         """
         Обрабатывает комментарий {# ... #}.
         
         Комментарии не попадают в вывод.
         """
+        node = processing_context.get_node()
+        if not isinstance(node, CommentNode):
+            raise RuntimeError(f"Expected CommentNode, got {type(node)}")
+        
         # Комментарии игнорируются при рендеринге
         return ""
     
@@ -100,19 +118,49 @@ class AdaptiveProcessor:
         Returns:
             Отрендеренное содержимое
         """
-        from ..types import ProcessingContext
-        
         result_parts = []
         
         for i, child_node in enumerate(body):
             # Создаем контекст обработки для каждого узла
             processing_context = ProcessingContext(ast=body, node_index=i)
-            rendered = self.handlers.process_ast_node(processing_context)
+            rendered = self.process_ast_node(processing_context)
             if rendered:
                 result_parts.append(rendered)
         
         return "".join(result_parts)
 
 
-__all__ = ["AdaptiveProcessor"]
+def get_adaptive_processor_rules(
+    process_ast_node: ProcessASTNodeFunc,
+    template_ctx: TemplateContext
+) -> List[ProcessorRule]:
+    """
+    Возвращает правила обработки для адаптивных конструкций.
+    
+    Args:
+        process_ast_node: Функтор для обработки узлов AST
+        template_ctx: Контекст шаблона для управления состоянием
+        
+    Returns:
+        Список правил обработки с привязанными функторами
+    """
+    rules_instance = AdaptiveProcessorRules(process_ast_node, template_ctx)
+    
+    return [
+        ProcessorRule(
+            node_type=ConditionalBlockNode,
+            processor_func=rules_instance.process_conditional
+        ),
+        ProcessorRule(
+            node_type=ModeBlockNode,
+            processor_func=rules_instance.process_mode_block
+        ),
+        ProcessorRule(
+            node_type=CommentNode,
+            processor_func=rules_instance.process_comment
+        ),
+        # ElifBlockNode не обрабатывается отдельно - он часть ConditionalBlockNode
+    ]
 
+
+__all__ = ["AdaptiveProcessorRules", "ProcessASTNodeFunc", "get_adaptive_processor_rules"]

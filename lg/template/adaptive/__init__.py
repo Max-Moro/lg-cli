@@ -13,6 +13,7 @@ from __future__ import annotations
 
 from .nodes import ConditionalBlockNode, ElifBlockNode, ElseBlockNode, ModeBlockNode, CommentNode
 from .plugin import AdaptivePlugin
+from .processor_rules import get_adaptive_processor_rules, AdaptiveProcessorRules
 
 __all__ = [
     "AdaptivePlugin",
@@ -20,6 +21,8 @@ __all__ = [
     "ElifBlockNode", 
     "ElseBlockNode",
     "ModeBlockNode",
-    "CommentNode"
+    "CommentNode",
+    "get_adaptive_processor_rules",
+    "AdaptiveProcessorRules"
 ]
 
