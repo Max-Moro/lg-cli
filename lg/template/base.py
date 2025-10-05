@@ -36,9 +36,10 @@ class TemplatePlugin(ABC):
         pass
     
     @property
+    @abstractmethod
     def priority(self) -> PluginPriority:
-        """Возвращает приоритет плагина (по умолчанию средний)."""
-        return PluginPriority.PLACEHOLDER
+        """Возвращает приоритет плагина."""
+        pass
     
     def set_handlers(self, handlers: TemplateProcessorHandlers) -> None:
         """
@@ -56,12 +57,8 @@ class TemplatePlugin(ABC):
         
         Returns:
             Обработчики для вызова функций ядра
-            
-        Raises:
-            RuntimeError: Если обработчики не установлены
         """
-        if self._handlers is None:
-            raise RuntimeError(f"Handlers not set for plugin '{self.name}'")
+        assert self._handlers is not None, "Handlers must be set before use"
         return self._handlers
     
     def set_registry(self, registry: TemplateRegistryProtocol) -> None:
@@ -80,14 +77,11 @@ class TemplatePlugin(ABC):
         
         Returns:
             Реестр для вызова функций расширения контекстов
-            
-        Raises:
-            RuntimeError: Если реестр не установлен
         """
-        if self._registry is None:
-            raise RuntimeError(f"Registry not set for plugin '{self.name}'")
+        assert self._registry is not None, "Registry must be set before use"
         return self._registry
     
+    @abstractmethod
     def register_tokens(self) -> List[TokenSpec]:
         """
         Регистрирует токены, которые должен распознавать лексер.
@@ -95,7 +89,7 @@ class TemplatePlugin(ABC):
         Returns:
             Список спецификаций токенов
         """
-        return []
+        pass
 
     def register_token_contexts(self) -> List[TokenContext]:
         """
@@ -106,6 +100,7 @@ class TemplatePlugin(ABC):
         """
         return []
 
+    @abstractmethod
     def register_parser_rules(self) -> List[ParsingRule]:
         """
         Регистрирует правила парсинга для создания узлов AST.
@@ -113,8 +108,9 @@ class TemplatePlugin(ABC):
         Returns:
             Список правил парсинга
         """
-        return []
+        pass
     
+    @abstractmethod
     def register_processors(self) -> List[ProcessorRule]:
         """
         Регистрирует обработчики узлов AST.
@@ -122,7 +118,7 @@ class TemplatePlugin(ABC):
         Returns:
             Список правил обработки
         """
-        return []
+        pass
     
     def register_resolvers(self) -> List[ResolverRule]:
         """

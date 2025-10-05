@@ -82,20 +82,3 @@ class TemplateConditionEvaluator:
         """
         self.condition_context = condition_context
         self.base_evaluator = ConditionEvaluator(condition_context)
-
-    def is_tag_active(self, tag: str) -> bool:
-        """Проверяет, активен ли указанный тег."""
-        return self.condition_context.is_tag_active(tag)
-
-    def is_tagset_condition_met(self, set_name: str, tag_name: str) -> bool:
-        """
-        Проверяет условие набора тегов.
-
-        Args:
-            set_name: Имя набора тегов
-            tag_name: Имя тега в наборе
-
-        Returns:
-            True если условие выполняется
-        """
-        return self.condition_context.is_tagset_condition_met(set_name, tag_name)

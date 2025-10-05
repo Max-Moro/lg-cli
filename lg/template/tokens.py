@@ -1,7 +1,7 @@
 """
 Лексические типы.
 
-Определяет базовые типы токенов и ошибок лексического анализа.
+Определяет базовые типы токенов.
 Конкретные типы токенов регистрируются плагинами.
 """
 
@@ -36,16 +36,6 @@ class Token:
         return f"Token({self.type}, {self.value!r}, {self.line}:{self.column})"
 
 
-class LexerError(Exception):
-    """Ошибка лексического анализа."""
-    
-    def __init__(self, message: str, line: int, column: int, position: int):
-        super().__init__(f"{message} at {line}:{column}")
-        self.line = line
-        self.column = column
-        self.position = position
-
-
 class ParserError(Exception):
     """Ошибка синтаксического анализа."""
     
@@ -60,6 +50,5 @@ __all__ = [
     "TokenType", 
     "TokenTypeName",
     "Token", 
-    "LexerError", 
     "ParserError"
 ]
