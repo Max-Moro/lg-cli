@@ -9,29 +9,13 @@ intro:
       sections:
         - match: { kind: text, pattern: "Быстрый старт" }
 
-extended:
+quick-start:
   extensions: [".md"]
   filters:
     mode: allow
     allow:
-      - "/docs/"
+      - "/README.md"
   markdown:
-    max_heading_level: 2
-
-templates:
-  extensions: [".md"]
-  filters:
-    mode: allow
-    allow:
-      - "/docs/templates.md"
-
-adaptability:
-  extensions: [".md"]
-  filters:
-    mode: allow
-    allow:
-      - "/docs/adaptability.md"
-  markdown:
-    strip_single_h1: false
-    max_heading_level: 2
-    enable_templating: false
+    keep:
+      sections:
+        - match: { kind: text, pattern: "Быстрый старт" }
