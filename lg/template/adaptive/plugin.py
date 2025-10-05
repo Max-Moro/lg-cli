@@ -10,7 +10,7 @@ from __future__ import annotations
 from typing import List
 
 from .nodes import ConditionalBlockNode, ModeBlockNode, CommentNode
-from .parser_rules import get_adaptive_parser_rules, set_parser_handlers
+from .parser_rules import get_adaptive_parser_rules
 from .processor import AdaptiveProcessor
 from .tokens import get_adaptive_token_specs
 from ..base import TemplatePlugin
@@ -77,8 +77,12 @@ class AdaptivePlugin(TemplatePlugin):
         ]
     
     def register_parser_rules(self) -> List[ParsingRule]:
-        """Регистрирует правила парсинга адаптивных конструкций."""
-        return get_adaptive_parser_rules()
+        """
+        Регистрирует правила парсинга адаптивных конструкций.
+        
+        Использует замыкание для ленивого доступа к handlers.parse_next_node.
+        """
+        return get_adaptive_parser_rules(lambda ctx: self.handlers.parse_next_node(ctx))
     
     def register_processors(self) -> List[ProcessorRule]:
         """
@@ -134,14 +138,11 @@ class AdaptivePlugin(TemplatePlugin):
         """
         Инициализирует плагин после регистрации всех компонентов.
         
-        Создает процессор и устанавливает обработчики для правил парсинга.
+        Создает процессор для обработки узлов AST.
         """
         # Создаем процессор теперь, когда обработчики установлены
         if self._processor is None:
             self._processor = AdaptiveProcessor(self.handlers, self.template_ctx)
-        
-        # Устанавливаем обработчики для использования в правилах парсинга
-        set_parser_handlers(self.handlers)
 
 
 __all__ = ["AdaptivePlugin"]
