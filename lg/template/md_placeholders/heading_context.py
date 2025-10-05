@@ -147,12 +147,6 @@ class TextLineProcessor:
         
         return None
     
-    def is_heading_line(self, line: str) -> bool:
-        """Проверяет, является ли строка заголовочной."""
-        line_stripped = line.strip()
-        return (bool(self.patterns.HEADING_MARKERS_WITH_TEXT.match(line_stripped)) or 
-                bool(self.patterns.HEADING_MARKERS_ONLY.match(line_stripped)))
-    
     def parse_horizontal_rules_from_text(self, text: str, start_line: int) -> List[int]:
         """
         Извлекает позиции горизонтальных черт из текстового блока.

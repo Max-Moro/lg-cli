@@ -159,49 +159,6 @@ class TemplateContext:
         # Сбрасываем кэш оценщика условий
         self._condition_evaluator = None
 
-    def enter_include_scope(self, origin: str) -> None:
-        """
-        Входит в скоуп включаемого шаблона.
-
-        Сохраняет текущее состояние и обновляет origin для корректной
-        обработки условий scope:local и scope:parent.
-
-        Args:
-            origin: Origin включаемого шаблона ('self' или путь к области)
-        """
-        # Сохраняем текущее состояние в стек
-        self.state_stack.append(self.current_state.copy())
-
-        # Обновляем origin в текущем состоянии
-        self.current_state = TemplateState(
-            origin=origin,
-            mode_options=self.current_state.mode_options,
-            active_tags=set(self.current_state.active_tags),
-            active_modes=dict(self.current_state.active_modes),
-            current_virtual_section=self.current_state.current_virtual_section
-        )
-
-        # Сбрасываем кэш оценщика условий
-        self._condition_evaluator = None
-
-    def exit_include_scope(self) -> None:
-        """
-        Выходит из скоупа включаемого шаблона.
-
-        Восстанавливает предыдущее состояние из стека.
-
-        Raises:
-            RuntimeError: Если стек состояний пуст (нет соответствующего входа)
-        """
-        if not self.state_stack:
-            raise RuntimeError("No include scope to exit (state stack is empty)")
-
-        # Восстанавливаем предыдущее состояние
-        self.current_state = self.state_stack.pop()
-
-        # Сбрасываем кэш оценщика условий
-        self._condition_evaluator = None
-
     def set_virtual_section(self, section_config: SectionCfg) -> None:
         """
         Устанавливает текущую виртуальную секцию для обработки ${md:...} плейсхолдера.

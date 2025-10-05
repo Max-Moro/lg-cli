@@ -33,26 +33,5 @@ class TemplateRegistryProtocol(Protocol):
         """
         ...
 
-    def has_plugin(self, name: str) -> bool:
-        """
-        Проверяет наличие плагина с указанным именем.
-        
-        Args:
-            name: Имя плагина для проверки
-            
-        Returns:
-            True если плагин зарегистрирован
-        """
-        ...
-    
-    def get_plugin_names(self) -> List[str]:
-        """
-        Возвращает список имен всех зарегистрированных плагинов.
-        
-        Returns:
-            Список имен плагинов
-        """
-        ...
-
 
 __all__ = ["TemplateRegistryProtocol"]

@@ -87,11 +87,6 @@ class TemplateProcessor:
         processor_self = self
         self.handlers = ProcessorHandlers()
 
-
-    def get_registry(self) -> TemplateRegistry:
-        """Возвращает реестр для регистрации плагинов."""
-        return self.registry
-
     def set_section_handler(self, handler: Callable[[SectionRef, TemplateContext], str]) -> None:
         """
         Устанавливает обработчик секций.

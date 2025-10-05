@@ -55,18 +55,6 @@ class ProcessingContext:
     def get_node(self) -> TemplateNode:
         """Возвращает текущий обрабатываемый узел."""
         return self.ast[self.node_index]
-    
-    def get_previous_node(self) -> Optional[TemplateNode]:
-        """Возвращает предыдущий узел или None."""
-        if self.node_index > 0:
-            return self.ast[self.node_index - 1]
-        return None
-    
-    def get_next_node(self) -> Optional[TemplateNode]:
-        """Возвращает следующий узел или None."""
-        if self.node_index + 1 < len(self.ast):
-            return self.ast[self.node_index + 1]
-        return None
 
 
 @dataclass
