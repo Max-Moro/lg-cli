@@ -22,6 +22,8 @@ tag-sets:
   template-features:
     title: "Возможности шаблонизатора"
     tags:
+      core:
+        title: "Только ядро"
       common-placeholders:
         title: "Плейсхолдер секций и шаблонов"
       adaptive:
