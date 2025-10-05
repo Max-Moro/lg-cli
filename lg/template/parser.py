@@ -11,7 +11,7 @@ from typing import List, Optional
 
 from .nodes import TemplateNode, TemplateAST, TextNode
 from .registry import TemplateRegistry
-from .tokens import Token, TokenType
+from .tokens import Token
 from .types import ParsingRule, ParsingContext
 
 logger = logging.getLogger(__name__)
@@ -110,30 +110,16 @@ class ModularParser:
             ast: Текущий AST для добавления узла
         """
         current_token = context.current()
-        
-        if current_token.type == TokenType.TEXT.value:
-            # Обычный текст - создаем TextNode
-            text_value = current_token.value
-            context.advance()
-            
-            # Объединяем с предыдущим TextNode если возможно
-            if ast and isinstance(ast[-1], TextNode):
-                ast[-1] = TextNode(text=ast[-1].text + text_value)
-            else:
-                ast.append(TextNode(text=text_value))
-                
+
+        # Обрабатываем как текст
+        text_value = current_token.value
+        context.advance()
+
+        # Объединяем с предыдущим TextNode если возможно
+        if ast and isinstance(ast[-1], TextNode):
+            ast[-1] = TextNode(text=ast[-1].text + text_value)
         else:
-            # Неожиданный токен - создаем ошибку или обрабатываем как текст
-            logger.warning(f"Unexpected token: {current_token.type} at {current_token.line}:{current_token.column}")
-            
-            # Обрабатываем как текст
-            text_value = current_token.value
-            context.advance()
-            
-            if ast and isinstance(ast[-1], TextNode):
-                ast[-1] = TextNode(text=ast[-1].text + text_value)
-            else:
-                ast.append(TextNode(text=text_value))
+            ast.append(TextNode(text=text_value))
 
 
 def parse_template(text: str, registry: TemplateRegistry) -> TemplateAST:
