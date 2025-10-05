@@ -76,7 +76,6 @@ class ProcessorRule:
     """
     node_type: Type[TemplateNode]  # Тип узла, который обрабатывает правило
     processor_func: Callable[[ProcessingContext], str]  # Функция обработки (node, context)
-    priority: int = 50            # Приоритет (для случаев множественных обработчиков)
 
 
 @dataclass
@@ -86,7 +85,6 @@ class ResolverRule:
     """
     node_type: Type[TemplateNode]  # Тип узла, который резолвит правило
     resolver_func: Callable[[TemplateNode, str], TemplateNode]  # Функция резолвинга (node, context) -> resolved_node
-    priority: int = 50  # Приоритет (для случаев множественных резолверов)
 
 
 class ParsingContext:

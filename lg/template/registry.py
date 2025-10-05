@@ -125,15 +125,8 @@ class TemplateRegistry(TemplateRegistryProtocol):
             node_type = processor_rule.node_type
             if node_type not in self.processors:
                 self.processors[node_type] = []
-            
-            # Вставляем с учетом приоритета
             self.processors[node_type].append(processor_rule)
-            self.processors[node_type].sort(key=lambda r: r.priority, reverse=True)
-            
-            logger.debug(
-                f"Registered processor for {node_type.__name__} "
-                f"(priority: {processor_rule.priority})"
-            )
+            logger.debug(f"Registered processor for {node_type.__name__}")
     
     def _register_plugin_resolvers(self, plugin: TemplatePlugin) -> None:
         """Регистрирует резолверы узлов плагина."""
@@ -141,15 +134,8 @@ class TemplateRegistry(TemplateRegistryProtocol):
             node_type = resolver_rule.node_type
             if node_type not in self.resolvers:
                 self.resolvers[node_type] = []
-            
-            # Вставляем с учетом приоритета
             self.resolvers[node_type].append(resolver_rule)
-            self.resolvers[node_type].sort(key=lambda r: r.priority, reverse=True)
-            
-            logger.debug(
-                f"Registered resolver for {node_type.__name__} "
-                f"(priority: {resolver_rule.priority})"
-            )
+            logger.debug(f"Registered resolver for {node_type.__name__}")
 
     def initialize_plugins(self, handlers: TemplateProcessorHandlers) -> None:
         """

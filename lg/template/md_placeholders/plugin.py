@@ -113,8 +113,7 @@ class MdPlaceholdersPlugin(TemplatePlugin):
         return [
             ProcessorRule(
                 node_type=MarkdownFileNode,
-                processor_func=process_markdown_node,
-                priority=100
+                processor_func=process_markdown_node
             )
         ]
 

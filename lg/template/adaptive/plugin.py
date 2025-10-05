@@ -117,18 +117,15 @@ class AdaptivePlugin(TemplatePlugin):
         return [
             ProcessorRule(
                 node_type=ConditionalBlockNode,
-                processor_func=process_conditional_node,
-                priority=100
+                processor_func=process_conditional_node
             ),
             ProcessorRule(
                 node_type=ModeBlockNode,
-                processor_func=process_mode_node,
-                priority=100
+                processor_func=process_mode_node
             ),
             ProcessorRule(
                 node_type=CommentNode,
-                processor_func=process_comment_node,
-                priority=100
+                processor_func=process_comment_node
             ),
             # ElifBlockNode не обрабатывается отдельно - он часть ConditionalBlockNode
         ]

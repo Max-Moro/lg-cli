@@ -121,13 +121,11 @@ class CommonPlaceholdersPlugin(TemplatePlugin):
         return [
             ProcessorRule(
                 node_type=SectionNode,
-                processor_func=process_section_node,
-                priority=100
+                processor_func=process_section_node
             ),
             ProcessorRule(
                 node_type=IncludeNode,
-                processor_func=process_include_node,
-                priority=100
+                processor_func=process_include_node
             )
         ]
     
@@ -149,13 +147,11 @@ class CommonPlaceholdersPlugin(TemplatePlugin):
         return [
             ResolverRule(
                 node_type=SectionNode,
-                resolver_func=resolve_section_or_include,
-                priority=100
+                resolver_func=resolve_section_or_include
             ),
             ResolverRule(
                 node_type=IncludeNode,
-                resolver_func=resolve_section_or_include,
-                priority=100
+                resolver_func=resolve_section_or_include
             )
         ]
 
