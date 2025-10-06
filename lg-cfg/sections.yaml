@@ -29,6 +29,7 @@ src-short:
         allow:
           - "/cli.py"
           - "/types.py"
+          - "/run_context.py"
           - "/engine.py"
           - "/section_processor.py"
           - "/config/"
