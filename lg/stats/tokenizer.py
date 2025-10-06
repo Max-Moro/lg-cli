@@ -52,7 +52,7 @@ class TokenService:
     def enc(self) -> Encoding:
         """Ленивая инициализация энкодера."""
         if self._enc is None:
-            from lg.stats.load import get_model_info
+            from .load import get_model_info
             self._model_info = get_model_info(self.root, self.model_id)
             self._enc = self._get_encoder(self._model_info.encoder)
         return self._enc
@@ -66,7 +66,7 @@ class TokenService:
                 "токенайзер имеет только энкодер, но не имеет доступа к конфигурации AI-моделей"
             )
         if self._model_info is None:
-            from lg.stats.load import get_model_info
+            from .load import get_model_info
             self._model_info = get_model_info(self.root, self.model_id)
             self._enc = self._get_encoder(self._model_info.encoder)
         return self._model_info

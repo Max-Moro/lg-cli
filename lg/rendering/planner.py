@@ -6,7 +6,7 @@ from __future__ import annotations
 
 from typing import List
 
-from ..paths import build_labels
+from .labels import build_labels
 from ..template.context import TemplateContext
 from ..types import LANG_NONE, FileEntry, FileGroup, SectionManifest, SectionPlan
 

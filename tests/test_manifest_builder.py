@@ -5,7 +5,7 @@ from pathlib import Path
 from lg.cache.fs_cache import Cache
 from lg.config.adaptive_loader import AdaptiveConfigLoader
 from lg.config.adaptive_model import ModeOptions
-from lg.io.manifest import build_section_manifest
+from lg.filtering.manifest import build_section_manifest
 from lg.config import load_config
 from lg.run_context import RunContext
 from lg.stats import TokenService

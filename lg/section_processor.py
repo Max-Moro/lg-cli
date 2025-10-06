@@ -11,9 +11,8 @@ from typing import Dict
 
 from .adapters.processor import process_files
 from .config import Config, load_config
-from .io.manifest import build_section_manifest
-from .plan.planner import build_section_plan
-from .render.renderer import render_section
+from .filtering.manifest import build_section_manifest
+from .rendering import render_section, build_section_plan
 from .run_context import RunContext
 from .stats.collector import StatsCollector
 from .template.context import TemplateContext

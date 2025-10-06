@@ -3,7 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Dict, List, Literal, Any
 
-from ..io.model import FilterNode
+from ..filtering.model import FilterNode
 from ..types import PathLabelMode
 
 

@@ -45,6 +45,14 @@ tag-sets:
       adaptive:
         title: "Адаптивные возможности (HTML-комментарии)"
 
+  section-pipeline:
+    title: "Секционный пайплайн"
+    tags:
+      filtering:
+        title: "Фильтрация"
+      rendering:
+        title: "Рендеринг"
+
 # Глобальные теги (не входят в определенные наборы)
 tags:
   agent:

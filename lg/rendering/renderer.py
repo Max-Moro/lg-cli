@@ -6,7 +6,7 @@ from __future__ import annotations
 
 from typing import Dict, List
 
-from ..paths import render_file_marker
+from .labels import render_file_marker
 from ..types import LANG_NONE, ProcessedFile, RenderedSection, RenderBlock, SectionPlan
 
 

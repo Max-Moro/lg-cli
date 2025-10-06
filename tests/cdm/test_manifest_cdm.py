@@ -6,7 +6,7 @@ from pathlib import Path
 import pytest
 from ruamel.yaml import YAML
 
-from lg.io.manifest import build_section_manifest
+from lg.filtering.manifest import build_section_manifest
 from lg.config import load_config
 from lg.template.context import TemplateContext
 from lg.types import SectionRef

@@ -6,7 +6,7 @@ Mapping of file names and extensions to languages for markdown fencing.
 from pathlib import Path
 from typing import Final
 
-from lg.types import LangName
+from ..types import LangName
 
 # Основной словарь: name (lowercase) или extension → fence language
 LANG_MAPPING: Final[dict[str, str]] = {

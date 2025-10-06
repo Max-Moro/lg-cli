@@ -16,7 +16,7 @@ from .model import FilterNode
 from ..adapters.registry import get_adapter_for_path
 from ..config import SectionCfg, EmptyPolicy
 from ..config.paths import is_cfg_relpath
-from ..render import get_language_for_file
+from ..rendering import get_language_for_file
 from ..template.context import TemplateContext
 from ..types import FileEntry, SectionManifest, SectionRef
 from ..vcs import VcsProvider, NullVcs

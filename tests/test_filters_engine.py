@@ -1,6 +1,6 @@
 from pathlib import Path
-from lg.io.filters import FilterEngine
-from lg.io.model import FilterNode
+from lg.filtering.filters import FilterEngine
+from lg.filtering.model import FilterNode
 from lg.engine import run_render
 from lg.types import RunOptions
 

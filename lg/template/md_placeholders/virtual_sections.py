@@ -10,7 +10,7 @@ from typing import Optional
 from .heading_context import HeadingContext
 from .nodes import MarkdownFileNode
 from ...config.model import SectionCfg, AdapterConfig
-from ...io.model import FilterNode
+from ...filtering.model import FilterNode
 from ...markdown import MarkdownCfg
 from ...types import SectionRef
 

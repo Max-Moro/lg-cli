@@ -241,7 +241,7 @@ def _parse_target(target: str, root: Optional[Path] = None) -> TargetSpec:
     Returns:
         Спецификация цели
     """
-    from lg.template.common import CTX_SUFFIX
+    from .template.common import CTX_SUFFIX
     
     if root is None:
         root = Path.cwd().resolve()

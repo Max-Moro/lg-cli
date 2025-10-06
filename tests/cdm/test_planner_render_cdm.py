@@ -3,10 +3,10 @@ from __future__ import annotations
 from pathlib import Path
 
 from lg.adapters.processor import process_files
-from lg.io.manifest import build_section_manifest
+from lg.filtering.manifest import build_section_manifest
 from lg.config import load_config
-from lg.plan.planner import build_section_plan
-from lg.render.renderer import render_section
+from lg.rendering.planner import build_section_plan
+from lg.rendering.renderer import render_section
 from lg.template.context import TemplateContext
 from lg.types import SectionRef
 from .conftest import mk_run_ctx

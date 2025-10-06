@@ -13,31 +13,21 @@ src:
           - "/engine.py"
           - "/types.py"
           - "/run_context.py"
+          - "/template/context.py"
           - "/section_processor.py"
           - "/config/"
-          - "/adapters/"
-          - "/markdown/"
+        when:
+          - condition: "TAGSET:section-pipeline:filtering"
+            allow: ["/filtering/"]
+          - condition: "TAGSET:section-pipeline:rendering"
+            allow: ["/rendering/"]
         children:
           config:
             mode: allow
             allow:
               - "/load.py"
               - "/model.py"
-          adapters:
-            mode: allow
-            allow:
-              - "/__init__.py"
-              - "/registry.py"
-              - "/base.py"
-              - "/processor.py"
-              - "/markdown.py"
-          markdown:
-            mode: allow
-            when:
-              - condition: "TAGSET:markdown-features:common"
-                allow: ["/*.py"]
-              - condition: "TAGSET:markdown-features:adaptive"
-                allow: ["/templating/"]
+
 
 tests:
   extensions: [".py"]
@@ -54,7 +44,7 @@ tests:
             allow:
               - "conftest.py"
               - "/infrastructure/"
-          - condition: "TAGSET:markdown-features:common"
-            allow: ["/markdown/"]
-          - condition: "TAGSET:markdown-features:adaptive"
-            allow: ["/adaptive/test_markdown_templating.py"]
+          - condition: "TAGSET:section-pipeline:filtering"
+            allow: ["/test_filters_engine.py"]
+          - condition: "TAGSET:section-pipeline:rendering"
+            allow: ["/test_path_labels.py"]

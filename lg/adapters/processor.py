@@ -11,7 +11,7 @@ from typing import Dict, List, cast
 from ..adapters.base import BaseAdapter
 from ..adapters.context import LightweightContext
 from ..adapters.registry import get_adapter_for_path
-from ..io.fs import read_text
+from ..filtering.fs import read_text
 from ..template.context import TemplateContext
 from ..types import ProcessedFile, SectionPlan
 
