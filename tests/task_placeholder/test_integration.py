@@ -191,8 +191,12 @@ class TestTaskCLIIntegration:
         
         assert result.returncode == 0
         data = jload(result.stdout)
+        # Проверяем API v4 структуру
         assert "target" in data
-        assert "sections" in data
+        assert "protocol" in data
+        assert data["protocol"] >= 1
+        assert "total" in data
+        assert "files" in data
 
 
 class TestTaskWithOtherPlaceholders:

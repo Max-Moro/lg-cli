@@ -72,11 +72,11 @@ class TaskPlaceholderPlugin(TemplatePlugin):
             # Получаем task_text из RunContext через TemplateContext
             task_text = self.template_ctx.run_ctx.options.task_text
             
-            # Если task_text задан и непустой - возвращаем его
-            if task_text:
+            # Если task_text задан и не состоит только из пробелов - возвращаем его
+            if task_text and task_text.strip():
                 return task_text
             
-            # Если task_text не задан и есть default_prompt - возвращаем его
+            # Если task_text не задан (или whitespace-only) и есть default_prompt - возвращаем его
             if node.default_prompt is not None:
                 return node.default_prompt
             

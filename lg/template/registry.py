@@ -59,6 +59,7 @@ class TemplateRegistry(TemplateRegistryProtocol):
         text_token = TokenSpec(
             name=TokenType.TEXT.value,
             pattern=re.compile(r'(?:\$(?!\{)|\{(?![%#])|[^${])+'),  # Не $ перед {, не { перед % или #, или любой другой символ
+            priority=1  # Самый низкий приоритет - проверяется последним
         )
         self.tokens[TokenType.TEXT.value] = text_token
 
@@ -189,25 +190,15 @@ class TemplateRegistry(TemplateRegistryProtocol):
     
     def get_tokens_by_priority(self) -> List[TokenSpec]:
         """
-        Возвращает токены в правильном порядке для контекстуального лексера.
+        Возвращает токены отсортированные по приоритету.
         
-        Специальные токены (открывающие/закрывающие) должны проверяться раньше TEXT.
+        Токены с большим priority проверяются раньше.
+        Это важно для корректного распознавания ключевых слов vs идентификаторов.
         
         Returns:
-            Список спецификаций токенов в правильном порядке
+            Список спецификаций токенов в порядке убывания приоритета
         """
-        # Разделяем токены по типам
-        special_tokens = []
-        text_tokens = []
-        
-        for token_spec in self.tokens.values():
-            if token_spec.name == TokenType.TEXT.value:
-                text_tokens.append(token_spec)
-            else:
-                special_tokens.append(token_spec)
-        
-        # Специальные токены первыми, TEXT токены последними
-        return special_tokens + text_tokens
+        return sorted(self.tokens.values(), key=lambda spec: spec.priority, reverse=True)
     
     def register_tokens_in_context(self, context_name: str, token_names: List[str]) -> None:
         """

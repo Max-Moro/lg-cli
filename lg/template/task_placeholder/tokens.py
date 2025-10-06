@@ -19,12 +19,14 @@ def get_task_token_specs() -> List[TokenSpec]:
         TokenSpec(
             name="TASK_KEYWORD",
             pattern=re.compile(r'\btask\b'),
+            priority=60,  # Выше дефолтного 50 для IDENTIFIER
         ),
         
         # Ключевое слово prompt
         TokenSpec(
             name="PROMPT_KEYWORD",
             pattern=re.compile(r'\bprompt\b'),
+            priority=60,  # Выше дефолтного 50 для IDENTIFIER
         ),
         
         # Строковый литерал в двойных кавычках с escape-последовательностями

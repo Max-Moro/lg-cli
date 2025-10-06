@@ -41,11 +41,13 @@ def get_md_token_specs() -> List[TokenSpec]:
         TokenSpec(
             name="BOOL_TRUE",
             pattern=re.compile(r'\btrue\b'),
+            priority=60,  # Выше дефолтного 50
         ),
         
         TokenSpec(
             name="BOOL_FALSE",
             pattern=re.compile(r'\bfalse\b'),
+            priority=60,  # Выше дефолтного 50
         ),
         
         # Числа для параметров (например, level:3)
