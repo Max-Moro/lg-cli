@@ -10,13 +10,12 @@
 
 import pytest
 
+from lg.template.context import TemplateContext
 from lg.template.lexer import ContextualLexer
+from lg.template.nodes import TextNode
 from lg.template.parser import ModularParser
 from lg.template.registry import TemplateRegistry
 from lg.template.task_placeholder.nodes import TaskNode
-from lg.template.nodes import TextNode
-from lg.template.task_placeholder import TaskPlaceholderPlugin
-from lg.template.context import TemplateContext
 from tests.infrastructure import make_run_context
 
 

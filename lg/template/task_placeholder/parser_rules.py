@@ -13,7 +13,7 @@ from typing import List, Optional
 from .nodes import TaskNode
 from ..nodes import TemplateNode
 from ..tokens import ParserError
-from ..types import PluginPriority, ParsingRule, ParsingContext
+from ..types import ParsingRule, ParsingContext
 
 
 def parse_task_placeholder(context: ParsingContext) -> Optional[TemplateNode]:
@@ -142,7 +142,8 @@ def get_task_parser_rules() -> List[ParsingRule]:
     return [
         ParsingRule(
             name="parse_task_placeholder",
-            priority=PluginPriority.PLACEHOLDER,
+            # Приоритет выше чем у обычных плейсхолдеров, чтобы task обрабатывался первым
+            priority=91,
             parser_func=parse_task_placeholder
         )
     ]

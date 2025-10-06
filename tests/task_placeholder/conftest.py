@@ -2,8 +2,9 @@
 Фикстуры для тестов task_placeholder.
 """
 
-import pytest
 from pathlib import Path
+
+import pytest
 
 from tests.infrastructure import write, create_basic_sections_yaml
 

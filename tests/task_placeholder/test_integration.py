@@ -7,8 +7,6 @@
 - Взаимодействие с другими плейсхолдерами
 """
 
-import pytest
-
 from tests.infrastructure import write, render_template, make_run_options, run_cli, jload
 
 

@@ -36,7 +36,7 @@ class ParsingRule:
     Правило парсинга для регистрации в парсере.
     """
     name: str                    # Имя правила
-    priority: PluginPriority     # Приоритет применения
+    priority: int     # Приоритет применения
     parser_func: Callable[[ParsingContext], Optional[TemplateNode]]  # Функция парсинга
     enabled: bool = True        # Включено ли правило
 
