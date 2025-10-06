@@ -26,7 +26,8 @@ from lg.vcs import NullVcs
 def make_run_options(
     model: str = "o3",
     modes: Optional[Dict[str, str]] = None,
-    extra_tags: Optional[Set[str]] = None
+    extra_tags: Optional[Set[str]] = None,
+    task_text: Optional[str] = None
 ) -> RunOptions:
     """
     Создает RunOptions с указанными параметрами.
@@ -37,6 +38,7 @@ def make_run_options(
         model: Модель для токенизации
         modes: Словарь активных режимов {modeset: mode}  
         extra_tags: Дополнительные теги
+        task_text: Текст текущей задачи
         
     Returns:
         Настроенный RunOptions
@@ -44,7 +46,8 @@ def make_run_options(
     return RunOptions(
         model=ModelName(model),
         modes=modes or {},
-        extra_tags=extra_tags or set()
+        extra_tags=extra_tags or set(),
+        task_text=task_text
     )
 
 
