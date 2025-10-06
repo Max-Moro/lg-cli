@@ -37,8 +37,8 @@ def parse_md_placeholder(context: ParsingContext) -> Optional[TemplateNode]:
     # Потребляем ${
     context.consume("PLACEHOLDER_START")
     
-    # Проверяем префикс 'md'
-    if not context.match("MD_PREFIX", "IDENTIFIER"):
+    # Проверяем префикс 'md' через IDENTIFIER
+    if not context.match("IDENTIFIER"):
         context.position = saved_position
         return None
     
@@ -269,8 +269,8 @@ def _parse_parameter(context: ParsingContext) -> Tuple[str, Any]:
     while context.match("WHITESPACE"):
         context.advance()
     
-    # Парсим имя параметра
-    if not context.match("IDENTIFIER", "IF"):  # IF - специальный параметр
+    # Парсим имя параметра через IDENTIFIER (включая 'if')
+    if not context.match("IDENTIFIER"):
         raise ParserError("Expected parameter name", context.current())
     
     param_token = context.advance()

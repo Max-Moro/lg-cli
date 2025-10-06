@@ -19,12 +19,6 @@ def get_md_token_specs() -> List[TokenSpec]:
     Эти токены будут добавлены в существующий контекст 'placeholder'.
     """
     return [
-        # Префикс md для распознавания MD-плейсхолдеров
-        TokenSpec(
-            name="MD_PREFIX",
-            pattern=re.compile(r'md\b'),  # \b обеспечивает границу слова
-        ),
-        
         # Решётка # (для якорей md:path#anchor)
         TokenSpec(
             name="HASH",

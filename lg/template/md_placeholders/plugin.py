@@ -57,9 +57,10 @@ class MdPlaceholdersPlugin(TemplatePlugin):
     def initialize(self) -> None:
         """Добавляет md-специфичные токены в контекст плейсхолдеров."""
         # Добавляем токены в существующий контекст плейсхолдеров
+        # Не добавляем MD_PREFIX, так как 'md' проверяется через IDENTIFIER
         self.registry.register_tokens_in_context(
-            "placeholder",  # Используем существующий контекст
-            ["MD_PREFIX", "HASH", "COMMA", "BOOL_TRUE", "BOOL_FALSE", "NUMBER", "GLOB_STAR"]
+            "placeholder",
+            ["HASH", "COMMA", "BOOL_TRUE", "BOOL_FALSE", "NUMBER", "GLOB_STAR"]
         )
     
     def register_tokens(self) -> List[TokenSpec]:

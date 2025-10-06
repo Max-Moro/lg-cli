@@ -45,10 +45,10 @@ class TaskPlaceholderPlugin(TemplatePlugin):
     
     def initialize(self) -> None:
         """Добавляет task-специфичные токены в контекст плейсхолдеров."""
-        # Добавляем токены в существующий контекст плейсхолдеров
+        # Добавляем только STRING_LITERAL, так как task/prompt проверяются через IDENTIFIER
         self.registry.register_tokens_in_context(
             "placeholder",
-            ["TASK_KEYWORD", "PROMPT_KEYWORD", "STRING_LITERAL"]
+            ["STRING_LITERAL"]
         )
     
     def register_tokens(self) -> List[TokenSpec]:

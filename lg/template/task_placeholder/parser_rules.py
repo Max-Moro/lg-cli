@@ -34,8 +34,13 @@ def parse_task_placeholder(context: ParsingContext) -> Optional[TemplateNode]:
     while context.match("WHITESPACE"):
         context.advance()
     
-    # Проверяем ключевое слово 'task'
-    if not context.match("TASK_KEYWORD"):
+    # Проверяем ключевое слово 'task' через IDENTIFIER
+    if not context.match("IDENTIFIER"):
+        context.position = saved_position
+        return None
+    
+    task_token = context.current()
+    if task_token.value != "task":
         context.position = saved_position
         return None
     
@@ -56,8 +61,12 @@ def parse_task_placeholder(context: ParsingContext) -> Optional[TemplateNode]:
             context.advance()
         
         # Ожидаем 'prompt'
-        if not context.match("PROMPT_KEYWORD"):
+        if not context.match("IDENTIFIER"):
             raise ParserError("Expected 'prompt' after ':' in task placeholder", context.current())
+        
+        prompt_token = context.current()
+        if prompt_token.value != "prompt":
+            raise ParserError("Expected 'prompt' after ':' in task placeholder", prompt_token)
         context.advance()
         
         # Пропускаем пробелы
@@ -138,11 +147,14 @@ def _parse_string_literal(literal: str) -> str:
 def get_task_parser_rules() -> List[ParsingRule]:
     """
     Возвращает правила парсинга для task-плейсхолдеров.
+    
+    Приоритет выше обычных PLACEHOLDER (95 > 90), чтобы
+    task-плейсхолдеры обрабатывались раньше общих секций.
     """
     return [
         ParsingRule(
             name="parse_task_placeholder",
-            priority=PluginPriority.PLACEHOLDER,
+            priority=95,  # Выше PLACEHOLDER (90), но ниже DIRECTIVE (100)
             parser_func=parse_task_placeholder
         )
     ]
