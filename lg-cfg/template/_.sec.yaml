@@ -16,6 +16,9 @@ src:
           - "/config/"
           - "/adapters/"
           - "/template/"
+        when:
+          - condition: "TAGSET:template-features:conditions"
+            allow: ["/conditions/"]
         children:
           config:
             mode: allow
