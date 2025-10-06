@@ -328,10 +328,12 @@ def create_template_processor(run_ctx: RunContext) -> TemplateProcessor:
     from .common_placeholders import CommonPlaceholdersPlugin
     from .adaptive import AdaptivePlugin
     from .md_placeholders import MdPlaceholdersPlugin
+    from .task_placeholder import TaskPlaceholderPlugin
     
     registry.register_plugin(CommonPlaceholdersPlugin(processor.template_ctx))
     registry.register_plugin(AdaptivePlugin(processor.template_ctx))
     registry.register_plugin(MdPlaceholdersPlugin(processor.template_ctx))
+    registry.register_plugin(TaskPlaceholderPlugin(processor.template_ctx))
     
     # Инициализируем плагины после регистрации всех компонентов
     registry.initialize_plugins(processor.handlers)

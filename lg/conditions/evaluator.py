@@ -15,6 +15,7 @@ from .model import (
     TagCondition,
     TagSetCondition,
     ScopeCondition,
+    TaskCondition,
     GroupCondition,
     NotCondition,
     BinaryCondition,
@@ -65,6 +66,8 @@ class ConditionEvaluator:
             return self._evaluate_tagset(cast(TagSetCondition, condition))
         elif condition_type == ConditionType.SCOPE:
             return self._evaluate_scope(cast(ScopeCondition, condition))
+        elif condition_type == ConditionType.TASK:
+            return self._evaluate_task(cast(TaskCondition, condition))
         elif condition_type == ConditionType.GROUP:
             return self._evaluate_group(cast(GroupCondition, condition))
         elif condition_type == ConditionType.NOT:
@@ -102,6 +105,14 @@ class ConditionEvaluator:
         Зависит от текущего контекста выполнения (локальный/родительский скоуп).
         """
         return self.context.is_scope_condition_met(condition.scope_type)
+
+    def _evaluate_task(self, condition: TaskCondition) -> bool:
+        """
+        Вычисляет условие task.
+
+        Истинно, если задан непустой текст задачи.
+        """
+        return self.context.is_task_provided()
 
     def _evaluate_group(self, condition: GroupCondition) -> bool:
         """

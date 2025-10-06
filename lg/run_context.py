@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Dict, Set
+from typing import Dict, Optional, Set
 
 from .cache.fs_cache import Cache
 from .config.adaptive_loader import AdaptiveConfigLoader
@@ -26,6 +26,7 @@ class ConditionContext:
     active_tags: Set[str] = field(default_factory=set)
     tagsets: Dict[str, Set[str]] = field(default_factory=dict)
     origin: str = ""
+    task_text: Optional[str] = None
 
     def is_tag_active(self, tag_name: str) -> bool:
         """Проверяет, активен ли указанный тег."""
@@ -72,6 +73,16 @@ class ConditionContext:
         elif scope_type == "parent":
             return bool(self.origin and self.origin != "self")
         return False
+
+    def is_task_provided(self) -> bool:
+        """
+        Проверяет, задан ли непустой текст задачи.
+        
+        Returns:
+            True если task_text не None и не пустая строка
+        """
+        return bool(self.task_text and self.task_text.strip())
+
 
 @dataclass(frozen=True)
 class RunContext:

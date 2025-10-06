@@ -64,7 +64,7 @@ class ConditionLexer:
     
     # Ключевые слова для постпроцессинга
     KEYWORDS = {
-        'TAGSET', 'scope', 'tag', 'AND', 'OR', 'NOT'
+        'TAGSET', 'scope', 'tag', 'task', 'AND', 'OR', 'NOT'
     }
     
     def __init__(self):

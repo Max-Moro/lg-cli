@@ -27,6 +27,7 @@ from .model import (
     TagCondition,
     TagSetCondition,
     ScopeCondition,
+    TaskCondition,
     GroupCondition,
     NotCondition,
     BinaryCondition,
@@ -136,6 +137,10 @@ class ConditionParser:
         # scope:type
         if self._match_keyword("scope"):
             return self._parse_scope_condition()
+        
+        # task (условие без параметров)
+        if self._match_keyword("task"):
+            return TaskCondition()
         
         # Если ничего не подошло, это ошибка
         current = self._current_token()

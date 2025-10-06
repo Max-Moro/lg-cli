@@ -3,7 +3,7 @@ from __future__ import annotations
 import argparse
 import sys
 from pathlib import Path
-from typing import Any, Dict
+from typing import Any, Dict, Optional
 
 from .diag import run_diag
 from .engine import run_report, run_render
@@ -43,6 +43,14 @@ def _build_parser() -> argparse.ArgumentParser:
             "--tags",
             help="дополнительные теги через запятую (например: python,tests,minimal)",
         )
+        sp.add_argument(
+            "--task",
+            metavar="TEXT|@FILE|-",
+            help=(
+                "текст текущей задачи: прямая строка, @file для чтения из файла, "
+                "или - для чтения из stdin"
+            ),
+        )
 
     sp_report = sub.add_parser("report", help="JSON-отчёт: статистика")
     add_common(sp_report)
@@ -81,10 +89,14 @@ def _opts(ns: argparse.Namespace) -> RunOptions:
     modes = _parse_modes(getattr(ns, "mode", None))
     extra_tags = _parse_tags(getattr(ns, "tags", None))
     
+    # Парсим task
+    task_text = _parse_task(getattr(ns, "task", None))
+    
     return RunOptions(
         model=ns.model,
         modes=modes,
         extra_tags=extra_tags,
+        task_text=task_text,
     )
 
 
@@ -109,6 +121,46 @@ def _parse_tags(tags_str: str | None) -> set[str]:
         return set()
     
     return {tag.strip() for tag in tags_str.split(",") if tag.strip()}
+
+
+def _parse_task(task_arg: Optional[str]) -> Optional[str]:
+    """
+    Парсит аргумент --task.
+    
+    Поддерживает три формата:
+    - Прямая строка: "текст задачи"
+    - Из файла: @path/to/file.txt
+    - Из stdin: -
+    
+    Args:
+        task_arg: Значение аргумента --task или None
+        
+    Returns:
+        Текст задачи или None
+    """
+    if not task_arg:
+        return None
+    
+    # Чтение из stdin
+    if task_arg == "-":
+        import sys
+        content = sys.stdin.read().strip()
+        return content if content else None
+    
+    # Чтение из файла
+    if task_arg.startswith("@"):
+        file_path = Path(task_arg[1:])
+        if not file_path.exists():
+            raise ValueError(f"Task file not found: {file_path}")
+        try:
+            content = file_path.read_text(encoding="utf-8").strip()
+            return content if content else None
+        except Exception as e:
+            raise ValueError(f"Failed to read task file {file_path}: {e}")
+    
+    # Прямая строка
+    content = task_arg.strip()
+    return content if content else None
 
 
 def main(argv: list[str] | None = None) -> int:

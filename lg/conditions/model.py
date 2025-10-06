@@ -17,6 +17,7 @@ class ConditionType(Enum):
     TAG = "tag"
     TAGSET = "tagset"
     SCOPE = "scope"
+    TASK = "task"
     AND = "and"
     OR = "or"
     NOT = "not"
@@ -97,6 +98,21 @@ class ScopeCondition(Condition):
 
 
 @dataclass
+class TaskCondition(Condition):
+    """
+    Условие наличия task: task
+    
+    Истинно, если задан непустой текст задачи через --task.
+    """
+    
+    def get_type(self) -> ConditionType:
+        return ConditionType.TASK
+    
+    def _to_string(self) -> str:
+        return "task"
+
+
+@dataclass
 class GroupCondition(Condition):
     """
     Группа условий в скобках: (condition)
@@ -154,7 +170,20 @@ AnyCondition = Union[
     TagCondition,
     TagSetCondition,
     ScopeCondition,
+    TaskCondition,
     GroupCondition,
     NotCondition,
     BinaryCondition,
+]
+
+__all__ = [
+    "Condition",
+    "ConditionType",
+    "TagCondition",
+    "TagSetCondition",
+    "ScopeCondition",
+    "TaskCondition",
+    "GroupCondition",
+    "NotCondition",
+    "BinaryCondition",
 ]

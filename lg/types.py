@@ -21,6 +21,8 @@ class RunOptions:
     # Адаптивные возможности
     modes: Dict[str, str] = field(default_factory=dict)  # modeset -> mode
     extra_tags: Set[str] = field(default_factory=set)  # дополнительные теги
+    # Task context
+    task_text: Optional[str] = None  # текст текущей задачи из --task
 
 
 # ---- Спецификация цели ----
