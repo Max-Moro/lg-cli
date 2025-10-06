@@ -58,10 +58,11 @@ tests:
     children:
       tests:
         mode: allow
-        allow:
-          - "/conftest.py"
-          - "/infrastructure/"
         when:
+          - condition: "tag:tests-infra"
+            allow:
+              - "conftest.py"
+              - "/infrastructure/"
           - condition: "TAGSET:template-features:common-placeholders"
             allow: ["/common_placeholders/"]
           - condition: "TAGSET:template-features:adaptive"

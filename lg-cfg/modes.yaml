@@ -24,7 +24,7 @@ mode-sets:
       
       testing:
         title: "Написание тестов"
-        tags: [tests]
+        tags: [tests, tests-infra]
       
       review:
         title: "Кодревью"

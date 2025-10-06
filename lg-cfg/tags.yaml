@@ -16,6 +16,8 @@ tag-sets:
         title: "Продуктовый код"
       tests:
         title: "Тестовый код"
+      tests-infra:
+        title: "Тестовая инфраструктура"
       generated:
         title: "Сгенерированный код"
     

@@ -48,9 +48,11 @@ tests:
     children:
       tests:
         mode: allow
-        allow:
-          - "/conftest.py"
         when:
+          - condition: "tag:tests-infra"
+            allow:
+              - "conftest.py"
+              - "/infrastructure/"
           - condition: "TAGSET:markdown-features:common"
             allow: ["/markdown/"]
           - condition: "TAGSET:markdown-features:adaptive"
