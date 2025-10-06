@@ -16,6 +16,7 @@ src:
           - "/template/context.py"
           - "/section_processor.py"
           - "/config/"
+          - "/filtering/manifest.py"
         when:
           - condition: "TAGSET:section-pipeline:filtering"
             allow: ["/filtering/"]
