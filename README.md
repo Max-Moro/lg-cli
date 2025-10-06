@@ -168,11 +168,20 @@ ${core-model-src}
 ## Доп. секция
 
 ${sub-fold/extra/bar}
+
+## Текущая задача
+
+${task}
 ```
 
 Секции из `sections.yaml` доступны напрямую (`${docs}`),
 а из фрагментов — по иерархическому пути:
 файл `sub-fold/extra.sec.yaml` → секция `bar` → `${sub-fold/extra/bar}`.
+
+Специальный плейсхолдер `${task}` вставляет текст из аргумента `--task`:
+* `${task}` — простая вставка (пустая строка если не задано)
+* `${task:prompt:"дефолтный текст"}` — с дефолтным значением
+* `{% if task %}...{% endif %}` — условная вставка блока
 
 *Подробнее:* [docs/templates.md](docs/templates.md).
 
@@ -287,6 +296,15 @@ lg render ctx:onboarding --mode changes > prompt.md
 # JSON-отчёт со статистикой токенов для выбранной модели
 lg report onboarding --model gpt-4o > report.json
 
+# Рендерим контекст с описанием текущей задачи
+lg render ctx:dev --task "Реализовать кеширование результатов"
+
+# Многострочная задача через stdin
+echo -e "Задачи:\n- Исправить баг #123\n- Добавить тесты" | lg render ctx:dev --task -
+
+# Задача из файла
+lg render ctx:dev --task @.current-task.txt
+
 # Диагностика
 lg diag
 lg diag --rebuild-cache
@@ -295,12 +313,6 @@ lg diag --rebuild-cache
 lg list contexts
 lg list sections
 ```
-
-Пара полезных флагов:
-
-* `--mode changes` — берёт `staged + unstaged + untracked` (нужен `git`).
-* `--no-fence` — форс-отключение code fences на выходе (поведение секций переопределяется).
-* `--model` — выбирает энкодер/лимит окна для расчёта токенов (`tiktoken` обязателен для `report`).
 
 ---
 
