@@ -60,7 +60,7 @@ tests:
         when:
           - condition: "tag:tests-infra"
             allow:
-              - "conftest.py"
+              - "/conftest.py"
               - "/infrastructure/"
           - condition: "TAGSET:template-features:common-placeholders"
             allow: ["/common_placeholders/"]

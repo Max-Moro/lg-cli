@@ -51,7 +51,7 @@ tests:
         when:
           - condition: "tag:tests-infra"
             allow:
-              - "conftest.py"
+              - "/conftest.py"
               - "/infrastructure/"
           - condition: "TAGSET:markdown-features:common"
             allow: ["/markdown/"]
