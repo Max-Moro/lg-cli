@@ -47,10 +47,6 @@ class FilterNode:
     children: Dict[str, "FilterNode"] = field(default_factory=dict)
     conditional_filters: List[ConditionalFilter] = field(default_factory=list)
 
-    def empty_allow_warning(self) -> bool:
-        """True, если mode == 'allow' и список allow пуст — повод предупредить."""
-        return self.mode == "allow" and not self.allow
-
     @classmethod
     def from_dict(cls, obj: dict, path: str = "") -> FilterNode:
         """
@@ -80,12 +76,6 @@ class FilterNode:
             block=obj.get("block", []),
             conditional_filters=conditional_filters,
         )
-        if node.empty_allow_warning():
-            import logging
-            logging.warning(
-                "Filter at '%s' has mode=allow but empty allow-list → everything denied",
-                path or "/",
-            )
 
         for child_name, child_obj in obj.get("children", {}).items():
             node.children[child_name] = cls.from_dict(
