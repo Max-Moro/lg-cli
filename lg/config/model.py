@@ -83,7 +83,7 @@ class SectionCfg:
     )
     skip_empty: bool = True                  # глобальное правило
     code_fence: bool = True                  # оборачивать файлы в ```{lang}
-    path_labels: PathLabelMode = "auto"      # Как печатать файл-маркеры в секции
+    path_labels: PathLabelMode = "scope_relative"      # Как печатать файл-маркеры в секции
 
     # Конфиги адаптеров с поддержкой условных опций: имя_адаптера → AdapterConfig
     adapters: Dict[str, AdapterConfig] = field(default_factory=dict)
@@ -137,9 +137,9 @@ class SectionCfg:
             targets.append(TargetRule(match=match_list, adapter_cfgs=adapter_cfgs))
 
         # path_labels
-        path_labels = str(node.get("path_labels", "auto")).strip().lower()
-        if path_labels not in ("auto", "relative", "basename", "off"):
-            raise RuntimeError(f"Section '{name}': invalid path_labels='{path_labels}' (allowed: auto|relative|basename|off)")
+        path_labels = str(node.get("path_labels", "scope_relative")).strip().lower()
+        if path_labels not in ("scope_relative", "relative", "basename", "off"):
+            raise RuntimeError(f"Section '{name}': invalid path_labels='{path_labels}' (allowed: scope_relative|relative|basename|off)")
 
         return SectionCfg(
             extensions=exts,

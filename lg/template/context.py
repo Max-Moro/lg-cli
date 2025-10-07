@@ -183,6 +183,15 @@ class TemplateContext:
         """
         self.current_state.current_virtual_section = None
 
+    def get_origin(self) -> str:
+        """
+        Возвращает текущий origin из состояния шаблона.
+        
+        Returns:
+            Текущий origin ("self" для корневого скоупа или путь к подобласти)
+        """
+        return self.current_state.origin
+
     def evaluate_condition(self, condition_ast) -> bool:
         """
         Вычисляет условие в текущем контексте.

@@ -43,9 +43,11 @@ def build_section_plan(manifest: SectionManifest, template_ctx: TemplateContext)
     groups = _group_files_by_language(files, use_fence)
     
     # Строим метки файлов
+    origin = template_ctx.get_origin()
     labels = build_labels(
         (f.rel_path for f in files),
-        mode=manifest.path_labels
+        mode=manifest.path_labels,
+        origin=origin
     )
     
     return SectionPlan(

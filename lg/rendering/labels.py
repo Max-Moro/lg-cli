@@ -89,18 +89,19 @@ def _minimal_unique_suffixes(paths: List[List[str]]) -> List[str]:
     return out
 
 
-def build_labels(rel_paths: Iterable[str], *, mode: PathLabelMode) -> Dict[str, str]:
+def build_labels(rel_paths: Iterable[str], *, mode: PathLabelMode, origin: str = "self") -> Dict[str, str]:
     """
     Построить карту {rel_path → label} с учётом выбранного режима.
     Аргумент rel_paths — POSIX-пути (как в Manifest.rel_path).
+    
+    Args:
+        rel_paths: Итерируемая коллекция относительных путей
+        mode: Режим отображения меток
+        origin: Текущий origin из template context ("self" или путь к подобласти)
     """
     rel_list = list(rel_paths)
     if not rel_list:
         return {}
-
-    # В auto для одиночного файла метку не укорачиваем — сохраняем полный относительный путь.
-    if mode == "auto" and len(rel_list) == 1:
-        return {rel_list[0]: rel_list[0]}
 
     if mode in ("relative", "off"):
         # Тривиально — метка равна исходному относительному пути
@@ -112,18 +113,28 @@ def build_labels(rel_paths: Iterable[str], *, mode: PathLabelMode) -> Dict[str, 
         labels = _minimal_unique_suffixes(parts_all)
         return {p: lbl for p, lbl in zip(rel_list, labels)}
 
-    # mode == "auto": СТРОГО снимаем общий префикс директорий у всех,
-    # не делая индивидуальных укорочений. Это сохраняет адресуемость для diff.
-    pref = _common_dir_prefix(parts_all)
-    if pref:
-        cut_len = len(pref)
-        stripped = [path[cut_len:] if len(path) > cut_len else path for path in parts_all]
-    else:
-        stripped = parts_all
+    # mode == "scope_relative": снимаем origin (если не "self")
+    if mode == "scope_relative":
+        if origin and origin != "self":
+            # Снимаем origin префикс со всех путей
+            origin_prefix = origin.rstrip("/") + "/"
+            stripped_paths = []
+            for p in rel_list:
+                if p.startswith(origin_prefix):
+                    stripped_paths.append(p[len(origin_prefix):])
+                elif p == origin.rstrip("/"):
+                    # Путь совпадает с origin (без слэша)
+                    stripped_paths.append(_split(p)[-1] if _split(p) else p)
+                else:
+                    # Путь не начинается с origin - оставляем как есть
+                    stripped_paths.append(p)
+            return {p: lbl for p, lbl in zip(rel_list, stripped_paths)}
+        else:
+            # origin == "self" или пустой — эквивалентно "relative"
+            return {p: p for p in rel_list}
 
-    # В auto используем ПОЛНЫЙ остаток пути (единый для всех) → стабильные и полные метки.
-    labels_full = [_join(parts) for parts in stripped]
-    return {p: lbl for p, lbl in zip(rel_list, labels_full)}
+    # Не должны сюда попасть, но на всякий случай
+    return {p: p for p in rel_list}
 
 def render_file_marker(label: str) -> str:
     """
