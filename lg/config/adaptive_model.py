@@ -299,9 +299,6 @@ class ModeOptions:
     # Инструментальные возможности
     allow_tools: bool = False  # разрешение использования инструментов в агентном режиме
 
-    # Оборачивать файлы в fenced-блоки
-    code_fence: bool = True
-
     # Дополнительные опции можно добавлять по мере необходимости
 
     @classmethod
@@ -331,11 +328,10 @@ class ModeOptions:
             # Мержим опции в типизированный датакласс
             for option_key, option_value in mode.options.items():
                 if option_key == "vcs_mode" and isinstance(option_value, str):
-                    result.vcs_mode = option_value
+                    if option_value in ("all", "changes"):
+                        result.vcs_mode = option_value  # type: ignore
                 elif option_key == "allow_tools" and isinstance(option_value, bool):
                     result.allow_tools = option_value
-                elif option_key == "code_fence" and isinstance(option_value, bool):
-                    result.code_fence = option_value
                 # Здесь можно добавить обработку других опций
         
         return result

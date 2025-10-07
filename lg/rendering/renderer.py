@@ -6,7 +6,6 @@ from __future__ import annotations
 
 from typing import Dict, List
 
-from .labels import render_file_marker
 from ..types import LANG_NONE, ProcessedFile, RenderedSection, RenderBlock, SectionPlan
 
 
@@ -15,12 +14,9 @@ def render_section(plan: SectionPlan, processed_files: List[ProcessedFile]) -> R
     Генерирует финальный текст и блоки.
     
     Правила:
-    • use_fence=True → для каждой группы языка один fenced-блок ```{lang}
-      и внутри — маркеры "# —— FILE: <rel> ——" перед каждым файлом.
-    • use_fence=False:
-        - если md_only=True → просто конкатенация markdown/plain
-        - иначе → перед каждым файлом ставим маркер "# —— FILE: <rel> ——"
-    • Между файлами внутри блока — один пустой абзац (двойной \n).
+    • use_fence=True → каждый файл в своем индивидуальном fenced-блоке ```{lang}:{path}
+    • use_fence=False (только для markdown) → просто конкатенация markdown/plain без fence-блоков
+    • Между блоками — один пустой абзац (двойной \n).
     """
     file_by_rel: Dict[str, ProcessedFile] = {f.rel_path: f for f in processed_files}
 
@@ -31,61 +27,45 @@ def render_section(plan: SectionPlan, processed_files: List[ProcessedFile]) -> R
         return RenderedSection(plan.manifest.ref, "", [], [])
 
     if plan.use_fence:
+        # Каждый файл в своем собственном fence-блоке
         for group in plan.groups:
-            # открываем fenced-блок
+            # Каждая группа содержит ровно один файл
+            if not group.entries:
+                continue
+            
+            file_entry = group.entries[0]
+            pf = file_by_rel.get(file_entry.rel_path)
+            if not pf:
+                # файл отфильтрован адаптером/пропал — пропускаем
+                continue
+            
+            # Получаем метку файла
+            label = plan.labels.get(file_entry.rel_path) or file_entry.rel_path
             lang = group.lang
-            block_lines: List[str] = [f"```{lang}\n"]
-            file_paths: List[str] = []
-
-            for idx, file_entry in enumerate(group.entries):
-                pf = file_by_rel.get(file_entry.rel_path)
-                if not pf:
-                    # файл отфильтрован адаптером/пропал — пропускаем
-                    continue
-                file_paths.append(file_entry.rel_path)
-                # в fenced-блоках всегда печатаем маркер файла
-                label = plan.labels.get(file_entry.rel_path) or file_entry.rel_path
-                block_lines.append(render_file_marker(label))
-                block_lines.append(pf.processed_text.rstrip("\n"))
-                if idx < len(group.entries) - 1:
-                    block_lines.append("\n\n")
-
-            if not block_lines[-1].endswith("\n"):
-                block_lines.append("\n")
-            block_lines.append("```\n")
+            
+            # Создаем fence-блок с интегрированной меткой файла
+            block_lines: List[str] = []
+            block_lines.append(f"```{lang}:{label}\n")
+            block_lines.append(pf.processed_text.rstrip("\n"))
+            block_lines.append("\n```\n")
+            
             block_text = "".join(block_lines)
-            blocks.append(RenderBlock(lang=lang, text=block_text, file_paths=file_paths))
+            blocks.append(RenderBlock(lang=lang, text=block_text, file_paths=[file_entry.rel_path]))
             out_lines.append(block_text)
             out_lines.append("\n")  # раздел между блоками
     else:
-        # один «линейный» документ
+        # Markdown без fence-блоков: простая конкатенация
         block_lines: List[str] = []
         file_paths: List[str] = []
-        if plan.md_only:
-            # чистый MD/Plain: без маркеров
-            for idx, file_entry in enumerate(plan.groups[0].entries if plan.groups else []):
-                pf = file_by_rel.get(file_entry.rel_path)
-                if not pf:
-                    continue
-                file_paths.append(file_entry.rel_path)
-                block_lines.append(pf.processed_text.rstrip("\n"))
-                if idx < len(plan.groups[0].entries) - 1:
-                    block_lines.append("\n\n")
-        else:
-            # смешанное/кодовое содержимое: печатаем маркер перед каждым файлом
-            all_entries = []
-            for group in plan.groups:
-                all_entries.extend(group.entries)
-            for idx, file_entry in enumerate(all_entries):
-                pf = file_by_rel.get(file_entry.rel_path)
-                if not pf:
-                    continue
-                file_paths.append(file_entry.rel_path)
-                label = plan.labels.get(file_entry.rel_path) or file_entry.rel_path
-                block_lines.append(render_file_marker(label))
-                block_lines.append(pf.processed_text.rstrip("\n"))
-                if idx < len(all_entries) - 1:
-                    block_lines.append("\n\n")
+        
+        for idx, file_entry in enumerate(plan.groups[0].entries if plan.groups else []):
+            pf = file_by_rel.get(file_entry.rel_path)
+            if not pf:
+                continue
+            file_paths.append(file_entry.rel_path)
+            block_lines.append(pf.processed_text.rstrip("\n"))
+            if idx < len(plan.groups[0].entries) - 1:
+                block_lines.append("\n\n")
 
         block_text = "".join(block_lines)
         blocks.append(RenderBlock(lang=LANG_NONE, text=block_text, file_paths=file_paths))

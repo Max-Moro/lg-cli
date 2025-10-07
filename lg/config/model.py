@@ -82,7 +82,6 @@ class SectionCfg:
         default_factory=lambda: FilterNode(mode="block")  # default-allow
     )
     skip_empty: bool = True                  # глобальное правило
-    code_fence: bool = True                  # оборачивать файлы в ```{lang}
     path_labels: PathLabelMode = "scope_relative"      # Как печатать файл-маркеры в секции
 
     # Конфиги адаптеров с поддержкой условных опций: имя_адаптера → AdapterConfig
@@ -98,7 +97,7 @@ class SectionCfg:
         # filters (теперь with-условия обрабатываются внутри FilterNode.from_dict)
         filters = FilterNode.from_dict(node.get("filters", {"mode": "block"}))
         # adapters config (всё, что не service keys)
-        service_keys = {"extensions", "filters", "skip_empty", "code_fence", "targets", "path_labels"}
+        service_keys = {"extensions", "filters", "skip_empty", "targets", "path_labels"}
         adapters_cfg: Dict[str, AdapterConfig] = {}
         for k, v in node.items():
             if k in service_keys:
@@ -144,7 +143,6 @@ class SectionCfg:
         return SectionCfg(
             extensions=exts,
             filters=filters,
-            code_fence=bool(node.get("code_fence", True)),
             skip_empty=bool(node.get("skip_empty", True)),
             path_labels=path_labels,
             adapters=adapters_cfg,

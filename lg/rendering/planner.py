@@ -36,11 +36,11 @@ def build_section_plan(manifest: SectionManifest, template_ctx: TemplateContext)
     # Определяем, все ли файлы - markdown/plain text
     md_only = all(f.language_hint == "" for f in files)
     
-    # Определяем, использовать ли fenced блоки
-    use_fence = template_ctx.current_state.mode_options.code_fence and not md_only
+    # Fence-блоки используются всегда, кроме markdown
+    use_fence = not md_only
     
-    # Группируем файлы по языку
-    groups = _group_files_by_language(files, use_fence)
+    # Создаем индивидуальную группу для каждого файла
+    groups = _create_individual_file_groups(files, use_fence)
     
     # Строим метки файлов
     origin = template_ctx.get_origin()
@@ -59,55 +59,36 @@ def build_section_plan(manifest: SectionManifest, template_ctx: TemplateContext)
     )
 
 
-def _group_files_by_language(files: List[FileEntry], use_fence: bool) -> List[FileGroup]:
+def _create_individual_file_groups(files: List[FileEntry], use_fence: bool) -> List[FileGroup]:
     """
-    Группирует файлы по языку для рендеринга.
+    Создает индивидуальную группу для каждого файла.
     
     Args:
         files: Список файлов для группировки
         use_fence: Использовать ли fenced блоки
         
     Returns:
-        Список групп файлов
+        Список групп файлов (по одному файлу в каждой группе)
     """
     if not files:
         return []
     
     if use_fence:
-        # Группируем по языкам для fenced блоков
-        groups = []
-        current_lang = files[0].language_hint
-        current_group = [files[0]]
-        
-        for f in files[1:]:
-            if f.language_hint == current_lang:
-                current_group.append(f)
-            else:
-                groups.append(FileGroup(
-                    lang=current_lang,
-                    entries=current_group,
-                    mixed=False
-                ))
-                current_lang = f.language_hint
-                current_group = [f]
-        
-        # Добавляем последнюю группу
-        groups.append(FileGroup(
-            lang=current_lang,
-            entries=current_group,
-            mixed=False
-        ))
-        
-        return groups
+        # Каждый файл в своей собственной группе с указанием языка
+        return [
+            FileGroup(
+                lang=f.language_hint,
+                entries=[f],
+                mixed=False
+            )
+            for f in files
+        ]
     else:
-        # Одна группа без языка
-        languages = {f.language_hint for f in files}
-        mixed = len(languages) > 1
-        
+        # Для markdown: одна группа без fence-блоков
         return [FileGroup(
-            lang=LANG_NONE,  # Пустой язык для смешанного контента
+            lang=LANG_NONE,
             entries=list(files),
-            mixed=mixed
+            mixed=False
         )]
 
 

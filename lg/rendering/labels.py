@@ -135,9 +135,3 @@ def build_labels(rel_paths: Iterable[str], *, mode: PathLabelMode, origin: str =
 
     # Не должны сюда попасть, но на всякий случай
     return {p: p for p in rel_list}
-
-def render_file_marker(label: str) -> str:
-    """
-    Единая точка форматирования разделителей файлов.
-    """
-    return f"# —— FILE: {label} ——\n"
