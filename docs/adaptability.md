@@ -149,6 +149,7 @@ lg render ctx:my-context --mode ai:agent --mode stage:review --tags python
 | **Режимы VCS**                 | `vcs_mode: <вариант>`   | `all \| changes`                      | `all`        | Дополнительные фильтрация файлов в секциях с учетом статуса системы контроля версия:<br/>- **all** — включать все фйалы<br/>- **changes** — включать только изменённые в рабочем дереве (staged + unstaged + untracked) |
 | **Markdown Code Fencing**      | `code_fence: <bool>`    | `true \| false`                       | `true`       | Автоматическое оборачивание блоков кода в `fenced`-обёртки с указанием языка (\`\`\`python, \`\`\`bash и др.)                                                                                                           |
 
+<!-- lg:if NOT tag:vcs -->
 ## Условная логика
 
 ### Условия в Markdown шаблонах
@@ -388,3 +389,4 @@ TODO: Добавить документацию по новым методам A
 <!-- lg:comment:end -->
 ~~~
 <!-- lg:raw:end -->
+<!-- lg:endif -->

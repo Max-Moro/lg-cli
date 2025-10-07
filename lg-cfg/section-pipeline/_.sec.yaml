@@ -16,12 +16,14 @@ src:
           - "/template/context.py"
           - "/section_processor.py"
           - "/config/"
-          - "/filtering/manifest.py"
+          - "/filtering/manifest.py" # Много важной логики, лучше добавлять всегда
         when:
           - condition: "TAGSET:section-pipeline:filtering"
             allow: ["/filtering/"]
           - condition: "TAGSET:section-pipeline:rendering"
             allow: ["/rendering/"]
+          - condition: "TAGSET:section-pipeline:vcs"
+            allow: ["/vcs/"]
         children:
           config:
             mode: allow
