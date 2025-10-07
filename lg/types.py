@@ -23,6 +23,8 @@ class RunOptions:
     extra_tags: Set[str] = field(default_factory=set)  # дополнительные теги
     # Task context
     task_text: Optional[str] = None  # текст текущей задачи из --task
+    # VCS context
+    target_branch: Optional[str] = None  # целевая ветка для режима branch-changes
 
 
 # ---- Спецификация цели ----

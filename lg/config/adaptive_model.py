@@ -248,7 +248,7 @@ DEFAULT_MODES_CONFIG = ModesConfig(
                 "review": Mode(
                     title="Кодревью",
                     tags=["review"],
-                    options={"vcs_mode": "changes"}
+                    options={"vcs_mode": "branch-changes"}
                 )
             }
         )
@@ -294,7 +294,7 @@ class ModeOptions:
     с разумными значениями по умолчанию.
     """
     # VCS опции
-    vcs_mode: Literal["all", "changes"] = "all"
+    vcs_mode: Literal["all", "changes", "branch-changes"] = "all"
     
     # Инструментальные возможности
     allow_tools: bool = False  # разрешение использования инструментов в агентном режиме
@@ -328,7 +328,7 @@ class ModeOptions:
             # Мержим опции в типизированный датакласс
             for option_key, option_value in mode.options.items():
                 if option_key == "vcs_mode" and isinstance(option_value, str):
-                    if option_value in ("all", "changes"):
+                    if option_value in ("all", "changes", "branch-changes"):
                         result.vcs_mode = option_value  # type: ignore
                 elif option_key == "allow_tools" and isinstance(option_value, bool):
                     result.allow_tools = option_value

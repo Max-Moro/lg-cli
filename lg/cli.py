@@ -51,6 +51,13 @@ def _build_parser() -> argparse.ArgumentParser:
                 "или - для чтения из stdin"
             ),
         )
+        sp.add_argument(
+            "--target-branch",
+            metavar="BRANCH",
+            help=(
+                "целевая ветка для сравнения при использовании режима vcs_mode: 'branch-changes'"
+            ),
+        )
 
     sp_report = sub.add_parser("report", help="JSON-отчёт: статистика")
     add_common(sp_report)
@@ -92,11 +99,15 @@ def _opts(ns: argparse.Namespace) -> RunOptions:
     # Парсим task
     task_text = _parse_task(getattr(ns, "task", None))
     
+    # Парсим target-branch
+    target_branch = getattr(ns, "target_branch", None)
+    
     return RunOptions(
         model=ns.model,
         modes=modes,
         extra_tags=extra_tags,
         task_text=task_text,
+        target_branch=target_branch,
     )
 
 

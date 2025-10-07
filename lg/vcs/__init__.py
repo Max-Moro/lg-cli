@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Protocol, Set
+from typing import Protocol, Set, Optional
 
 
 class VcsProvider(Protocol):
@@ -12,10 +12,20 @@ class VcsProvider(Protocol):
         • staged + unstaged + untracked
         """
         ...
+    
+    def branch_changed_files(self, root: Path, target_branch: Optional[str] = None) -> Set[str]:
+        """
+        Вернуть множество относительных POSIX-путей, изменённых в текущей ветке
+        относительно целевой ветки (или ближайшей родительской).
+        """
+        ...
 
 
 @dataclass(frozen=True)
 class NullVcs:
     """Fallback-провайдер, если git недоступен."""
     def changed_files(self, root: Path) -> set[str]:
+        return set()
+    
+    def branch_changed_files(self, root: Path, target_branch: Optional[str] = None) -> set[str]:
         return set()

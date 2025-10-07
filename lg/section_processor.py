@@ -86,7 +86,8 @@ class SectionProcessor:
             template_ctx=template_ctx,
             root=self.run_ctx.root,
             vcs=self.run_ctx.vcs,
-            vcs_mode=template_ctx.current_state.mode_options.vcs_mode
+            vcs_mode=template_ctx.current_state.mode_options.vcs_mode,
+            target_branch=self.run_ctx.options.target_branch
         )
 
         # Для виртуальных секций (md-плейсхолдеров) проверяем наличие файлов

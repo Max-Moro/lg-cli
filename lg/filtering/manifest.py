@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import fnmatch
 from pathlib import Path
-from typing import Dict, List, Set, cast
+from typing import Dict, List, Set, cast, Optional
 
 from .filters import FilterEngine
 from .fs import build_gitignore_spec, iter_files
@@ -28,7 +28,8 @@ def build_section_manifest(
     template_ctx: TemplateContext,
     root: Path,
     vcs: VcsProvider,
-    vcs_mode: str
+    vcs_mode: str,
+    target_branch: Optional[str] = None
 ) -> SectionManifest:
     """
     Строит манифест секции на основе готовой конфигурации (для виртуальных секций).
@@ -46,10 +47,12 @@ def build_section_manifest(
     """
     vcs = vcs or NullVcs()
     
-    # Получаем изменённые файлы для режима changes
+    # Получаем изменённые файлы в зависимости от режима VCS
     changed: Set[str] = set()
     if vcs_mode == "changes":
         changed = vcs.changed_files(root)
+    elif vcs_mode == "branch-changes":
+        changed = vcs.branch_changed_files(root, target_branch)
     
     # Создаем базовый фильтр с условными дополнениями
     filter_engine = _create_enhanced_filter_engine(section_config, template_ctx)
@@ -246,7 +249,7 @@ def _collect_section_files(
         rel_posix = fp.resolve().relative_to(root.resolve()).as_posix()
         
         # Фильтр по режиму VCS
-        if vcs_mode == "changes" and rel_posix not in changed_files:
+        if vcs_mode in ("changes", "branch-changes") and rel_posix not in changed_files:
             continue
         
         # Ограничиваемся файлами внутри scope_rel
