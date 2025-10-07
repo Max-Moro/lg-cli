@@ -137,7 +137,7 @@ class SectionCfg:
 
         # path_labels
         path_labels = str(node.get("path_labels", "scope_relative")).strip().lower()
-        if path_labels not in ("scope_relative", "relative", "basename", "off"):
+        if path_labels not in ("scope_relative", "relative", "basename"):
             raise RuntimeError(f"Section '{name}': invalid path_labels='{path_labels}' (allowed: scope_relative|relative|basename|off)")
 
         return SectionCfg(

@@ -103,7 +103,7 @@ def build_labels(rel_paths: Iterable[str], *, mode: PathLabelMode, origin: str =
     if not rel_list:
         return {}
 
-    if mode in ("relative", "off"):
+    if mode == "relative":
         # Тривиально — метка равна исходному относительному пути
         return {p: p for p in rel_list}
 
