@@ -23,17 +23,12 @@ def render_section(plan: SectionPlan, processed_files: List[ProcessedFile]) -> R
     out_lines: List[str] = []
     blocks: List[RenderBlock] = []
 
-    if not plan.groups:
+    if not plan.files:
         return RenderedSection(plan.manifest.ref, "", [], [])
 
     if plan.use_fence:
         # Каждый файл в своем собственном fence-блоке
-        for group in plan.groups:
-            # Каждая группа содержит ровно один файл
-            if not group.entries:
-                continue
-            
-            file_entry = group.entries[0]
+        for file_entry in plan.files:
             pf = file_by_rel.get(file_entry.rel_path)
             if not pf:
                 # файл отфильтрован адаптером/пропал — пропускаем
@@ -41,7 +36,7 @@ def render_section(plan: SectionPlan, processed_files: List[ProcessedFile]) -> R
             
             # Получаем метку файла
             label = plan.labels.get(file_entry.rel_path) or file_entry.rel_path
-            lang = group.lang
+            lang = file_entry.language_hint
             
             # Создаем fence-блок с интегрированной меткой файла
             block_lines: List[str] = []
@@ -58,13 +53,13 @@ def render_section(plan: SectionPlan, processed_files: List[ProcessedFile]) -> R
         block_lines: List[str] = []
         file_paths: List[str] = []
         
-        for idx, file_entry in enumerate(plan.groups[0].entries if plan.groups else []):
+        for idx, file_entry in enumerate(plan.files):
             pf = file_by_rel.get(file_entry.rel_path)
             if not pf:
                 continue
             file_paths.append(file_entry.rel_path)
             block_lines.append(pf.processed_text.rstrip("\n"))
-            if idx < len(plan.groups[0].entries) - 1:
+            if idx < len(plan.files) - 1:
                 block_lines.append("\n\n")
 
         block_text = "".join(block_lines)

@@ -64,7 +64,7 @@ class SectionRef:
             return f"sec:{self.name}"
 
 
-# ---- Файлы и группировка ----
+# ---- Файлы ----
 
 @dataclass(frozen=True)
 class FileEntry:
@@ -84,20 +84,6 @@ class FileEntry:
         """Вычисляет размер файла, если не указан."""
         if self.size_bytes == 0 and self.abs_path.exists():
             object.__setattr__(self, 'size_bytes', self.abs_path.stat().st_size)
-
-
-@dataclass
-class FileGroup:
-    """
-    Группа файлов с одинаковым языком.
-
-    Используется для группировки файлов при рендеринге
-    в fenced-блоки или без них.
-    """
-    lang: LangName
-    entries: List[FileEntry]
-    mixed: bool = False  # True если в группе смешанные языки
-
 
 # ---- Манифесты и планы ----
 
@@ -120,11 +106,11 @@ class SectionPlan:
     """
     План для рендеринга одной секции.
 
-    Содержит информацию о том, как группировать и отображать
+    Содержит информацию о том, как отображать
     файлы в итоговом документе.
     """
     manifest: SectionManifest
-    groups: List[FileGroup]
+    files: List[FileEntry]
     md_only: bool  # True если все файлы - markdown/plain text
     use_fence: bool  # Использовать ли fenced-блоки
     labels: Dict[str, str] = field(default_factory=dict)  # rel_path -> отображаемая метка

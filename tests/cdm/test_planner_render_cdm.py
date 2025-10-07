@@ -79,8 +79,8 @@ def test_planner_and_render_for_addressed_sections(monorepo: Path):
     
     # Проверяем свойства плана секции A
     assert plan_a.use_fence is True and plan_a.md_only is False
-    langs = {g.lang for g in plan_a.groups}
-    assert "python" in langs and "markdown" in langs  # есть и код, и markdown-группа
+    langs = {f.language_hint for f in plan_a.files}
+    assert "python" in langs and "markdown" in langs  # есть и код, и markdown-файлы
     
     # Проверяем рендер секции A
     txt_a = rendered_a.text
