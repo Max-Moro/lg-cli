@@ -28,6 +28,7 @@ src:
             allow:
               - "/load.py"
               - "/model.py"
+              - "/adaptive_model.py"
 
 
 tests:
