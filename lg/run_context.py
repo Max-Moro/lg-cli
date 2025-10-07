@@ -76,10 +76,12 @@ class ConditionContext:
 
     def is_task_provided(self) -> bool:
         """
-        Проверяет, задан ли непустой текст задачи.
+        Проверяет, задан ли непустой эффективный текст задачи.
+        
+        Учитывает как явно указанный --task, так и задачи из активных режимов.
         
         Returns:
-            True если task_text не None и не пустая строка
+            True если есть эффективный task_text (явный или из режимов)
         """
         return bool(self.task_text and self.task_text.strip())
 
@@ -94,3 +96,54 @@ class RunContext:
     adaptive_loader: AdaptiveConfigLoader
     mode_options: ModeOptions = field(default_factory=ModeOptions)  # смердженные опции от режимов
     active_tags: Set[str] = field(default_factory=set)  # все активные теги
+
+    def get_effective_task_text(self) -> Optional[str]:
+        """
+        Возвращает эффективный текст задачи с учетом приоритетов.
+        
+        Приоритет:
+        1. Явно указанный --task (если не пустой)
+        2. Задачи из активных режимов (объединенные через параграфы)
+        3. None, если ни то ни другое не задано
+        
+        Returns:
+            Эффективный текст задачи или None
+        """
+        # Приоритет 1: явно указанный --task
+        if self.options.task_text and self.options.task_text.strip():
+            return self.options.task_text
+        
+        # Приоритет 2: задачи из активных режимов
+        mode_tasks = self._collect_mode_tasks()
+        if mode_tasks:
+            # Объединяем задачи через двойной перевод строки (параграфы)
+            return "\n\n".join(mode_tasks)
+        
+        # Приоритет 3: ничего не задано
+        return None
+    
+    def _collect_mode_tasks(self) -> list[str]:
+        """
+        Собирает default_task из всех активных режимов.
+        
+        Returns:
+            Список непустых задач из режимов в порядке имени modeset (для детерминизма)
+        """
+        modes_config = self.adaptive_loader.get_modes_config()
+        tasks = []
+        
+        # Сортируем по имени modeset для детерминизма
+        for modeset_name in sorted(self.options.modes.keys()):
+            mode_name = self.options.modes[modeset_name]
+            
+            modeset = modes_config.mode_sets.get(modeset_name)
+            if not modeset:
+                continue
+            
+            mode = modeset.modes.get(mode_name)
+            if not mode or not mode.default_task:
+                continue
+            
+            tasks.append(mode.default_task)
+        
+        return tasks

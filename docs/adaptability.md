@@ -49,17 +49,18 @@ mode-sets:
       
       development:
         title: "Основная разработка"
-        # Особых тегов и опций нет
       
       testing:
         title: "Написание тестов"
         tags: [tests]
+        default_task: "Напиши тесты для текущего функционального блока."
       
       review:
         title: "Кодревью"
         tags: [review]
+        default_task: "Проведи code review изменений и дай рекомендации по улучшению."
         # Возможны некоторые произвольные дополнительные опции
-        vcs_mode: "changes"
+        vcs_mode: "branch-changes"
 
 # Включение режимов из дочерних скоупов
 include:

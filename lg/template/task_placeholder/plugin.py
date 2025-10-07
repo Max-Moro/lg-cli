@@ -69,14 +69,14 @@ class TaskPlaceholderPlugin(TemplatePlugin):
             if not isinstance(node, TaskNode):
                 raise RuntimeError(f"Expected TaskNode, got {type(node)}")
             
-            # Получаем task_text из RunContext через TemplateContext
-            task_text = self.template_ctx.run_ctx.options.task_text
+            # Получаем эффективный текст задачи (с учетом режимов)
+            effective_task_text = self.template_ctx.run_ctx.get_effective_task_text()
             
-            # Если task_text задан и не состоит только из пробелов - возвращаем его
-            if task_text and task_text.strip():
-                return task_text
+            # Если эффективный task_text есть - возвращаем его
+            if effective_task_text:
+                return effective_task_text
             
-            # Если task_text не задан (или whitespace-only) и есть default_prompt - возвращаем его
+            # Если эффективной задачи нет и есть default_prompt - возвращаем его
             if node.default_prompt is not None:
                 return node.default_prompt
             

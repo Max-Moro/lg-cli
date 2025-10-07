@@ -6,7 +6,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Dict, List, Any, Literal
+from typing import Dict, List, Any, Literal, Optional
 
 
 @dataclass
@@ -20,6 +20,7 @@ class Mode:
     description: str = ""
     tags: List[str] = field(default_factory=list)
     options: Dict[str, Any] = field(default_factory=dict)
+    default_task: Optional[str] = None  # Стандартное описание задачи для режима
 
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> "Mode":
@@ -28,9 +29,10 @@ class Mode:
             title=str(data.get("title", "")),
             description=str(data.get("description", "")),
             tags=list(data.get("tags", [])),
+            default_task=data.get("default_task"),
             options=dict(data.get("options", {})) if "options" in data else {
                 k: v for k, v in data.items() 
-                if k not in {"title", "description", "tags"}
+                if k not in {"title", "description", "tags", "default_task"}
             }
         )
 
@@ -41,6 +43,8 @@ class Mode:
             result["description"] = self.description
         if self.tags:
             result["tags"] = self.tags
+        if self.default_task is not None:
+            result["default_task"] = self.default_task
         # Добавляем дополнительные опции напрямую
         result.update(self.options)
         return result
@@ -243,12 +247,14 @@ DEFAULT_MODES_CONFIG = ModesConfig(
                 ),
                 "testing": Mode(
                     title="Написание тестов",
-                    tags=["tests"]
+                    tags=["tests"],
+                    default_task="Напиши тесты для текущего функционального блока."
                 ),
                 "review": Mode(
                     title="Кодревью",
                     tags=["review"],
-                    options={"vcs_mode": "branch-changes"}
+                    options={"vcs_mode": "branch-changes"},
+                    default_task="Проведи code review изменений и дай рекомендации по улучшению."
                 )
             }
         )

@@ -231,7 +231,7 @@ class TemplateContext:
             active_tags=self.current_state.active_tags,
             tagsets=tagsets,
             origin=self.current_state.origin,
-            task_text=self.run_ctx.options.task_text,
+            task_text=self.run_ctx.get_effective_task_text(),
         )
 
     def _get_tagsets(self) -> Dict[str, Set[str]]:
