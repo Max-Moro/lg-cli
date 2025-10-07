@@ -23,7 +23,6 @@ def test_cli_report_included_paths(tmp_path, monkeypatch):
     (tmp_path / "lg-cfg/sections.yaml").write_text(textwrap.dedent("""
       all:
         extensions: [".py"]
-        code_fence: true
         filters:
           mode: block
           block: ["**/*.log"]

@@ -34,7 +34,7 @@ def build_section_plan(manifest: SectionManifest, template_ctx: TemplateContext)
         )
     
     # Определяем, все ли файлы - markdown/plain text
-    md_only = all(f.language_hint == "" for f in files)
+    md_only = all(f.language_hint in ("markdown", "") for f in files)
     
     # Fence-блоки используются всегда, кроме markdown
     use_fence = not md_only

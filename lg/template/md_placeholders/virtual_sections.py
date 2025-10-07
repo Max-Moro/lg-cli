@@ -60,7 +60,6 @@ class VirtualSectionFactory:
         section_config = SectionCfg(
             extensions=[".md"],
             filters=filters,
-            code_fence=False,
             adapters={"markdown": AdapterConfig(base_options=markdown_config_raw)}
         )
 

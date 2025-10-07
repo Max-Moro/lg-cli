@@ -246,12 +246,11 @@ def create_tags_yaml(
     return tags_file
 
 
-def create_basic_lg_cfg(root: Path, *, code_fence: bool = True) -> Path:
+def create_basic_lg_cfg(root: Path) -> Path:
     """Создает минимальную конфигурацию lg-cfg/sections.yaml."""
-    content = textwrap.dedent(f"""
+    content = textwrap.dedent("""
     all:
       extensions: [".md"]
-      code_fence: {str(code_fence).lower()}
       markdown:
         max_heading_level: 2
       filters:
@@ -285,7 +284,6 @@ def create_basic_sections_yaml(root: Path) -> Path:
     content = textwrap.dedent("""
     src:
       extensions: [".py", ".md"]
-      code_fence: true
       filters:
         mode: allow
         allow:
@@ -293,7 +291,6 @@ def create_basic_sections_yaml(root: Path) -> Path:
     
     docs:
       extensions: [".md"]
-      code_fence: false
       markdown:
         max_heading_level: 2
       filters:
@@ -303,7 +300,6 @@ def create_basic_sections_yaml(root: Path) -> Path:
     
     tests:
       extensions: [".py"]
-      code_fence: true
       filters:
         mode: allow
         allow:
@@ -319,7 +315,6 @@ def get_basic_sections_config() -> Dict[str, Dict[str, Any]]:
     return {
         "src": {
             "extensions": [".py"],
-            "code_fence": True,
             "filters": {
                 "mode": "allow",
                 "allow": ["/src/**"]
@@ -327,7 +322,6 @@ def get_basic_sections_config() -> Dict[str, Dict[str, Any]]:
         },
         "docs": {
             "extensions": [".md"],
-            "code_fence": False,
             "markdown": {
                 "max_heading_level": 2
             },
@@ -338,7 +332,6 @@ def get_basic_sections_config() -> Dict[str, Dict[str, Any]]:
         },
         "all": {
             "extensions": [".py", ".md", ".ts"],
-            "code_fence": True,
             "filters": {
                 "mode": "allow",
                 "allow": ["/**"]
@@ -346,7 +339,6 @@ def get_basic_sections_config() -> Dict[str, Dict[str, Any]]:
         },
         "tests": {
             "extensions": [".py"],
-            "code_fence": True,
             "filters": {
                 "mode": "allow",
                 "allow": ["/tests/**"]
@@ -360,7 +352,6 @@ def get_multilang_sections_config() -> Dict[str, Dict[str, Any]]:
     return {
         "python-src": {
             "extensions": [".py"],
-            "code_fence": True,
             "python": {
                 "skip_trivial_inits": True
             },
@@ -371,7 +362,6 @@ def get_multilang_sections_config() -> Dict[str, Dict[str, Any]]:
         },
         "typescript-src": {
             "extensions": [".ts", ".tsx"],
-            "code_fence": True,
             "filters": {
                 "mode": "allow",
                 "allow": ["/typescript/**"]
@@ -379,7 +369,6 @@ def get_multilang_sections_config() -> Dict[str, Dict[str, Any]]:
         },
         "shared-docs": {
             "extensions": [".md"],
-            "code_fence": False,
             "markdown": {
                 "max_heading_level": 3
             },

@@ -13,7 +13,7 @@ def test_trivial_init_skipped(tmpproj: Path, monkeypatch):
     text = run_render("sec:all", RunOptions())
 
     # Тривиальный __init__.py должен быть пропущен адаптером → маркера файла нет
-    assert "# —— FILE: pkg/__init__.py ——" not in text
+    assert "python:pkg/__init__.py" not in text
 
 def test_non_trivial_init_kept(tmpproj: Path, monkeypatch):
     monkeypatch.chdir(tmpproj)
@@ -24,4 +24,4 @@ def test_non_trivial_init_kept(tmpproj: Path, monkeypatch):
     text = run_render("sec:all", RunOptions())
 
     # Нетривиальный __init__.py должен попасть в листинг → маркер присутствует
-    assert "# —— FILE: pkg/__init__.py ——" in text
+    assert "python:pkg/__init__.py" in text

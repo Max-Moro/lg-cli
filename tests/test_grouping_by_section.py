@@ -28,14 +28,12 @@ def test_grouping_respects_sections(tmp_path: Path):
         textwrap.dedent("""
         docs:
           extensions: [".md"]
-          code_fence: false
           filters:
             mode: allow
             allow:
               - "/docs/**"
         code:
           extensions: [".md"]
-          code_fence: false
           filters:
             mode: allow
             allow:

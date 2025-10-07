@@ -156,7 +156,6 @@ def test_section_placeholder_empty_section(basic_project):
     existing_config = {
         "src": {
             "extensions": [".py"],
-            "code_fence": True,
             "filters": {
                 "mode": "allow",
                 "allow": ["/src/**"]
@@ -212,7 +211,6 @@ ${shared-docs}
     assert "```typescript" in result or "```ts" in result
     assert "export class App" in result
     
-    # Проверяем, что документация не обернута (code_fence: false)
     assert "Architecture Overview" in result
     # Не должно быть fenced блоков вокруг документации
     lines = result.split('\n')

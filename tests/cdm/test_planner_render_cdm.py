@@ -80,25 +80,22 @@ def test_planner_and_render_for_addressed_sections(monorepo: Path):
     # Проверяем свойства плана секции A
     assert plan_a.use_fence is True and plan_a.md_only is False
     langs = {g.lang for g in plan_a.groups}
-    assert "python" in langs and "" in langs  # есть и код, и markdown-группа
+    assert "python" in langs and "markdown" in langs  # есть и код, и markdown-группа
     
     # Проверяем рендер секции A
     txt_a = rendered_a.text
-    assert "```python" in txt_a
-    # метка README должна быть короткой (auto снимает общий префикс)
-    assert "# —— FILE: README.md ——" in txt_a or "# —— FILE: packages/svc-a/README.md ——" in txt_a
-    # возможно, для md-группы тоже fenced-блок без языка
-    assert "```" in txt_a
-    
+    assert "```python:packages/svc-a/src/other/y.py" in txt_a
+    # README.md теперь в fence-блоке
+    assert "```markdown:packages/svc-a/README.md" in txt_a
+
     # Тестируем секцию 'web-api' из скоупа 'apps/web'
     manifest_web, plan_web, rendered_web = _process_section(monorepo, "web-api", "apps/web")
     
-    # Секция web-api — чистый MD без fenced/FILE
+    # Секция web-api — чистый MD без fenced
     assert plan_web.md_only is True and plan_web.use_fence is False
     
     # Проверяем рендер секции web-api
     txt_web = rendered_web.text
-    assert "# —— FILE:" not in txt_web
     assert "```" not in txt_web
     assert "# web docs" in txt_web  # содержимое apps/web/docs/index.md
     

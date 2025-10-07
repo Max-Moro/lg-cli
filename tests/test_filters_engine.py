@@ -93,7 +93,6 @@ def test_render_with_allow_specific_file(tmp_path: Path, monkeypatch):
     (tmp_path / "lg-cfg" / "sections.yaml").write_text(
         "all:\n"
         "  extensions: ['.md']\n"
-        "  code_fence: false\n"        # md-only → без fenced/маркеров
         "  filters:\n"
         "    mode: allow\n"
         "    allow: ['/core/README.md']\n",

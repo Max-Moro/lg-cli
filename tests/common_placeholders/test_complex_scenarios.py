@@ -199,7 +199,6 @@ def test_multiple_file_groups_with_mixed_placeholders(basic_project):
     sections_config.update({
         "models": {
             "extensions": [".py"],
-            "code_fence": True,
             "filters": {
                 "mode": "allow",
                 "allow": ["/src/models/**"]
@@ -207,7 +206,6 @@ def test_multiple_file_groups_with_mixed_placeholders(basic_project):
         },
         "api": {
             "extensions": [".py"],
-            "code_fence": True,
             "filters": {
                 "mode": "allow",
                 "allow": ["/src/api/**"]

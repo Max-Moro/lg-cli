@@ -26,7 +26,6 @@ def test_empty_configuration_defaults(tmp_path):
     write(root / "lg-cfg" / "sections.yaml", """
 test-section:
   extensions: [".txt"]
-  code_fence: false
   filters:
     mode: allow
     allow:

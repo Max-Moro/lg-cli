@@ -45,7 +45,6 @@ def test_conditional_python_adapter_options(adaptive_project):
     sections_content = textwrap.dedent("""
     python-default:
       extensions: [".py"]
-      code_fence: true
       python:
         skip_trivial_inits: true  # стандартное поведение - пропускать тривиальные
       filters:
@@ -55,7 +54,6 @@ def test_conditional_python_adapter_options(adaptive_project):
     
     python-with-inits:
       extensions: [".py"] 
-      code_fence: true
       python:
         skip_trivial_inits: true  # базовое значение
         when:
@@ -88,19 +86,21 @@ ${python-with-inits}
     
     # Проверяем, что тривиальные __init__.py отсутствуют в обеих секциях
     init_markers = [
-        "FILE: __init__.py",
-        "FILE: package1/__init__.py"
+        "python:src/__init__.py",
+        "python:src/package1/__init__.py"
     ]
     for marker in init_markers:
         assert marker not in result1, f"Trivial {marker} should be skipped without tag"
     
         # Нетривиальный __init__.py должен присутствовать
-        assert "FILE: package2/__init__.py" in result1
+        assert "python:src/package2/__init__.py" in result1
         assert "__version__ = '1.0.0'" in result1
         
         # Обычные модули должны присутствовать
-        assert "FILE: package1/module.py" in result1
-        assert "FILE: package2/core.py" in result1    # Тест 2: с активным тегом - только вторая секция должна включать тривиальные __init__.py
+        assert "python:src/package1/module.py" in result1
+        assert "python:src/package2/core.py" in result1
+
+    # Тест 2: с активным тегом - только вторая секция должна включать тривиальные __init__.py
     options = make_run_options(extra_tags={"include-inits"})
     result2 = render_template(root, "ctx:adapter-options-test", options)
     
@@ -108,9 +108,9 @@ ${python-with-inits}
     # Во второй секции (python-with-inits) они должны присутствовать
     
     # Подсчитаем количество вхождений каждого файла
-    trivial_init1_count = result2.count("FILE: __init__.py") 
-    trivial_init2_count = result2.count("FILE: package1/__init__.py")
-    nontrivial_init_count = result2.count("FILE: package2/__init__.py")
+    trivial_init1_count = result2.count("python:src/__init__.py") 
+    trivial_init2_count = result2.count("python:src/package1/__init__.py")
+    nontrivial_init_count = result2.count("python:src/package2/__init__.py")
     
     # Тривиальные __init__.py должны появиться только один раз (во второй секции)
     assert trivial_init1_count == 1, f"Expected 1 occurrence of __init__.py, got {trivial_init1_count}"
@@ -161,7 +161,6 @@ def test_multiple_conditional_adapter_options(adaptive_project):
     sections_content = textwrap.dedent("""
     adaptive-python:
       extensions: [".py"]
-      code_fence: true
       python:
         skip_trivial_inits: true
         strip_function_bodies: false
@@ -192,7 +191,7 @@ ${adaptive-python}
     result1 = render_template(root, "ctx:multiple-options-test", 
                              make_run_options(extra_tags={"include-inits"}))
     
-    assert "FILE: __init__.py" in result1  # __init__.py включен
+    assert "python:src/__init__.py" in result1  # __init__.py включен
     assert "def public_function():" in result1  # тела функций сохранены
     assert "internal_logic()" in result1
     
@@ -200,7 +199,7 @@ ${adaptive-python}
     result2 = render_template(root, "ctx:multiple-options-test",
                              make_run_options(extra_tags={"strip-bodies"}))
     
-    assert "FILE: __init__.py" not in result2  # __init__.py пропущен
+    assert "python:src/__init__.py" not in result2  # __init__.py пропущен
     assert "def public_function():" in result2     # сигнатуры есть
     assert "internal_logic()" not in result2      # тела функций убраны
     
@@ -208,7 +207,7 @@ ${adaptive-python}
     result3 = render_template(root, "ctx:multiple-options-test",
                              make_run_options(extra_tags={"strip-bodies", "verbose-mode"}))
     
-    assert "FILE: __init__.py" in result3     # __init__.py включен (verbose-mode)
+    assert "python:src/__init__.py" in result3     # __init__.py включен (verbose-mode)
     assert "def public_function():" in result3    # сигнатуры есть
     assert "internal_logic()" in result3          # тела функций сохранены (verbose-mode приоритетнее)
     
@@ -216,7 +215,7 @@ ${adaptive-python}
     result4 = render_template(root, "ctx:multiple-options-test",
                              make_run_options(extra_tags={"include-inits", "strip-bodies", "verbose-mode"}))
     
-    assert "FILE: __init__.py" in result4     # __init__.py включен
+    assert "python:src/__init__.py" in result4     # __init__.py включен
     assert "def public_function():" in result4    # сигнатуры есть  
     assert "internal_logic()" in result4          # тела функций сохранены
 
@@ -263,7 +262,6 @@ def test_conditional_options_with_complex_conditions(adaptive_project):
     sections_content = textwrap.dedent("""
     complex-conditions:
       extensions: [".py"]
-      code_fence: true
       python:
         skip_trivial_inits: true
         strip_function_bodies: false
@@ -307,7 +305,7 @@ ${complex-conditions}
     result2 = render_template(root, "ctx:complex-conditions-test", 
                              make_run_options(extra_tags={"debug"}))
     
-    assert "FILE: __init__.py" in result2        # __init__.py включен (изменили формат)
+    assert "python:src/__init__.py" in result2        # __init__.py включен (изменили формат)
     assert "def debug_function():" in result2     # сигнатуры есть
     assert "collect_system_info()" in result2    # тела функций сохранены
     assert "get_production_data()" in result2    # тела функций сохранены
@@ -324,7 +322,7 @@ ${complex-conditions}
     result4 = render_template(root, "ctx:complex-conditions-test",
                              make_run_options(extra_tags={"api-docs", "internal-docs"}))
     
-    assert "FILE: __init__.py" in result4        # __init__.py включен (internal-docs)
+    assert "python:src/__init__.py" in result4        # __init__.py включен (internal-docs)
     assert "def debug_function():" in result4     # сигнатуры есть
     assert "collect_system_info()" in result4    # тела функций сохранены (internal-docs приоритетнее)
     assert "get_production_data()" in result4    # тела функций сохранены (internal-docs приоритетнее)
@@ -353,7 +351,6 @@ def test_conditional_options_inheritance_and_priority(adaptive_project):
     sections_content = textwrap.dedent("""
     priority-test:
       extensions: [".py"]
-      code_fence: true
       python:
         skip_trivial_inits: true  # базовое значение
         when:
@@ -385,22 +382,22 @@ ${priority-test}
     result1 = render_template(root, "ctx:priority-test",
                              make_run_options(extra_tags={"base-mode"}))
     
-    assert "FILE: __init__.py" in result1  # skip_trivial_inits: false
+    assert "python:src/__init__.py" in result1  # skip_trivial_inits: false
     
     # Тест 2: base-mode + override-mode - второе правило переопределяет первое
     result2 = render_template(root, "ctx:priority-test", 
                              make_run_options(extra_tags={"base-mode", "override-mode"}))
     
-    assert "FILE: __init__.py" not in result2  # skip_trivial_inits: true (переопределено)
+    assert "python:src/__init__.py" not in result2  # skip_trivial_inits: true (переопределено)
     
     # Тест 3: все три тега - final-mode имеет высший приоритет
     result3 = render_template(root, "ctx:priority-test",
                              make_run_options(extra_tags={"base-mode", "override-mode", "final-mode"}))
     
-    assert "FILE: __init__.py" in result3  # skip_trivial_inits: false (final-mode)
+    assert "python:src/__init__.py" in result3  # skip_trivial_inits: false (final-mode)
     
     # Тест 4: только final-mode - не зависит от других правил
     result4 = render_template(root, "ctx:priority-test", 
                              make_run_options(extra_tags={"final-mode"}))
     
-    assert "FILE: __init__.py" in result4  # skip_trivial_inits: false
+    assert "python:src/__init__.py" in result4  # skip_trivial_inits: false

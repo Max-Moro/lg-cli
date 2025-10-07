@@ -55,7 +55,6 @@ def test_markdown_conditional_blocks_basic(adaptive_project):
     sections_content = textwrap.dedent("""
     docs-adaptive:
       extensions: [".md"]
-      code_fence: false
       markdown:
         max_heading_level: 2
         enable_templating: true

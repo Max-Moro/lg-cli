@@ -20,7 +20,6 @@ def test_empty_policy_include_overrides_section_skip(tmp_path: Path, monkeypatch
         textwrap.dedent("""
         all:
           extensions: [".py"]
-          code_fence: true
           skip_empty: true
           python:
             empty_policy: include
@@ -31,7 +30,7 @@ def test_empty_policy_include_overrides_section_skip(tmp_path: Path, monkeypatch
 
     monkeypatch.chdir(tmp_path)
     out = run_render("sec:all", RunOptions())
-    assert "# —— FILE: m.py ——" in out  # файл не отфильтрован
+    assert "python:m.py" in out  # файл не отфильтрован
 
 def test_empty_policy_exclude_overrides_section_allow(tmp_path: Path, monkeypatch):
     """
@@ -44,7 +43,6 @@ def test_empty_policy_exclude_overrides_section_allow(tmp_path: Path, monkeypatc
         textwrap.dedent("""
         all:
           extensions: [".md", ".py"]
-          code_fence: true
           skip_empty: false
           markdown:
             empty_policy: exclude
@@ -57,9 +55,9 @@ def test_empty_policy_exclude_overrides_section_allow(tmp_path: Path, monkeypatc
     monkeypatch.chdir(tmp_path)
     out = run_render("sec:all", RunOptions())
     # маркер для README.md отсутствует
-    assert "# —— FILE: README.md ——" not in out
+    assert "python:README.md" not in out
     # а .py виден — чтобы убедиться, что рендер прошёл
-    assert "# —— FILE: x.py ——" in out
+    assert "python:x.py" in out
 
 def test_empty_policy_inherit_follows_section(tmp_path: Path, monkeypatch):
     """
@@ -71,7 +69,6 @@ def test_empty_policy_inherit_follows_section(tmp_path: Path, monkeypatch):
         textwrap.dedent("""
         all:
           extensions: [".py"]
-          code_fence: true
           skip_empty: true
           python:
             empty_policy: inherit
@@ -82,5 +79,5 @@ def test_empty_policy_inherit_follows_section(tmp_path: Path, monkeypatch):
 
     monkeypatch.chdir(tmp_path)
     out = run_render("sec:all", RunOptions())
-    assert "# —— FILE: m.py ——" not in out
+    assert "python:m.py" not in out
     assert out.strip() == ""

@@ -14,7 +14,6 @@ def _root_sections_yaml() -> str:
     return textwrap.dedent("""
     root-md:
       extensions: [".md"]
-      code_fence: false
       filters:
         mode: allow
         allow:
@@ -27,7 +26,6 @@ def _svc_a_sections() -> str:
     return textwrap.dedent("""
     a:
       extensions: [".py", ".md"]
-      code_fence: true
       filters:
         mode: allow
         allow:
@@ -45,7 +43,6 @@ def _web_sections() -> str:
     return textwrap.dedent("""
     web-api:
       extensions: [".md"]
-      code_fence: false
       filters:
         mode: allow
         allow:

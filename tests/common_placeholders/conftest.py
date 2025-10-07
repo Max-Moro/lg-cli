@@ -149,7 +149,6 @@ def federated_project(tmp_path: Path) -> Path:
     root_sections = {
         "overview": {
             "extensions": [".md"],
-            "code_fence": False,
             "filters": {
                 "mode": "allow",
                 "allow": ["/README.md", "/docs/**"]
@@ -157,7 +156,6 @@ def federated_project(tmp_path: Path) -> Path:
         },
         "root-config": {
             "extensions": [".json", ".yaml"],
-            "code_fence": True,
             "filters": {
                 "mode": "allow",
                 "allow": ["/*.json", "/*.yaml"]
@@ -188,7 +186,6 @@ def federated_project(tmp_path: Path) -> Path:
     web_sections = {
         "web-src": {
             "extensions": [".ts", ".tsx"],
-            "code_fence": True,
             "filters": {
                 "mode": "allow",
                 "allow": ["/src/**"]
@@ -196,7 +193,6 @@ def federated_project(tmp_path: Path) -> Path:
         },
         "web-docs": {
             "extensions": [".md"],
-            "code_fence": False,
             "filters": {
                 "mode": "allow",
                 "allow": ["/docs/**"]
@@ -221,7 +217,6 @@ def federated_project(tmp_path: Path) -> Path:
     core_sections = {
         "core-lib": {
             "extensions": [".py"],
-            "code_fence": True,
             "python": {
                 "skip_trivial_inits": True
             },
@@ -232,7 +227,6 @@ def federated_project(tmp_path: Path) -> Path:
         },
         "core-api": {
             "extensions": [".py"],
-            "code_fence": True,
             "python": {
                 "strip_function_bodies": True
             },
@@ -271,7 +265,6 @@ def fragments_project(tmp_path: Path) -> Path:
     base_sections = {
         "main": {
             "extensions": [".py"],
-            "code_fence": True,
             "filters": {
                 "mode": "allow",
                 "allow": ["/main.py"]
@@ -284,7 +277,6 @@ def fragments_project(tmp_path: Path) -> Path:
     fragment1 = {
         "database": {
             "extensions": [".py"],
-            "code_fence": True,
             "filters": {
                 "mode": "allow",
                 "allow": ["/db/**"]

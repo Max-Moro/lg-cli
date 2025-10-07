@@ -16,7 +16,6 @@ def tmpproj(tmp_path: Path):
         textwrap.dedent("""
         all:
           extensions: [".md", ".py"]
-          code_fence: true
           markdown:
             max_heading_level: 2
           targets:
@@ -25,7 +24,6 @@ def tmpproj(tmp_path: Path):
                 strip_function_bodies: true
         docs:
           extensions: [".md"]
-          code_fence: false
           markdown:
             max_heading_level: 3
           targets:

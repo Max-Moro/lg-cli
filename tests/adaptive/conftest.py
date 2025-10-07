@@ -211,7 +211,6 @@ def minimal_adaptive_project(tmp_path: Path) -> Path:
     write(root / "lg-cfg" / "sections.yaml", textwrap.dedent("""
     all:
       extensions: [".py"]
-      code_fence: true
       filters:
         mode: allow
         allow:
@@ -261,7 +260,6 @@ def federated_project(tmp_path: Path) -> Path:
     write(root / "lg-cfg" / "sections.yaml", textwrap.dedent("""
     overview:
       extensions: [".md"]
-      code_fence: false
       filters:
         mode: allow
         allow:
@@ -304,7 +302,6 @@ def federated_project(tmp_path: Path) -> Path:
     write(root / "apps" / "web" / "lg-cfg" / "sections.yaml", textwrap.dedent("""
     web-src:
       extensions: [".ts", ".tsx"]
-      code_fence: true
       filters:
         mode: allow
         allow:
@@ -339,7 +336,6 @@ def federated_project(tmp_path: Path) -> Path:
     write(root / "libs" / "core" / "lg-cfg" / "sections.yaml", textwrap.dedent("""
     core-lib:
       extensions: [".py"]
-      code_fence: true
       python:
         when:
           - condition: "tag:api-only"
