@@ -1,6 +1,5 @@
 src:
   extensions: [".py"]
-  path_labels: relative
   filters:
     mode: allow
     allow:
@@ -60,7 +59,6 @@ src-budget:
 
 src-tests:
   extensions: [".py"]
-  path_labels: relative
   filters:
     mode: allow
     allow:

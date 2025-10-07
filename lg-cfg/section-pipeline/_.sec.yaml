@@ -32,7 +32,6 @@ src:
 
 tests:
   extensions: [".py"]
-  path_labels: relative
   filters:
     mode: allow
     allow:

@@ -17,7 +17,6 @@ src:
 
 src-short:
   extensions: [".py", ".toml"]
-  path_labels: relative
   filters:
     mode: allow
     allow:

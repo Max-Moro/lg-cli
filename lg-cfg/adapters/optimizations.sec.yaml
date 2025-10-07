@@ -4,7 +4,6 @@
 
 src__function-bodies:
   extensions: [".py"]
-  path_labels: relative
   filters:
     mode: allow
     allow:
@@ -46,7 +45,6 @@ src__function-bodies:
 
 src-tests__function-bodies:
   extensions: [".py", ".ts"]
-  path_labels: relative
   filters:
     mode: allow
     allow:
@@ -82,7 +80,6 @@ src-tests__function-bodies:
 
 src__comments:
   extensions: [".py"]
-  path_labels: relative
   filters:
     mode: allow
     allow:
@@ -125,7 +122,6 @@ src__comments:
 
 src-tests__comments:
   extensions: [".py", ".ts"]
-  path_labels: relative
   filters:
     mode: allow
     allow:
@@ -160,7 +156,6 @@ src-tests__comments:
 
 src__literals:
   extensions: [".py"]
-  path_labels: relative
   filters:
     mode: allow
     allow:
@@ -201,7 +196,6 @@ src__literals:
 
 src-tests__literals:
   extensions: [".py", ".ts"]
-  path_labels: relative
   filters:
     mode: allow
     allow:
@@ -237,7 +231,6 @@ src-tests__literals:
 
 src__imports:
   extensions: [".py"]
-  path_labels: relative
   filters:
     mode: allow
     allow:
@@ -277,7 +270,6 @@ src__imports:
 
 src-tests__imports:
   extensions: [".py", ".ts"]
-  path_labels: relative
   filters:
     mode: allow
     allow:
@@ -312,7 +304,6 @@ src-tests__imports:
 
 src__public-api:
   extensions: [".py"]
-  path_labels: relative
   filters:
     mode: allow
     allow:
@@ -355,7 +346,6 @@ src__public-api:
 
 src-tests__public-api:
   extensions: [".py", ".ts"]
-  path_labels: relative
   filters:
     mode: allow
     allow:
@@ -391,7 +381,6 @@ src-tests__public-api:
 
 src-tests__complex:
   extensions: [".py", ".ts"]
-  path_labels: relative
   filters:
     mode: allow
     allow:
