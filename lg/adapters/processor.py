@@ -68,7 +68,6 @@ def process_files(plan: SectionPlan, template_ctx: TemplateContext) -> List[Proc
             file_path=fp,
             raw_text=raw_text,
             group_size=total_files,
-            mixed=False,  # У нас больше нет смешанных групп - каждый файл рендерится отдельно
             template_ctx=template_ctx
         )
         

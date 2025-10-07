@@ -20,13 +20,11 @@ class LightState:
             self,
             file_path: Path,
             raw_text: str,
-            group_size: int,
-            mixed: bool
+            group_size: int
     ):
         self.file_path = file_path
         self.raw_text = raw_text
         self.group_size = group_size
-        self.mixed = mixed
 
         # Вычисляем производные поля
         self.filename = file_path.name
@@ -43,10 +41,9 @@ class LightweightContext(LightState):
         file_path: Path,
         raw_text: str,
         group_size: int,
-        mixed: bool,
         template_ctx=None
     ):
-        super().__init__(file_path, raw_text, group_size, mixed)
+        super().__init__(file_path, raw_text, group_size)
         
         # Для ленивой инициализации полноценного контекста
         self._full_context: Optional[ProcessingContext] = None
@@ -80,14 +77,13 @@ class ProcessingContext(LightState):
         file_path: Path,
         raw_text: str,
         group_size: int,
-        mixed: bool,
         adapter_name: str,
         doc: TreeSitterDocument,
         editor: RangeEditor,
         placeholders: PlaceholderManager,
         tokenizer: TokenService,
     ):
-        super().__init__(file_path, raw_text, group_size, mixed)
+        super().__init__(file_path, raw_text, group_size)
 
         self.doc = doc
         self.editor = editor
@@ -143,7 +139,6 @@ class ProcessingContext(LightState):
             lightweight_ctx.file_path,
             lightweight_ctx.raw_text,
             lightweight_ctx.group_size,
-            lightweight_ctx.mixed,
             adapter.name,
             doc,
             editor,

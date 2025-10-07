@@ -19,46 +19,46 @@ def make_adapter(max_lvl, strip_single_h1):
     raw_cfg = {"max_heading_level": max_lvl, "strip_single_h1": strip_single_h1}
     return adapter(raw_cfg)
 
-@pytest.mark.parametrize("text, max_lvl, strip_single_h1, group_size, mixed, expected, expected_meta", [
+@pytest.mark.parametrize("text, max_lvl, strip_single_h1, group_size, expected, expected_meta", [
     # 1) single-file + max_heading_level=3: убираем H1, сдвигаем H2→H3, H3→H4
     (
         "# Title\n## Subtitle\n### Subsubtitle",
-        3, True, 1, False,
+        3, True, 1,
         "### Subtitle\n#### Subsubtitle",
         {"md.removed_h1": 1, "md.shifted": True},
     ),
     # 2) single-file + max_heading_level=2: убираем H1, H2→H2, H3→H3 (shift=0)
     (
         "# A\n## B\n### C",
-        2, True, 1, False,
+        2, True, 1,
         "## B\n### C",
         {"md.removed_h1": 1, "md.shifted": True},
     ),
     # 3) group_size>1 — только сдвиг (min_lvl=1 → shift=2): H1→###, H2→####
     (
         "# X\n## Y\n",
-        3, True, 2, False,
+        3, True, 2,
         "### X\n#### Y",
         {"md.removed_h1": 0, "md.shifted": True},
     ),
     # 5) max_heading_level=None, strip_single_h1=False — не трогаем
     (
         "# Z\n## Q",
-        None, False, 1, False,
+        None, False, 1,
         "# Z\n## Q",
         {"md.removed_h1": 0, "md.shifted": False},
     ),
     # 6) нет заголовков — возвращаем как есть
     (
         "Just some text\n- list item\n",
-        2, True, 1, False,
+        2, True, 1,
         "Just some text\n- list item",
         {"md.removed_h1": 0, "md.shifted": False},
     ),
 ])
-def test_header_normalization(text, max_lvl, strip_single_h1, group_size, mixed, expected, expected_meta):
+def test_header_normalization(text, max_lvl, strip_single_h1, group_size, expected, expected_meta):
     adapter = make_adapter(max_lvl, strip_single_h1)
-    out, meta = adapter.process(lctx_md(text, group_size, mixed))
+    out, meta = adapter.process(lctx_md(text, group_size))
     # сравниваем линии напрямую
     assert out == expected
     # и метаданные тоже

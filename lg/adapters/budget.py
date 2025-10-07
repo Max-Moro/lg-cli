@@ -236,7 +236,6 @@ class BudgetController(Generic[Cc]):
             file_path=lightweight_ctx.file_path,
             raw_text=text,
             group_size=lightweight_ctx.group_size,
-            mixed=lightweight_ctx.mixed,
             adapter_name=self.adapter.name,
             doc=doc,
             editor=editor,

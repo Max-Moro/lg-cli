@@ -48,4 +48,4 @@ tests:
           - condition: "TAGSET:section-pipeline:filtering"
             allow: ["/test_filters_engine.py"]
           - condition: "TAGSET:section-pipeline:rendering"
-            allow: ["/test_path_labels.py"]
+            allow: ["/test_file_labels.py"]

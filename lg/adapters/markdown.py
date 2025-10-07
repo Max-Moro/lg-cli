@@ -30,8 +30,7 @@ class MarkdownAdapter(BaseAdapter[MarkdownCfg]):
         processed_text, markdown_meta = process_markdown(
             templated_text, 
             self.cfg, 
-            group_size=lightweight_ctx.group_size, 
-            mixed=lightweight_ctx.mixed
+            group_size=lightweight_ctx.group_size
         )
         
         # Объединяем метаданные

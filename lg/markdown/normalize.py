@@ -28,11 +28,10 @@ def normalize_markdown(
     max_heading_level: int | None,
     strip_single_h1: bool,
     group_size: int,
-    mixed: bool,
     placeholder_inside_heading: bool = False
 ) -> tuple[str, dict]:
     """
-      • Если mixed=True или max_heading_level=None → не трогаем (кроме снятия H1).
+      • Если max_heading_level=None → не трогаем (кроме снятия H1).
       • Если group_size == 1 → снимаем верхний H1 (ATX/Setext).
       • Сдвиг уровней заголовков вне fenced-блоков так,
         чтобы минимальный уровень стал равен max_heading_level.

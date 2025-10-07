@@ -36,8 +36,7 @@ def stub_tokenizer() -> TokenService:
 def lctx(
         raw_text: str = "# Test content",
         filename: str = "test.py",
-        group_size: int = 1,
-        mixed: bool = False
+        group_size: int = 1
 ) -> LightweightContext:
     """
     Создает stub LightweightContext для тестов.
@@ -46,7 +45,6 @@ def lctx(
         raw_text: Содержимое файла
         filename: Имя файла
         group_size: Размер группы
-        mixed: Смешанные языки
 
     Returns:
         LightweightContext для использования в тестах
@@ -55,24 +53,23 @@ def lctx(
     return LightweightContext(
         file_path=test_path,
         raw_text=raw_text,
-        group_size=group_size,
-        mixed=mixed
+        group_size=group_size
     )
 
 
-def lctx_py(raw_text: str = "# Test Python", group_size: int = 1, mixed: bool = False) -> LightweightContext:
+def lctx_py(raw_text: str = "# Test Python", group_size: int = 1) -> LightweightContext:
     """Создает LightweightContext для Python файла."""
-    return lctx(raw_text=raw_text, filename="test.py", group_size=group_size, mixed=mixed)
+    return lctx(raw_text=raw_text, filename="test.py", group_size=group_size)
 
 
-def lctx_ts(raw_text: str = "// Test TypeScript", group_size: int = 1, mixed: bool = False) -> LightweightContext:
+def lctx_ts(raw_text: str = "// Test TypeScript", group_size: int = 1) -> LightweightContext:
     """Создает LightweightContext для TypeScript файла.""" 
-    return lctx(raw_text=raw_text, filename="test.ts", group_size=group_size, mixed=mixed)
+    return lctx(raw_text=raw_text, filename="test.ts", group_size=group_size)
 
 
-def lctx_md(raw_text: str = "# Test Markdown", group_size: int = 1, mixed: bool = False) -> LightweightContext:
+def lctx_md(raw_text: str = "# Test Markdown", group_size: int = 1) -> LightweightContext:
     """Создает LightweightContext для Markdown файла."""
-    return lctx(raw_text=raw_text, filename="test.md", group_size=group_size, mixed=mixed)
+    return lctx(raw_text=raw_text, filename="test.md", group_size=group_size)
 
 
 __all__ = ["TokenServiceStub", "stub_tokenizer", "lctx", "lctx_py", "lctx_ts", "lctx_md"]

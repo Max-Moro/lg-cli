@@ -139,7 +139,7 @@ class Cache:
     ) -> tuple[str, Path]:
         """
         Ключ processed-кэша. Включает файловый fingerprint (mtime/size),
-        а также контекст обработки (adapter, cfg, group_size, mixed, tool_version).
+        а также контекст обработки (adapter, cfg, group_size, tool_version).
         """
         try:
             st = abs_path.stat()
