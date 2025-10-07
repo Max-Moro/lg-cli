@@ -40,19 +40,12 @@ def build_section_manifest(
         template_ctx: Контекст шаблона с активными режимами/тегами
         root: Корень репозитория
         vcs: VCS провайдер
-        vcs_mode: Режим VCS ("all" или "changes")
+        vcs_mode: Режим VCS ("all", "changes" или "branch-changes")
         
     Returns:
         Манифест секции с отфильтрованными файлами
     """
     vcs = vcs or NullVcs()
-    
-    # Получаем изменённые файлы в зависимости от режима VCS
-    changed: Set[str] = set()
-    if vcs_mode == "changes":
-        changed = vcs.changed_files(root)
-    elif vcs_mode == "branch-changes":
-        changed = vcs.branch_changed_files(root, target_branch)
     
     # Создаем базовый фильтр с условными дополнениями
     filter_engine = _create_enhanced_filter_engine(section_config, template_ctx)
@@ -60,23 +53,54 @@ def build_section_manifest(
     # Вычисляем финальные опции адаптеров с учетом условий
     adapters_cfg = _compute_final_adapter_configs(section_config, template_ctx)
 
-    # Получаем файлы секции
-    files = _collect_section_files(
+    # Предварительная проверка: определяем, является ли секция документальной
+    # Собираем файлы с vcs_mode: all для проверки типа секции
+    preview_files = _collect_section_files(
         section_ref=section_ref,
         section_cfg=section_config,
         filter_engine=filter_engine,
-        changed_files=changed,
-        vcs_mode=vcs_mode,
+        changed_files=set(),  # пустой набор = все файлы при vcs_mode == "all"
+        vcs_mode="all",
         root=root,
         adapters_cfg=adapters_cfg
     )
+    
+    # Определяем, является ли секция документальной
+    is_doc_only = _is_doc_only_section(preview_files)
+    
+    # Для документальных секций принудительно используем vcs_mode: all
+    effective_vcs_mode = "all" if is_doc_only else vcs_mode
+    
+    # Получаем изменённые файлы в зависимости от эффективного режима VCS
+    changed: Set[str] = set()
+    if effective_vcs_mode == "changes":
+        changed = vcs.changed_files(root)
+    elif effective_vcs_mode == "branch-changes":
+        changed = vcs.branch_changed_files(root, target_branch)
+    
+    # Собираем финальный набор файлов
+    if effective_vcs_mode == "all":
+        # Переиспользуем предварительный результат, если режим не изменился
+        files = preview_files
+    else:
+        # Пересобираем с учетом VCS-фильтрации
+        files = _collect_section_files(
+            section_ref=section_ref,
+            section_cfg=section_config,
+            filter_engine=filter_engine,
+            changed_files=changed,
+            vcs_mode=effective_vcs_mode,
+            root=root,
+            adapters_cfg=adapters_cfg
+        )
 
     # Создаем манифест
     return SectionManifest(
         ref=section_ref,
         files=files,
         path_labels=section_config.path_labels,
-        adapters_cfg=adapters_cfg
+        adapters_cfg=adapters_cfg,
+        is_doc_only=is_doc_only
     )
 
 
@@ -109,6 +133,25 @@ def _compute_final_adapter_configs(section_cfg: SectionCfg, template_ctx: Templa
         final_configs[adapter_name] = final_options
     
     return final_configs
+
+
+def _is_doc_only_section(files: List[FileEntry]) -> bool:
+    """
+    Определяет, является ли секция документальной.
+    
+    Секция считается документальной, если все её файлы имеют language_hint
+    в ('markdown', '') - т.е. markdown или plain text.
+    
+    Args:
+        files: Список файлов секции
+        
+    Returns:
+        True если секция содержит только markdown/plain text файлы
+    """
+    if not files:
+        return False
+    
+    return all(f.language_hint in ("markdown", "") for f in files)
 
 
 def _create_enhanced_filter_engine(section_cfg: SectionCfg, template_ctx: TemplateContext) -> FilterEngine:

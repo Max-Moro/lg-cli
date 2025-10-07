@@ -100,6 +100,7 @@ class SectionManifest:
     ref: SectionRef
     files: List[FileEntry]
     path_labels: PathLabelMode
+    is_doc_only: bool  # True если секция содержит только markdown/plain text
     adapters_cfg: Dict[str, Dict] = field(default_factory=dict)
 
 
@@ -113,7 +114,6 @@ class SectionPlan:
     """
     manifest: SectionManifest
     files: List[FileEntry]
-    md_only: bool  # True если все файлы - markdown/plain text
     use_fence: bool  # Использовать ли fenced-блоки
     labels: Dict[str, str] = field(default_factory=dict)  # rel_path -> отображаемая метка
 

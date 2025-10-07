@@ -28,16 +28,12 @@ def build_section_plan(manifest: SectionManifest, template_ctx: TemplateContext)
         return SectionPlan(
             manifest=manifest,
             files=[],
-            md_only=True,
             use_fence=False,
             labels={}
         )
-    
-    # Определяем, все ли файлы - markdown/plain text
-    md_only = all(f.language_hint in ("markdown", "") for f in files)
-    
+
     # Fence-блоки используются всегда, кроме markdown
-    use_fence = not md_only
+    use_fence = not manifest.is_doc_only
     
     # Строим метки файлов
     origin = template_ctx.get_origin()
@@ -50,7 +46,6 @@ def build_section_plan(manifest: SectionManifest, template_ctx: TemplateContext)
     return SectionPlan(
         manifest=manifest,
         files=files,
-        md_only=md_only,
         use_fence=use_fence,
         labels=labels
     )

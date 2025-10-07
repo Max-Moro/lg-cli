@@ -82,7 +82,7 @@ class TestFileLabelIntegration:
         engine = make_engine(root)
         result = engine.render_context("test")
         
-        # Проверяем: НЕТ fenced-блоков для markdown (md_only=True)
+        # Проверяем: НЕТ fenced-блоков для markdown
         assert "```markdown" not in result
         assert "```" not in result
         

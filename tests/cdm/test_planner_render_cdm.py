@@ -72,13 +72,13 @@ def test_planner_and_render_for_addressed_sections(monorepo: Path):
     Проверяем работу полного пайплайна V2 для CDM секций:
       • для секции packages/svc-a::a — use_fence=True, есть группы python и '' (md),
         рендер содержит ```python и FILE-маркер с укороченной меткой README.md
-      • для секции apps/web::web-api — md_only=True, use_fence=False, рендер без FILE-маркеров
+      • для секции apps/web::web-api — use_fence=False, рендер без FILE-маркеров
     """
     # Тестируем секцию 'a' из скоупа 'packages/svc-a'
     manifest_a, plan_a, rendered_a = _process_section(monorepo, "a", "packages/svc-a")
     
     # Проверяем свойства плана секции A
-    assert plan_a.use_fence is True and plan_a.md_only is False
+    assert plan_a.use_fence is True
     langs = {f.language_hint for f in plan_a.files}
     assert "python" in langs and "markdown" in langs  # есть и код, и markdown-файлы
     
@@ -92,7 +92,7 @@ def test_planner_and_render_for_addressed_sections(monorepo: Path):
     manifest_web, plan_web, rendered_web = _process_section(monorepo, "web-api", "apps/web")
     
     # Секция web-api — чистый MD без fenced
-    assert plan_web.md_only is True and plan_web.use_fence is False
+    assert plan_web.use_fence is False
     
     # Проверяем рендер секции web-api
     txt_web = rendered_web.text
