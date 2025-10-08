@@ -3,12 +3,12 @@
   "$id": "https://example.org/lg/report.schema.json",
   "title": "RunResult",
   "type": "object",
-  "required": ["protocol","scope","target","model","encoder","ctxLimit","total","files"],
+  "required": ["protocol","scope","target","tokenizerLib","encoder","ctxLimit","total","files"],
   "properties": {
     "protocol": { "type": "integer", "minimum": 1 },
     "scope": { "type": "string", "enum": ["context", "section"] },
     "target": { "type": "string" },
-    "model": { "type": "string" },
+    "tokenizerLib": { "type": "string" },
     "encoder": { "type": "string" },
     "ctxLimit": { "type": "integer", "minimum": 1 },
     "total": {
