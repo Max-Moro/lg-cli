@@ -225,20 +225,6 @@ lg list encoders --lib sentencepiece
 - Модели скачиваются один раз и используются повторно
 - При удалении модели она будет скачана заново при следующем использовании
 
-### Управление кешем
-
-```bash
-# Просмотр скачанных моделей
-ls -la .lg-cache/tokenizer-models/tokenizers/
-ls -la .lg-cache/tokenizer-models/sentencepiece/
-
-# Очистка кеша моделей (ручное удаление)
-rm -rf .lg-cache/tokenizer-models/tokenizers/bert-base-uncased/
-
-# Полная очистка кеша
-rm -rf .lg-cache/
-```
-
 ---
 
 ## Размер контекстного окна

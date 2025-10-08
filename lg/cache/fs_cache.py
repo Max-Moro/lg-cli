@@ -47,10 +47,21 @@ class CacheSnapshot:
 
 class Cache:
     """
-    Единый файловый кэш для:
+    Файловый кэш для обработки файлов и подсчета токенов LG.
+    
+    Хранит:
       • processed-тексты (по ключу processed)
       • токены raw/processed (by model+mode)
       • rendered-токены (на итоговый документ)
+      • состояние конфигурации (cfg_state)
+    
+    Структура директории .lg-cache/:
+      • tokens/     - кеш подсчета токенов
+      • processed/  - кеш обработанных файлов
+      • cfg_state/  - состояние конфигурации и миграций
+      • diag/       - диагностические бандлы
+      • tokenizer-models/ - кеш моделей токенизации (ОТДЕЛЬНАЯ ПОДСИСТЕМА, не управляется Cache)
+
     Ключи раскладываются по подкаталогам по префиксу sha1.
     Любые ошибки — best-effort (не роняют пайплайн).
     """
@@ -230,29 +241,56 @@ class Cache:
 
     # --------------------------- MAINTENANCE --------------------------- #
     def purge_all(self) -> bool:
-        """Полная очистка содержимого кэша (.lg-cache)."""
+        """
+        Полная очистка содержимого кэша LG.
+        
+        Удаляет только поддиректории кэша LG (tokens, processed, cfg_state, diag),
+        НЕ затрагивая другие подсистемы (например, tokenizer-models).
+        """
         try:
-            if self.dir.exists():
-                shutil.rmtree(self.dir, ignore_errors=True)
-            self.dir.mkdir(parents=True, exist_ok=True)
+            if not self.dir.exists():
+                return True
+            
+            # Список поддиректорий кэша LG (не затрагиваем другие подсистемы)
+            lg_cache_buckets = ["tokens", "processed", "cfg_state", "diag"]
+            
+            for bucket in lg_cache_buckets:
+                bucket_dir = self.dir / bucket
+                if bucket_dir.exists():
+                    shutil.rmtree(bucket_dir, ignore_errors=True)
+            
             return True
         except Exception:
             return False
 
     def snapshot(self) -> CacheSnapshot:
-        """Собрать best-effort снимок состояния кэша."""
+        """
+        Собрать best-effort снимок состояния кэша LG.
+        
+        Учитывает только поддиректории кэша LG (tokens, processed, cfg_state, diag),
+        НЕ затрагивая другие подсистемы (например, tokenizer-models).
+        """
         size = 0
         entries = 0
+        
+        # Список поддиректорий кэша LG (не затрагиваем другие подсистемы)
+        lg_cache_buckets = ["tokens", "processed", "cfg_state", "diag"]
+        
         try:
             if self.dir.exists():
-                for p in self.dir.rglob("*"):
-                    try:
-                        if p.is_file():
-                            entries += 1
-                            size += p.stat().st_size
-                    except Exception:
-                        # best-effort — пропускаем проблемные файлы
-                        pass
+                for bucket in lg_cache_buckets:
+                    bucket_dir = self.dir / bucket
+                    if not bucket_dir.exists():
+                        continue
+                    
+                    for p in bucket_dir.rglob("*"):
+                        try:
+                            if p.is_file():
+                                entries += 1
+                                size += p.stat().st_size
+                        except Exception:
+                            # best-effort — пропускаем проблемные файлы
+                            pass
         except Exception:
             # оставляем size=0, entries=0
             pass
