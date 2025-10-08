@@ -9,6 +9,8 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any, Optional
 
+from .gitignore_helper import ensure_gitignore_entry
+
 CACHE_VERSION = 1
 
 def _sha1_text(text: str) -> str:
@@ -63,10 +65,13 @@ class Cache:
             self.enabled = True
         self.fresh = bool(fresh)
         self.tool_version = tool_version
+        self.root = root
         self.dir = (root / ".lg-cache")
         if self.enabled:
             try:
                 _ensure_dir(self.dir)
+                # Обеспечиваем наличие записи в .gitignore
+                ensure_gitignore_entry(root, ".lg-cache/", comment="LG cache directory")
             except Exception:
                 self.enabled = False
 

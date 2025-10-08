@@ -1,6 +1,7 @@
-from pathlib import Path
-from typing import Optional
 import logging
+from pathlib import Path
+
+from ...cache.gitignore_helper import ensure_gitignore_entry
 
 logger = logging.getLogger(__name__)
 
@@ -8,20 +9,20 @@ class ModelCache:
     """
     Менеджер кеша загруженных моделей токенизации.
     
-    Хранит модели в lg-cfg/tokenizer-models/{lib}/{model_name}/
+    Хранит модели в .lg-cache/tokenizer-models/{lib}/{model_name}/
     """
     
     def __init__(self, root: Path):
         """
         Args:
-            root: Корень проекта (где находится lg-cfg/)
+            root: Корень проекта
         """
         self.root = root
-        self.cache_dir = root / "lg-cfg" / "tokenizer-models"
+        self.cache_dir = root / ".lg-cache" / "tokenizer-models"
         self.cache_dir.mkdir(parents=True, exist_ok=True)
         
-        # Добавляем в .gitignore если его нет
-        self._ensure_gitignore()
+        # Обеспечиваем наличие записи в .gitignore
+        ensure_gitignore_entry(root, ".lg-cache/", comment="LG cache directory")
     
     def get_lib_cache_dir(self, lib: str) -> Path:
         """Возвращает директорию для кеша конкретной библиотеки."""
@@ -96,15 +97,3 @@ class ModelCache:
                 models.append(original_name)
         
         return sorted(models)
-    
-    def _ensure_gitignore(self) -> None:
-        """Добавляет tokenizer-models/ в lg-cfg/.gitignore если нужно."""
-        gitignore_path = self.cache_dir.parent / ".gitignore"
-        entry = "tokenizer-models/\n"
-        
-        if gitignore_path.exists():
-            content = gitignore_path.read_text(encoding="utf-8")
-            if "tokenizer-models" not in content:
-                gitignore_path.write_text(content + entry, encoding="utf-8")
-        else:
-            gitignore_path.write_text(entry, encoding="utf-8")
