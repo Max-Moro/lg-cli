@@ -1,0 +1,50 @@
+src:
+  extensions: [".py", ".toml"]
+  filters:
+    mode: allow
+    allow:
+      - "/pyproject.toml"
+      - "/lg/"
+    children:
+      lg:
+        mode: allow
+        allow:
+          - "/cli.py"
+          - "/engine.py"
+          - "/types.py"
+          - "/run_context.py"
+          - "/template/context.py"
+          - "/section_processor.py"
+          - "/config/"
+          - "/adapters/"
+          - "/stats/"
+        children:
+          config:
+            mode: allow
+            allow:
+              - "/load.py"
+              - "/model.py"
+          adapters:
+            mode: allow
+            allow:
+              - "/__init__.py"
+              - "/registry.py"
+              - "/base.py"
+              - "/processor.py"
+
+tests:
+  extensions: [".py"]
+  filters:
+    mode: allow
+    allow:
+      - "/tests/"
+    children:
+      tests:
+        mode: allow
+        allow:
+          - "/test_stats.py"
+        when:
+          - condition: "tag:tests-infra"
+            allow:
+              - "/conftest.py"
+              - "/infrastructure/"
