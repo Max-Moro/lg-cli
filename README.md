@@ -47,18 +47,22 @@
 ### Установка и запуск
 
 Минимально нужен Python ≥ 3.10.
-Зависимости рантайма: `ruamel.yaml`, `pathspec`.
-Для JSON-отчёта со статистикой (`report`) нужен `tiktoken`.
 
-Варианты запуска:
+Установка:
 
 ```bash
-# 1) Без установки — модуль напрямую
-python -m lg.cli render sec:core > prompt.md
+# Установка из директории с проектом
+pip install -e .
+```
 
-# 2) Установка в editable-режиме (если у вас есть pyproject.toml)
-pip install -e ./lg
-lg render sec:core > prompt.md      # если настроен console_script "lg"
+Проверка:
+
+```bash
+# Проверка через модуль
+python -m lg.cli --version
+
+# Или через установленную команду
+lg --version
 ```
 
 Проверка окружения и кэша:
@@ -248,9 +252,11 @@ core:
 
 ## Статистика по токенам
 
-Для облегчения процесса оптимизации листингов и контекстов LG позволяет получать сводный отчет по используемым токенам применимо к конкретной AI-модели. 
+Для облегчения процесса оптимизации листингов и контекстов LG позволяет получать сводный отчет по используемым токенам. 
 
-*Подробнее:* [docs/models.md](docs/models.md).
+LG поддерживает несколько опенсорсных библиотек токенизации (tiktoken, tokenizers, sentencepiece) и требует явного указания параметров токенизации при каждом запуске.
+
+*Подробнее:* [docs/tokenizers.md](docs/tokenizers.md).
 
 ---
 
@@ -264,8 +270,14 @@ core:
 
 Общий формат:
 
-```
-lg <command> <target> [--mode all|changes] [<additional_flags>]
+```bash
+lg <command> <target> [--mode MODESET:MODE] [--tags TAG1,TAG2] [<additional_flags>]
+
+# Для render/report обязательны параметры токенизации:
+lg render|report <target> \
+  --lib <tiktoken|tokenizers|sentencepiece> \
+  --encoder <encoder_name> \
+  --ctx-limit <tokens>
 ```
 
 Где `<target>`:
@@ -277,33 +289,63 @@ lg <command> <target> [--mode all|changes] [<additional_flags>]
 Команды:
 
 * `render` — вывести **только финальный текст** (Markdown).
-* `report` — **JSON-отчёт** (формат v4): статистика, файлы, контекстный блок.
-* `list contexts|sections` — перечисление доступных сущностей (JSON).
+* `report` — **JSON-отчёт** (формат v5): статистика, файлы, контекстный блок.
+* `list contexts|sections|tokenizer-libs|encoders` — перечисление доступных сущностей (JSON).
 * `diag` — диагностика окружения/кэша/конфига (JSON), есть `--rebuild-cache`.
+
+Параметры токенизации:
+
+* `--lib` — библиотека токенизации (`tiktoken`, `tokenizers`, `sentencepiece`)
+* `--encoder` — имя энкодера/модели (например: `cl100k_base`, `gpt2`, `google/gemma-2-2b`)
+* `--ctx-limit` — размер контекстного окна в токенах (например: `128000`, `200000`)
 
 Примеры:
 
 ```bash
-# Рендерим контекст из шаблона
-lg render ctx:onboarding > prompt.md
+# Рендерим контекст из шаблона с токенизацией для GPT-4
+lg render ctx:onboarding \
+  --lib tiktoken \
+  --encoder cl100k_base \
+  --ctx-limit 128000 > prompt.md
 
 # Рендерим «только секцию» (без шаблона)
-lg render sec:core-model-src > prompt.md
+lg render sec:core-model-src \
+  --lib tiktoken \
+  --encoder cl100k_base \
+  --ctx-limit 128000 > prompt.md
 
 # То же, но только изменённые файлы рабочего дерева
-lg render ctx:onboarding --mode changes > prompt.md
+lg render ctx:onboarding \
+  --lib tiktoken \
+  --encoder cl100k_base \
+  --ctx-limit 128000 \
+  --mode vcs:branch-changes > prompt.md
 
-# JSON-отчёт со статистикой токенов для выбранной модели
-lg report onboarding --model gpt-4o > report.json
+# JSON-отчёт со статистикой токенов для GPT-4o
+lg report ctx:onboarding \
+  --lib tiktoken \
+  --encoder o200k_base \
+  --ctx-limit 200000 > report.json
+
+# Отчет для Gemini с использованием sentencepiece
+lg report ctx:onboarding \
+  --lib sentencepiece \
+  --encoder google/gemma-2-2b \
+  --ctx-limit 1000000 > report.json
 
 # Рендерим контекст с описанием текущей задачи
-lg render ctx:dev --task "Реализовать кеширование результатов"
+lg render ctx:dev \
+  --lib tiktoken --encoder cl100k_base --ctx-limit 128000 \
+  --task "Реализовать кеширование результатов"
 
 # Многострочная задача через stdin
-echo -e "Задачи:\n- Исправить баг #123\n- Добавить тесты" | lg render ctx:dev --task -
+echo -e "Задачи:\n- Исправить баг #123\n- Добавить тесты" | \
+  lg render ctx:dev --lib tiktoken --encoder cl100k_base --ctx-limit 128000 --task -
 
 # Задача из файла
-lg render ctx:dev --task @.current-task.txt
+lg render ctx:dev \
+  --lib tiktoken --encoder cl100k_base --ctx-limit 128000 \
+  --task @.current-task.txt
 
 # Диагностика
 lg diag
@@ -312,6 +354,9 @@ lg diag --rebuild-cache
 # Списки
 lg list contexts
 lg list sections
+lg list tokenizer-libs
+lg list encoders --lib tiktoken
+lg list encoders --lib tokenizers
 ```
 
 ---
