@@ -64,7 +64,6 @@ class Engine:
             root=self.root,
             lib=self.options.tokenizer_lib,
             encoder=self.options.encoder,
-            ctx_limit=self.options.ctx_limit,
             cache=self.cache
         )
         active_tags, mode_options, adaptive_loader = process_adaptive_options(

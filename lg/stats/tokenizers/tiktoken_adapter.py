@@ -6,8 +6,8 @@ from .base import BaseTokenizer
 class TiktokenAdapter(BaseTokenizer):
     """Адаптер для библиотеки tiktoken (OpenAI)."""
     
-    def __init__(self, encoder: str, ctx_limit: int):
-        super().__init__(encoder, ctx_limit)
+    def __init__(self, encoder: str):
+        super().__init__(encoder)
         
         try:
             self._enc = tiktoken.get_encoding(encoder)

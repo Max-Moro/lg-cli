@@ -19,8 +19,8 @@ RECOMMENDED_MODELS = [
 class SPAdapter(BaseTokenizer):
     """Адаптер для библиотеки SentencePiece."""
     
-    def __init__(self, encoder: str, ctx_limit: int, root: Path):
-        super().__init__(encoder, ctx_limit)
+    def __init__(self, encoder: str, root: Path):
+        super().__init__(encoder)
         self.root = root
         self.model_cache = ModelCache(root)
         

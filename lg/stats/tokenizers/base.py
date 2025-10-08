@@ -9,14 +9,12 @@ class BaseTokenizer(ABC):
     Унифицирует интерфейс работы с разными библиотеками токенизации.
     """
     
-    def __init__(self, encoder: str, ctx_limit: int):
+    def __init__(self, encoder: str):
         """
         Args:
             encoder: Имя энкодера (для tiktoken) или модели (для HF/SP)
-            ctx_limit: Размер контекстного окна в токенах
         """
         self.encoder = encoder
-        self.ctx_limit = ctx_limit
     
     @abstractmethod
     def count_tokens(self, text: str) -> int:

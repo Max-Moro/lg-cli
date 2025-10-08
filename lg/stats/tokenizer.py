@@ -22,7 +22,6 @@ class TokenService:
         root: Path,
         lib: str,
         encoder: str,
-        ctx_limit: int,
         *,
         cache=None
     ):
@@ -31,17 +30,15 @@ class TokenService:
             root: Корень проекта
             lib: Имя библиотеки (tiktoken, tokenizers, sentencepiece)
             encoder: Имя энкодера/модели
-            ctx_limit: Размер контекстного окна в токенах
             cache: Кеш для токенов (опционально)
         """
         self.root = root
         self.lib = lib
         self.encoder = encoder
-        self.ctx_limit = ctx_limit
         self.cache = cache
         
         # Создаем токенизатор
-        self._tokenizer = create_tokenizer(lib, encoder, ctx_limit, root)
+        self._tokenizer = create_tokenizer(lib, encoder, root)
 
     @property
     def tokenizer(self) -> BaseTokenizer:

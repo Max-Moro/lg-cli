@@ -6,14 +6,13 @@ from .tiktoken_adapter import TiktokenAdapter
 from .hf_adapter import HFAdapter
 from .sp_adapter import SPAdapter
 
-def create_tokenizer(lib: str, encoder: str, ctx_limit: int, root: Path) -> BaseTokenizer:
+def create_tokenizer(lib: str, encoder: str, root: Path) -> BaseTokenizer:
     """
     Создает токенизатор по параметрам.
     
     Args:
         lib: Имя библиотеки (tiktoken, tokenizers, sentencepiece)
         encoder: Имя энкодера/модели
-        ctx_limit: Размер контекстного окна в токенах
         root: Корень проекта
         
     Returns:
@@ -23,11 +22,11 @@ def create_tokenizer(lib: str, encoder: str, ctx_limit: int, root: Path) -> Base
         ValueError: Если библиотека неизвестна
     """
     if lib == "tiktoken":
-        return TiktokenAdapter(encoder, ctx_limit)
+        return TiktokenAdapter(encoder)
     elif lib == "tokenizers":
-        return HFAdapter(encoder, ctx_limit, root)
+        return HFAdapter(encoder, root)
     elif lib == "sentencepiece":
-        return SPAdapter(encoder, ctx_limit, root)
+        return SPAdapter(encoder, root)
     else:
         raise ValueError(
             f"Unknown tokenizer library: '{lib}'. "
