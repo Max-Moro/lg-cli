@@ -32,9 +32,6 @@ def build_run_result_from_collector(
     # Получаем статистику из коллектора
     files_rows, totals, ctx_block = collector.compute_final_stats()
     
-    # Получаем информацию о модели
-    model_info = collector.tokenizer.model_info
-    
     # Мэппинг Totals в TotalM
     total = Total(
         sizeBytes=totals.sizeBytes,
@@ -85,9 +82,9 @@ def build_run_result_from_collector(
         protocol=PROTOCOL_VERSION,
         scope=scope,
         target=target_norm,
-        model=model_info.label,
-        encoder=collector.tokenizer.encoder_name,
-        ctxLimit=model_info.ctx_limit,
+        tokenizerLib=collector.tokenizer.lib,
+        encoder=collector.tokenizer.encoder,
+        ctxLimit=collector.tokenizer.ctx_limit,
         total=total,
         files=files,
         context=context,

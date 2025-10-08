@@ -28,10 +28,23 @@ def _build_parser() -> argparse.ArgumentParser:
             "target",
             help="ctx:<name> | sec:<name> | <name> (сначала ищется контекст, иначе секция)",
         )
+        # Параметры токенизации
         sp.add_argument(
-            "--model",
-            default="o3",
-            help="базовая модель для статистики",
+            "--lib",
+            required=True,
+            choices=["tiktoken", "tokenizers", "sentencepiece"],
+            help="библиотека токенизации"
+        )
+        sp.add_argument(
+            "--encoder",
+            required=True,
+            help="имя энкодера/модели"
+        )
+        sp.add_argument(
+            "--ctx-limit",
+            type=int,
+            required=True,
+            help="размер контекстного окна в токенах"
         )
         sp.add_argument(
             "--mode",
@@ -66,7 +79,23 @@ def _build_parser() -> argparse.ArgumentParser:
     add_common(sp_render)
 
     sp_list = sub.add_parser("list", help="Списки сущностей (JSON)")
-    sp_list.add_argument("what", choices=["contexts", "sections", "models", "mode-sets", "tag-sets"], help="что вывести")
+    sp_list.add_argument(
+        "what",
+        choices=[
+            "contexts",
+            "sections",
+            "mode-sets",
+            "tag-sets",
+            "tokenizer-libs",
+            "encoders"
+        ],
+        help="что вывести"
+    )
+    sp_list.add_argument(
+        "--lib",
+        choices=["tiktoken", "tokenizers", "sentencepiece"],
+        help="библиотека для списка энкодеров (требуется для what=encoders)"
+    )
 
     sp_diag = sub.add_parser("diag", help="Диагностика окружения и конфига (JSON) [--bundle] [--rebuild-cache]")
     sp_diag.add_argument(
@@ -103,7 +132,9 @@ def _opts(ns: argparse.Namespace) -> RunOptions:
     target_branch = getattr(ns, "target_branch", None)
     
     return RunOptions(
-        model=ns.model,
+        tokenizer_lib=ns.lib,
+        encoder=ns.encoder,
+        ctx_limit=ns.ctx_limit,
         modes=modes,
         extra_tags=extra_tags,
         task_text=task_text,
@@ -202,9 +233,15 @@ def main(argv: list[str] | None = None) -> int:
             elif ns.what == "sections":
                 from .config import list_sections
                 data = {"sections": list_sections(root)}
-            elif ns.what == "models":
-                from .stats import list_models
-                data = {"models": list_models(root)}
+            elif ns.what == "tokenizer-libs":
+                from .stats import list_tokenizer_libs
+                data = {"tokenizer_libs": list_tokenizer_libs()}
+            elif ns.what == "encoders":
+                if not ns.lib:
+                    sys.stderr.write("Error: --lib is required for 'encoders'\n")
+                    return 2
+                from .stats import list_encoders
+                data = {"lib": ns.lib, "encoders": list_encoders(ns.lib, root)}
             elif ns.what == "mode-sets":
                 from .config.modes import list_mode_sets
                 mode_sets_result = list_mode_sets(root)

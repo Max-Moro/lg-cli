@@ -1,85 +1,61 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Tuple, Optional
+from typing import Tuple
 
-import tiktoken
-from tiktoken import Encoding
-
-from .model import ResolvedModel
+from .tokenizers import BaseTokenizer, create_tokenizer
 
 """
 Сервис подсчёта токенов.
 
-Создаётся один раз на старте пайплайна на основе выбранной модели
-и предоставляет простое текстовое API без привязки к Tree-sitter.
+Создаётся один раз на старте пайплайна и предоставляет
+унифицированное API для работы с разными токенизаторами.
 """
-
-DEFAULT_ENCODER = "cl100k_base"
 
 class TokenService:
     """
-    Обёртка над tiktoken с единым энкодером и встроенным кешированием.
+    Обёртка над BaseTokenizer с встроенным кешированием.
     """
 
     def __init__(
-            self,
-            root: Optional[Path],
-            model_id: Optional[str],
-            *,
-            encoder: Optional[Encoding] = None,
-            cache=None
+        self,
+        root: Path,
+        lib: str,
+        encoder: str,
+        ctx_limit: int,
+        *,
+        cache=None
     ):
+        """
+        Args:
+            root: Корень проекта
+            lib: Имя библиотеки (tiktoken, tokenizers, sentencepiece)
+            encoder: Имя энкодера/модели
+            ctx_limit: Размер контекстного окна в токенах
+            cache: Кеш для токенов (опционально)
+        """
         self.root = root
-        self.model_id = model_id
-        self._enc: Optional[Encoding] = encoder
-        self._model_info: Optional[ResolvedModel] = None
-        self.cache = cache  # Кеш для токенов
-
-    # ---------------- Internal ---------------- #
-    def _get_encoder(self, cfg_name: str) -> Encoding:
-        try:
-            enc = tiktoken.get_encoding(cfg_name)
-        except Exception:
-            try:
-                enc = tiktoken.encoding_for_model(cfg_name)
-            except Exception:
-                enc = tiktoken.get_encoding(DEFAULT_ENCODER)
-        return enc
-
-    # ---------------- Public API ---------------- #
-    @property
-    def enc(self) -> Encoding:
-        """Ленивая инициализация энкодера."""
-        if self._enc is None:
-            from .load import get_model_info
-            self._model_info = get_model_info(self.root, self.model_id)
-            self._enc = self._get_encoder(self._model_info.encoder)
-        return self._enc
+        self.lib = lib
+        self.encoder = encoder
+        self.ctx_limit = ctx_limit
+        self.cache = cache
+        
+        # Создаем токенизатор
+        self._tokenizer = create_tokenizer(lib, encoder, ctx_limit, root)
 
     @property
-    def model_info(self) -> ResolvedModel:
-        """Ленивая инициализация конфигурации AI-моделей."""
-        if self.root is None:
-            raise RuntimeError(
-                "model_info недоступен для токенайзера без пути: "
-                "токенайзер имеет только энкодер, но не имеет доступа к конфигурации AI-моделей"
-            )
-        if self._model_info is None:
-            from .load import get_model_info
-            self._model_info = get_model_info(self.root, self.model_id)
-            self._enc = self._get_encoder(self._model_info.encoder)
-        return self._model_info
+    def tokenizer(self) -> BaseTokenizer:
+        """Возвращает базовый токенизатор."""
+        return self._tokenizer
 
     @property
-    def encoder_name(self):
-        return self.enc.name
+    def encoder_name(self) -> str:
+        """Имя энкодера."""
+        return self.encoder
 
     def count_text(self, text: str) -> int:
         """Подсчитать токены в тексте."""
-        if not text:
-            return 0
-        return len(self.enc.encode(text))
+        return self._tokenizer.count_tokens(text)
     
     def count_text_cached(self, text: str) -> int:
         """
@@ -98,17 +74,16 @@ class TokenService:
         if not self.cache:
             return self.count_text(text)
         
-        # Получаем имя модели для кеша
-        model_name = self.model_info.base if self.root else "default"
-        
         # Пытаемся получить из кеша
-        cached_tokens = self.cache.get_text_tokens(text, model_name)
+        # Ключ: lib:encoder
+        cache_key = f"{self.lib}:{self.encoder}"
+        cached_tokens = self.cache.get_text_tokens(text, cache_key)
         if cached_tokens is not None:
             return cached_tokens
         
         # Если нет в кеше, подсчитываем и сохраняем
         token_count = self.count_text(text)
-        self.cache.put_text_tokens(text, model_name, token_count)
+        self.cache.put_text_tokens(text, cache_key, token_count)
         
         return token_count
 
@@ -168,13 +143,3 @@ class TokenService:
         trimmed = text[:target_length].rstrip()
         
         return trimmed
-
-
-def default_tokenizer() -> TokenService:
-    """Быстрое создание сервиса токенизации без обращения к конфигу."""
-    return TokenService(
-        root=None,
-        model_id=None,
-        encoder=tiktoken.get_encoding(DEFAULT_ENCODER),
-        cache=None
-    )

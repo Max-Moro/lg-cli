@@ -13,7 +13,8 @@ from .config.paths import cfg_root
 from .migrate import ensure_cfg_actual
 from .run_context import RunContext
 from .section_processor import SectionProcessor
-from .stats import RunResult, build_run_result_from_collector, StatsCollector, TokenService
+from .stats import RunResult, build_run_result_from_collector, StatsCollector
+from .stats.tokenizer import TokenService
 from .template import create_template_processor, TemplateContext
 from .types import RunOptions, TargetSpec, SectionRef
 from .vcs import NullVcs
@@ -59,7 +60,13 @@ class Engine:
         # VCS
         self.vcs = GitVcs() if (self.root / ".git").is_dir() else NullVcs()
 
-        self.tokenizer = TokenService(self.root, self.options.model, cache=self.cache)
+        self.tokenizer = TokenService(
+            root=self.root,
+            lib=self.options.tokenizer_lib,
+            encoder=self.options.encoder,
+            ctx_limit=self.options.ctx_limit,
+            cache=self.cache
+        )
         active_tags, mode_options, adaptive_loader = process_adaptive_options(
             self.root,
             self.options.modes,

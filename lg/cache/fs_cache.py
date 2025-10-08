@@ -72,13 +72,13 @@ class Cache:
 
     # --------------------------- ПРОСТОЕ КЕШИРОВАНИЕ ТОКЕНОВ --------------------------- #
 
-    def get_text_tokens(self, text: str, model: str) -> Optional[int]:
+    def get_text_tokens(self, text: str, cache_key: str) -> Optional[int]:
         """
         Получает количество токенов для текста из кэша по простому хешу.
         
         Args:
             text: Текст для подсчета токенов
-            model: Имя модели
+            cache_key: Ключ токенизатора
             
         Returns:
             Количество токенов или None если нет в кэше
@@ -93,7 +93,7 @@ class Cache:
             data = self._load_json(path)
             if not data:
                 return None
-            return data.get("tokens", {}).get(model)
+            return data.get("tokens", {}).get(cache_key)
         except Exception:
             return None
     

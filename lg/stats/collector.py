@@ -9,7 +9,7 @@ from __future__ import annotations
 
 from typing import Dict, List, Optional, Tuple
 
-from ..stats import TokenService
+from .tokenizer import TokenService
 from ..types import FileRow, Totals, ContextBlock, ProcessedFile, RenderedSection, SectionRef, FileStats, SectionStats
 
 
@@ -171,13 +171,12 @@ class StatsCollector:
                 meta_summary[k] = meta_summary.get(k, 0) + v
         
         # Получаем информацию о модели для подсчета shares
-        model_info = self.tokenizer.model_info
         
         # Преобразуем статистику файлов в формат API
         files_rows = []
         for file_stats in sorted(self.files_stats.values(), key=lambda x: x.path):
             prompt_share = (file_stats.tokens_processed / total_proc * 100.0) if total_proc else 0.0
-            ctx_share = (file_stats.tokens_processed / model_info.ctx_limit * 100.0) if model_info.ctx_limit else 0.0
+            ctx_share = (file_stats.tokens_processed / self.tokenizer.ctx_limit * 100.0) if self.tokenizer.ctx_limit else 0.0
             
             files_rows.append(FileRow(
                 path=file_stats.path,
@@ -198,7 +197,7 @@ class StatsCollector:
             tokensRaw=total_raw,
             savedTokens=max(0, total_raw - total_proc),
             savedPct=(1 - (total_proc / total_raw)) * 100.0 if total_raw else 0.0,
-            ctxShare=(total_proc / model_info.ctx_limit * 100.0) if model_info.ctx_limit else 0.0,
+            ctxShare=(total_proc / self.tokenizer.ctx_limit * 100.0) if self.tokenizer.ctx_limit else 0.0,
             renderedTokens=sections_only_tokens,
             renderedOverheadTokens=max(0, (sections_only_tokens or 0) - total_proc),
             metaSummary=meta_summary
@@ -216,7 +215,7 @@ class StatsCollector:
             finalRenderedTokens=final_tokens,
             templateOnlyTokens=template_overhead_tokens,
             templateOverheadPct=template_overhead_pct,
-            finalCtxShare=(final_tokens / model_info.ctx_limit * 100.0) if model_info.ctx_limit and final_tokens else 0.0
+            finalCtxShare=(final_tokens / self.tokenizer.ctx_limit * 100.0) if self.tokenizer.ctx_limit and final_tokens else 0.0
         )
         
         return files_rows, totals, ctx_block

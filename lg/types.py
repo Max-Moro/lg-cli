@@ -17,7 +17,10 @@ AdapterRawCfg = Mapping[str, Any]
 # -----------------------------
 @dataclass(frozen=True)
 class RunOptions:
-    model: ModelName = ModelName("o3")
+    # Параметры токенизации
+    tokenizer_lib: str = "tiktoken"
+    encoder: str = "cl100k_base"
+    ctx_limit: int = 128000
     # Адаптивные возможности
     modes: Dict[str, str] = field(default_factory=dict)  # modeset -> mode
     extra_tags: Set[str] = field(default_factory=set)  # дополнительные теги

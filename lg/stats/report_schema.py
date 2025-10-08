@@ -63,7 +63,7 @@ class RunResult(BaseModel):
     protocol: conint(ge=1)
     scope: Scope
     target: str
-    model: str
+    tokenizerLib: str
     encoder: str
     ctxLimit: conint(ge=1)
     total: Total
