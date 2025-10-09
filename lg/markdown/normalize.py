@@ -4,12 +4,12 @@ import re
 from typing import Tuple
 
 
-def _strip_single_h1_if_needed(lines: list[str], group_size: int, force_strip: bool = False) -> Tuple[list[str], bool]:
+def _strip_single_h1_if_needed(lines: list[str], strip_h1: bool) -> Tuple[list[str], bool]:
     """
-    Удаляет верхний H1 (ATX или setext) только если файл одиночный в группе ИЛИ force_strip=True.
+    Удаляет верхний H1 (ATX или setext) если strip_h1=True.
     Возвращает (новые_строки, removed_h1_flag).
     """
-    if (group_size != 1 and not force_strip) or not lines:
+    if not strip_h1 or not lines:
         return lines, False
 
     # ATX: "# Title"
@@ -27,12 +27,11 @@ def normalize_markdown(
     text: str, *,
     max_heading_level: int | None,
     strip_single_h1: bool,
-    group_size: int,
     placeholder_inside_heading: bool = False
 ) -> tuple[str, dict]:
     """
       • Если max_heading_level=None → не трогаем (кроме снятия H1).
-      • Если group_size == 1 → снимаем верхний H1 (ATX/Setext).
+      • Если strip_single_h1=True → снимаем верхний H1 (ATX/Setext).
       • Сдвиг уровней заголовков вне fenced-блоков так,
         чтобы минимальный уровень стал равен max_heading_level.
     """
@@ -59,7 +58,7 @@ def normalize_markdown(
             meta["md.removed_h1"] = 1
     elif strip_single_h1:
         # Обычная обработка strip_h1
-        lines, removed_h1 = _strip_single_h1_if_needed(lines, group_size, False)
+        lines, removed_h1 = _strip_single_h1_if_needed(lines, strip_single_h1)
         if removed_h1:
             meta["md.removed_h1"] = 1
 

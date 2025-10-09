@@ -34,21 +34,28 @@ def make_adapter(max_lvl, strip_single_h1):
         "## B\n### C",
         {"md.removed_h1": 1, "md.shifted": True},
     ),
-    # 3) group_size>1 — только сдвиг (min_lvl=1 → shift=2): H1→###, H2→####
+    # 3) strip_single_h1=True всегда удаляет H1, затем сдвиг: ## Y → ### Y
     (
         "# X\n## Y\n",
         3, True, 2,
+        "### Y",
+        {"md.removed_h1": 1, "md.shifted": True},
+    ),
+    # 4) strip_single_h1=False — только сдвиг (min_lvl=1 → shift=2): H1→###, H2→####
+    (
+        "# X\n## Y\n",
+        3, False, 2,
         "### X\n#### Y",
         {"md.removed_h1": 0, "md.shifted": True},
     ),
-    # 5) max_heading_level=None, strip_single_h1=False — не трогаем
+    # 6) max_heading_level=None, strip_single_h1=False — не трогаем
     (
         "# Z\n## Q",
         None, False, 1,
         "# Z\n## Q",
         {"md.removed_h1": 0, "md.shifted": False},
     ),
-    # 6) нет заголовков — возвращаем как есть
+    # 7) нет заголовков — возвращаем как есть
     (
         "Just some text\n- list item\n",
         2, True, 1,
@@ -77,7 +84,7 @@ def test_only_strips_single_h1_line_when_alone():
 def test_complex_markdown_preserves_non_header_content():
     text = "# T\n## A\nPara line\n### B\n- item\n"
     adapter = make_adapter(2, True)
-    # group_size=1 → удаляет # T, shift = 2-2 = 0
+    # strip_single_h1=True → удаляет # T, shift = 2-2 = 0
     out, meta = adapter.process(lctx_md(raw_text=text))
     lines = out.splitlines()
     # первая строка должна быть "## A"
