@@ -4,19 +4,6 @@ from lg.engine import run_report
 from lg.types import RunOptions
 
 
-class FakeEnc:
-    def __init__(self, counter):
-        self.counter = counter
-
-    def encode(self, s: str):
-        self.counter["encode"] += 1
-        # простая «токенизация»: длина в символах
-        return list(s)
-
-    @property
-    def name(self):
-        return "fake_enc"
-
 def test_processed_cache_skips_adapter_on_second_run(tmpproj: Path, monkeypatch):
     monkeypatch.chdir(tmpproj)
 
@@ -46,56 +33,52 @@ def test_processed_cache_skips_adapter_on_second_run(tmpproj: Path, monkeypatch)
     # процессингов быть не должно
     assert calls["process"] == 1
 
+
 def test_token_counts_cached_between_runs(tmpproj: Path, monkeypatch):
     monkeypatch.chdir(tmpproj)
     (tmpproj / "x.md").write_text("# T\nbody\n", encoding="utf-8")
 
-    # Мокаем get_model_info и tiktoken.get_encoding
-    from lg.stats.model import ResolvedModel
-    import lg.stats.load as lg_models
-    import tiktoken
-
+    # Счётчик вызовов encode
     counter = {"encode": 0}
 
-    def fake_get_model_info(_root, model_id: str):
-        # эффективный лимит 32K, энкодер "fake"
-        return ResolvedModel(
-            id=model_id, label="Fake", base="o3", provider="openai",
-            encoder="fake", ctx_limit=32_000, plan=None
-        )
+    # Мокаем count_tokens в TokenService для отслеживания вызовов
+    from lg.stats.tokenizer import TokenService
+    orig_count = TokenService.count_text
 
-    monkeypatch.setattr(lg_models, "get_model_info", fake_get_model_info, raising=True)
-    monkeypatch.setattr(tiktoken, "get_encoding", lambda *_args, **_kw: FakeEnc(counter), raising=True)
+    def wrapped_count(self, text: str) -> int:
+        counter["encode"] += 1
+        return orig_count(self, text)
+
+    monkeypatch.setattr(TokenService, "count_text", wrapped_count, raising=True)
 
     # первый запуск — посчитает raw/processed + rendered (итоговый и sections-only)
-    r1 = run_report("sec:docs", RunOptions(model="o3"))
+    r1 = run_report("sec:docs", RunOptions())
     enc_calls_first = counter["encode"]
     assert enc_calls_first > 0
 
     # второй запуск — должен брать ВСЕ токены из кэша → encode не зовётся
-    r2 = run_report("sec:docs", RunOptions(model="o3"))
+    r2 = run_report("sec:docs", RunOptions())
+    # Кеш работает через count_text_cached, но базовый count_text все равно не должен вызываться больше
     assert counter["encode"] == enc_calls_first
+
 
 def test_rendered_tokens_cached(tmpproj: Path, monkeypatch):
     monkeypatch.chdir(tmpproj)
     # контекст a: "Intro\n\n${docs}\n"
     (tmpproj / "README.md").write_text("# A\nZ\n", encoding="utf-8")
 
-    # Мокаем get_model_info и tiktoken.get_encoding
-    from lg.stats.model import ResolvedModel
-    import lg.stats.load as lg_models
-    import tiktoken
-
+    # Счётчик вызовов
     counter = {"encode": 0}
 
-    def fake_get_model_info(_root, model_id: str):
-        return ResolvedModel(
-            id=model_id, label="Fake", base="o3", provider="openai",
-            encoder="fake", ctx_limit=32_000, plan=None
-        )
+    # Мокаем count_tokens в TokenService для отслеживания вызовов
+    from lg.stats.tokenizer import TokenService
+    orig_count = TokenService.count_text
 
-    monkeypatch.setattr(lg_models, "get_model_info", fake_get_model_info, raising=True)
-    monkeypatch.setattr(tiktoken, "get_encoding", lambda *_args, **_kw: FakeEnc(counter), raising=True)
+    def wrapped_count(self, text: str) -> int:
+        counter["encode"] += 1
+        return orig_count(self, text)
+
+    monkeypatch.setattr(TokenService, "count_text", wrapped_count, raising=True)
 
     # первый запуск (посчитает rendered для final и sections-only)
     r1 = run_report("ctx:a", RunOptions())
@@ -104,4 +87,5 @@ def test_rendered_tokens_cached(tmpproj: Path, monkeypatch):
 
     # второй запуск (ничего не меняем) — оба rendered должны прийти из кэша
     r2 = run_report("ctx:a", RunOptions())
+    # Все должно прийти из кэша
     assert counter["encode"] == calls1
