@@ -97,3 +97,82 @@ class ModelCache:
                 models.append(original_name)
         
         return sorted(models)
+    
+    def import_local_model(self, lib: str, source_path: Path, model_name: str | None = None) -> str:
+        """
+        Импортирует локальную модель в кэш LG для постоянного переиспользования.
+        
+        Args:
+            lib: Имя библиотеки (tokenizers, sentencepiece)
+            source_path: Путь к локальному файлу или директории с моделью
+            model_name: Опциональное имя для модели в кэше (если None, используется имя файла/директории)
+            
+        Returns:
+            Имя модели в кэше (для последующего использования в --encoder)
+            
+        Raises:
+            FileNotFoundError: Если source_path не существует или не содержит нужных файлов
+            ValueError: Если формат модели не поддерживается
+        """
+        import shutil
+        
+        if not source_path.exists():
+            raise FileNotFoundError(f"Source path does not exist: {source_path}")
+        
+        # Определяем имя модели в кэше
+        if model_name is None:
+            # Генерируем имя на основе пути
+            if source_path.is_file():
+                # Используем имя файла без расширения
+                model_name = source_path.stem
+            else:
+                # Используем имя директории
+                model_name = source_path.name
+        
+        # Получаем директорию для кэша этой модели
+        cache_dir = self.get_model_cache_dir(lib, model_name)
+        
+        if lib == "tokenizers":
+            # Для tokenizers копируем tokenizer.json
+            if source_path.is_file() and source_path.suffix == ".json":
+                # Прямой файл tokenizer.json
+                dest = cache_dir / "tokenizer.json"
+                shutil.copy2(source_path, dest)
+                logger.info(f"Imported tokenizer from {source_path} to {dest}")
+            elif source_path.is_dir():
+                # Директория - ищем tokenizer.json внутри
+                tokenizer_file = source_path / "tokenizer.json"
+                if not tokenizer_file.exists():
+                    raise FileNotFoundError(f"Directory {source_path} does not contain tokenizer.json")
+                dest = cache_dir / "tokenizer.json"
+                shutil.copy2(tokenizer_file, dest)
+                logger.info(f"Imported tokenizer from {tokenizer_file} to {dest}")
+            else:
+                raise ValueError(f"Invalid tokenizer source: {source_path} (expected .json file or directory)")
+        
+        elif lib == "sentencepiece":
+            # Для sentencepiece копируем .model/.spm файл
+            if source_path.is_file() and source_path.suffix in [".model", ".spm"]:
+                # Прямой файл модели
+                dest = cache_dir / source_path.name
+                shutil.copy2(source_path, dest)
+                logger.info(f"Imported SentencePiece model from {source_path} to {dest}")
+            elif source_path.is_dir():
+                # Директория - ищем .model файл внутри
+                model_files = list(source_path.glob("*.model"))
+                if not model_files:
+                    model_files = list(source_path.glob("*.spm"))
+                if not model_files:
+                    raise FileNotFoundError(f"Directory {source_path} does not contain .model or .spm file")
+                # Берем первый найденный файл
+                source_file = model_files[0]
+                dest = cache_dir / source_file.name
+                shutil.copy2(source_file, dest)
+                logger.info(f"Imported SentencePiece model from {source_file} to {dest}")
+            else:
+                raise ValueError(f"Invalid SentencePiece source: {source_path} (expected .model/.spm file or directory)")
+        
+        else:
+            raise ValueError(f"Unsupported library for import: {lib}")
+        
+        return model_name

@@ -3,8 +3,6 @@
 """
 
 import json
-import tempfile
-from pathlib import Path
 
 import pytest
 
@@ -80,6 +78,10 @@ def test_load_from_local_file(simple_tokenizer_json, tmp_path):
     
     decoded = adapter.decode(tokens)
     assert isinstance(decoded, str)
+    
+    # Проверяем, что модель появилась в списке доступных
+    available = HFAdapter.list_available_encoders(tmp_path)
+    assert "tokenizer" in available  # имя файла без расширения
 
 
 def test_load_from_local_directory(simple_tokenizer_json, tmp_path):
@@ -99,6 +101,10 @@ def test_load_from_local_directory(simple_tokenizer_json, tmp_path):
     text = "abc"
     token_count = adapter.count_tokens(text)
     assert token_count > 0
+    
+    # Проверяем, что модель появилась в списке доступных
+    available = HFAdapter.list_available_encoders(tmp_path)
+    assert "my_model" in available  # имя директории
 
 
 def test_local_file_not_found(tmp_path):
@@ -127,3 +133,60 @@ def test_list_encoders_includes_hint(tmp_path):
     hints = [e for e in encoders if "local file" in e.lower()]
     assert len(hints) > 0
     assert any("tokenizer.json" in hint for hint in hints)
+
+
+def test_local_model_persists_in_cache(simple_tokenizer_json, tmp_path):
+    """Тест, что локальная модель сохраняется в кэше после первой загрузки."""
+    # Создаем временный файл tokenizer.json вне кэша
+    external_dir = tmp_path / "external"
+    external_dir.mkdir()
+    tokenizer_file = external_dir / "custom_tokenizer.json"
+    with open(tokenizer_file, "w", encoding="utf-8") as f:
+        json.dump(simple_tokenizer_json, f)
+    
+    # Первая загрузка - импортирует в кэш
+    adapter1 = HFAdapter(str(tokenizer_file), tmp_path)
+    text = "test"
+    tokens1 = adapter1.count_tokens(text)
+    
+    # Проверяем, что модель есть в кэше
+    cache_dir = tmp_path / ".lg-cache" / "tokenizer-models" / "tokenizers" / "custom_tokenizer"
+    assert cache_dir.exists()
+    assert (cache_dir / "tokenizer.json").exists()
+    
+    # Удаляем оригинальный файл
+    tokenizer_file.unlink()
+    
+    # Вторая загрузка - должна работать из кэша по короткому имени
+    adapter2 = HFAdapter("custom_tokenizer", tmp_path)
+    tokens2 = adapter2.count_tokens(text)
+    
+    # Результаты должны совпадать
+    assert tokens1 == tokens2
+    
+    # Модель должна быть в списке доступных
+    available = HFAdapter.list_available_encoders(tmp_path)
+    assert "custom_tokenizer" in available
+
+
+def test_reusing_imported_model_by_name(simple_tokenizer_json, tmp_path):
+    """Тест переиспользования импортированной модели по короткому имени."""
+    # Импортируем модель из локального файла
+    external_file = tmp_path / "external" / "my_special_tokenizer.json"
+    external_file.parent.mkdir()
+    with open(external_file, "w", encoding="utf-8") as f:
+        json.dump(simple_tokenizer_json, f)
+    
+    # Первая загрузка с полным путем - импортирует в кэш
+    adapter1 = HFAdapter(str(external_file), tmp_path)
+    
+    # Проверяем, что модель доступна в списке
+    available = HFAdapter.list_available_encoders(tmp_path)
+    assert "my_special_tokenizer" in available
+    
+    # Вторая загрузка по короткому имени - должна работать
+    adapter2 = HFAdapter("my_special_tokenizer", tmp_path)
+    
+    # Обе должны работать одинаково
+    text = "Hello world"
+    assert adapter1.count_tokens(text) == adapter2.count_tokens(text)

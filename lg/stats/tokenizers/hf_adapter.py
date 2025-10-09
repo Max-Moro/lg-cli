@@ -50,21 +50,33 @@ class HFAdapter(BaseTokenizer):
         
         # Проверяем файл tokenizer.json напрямую
         if local_path.exists() and local_path.is_file() and local_path.suffix == ".json":
-            logger.info(f"Loading tokenizer from local file: {local_path}")
+            logger.info(f"Importing tokenizer from local file: {local_path}")
             try:
-                return Tokenizer.from_file(str(local_path))
+                # Импортируем в кэш для постоянного переиспользования
+                cache_name = self.model_cache.import_local_model("tokenizers", local_path)
+                logger.info(f"Tokenizer imported as '{cache_name}' and available for future use")
+                
+                # Загружаем из кэша
+                cache_dir = self.model_cache.get_model_cache_dir("tokenizers", cache_name)
+                return Tokenizer.from_file(str(cache_dir / "tokenizer.json"))
             except Exception as e:
-                raise RuntimeError(f"Failed to load tokenizer from local file {local_path}: {e}") from e
+                raise RuntimeError(f"Failed to import and load tokenizer from {local_path}: {e}") from e
         
         # Проверяем директорию с tokenizer.json
         if local_path.exists() and local_path.is_dir():
             tokenizer_file = local_path / "tokenizer.json"
             if tokenizer_file.exists():
-                logger.info(f"Loading tokenizer from local directory: {tokenizer_file}")
+                logger.info(f"Importing tokenizer from local directory: {local_path}")
                 try:
-                    return Tokenizer.from_file(str(tokenizer_file))
+                    # Импортируем в кэш для постоянного переиспользования
+                    cache_name = self.model_cache.import_local_model("tokenizers", local_path)
+                    logger.info(f"Tokenizer imported as '{cache_name}' and available for future use")
+                    
+                    # Загружаем из кэша
+                    cache_dir = self.model_cache.get_model_cache_dir("tokenizers", cache_name)
+                    return Tokenizer.from_file(str(cache_dir / "tokenizer.json"))
                 except Exception as e:
-                    raise RuntimeError(f"Failed to load tokenizer from {tokenizer_file}: {e}") from e
+                    raise RuntimeError(f"Failed to import and load tokenizer from {local_path}: {e}") from e
             else:
                 raise FileNotFoundError(
                     f"Directory {local_path} exists but does not contain tokenizer.json"
@@ -144,6 +156,6 @@ class HFAdapter(BaseTokenizer):
                     all_models.append(cached_model)
         
         # Добавляем подсказку про локальные файлы
-        all_models.append("(or specify local file: /path/to/tokenizer.json or /path/to/model/)")
+        all_models.append("(or specify local file: /path/to/tokenizer.json)")
         
         return all_models

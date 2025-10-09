@@ -39,7 +39,8 @@ class SPAdapter(BaseTokenizer):
         
         Args:
             model_spec: Может быть:
-                - Путь к локальному .model файлу: /path/to/model.spm
+                - Путь к локальному .model/.spm файлу: /path/to/model.spm
+                - Путь к директории с .model файлом: /path/to/model/
                 - Имя модели на HF: google/gemma-2-2b
         
         Returns:
@@ -47,9 +48,38 @@ class SPAdapter(BaseTokenizer):
         """
         # Локальный файл
         local_path = Path(model_spec)
-        if local_path.exists() and local_path.suffix in [".model", ".spm"]:
-            logger.info(f"Loading SentencePiece model from local file: {local_path}")
-            return local_path
+        if local_path.exists() and local_path.is_file() and local_path.suffix in [".model", ".spm"]:
+            logger.info(f"Importing SentencePiece model from local file: {local_path}")
+            try:
+                # Импортируем в кэш для постоянного переиспользования
+                cache_name = self.model_cache.import_local_model("sentencepiece", local_path)
+                logger.info(f"Model imported as '{cache_name}' and available for future use")
+                
+                # Загружаем из кэша
+                cache_dir = self.model_cache.get_model_cache_dir("sentencepiece", cache_name)
+                model_files = list(cache_dir.glob("*.model"))
+                if not model_files:
+                    model_files = list(cache_dir.glob("*.spm"))
+                return model_files[0]
+            except Exception as e:
+                raise RuntimeError(f"Failed to import and load model from {local_path}: {e}") from e
+        
+        # Локальная директория
+        if local_path.exists() and local_path.is_dir():
+            logger.info(f"Importing SentencePiece model from local directory: {local_path}")
+            try:
+                # Импортируем в кэш для постоянного переиспользования
+                cache_name = self.model_cache.import_local_model("sentencepiece", local_path)
+                logger.info(f"Model imported as '{cache_name}' and available for future use")
+                
+                # Загружаем из кэша
+                cache_dir = self.model_cache.get_model_cache_dir("sentencepiece", cache_name)
+                model_files = list(cache_dir.glob("*.model"))
+                if not model_files:
+                    model_files = list(cache_dir.glob("*.spm"))
+                return model_files[0]
+            except Exception as e:
+                raise RuntimeError(f"Failed to import and load model from {local_path}: {e}") from e
         
         # Проверяем кеш
         if self.model_cache.is_model_cached("sentencepiece", model_spec):

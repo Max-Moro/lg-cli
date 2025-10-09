@@ -223,13 +223,15 @@ lg list encoders --lib sentencepiece
 3. **HuggingFace Hub**: поищите токенизатор модели на https://huggingface.co/models
 4. **Приближение**: если точного токенизатора нет, используйте похожий алгоритм (BPE, WordPiece, Unigram)
 
-**Важно**: для моделей без публичных токенизаторов (Claude, Grok) используются приближения. Статистика будет примерной, но достаточной для оценки размера контекста.
+Для моделей без публичных токенизаторов (Claude, Grok) используются приближения. Статистика будет примерной, но достаточной для оценки размера контекста.
 
 ---
 
 ## Использование локальных файлов токенизаторов
 
 Для моделей, требующих аутентификацию или лицензионное соглашение на HuggingFace (например, Llama, Gemma), вы можете скачать токенизатор самостоятельно и указать путь к локальному файлу.
+
+При первом использовании локального файла **LG автоматически импортирует его в свой кэш** (`.lg-cache/tokenizer-models/`). Это позволяет в дальнейшем использовать модель по короткому имени без указания полного пути.
 
 ### Пример: использование Llama 3.1 токенизатора
 
@@ -238,10 +240,17 @@ lg list encoders --lib sentencepiece
 huggingface-cli login
 huggingface-cli download meta-llama/Llama-3.1-8B --include "tokenizer.json" --local-dir ./llama-tokenizer
 
-# 2. Используйте локальный файл в LG
+# 2. Первое использование - импортирует в кэш LG
 lg report ctx:all \
   --lib tokenizers \
   --encoder ./llama-tokenizer/tokenizer.json \
+  --ctx-limit 128000
+# > Tokenizer imported as 'llama-tokenizer' and available for future use
+
+# 3. Последующие использования - по короткому имени
+lg report ctx:all \
+  --lib tokenizers \
+  --encoder llama-tokenizer \
   --ctx-limit 128000
 
 # Или укажите директорию (LG найдет tokenizer.json внутри)
@@ -254,11 +263,22 @@ lg report ctx:all \
 ### Пример: использование корпоративного токенизатора
 
 ```bash
-# Если у вас есть кастомный токенизатор компании
+# Первое использование - импортирует в кэш
 lg report ctx:all \
   --lib tokenizers \
   --encoder /path/to/company/models/custom-tokenizer.json \
   --ctx-limit 200000
+# > Tokenizer imported as 'custom-tokenizer' and available for future use
+
+# Теперь можно использовать короткое имя
+lg report ctx:all \
+  --lib tokenizers \
+  --encoder custom-tokenizer \
+  --ctx-limit 200000
+
+# Проверить список установленных моделей
+lg list encoders --lib tokenizers
+# В списке появится 'custom-tokenizer'
 ```
 
 ### Поддерживаемые форматы
@@ -269,6 +289,7 @@ lg report ctx:all \
 
 **sentencepiece (Google)**:
 - Файл модели: `/path/to/model.spm` или `/path/to/tokenizer.model`
+- Директория с `.model` файлом внутри: `/path/to/model/`
 
 **tiktoken (OpenAI)**:
 - Только встроенные энкодеры (локальные файлы не поддерживаются)
@@ -334,5 +355,3 @@ lg report ctx:all --lib sentencepiece --encoder google/gemma-2-2b --ctx-limit 20
 # Физический лимит: 500k, лимит Cursor: ~200k
 lg report ctx:all --lib sentencepiece --encoder google/gemma-2-2b --ctx-limit 200000
 ```
-
-**Совет**: начните с консервативного значения (например, 128000) и увеличивайте по мере необходимости.

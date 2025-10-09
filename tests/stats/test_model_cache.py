@@ -10,8 +10,6 @@
 
 from pathlib import Path
 
-import pytest
-
 from lg.stats.tokenizers.model_cache import ModelCache
 
 
