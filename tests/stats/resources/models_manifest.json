@@ -8,10 +8,10 @@
     }
   },
   "sentencepiece": {
-    "google/gemma-2-2b": {
+    "t5-small": {
       "filename": "tokenizer.model",
-      "description": "Gemma 2B tokenizer (Google)",
-      "vocab_size": 256000,
+      "description": "T5 Small tokenizer (Google, no auth required)",
+      "vocab_size": 32128,
       "type": "Unigram"
     }
   },

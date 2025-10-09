@@ -72,18 +72,24 @@ def download_sentencepiece_model(repo_id: str, target_dir: Path) -> None:
     try:
         # Пробуем разные стандартные имена файлов
         model_file = None
+        last_error = None
         for filename in ["tokenizer.model", "spiece.model", "sentencepiece.model"]:
             try:
                 model_file = hf_hub_download(
                     repo_id=repo_id,
                     filename=filename
                 )
+                print(f"  Found: {filename}")
                 break
-            except Exception:
+            except Exception as e:
+                last_error = e
                 continue
         
         if model_file is None:
-            raise FileNotFoundError(f"No SentencePiece model found in {repo_id}")
+            error_msg = f"No SentencePiece model found in {repo_id}"
+            if last_error:
+                error_msg += f" (last error: {last_error})"
+            raise FileNotFoundError(error_msg)
         
         # Копируем в нашу директорию
         target_dir.mkdir(parents=True, exist_ok=True)

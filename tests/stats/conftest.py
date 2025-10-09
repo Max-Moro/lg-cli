@@ -85,9 +85,10 @@ class MockHFHub:
         # Проверяем наличие модели в манифесте
         models = self.manifest.get(lib_type, {})
         if repo_id not in models:
+            available = list(models.keys())
             raise FileNotFoundError(
-                f"Model '{repo_id}' not found in test resources. "
-                f"Available models: {list(models.keys())}"
+                f"Model '{repo_id}' not found in test resources for {lib_type}. "
+                f"Available models: {available if available else '(none)'}"
             )
         
         model_info = models[repo_id]
@@ -178,7 +179,7 @@ def sp_tokenizer_service(tmp_path: Path, mock_hf_hub):
     return TokenService(
         root=tmp_path,
         lib="sentencepiece",
-        encoder="google/gemma-2-2b"  # Простая модель для тестов
+        encoder="t5-small"  # Доступная модель без авторизации
     )
 
 

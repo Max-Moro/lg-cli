@@ -50,11 +50,11 @@ class TestModelCache:
         """Проверяет безопасное преобразование имен моделей с '/'."""
         cache = ModelCache(tmp_path)
         
-        model_dir = cache.get_model_cache_dir("sentencepiece", "google/gemma-2-2b")
+        model_dir = cache.get_model_cache_dir("sentencepiece", "t5-small")
         
-        # Слэш должен быть заменен на двойное тире
+        # Для t5-small слэшей нет, путь остается t5-small
         assert model_dir.exists()
-        assert model_dir == cache.cache_dir / "sentencepiece" / "google--gemma-2-2b"
+        assert model_dir == cache.cache_dir / "sentencepiece" / "t5-small"
     
     def test_is_model_cached_tokenizers(self, tmp_path: Path):
         """Проверяет определение наличия модели tokenizers в кеше."""
@@ -75,14 +75,14 @@ class TestModelCache:
         cache = ModelCache(tmp_path)
         
         # Модель не закеширована
-        assert not cache.is_model_cached("sentencepiece", "google/gemma-2-2b")
+        assert not cache.is_model_cached("sentencepiece", "t5-small")
         
         # Создаем файл модели
-        model_dir = cache.get_model_cache_dir("sentencepiece", "google/gemma-2-2b")
+        model_dir = cache.get_model_cache_dir("sentencepiece", "t5-small")
         (model_dir / "tokenizer.model").write_bytes(b"fake model data")
         
         # Модель теперь в кеше
-        assert cache.is_model_cached("sentencepiece", "google/gemma-2-2b")
+        assert cache.is_model_cached("sentencepiece", "t5-small")
     
     def test_list_cached_models_empty(self, tmp_path: Path):
         """Проверяет список моделей в пустом кеше."""
@@ -112,7 +112,7 @@ class TestModelCache:
         cache = ModelCache(tmp_path)
         
         # Создаем несколько моделей (с / в имени)
-        models = ["google/gemma-2-2b", "meta-llama/Llama-2-7b-hf"]
+        models = ["t5-small", "meta-llama/Llama-2-7b-hf"]
         for model_name in models:
             model_dir = cache.get_model_cache_dir("sentencepiece", model_name)
             (model_dir / "tokenizer.model").write_bytes(b"fake model data")
@@ -121,7 +121,7 @@ class TestModelCache:
         
         assert len(cached) == 2
         # Имена должны быть восстановлены с /
-        assert "google/gemma-2-2b" in cached
+        assert "t5-small" in cached
         assert "meta-llama/Llama-2-7b-hf" in cached
     
     def test_list_cached_models_ignores_incomplete(self, tmp_path: Path):
@@ -174,11 +174,11 @@ class TestModelCacheIntegration:
         from lg.stats.tokenizers.sp_adapter import SPAdapter
         
         # Первая загрузка - должна "скачать" модель
-        adapter1 = SPAdapter("google/gemma-2-2b", tmp_path)
+        adapter1 = SPAdapter("t5-small", tmp_path)
         initial_downloads = mock_hf_hub.download_count
         
         # Вторая загрузка - должна использовать кеш
-        adapter2 = SPAdapter("google/gemma-2-2b", tmp_path)
+        adapter2 = SPAdapter("t5-small", tmp_path)
         
         # Количество скачиваний не должно увеличиться
         assert mock_hf_hub.download_count == initial_downloads
