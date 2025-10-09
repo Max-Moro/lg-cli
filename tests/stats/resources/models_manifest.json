@@ -1,0 +1,19 @@
+{
+  "tokenizers": {
+    "gpt2": {
+      "filename": "tokenizer.json",
+      "description": "GPT-2 BPE tokenizer (OpenAI)",
+      "vocab_size": 50257,
+      "type": "BPE"
+    }
+  },
+  "sentencepiece": {
+    "google/gemma-2-2b": {
+      "filename": "tokenizer.model",
+      "description": "Gemma 2B tokenizer (Google)",
+      "vocab_size": 256000,
+      "type": "Unigram"
+    }
+  },
+  "_readme": "This manifest describes pre-downloaded tokenizer models for tests. Models should be placed in corresponding subdirectories."
+}

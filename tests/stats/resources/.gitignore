@@ -1,0 +1,18 @@
+# Игнорируем скачанные модели токенизации
+# Эти файлы большие и должны скачиваться локально
+
+# HuggingFace tokenizers
+tokenizers/*/tokenizer.json
+tokenizers/*/*.json
+
+# SentencePiece models
+sentencepiece/*/*.model
+sentencepiece/*/*.spm
+
+# Но сохраняем манифест и README
+!models_manifest.json
+!README.md
+
+# Также игнорируем временные файлы HuggingFace
+**/.cache/
+**/downloads/
