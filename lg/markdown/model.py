@@ -19,7 +19,7 @@ class MarkdownCfg:
     Конфиг Markdown-адаптера.
     """
     max_heading_level: int | None = None
-    strip_single_h1: bool = False
+    strip_h1: bool = False
     # блок drop: секции/маркеры/frontmatter/политика плейсхолдеров
     drop: MarkdownDropCfg | None = None
     # блок keep: секции которые нужно оставить
@@ -36,8 +36,8 @@ class MarkdownCfg:
         if self.max_heading_level is not None:
             result["max_heading_level"] = self.max_heading_level
         
-        if self.strip_single_h1:
-            result["strip_single_h1"] = self.strip_single_h1
+        if self.strip_h1:
+            result["strip_h1"] = self.strip_h1
         
         if self.drop is not None:
             result["drop"] = self.drop.to_dict()
@@ -59,15 +59,15 @@ class MarkdownCfg:
             # Конфиг не задан → возвращаем дефолтный конфиг
             return MarkdownCfg(
                 max_heading_level=None,
-                strip_single_h1=False,
+                strip_h1=False,
                 drop=None,
                 keep=None,
                 enable_templating=True,
                 placeholder_inside_heading=False
             )
-        _assert_only_keys(d, ["max_heading_level", "strip_single_h1", "drop", "keep", "enable_templating", "placeholder_inside_heading"], ctx="MarkdownCfg")
+        _assert_only_keys(d, ["max_heading_level", "strip_h1", "drop", "keep", "enable_templating", "placeholder_inside_heading"], ctx="MarkdownCfg")
         max_heading_level = d.get("max_heading_level", None)
-        strip_single_h1 = d.get("strip_single_h1", False)
+        strip_h1 = d.get("strip_h1", False)
         enable_templating = d.get("enable_templating", True)
         placeholder_inside_heading = d.get("placeholder_inside_heading", False)
         drop_cfg = d.get("drop", None)
@@ -83,7 +83,7 @@ class MarkdownCfg:
         
         return MarkdownCfg(
             max_heading_level=max_heading_level if max_heading_level is None else int(max_heading_level),
-            strip_single_h1=strip_single_h1,
+            strip_h1=strip_h1,
             drop=drop,
             keep=keep,
             enable_templating=enable_templating,

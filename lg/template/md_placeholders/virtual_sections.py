@@ -164,7 +164,7 @@ class VirtualSectionFactory:
         # Создаем базовую конфигурацию
         config = MarkdownCfg(
             max_heading_level=effective_heading_level,
-            strip_single_h1=effective_strip_h1 if effective_strip_h1 is not None else False,
+            strip_h1=effective_strip_h1 if effective_strip_h1 is not None else False,
             placeholder_inside_heading=heading_context.placeholder_inside_heading
         )
 

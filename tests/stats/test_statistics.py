@@ -21,7 +21,7 @@ from lg.engine import _parse_target
 
 # ==================== Хелперы для создания проектов ====================
 
-def create_md_only_project(root: Path, *, max_h: int | None = 2, strip_single_h1: bool = False) -> None:
+def create_md_only_project(root: Path, *, max_h: int | None = 2, strip_h1: bool = False) -> None:
     """Создает минимальный проект с секцией для markdown файлов."""
     write(
         root / "lg-cfg" / "sections.yaml",
@@ -29,7 +29,7 @@ def create_md_only_project(root: Path, *, max_h: int | None = 2, strip_single_h1
   extensions: [".md"]
   markdown:
     max_heading_level: {max_h if max_h is not None else 'null'}
-    strip_single_h1: {str(strip_single_h1).lower()}
+    strip_h1: {str(strip_h1).lower()}
   filters:
     mode: allow
     allow:
@@ -62,7 +62,7 @@ class TestMarkdownOptimizations:
         Для Markdown адаптер удаляет одиночный H1 при group_size=1
         и заданном max_heading_level → processed < raw.
         """
-        create_md_only_project(tmp_path, max_h=2, strip_single_h1=True)
+        create_md_only_project(tmp_path, max_h=2, strip_h1=True)
         write(tmp_path / "README.md", "# Title\nBody line\n")
         
         engine = make_engine(tmp_path, make_run_options())
@@ -242,7 +242,7 @@ class TestMetaSummary:
         """
         Проверяет что числовые метаданные правильно агрегируются.
         """
-        create_md_only_project(tmp_path, max_h=2, strip_single_h1=True)
+        create_md_only_project(tmp_path, max_h=2, strip_h1=True)
         write(tmp_path / "a.md", "# Title A\nBody\n")
         write(tmp_path / "b.md", "# Title B\nBody\n")
         
@@ -265,7 +265,7 @@ class TestMetaSummary:
     skip_trivial_inits: true
   markdown:
     max_heading_level: 2
-    strip_single_h1: true
+    strip_h1: true
   filters:
     mode: allow
     allow:
@@ -310,7 +310,7 @@ class TestFileStatistics:
         """
         Проверяет корректность расчета сэкономленных токенов на уровне файла.
         """
-        create_md_only_project(tmp_path, max_h=2, strip_single_h1=True)
+        create_md_only_project(tmp_path, max_h=2, strip_h1=True)
         write(tmp_path / "README.md", "# Big Title\nContent here\n")
         
         engine = make_engine(tmp_path, make_run_options())

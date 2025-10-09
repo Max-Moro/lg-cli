@@ -16,11 +16,11 @@ def process_markdown(text: str, cfg: MarkdownCfg) -> Tuple[str, dict]:
       1) parse_markdown → ParsedDoc
       2) (если есть cfg.drop или cfg.keep) построить интервалы удаления (sections/frontmatter) и применить
          с плейсхолдерами (только в drop режиме)
-      3) normalize_markdown (снятие H1 если strip_single_h1=True, max_heading_level)
+      3) normalize_markdown (снятие H1 если strip_h1=True, max_heading_level)
       4) meta агрегируем
     """
     max_lvl = cfg.max_heading_level
-    strip_single_h1 = cfg.strip_single_h1
+    strip_h1 = cfg.strip_h1
     drop_cfg: MarkdownDropCfg | None = cfg.drop
     keep_cfg: MarkdownKeepCfg | None = cfg.keep
     
@@ -87,7 +87,7 @@ def process_markdown(text: str, cfg: MarkdownCfg) -> Tuple[str, dict]:
     norm_text, norm_meta = normalize_markdown(
         current_text,
         max_heading_level=max_lvl,
-        strip_single_h1=strip_single_h1,
+        strip_h1=strip_h1,
         placeholder_inside_heading=cfg.placeholder_inside_heading,
     )
     meta.update(norm_meta)

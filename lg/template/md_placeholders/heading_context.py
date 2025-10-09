@@ -28,7 +28,7 @@ class HeadingContext:
 
     # Контекстуально определенные параметры для MarkdownCfg
     heading_level: int    # Рекомендуемый max_heading_level
-    strip_h1: bool        # Рекомендуемый strip_single_h1
+    strip_h1: bool        # Рекомендуемый strip_h1
 
 
 @dataclass(frozen=True)

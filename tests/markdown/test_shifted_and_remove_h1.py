@@ -10,16 +10,16 @@ def assert_meta_subset(meta: dict, expected_subset: dict):
     for k, v in expected_subset.items():
         assert meta.get(k) == v, f"meta[{k!r}] = {meta.get(k)!r}, expected {v!r}"
 
-def make_adapter(max_lvl, strip_single_h1):
+def make_adapter(max_lvl, strip_h1):
     """
     Новый способ конфигурирования: через bind(raw_cfg).
     Передаём сырой dict, поля совпадают с датаклассом MarkdownCfg.
     """
     from .conftest import adapter
-    raw_cfg = {"max_heading_level": max_lvl, "strip_single_h1": strip_single_h1}
+    raw_cfg = {"max_heading_level": max_lvl, "strip_h1": strip_h1}
     return adapter(raw_cfg)
 
-@pytest.mark.parametrize("text, max_lvl, strip_single_h1, group_size, expected, expected_meta", [
+@pytest.mark.parametrize("text, max_lvl, strip_h1, group_size, expected, expected_meta", [
     # 1) single-file + max_heading_level=3: убираем H1, сдвигаем H2→H3, H3→H4
     (
         "# Title\n## Subtitle\n### Subsubtitle",
@@ -34,21 +34,21 @@ def make_adapter(max_lvl, strip_single_h1):
         "## B\n### C",
         {"md.removed_h1": 1, "md.shifted": True},
     ),
-    # 3) strip_single_h1=True всегда удаляет H1, затем сдвиг: ## Y → ### Y
+    # 3) strip_h1=True всегда удаляет H1, затем сдвиг: ## Y → ### Y
     (
         "# X\n## Y\n",
         3, True, 2,
         "### Y",
         {"md.removed_h1": 1, "md.shifted": True},
     ),
-    # 4) strip_single_h1=False — только сдвиг (min_lvl=1 → shift=2): H1→###, H2→####
+    # 4) strip_h1=False — только сдвиг (min_lvl=1 → shift=2): H1→###, H2→####
     (
         "# X\n## Y\n",
         3, False, 2,
         "### X\n#### Y",
         {"md.removed_h1": 0, "md.shifted": True},
     ),
-    # 6) max_heading_level=None, strip_single_h1=False — не трогаем
+    # 6) max_heading_level=None, strip_h1=False — не трогаем
     (
         "# Z\n## Q",
         None, False, 1,
@@ -63,8 +63,8 @@ def make_adapter(max_lvl, strip_single_h1):
         {"md.removed_h1": 0, "md.shifted": False},
     ),
 ])
-def test_header_normalization(text, max_lvl, strip_single_h1, group_size, expected, expected_meta):
-    adapter = make_adapter(max_lvl, strip_single_h1)
+def test_header_normalization(text, max_lvl, strip_h1, group_size, expected, expected_meta):
+    adapter = make_adapter(max_lvl, strip_h1)
     out, meta = adapter.process(lctx_md(text, group_size))
     # сравниваем линии напрямую
     assert out == expected
@@ -84,7 +84,7 @@ def test_only_strips_single_h1_line_when_alone():
 def test_complex_markdown_preserves_non_header_content():
     text = "# T\n## A\nPara line\n### B\n- item\n"
     adapter = make_adapter(2, True)
-    # strip_single_h1=True → удаляет # T, shift = 2-2 = 0
+    # strip_h1=True → удаляет # T, shift = 2-2 = 0
     out, meta = adapter.process(lctx_md(raw_text=text))
     lines = out.splitlines()
     # первая строка должна быть "## A"

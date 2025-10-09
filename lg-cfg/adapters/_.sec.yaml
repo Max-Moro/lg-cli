@@ -79,7 +79,7 @@ docs-golden-utils:
   extensions: [".md"]
   markdown:
     max_heading_level: 3
-    strip_single_h1: true
+    strip_h1: true
   filters:
     mode: allow
     allow:
