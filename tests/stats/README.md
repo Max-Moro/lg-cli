@@ -22,7 +22,6 @@ tests/
     ├── download_test_models.py      # Скрипт скачивания моделей
     │
     ├── resources/                   # Предскачанные модели
-    │   ├── README.md                # Инструкции по ручному скачиванию
     │   ├── models_manifest.json     # Манифест моделей
     │   ├── tokenizers/              # HuggingFace tokenizers
     │   │   └── gpt2/
