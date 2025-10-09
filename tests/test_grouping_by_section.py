@@ -1,8 +1,7 @@
-import json
 import textwrap
 from pathlib import Path
 
-from tests.infrastructure import write, run_cli
+from tests.infrastructure import write, run_cli, jload
 
 
 def test_grouping_respects_sections(tmp_path: Path):
@@ -37,7 +36,7 @@ def test_grouping_respects_sections(tmp_path: Path):
     # Прогоняем report, чтобы получить метаданные файлов
     cp = run_cli(root, "report", "ctx:mix")
     assert cp.returncode == 0, cp.stderr
-    data = json.loads(cp.stdout)
+    data = jload(cp.stdout)
     files = {row["path"]: row for row in data["files"]}
 
     # Убедимся, что все 3 файла попали

@@ -103,15 +103,23 @@ def _inject_tokenizer_params(args: list[str]) -> list[str]:
 
 def jload(s: str):
     """
-    Парсит JSON строку.
+    Парсит JSON строку, автоматически удаляя ANSI escape-коды.
+    
+    Некоторые IDE (например PyCharm) могут добавлять ANSI escape-последовательности
+    к выводу subprocess для цветной подсветки в консоли. Эта функция удаляет такие
+    последовательности перед парсингом JSON.
     
     Args:
-        s: JSON строка
+        s: JSON строка (возможно с ANSI escape-кодами)
         
     Returns:
         Распарсенный объект
     """
-    return json.loads(s)
+    import re
+    # Удаляем все ANSI escape-последовательности вида \x1b[<digits>m
+    # Например: \x1b[0m (reset), \x1b[32m (green), \x1b[1;31m (bold red)
+    clean = re.sub(r'\x1b\[[0-9;]*m', '', s)
+    return json.loads(clean)
 
 
 __all__ = [

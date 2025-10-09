@@ -53,3 +53,7 @@ exclude = ["test_cache*", "tests*"]
 markers = [
     "slow: marks tests as slow (deselect with '-m \"not slow\"')",
 ]
+filterwarnings = [
+    # Подавляем предупреждения от SWIG биндингов в tree-sitter-languages
+    "ignore:builtin type.*has no __module__ attribute:DeprecationWarning",
+]
