@@ -84,7 +84,7 @@ def build_run_result_from_collector(
         target=target_norm,
         tokenizerLib=collector.tokenizer.lib,
         encoder=collector.tokenizer.encoder,
-        ctxLimit=collector.tokenizer.ctx_limit,
+        ctxLimit=collector.ctx_limit,
         total=total,
         files=files,
         context=context,

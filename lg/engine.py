@@ -86,7 +86,7 @@ class Engine:
     def _init_processors(self) -> None:
         """Создает основные процессоры."""
         # Коллектор статистики
-        self.stats_collector = StatsCollector(tokenizer=self.tokenizer)
+        self.stats_collector = StatsCollector(self.options.ctx_limit, self.tokenizer)
 
         # Процессор секций
         self.section_processor = SectionProcessor(
