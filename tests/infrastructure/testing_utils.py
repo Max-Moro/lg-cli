@@ -24,12 +24,10 @@ class TokenServiceStub(TokenService):
 
 def stub_tokenizer() -> TokenService:
     """Быстрое создание сервиса токенизации без обращения к конфигу."""
-    import tiktoken
-    from lg.stats.tokenizer import DEFAULT_ENCODER
     return TokenServiceStub(
         root=None,
-        model_id=None,
-        encoder=tiktoken.get_encoding(DEFAULT_ENCODER)
+        lib="tiktoken",
+        encoder="cl100k_base"
     )
 
 

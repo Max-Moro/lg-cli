@@ -18,13 +18,11 @@ from lg.config.adaptive_loader import AdaptiveConfigLoader, process_adaptive_opt
 from lg.engine import Engine
 from lg.run_context import RunContext
 from lg.stats.tokenizer import default_tokenizer
-from lg.types import ModelName
 from lg.types import RunOptions
 from lg.vcs import NullVcs
 
 
 def make_run_options(
-    model: str = "o3",
     modes: Optional[Dict[str, str]] = None,
     extra_tags: Optional[Set[str]] = None,
     task_text: Optional[str] = None
@@ -44,7 +42,6 @@ def make_run_options(
         Настроенный RunOptions
     """
     return RunOptions(
-        model=ModelName(model),
         modes=modes or {},
         extra_tags=extra_tags or set(),
         task_text=task_text

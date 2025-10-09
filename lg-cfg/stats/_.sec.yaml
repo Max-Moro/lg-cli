@@ -18,7 +18,6 @@ src:
           - "/config/"
           - "/adapters/"
           - "/stats/"
-          - "/cache/"
         children:
           config:
             mode: allow

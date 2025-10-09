@@ -140,3 +140,11 @@ class TokenService:
         trimmed = text[:target_length].rstrip()
         
         return trimmed
+
+def default_tokenizer() -> TokenService:
+    """Быстрое создание сервиса токенизации (для тестов)."""
+    return TokenService(
+        root=None,
+        lib="tiktoken",
+        encoder="cl100k_base"
+    )
