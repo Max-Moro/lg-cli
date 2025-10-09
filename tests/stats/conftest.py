@@ -147,13 +147,14 @@ def mock_hf_hub(resources_dir: Path, models_manifest: dict, monkeypatch):
 
 @pytest.fixture
 def tiktoken_service(tmp_path: Path):
-    """Создает TokenService с tiktoken энкодером."""
+    """Создает TokenService с tiktoken энкодером (дефолтные настройки)."""
     from lg.stats.tokenizer import TokenService
+    from tests.infrastructure.cli_utils import DEFAULT_TOKENIZER_LIB, DEFAULT_ENCODER
     
     return TokenService(
         root=tmp_path,
-        lib="tiktoken",
-        encoder="cl100k_base"
+        lib=DEFAULT_TOKENIZER_LIB,
+        encoder=DEFAULT_ENCODER
     )
 
 
@@ -165,7 +166,7 @@ def hf_tokenizer_service(tmp_path: Path, mock_hf_hub):
     return TokenService(
         root=tmp_path,
         lib="tokenizers",
-        encoder="gpt2"
+        encoder="gpt2"  # Простая модель для тестов
     )
 
 
@@ -174,11 +175,10 @@ def sp_tokenizer_service(tmp_path: Path, mock_hf_hub):
     """Создает TokenService с SentencePiece токенизатором."""
     from lg.stats.tokenizer import TokenService
     
-    # Используем простую модель для тестов
     return TokenService(
         root=tmp_path,
         lib="sentencepiece",
-        encoder="google/gemma-2-2b"
+        encoder="google/gemma-2-2b"  # Простая модель для тестов
     )
 
 

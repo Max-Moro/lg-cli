@@ -223,13 +223,14 @@ class TestTokenizerCaching:
         """
         from lg.cache.fs_cache import Cache
         from lg.stats.tokenizer import TokenService
+        from tests.infrastructure.cli_utils import DEFAULT_TOKENIZER_LIB, DEFAULT_ENCODER
         
         cache = Cache(tmp_path, enabled=True, fresh=False, tool_version="test")
         
         service = TokenService(
             root=tmp_path,
-            lib="tiktoken",
-            encoder="cl100k_base",
+            lib=DEFAULT_TOKENIZER_LIB,
+            encoder=DEFAULT_ENCODER,
             cache=cache
         )
         
@@ -248,13 +249,14 @@ class TestTokenizerCaching:
         """Проверяет что кеш корректно работает для разных текстов."""
         from lg.cache.fs_cache import Cache
         from lg.stats.tokenizer import TokenService
+        from tests.infrastructure.cli_utils import DEFAULT_TOKENIZER_LIB, DEFAULT_ENCODER
         
         cache = Cache(tmp_path, enabled=True, fresh=False, tool_version="test")
         
         service = TokenService(
             root=tmp_path,
-            lib="tiktoken",
-            encoder="cl100k_base",
+            lib=DEFAULT_TOKENIZER_LIB,
+            encoder=DEFAULT_ENCODER,
             cache=cache
         )
         

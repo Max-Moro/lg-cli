@@ -23,12 +23,6 @@ from .config_builders import (
 )
 from .adapter_utils import is_tree_sitter_available
 
-# Токенизаторы
-from .tokenizer_utils import (
-    create_tokenizer, compare_tokenizers, get_compression_ratio,
-    estimate_tokens_for_file, count_tokens_with_cache_check
-)
-
 # Адаптивные конфигурации
 from .adaptive_config import ModeConfig, ModeSetConfig, TagConfig, TagSetConfig
 
@@ -51,10 +45,6 @@ __all__ = [
     
     # Adapter utilities
     "is_tree_sitter_available",
-    
-    # Tokenizer utilities
-    "create_tokenizer", "compare_tokenizers", "get_compression_ratio",
-    "estimate_tokens_for_file", "count_tokens_with_cache_check",
     
     # Adaptive config classes
     "ModeConfig", "ModeSetConfig", "TagConfig", "TagSetConfig",
