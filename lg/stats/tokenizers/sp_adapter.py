@@ -11,9 +11,12 @@ from .model_cache import ModelCache
 logger = logging.getLogger(__name__)
 
 # Рекомендуемые универсальные модели SentencePiece
+# Все модели доступны для анонимного скачивания с HuggingFace Hub
 RECOMMENDED_MODELS = [
-    "google/gemma-2-2b",       # Gemma токенизатор (Google)
-    "meta-llama/Llama-2-7b-hf", # Llama 2 токенизатор
+    "t5-small",              # T5 Small (компактный, универсальный)
+    "t5-base",               # T5 Base (больше vocab)
+    "google/flan-t5-base",   # FLAN-T5 (улучшенный T5, instruction-tuned)
+    "google/mt5-base",       # mT5 (мультиязычный T5)
 ]
 
 class SPAdapter(BaseTokenizer):

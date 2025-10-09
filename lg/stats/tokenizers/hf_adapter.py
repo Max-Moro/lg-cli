@@ -11,13 +11,14 @@ from .model_cache import ModelCache
 logger = logging.getLogger(__name__)
 
 # Рекомендуемые универсальные токенизаторы (не привязаны к продуктовым LLM)
+# Все модели доступны для анонимного скачивания с HuggingFace Hub
 RECOMMENDED_TOKENIZERS = [
-    "gpt2",                    # GPT-2 BPE
-    "roberta-base",            # RoBERTa BPE
-    "bert-base-uncased",       # BERT WordPiece
-    "bert-base-cased",         # BERT WordPiece (case-sensitive)
-    "t5-base",                 # T5 SentencePiece-based
-    "google/gemma-tokenizer",  # Gemma (Google)
+    "gpt2",                         # GPT-2 BPE (универсальный для кода и текста)
+    "roberta-base",                 # RoBERTa BPE (улучшенный GPT-2)
+    "t5-base",                      # T5 SentencePiece-based (универсальный)
+    "EleutherAI/gpt-neo-125m",      # GPT-Neo BPE (открытая альтернатива GPT)
+    "microsoft/phi-2",              # Phi-2 (современная компактная модель)
+    "mistralai/Mistral-7B-v0.1",    # Mistral (современная open-source модель)
 ]
 
 class HFAdapter(BaseTokenizer):

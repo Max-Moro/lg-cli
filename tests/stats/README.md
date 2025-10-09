@@ -28,7 +28,7 @@ tests/
     │   │   └── gpt2/
     │   │       └── tokenizer.json   # (скачивается отдельно)
     │   └── sentencepiece/           # SentencePiece модели
-    │       └── google--gemma-2-2b/
+    │       └── t5-small/
     │           └── tokenizer.model  # (скачивается отдельно)
     │
     ├── test_model_cache.py          # Тесты кеширования моделей
