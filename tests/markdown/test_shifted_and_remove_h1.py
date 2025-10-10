@@ -32,7 +32,7 @@ def make_adapter(max_lvl, strip_h1):
         "# A\n## B\n### C",
         2, True, 1,
         "## B\n### C",
-        {"md.removed_h1": 1, "md.shifted": True},
+        {"md.removed_h1": 1, "md.shifted": False},
     ),
     # 3) strip_h1=True всегда удаляет H1, затем сдвиг: ## Y → ### Y
     (
@@ -94,7 +94,7 @@ def test_complex_markdown_preserves_non_header_content():
     # а потом "### B"
     assert any(re.match(r"^###\s+B", ln) for ln in lines)
     # метаданные: H1 снят, сдвига нет (но shifted True, т.к. флаг трактуется как «была нормализация»)
-    assert_meta_subset(meta, {"md.removed_h1": 1, "md.shifted": True})
+    assert_meta_subset(meta, {"md.removed_h1": 1, "md.shifted": False})
 
 def test_code_block_comments_not_counted_as_headings():
     # В Markdown-статье есть H1, затем fenced-код с комментарием,
@@ -126,6 +126,6 @@ print("hello")
     # Следующий заголовок остаётся именно "## Next Section"
     assert any(ln == "## Next Section" for ln in lines)
     # метаданные: H1 снят; сдвиг уровней = 0, но считаем «нормализация была»
-    assert_meta_subset(meta, {"md.removed_h1": 1, "md.shifted": True})
+    assert_meta_subset(meta, {"md.removed_h1": 1, "md.shifted": False})
 
 

@@ -1,26 +1,6 @@
 from __future__ import annotations
 
 import re
-from typing import Tuple
-
-
-def _strip_h1_if_needed(lines: list[str], strip_h1: bool) -> Tuple[list[str], bool]:
-    """
-    Удаляет верхний H1 (ATX или setext) если strip_h1=True.
-    Возвращает (новые_строки, removed_h1_flag).
-    """
-    if not strip_h1 or not lines:
-        return lines, False
-
-    # ATX: "# Title"
-    if re.match(r"^#\s", lines[0]):
-        return lines[1:], True
-
-    # Setext: Title + "===="
-    if len(lines) >= 2 and lines[0].strip() and re.match(r"^={2,}\s*$", lines[1]):
-        return lines[2:], True
-
-    return lines, False
 
 
 def normalize_markdown(
@@ -32,8 +12,7 @@ def normalize_markdown(
     """
       • Если max_heading_level=None → не трогаем (кроме снятия H1).
       • Если strip_h1=True → снимаем верхний H1 (ATX/Setext).
-      • Сдвиг уровней заголовков вне fenced-блоков так,
-        чтобы минимальный уровень стал равен max_heading_level.
+      • Сдвиг уровней заголовков так, чтобы минимальный уровень стал равен max_heading_level.
     """
     meta = {"md.removed_h1": 0, "md.shifted": False}
 
@@ -58,9 +37,17 @@ def normalize_markdown(
             meta["md.removed_h1"] = 1
     elif strip_h1:
         # Обычная обработка strip_h1
-        lines, removed_h1 = _strip_h1_if_needed(lines, strip_h1)
-        if removed_h1:
-            meta["md.removed_h1"] = 1
+        if lines:
+            # ATX: "# Title"
+            if re.match(r"^#\s", lines[0]):
+                lines = lines[1:]
+                removed_h1 = True
+                meta["md.removed_h1"] = 1
+            # Setext: Title + "===="
+            elif len(lines) >= 2 and lines[0].strip() and re.match(r"^={2,}\s*$", lines[1]):
+                lines = lines[2:]
+                removed_h1 = True
+                meta["md.removed_h1"] = 1
 
     if max_heading_level is None:
         return ("\n".join(lines), meta)
@@ -76,7 +63,7 @@ def normalize_markdown(
         # H2 должен стать уровнем max_heading_level + 1
         shift = (max_lvl + 1) - 2  # H2 (уровень 2) становится max_lvl + 1
     else:
-        # 2) собрать min_lvl вне fenced
+        # 2) собрать min_lvl
         min_lvl: int | None = None
         for ln in lines:
             if fence_pat.match(ln):
@@ -95,11 +82,11 @@ def normalize_markdown(
 
         shift = max_lvl - min_lvl
 
-    meta["md.shifted"] = bool(shift or removed_h1)
+    meta["md.shifted"] = bool(shift)
     if shift == 0:
         return ("\n".join(lines), meta)
 
-    # 3) применить сдвиг вне fenced
+    # 3) применить сдвиг
     out: list[str] = []
     in_fence = False
     for ln in lines:
