@@ -67,6 +67,6 @@ tests:
           - condition: "TAGSET:template-features:adaptive"
             allow: ["/adaptive/"]
           - condition: "TAGSET:template-features:md-placeholders"
-            allow: ["/md_placeholders/"]
+            allow: ["/md_placeholders/test_contextual_analysis.py"]
           - condition: "TAGSET:template-features:task-placeholder"
             allow: ["/task_placeholder/"]

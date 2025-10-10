@@ -530,6 +530,125 @@ ${md:docs/guide, strip_h1:true}
     assert_heading_level(result, "Installation", 3)
 
 
+# ===== Тесты для случаев без заголовков в шаблоне =====
+
+def test_single_placeholder_no_headings_in_template(md_project):
+    """
+    Тест простейшего случая: только плейсхолдер без заголовков в шаблоне.
+    
+    ${md:README}
+    
+    Должен вставляться как документ верхнего уровня:
+    - strip_h1=false (H1 сохраняется)
+    - heading_level=1 (документ верхнего уровня)
+    """
+    root = md_project
+    
+    create_template(root, "single-no-headings", """${md:README}""")
+    
+    result = render_template(root, "ctx:single-no-headings")
+    
+    # Документ вставляется как корневой
+    # H1 должен сохраниться на уровне H1
+    assert_heading_level(result, "Main Project", 1)
+    
+    # H2 заголовки остаются H2
+    assert_heading_level(result, "Features", 2)
+
+
+def test_placeholder_with_horizontal_rule_no_headings(md_project):
+    """
+    Тест случая с горизонтальной чертой, но без заголовков.
+    
+    ${md:README}
+    
+    ---
+    
+    ${md:docs/guide}
+    
+    Оба документа должны вставляться как корневые документы:
+    - strip_h1=false (H1 сохраняется)
+    - heading_level=1 (документы верхнего уровня)
+    """
+    root = md_project
+    
+    create_template(root, "hr-no-headings", """${md:README}
+
+---
+
+${md:docs/guide}""")
+    
+    result = render_template(root, "ctx:hr-no-headings")
+    
+    # Оба документа вставляются как корневые, несмотря на горизонтальную черту
+    # H1 заголовки сохраняются на уровне H1
+    assert_heading_level(result, "Main Project", 1)
+    assert_heading_level(result, "User Guide", 1)
+    
+    # H2 заголовки остаются H2
+    assert_heading_level(result, "Features", 2)
+    assert_heading_level(result, "Installation", 2)
+
+
+def test_multiple_placeholders_no_headings_with_text(md_project):
+    """
+    Тест случая с несколькими плейсхолдерами и текстом, но без заголовков.
+    
+    ${md:docs/api}
+    
+    Some text between documents.
+    
+    ${md:docs/guide}
+    
+    Документы образуют цепочку (нет заголовков-разделителей), но при этом
+    они должны вставляться как документы верхнего уровня, потому что
+    в окружающем контексте нет заголовков.
+    """
+    root = md_project
+    
+    create_template(root, "multiple-no-headings", """${md:docs/api}
+
+Some text between documents.
+
+${md:docs/guide}""")
+    
+    result = render_template(root, "ctx:multiple-no-headings")
+    
+    # Документы образуют цепочку, но вставляются как корневые
+    # strip_h1=false (H1 сохраняется), heading_level=1
+    assert_heading_level(result, "API Reference", 1)
+    assert_heading_level(result, "User Guide", 1)
+    
+    # H2 заголовки остаются H2
+    assert_heading_level(result, "Authentication", 2)
+    assert_heading_level(result, "Installation", 2)
+
+
+def test_placeholder_with_only_text_before_and_after(md_project):
+    """
+    Тест плейсхолдера с обычным текстом до и после, без заголовков.
+    
+    This is some introductory text.
+    
+    ${md:docs/api}
+    
+    This is some concluding text.
+    """
+    root = md_project
+    
+    create_template(root, "text-around", """This is some introductory text.
+
+${md:docs/api}
+
+This is some concluding text.""")
+    
+    result = render_template(root, "ctx:text-around")
+    
+    # Документ вставляется как корневой (нет родительских заголовков)
+    assert_heading_level(result, "API Reference", 1)
+    assert_heading_level(result, "Authentication", 2)
+
+
 # ===== Специальные случаи =====
 
 def test_setext_headings_in_contextual_analysis(md_project):
