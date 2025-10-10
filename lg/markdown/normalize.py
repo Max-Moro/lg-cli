@@ -69,8 +69,13 @@ def normalize_markdown(
     # Вставка метки файла (до нормализации уровней заголовков)
     file_comment = f"<!-- FILE: {file_label} -->"
 
-    if removed_h1 or h1_line_index < 0:
-        # H1 был удален или не найден - вставляем метку в начало
+    if placeholder_inside_heading and removed_h1 and h1_line_index >= 0:
+        # Особый случай: placeholder_inside_heading + H1 был преобразован в текст
+        # Вставляем комментарий ПОСЛЕ строки с текстом заголовка
+        insert_pos = h1_line_index + 1
+        lines.insert(insert_pos, file_comment)
+    elif removed_h1 or h1_line_index < 0:
+        # H1 был полностью удален или не найден - вставляем метку в начало
         lines.insert(0, file_comment)
         # Корректируем индекс если был найден H1 после вставки
         if h1_line_index >= 0:
