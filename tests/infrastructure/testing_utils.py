@@ -34,7 +34,8 @@ def stub_tokenizer() -> TokenService:
 def lctx(
         raw_text: str = "# Test content",
         filename: str = "test.py",
-        group_size: int = 1
+        group_size: int = 1,
+        file_label: str = None
 ) -> LightweightContext:
     """
     Создает stub LightweightContext для тестов.
@@ -43,15 +44,19 @@ def lctx(
         raw_text: Содержимое файла
         filename: Имя файла
         group_size: Размер группы
+        file_label: Метка файла для рендеринга
 
     Returns:
         LightweightContext для использования в тестах
     """
     test_path = Path(filename)
+    if file_label is None:
+        file_label = filename
     return LightweightContext(
         file_path=test_path,
         raw_text=raw_text,
-        group_size=group_size
+        group_size=group_size,
+        file_label=file_label
     )
 
 

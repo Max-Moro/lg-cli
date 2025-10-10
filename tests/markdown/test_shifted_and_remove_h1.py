@@ -24,43 +24,43 @@ def make_adapter(max_lvl, strip_h1):
     (
         "# Title\n## Subtitle\n### Subsubtitle",
         3, True, 1,
-        "### Subtitle\n#### Subsubtitle",
-        {"md.removed_h1": 1, "md.shifted": True},
+        "<!-- FILE: test.md -->\n### Subtitle\n#### Subsubtitle",
+        {"md.removed_h1": 1, "md.shifted": True, "md.file_label_inserted": True},
     ),
     # 2) single-file + max_heading_level=2: убираем H1, H2→H2, H3→H3 (shift=0)
     (
         "# A\n## B\n### C",
         2, True, 1,
-        "## B\n### C",
-        {"md.removed_h1": 1, "md.shifted": False},
+        "<!-- FILE: test.md -->\n## B\n### C",
+        {"md.removed_h1": 1, "md.shifted": False, "md.file_label_inserted": True},
     ),
     # 3) strip_h1=True всегда удаляет H1, затем сдвиг: ## Y → ### Y
     (
         "# X\n## Y\n",
         3, True, 2,
-        "### Y",
-        {"md.removed_h1": 1, "md.shifted": True},
+        "<!-- FILE: test.md -->\n### Y",
+        {"md.removed_h1": 1, "md.shifted": True, "md.file_label_inserted": True},
     ),
     # 4) strip_h1=False — только сдвиг (min_lvl=1 → shift=2): H1→###, H2→####
     (
         "# X\n## Y\n",
         3, False, 2,
-        "### X\n#### Y",
-        {"md.removed_h1": 0, "md.shifted": True},
+        "### X\n<!-- FILE: test.md -->\n#### Y",
+        {"md.removed_h1": 0, "md.shifted": True, "md.file_label_inserted": True},
     ),
     # 6) max_heading_level=None, strip_h1=False — не трогаем
     (
         "# Z\n## Q",
         None, False, 1,
-        "# Z\n## Q",
-        {"md.removed_h1": 0, "md.shifted": False},
+        "# Z\n<!-- FILE: test.md -->\n## Q",
+        {"md.removed_h1": 0, "md.shifted": False, "md.file_label_inserted": True},
     ),
     # 7) нет заголовков — возвращаем как есть
     (
         "Just some text\n- list item\n",
         2, True, 1,
-        "Just some text\n- list item",
-        {"md.removed_h1": 0, "md.shifted": False},
+        "<!-- FILE: test.md -->\nJust some text\n- list item",
+        {"md.removed_h1": 0, "md.shifted": False, "md.file_label_inserted": True},
     ),
 ])
 def test_header_normalization(text, max_lvl, strip_h1, group_size, expected, expected_meta):
@@ -72,14 +72,14 @@ def test_header_normalization(text, max_lvl, strip_h1, group_size, expected, exp
     assert_meta_subset(meta, expected_meta)
 
 def test_only_strips_single_h1_line_when_alone():
-    # если только H1 и никаких подзаголовков – убираем его, получаем пустую строку
+    # если только H1 и никаких подзаголовков – убираем его, получаем метку файла
     text = "# Lone Title\n"
     adapter = make_adapter(3, True)
     out, meta = adapter.process(lctx_md(raw_text=text))
-    assert out == ""
+    assert out == "<!-- FILE: test.md -->"
     # В этом граничном кейсе min_lvl отсутствует → shifted остаётся False,
     # но removed_h1 обязательно должен быть 1.
-    assert_meta_subset(meta, {"md.removed_h1": 1, "md.shifted": False})
+    assert_meta_subset(meta, {"md.removed_h1": 1, "md.shifted": False, "md.file_label_inserted": True})
 
 def test_complex_markdown_preserves_non_header_content():
     text = "# T\n## A\nPara line\n### B\n- item\n"
@@ -87,14 +87,16 @@ def test_complex_markdown_preserves_non_header_content():
     # strip_h1=True → удаляет # T, shift = 2-2 = 0
     out, meta = adapter.process(lctx_md(raw_text=text))
     lines = out.splitlines()
-    # первая строка должна быть "## A"
-    assert lines[0] == "## A"
+    # первая строка должна быть метка файла
+    assert lines[0] == "<!-- FILE: test.md -->"
+    # вторая строка должна быть "## A"
+    assert lines[1] == "## A"
     # следующая — "Para line"
     assert "Para line" in lines
     # а потом "### B"
     assert any(re.match(r"^###\s+B", ln) for ln in lines)
     # метаданные: H1 снят, сдвига нет (но shifted True, т.к. флаг трактуется как «была нормализация»)
-    assert_meta_subset(meta, {"md.removed_h1": 1, "md.shifted": False})
+    assert_meta_subset(meta, {"md.removed_h1": 1, "md.shifted": False, "md.file_label_inserted": True})
 
 def test_code_block_comments_not_counted_as_headings():
     # В Markdown-статье есть H1, затем fenced-код с комментарием,
