@@ -64,7 +64,7 @@ def process_files(plan: SectionPlan, template_ctx: TemplateContext) -> List[Proc
         raw_text = read_text(fp)
         
         # получаем метку файла из плана
-        file_label = plan.labels.get(file_entry.rel_path, file_entry.rel_path)
+        file_label = plan.labels[file_entry.rel_path]
         
         # Создаем контекст для адаптера
         lightweight_ctx = LightweightContext(

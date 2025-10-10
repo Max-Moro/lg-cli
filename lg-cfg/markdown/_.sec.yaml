@@ -13,6 +13,7 @@ src:
           - "/engine.py"
           - "/types.py"
           - "/run_context.py"
+          - "/template/context.py"
           - "/section_processor.py"
           - "/config/"
           - "/adapters/"
