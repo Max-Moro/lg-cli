@@ -21,11 +21,11 @@ class Total(BaseModel):
     sizeBytes: conint(ge=0)
     tokensProcessed: conint(ge=0)
     tokensRaw: conint(ge=0)
-    savedTokens: conint(ge=0)
+    savedTokens: int
     savedPct: float
     ctxShare: float
     renderedTokens: Optional[conint(ge=0)] = None
-    renderedOverheadTokens: Optional[conint(ge=0)] = None
+    renderedOverheadTokens: Optional[int] = None
     metaSummary: dict[str, int]
 
 
@@ -37,7 +37,7 @@ class File(BaseModel):
     sizeBytes: conint(ge=0)
     tokensRaw: conint(ge=0)
     tokensProcessed: conint(ge=0)
-    savedTokens: conint(ge=0)
+    savedTokens: int
     savedPct: float
     promptShare: float
     ctxShare: float

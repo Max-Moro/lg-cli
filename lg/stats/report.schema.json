@@ -18,11 +18,11 @@
         "sizeBytes": { "type": "integer", "minimum": 0 },
         "tokensProcessed": { "type": "integer", "minimum": 0 },
         "tokensRaw": { "type": "integer", "minimum": 0 },
-        "savedTokens": { "type": "integer", "minimum": 0 },
+        "savedTokens": { "type": "integer" },
         "savedPct": { "type": "number" },
         "ctxShare": { "type": "number" },
         "renderedTokens": { "type": "integer", "minimum": 0 },
-        "renderedOverheadTokens": { "type": "integer", "minimum": 0 },
+        "renderedOverheadTokens": { "type": "integer" },
         "metaSummary": {
           "type": "object",
           "additionalProperties": { "type": "integer" }
@@ -40,7 +40,7 @@
           "sizeBytes": { "type": "integer", "minimum": 0 },
           "tokensRaw": { "type": "integer", "minimum": 0 },
           "tokensProcessed": { "type": "integer", "minimum": 0 },
-          "savedTokens": { "type": "integer", "minimum": 0 },
+          "savedTokens": { "type": "integer" },
           "savedPct": { "type": "number" },
           "promptShare": { "type": "number" },
           "ctxShare": { "type": "number" },

@@ -73,7 +73,8 @@ class StatsCollector:
         t_raw = self.tokenizer.count_text_cached(file.raw_text)
         
         # Вычисляем статистику для файла
-        saved_tokens = max(0, t_raw - t_proc)
+        # Может быть как положительным (оптимизация), так и отрицательным (дополнительный рендеринг)
+        saved_tokens = t_raw - t_proc
         saved_pct = (1 - (t_proc / t_raw)) * 100.0 if t_raw else 0.0
         
         # Регистрируем или обновляем статистику файла
@@ -193,15 +194,16 @@ class StatsCollector:
             ))
         
         # Создаем итоговую статистику
+        # savedTokens может быть отрицательным, если адаптеры добавили больше контента (метки, комментарии)
         totals = Totals(
             sizeBytes=total_size,
             tokensProcessed=total_proc,
             tokensRaw=total_raw,
-            savedTokens=max(0, total_raw - total_proc),
+            savedTokens=total_raw - total_proc,
             savedPct=(1 - (total_proc / total_raw)) * 100.0 if total_raw else 0.0,
             ctxShare=(total_proc / self.ctx_limit * 100.0) if self.ctx_limit else 0.0,
             renderedTokens=sections_only_tokens,
-            renderedOverheadTokens=max(0, (sections_only_tokens or 0) - total_proc),
+            renderedOverheadTokens=(sections_only_tokens or 0) - total_proc,
             metaSummary=meta_summary
         )
         

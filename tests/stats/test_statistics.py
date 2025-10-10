@@ -60,7 +60,8 @@ class TestMarkdownOptimizations:
     def test_md_with_h1_processed_saves_tokens(self, tmp_path: Path):
         """
         Для Markdown адаптер удаляет одиночный H1 при group_size=1
-        и заданном max_heading_level → processed < raw.
+        и заданном max_heading_level, но добавляет метку файла.
+        В итоге может быть небольшое увеличение размера.
         """
         create_md_only_project(tmp_path, max_h=2, strip_h1=True)
         write(tmp_path / "README.md", "# Title\nBody line\n")
@@ -71,16 +72,14 @@ class TestMarkdownOptimizations:
         total = report.total
         
         assert total.tokensProcessed > 0
-        assert total.tokensRaw > total.tokensProcessed  # Экономия токенов
-        assert total.savedTokens == total.tokensRaw - total.tokensProcessed
-        assert total.savedPct > 0.0
-        
-        # Адаптер должен записать метрику removed_h1
+        # С добавлением меток файлов processed может быть больше raw
+        # но H1 должен быть удален
         assert report.total.metaSummary.get("md.removed_h1", 0) >= 1
+        assert report.total.metaSummary.get("md.file_label_inserted", 0) >= 1
     
     def test_md_without_h1_no_savings(self, tmp_path: Path):
         """
-        Markdown без H1: адаптер ничего не удаляет → processed == raw.
+        Markdown без H1: адаптер добавляет только метку файла.
         """
         create_md_only_project(tmp_path, max_h=2)
         write(tmp_path / "README.md", "Body line\n")
@@ -91,8 +90,9 @@ class TestMarkdownOptimizations:
         total = report.total
         
         assert total.tokensProcessed > 0
-        assert total.tokensProcessed == total.tokensRaw
-        assert total.savedTokens == 0
+        # С добавлением метки файла processed > raw
+        assert total.tokensProcessed >= total.tokensRaw
+        assert report.total.metaSummary.get("md.file_label_inserted", 0) >= 1
 
 
 class TestRenderingOverhead:
@@ -309,6 +309,7 @@ class TestFileStatistics:
     def test_file_saved_tokens_calculation(self, tmp_path: Path):
         """
         Проверяет корректность расчета сэкономленных токенов на уровне файла.
+        savedTokens может быть отрицательным, если адаптер добавил контент (метки файлов).
         """
         create_md_only_project(tmp_path, max_h=2, strip_h1=True)
         write(tmp_path / "README.md", "# Big Title\nContent here\n")
@@ -319,10 +320,15 @@ class TestFileStatistics:
         assert len(report.files) == 1
         file_stat = report.files[0]
         
-        # savedTokens = tokensRaw - tokensProcessed
-        assert file_stat.savedTokens == file_stat.tokensRaw - file_stat.tokensProcessed
+        # savedTokens = tokensRaw - tokensProcessed (может быть отрицательным)
+        expected_saved = file_stat.tokensRaw - file_stat.tokensProcessed
+        assert file_stat.savedTokens == expected_saved
         
         # savedPct = (1 - tokensProcessed/tokensRaw) * 100
         if file_stat.tokensRaw > 0:
             expected_pct = (1 - file_stat.tokensProcessed / file_stat.tokensRaw) * 100.0
             assert pytest.approx(file_stat.savedPct, rel=1e-6) == expected_pct
+        
+        # С добавлением меток файлов, savedTokens может быть отрицательным
+        # (адаптер добавил полезную информацию)
+        assert file_stat.savedTokens <= 0  # В данном случае добавилась метка файла

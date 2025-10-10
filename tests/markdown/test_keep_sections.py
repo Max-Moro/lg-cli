@@ -256,8 +256,8 @@ usage instructions
     assert "install instructions" not in out
     assert "usage instructions" not in out
     
-    # Should be mostly empty (might have some whitespace)
-    assert len(out.strip()) < 10
+    # Should contain only file label
+    assert out.strip() == "<!-- FILE: test.md -->"
 
 
 def test_keep_and_drop_mutual_exclusion():
