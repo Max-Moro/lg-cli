@@ -29,7 +29,8 @@ class MarkdownAdapter(BaseAdapter[MarkdownCfg]):
         # Применяем основную обработку Markdown
         processed_text, markdown_meta = process_markdown(
             templated_text, 
-            self.cfg
+            self.cfg,
+            file_label=lightweight_ctx.file_label
         )
         
         # Объединяем метаданные

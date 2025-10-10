@@ -7,19 +7,23 @@ def normalize_markdown(
     text: str, *,
     max_heading_level: int | None,
     strip_h1: bool,
-    placeholder_inside_heading: bool = False
+    file_label: str,
+    placeholder_inside_heading: bool = False,
 ) -> tuple[str, dict]:
     """
       • Если max_heading_level=None → не трогаем (кроме снятия H1).
       • Если strip_h1=True → снимаем верхний H1 (ATX/Setext).
       • Сдвиг уровней заголовков так, чтобы минимальный уровень стал равен max_heading_level.
+      • Если file_label задан → вставляем HTML-комментарий с меткой файла.
     """
-    meta = {"md.removed_h1": 0, "md.shifted": False}
+    meta = {"md.removed_h1": 0, "md.shifted": False, "md.file_label_inserted": False}
 
     lines = text.splitlines()
 
     # 1) специальная обработка для плейсхолдеров внутри заголовков
     removed_h1 = False
+    h1_line_index = -1  # индекс строки где был/есть H1
+    
     if placeholder_inside_heading and lines:
         # Для плейсхолдеров внутри заголовков извлекаем только текст H1 без символов #
         atx_match = re.match(r"^#\s+(.*)$", lines[0])
@@ -28,12 +32,14 @@ def normalize_markdown(
             heading_text = atx_match.group(1).strip()
             lines[0] = heading_text
             removed_h1 = True
+            h1_line_index = 0
             meta["md.removed_h1"] = 1
         elif len(lines) >= 2 and lines[0].strip() and re.match(r"^={2,}\s*$", lines[1]):
             # Setext заголовок - оставляем только текст, убираем подчеркивание
             heading_text = lines[0].strip()
             lines = [heading_text] + lines[2:]
             removed_h1 = True
+            h1_line_index = 0
             meta["md.removed_h1"] = 1
     elif strip_h1:
         # Обычная обработка strip_h1
@@ -42,12 +48,39 @@ def normalize_markdown(
             if re.match(r"^#\s", lines[0]):
                 lines = lines[1:]
                 removed_h1 = True
+                h1_line_index = -1  # H1 удален, метка в начало
                 meta["md.removed_h1"] = 1
             # Setext: Title + "===="
             elif len(lines) >= 2 and lines[0].strip() and re.match(r"^={2,}\s*$", lines[1]):
                 lines = lines[2:]
                 removed_h1 = True
+                h1_line_index = -1  # H1 удален, метка в начало
                 meta["md.removed_h1"] = 1
+    else:
+        # H1 не удаляется - найдем его позицию для вставки метки после него
+        if lines:
+            # ATX: "# Title"
+            if re.match(r"^#\s", lines[0]):
+                h1_line_index = 0
+            # Setext: Title + "===="
+            elif len(lines) >= 2 and lines[0].strip() and re.match(r"^={2,}\s*$", lines[1]):
+                h1_line_index = 1  # после подчеркивания
+
+    # Вставка метки файла (до нормализации уровней заголовков)
+    file_comment = f"<!-- FILE: {file_label} -->"
+
+    if removed_h1 or h1_line_index < 0:
+        # H1 был удален или не найден - вставляем метку в начало
+        lines.insert(0, file_comment)
+        # Корректируем индекс если был найден H1 после вставки
+        if h1_line_index >= 0:
+            h1_line_index += 1
+    else:
+        # H1 оставлен - вставляем метку после него
+        insert_pos = h1_line_index + 1
+        lines.insert(insert_pos, file_comment)
+
+    meta["md.file_label_inserted"] = True
 
     if max_heading_level is None:
         return ("\n".join(lines), meta)

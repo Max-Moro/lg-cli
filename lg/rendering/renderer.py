@@ -35,7 +35,7 @@ def render_section(plan: SectionPlan, processed_files: List[ProcessedFile]) -> R
                 continue
             
             # Получаем метку файла
-            label = plan.labels.get(file_entry.rel_path) or file_entry.rel_path
+            label = plan.labels.get(file_entry.rel_path, file_entry.rel_path)
             lang = file_entry.language_hint
             
             # Создаем fence-блок с интегрированной меткой файла

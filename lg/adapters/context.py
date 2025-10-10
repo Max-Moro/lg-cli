@@ -41,7 +41,8 @@ class LightweightContext(LightState):
         file_path: Path,
         raw_text: str,
         group_size: int,
-        template_ctx=None
+        template_ctx=None,
+        file_label: str = None
     ):
         super().__init__(file_path, raw_text, group_size)
         
@@ -49,6 +50,8 @@ class LightweightContext(LightState):
         self._full_context: Optional[ProcessingContext] = None
         # Контекст шаблона для обработки условных конструкций
         self.template_ctx = template_ctx
+        # Метка файла для вставки в документацию
+        self.file_label = file_label
 
     def get_full_context(self, adapter, tokenizer: TokenService) -> ProcessingContext:
         """

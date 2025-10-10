@@ -10,7 +10,7 @@ from .selectors import select_section_intervals
 from .transform import apply_intervals_with_placeholders
 
 
-def process_markdown(text: str, cfg: MarkdownCfg) -> Tuple[str, dict]:
+def process_markdown(text: str, cfg: MarkdownCfg, file_label: str) -> Tuple[str, dict]:
     """
     Пайплайн адаптера:
       1) parse_markdown → ParsedDoc
@@ -88,7 +88,8 @@ def process_markdown(text: str, cfg: MarkdownCfg) -> Tuple[str, dict]:
         current_text,
         max_heading_level=max_lvl,
         strip_h1=strip_h1,
-        placeholder_inside_heading=cfg.placeholder_inside_heading,
+        file_label=file_label,
+        placeholder_inside_heading=cfg.placeholder_inside_heading
     )
     meta.update(norm_meta)
     return norm_text, meta
