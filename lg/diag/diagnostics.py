@@ -173,6 +173,14 @@ def run_diag(*, rebuild_cache: bool = False) -> DiagReport:
         pass
     _mk("contexts.count", Severity.ok, str(n_ctx))
     _mk("templates.count", Severity.ok, str(n_tpl))
+    
+    # Language adapters
+    try:
+        from lg.adapters.registry import list_implemented_adapters
+        adapters = list_implemented_adapters()
+        _mk("adapters.implemented", Severity.ok, ", ".join(adapters))
+    except Exception as e:
+        _mk("adapters.implemented", Severity.warn, str(e))
 
     # Конфиг/миграции quick hints
     if not cfg_block.exists:

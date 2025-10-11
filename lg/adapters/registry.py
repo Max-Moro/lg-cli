@@ -10,6 +10,7 @@ from .base import BaseAdapter
 __all__ = [
     "register_lazy",
     "get_adapter_for_path",
+    "list_implemented_adapters",
 ]
 
 
@@ -72,3 +73,26 @@ def get_adapter_for_path(path: Path) -> Type[BaseAdapter]:
     Если неизвестно — возвращаем BaseAdapter.
     """
     return _resolve_class_by_ext(path.suffix.lower())
+
+
+def list_implemented_adapters() -> List[str]:
+    """
+    Возвращает список имен полностью реализованных языковых адаптеров.
+    
+    Returns:
+        Список имен адаптеров (например: ["python", "typescript", "markdown"])
+    """
+    implemented = set()
+    
+    # Проходим по всем зарегистрированным расширениям
+    for ext in _LAZY_BY_EXT.keys():
+        try:
+            adapter_cls = _resolve_class_by_ext(ext)
+            # Пропускаем базовый адаптер
+            if adapter_cls is not BaseAdapter:
+                implemented.add(adapter_cls.name)
+        except Exception:
+            # Если не удалось загрузить - пропускаем
+            continue
+    
+    return sorted(implemented)
