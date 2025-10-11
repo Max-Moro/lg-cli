@@ -1,4 +1,16 @@
 tag-sets:
+  basic-functions:
+    title: "Базовые функции"
+    tags:
+      cli:
+        title: "CLI"
+      diag:
+        title: "Самодиагностика"
+      migrate:
+        title: "Миграция конфигурации"
+      scaffold:
+        title: "Пресеты конфигурации"
+
   code-type:
     title: "Тип кода"
     tags:

@@ -7,50 +7,48 @@ src:
       - "/lg/"
     children:
       lg:
-        mode: block
-        block:
-          - "/markdown/"
-          - "/migrate/"
-          - "/_skeletons/"
-          - "/scaffold.py"
-          - "diag**"
-
-src-short:
-  extensions: [".py", ".toml"]
-  filters:
-    mode: allow
-    allow:
-      - "/pyproject.toml"
-      - "/lg/"
-    children:
-      lg:
         mode: allow
         allow:
           - "/cli.py"
+          - "/engine.py"
           - "/types.py"
           - "/run_context.py"
-          - "/engine.py"
+          - "/template/context.py"
           - "/section_processor.py"
           - "/config/"
-          - "/adapters/"
+        when:
+          - condition: "TAGSET:basic-functions:diag"
+            allow: ["/diag/"]
+          - condition: "TAGSET:basic-functions:migrate"
+            allow: ["/migrate/"]
+          - condition: "TAGSET:basic-functions:scaffold"
+            allow:
+              - "/scaffold.py"
+              - "/_skeletons/"
         children:
           config:
             mode: allow
             allow:
               - "/load.py"
               - "/model.py"
-          adapters:
-            mode: allow
-            allow:
-              - "/__init__.py"
-              - "/registry.py"
-              - "/base.py"
-              - "/processor.py"
-              - "/markdown.py"
 
-migrations:
+tests:
   extensions: [".py"]
   filters:
     mode: allow
     allow:
-      - "/lg/migrate/migrations/"
+      - "/tests/"
+    children:
+      tests:
+        mode: allow
+        when:
+          - condition: "tag:tests-infra"
+            allow:
+              - "/conftest.py"
+              - "/infrastructure/"
+          - condition: "TAGSET:basic-functions:cli"
+            allow:
+              - "test_cli_minimum.py"
+              - "test_cli_context.py"
+          - condition: "TAGSET:basic-functions:diag"
+            allow: ["/test_diag_rebuild_cache.py"]
