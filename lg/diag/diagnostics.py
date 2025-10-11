@@ -155,12 +155,24 @@ def run_diag(*, rebuild_cache: bool = False) -> DiagReport:
     # Git present in repo
     _mk("git.present", Severity.ok if git_ok else Severity.warn, str(root / ".git"))
 
-    # tiktoken
+    # Tokenizer libraries
     try:
         import tiktoken as _tk  # noqa: F401
         _mk("tiktoken.available", Severity.ok)
     except Exception as e:
         _mk("tiktoken.available", Severity.error, str(e))
+    
+    try:
+        import tokenizers as _tknz  # noqa: F401
+        _mk("tokenizers.available", Severity.ok)
+    except Exception as e:
+        _mk("tokenizers.available", Severity.warn, str(e))
+    
+    try:
+        import sentencepiece as _sp  # noqa: F401
+        _mk("sentencepiece.available", Severity.ok)
+    except Exception as e:
+        _mk("sentencepiece.available", Severity.warn, str(e))
 
     # Contexts/templates stats
     lgcfg = cfg_root(root)
