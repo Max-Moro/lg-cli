@@ -31,6 +31,7 @@ class VirtualSectionFactory:
         self, 
         node: MarkdownFileNode,
         repo_root: Path,
+        current_origin: str,
         heading_context: HeadingContext
     ) -> tuple[SectionCfg, SectionRef]:
         """
@@ -39,6 +40,7 @@ class VirtualSectionFactory:
         Args:
             node: Узел MarkdownFileNode с полной информацией о включаемом файле
             repo_root: Корень репозитория для резолвинга путей
+            current_origin: Текущий origin из контекста шаблона ("self" или путь к скоупу)
             heading_context: Контекст заголовков
             
         Returns:
@@ -63,13 +65,19 @@ class VirtualSectionFactory:
             adapters={"markdown": AdapterConfig(base_options=markdown_config_raw)}
         )
 
-        # Создаем SectionRef
+        # Создаем SectionRef с учетом текущего origin
         if node.origin is None or node.origin == "self":
-            # Для md: или md@self: используем текущий скоуп
-            scope_dir = repo_root.resolve()
-            scope_rel = ""
+            # Для md: или md@self: используем текущий скоуп из контекста
+            if current_origin == "self":
+                # Корневой скоуп
+                scope_dir = repo_root.resolve()
+                scope_rel = ""
+            else:
+                # Вложенный скоуп
+                scope_dir = (repo_root / current_origin).resolve()
+                scope_rel = current_origin
         else:
-            # Для md@origin: используем указанный скоуп
+            # Для md@origin: используем указанный скоуп (явная адресация)
             scope_dir = (repo_root / node.origin).resolve()
             scope_rel = node.origin
 

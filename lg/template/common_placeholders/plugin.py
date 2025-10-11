@@ -107,16 +107,23 @@ class CommonPlaceholdersPlugin(TemplatePlugin):
             if node.children is None:
                 raise RuntimeError(f"Include '{node.canon_key()}' not resolved")
             
-            # Рендерим дочерние узлы с новым контекстом для вложенного AST
-            result_parts = []
-            for child_index, child_node in enumerate(node.children):
-                # Создаем контекст для вложенного AST
-                child_context = ProcessingContext(ast=node.children, node_index=child_index)
-                rendered = self.handlers.process_ast_node(child_context)
-                if rendered:
-                    result_parts.append(rendered)
+            # Сохраняем и устанавливаем origin для вложенного контекста
+            self.template_ctx.push_origin(node.origin)
             
-            return "".join(result_parts)
+            try:
+                # Рендерим дочерние узлы с новым контекстом для вложенного AST
+                result_parts = []
+                for child_index, child_node in enumerate(node.children):
+                    # Создаем контекст для вложенного AST
+                    child_context = ProcessingContext(ast=node.children, node_index=child_index)
+                    rendered = self.handlers.process_ast_node(child_context)
+                    if rendered:
+                        result_parts.append(rendered)
+                
+                return "".join(result_parts)
+            finally:
+                # Всегда восстанавливаем предыдущий origin
+                self.template_ctx.pop_origin()
         
         return [
             ProcessorRule(

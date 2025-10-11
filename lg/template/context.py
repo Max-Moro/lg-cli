@@ -183,6 +183,37 @@ class TemplateContext:
         """
         self.current_state.current_virtual_section = None
 
+    def push_origin(self, origin: str) -> None:
+        """
+        Входит в новый origin (скоуп) при обработке вложенных включений.
+        
+        Сохраняет текущее состояние в стек и обновляет origin.
+        Используется при обработке ${ctx@origin:name} и ${tpl@origin:name}.
+        
+        Args:
+            origin: Новый origin для вложенного контекста
+        """
+        # Сохраняем текущее состояние в стек
+        self.state_stack.append(self.current_state.copy())
+        
+        # Обновляем origin в текущем состоянии
+        self.current_state.origin = origin
+
+    def pop_origin(self) -> None:
+        """
+        Выходит из вложенного origin, восстанавливая предыдущее состояние.
+        
+        Должен вызываться после завершения обработки вложенного контекста.
+        
+        Raises:
+            RuntimeError: Если стек состояний пуст
+        """
+        if not self.state_stack:
+            raise RuntimeError("No origin to pop (state stack is empty)")
+        
+        # Восстанавливаем предыдущее состояние
+        self.current_state = self.state_stack.pop()
+
     def get_origin(self) -> str:
         """
         Возвращает текущий origin из состояния шаблона.

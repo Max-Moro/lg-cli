@@ -94,9 +94,13 @@ class MdPlaceholdersPlugin(TemplatePlugin):
             from .heading_context import detect_heading_context_for_node
             heading_context = detect_heading_context_for_node(processing_context)
 
+            # Получаем текущий origin из контекста шаблона
+            current_origin = self.template_ctx.get_origin()
+
             section_config, section_ref = self.virtual_factory.create_for_markdown_file(
                 node=node,
                 repo_root=self.template_ctx.run_ctx.root,
+                current_origin=current_origin,
                 heading_context=heading_context
             )
 
