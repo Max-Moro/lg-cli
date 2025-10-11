@@ -249,3 +249,54 @@ ${md@self:internal}
     assert "Utility Library" not in result
     assert "Internal Documentation" in result   # self lg-cfg
     assert "*This documentation combines content" in result  # footer
+
+
+def test_md_placeholder_in_nested_context_include(federated_md_project):
+    """
+    Тест вложенных контекстов с md-плейсхолдерами.
+
+    Воспроизводит баг: ${ctx@apps/web:web-ctx} содержит ${md:README},
+    который должен резолвиться относительно apps/web/, а не корневого lg-cfg/.
+    """
+    root = federated_md_project
+
+    # Создаем локальный README в apps/web/
+    write_markdown(root / "apps" / "web" / "README.md",
+                   title="Web App README",
+                   content="This is the web application README file.\n\n## Quick Start\n\n1. Install deps\n2. Run dev server")
+
+    # Создаем контекст в apps/web/lg-cfg/ с относительными md-плейсхолдерами
+    create_template(root / "apps" / "web", "web-ctx", """# Web Application Context
+
+## Local Documentation
+${md:README}
+
+## Deployment Guide
+${md@self:deployment}
+""")
+
+    # Создаем корневой контекст, который включает дочерний
+    create_template(root, "main-with-nested", """# Main Project
+
+## Core
+${md:README}
+
+---
+
+## Web Application Details
+${ctx@apps/web:web-ctx}
+""")
+
+    result = render_template(root, "ctx:main-with-nested")
+
+    # Проверяем, что корневой README включился в Core
+    assert "Main project in a monorepo structure." in result
+
+    # Проверяем, что Web App README включился из вложенного контекста
+    assert "This is the web application README file." in result
+    assert "## Quick Start" in result
+    assert "1. Install deps" in result
+
+    # Проверяем deployment из web's lg-cfg/
+    assert "How to deploy the web app." in result
+    assert "npm run build" in result
