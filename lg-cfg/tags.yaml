@@ -1,14 +1,4 @@
 tag-sets:
-  language:
-    title: "Языки программирования"
-    tags:
-      python:
-        title: "Python"
-      typescript:
-        title: "TypeScript"
-      javascript:
-        title: "JavaScript"
-  
   code-type:
     title: "Тип кода"
     tags:
@@ -54,6 +44,40 @@ tag-sets:
         title: "Рендеринг"
       vcs:
         title: "VCS"
+
+  language:
+    title: "Языки программирования"
+    tags:
+      python:
+        title: "Python"
+      typescript:
+        title: "TypeScript"
+      javascript:
+        title: "JavaScript"
+      java:
+        title: "Java"
+      cpp:
+        title: "Cpp"
+      scala:
+        title: "Scala"
+
+  adapters-optimizations:
+    title: "Способы оптимизации"
+    tags:
+      core:
+        title: "Только ядро"
+      function-bodies:
+        title: "Function body optimization"
+      comments:
+        title: "Comment optimization"
+      literals:
+        title: "Literal optimization"
+      imports:
+        title: "Import optimization"
+      public-api:
+        title: "Public API optimization"
+      budget:
+        title: "Budget System"
 
 # Глобальные теги (не входят в определенные наборы)
 tags:

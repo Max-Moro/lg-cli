@@ -468,7 +468,7 @@ _ @wildcard-any
 ((identifier) @function
   (#is-not? local))
 ```
-
+<!-- lg:comment:start -->
 ## Подсветка синтаксиса
 
 ### Стандартные имена подсветки
@@ -540,7 +540,7 @@ for event in highlights:
         case HighlightEvent.HighlightEnd():
             print("Конец стиля")
 ```
-
+<!-- lg:comment:end -->
 ## Навигация по коду
 
 ### Извлечение тегов
@@ -585,7 +585,7 @@ for tag in tags:
 - `@reference.implementation` — реализации интерфейсов
 
 ## Продвинутые возможности
-
+<!-- lg:comment:start -->
 ### Многоязыковые документы
 
 ```python
@@ -609,7 +609,7 @@ for script_node in script_nodes:
     js_parser.included_ranges = js_ranges
     js_tree = js_parser.parse(template_content)
 ```
-
+<!-- lg:comment:end -->
 ### Работа с ошибками
 
 ```python
@@ -670,7 +670,7 @@ def find_nodes_by_type(node, node_type):
 ```
 
 ## Примеры для конкретных языков
-
+<!-- lg:if TAGSET:language:python -->
 ### Python
 
 ```python
@@ -708,7 +708,7 @@ def analyze_python_file(source_code):
     
     return {"functions": functions, "classes": classes}
 ```
-
+<!-- lg:endif --> <!-- lg:if TAGSET:language:typescript OR TAGSET:language:javascript -->
 ### JavaScript/TypeScript
 
 ```python
@@ -763,7 +763,7 @@ def analyze_js_imports_exports(source_code, is_typescript=False):
         "function_calls": calls
     }
 ```
-
+<!-- lg:endif --> <!-- lg:if TAGSET:language:java -->
 ### Java
 
 ```python
@@ -814,7 +814,7 @@ def analyze_java_file(source_code):
     
     return result
 ```
-
+<!-- lg:endif --> <!-- lg:if TAGSET:language:cpp -->
 ### C/C++
 
 ```python
@@ -870,7 +870,7 @@ def analyze_c_cpp_file(source_code, is_cpp=False):
     
     return result
 ```
-
+<!-- lg:endif --> <!-- lg:if TAGSET:language:scala -->
 ### Scala
 
 ```python
@@ -927,7 +927,7 @@ def analyze_scala_file(source_code):
     
     return result
 ```
-
+<!-- lg:endif --> <!-- lg:comment:start -->
 ## Лучшие практики
 
 ### Управление памятью
@@ -1331,3 +1331,4 @@ Tree-sitter предоставляет мощный и гибкий API для �
 4. **Устойчивость** — работа даже с некорректным кодом
 
 Используйте эту документацию как справочник при разработке инструментов анализа кода, IDE, линтеров и других приложений, работающих с исходным кодом.
+<!-- lg:comment:end -->

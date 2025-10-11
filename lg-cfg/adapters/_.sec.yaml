@@ -1,25 +1,4 @@
 src:
-  extensions: [".py"]
-  filters:
-    mode: allow
-    allow:
-      - "/lg/"
-    children:
-      lg:
-        mode: allow
-        allow:
-          - "/adapters/"
-        children:
-          adapters:
-            mode: block
-            block:
-              - "/cpp.py"
-              - "/java.py"
-              - "/javascript.py"
-              - "/markdown.py"
-              - "/scala.py"
-
-src-budget:
   extensions: [".py", ".toml"]
   filters:
     mode: allow
@@ -28,59 +7,163 @@ src-budget:
       - "/lg/"
     children:
       lg:
-        mode: block
-        block:
-          - "/migrate/"
-          - "/markdown/"
-          - "diag**"
-          - "scaffold.py"
-          - "/_skeletons/"
+        mode: allow
+        allow:
+          - "/cli.py"
+          - "/engine.py"
+          - "/types.py"
+          - "/run_context.py"
+          - "/template/context.py"
+          - "/section_processor.py"
+          - "/config/"
+          - "/adapters/"
         children:
+          config:
+            mode: allow
+            allow:
+              - "/load.py"
+              - "/model.py"
           adapters:
-            mode: block
-            block:
-              - "/cpp.py"
-              - "/java.py"
-              - "/javascript.py"
-              - "/markdown.py"
-              - "/scala.py"
-              - "/placeholders.py"
-              - "/optimizations/comments.py"
-              - "/optimizations/imports.py"
+            mode: allow
+            allow:
+              - "/__init__.py"
+              - "/registry.py"
+              - "/base.py"
+              - "/processor.py"
+              - "/context.py"
+              - "/code_model.py"
+              - "/code_base.py"
+            when:
+              - condition: "TAGSET:adapters-optimizations:core"
+                allow:
+                  - "/tree_sitter_support.py"
+                  - "/range_edits.py"
+                  - "/placeholders.py"
+                  - "/metrics.py"
+              - condition: "TAGSET:adapters-optimizations:budget"
+                allow: ["/budget.py"]
+              - condition: "TAGSET:adapters-optimizations:function-bodies OR TAGSET:adapters-optimizations:public-api"
+                allow: ["/code_analysis.py"]
+              - condition: "TAGSET:language:python"
+                allow: ["/python/"]
+              - condition: "TAGSET:language:typescript"
+                allow: ["/typescript/"]
+              - condition: "TAGSET:language:javascript"
+                allow: ["/javascript.py"]
+              - condition: "TAGSET:language:java"
+                allow: ["/java.py"]
+              - condition: "TAGSET:language:cpp"
+                allow: ["/cpp.py"]
+              - condition: "TAGSET:language:scala"
+                allow: ["/scala.py"]
             children:
+              optimizations:
+                mode: allow
+                when:
+                  - condition: "TAGSET:adapters-optimizations:function-bodies"
+                    allow: ["/function_bodies.py"]
+                  - condition: "TAGSET:adapters-optimizations:comments"
+                    allow: ["/comments.py"]
+                  - condition: "TAGSET:adapters-optimizations:literals"
+                    allow: ["/literals.py"]
+                  - condition: "TAGSET:adapters-optimizations:imports"
+                    allow: ["/imports.py"]
+                  - condition: "TAGSET:adapters-optimizations:public-api"
+                    allow: ["/public_api.py"]
               python:
                 mode: allow
                 allow:
+                  - "/__init__.py"
                   - "/adapter.py"
+                  - "/queries.py"
+                  - "/file_heuristics.py"
+                when:
+                  - condition: "TAGSET:adapters-optimizations:function-bodies"
+                    allow: ["/function_bodies.py", "/code_analysis.py"]
+                  - condition: "TAGSET:adapters-optimizations:comments"
+                    allow: ["/comments.py"]
+                  - condition: "TAGSET:adapters-optimizations:imports"
+                    allow: ["/imports.py"]
+                  - condition: "TAGSET:adapters-optimizations:public-api"
+                    allow: ["/code_analysis.py"]
               typescript:
                 mode: allow
                 allow:
+                  - "/__init__.py"
                   - "/adapter.py"
+                  - "/queries.py"
+                  - "/file_heuristics.py"
+                when:
+                  - condition: "TAGSET:adapters-optimizations:function-bodies"
+                    allow: ["/code_analysis.py"]
+                  - condition: "TAGSET:adapters-optimizations:imports"
+                    allow: ["/imports.py"]
+                  - condition: "TAGSET:adapters-optimizations:public-api"
+                    allow: ["/code_analysis.py"]
 
-src-tests:
+tests:
   extensions: [".py"]
   filters:
     mode: allow
     allow:
-      - "/tests/adapters/"
-      - "/tests/conftest.py"
+      - "/tests/"
     children:
       tests:
-        mode: block
+        mode: allow
+        allow:
+          - "/adapters/"
+        when:
+          - condition: "tag:tests-infra"
+            allow:
+              - "/conftest.py"
+              - "/infrastructure/"
         children:
           adapters:
-            mode: block
-            block:
-              - "/test_infrastructure.py"
-              - "/test_integration.py"
-              - "/golden_utils.py"
-
-docs-golden-utils:
-  extensions: [".md"]
-  markdown:
-    max_heading_level: 3
-    strip_h1: true
-  filters:
-    mode: allow
-    allow:
-      - "/tests/adapters/golden_utils.md"
+            mode: allow
+            allow:
+              - "/conftest.py"
+            when:
+              - condition: "TAGSET:adapters-optimizations:core"
+                allow:
+                  - "/golden_utils.py"
+                  - "/test_placeholders.py"
+                  - "/test_tree_sitter_document.py"
+              - condition: "TAGSET:language:python"
+                allow: ["/python/"]
+              - condition: "TAGSET:language:typescript"
+                allow: ["/typescript/"]
+            children:
+              python:
+                mode: allow
+                allow:
+                  - "/conftest.py"
+                when:
+                  - condition: "TAGSET:adapters-optimizations:function-bodies"
+                    allow: ["/test_function_bodies.py"]
+                  - condition: "TAGSET:adapters-optimizations:comments"
+                    allow: ["/test_comments.py"]
+                  - condition: "TAGSET:adapters-optimizations:literals"
+                    allow: ["/test_literals.py", "test_literal_comment_context.py", "test_literals_indentation.py", "test_literal_sets.py"]
+                  - condition: "TAGSET:adapters-optimizations:imports"
+                    allow: ["/test_imports.py"]
+                  - condition: "TAGSET:adapters-optimizations:public-api"
+                    allow: ["/test_public_api.py"]
+                  - condition: "TAGSET:adapters-optimizations:budget"
+                    allow: ["/test_budget.py"]
+              typescript:
+                mode: allow
+                allow:
+                  - "/conftest.py"
+                when:
+                  - condition: "TAGSET:adapters-optimizations:function-bodies"
+                    allow: ["/test_function_bodies.py"]
+                  - condition: "TAGSET:adapters-optimizations:comments"
+                    allow: ["/test_comments.py"]
+                  - condition: "TAGSET:adapters-optimizations:literals"
+                    allow: ["/test_literals.py", "test_literal_comment_context.py", "test_literals_indentation.py"]
+                  - condition: "TAGSET:adapters-optimizations:imports"
+                    allow: ["/test_imports.py"]
+                  - condition: "TAGSET:adapters-optimizations:public-api"
+                    allow: ["/test_public_api.py"]
+                  - condition: "TAGSET:adapters-optimizations:budget"
+                    allow: ["/test_budget.py"]
