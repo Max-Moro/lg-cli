@@ -15,6 +15,7 @@ __all__ = ["process_files", "get_adapter_for_path", "register_lazy"]
 # Tree-sitter based adapters
 register_lazy(module=".python", class_name="PythonAdapter", extensions=[".py"])
 register_lazy(module=".typescript", class_name="TypeScriptAdapter", extensions=[".ts", ".tsx"])
+register_lazy(module=".kotlin", class_name="KotlinAdapter", extensions=[".kt", ".kts"])
 
 # Markdown adapter
 register_lazy(module=".markdown", class_name="MarkdownAdapter", extensions=[".md", ".markdown"])
