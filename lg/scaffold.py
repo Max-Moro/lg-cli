@@ -72,34 +72,21 @@ def _collect_skeleton_entries(preset: str) -> List[Tuple[str, bytes]]:
     return out
 
 
-def _want_file(rel: str, *, include_examples: bool, include_models: bool) -> bool:
-    # rel — путь относительно lg-cfg/, POSIX
-    if not include_examples and (rel.endswith(".tpl.md") or rel.endswith(".ctx.md")):
-        return False
-    if not include_models and rel == "models.yaml":
-        return False
-    return True
-
-
 def init_cfg(
     *,
     repo_root: Path,
     preset: str = "basic",
     force: bool = False,
-    include_examples: bool = True,
-    include_models: bool = False,
-    dry_run: bool = False,
 ) -> Dict:
     """
     Разворачивает пресет в <repo_root>/lg-cfg/.
-    Возвращает JSON-совместимый словарь с полями: ok, created, skipped, conflicts, preset.
+    Возвращает JSON-совместимый словарь с полями: ok, created, conflicts, preset.
     """
     repo_root = repo_root.resolve()
     target = (repo_root / "lg-cfg").resolve()
 
     # Составим план копирования
     created: List[str] = []
-    skipped: List[str] = []
     conflicts: List[str] = []
     plan: List[Tuple[str, bytes]] = []
 
@@ -110,9 +97,6 @@ def init_cfg(
         return {"ok": False, "error": str(e), "preset": preset}
 
     for rel, data in src_entries:
-        if not _want_file(rel, include_examples=include_examples, include_models=include_models):
-            skipped.append(rel)
-            continue
         dst = target / rel
         if dst.exists() and not force:
             conflicts.append(rel)
@@ -125,29 +109,8 @@ def init_cfg(
             "ok": False,
             "preset": preset,
             "created": [],
-            "skipped": skipped,
             "conflicts": sorted(conflicts),
             "message": "Use --force to overwrite existing files.",
-        }
-
-    # dry-run: покажем что будет создано/перезаписано и выйдем
-    if dry_run:
-        will_create: List[str] = []
-        will_overwrite: List[str] = []
-        for rel, _ in plan:
-            dst = (target / rel)
-            if dst.exists():
-                will_overwrite.append(rel)
-            else:
-                will_create.append(rel)
-        return {
-            "ok": True,
-            "preset": preset,
-            "dryRun": True,
-            "target": str(target),
-            "willCreate": sorted(will_create),
-            "willOverwrite": sorted(will_overwrite),
-            "skipped": sorted(skipped),
         }
 
     # Выполняем запись
@@ -163,7 +126,6 @@ def init_cfg(
         "preset": preset,
         "target": str(target),
         "created": sorted(created),
-        "skipped": sorted(skipped),
         "conflicts": sorted(conflicts) if force else [],
     }
 
@@ -180,9 +142,6 @@ def add_cli(subparsers) -> None:
     )
     sp.add_argument("--preset", default="basic", help="имя пресета (см. --list-presets)")
     sp.add_argument("--force", action="store_true", help="перезаписывать существующие файлы")
-    sp.add_argument("--no-examples", action="store_true", help="не копировать примеры *.tpl.md и *.ctx.md")
-    sp.add_argument("--with-models", action="store_true", help="положить пример lg-cfg/models.yaml")
-    sp.add_argument("--dry-run", action="store_true", help="показать план действий, ничего не изменяя на диске")
     sp.add_argument("--list-presets", action="store_true", help="перечислить доступные пресеты и выйти")
     # Хендлер — сюда придёт argparse.Namespace
     sp.set_defaults(func=_run_cli, cmd="init")
@@ -200,9 +159,6 @@ def _run_cli(ns) -> int:
         repo_root=root,
         preset=str(ns.preset),
         force=bool(getattr(ns, "force", False)),
-        include_examples=not bool(getattr(ns, "no_examples", False)),
-        include_models=bool(getattr(ns, "with_models", False)),
-        dry_run=bool(getattr(ns, "dry_run", False)),
     )
     sys.stdout.write(jdumps(result))
     return 0
