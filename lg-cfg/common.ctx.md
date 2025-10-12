@@ -13,6 +13,12 @@ ${src}
 ## Unit-тесты
 
 ${tests}
+{% endif %} {% if tag:docs %}
+---
+
+# Расширенная документация
+
+${md:docs/*}
 {% endif %} {% if task AND scope:local %}
 ---
 
