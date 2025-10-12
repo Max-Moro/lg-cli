@@ -1,40 +1,13 @@
-# Базовые секции «из коробки» — минимально полезный старт.
-docs:
-  extensions: [".md"]
-  markdown:
-    max_heading_level: 2
-  filters:
-    mode: allow
-    allow:
-      - "/README.md"
-      - "/docs/**"
-
 src:
-  extensions: [".py", ".md", ".yaml", ".toml", ".json"]
-  skip_empty: true
-  python:
-    skip_trivial_inits: true
-  markdown:
-    max_heading_level: 3
+  extensions: [".py", ".toml"]
   filters:
-    mode: allow
-    allow:
-      - "/**"
+    mode: block
     block:
-      - "/.git/**"
-      - "/.idea/**"
-      - "/.vscode/**"
-      - "/**/__pycache__/**"
-      - "/**/*.pyc"
-      - "/node_modules/**"
-      - "/dist/**"
-      - "/build/**"
-      - "/.venv/**"
+      - "/tests/"
 
-# Текстовая «дорожная карта» как отдельная секция (пример точечного файла)
-roadmap:
-  extensions: [".md"]
+tests:
+  extensions: [".py"]
   filters:
     mode: allow
     allow:
-      - "/ROADMAP.md"
+      - "/tests/"

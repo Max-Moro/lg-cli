@@ -1,4 +1,4 @@
-${docs/intro}
+${md:README}
 
 ---
 {% if tag:review %}
