@@ -58,12 +58,12 @@ class KotlinCodeAnalyzer(CodeAnalyzer):
             for child in node.children:
                 if child.type == "variable_declaration":
                     for grandchild in child.children:
-                        if grandchild.type == "simple_identifier":
+                        if grandchild.type == "identifier":
                             return self.doc.get_node_text(grandchild)
         
-        # Ищем дочерний узел с именем (simple_identifier или type_identifier)
+        # Ищем дочерний узел с именем (identifier)
         for child in node.children:
-            if child.type in ("simple_identifier", "type_identifier"):
+            if child.type == "identifier":
                 return self.doc.get_node_text(child)
         
         return None

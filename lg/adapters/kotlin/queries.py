@@ -9,34 +9,34 @@ QUERIES = {
     # Functions and methods
     "functions": """
     (function_declaration
-      (simple_identifier) @function_name
-      (function_value_parameters) @function_params
-      (function_body)? @function_body) @function_definition
+      (identifier) @function_name
+      (function_value_parameters) @function_params) @function_definition
+    
+    (function_declaration
+      (function_body) @function_body)
     """,
     
     # Comments (both single-line and multi-line)
     "comments": """
     (line_comment) @comment
-    
-    (multiline_comment) @comment
     """,
     
     # Import statements
     "imports": """
-    (import_header) @import
+    (import) @import
     """,
     
     # Class definitions  
     "classes": """
     (class_declaration
-      (type_identifier) @class_name
+      (identifier) @class_name
       (class_body)? @class_body)
     """,
     
     # Object declarations (Kotlin-specific)
     "objects": """
     (object_declaration
-      (type_identifier) @object_name
+      (identifier) @object_name
       (class_body)? @object_body)
     """,
     
@@ -44,7 +44,7 @@ QUERIES = {
     "properties": """
     (property_declaration
       (variable_declaration
-        (simple_identifier) @property_name))
+        (identifier) @property_name))
     """,
     
     # Literals for trimming
