@@ -91,3 +91,8 @@ class KotlinAdapter(CodeAdapter[KotlinCfg]):
         """В Kotlin нет docstring как в Python, только KDoc комментарии."""
         return False
 
+    def hook__remove_function_body(self, *args, **kwargs) -> None:
+        """Kotlin-специфичная обработка удаления тел функций с сохранением KDoc."""
+        from .function_bodies import remove_function_body_with_kdoc
+        remove_function_body_with_kdoc(*args, **kwargs)
+

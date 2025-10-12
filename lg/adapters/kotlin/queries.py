@@ -21,6 +21,8 @@ QUERIES = {
     # Comments (both single-line and multi-line)
     "comments": """
     (line_comment) @comment
+    
+    (block_comment) @comment
     """,
     
     # Import statements
