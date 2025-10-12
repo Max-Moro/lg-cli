@@ -33,6 +33,7 @@ src:
               - "/context.py"
               - "/code_model.py"
               - "/code_base.py"
+              - "/optimizations/"
             when:
               - condition: "TAGSET:adapters-optimizations:core"
                 allow:
@@ -46,6 +47,8 @@ src:
                 allow: ["/code_analysis.py"]
               - condition: "TAGSET:language:python"
                 allow: ["/python/"]
+              - condition: "TAGSET:language:kotlin"
+                allow: ["/kotlin/"]
               - condition: "TAGSET:language:typescript"
                 allow: ["/typescript/"]
               - condition: "TAGSET:language:javascript"
@@ -148,6 +151,8 @@ tests:
                 allow: ["/python/"]
               - condition: "TAGSET:language:typescript"
                 allow: ["/typescript/"]
+              - condition: "TAGSET:language:kotlin"
+                allow: ["/kotlin/"]
             children:
               python:
                 mode: allow

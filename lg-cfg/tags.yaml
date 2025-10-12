@@ -66,6 +66,8 @@ tag-sets:
         title: "TypeScript"
       javascript:
         title: "JavaScript"
+      kotlin:
+        title: "Kotlin"
       java:
         title: "Java"
       cpp:
