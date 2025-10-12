@@ -5,9 +5,9 @@ Kotlin-специфичная реализация унифицированно�
 
 from __future__ import annotations
 
-from typing import List, Optional, Set
+from typing import List, Optional, Set, Tuple, Dict
 
-from ..code_analysis import CodeAnalyzer, Visibility, ExportStatus, ElementInfo
+from ..code_analysis import CodeAnalyzer, Visibility, ExportStatus, ElementInfo, FunctionGroup
 from ..tree_sitter_support import Node
 
 
@@ -22,7 +22,7 @@ class KotlinCodeAnalyzer(CodeAnalyzer):
             node: Tree-sitter узел
             
         Returns:
-            Строка с типом элемента: "function", "method", "class", "object", "property"
+            Строка с типом элемента: "function", "method", "class", "object", "property", "lambda"
         """
         node_type = node.type
         
@@ -36,6 +36,8 @@ class KotlinCodeAnalyzer(CodeAnalyzer):
             return "property"
         elif node_type == "secondary_constructor":
             return "constructor"
+        elif node_type == "lambda_literal":
+            return "lambda"
         else:
             # Fallback: пытаемся определить по родительскому контексту
             if self.is_method_context(node):
@@ -53,6 +55,18 @@ class KotlinCodeAnalyzer(CodeAnalyzer):
         Returns:
             Имя элемента или None если не найдено
         """
+        # Для lambda_literal пытаемся найти имя из property_declaration
+        if node.type == "lambda_literal":
+            # Лямбда - это часть property_declaration: val name = { ... }
+            parent = node.parent
+            if parent and parent.type == "property_declaration":
+                for child in parent.children:
+                    if child.type == "variable_declaration":
+                        for grandchild in child.children:
+                            if grandchild.type == "identifier":
+                                return self.doc.get_node_text(grandchild)
+            return None  # Anonymous lambda
+        
         # Для property_declaration ищем variable_declaration
         if node.type == "property_declaration":
             for child in node.children:
@@ -175,7 +189,7 @@ class KotlinCodeAnalyzer(CodeAnalyzer):
 
     def find_function_definition_in_parents(self, node: Node) -> Optional[Node]:
         """
-        Находит function_declaration для данного узла, поднимаясь по дереву.
+        Находит function_declaration или lambda_literal для данного узла, поднимаясь по дереву.
         
         Args:
             node: Узел для поиска родительской функции
@@ -185,7 +199,7 @@ class KotlinCodeAnalyzer(CodeAnalyzer):
         """
         current = node.parent
         while current:
-            if current.type == "function_declaration":
+            if current.type in ("function_declaration", "lambda_literal"):
                 return current
             current = current.parent
         return None
@@ -236,6 +250,58 @@ class KotlinCodeAnalyzer(CodeAnalyzer):
         
         return annotations
 
+    def collect_function_like_elements(self, captures: List[Tuple[Node, str]]) -> Dict[Node, FunctionGroup]:
+        """
+        Kotlin-специфичная группировка функций и лямбд.
+        
+        Переопределяет базовый метод для корректной обработки lambda_literal.
+        """
+        function_groups = {}
+        
+        # Собираем определения
+        for node, capture_name in captures:
+            if self.is_function_definition_capture(capture_name):
+                element_info = self.analyze_element(node)
+                
+                # Для лямбд извлекаем тело особым образом
+                body_node = None
+                if node.type == "lambda_literal":
+                    body_node = self.extract_lambda_body(node)
+                
+                function_groups[node] = FunctionGroup(
+                    definition=node,
+                    element_info=element_info,
+                    body_node=body_node
+                )
+        
+        # Для обычных функций ищем тела через стандартную логику
+        for node, capture_name in captures:
+            if self.is_function_body_capture(capture_name):
+                func_def = self.find_function_definition_in_parents(node)
+                if func_def and func_def in function_groups:
+                    # Только для function_declaration, не для lambda
+                    if func_def.type == "function_declaration":
+                        old_group = function_groups[func_def]
+                        function_groups[func_def] = FunctionGroup(
+                            definition=old_group.definition,
+                            element_info=old_group.element_info,
+                            name_node=old_group.name_node,
+                            body_node=node
+                        )
+            
+            elif self.is_function_name_capture(capture_name):
+                func_def = self.find_function_definition_in_parents(node)
+                if func_def and func_def in function_groups:
+                    old_group = function_groups[func_def]
+                    function_groups[func_def] = FunctionGroup(
+                        definition=old_group.definition,
+                        element_info=old_group.element_info,
+                        name_node=node,
+                        body_node=old_group.body_node
+                    )
+        
+        return function_groups
+    
     def collect_language_specific_private_elements(self) -> List[ElementInfo]:
         """
         Собирает Kotlin-специфичные приватные элементы.
@@ -300,4 +366,68 @@ class KotlinCodeAnalyzer(CodeAnalyzer):
             True если узел является пробелом или комментарием
         """
         return node.type in ("line_comment", "multiline_comment", "newline", "\n", " ", "\t")
+    
+    def extract_lambda_body(self, lambda_node: Node) -> Optional[Node]:
+        """
+        Извлекает тело лямбда-функции Kotlin.
+        
+        Структура lambda_literal:
+        - { открывающая скобка
+        - lambda_parameters? (опционально)
+        - -> (опционально, если есть параметры)
+        - тело (statements)
+        - } закрывающая скобка
+        
+        Args:
+            lambda_node: Узел lambda_literal
+            
+        Returns:
+            Узел, представляющий тело лямбды (или None для однострочных)
+        """
+        if lambda_node.type != "lambda_literal":
+            return None
+        
+        # Для однострочных лямбд не удаляем тело
+        start_line, end_line = self.doc.get_line_range(lambda_node)
+        if start_line == end_line:
+            return None  # Single-line lambda, don't strip
+        
+        # Создаем синтетический узел для тела лямбды
+        # Тело начинается после -> (если есть) или после {
+        body_start_idx = 0
+        has_arrow = False
+        
+        for i, child in enumerate(lambda_node.children):
+            if child.type == "->":
+                has_arrow = True
+                body_start_idx = i + 1
+                break
+            elif child.type == "{":
+                body_start_idx = i + 1
+        
+        # Тело заканчивается перед }
+        body_end_idx = len(lambda_node.children) - 1
+        for i in range(len(lambda_node.children) - 1, -1, -1):
+            if lambda_node.children[i].type == "}":
+                body_end_idx = i
+                break
+        
+        # Если нет тела (пустая лямбда или только параметры)
+        if body_start_idx >= body_end_idx:
+            return None
+        
+        # Возвращаем диапазон от первого statement до последнего
+        first_statement = lambda_node.children[body_start_idx]
+        last_statement = lambda_node.children[body_end_idx - 1]
+        
+        # Создаем синтетический узел-обертку
+        class LambdaBodyRange:
+            def __init__(self, start_node, end_node):
+                self.start_byte = start_node.start_byte
+                self.end_byte = end_node.end_byte
+                self.start_point = start_node.start_point
+                self.end_point = end_node.end_point
+                self.type = "lambda_body"
+        
+        return LambdaBodyRange(first_statement, last_statement)
 

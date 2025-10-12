@@ -14,6 +14,8 @@ QUERIES = {
     
     (function_declaration
       (function_body) @function_body)
+    
+    (lambda_literal) @function_definition
     """,
     
     # Comments (both single-line and multi-line)
