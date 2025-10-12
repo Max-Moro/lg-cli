@@ -100,6 +100,20 @@ src:
                     allow: ["/imports.py"]
                   - condition: "TAGSET:adapters-optimizations:public-api"
                     allow: ["/code_analysis.py"]
+              kotlin:
+                mode: allow
+                allow:
+                  - "/__init__.py"
+                  - "/adapter.py"
+                  - "/queries.py"
+                  - "/file_heuristics.py"
+                when:
+                  - condition: "TAGSET:adapters-optimizations:function-bodies"
+                    allow: ["/code_analysis.py"]
+                  - condition: "TAGSET:adapters-optimizations:imports"
+                    allow: ["/imports.py"]
+                  - condition: "TAGSET:adapters-optimizations:public-api"
+                    allow: ["/code_analysis.py"]
 
 tests:
   extensions: [".py", ".ts"]
@@ -169,3 +183,20 @@ tests:
                     allow: ["/test_public_api.py", "/goldens/do/public_api.ts"]
                   - condition: "TAGSET:adapters-optimizations:budget"
                     allow: ["/test_budget.py", "/goldens/do/budget_complex.ts"]
+              kotlin:
+                mode: allow
+                allow:
+                  - "/conftest.py"
+                when:
+                  - condition: "TAGSET:adapters-optimizations:function-bodies"
+                    allow: ["/test_function_bodies.py", "/goldens/do/function_bodies.kt"]
+                  - condition: "TAGSET:adapters-optimizations:comments"
+                    allow: ["/test_comments.py", "/goldens/do/comments.kt"]
+                  - condition: "TAGSET:adapters-optimizations:literals"
+                    allow: ["/test_literals.py", "test_literal_comment_context.py", "test_literals_indentation.py", "/goldens/do/literals.kt"]
+                  - condition: "TAGSET:adapters-optimizations:imports"
+                    allow: ["/test_imports.py", "/goldens/do/imports.kt"]
+                  - condition: "TAGSET:adapters-optimizations:public-api"
+                    allow: ["/test_public_api.py", "/goldens/do/public_api.kt"]
+                  - condition: "TAGSET:adapters-optimizations:budget"
+                    allow: ["/test_budget.py", "/goldens/do/budget_complex.kt"]
