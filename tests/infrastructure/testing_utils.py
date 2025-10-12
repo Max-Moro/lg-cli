@@ -75,4 +75,9 @@ def lctx_md(raw_text: str = "# Test Markdown", group_size: int = 1) -> Lightweig
     return lctx(raw_text=raw_text, filename="test.md", group_size=group_size)
 
 
-__all__ = ["TokenServiceStub", "stub_tokenizer", "lctx", "lctx_py", "lctx_ts", "lctx_md"]
+def lctx_kt(raw_text: str = "// Test Kotlin", group_size: int = 1) -> LightweightContext:
+    """Создает LightweightContext для Kotlin файла."""
+    return lctx(raw_text=raw_text, filename="test.kt", group_size=group_size)
+
+
+__all__ = ["TokenServiceStub", "stub_tokenizer", "lctx", "lctx_py", "lctx_ts", "lctx_md", "lctx_kt"]

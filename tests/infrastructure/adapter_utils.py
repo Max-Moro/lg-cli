@@ -50,6 +50,25 @@ def make_typescript_adapter_real(cfg: TypeScriptCfg) -> TypeScriptAdapter:
     return adapter
 
 
+# ===== Kotlin Adapter Utils =====
+
+def make_kotlin_adapter(cfg):
+    """Kotlin adapter с предустановленной заглушкой TokenService."""
+    # Import locally to avoid circular dependencies
+    from lg.adapters.kotlin import KotlinAdapter
+    adapter = KotlinAdapter().bind(None, stub_tokenizer())
+    adapter._cfg = cfg
+    return adapter
+
+
+def make_kotlin_adapter_real(cfg):
+    """Если тесты проверяют реальную математику по токенам."""
+    from lg.adapters.kotlin import KotlinAdapter
+    adapter = KotlinAdapter().bind(None, default_tokenizer())
+    adapter._cfg = cfg
+    return adapter
+
+
 # ===== Markdown Adapter Utils =====
 
 def make_markdown_adapter(raw_cfg: Dict[str, Any]) -> MarkdownAdapter:
@@ -96,6 +115,9 @@ __all__ = [
     
     # TypeScript adapters  
     "make_typescript_adapter", "make_typescript_adapter_real",
+    
+    # Kotlin adapters
+    "make_kotlin_adapter", "make_kotlin_adapter_real",
     
     # Markdown adapters
     "make_markdown_adapter",

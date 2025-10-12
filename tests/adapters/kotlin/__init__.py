@@ -1,0 +1,4 @@
+"""
+Kotlin adapter tests package.
+"""
+
