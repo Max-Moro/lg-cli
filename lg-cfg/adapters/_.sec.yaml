@@ -102,7 +102,7 @@ src:
                     allow: ["/code_analysis.py"]
 
 tests:
-  extensions: [".py"]
+  extensions: [".py", ".ts"]
   filters:
     mode: allow
     allow:
@@ -123,9 +123,11 @@ tests:
             allow:
               - "/conftest.py"
             when:
-              - condition: "TAGSET:adapters-optimizations:core"
+              - condition: "tag:tests-infra"
                 allow:
                   - "/golden_utils.py"
+              - condition: "TAGSET:adapters-optimizations:core"
+                allow:
                   - "/test_placeholders.py"
                   - "/test_tree_sitter_document.py"
               - condition: "TAGSET:language:python"
@@ -139,31 +141,31 @@ tests:
                   - "/conftest.py"
                 when:
                   - condition: "TAGSET:adapters-optimizations:function-bodies"
-                    allow: ["/test_function_bodies.py"]
+                    allow: ["/test_function_bodies.py", "/goldens/do/function_bodies.py"]
                   - condition: "TAGSET:adapters-optimizations:comments"
-                    allow: ["/test_comments.py"]
+                    allow: ["/test_comments.py", "/goldens/do/comments.py"]
                   - condition: "TAGSET:adapters-optimizations:literals"
-                    allow: ["/test_literals.py", "test_literal_comment_context.py", "test_literals_indentation.py", "test_literal_sets.py"]
+                    allow: ["/test_literals.py", "test_literal_comment_context.py", "test_literals_indentation.py", "test_literal_sets.py", "/goldens/do/literals.py"]
                   - condition: "TAGSET:adapters-optimizations:imports"
-                    allow: ["/test_imports.py"]
+                    allow: ["/test_imports.py", "/goldens/do/imports.py"]
                   - condition: "TAGSET:adapters-optimizations:public-api"
-                    allow: ["/test_public_api.py"]
+                    allow: ["/test_public_api.py", "/goldens/do/public_api.py"]
                   - condition: "TAGSET:adapters-optimizations:budget"
-                    allow: ["/test_budget.py"]
+                    allow: ["/test_budget.py", "/goldens/do/budget_complex.py"]
               typescript:
                 mode: allow
                 allow:
                   - "/conftest.py"
                 when:
                   - condition: "TAGSET:adapters-optimizations:function-bodies"
-                    allow: ["/test_function_bodies.py"]
+                    allow: ["/test_function_bodies.py", "/goldens/do/function_bodies.ts"]
                   - condition: "TAGSET:adapters-optimizations:comments"
-                    allow: ["/test_comments.py"]
+                    allow: ["/test_comments.py", "/goldens/do/comments.ts"]
                   - condition: "TAGSET:adapters-optimizations:literals"
-                    allow: ["/test_literals.py", "test_literal_comment_context.py", "test_literals_indentation.py"]
+                    allow: ["/test_literals.py", "test_literal_comment_context.py", "test_literals_indentation.py", "/goldens/do/literals.ts"]
                   - condition: "TAGSET:adapters-optimizations:imports"
-                    allow: ["/test_imports.py"]
+                    allow: ["/test_imports.py", "/goldens/do/imports.ts"]
                   - condition: "TAGSET:adapters-optimizations:public-api"
-                    allow: ["/test_public_api.py"]
+                    allow: ["/test_public_api.py", "/goldens/do/public_api.ts"]
                   - condition: "TAGSET:adapters-optimizations:budget"
-                    allow: ["/test_budget.py"]
+                    allow: ["/test_budget.py", "/goldens/do/budget_complex.ts"]
