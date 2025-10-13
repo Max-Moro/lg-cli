@@ -16,16 +16,21 @@ class TestKotlinPublicApiOptimization:
         result, meta = adapter.process(lctx_kt(do_public_api))
         
         # Private elements should be removed
-        assert meta.get("kotlin.removed.function", 0) > 0
-        assert meta.get("kotlin.removed.method", 0) > 0 or meta.get("kotlin.removed.class", 0) > 0
+        assert meta.get("kotlin.removed.method", 0) == 14
+        assert meta.get("kotlin.removed.function", 0) == 3
+        assert meta.get("kotlin.removed.object", 0) == 1
+        assert meta.get("kotlin.removed.property", 0) == 9
+        assert meta.get("kotlin.removed.class", 0) == 4
         
         # Public exports should remain
-        assert "class UserManager" in result or "UserManager" in result
-        assert "fun createUserManager" in result or "createUserManager" in result
+        assert "class UserManager" in result
+        assert "fun createUserManager" in result
         
-        # Private elements should be removed or placeholdered
-        assert "private" not in result or "… private" in result
-        
+        # Private elements should be removed
+        assert "private val internalCache" not in result
+        assert "private fun validateUserData" not in result
+        assert "private class InternalLogger" not in result
+
         assert_golden_match(result, "public_api", "basic")
 
     def test_visibility_detection(self):

@@ -34,13 +34,18 @@ import org.slf4j.LoggerFactory
 // … 9 imports omitted
 
 // Relative imports with different depth levels
-// … 3 imports omitted
+import com.example.shared.SharedUtility
+import com.example.core.CoreModule
+import com.example.config.AppConfig
 
 // Import with aliasing
-// … 3 imports omitted
+import com.example.imports.utils.logger.Logger as AppLogger
+import com.example.imports.config.Config as AppConfig2
+import com.example.imports.http.HttpClient as CustomHttpClient
 
 // Star imports
-// … 2 imports omitted
+import com.example.imports.extensions.*
+import com.example.imports.constants.*
 
 // Long import lists (candidates for summarization)
 // … 39 imports omitted

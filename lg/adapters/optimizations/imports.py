@@ -173,8 +173,8 @@ class ImportOptimizer:
                 self._remove_import(context, imp)
         
         # Затем группируем последовательные импорты из одного базового модуля (Kotlin/Java style)
-        # Базовый модуль - это первые 2-3 сегмента пути (например, io.ktor для io.ktor.server.*)
-        grouped_by_base = self._group_consecutive_imports_by_base_module(imports)
+        # Базовый модуль - это первые 2 сегмента пути (например, io.ktor для io.ktor.server.*)
+        grouped_by_base = self._group_consecutive_imports_by_base_module(imports, context)
         
         for base_module, group in grouped_by_base.items():
             if len(group) > max_items:
@@ -182,21 +182,26 @@ class ImportOptimizer:
                 for imp in group:
                     self._remove_import(context, imp)
     
-    @staticmethod
-    def _group_consecutive_imports_by_base_module(imports: List[ImportInfo]) -> Dict[str, List[ImportInfo]]:
+    def _group_consecutive_imports_by_base_module(self, imports: List[ImportInfo], context: ProcessingContext) -> Dict[str, List[ImportInfo]]:
         """
         Группирует последовательные импорты по базовому модулю.
         
-        Например:
-        - io.ktor.server.application.Application
-        - io.ktor.server.application.call
-        - io.ktor.server.response.respond
+        Последовательность разрывается если:
+        - Базовый модуль изменился
+        - Между импортами есть непустые строки (комментарии, код)
         
-        Все будут сгруппированы под базовым модулем "io.ktor"
+        Например:
+        import io.ktor.server.Application
+        import io.ktor.server.call
+        // Комментарий - разрыв!
+        import io.ktor.http.HttpStatus
+        
+        Создаст ДВЕ группы io.ktor, а не одну.
         """
         groups: Dict[str, List[ImportInfo]] = {}
         current_base = None
         current_group_key = None
+        prev_end_byte = None
         
         for imp in imports:
             if not imp.module_name:
@@ -209,8 +214,17 @@ class ImportOptimizer:
             else:
                 base = imp.module_name
             
+            # Проверяем разрыв последовательности
+            is_consecutive = True
+            if prev_end_byte is not None:
+                # Проверяем, что между предыдущим и текущим импортом только пробелы/переводы строк
+                between_text = context.raw_text[prev_end_byte:imp.start_byte]
+                # Если есть непустые строки (комментарии, код) - разрыв
+                if between_text.strip():
+                    is_consecutive = False
+            
             # Проверяем, является ли этот импорт частью текущей последовательности
-            if base == current_base:
+            if base == current_base and is_consecutive:
                 # Продолжаем текущую группу
                 if current_group_key:
                     groups[current_group_key].append(imp)
@@ -220,6 +234,8 @@ class ImportOptimizer:
                 # Создаем уникальный ключ для группы (base + позиция первого импорта)
                 current_group_key = f"{base}@{imp.start_byte}"
                 groups[current_group_key] = [imp]
+            
+            prev_end_byte = imp.end_byte
         
         return groups
     
