@@ -173,7 +173,7 @@ function useInternal(): InternalType {
         assert "export * as API" in result
         
         # Private imports should be removed or summarized
-        assert "InternalHelper" not in result or "… import" in result
+        assert "InternalHelper" not in result
 
     def test_class_member_visibility(self):
         """Test class member visibility in public API."""
@@ -222,8 +222,8 @@ class PrivateClass {
         
         # Protected members might be preserved (depends on implementation)
         # Private members should be removed
-        assert "_privateField" not in result or "… private" in result
-        assert "_privateMethod" not in result or "… private" in result
+        assert "_privateField" not in result
+        assert "_privateMethod" not in result
         
         # Private class should be removed
         assert "class PrivateClass" not in result

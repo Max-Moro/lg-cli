@@ -36,8 +36,7 @@ class TestLiteralCommentContext:
         result, _ = adapter.process(self._make_context(code))
         
         # Should use block comment to avoid commenting out the println statement
-        assert '/*' in result and 'literal string' in result
-        assert '*/ println(msg)' in result or '/* literal string' in result
+        assert result == 'val msg = "very long message…"; /* literal string (−3 tokens) */ println(msg)'
     
     def test_literal_in_function_call(self):
         """Test literal inside function call - should use block comment."""
@@ -66,8 +65,7 @@ class TestLiteralCommentContext:
         result, _ = adapter.process(self._make_context(code))
         
         # Should use appropriate comment style
-        assert '//' in result or '/*' in result
-        assert 'literal string' in result
+        assert '// literal string (−7 tokens)' in result
     
     def _make_context(self, code: str):
         """Helper to create LightweightContext for testing."""

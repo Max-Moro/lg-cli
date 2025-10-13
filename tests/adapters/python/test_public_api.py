@@ -69,9 +69,9 @@ class TestPythonPublicApiFiltering:
         
         # Specific checks for decorator combinations
         # @my_decorator should not appear without its class/function
-        assert "@my_decorator" not in result or "class _PrivateDecoratedClass" not in result
-        assert "@lru_cache" not in result or "_private_cached_function" not in result
-        
+        assert "@my_decorator" not in result and "class _PrivateDecoratedClass" not in result
+        assert "@lru_cache" not in result and "_private_cached_function" not in result
+
         # Public decorated elements should preserve decorators
         if "@my_decorator" in result:
             # Should be followed by public elements
@@ -80,7 +80,7 @@ class TestPythonPublicApiFiltering:
             public_func_pos = result.find("def public_decorated_function")
             
             # At least one public element should follow @my_decorator
-            assert public_class_pos > my_decorator_pos or public_func_pos > my_decorator_pos
+            assert public_class_pos > my_decorator_pos and public_func_pos > my_decorator_pos
 
     def test_underscore_naming_conventions(self):
         """Test Python underscore naming conventions."""

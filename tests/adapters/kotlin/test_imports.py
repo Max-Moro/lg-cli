@@ -39,7 +39,8 @@ class TestKotlinImportOptimization:
         assert "import kotlinx.coroutines.*" in result
         
         # Local imports should be replaced with placeholders
-        assert "com.example.imports.services" not in result or "// … import omitted" in result
+        assert "com.example.imports.services" not in result
+        assert "// … 23 imports omitted" in result
         
         assert_golden_match(result, "imports", "strip_local")
     
@@ -55,7 +56,7 @@ class TestKotlinImportOptimization:
         assert meta.get("kotlin.removed.import", 0) > 0
         
         # Local imports should be preserved
-        assert "com.example.imports.services" in result or "com.example" in result
+        assert "com.example.imports.services" in result
         
         # External imports should be replaced with placeholders
         assert "// …" in result and "omitted" in result

@@ -19,8 +19,9 @@ class TestKotlinFunctionBodyOptimization:
         # Check that functions were processed
         assert meta.get("kotlin.removed.function_body", 0) > 0
         assert meta.get("kotlin.removed.method_body", 0) > 0
-        assert "// … method body omitted" in result or "// … function body omitted" in result
-        
+        assert "// … method body omitted" in result
+        assert "// … function body omitted" in result
+
         # Golden file test
         assert_golden_match(result, "function_bodies", "basic_strip")
     
@@ -65,8 +66,8 @@ val multiline: (List<User>) -> List<String> = { users ->
         assert 'val simple = { "hello" }' in result  # Single line preserved
         
         # Lambda function signatures preserved
-        assert "val complex = { a: Int, b: Int ->" in result or "val complex" in result
-        assert "val multiline: (List<User>) -> List<String>" in result or "val multiline" in result
+        assert "val complex = { a: Int, b: Int ->" in result
+        assert "val multiline: (List<User>) -> List<String>" in result
         
         assert_golden_match(result, "function_bodies", "lambda_functions")
     
@@ -139,7 +140,7 @@ class Calculator(private val name: String) {
         
         # Public method body should be stripped
         assert "fun add(a: Int, b: Int): Int" in result
-        assert "// … method body omitted" in result or "// … function body omitted" in result
+        assert "// … method body omitted" in result
         assert "val result = a + b" not in result
         
         # Private method body should be preserved (it's not public)
@@ -300,7 +301,7 @@ class TestKotlinDocstringPreservation:
         assert "return temp" not in result
         
         # Should have placeholder for removed body
-        assert "// … method body omitted" in result or "// … function body omitted" in result
+        assert "// … method body omitted" in result
     
     def test_function_without_kdoc_full_removal(self):
         """Test that functions without KDoc have bodies fully removed."""

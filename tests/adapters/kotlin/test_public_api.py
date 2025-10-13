@@ -95,7 +95,7 @@ private data class InternalData(val value: String)
         assert "fun create()" in result
         
         # Private data class should be removed
-        assert "InternalData" not in result or "… private" in result
+        assert "InternalData" not in result
 
     def test_annotation_handling(self):
         """Test handling of annotations in public API mode."""
@@ -127,5 +127,5 @@ private class PrivateClass {
         assert "class PublicClass" in result
         
         # Private annotated elements should be removed with annotations
-        assert "PrivateClass" not in result or "… private" in result
+        assert "PrivateClass" not in result
 
