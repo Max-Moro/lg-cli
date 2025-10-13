@@ -51,15 +51,6 @@ import com.example.imports.utils.logger.Logger as AppLogger
 import com.example.imports.config.Config as AppConfig2
 import com.example.imports.http.HttpClient as CustomHttpClient
 
-// Type imports (if Kotlin supported type-only imports)
-// import com.example.imports.types.TypedRequest
-// import com.example.imports.types.TypedResponse
-// import com.example.imports.database.DatabaseConfig
-// import com.example.imports.database.ConnectionOptions
-// import com.example.imports.models.User
-// import com.example.imports.models.Post
-// import com.example.imports.models.Comment
-
 // Star imports
 import com.example.imports.extensions.*
 import com.example.imports.constants.*
