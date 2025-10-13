@@ -18,9 +18,7 @@ from ..tree_sitter_support import TreeSitterDocument
 
 @dataclass
 class KotlinCfg(CodeCfg):
-    """Конфигурация для Kotlin адаптера."""
-    skip_companion_objects: bool = False  # Пропускать companion objects при public_api_only
-    
+
     @staticmethod
     def from_dict(d: Optional[Dict[str, Any]]) -> KotlinCfg:
         """Загрузка конфигурации из словаря YAML."""
@@ -30,8 +28,7 @@ class KotlinCfg(CodeCfg):
         cfg = KotlinCfg()
         cfg.general_load(d)
 
-        # Kotlin-специфичные настройки
-        cfg.skip_companion_objects = bool(d.get("skip_companion_objects", False))
+        # Kotlin-специфичные настройки (на данный момент нет)
 
         return cfg
 

@@ -306,7 +306,7 @@ class KotlinCodeAnalyzer(CodeAnalyzer):
         """
         Собирает Kotlin-специфичные приватные элементы.
         
-        Включает object declarations, properties и companion objects.
+        Включает object declarations, properties.
         
         Returns:
             Список Kotlin-специфичных приватных элементов
@@ -318,10 +318,7 @@ class KotlinCodeAnalyzer(CodeAnalyzer):
         
         # Собираем properties (свойства Kotlin)
         self._collect_properties(private_elements)
-        
-        # Собираем companion objects
-        self._collect_companion_objects(private_elements)
-        
+
         # Собираем неправильно распарсенные классы (с множественными аннотациями)
         self._collect_misparsed_classes(private_elements)
         
@@ -351,13 +348,7 @@ class KotlinCodeAnalyzer(CodeAnalyzer):
                     element_info = self.analyze_element(property_def)
                     if not element_info.in_public_api:
                         private_elements.append(element_info)
-    
-    def _collect_companion_objects(self, private_elements: List[ElementInfo]) -> None:
-        """Собирает companion objects если настроено."""
-        # TODO: Реализовать логику для companion objects
-        # Companion objects в Kotlin - это статические члены класса
-        pass
-    
+
     def _collect_misparsed_classes(self, private_elements: List[ElementInfo]) -> None:
         """
         Собирает классы, которые Tree-sitter неправильно распарсил.
