@@ -71,7 +71,26 @@ class KotlinImportClassifier(ImportClassifier):
         local_indicators = ['app', 'src', 'main', 'test', 'internal', 'impl']
         
         package_start = module_name.split('.')[0]
-        return package_start in local_indicators
+        if package_start in local_indicators:
+            return True
+        
+        # Эвристика: если пакет начинается с com/org, но это НЕ известные внешние библиотеки,
+        # и имеет специфичную структуру (например, com.example.*), считаем локальным
+        if package_start in ('com', 'org'):
+            parts = module_name.split('.')
+            if len(parts) >= 2:
+                second_part = parts[1]
+                # com.example.*, com.mycompany.*, org.myproject.* - локальные
+                # Но com.google.*, org.slf4j.* - внешние (проверяются в is_external)
+                # Если второй сегмент - это не известная библиотека, считаем локальным
+                known_external_second_parts = {
+                    'google', 'android', 'amazonaws', 'apache', 'eclipse',
+                    'junit', 'hamcrest', 'mockito', 'slf4j', 'jetbrains'
+                }
+                if second_part not in known_external_second_parts:
+                    return True
+        
+        return False
 
 
 class KotlinImportAnalyzer(TreeSitterImportAnalyzer):
@@ -83,48 +102,72 @@ class KotlinImportAnalyzer(TreeSitterImportAnalyzer):
         start_line, end_line = doc.get_line_range(node)
         line_count = end_line - start_line + 1
         
-        # В Kotlin импорты имеют тип import_header
-        # import_header содержит identifier (путь импорта) и опциональный import_alias
+        # В Kotlin импорты имеют структуру:
+        # import qualified_identifier [. *] [as identifier]
         
         module_name = ""
         imported_items = []
         aliases = {}
         is_wildcard = False
-        
-        # Извлекаем путь импорта
-        import_path_parts = []
         alias_name = None
         
+        # Ищем qualified_identifier для пути импорта
+        qualified_id = None
         for child in node.children:
-            if child.type == "identifier":
-                # Собираем полный путь импорта (может быть составным)
+            if child.type == "qualified_identifier":
+                qualified_id = child
+                break
+        
+        if qualified_id:
+            # Извлекаем текст qualified_identifier
+            text = doc.get_node_text(qualified_id)
+            if isinstance(text, bytes):
+                text = text.decode('utf-8')
+            module_name = text
+        
+        # Проверяем наличие wildcard (. *)
+        has_wildcard_dot = False
+        has_wildcard_star = False
+        for child in node.children:
+            if child.type == "." and not has_wildcard_dot:
+                # Проверяем, идет ли после точки звездочка
+                next_idx = node.children.index(child) + 1
+                if next_idx < len(node.children) and node.children[next_idx].type == "*":
+                    has_wildcard_dot = True
+            elif child.type == "*" and has_wildcard_dot:
+                has_wildcard_star = True
+        
+        is_wildcard = has_wildcard_dot and has_wildcard_star
+        
+        # Ищем алиас (as identifier)
+        found_as = False
+        for i, child in enumerate(node.children):
+            if child.type == "as":
+                found_as = True
+            elif found_as and child.type == "identifier":
                 text = doc.get_node_text(child)
-                import_path_parts.append(text)
-            elif child.type == "import_alias":
-                # Есть алиас для импорта (import ... as Alias)
-                for alias_child in child.children:
-                    if alias_child.type == "type_identifier":
-                        alias_name = doc.get_node_text(alias_child)
+                if isinstance(text, bytes):
+                    text = text.decode('utf-8')
+                alias_name = text
+                break
         
-        # Формируем полное имя модуля
-        if import_path_parts:
-            module_name = ".".join(import_path_parts)
-        
-        # Проверяем wildcard импорт (import java.util.*)
-        if module_name.endswith(".*"):
-            is_wildcard = True
-            module_name = module_name[:-2]  # Убираем .*
+        # Формируем imported_items и aliases
+        if is_wildcard:
             imported_items = ["*"]
         elif alias_name:
             imported_items = [alias_name]
             # Последняя часть пути - это импортируемый элемент
-            if import_path_parts:
-                actual_name = import_path_parts[-1]
-                aliases[actual_name] = alias_name
+            if module_name:
+                parts = module_name.split('.')
+                if parts:
+                    actual_name = parts[-1]
+                    aliases[actual_name] = alias_name
         else:
             # Простой импорт без алиаса
-            if import_path_parts:
-                imported_items = [import_path_parts[-1]]
+            if module_name:
+                parts = module_name.split('.')
+                if parts:
+                    imported_items = [parts[-1]]
         
         return ImportInfo(
             node=node,

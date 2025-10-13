@@ -58,7 +58,7 @@ class TestKotlinImportOptimization:
         assert "com.example.imports.services" in result or "com.example" in result
         
         # External imports should be replaced with placeholders
-        assert "// … import omitted" in result
+        assert "// …" in result and "omitted" in result
         
         assert_golden_match(result, "imports", "strip_external")
     

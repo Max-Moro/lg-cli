@@ -18,7 +18,7 @@ from ..tree_sitter_support import TreeSitterDocument, Node
 @dataclass
 class ImportInfo:
     """Information about a single import statement."""
-    node: Node                      # Tree-sitter node for the import
+    node: Node                     # Tree-sitter node for the import
     import_type: str               # "import", "import_from", "export", etc.
     module_name: str               # Module being imported from
     imported_items: List[str]      # List of imported names/aliases
@@ -155,12 +155,73 @@ class ImportOptimizer:
             self._remove_import(context, imp)
     
     def _process_summarize_long(self, imports: List[ImportInfo], context: ProcessingContext) -> None:
-        """Summarize imports with too many items."""
+        """
+        Summarize imports with too many items.
+        
+        Для языков с from-импортами (Python, TypeScript):
+        - Проверяет количество элементов в одном импорте
+        
+        Для языков с отдельными импортами (Kotlin, Java):
+        - Группирует последовательные импорты из одного базового модуля
+        - Суммаризирует группы, превышающие порог
+        """
         max_items = self.cfg.max_items_before_summary
         
+        # Сначала проверяем импорты с множественными элементами (Python/TS style)
         for imp in imports:
             if len(imp.imported_items) > max_items:
                 self._remove_import(context, imp)
+        
+        # Затем группируем последовательные импорты из одного базового модуля (Kotlin/Java style)
+        # Базовый модуль - это первые 2-3 сегмента пути (например, io.ktor для io.ktor.server.*)
+        grouped_by_base = self._group_consecutive_imports_by_base_module(imports)
+        
+        for base_module, group in grouped_by_base.items():
+            if len(group) > max_items:
+                # Суммаризируем всю группу
+                for imp in group:
+                    self._remove_import(context, imp)
+    
+    @staticmethod
+    def _group_consecutive_imports_by_base_module(imports: List[ImportInfo]) -> Dict[str, List[ImportInfo]]:
+        """
+        Группирует последовательные импорты по базовому модулю.
+        
+        Например:
+        - io.ktor.server.application.Application
+        - io.ktor.server.application.call
+        - io.ktor.server.response.respond
+        
+        Все будут сгруппированы под базовым модулем "io.ktor"
+        """
+        groups: Dict[str, List[ImportInfo]] = {}
+        current_base = None
+        current_group_key = None
+        
+        for imp in imports:
+            if not imp.module_name:
+                continue
+            
+            # Определяем базовый модуль (первые 2 сегмента)
+            parts = imp.module_name.split('.')
+            if len(parts) >= 2:
+                base = '.'.join(parts[:2])
+            else:
+                base = imp.module_name
+            
+            # Проверяем, является ли этот импорт частью текущей последовательности
+            if base == current_base:
+                # Продолжаем текущую группу
+                if current_group_key:
+                    groups[current_group_key].append(imp)
+            else:
+                # Начинаем новую группу
+                current_base = base
+                # Создаем уникальный ключ для группы (base + позиция первого импорта)
+                current_group_key = f"{base}@{imp.start_byte}"
+                groups[current_group_key] = [imp]
+        
+        return groups
     
     @staticmethod
     def _remove_import(context: ProcessingContext, import_info: ImportInfo) -> None:

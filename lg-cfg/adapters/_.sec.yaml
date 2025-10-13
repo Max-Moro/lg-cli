@@ -129,11 +129,11 @@ tests:
         mode: allow
         allow:
           - "/adapters/"
-        when:
-          - condition: "tag:tests-infra"
-            allow:
-              - "/conftest.py"
-              - "/infrastructure/"
+#        when:
+#          - condition: "tag:tests-infra"
+#            allow:
+#              - "/conftest.py"
+#              - "/infrastructure/"
         children:
           adapters:
             mode: allow
