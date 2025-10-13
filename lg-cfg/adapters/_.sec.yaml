@@ -95,7 +95,7 @@ src:
                   - "/__init__.py"
                   - "/adapter.py"
                   - "/queries.py"
-#                  - "/file_heuristics.py"
+                  - "/file_heuristics.py"
                 when:
                   - condition: "TAGSET:adapters-optimizations:function-bodies"
                     allow: ["/code_analysis.py"]
@@ -109,7 +109,7 @@ src:
                   - "/__init__.py"
                   - "/adapter.py"
                   - "/queries.py"
-#                  - "/file_heuristics.py"
+                  - "/file_heuristics.py"
                 when:
                   - condition: "TAGSET:adapters-optimizations:function-bodies"
                     allow: ["/code_analysis.py"]
@@ -129,11 +129,11 @@ tests:
         mode: allow
         allow:
           - "/adapters/"
-#        when:
-#          - condition: "tag:tests-infra"
-#            allow:
-#              - "/conftest.py"
-#              - "/infrastructure/"
+        when:
+          - condition: "tag:tests-infra"
+            allow:
+              - "/conftest.py"
+              - "/infrastructure/"
         children:
           adapters:
             mode: allow
@@ -143,10 +143,10 @@ tests:
               - condition: "tag:tests-infra"
                 allow:
                   - "/golden_utils.py"
-#              - condition: "TAGSET:adapters-optimizations:core"
-#                allow:
-#                  - "/test_placeholders.py"
-#                  - "/test_tree_sitter_document.py"
+              - condition: "TAGSET:adapters-optimizations:core"
+                allow:
+                  - "/test_placeholders.py"
+                  - "/test_tree_sitter_document.py"
               - condition: "TAGSET:language:python"
                 allow: ["/python/"]
               - condition: "TAGSET:language:typescript"
