@@ -59,6 +59,9 @@ class LiteralOptimizer:
 
             if token_count > max_tokens:
                 self._trim_literal(context, node, capture_name, literal_text, max_tokens)
+        
+        # Хук для языко-специфичных литералов (например, коллекции в Kotlin)
+        self.adapter.hook__process_additional_literals(context, max_tokens)
 
     def _trim_literal(
         self,

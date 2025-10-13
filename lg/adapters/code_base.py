@@ -84,6 +84,17 @@ class CodeAdapter(BaseAdapter[C], ABC):
         """Хук для корректного закрытия многострочных комментариев и докстрингов после обрезания."""
         return root_optimizer.smart_truncate_comment(comment_text, max_tokens, tokenizer)
 
+    def hook__process_additional_literals(self, context: ProcessingContext, max_tokens: Optional[int]) -> None:
+        """
+        Хук для обработки языко-специфичных литералов.
+        По умолчанию ничего не делает - языки могут переопределить для своих конструкций.
+        
+        Args:
+            context: Контекст обработки
+            max_tokens: Максимальное количество токенов для литерала
+        """
+        pass
+
 
     # ============= Основной пайплайн работы языковых оптимизаторов ===========
 

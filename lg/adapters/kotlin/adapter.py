@@ -11,7 +11,7 @@ from tree_sitter import Language
 
 from ..code_base import CodeAdapter
 from ..code_model import CodeCfg
-from ..context import LightweightContext
+from ..context import LightweightContext, ProcessingContext
 from ..optimizations import ImportClassifier, TreeSitterImportAnalyzer
 from ..tree_sitter_support import TreeSitterDocument
 
@@ -95,4 +95,9 @@ class KotlinAdapter(CodeAdapter[KotlinCfg]):
         """Kotlin-специфичная обработка удаления тел функций с сохранением KDoc."""
         from .function_bodies import remove_function_body_with_kdoc
         remove_function_body_with_kdoc(*args, **kwargs)
+
+    def hook__process_additional_literals(self, context: ProcessingContext, max_tokens: Optional[int]) -> None:
+        """Обрабатывает Kotlin-специфичные литералы (коллекции listOf/mapOf/setOf)."""
+        from .literals import process_kotlin_literals
+        process_kotlin_literals(context, max_tokens)
 
