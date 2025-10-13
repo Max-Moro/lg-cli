@@ -16,7 +16,7 @@ from tests.infrastructure import lctx_kt
 
 
 # Budget steps for progression testing
-BUDGET_STEPS = [642, 608, 513, 444, 423, 383, 358, 262, 185]
+BUDGET_STEPS = [751, 728, 633, 541, 514, 458, 407, 287, 212]
 
 
 @pytest.mark.parametrize("budget", BUDGET_STEPS)
