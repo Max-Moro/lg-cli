@@ -20,7 +20,7 @@ class TestKotlinPublicApiOptimization:
         assert meta.get("kotlin.removed.function", 0) == 3
         assert meta.get("kotlin.removed.object", 0) == 1
         assert meta.get("kotlin.removed.property", 0) == 9
-        assert meta.get("kotlin.removed.class", 0) == 4
+        assert meta.get("kotlin.removed.class", 0) == 5
         
         # Public exports should remain
         assert "class UserManager" in result

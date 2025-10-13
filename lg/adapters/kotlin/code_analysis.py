@@ -322,6 +322,9 @@ class KotlinCodeAnalyzer(CodeAnalyzer):
         # Собираем companion objects
         self._collect_companion_objects(private_elements)
         
+        # Собираем неправильно распарсенные классы (с множественными аннотациями)
+        self._collect_misparsed_classes(private_elements)
+        
         return private_elements
     
     def _collect_objects(self, private_elements: List[ElementInfo]) -> None:
@@ -354,6 +357,98 @@ class KotlinCodeAnalyzer(CodeAnalyzer):
         # TODO: Реализовать логику для companion objects
         # Companion objects в Kotlin - это статические члены класса
         pass
+    
+    def _collect_misparsed_classes(self, private_elements: List[ElementInfo]) -> None:
+        """
+        Собирает классы, которые Tree-sitter неправильно распарсил.
+        
+        Проблема: Tree-sitter Kotlin иногда неправильно парсит классы с множественными
+        аннотациями на отдельных строках перед модификатором видимости.
+        Вместо class_declaration создается annotated_expression -> infix_expression.
+        
+        Этот метод ищет такие конструкции напрямую в тексте и проверяет их видимость.
+        """
+        # Ищем все узлы типа "infix_expression", которые могут быть неправильно распарсенными классами
+        def find_infix_expressions(node):
+            """Рекурсивно находит все infix_expression узлы"""
+            results = []
+            if node.type == "infix_expression":
+                results.append(node)
+            for child in node.children:
+                results.extend(find_infix_expressions(child))
+            return results
+        
+        infix_nodes = find_infix_expressions(self.doc.root_node)
+        
+        for infix_node in infix_nodes:
+            # Получаем текст узла
+            node_text = self.doc.get_node_text(infix_node)
+            
+            # Нормализуем к строке
+            if isinstance(node_text, bytes):
+                text_str = node_text.decode('utf-8', errors='ignore')
+            else:
+                text_str = node_text
+            
+            # Проверяем, содержит ли текст "private class" или "protected class"
+            if "private class" not in text_str and "protected class" not in text_str:
+                continue
+            
+            # Это вероятно неправильно распарсенный класс
+            # Определяем видимость из текста
+            if "private" in text_str:
+                visibility = Visibility.PRIVATE
+            elif "protected" in text_str:
+                visibility = Visibility.PROTECTED
+            else:
+                continue  # Не приватный/защищенный - пропускаем
+            
+            # Извлекаем имя класса (после "class ")
+            import re
+            class_match = re.search(r'\b(?:private|protected)\s+class\s+(\w+)', text_str)
+            if class_match:
+                class_name = class_match.group(1)
+            else:
+                class_name = None
+            
+            # Ищем аннотации перед этим узлом
+            decorators = self._find_annotations_before_node(infix_node)
+            
+            # Создаем ElementInfo
+            element_info = ElementInfo(
+                node=infix_node,
+                element_type="class",
+                name=class_name,
+                visibility=visibility,
+                export_status=ExportStatus.NOT_EXPORTED,
+                is_method=False,
+                decorators=decorators
+            )
+            
+            private_elements.append(element_info)
+    
+    def _find_annotations_before_node(self, node: Node) -> List[Node]:
+        """
+        Находит аннотации перед узлом, поднимаясь по дереву annotated_expression.
+        
+        Args:
+            node: Узел для поиска аннотаций
+            
+        Returns:
+            Список узлов аннотаций
+        """
+        annotations = []
+        
+        # Поднимаемся по родителям, собирая annotated_expression
+        current = node.parent
+        while current and current.type == "annotated_expression":
+            # Ищем аннотации среди детей annotated_expression
+            for child in current.children:
+                if child.type == "annotation":
+                    annotations.insert(0, child)  # Вставляем в начало для правильного порядка
+            current = current.parent
+        
+        return annotations
 
     def _is_whitespace_or_comment(self, node: Node) -> bool:
         """
