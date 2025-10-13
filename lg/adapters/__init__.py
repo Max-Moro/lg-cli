@@ -20,7 +20,7 @@ register_lazy(module=".kotlin", class_name="KotlinAdapter", extensions=[".kt", "
 # Markdown adapter
 register_lazy(module=".markdown", class_name="MarkdownAdapter", extensions=[".md", ".markdown"])
 
-# Stub adapters for future languages (M7 implementation)
+# Stub adapters for future languages
 # register_lazy(module=".javascript", class_name="JavaScriptAdapter", extensions=[".js", ".jsx"])
 # register_lazy(module=".java", class_name="JavaAdapter", extensions=[".java"])
 # register_lazy(module=".cpp", class_name="CppAdapter", extensions=[".cpp", ".cxx", ".cc", ".c", ".h", ".hpp", ".hxx"])

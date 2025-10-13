@@ -6,7 +6,7 @@ Kotlin-специфичная обработка литералов.
 from __future__ import annotations
 
 from ..context import ProcessingContext
-from ..tree_sitter_support import Node
+from ..tree_sitter_support import Node, TreeSitterDocument
 
 # Kotlin коллекционные функции, которые создают литеральные данные
 KOTLIN_COLLECTION_FUNCTIONS = {
@@ -16,7 +16,7 @@ KOTLIN_COLLECTION_FUNCTIONS = {
 }
 
 
-def is_collection_literal(node: Node, doc) -> bool:
+def is_collection_literal(node: Node, doc: TreeSitterDocument) -> bool:
     """
     Проверяет, является ли нода вызовом коллекционной функции Kotlin.
     
@@ -39,7 +39,7 @@ def is_collection_literal(node: Node, doc) -> bool:
     return False
 
 
-def get_collection_type(node: Node, doc) -> str:
+def get_collection_type(node: Node, doc: TreeSitterDocument) -> str:
     """
     Определяет тип коллекции (list, map, set).
     
