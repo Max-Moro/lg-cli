@@ -55,17 +55,11 @@ QUERIES = {
     "literals": """
     (string_literal) @string
     
-    (line_string_literal) @string
+    (multiline_string_literal) @string
     
-    (multi_line_string_literal) @string
+    (number_literal) @number
     
-    (integer_literal) @number
-    
-    (long_literal) @number
-    
-    (real_literal) @number
-    
-    (collection_literal) @array
+    (float_literal) @number
     """,
     
     # Constructors and initializers
