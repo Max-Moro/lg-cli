@@ -8,7 +8,7 @@
 #   • Support --project switch: cli | vscode | jetbrains
 #       - cli       → generate Pydantic v2 models (Python) via datamodel-code-generator
 #       - vscode    → generate TypeScript models via json-schema-to-typescript (npx json2ts)
-#       - jetbrains → (stub) future Kotlin generation (e.g., KotlinPoet, KSP)
+#       - jetbrains → generate Kotlin data classes via quicktype (npx, kotlinx.serialization)
 #
 # Location (canonical): <monorepo>/cli/scripts/gen_models.sh
 #
@@ -46,6 +46,8 @@ CLI_DIR="$(cd -- "${SCRIPT_DIR}/.." && pwd -P)"
 MONOREPO_ROOT="$(cd -- "${CLI_DIR}/.." && pwd -P)"
 # <monorepo>/vscode (VS Code extension project)
 VSCODE_DIR="${MONOREPO_ROOT}/vscode"
+# <monorepo>/intellij (IntelliJ Platform plugin project)
+INTELLIJ_DIR="${MONOREPO_ROOT}/intellij"
 
 # ------------- defaults / args -------------
 PROJECT=""
@@ -202,6 +204,30 @@ ensure_node_tools() {
   exit 2
 }
 
+# Node / npx / quicktype availability checks (for JetBrains project)
+ensure_quicktype() {
+  # Require node and npx
+  if ! command -v node >/dev/null 2>&1; then
+    echo "$(red "Error:") Node.js is not installed or not in PATH."
+    echo "Install Node.js LTS from https://nodejs.org/ and try again."
+    exit 2
+  fi
+  if ! command -v npx >/dev/null 2>&1; then
+    echo "$(red "Error:") npx is not available (npm is missing)."
+    echo "Install Node.js (with npm) and try again."
+    exit 2
+  fi
+  # Probe that npx can run quicktype
+  # Use a very quick version check
+  if npx --yes quicktype --version >/dev/null 2>&1; then
+    return 0
+  fi
+  # As a final hint
+  echo "$(red "Error:") Unable to run $(bold "quicktype") via npx."
+  echo "Try: npx --yes quicktype --version"
+  exit 2
+}
+
 # ------------- discovery (schemas) -------------
 
 # Collect JSON Schema files for CLI project (Python models)
@@ -243,6 +269,34 @@ vscode_output_path_for_schema() {
   # Per-file overrides (if we want custom filenames later)
   # Example:
   # if [[ "$name" == "run_result" ]]; then out="${VSCODE_DIR}/src/models/run_result.ts"; fi
+  echo "$out"
+}
+
+# Collect JSON Schema files for JetBrains project (Kotlin models)
+# Reuse the same canonical schemas under <monorepo>/cli/lg/*.schema.json
+discover_jetbrains_schemas() {
+  discover_cli_schemas
+}
+
+# Map schema path → output Kotlin file inside <monorepo>/intellij/src/main/kotlin/lg/intellij/models/
+# Default: foo.schema.json → <intellij>/src/main/kotlin/lg/intellij/models/FooSchema.kt
+# Note: Kotlin naming convention uses PascalCase for class names
+jetbrains_output_path_for_schema() {
+  local schema="$1"
+  local name="$(basename "${schema}")"
+  name="${name%".schema.json"}"
+  
+  # Convert snake_case to PascalCase for Kotlin class name
+  # Example: diag_report → DiagReport, mode_sets_list → ModeSetsList
+  local class_name=""
+  IFS='_' read -ra parts <<< "$name"
+  for part in "${parts[@]}"; do
+    # Capitalize first letter of each part
+    class_name+="$(tr '[:lower:]' '[:upper:]' <<< "${part:0:1}")${part:1}"
+  done
+  class_name+="Schema"  # Add "Schema" suffix
+  
+  local out="${INTELLIJ_DIR}/src/main/kotlin/lg/intellij/models/${class_name}.kt"
   echo "$out"
 }
 
@@ -429,20 +483,86 @@ generate_vscode() {
   echo "$(green "All TypeScript models generated successfully.")"
 }
 
-generate_jetbrains_stub() {
-  echo "$(bold "Project: JetBrains Plugins (Kotlin)")"
-  echo "Monorepo: ${MONOREPO_ROOT}"
+generate_jetbrains() {
+  echo "$(bold "Project: JetBrains Plugin (Kotlin)")"
+  echo "Monorepo  : ${MONOREPO_ROOT}"
+  echo "IntelliJ  : ${INTELLIJ_DIR}"
   echo
-  echo "$(yellow "Note:") Kotlin model generation is not implemented yet."
-  echo "Planned toolchain candidates:"
-  echo "  - custom generator via KotlinPoet"
-  echo "  - jsonschema2kotlin or similar (if adopted)"
+  
+  if [[ ! -d "${INTELLIJ_DIR}/src" ]]; then
+    echo "$(red "Error:") IntelliJ project not found at ${INTELLIJ_DIR}/src"
+    exit 2
+  fi
+  
+  # Plan
+  mapfile -t schemas < <(discover_jetbrains_schemas)
+  if [[ ${#schemas[@]} -eq 0 ]]; then
+    echo "$(yellow "Warning:") no *.schema.json found in ${CLI_DIR}/lg"
+    return 0
+  fi
+  
+  echo "$(bold "Plan:")"
+  declare -a plan_schema=()
+  declare -a plan_output=()
+  for s in "${schemas[@]}"; do
+    out="$(jetbrains_output_path_for_schema "$s")"
+    plan_schema+=("$s")
+    plan_output+=("$out")
+  done
+  for ((i=0; i<${#plan_schema[@]}; i++)); do
+    printf "  - %s\n    → %s\n" "${plan_schema[$i]}" "${plan_output[$i]}"
+  done
   echo
-  echo "When implemented, this mode will:"
-  echo "  • discover *.schema.json (shared or CLI schemas)"
-  echo "  • emit Kotlin data classes into <monorepo>/jetbrains-plugin/src/main/kotlin/.../models/"
-  echo "  • include per-schema override mappings"
-  [[ $DRY_RUN -eq 1 ]] && echo && echo "$(green "Dry-run") done."
+  
+  if [[ $DRY_RUN -eq 1 ]]; then
+    echo "$(green "Dry-run") done."
+    return 0
+  fi
+  
+  ensure_quicktype
+  
+  # Common options for quicktype (Kotlin with kotlinx.serialization)
+  # Notes:
+  #  - --framework kotlinx uses kotlinx.serialization (modern and recommended)
+  #  - Package will be lg.intellij.cli.models
+  #  - Generates data classes with @Serializable annotations
+  local package_name="lg.intellij.cli.models"
+  
+  local ok=0
+  for ((i=0; i<${#plan_schema[@]}; i++)); do
+    local in="${plan_schema[$i]}"
+    local out="${plan_output[$i]}"
+    mkdir -p "$(dirname "$out")"
+    echo "• Generating $(bold "$(basename "$out")") from $(basename "$in")"
+    if [[ $VERBOSE -eq 1 ]]; then set -x; fi
+    
+    # Run quicktype via npx
+    npx --yes quicktype \
+      --lang kotlin \
+      --framework kotlinx \
+      --src-lang schema \
+      --package "$package_name" \
+      --out "$out" \
+      "$in"
+    local rc=$?
+    
+    if [[ $VERBOSE -eq 1 ]]; then { set +x; } 2>/dev/null; fi
+    if [[ $rc -ne 0 ]]; then
+      echo "$(red "Failed:") $in → $out"
+      ok=1
+    else
+      echo "  $(green "OK") $out"
+    fi
+  done
+  
+  if [[ $ok -ne 0 ]]; then
+    echo
+    echo "$(red "One or more Kotlin generations failed.")"
+    exit 3
+  fi
+  
+  echo
+  echo "$(green "All Kotlin models generated successfully.")"
 }
 
 # ------------- main -------------
@@ -461,6 +581,6 @@ case "${PROJECT}" in
     generate_vscode
     ;;
   jetbrains)
-    generate_jetbrains_stub
+    generate_jetbrains
     ;;
 esac
