@@ -1,5 +1,5 @@
 ${docs/intro}
-
+{% if scope:local OR tag:src-cli %}
 ---
 {% if tag:review %}
 # Измененный исходный код в текущей ветке
@@ -13,13 +13,13 @@ ${src}
 ## Unit-тесты
 
 ${tests}
-{% endif %} {% if tag:docs %}
+{% endif %}{% endif %}{% if tag:docs %}
 ---
 
 # Расширенная документация
 
 ${md:docs/*}
-{% endif %} {% if task AND scope:local %}
+{% endif %}{% if task AND scope:local %}
 ---
 
 # Описание текущей задачи
