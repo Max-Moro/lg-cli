@@ -204,46 +204,81 @@ ${@apps/web:web-src}
     assert occurrences == 1
 
 
-def test_addressed_placeholder_chain_references(federated_project):
-    """Тест цепочки адресных ссылок (A -> B -> C)."""
-    root = federated_project
-    
-    # Создаем промежуточный шаблон в libs/core
-    create_template(root / "libs" / "core", "core-summary", """# Core Summary
+def test_deeply_nested_federated_scopes(tmp_path):
+    """
+    Тест глубокой вложенности федеративных скоупов (3+ уровня).
 
-## Core Library Code
+    Структура:
+    root/
+      lg-cfg/
+        root-ctx.ctx.md → ${ctx@level1:level1-ctx}
+      level1/
+        lg-cfg/
+          level1-ctx.ctx.md → ${tpl:level1-tpl} + ${ctx@level2:level2-ctx}
+          level1-tpl.tpl.md → "LEVEL1 TEMPLATE"
+        level2/
+          lg-cfg/
+            level2-ctx.ctx.md → ${tpl:level2-tpl} + ${md@level3:doc}
+            level2-tpl.tpl.md → "LEVEL2 TEMPLATE"
+          level3/
+            lg-cfg/
+              doc.md → "LEVEL3 DOCUMENT"
+    """
+    from .conftest import write, create_sections_yaml
 
-${core-lib}
+    root = tmp_path
 
-## Core API
+    # === Корневой уровень ===
+    create_sections_yaml(root, {})
+    create_template(root, "root-ctx", """# Root Context
 
-${core-api}
-""", "tpl")
-    
-    # Создаем шаблон в apps/web, который ссылается на промежуточный
-    create_template(root / "apps" / "web", "web-with-core", """# Web with Core
-
-## Web Application
-
-${web-src}
-
-## Core Library Summary
-
-${tpl@libs/core:core-summary}
-""", "tpl")
-    
-    # Главный шаблон ссылается на web-with-core
-    create_template(root, "chain-test", """# Chain Test
-
-${tpl@apps/web:web-with-core}
+${ctx@level1:level1-ctx}
 """)
-    
-    result = render_template(root, "ctx:chain-test")
-    
-    # Проверяем, что все уровни цепочки отработали
-    assert "export const App" in result  # из web-src
-    assert "class Processor:" in result  # из core-lib
-    assert "def get_client():" in result  # из core-api
+
+    # === Уровень 1 (level1/) ===
+    create_sections_yaml(root / "level1", {})
+    create_template(root / "level1", "level1-tpl", "LEVEL1 TEMPLATE\n", "tpl")
+    create_template(root / "level1", "level1-ctx", """# Level1 Context
+
+${tpl:level1-tpl}
+
+${ctx@level2:level2-ctx}
+""")
+
+    # === Уровень 2 (level1/level2/) ===
+    create_sections_yaml(root / "level1" / "level2", {})
+    create_template(root / "level1" / "level2", "level2-tpl", "LEVEL2 TEMPLATE\n", "tpl")
+    create_template(root / "level1" / "level2", "level2-ctx", """# Level2 Context
+
+${tpl:level2-tpl}
+
+${md@level3:doc}
+""")
+
+    # === Уровень 3 (level1/level2/level3/) ===
+    # Создаем структуру для level3 внутри level1/level2
+    level3_root = root / "level1" / "level2" / "level3"
+    create_sections_yaml(level3_root, {})
+    write(
+        level3_root / "lg-cfg" / "doc.md",
+        "LEVEL3 DOCUMENT\n"
+    )
+
+    # Рендерим корневой контекст
+    result = render_template(root, "ctx:root-ctx")
+
+    # Проверяем, что все уровни правильно резолвились
+    assert "LEVEL1 TEMPLATE" in result, "Level1 template не найден"
+    assert "LEVEL2 TEMPLATE" in result, "Level2 template не найден"
+    assert "LEVEL3 DOCUMENT" in result, "Level3 document не найден"
+
+    # Проверяем порядок (вложенность должна сохраняться)
+    level1_pos = result.find("LEVEL1 TEMPLATE")
+    level2_pos = result.find("LEVEL2 TEMPLATE")
+    level3_pos = result.find("LEVEL3 DOCUMENT")
+
+    assert level1_pos < level2_pos < level3_pos, \
+        "Порядок вложенности нарушен"
 
 
 @pytest.mark.parametrize("origin,section,expected_content", [

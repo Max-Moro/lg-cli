@@ -212,6 +212,9 @@ def federated_project(tmp_path: Path) -> Path:
         
         Deployment instructions for the web application.
         """).strip() + "\n")
+
+    write(root / "apps" / "web" / "lg-cfg" / "docs" / "guide.tpl.md", "WEB GUIDE (no sections here)\n")
+    write(root / "apps" / "web" / "lg-cfg" / "web-ctx.ctx.md", "# Guide\n\n${tpl:docs/guide}\n\n# Deployment\n\n${md:docs/deployment}\n")
     
     # === Дочерний скоуп: libs/core ===
     core_sections = {

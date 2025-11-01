@@ -13,7 +13,8 @@ from typing import Dict, List, cast
 from .nodes import SectionNode, IncludeNode
 from ..common import (
     resolve_cfg_root,
-    load_template_from, load_context_from
+    load_template_from, load_context_from,
+    merge_origins
 )
 from ..handlers import TemplateProcessorHandlers
 from ..nodes import TemplateNode, TemplateAST
@@ -134,7 +135,7 @@ class CommonPlaceholdersResolver:
             return IncludeNode(
                 kind=node.kind,
                 name=node.name,
-                origin=node.origin,
+                origin=resolved_include.origin,  # Используем эффективный origin из кэша
                 children=resolved_include.ast
             )
         
@@ -147,7 +148,7 @@ class CommonPlaceholdersResolver:
             return IncludeNode(
                 kind=node.kind,
                 name=node.name,
-                origin=node.origin,
+                origin=resolved_include.origin,  # Используем эффективный origin из резолвинга
                 children=resolved_include.ast
             )
         finally:
@@ -206,9 +207,13 @@ class CommonPlaceholdersResolver:
         Returns:
             Резолвленное включение с AST
         """
+        # Склеиваем базовый origin из стека с origin узла
+        base_origin = self._origin_stack[-1] if self._origin_stack else "self"
+        effective_origin = merge_origins(base_origin, node.origin)
+        
         # Резолвим cfg_root
         cfg_root = resolve_cfg_root(
-            node.origin,
+            effective_origin,
             current_cfg_root=self.current_cfg_root,
             repo_root=self.repo_root
         )
@@ -227,7 +232,7 @@ class CommonPlaceholdersResolver:
         include_ast = parse_template(template_text, registry=cast(TemplateRegistry, self.registry))
         
         # Рекурсивно резолвим включение с новым origin в стеке
-        self._origin_stack.append(node.origin)
+        self._origin_stack.append(effective_origin)
         try:
             # Ядро применит резолверы всех плагинов, включая наш
             ast: TemplateAST = self.handlers.resolve_ast(include_ast, context)
@@ -238,7 +243,7 @@ class CommonPlaceholdersResolver:
         return ResolvedInclude(
             kind=node.kind,
             name=node.name,
-            origin=node.origin,
+            origin=effective_origin,
             cfg_root=cfg_root,
             ast=ast
         )

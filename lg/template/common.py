@@ -15,6 +15,47 @@ TPL_SUFFIX = ".tpl.md"
 CTX_SUFFIX = ".ctx.md"
 
 
+def merge_origins(base_origin: str | None, node_origin: str | None) -> str:
+    """
+    Склеивает базовый origin из стека с origin из узла.
+    
+    Логика:
+    - Игнорирует None, пустые строки и "self"
+    - Если оба игнорируются → "self"
+    - Если один игнорируется → возвращает другой
+    - Если оба валидны → склеивает через "/" (base_origin/node_origin)
+
+    Args:
+        base_origin: Базовый origin из стека контекста
+        node_origin: Origin из узла AST
+        
+    Returns:
+        Результирующий эффективный origin
+    """
+    def _is_empty(origin: str | None) -> bool:
+        """Проверяет, является ли origin пустым или "self"."""
+        return not origin or origin == "self"
+    
+    # Нормализуем входные значения
+    base = (base_origin or "").strip()
+    node = (node_origin or "").strip()
+    
+    # Оба пусты → self
+    if _is_empty(base) and _is_empty(node):
+        return "self"
+    
+    # Только base валиден
+    if _is_empty(node):
+        return base if not _is_empty(base) else "self"
+    
+    # Только node валиден
+    if _is_empty(base):
+        return node if not _is_empty(node) else "self"
+    
+    # Оба валидны → склеиваем
+    return f"{base}/{node}"
+
+
 @dataclass(frozen=True)
 class Locator:
     """Унифицированный локатор: kind + (origin, resource)."""
@@ -138,6 +179,7 @@ __all__ = [
     "load_context_from",
     "load_template_from",
     "list_contexts",
+    "merge_origins",
     "TPL_SUFFIX",
     "CTX_SUFFIX"
 ]

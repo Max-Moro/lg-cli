@@ -414,3 +414,35 @@ def test_template_placeholder_case_sensitivity(basic_project):
     create_template(root, "case-error-test", """${tpl:camelcase}""")
     result = render_template(root, "ctx:case-error-test")
     assert "CamelCase content" in result
+
+def test_tpl_placeholder_in_nested_context_include(federated_project):
+    """
+    Тест вложенных контекстов с tpl-плейсхолдерами.
+
+    Воспроизводит баг: ${ctx@apps/web:web-ctx} содержит ${tpl:docs/guide},
+    который должен резолвиться относительно apps/web/lg-cfg/, а не корневого lg-cfg/.
+    """
+    root = federated_project
+
+    # Создаем корневой контекст, который включает дочерний
+    create_template(root, "main-with-nested", """# Main Project
+
+## Core
+${md:README}
+
+---
+
+## Web Application Details
+${ctx@apps/web:web-ctx}
+""")
+
+    result = render_template(root, "ctx:main-with-nested")
+
+    # Проверяем, что корневой README включился в Core
+    assert "This is a monorepo with multiple modules." in result
+
+    # Проверяем lg-cfg/docs/guide.tpl.md из apps/web's включился
+    assert "WEB GUIDE (no sections here)" in result
+    
+    # Проверяем, что Web App Deployment из apps/web включился
+    assert "Deployment instructions for the web application." in result

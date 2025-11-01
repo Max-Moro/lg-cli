@@ -12,6 +12,7 @@ from .nodes import MarkdownFileNode
 from ...config.model import SectionCfg, AdapterConfig
 from ...filtering.model import FilterNode
 from ...markdown import MarkdownCfg
+from ...template.common import merge_origins
 from ...types import SectionRef
 
 
@@ -65,21 +66,18 @@ class VirtualSectionFactory:
             adapters={"markdown": AdapterConfig(base_options=markdown_config_raw)}
         )
 
-        # Создаем SectionRef с учетом текущего origin
-        if node.origin is None or node.origin == "self":
-            # Для md: или md@self: используем текущий скоуп из контекста
-            if current_origin == "self":
-                # Корневой скоуп
-                scope_dir = repo_root.resolve()
-                scope_rel = ""
-            else:
-                # Вложенный скоуп
-                scope_dir = (repo_root / current_origin).resolve()
-                scope_rel = current_origin
+        # Склеиваем базовый origin из контекста с origin узла
+        effective_origin = merge_origins(current_origin, node.origin)
+        
+        # Создаем SectionRef
+        if effective_origin == "self":
+            # Корневой скоуп
+            scope_dir = repo_root.resolve()
+            scope_rel = ""
         else:
-            # Для md@origin: используем указанный скоуп (явная адресация)
-            scope_dir = (repo_root / node.origin).resolve()
-            scope_rel = node.origin
+            # Вложенный или составной скоуп
+            scope_dir = (repo_root / effective_origin).resolve()
+            scope_rel = effective_origin
 
         section_ref = SectionRef(
             name=self._generate_name(),
