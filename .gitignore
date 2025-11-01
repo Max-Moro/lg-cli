@@ -37,3 +37,8 @@ site/
 
 # Note: Golden test files (*.golden) are INTENTIONALLY tracked in git
 # They contain expected test outputs for regression testing
+
+# Claude Code - local settings only
+.claude/settings.local.json
+.claude/*.local.json
+CLAUDE.local.md
