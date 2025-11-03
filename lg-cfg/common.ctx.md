@@ -1,3 +1,8 @@
+{% if scope:local AND tag:agent %}
+${tpl:agent/index}
+
+---
+{% endif %}
 ${docs/intro}
 {% if scope:local OR tag:src-cli %}
 ---

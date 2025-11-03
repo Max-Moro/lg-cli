@@ -42,3 +42,4 @@ site/
 .claude/settings.local.json
 .claude/*.local.json
 CLAUDE.local.md
+.claude-session.lock
