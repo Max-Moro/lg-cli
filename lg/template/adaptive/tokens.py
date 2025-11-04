@@ -25,7 +25,7 @@ def get_adaptive_token_specs() -> List[TokenSpec]:
         
         TokenSpec(
             name="DIRECTIVE_END",
-            pattern=re.compile(r'%\}'),
+            pattern=re.compile(r'%}'),
         ),
         
         # Разделители комментариев {# #}
@@ -36,7 +36,7 @@ def get_adaptive_token_specs() -> List[TokenSpec]:
         
         TokenSpec(
             name="COMMENT_END",
-            pattern=re.compile(r'#\}'),
+            pattern=re.compile(r'#}'),
         ),
         
         # Ключевые слова директив (регистрируются как идентификаторы)

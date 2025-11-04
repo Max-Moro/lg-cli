@@ -481,11 +481,9 @@ class KotlinCodeAnalyzer(CodeAnalyzer):
         # Создаем синтетический узел для тела лямбды
         # Тело начинается после -> (если есть) или после {
         body_start_idx = 0
-        has_arrow = False
-        
+
         for i, child in enumerate(lambda_node.children):
             if child.type == "->":
-                has_arrow = True
                 body_start_idx = i + 1
                 break
             elif child.type == "{":

@@ -65,7 +65,7 @@ class MarkdownPatterns:
     FENCED_BLOCK = re.compile(r'^```|^~~~')
     
     # Горизонтальные черты (разделители контекста)
-    HORIZONTAL_RULE = re.compile(r'^(?:\s{0,3})(?:[-*_]){3,}(?:\s*)$')
+    HORIZONTAL_RULE = re.compile(r'^\s{0,3}[-*_]{3,}\s*$')
     
     # Заголовочные символы в строке (для определения inside_heading)
     HEADING_MARKERS_WITH_TEXT = re.compile(r'^#{1,6}\s+.*?$')

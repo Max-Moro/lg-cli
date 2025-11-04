@@ -222,9 +222,6 @@ def _build_multiline_replacement(
     collection_type: str
 ) -> str:
     """Строит многострочную замену для коллекции с правильными отступами."""
-    # Определяем отступы из исходного кода
-    full_text = context.doc.get_node_text(node)
-    
     # Базовый отступ (отступ строки с началом вызова)
     start_byte = node.start_byte
     base_indent = _get_line_indent_at_position(context.raw_text, start_byte)
@@ -323,8 +320,6 @@ def _add_savings_comment(
     text_after = context.raw_text[end_char:min(end_char + 100, len(context.raw_text))]
     
     # Ищем конец строки или точку с запятой
-    insertion_offset = 0
-    
     # Если после литерала идет закрывающая скобка или запятая, вставляем после неё
     for i, char in enumerate(text_after):
         if char in ('\n', '\r'):
@@ -337,8 +332,7 @@ def _add_savings_comment(
             insertion_offset = i + 1
             break
         elif char == ')':
-            insertion_offset = i + 1
-            # Проверяем, есть ли еще закрывающие скобки или точка с запятой
+            _ = i + 1  # Continue scanning for ; or , after )
             continue
     else:
         # Если не нашли перевод строки в первых 100 символах, вставляем сразу

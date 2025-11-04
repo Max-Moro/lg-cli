@@ -41,7 +41,8 @@ def build_section_manifest(
         root: Корень репозитория
         vcs: VCS провайдер
         vcs_mode: Режим VCS ("all", "changes" или "branch-changes")
-        
+        target_branch: Целевая ветка для режима "branch-changes" (опционально)
+
     Returns:
         Манифест секции с отфильтрованными файлами
     """

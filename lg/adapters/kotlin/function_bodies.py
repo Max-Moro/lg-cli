@@ -48,9 +48,9 @@ def remove_function_body_with_kdoc(
     if kdoc_inside is None:
         # Нет KDoc вообще - удаляем тело стандартным образом
         return root_optimizer.remove_function_body(context, body_node, func_type)
-    
+
     # KDoc внутри тела - удаляем только часть после него
-    _remove_function_body_preserve_kdoc(root_optimizer, context, kdoc_inside, body_node, func_type)
+    return _remove_function_body_preserve_kdoc(root_optimizer, context, kdoc_inside, body_node, func_type)
 
 
 def _find_kdoc_before_function(func_node: Node, context: ProcessingContext) -> Optional[Node]:

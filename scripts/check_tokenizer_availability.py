@@ -73,7 +73,7 @@ def check_tokenizer(repo_id: str, verbose: bool = True) -> dict:
             # Пробуем скачать
             with tempfile.TemporaryDirectory() as tmpdir:
                 try:
-                    file_path = hf_hub_download(
+                    _ = hf_hub_download(
                         repo_id=repo_id,
                         filename="tokenizer.json",
                         cache_dir=tmpdir,
@@ -132,7 +132,7 @@ def check_sentencepiece(repo_id: str, verbose: bool = True) -> dict:
                 # Пробуем скачать
                 with tempfile.TemporaryDirectory() as tmpdir:
                     try:
-                        file_path = hf_hub_download(
+                        _ = hf_hub_download(
                             repo_id=repo_id,
                             filename=filename,
                             cache_dir=tmpdir,

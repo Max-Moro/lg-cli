@@ -28,11 +28,11 @@ class _M003_ContextsFlatten:
     _PH_RE = re.compile(
         r"""
         \$\{
-            (?P<braced>[A-Za-z0-9_@:/\-\[\]\.]+)
-        \}
+            (?P<braced>[A-Za-z0-9_@:/\-\[\].]+)
+        }
         |
         \$
-            (?P<name>[A-Za-z0-9_@:/\-\[\]\.]+)
+            (?P<name>[A-Za-z0-9_@:/\-\[\].]+)
         """,
         re.VERBOSE,
     )

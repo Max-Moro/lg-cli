@@ -13,7 +13,7 @@ from typing import List, Optional
 from .nodes import TaskNode
 from ..nodes import TemplateNode
 from ..tokens import ParserError
-from ..types import PluginPriority, ParsingRule, ParsingContext
+from ..types import ParsingRule, ParsingContext
 
 
 def parse_task_placeholder(context: ParsingContext) -> Optional[TemplateNode]:

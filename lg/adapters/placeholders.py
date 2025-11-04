@@ -284,7 +284,7 @@ class PlaceholderManager:
         ptype = spec.placeholder_type
         count = spec.count
         lines = spec.lines_removed
-        chars_removed = spec.chars_removed
+        _chars_removed = spec.chars_removed
         
         # Базовые шаблоны для разных типов
         if ptype == "function_body":

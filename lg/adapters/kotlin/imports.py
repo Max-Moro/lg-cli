@@ -6,7 +6,7 @@ Clean implementation without regex parsing.
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Dict, List, Optional
+from typing import List, Optional
 
 from ..optimizations.imports import ImportClassifier, TreeSitterImportAnalyzer, ImportInfo
 from ..tree_sitter_support import TreeSitterDocument, Node
@@ -14,9 +14,9 @@ from ..tree_sitter_support import TreeSitterDocument, Node
 
 class KotlinImportClassifier(ImportClassifier):
     """Kotlin-specific import classifier."""
-    
-    def __init__(self, external_patterns: List[str] = []):
-        self.external_patterns = external_patterns
+
+    def __init__(self, external_patterns: List[str] | None = None):
+        self.external_patterns = external_patterns if external_patterns is not None else []
         
         # Стандартные библиотеки JVM и Kotlin
         self.standard_packages = {
@@ -108,7 +108,6 @@ class KotlinImportAnalyzer(TreeSitterImportAnalyzer):
         module_name = ""
         imported_items = []
         aliases = {}
-        is_wildcard = False
         alias_name = None
         
         # Ищем qualified_identifier для пути импорта

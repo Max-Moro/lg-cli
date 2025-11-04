@@ -13,3 +13,29 @@ bootstrap: |
   python -m pip install --upgrade pip
   python -m pip install -e .[dev]
   echo "Dependencies installed successfully"
+
+# Inspection profile
+profile:
+  name: qodana.recommended
+
+# Exclude inspections and paths
+exclude:
+  # Exclude all inspections from generated files
+  - name: All
+    paths:
+      - .qodana
+      - lg/diag/diag_report_schema.py
+      - lg/stats/report_schema.py
+
+  # Disable harmful/noisy inspections globally
+  # PyMethodMayBeStaticInspection: Suggests making methods static - harmful, breaks API consistency
+  - name: PyMethodMayBeStaticInspection
+
+  # PyShadowingNamesInspection: Variable shadowing - prevents elegant short names
+  - name: PyShadowingNamesInspection
+
+  # PyUnreachableCodeInspection: False positives on type narrowing, Literal exhaustion, Optional handling
+  - name: PyUnreachableCodeInspection
+
+  # PyBroadExceptionInspection: Sometimes reasonable, but too many false positives
+  - name: PyBroadExceptionInspection

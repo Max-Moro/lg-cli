@@ -9,8 +9,9 @@ from .code_base import CodeAdapter
 from .code_model import CodeCfg
 
 
+# noinspection PyAbstractClass
 class CppAdapter(CodeAdapter[CodeCfg]):
-    """C/C++ адаптер (заглушка для M7)."""
+    """C/C++ адаптер (заглушка для M7, будет реализован позже)."""
     
     name = "cpp"
     extensions = {".cpp", ".cxx", ".cc", ".c", ".h", ".hpp", ".hxx"}

@@ -6,7 +6,7 @@ from typing import List, Optional, Tuple
 from .model import ParsedDoc, HeadingNode
 from .slug import slugify_github
 
-_ATX = re.compile(r"^(?P<indent>[ ]{0,3})(?P<marks>#{1,6})[ \t]+(?P<title>.+?)\s*$")
+_ATX = re.compile(r"^(?P<indent> {0,3})(?P<marks>#{1,6})[ \t]+(?P<title>.+?)\s*$")
 _SETEXT_U = re.compile(r"^(?P<underline>={2,})\s*$")
 _SETEXT_L = re.compile(r"^(?P<underline>-{2,})\s*$")
 _FENCE = re.compile(r"^(?P<indent> {0,3})(?P<fence>`{3,}|~{3,})(?P<lang>[A-Za-z0-9_\-+]*)")
@@ -27,7 +27,7 @@ def _scan_fenced(lines: List[str]) -> List[Tuple[int, int]]:
         tick = open_marks[0]                       # '`' or '~'
         need = len(open_marks)                     # minimal closing length
         # Closing fence: same char, at least `need` times, optional trailing spaces.
-        fence_pat = re.compile(rf"^(?: {{0,3}}){re.escape(tick)}{{{need},}}[ \t]*$")
+        fence_pat = re.compile(rf"^ {{0,3}}{re.escape(tick)}{{{need},}}[ \t]*$")
         start = i
         i += 1
         while i < n and not fence_pat.match(lines[i]):
@@ -78,7 +78,7 @@ def _scan_frontmatter(lines: List[str], fenced: List[Tuple[int, int]]) -> Option
             # проглатываем последующие пустые строки
             while end_excl < n and not lines[end_excl].strip():
                 end_excl += 1
-            return (0, end_excl)
+            return 0, end_excl
         i += 1
     return None
 
@@ -137,7 +137,7 @@ def parse_markdown(text: str) -> ParsedDoc:
     for idx, h in enumerate(headings):
         # поп пока верхний уровень >= текущего
         while stack and headings[stack[-1]].level >= h.level:
-            top = stack.pop()
+            stack.pop()
             # end_line_excl для завершённых позже поставим, когда узнаем start следующего
         # родители = копия стека
         h.parents = list(stack)

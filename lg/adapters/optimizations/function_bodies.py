@@ -151,5 +151,5 @@ class FunctionBodyOptimizer:
         elif mode == "non_public":
             # Strip bodies only for private functions
             return not in_public_api
-        
+
         return False

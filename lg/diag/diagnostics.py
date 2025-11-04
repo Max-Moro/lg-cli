@@ -4,7 +4,7 @@ import json
 import platform
 import subprocess
 import sys
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 from zipfile import ZipFile, ZIP_DEFLATED
 
@@ -248,7 +248,7 @@ def build_diag_bundle(report: DiagReport) -> str:
     out_dir = cache.dir / "diag"
     out_dir.mkdir(parents=True, exist_ok=True)
 
-    ts = datetime.utcnow().strftime("%Y%m%d-%H%M%S")
+    ts = datetime.now(timezone.utc).strftime("%Y%m%d-%H%M%S")
     zpath = (out_dir / f"diag-{ts}.zip").resolve()
 
     cfg_dir = cfg_root(root)

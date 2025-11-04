@@ -133,5 +133,4 @@ def build_labels(rel_paths: Iterable[str], *, mode: PathLabelMode, origin: str =
             # origin == "self" или пустой — эквивалентно "relative"
             return {p: p for p in rel_list}
 
-    # Не должны сюда попасть, но на всякий случай
     return {p: p for p in rel_list}

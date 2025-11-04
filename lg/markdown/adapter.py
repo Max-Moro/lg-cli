@@ -95,7 +95,7 @@ def process_markdown(text: str, cfg: MarkdownCfg, file_label: str) -> Tuple[str,
     return norm_text, meta
 
 
-def _validate_anchor_sections_found(doc: ParsedDoc, section_rules: List[SectionRule], intervals: list) -> None:
+def _validate_anchor_sections_found(doc: ParsedDoc, section_rules: List[SectionRule], _intervals: list) -> None:
     """
     Валидирует что все якорные ссылки найдены в документе.
     Для keep-режима проверяет что каждое правило нашло хотя бы один заголовок.

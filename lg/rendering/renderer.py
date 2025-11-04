@@ -39,12 +39,11 @@ def render_section(plan: SectionPlan, processed_files: List[ProcessedFile]) -> R
             lang = file_entry.language_hint
             
             # Создаем fence-блок с интегрированной меткой файла
-            block_lines: List[str] = []
-            block_lines.append(f"```{lang}:{label}\n")
-            block_lines.append(pf.processed_text.rstrip("\n"))
-            block_lines.append("\n```\n")
-            
-            block_text = "".join(block_lines)
+            block_text = "".join([
+                f"```{lang}:{label}\n",
+                pf.processed_text.rstrip("\n"),
+                "\n```\n"
+            ])
             blocks.append(RenderBlock(lang=lang, text=block_text, file_paths=[file_entry.rel_path]))
             out_lines.append(block_text)
             out_lines.append("\n")  # раздел между блоками

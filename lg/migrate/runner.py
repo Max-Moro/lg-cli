@@ -1,4 +1,3 @@
-# —— FILE: lg/migrate/runner.py ——
 from __future__ import annotations
 
 import hashlib
@@ -6,7 +5,7 @@ import json
 import os
 import shutil
 import time
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
@@ -56,7 +55,7 @@ def _fingerprint_cfg(repo_root: Path, cfg_root: Path) -> str:
 # ----------------------------- Cache helpers ----------------------------- #
 
 def _now_utc() -> str:
-    return datetime.utcnow().isoformat() + "Z"
+    return datetime.now(timezone.utc).isoformat().replace('+00:00', 'Z')
 
 
 def _put_state(

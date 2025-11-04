@@ -158,10 +158,8 @@ class CodeAnalyzer(ABC):
 
         for func_def, func_group in function_groups.items():
             element_info = func_group.element_info
-            
-            # Универсальная логика на основе типа элемента
-            should_remove = False
 
+            # Универсальная логика на основе типа элемента
             if element_info.is_method:
                 # Метод удаляется если приватный/защищенный
                 should_remove = not element_info.is_public

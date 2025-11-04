@@ -9,8 +9,9 @@ from .code_base import CodeAdapter
 from .code_model import CodeCfg
 
 
+# noinspection PyAbstractClass
 class ScalaAdapter(CodeAdapter[CodeCfg]):
-    """Scala адаптер (заглушка для M7)."""
+    """Scala адаптер (заглушка для M7, будет реализован позже)."""
 
     name = "scala"
     extensions = {".scala"}

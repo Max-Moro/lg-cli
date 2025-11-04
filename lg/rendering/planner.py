@@ -4,11 +4,9 @@
 
 from __future__ import annotations
 
-from typing import List
-
 from .labels import build_labels
 from ..template.context import TemplateContext
-from ..types import LANG_NONE, FileEntry, SectionManifest, SectionPlan
+from ..types import SectionManifest, SectionPlan
 
 
 def build_section_plan(manifest: SectionManifest, template_ctx: TemplateContext) -> SectionPlan:

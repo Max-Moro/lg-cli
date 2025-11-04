@@ -82,7 +82,7 @@ class CommonPlaceholdersResolver:
             # Не наш узел - возвращаем как есть
             return node
 
-    def _resolve_section_node(self, node: SectionNode, context: str = "") -> SectionNode:
+    def _resolve_section_node(self, node: SectionNode, _context: str = "") -> SectionNode:
         """
         Резолвит секционный узел, обрабатывая адресные ссылки.
         

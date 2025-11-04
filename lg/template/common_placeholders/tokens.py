@@ -26,8 +26,8 @@ def get_placeholder_token_specs() -> List[TokenSpec]:
         
         # Конец плейсхолдера }
         TokenSpec(
-            name="PLACEHOLDER_END", 
-            pattern=re.compile(r'\}'),
+            name="PLACEHOLDER_END",
+            pattern=re.compile(r'}'),
         ),
         
         # Двоеточие : (для tpl:name, ctx:name)
@@ -49,15 +49,15 @@ def get_placeholder_token_specs() -> List[TokenSpec]:
         ),
         
         TokenSpec(
-            name="RBRACKET", 
-            pattern=re.compile(r'\]'),
+            name="RBRACKET",
+            pattern=re.compile(r']'),
         ),
         
         # Идентификатор (имена секций, шаблонов, скоупов)
         # Разрешаем буквы, цифры, дефисы, подчеркивания, слеши, точки
         TokenSpec(
             name="IDENTIFIER",
-            pattern=re.compile(r'[a-zA-Z_][a-zA-Z0-9_\-\/\.]*'),
+            pattern=re.compile(r'[a-zA-Z_][a-zA-Z0-9_/.​-]*'),
         ),
         
         # Пробелы внутри плейсхолдеров

@@ -61,6 +61,7 @@ def _collect_skeleton_entries(preset: str) -> List[Tuple[str, bytes]]:
     out: List[Tuple[str, bytes]] = []
     for res in _iter_all_files(root):
         rel = res.relative_to(root).as_posix()
+        data = b""
         try:
             data = res.read_bytes()
         except Exception:

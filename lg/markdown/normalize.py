@@ -88,7 +88,7 @@ def normalize_markdown(
     meta["md.file_label_inserted"] = True
 
     if max_heading_level is None:
-        return ("\n".join(lines), meta)
+        return "\n".join(lines), meta
 
     max_lvl = int(max_heading_level)
 
@@ -116,13 +116,13 @@ def normalize_markdown(
 
         if min_lvl is None:
             # заголовков нет
-            return ("\n".join(lines), meta)
+            return "\n".join(lines), meta
 
         shift = max_lvl - min_lvl
 
     meta["md.shifted"] = bool(shift)
     if shift == 0:
-        return ("\n".join(lines), meta)
+        return "\n".join(lines), meta
 
     # 3) применить сдвиг
     out: list[str] = []
@@ -146,4 +146,4 @@ def normalize_markdown(
         else:
             out.append(ln)
 
-    return ("\n".join(out), meta)
+    return "\n".join(out), meta

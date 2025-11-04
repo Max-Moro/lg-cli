@@ -13,7 +13,7 @@ def apply_intervals_with_placeholders(lines: List[str], intervals: List[tuple[in
     Возвращает (text, meta).
     """
     if not intervals:
-        return ("\n".join(lines), {"md.placeholders": 0})
+        return "\n".join(lines), {"md.placeholders": 0}
 
     # intervals считаем уже слитыми и отсортированными
     out_lines: List[str] = []
@@ -78,4 +78,4 @@ def apply_intervals_with_placeholders(lines: List[str], intervals: List[tuple[in
     # Сборка и финальная нормализация: не допускаем 3+ подряд пустых строк.
     text = "\n".join(out_lines)
     text = re.sub(r"\n{3,}", "\n\n", text)
-    return (text, {"md.placeholders": placeholders})
+    return text, {"md.placeholders": placeholders}

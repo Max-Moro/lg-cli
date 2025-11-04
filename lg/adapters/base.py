@@ -2,7 +2,6 @@ from __future__ import annotations
 
 from typing import Any, Generic, Optional, Set, Type, TypeVar, get_args
 
-from .context import LightweightContext
 from ..stats import TokenService
 
 __all__ = ["BaseAdapter"]

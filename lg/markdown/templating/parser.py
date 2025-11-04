@@ -309,8 +309,8 @@ class MarkdownTemplateParser:
         consumed_tokens = end_index - start_index + 1
         return raw_block, consumed_tokens
     
-    def _parse_body_between_positions(self, all_tokens: List[CommentToken], 
-                                    start_token_index: int, start_pos: int, end_pos: int) -> List[MarkdownNode]:
+    def _parse_body_between_positions(self, all_tokens: List[CommentToken],
+                                    _start_token_index: int, start_pos: int, end_pos: int) -> List[MarkdownNode]:
         """
         Парсит тело между указанными позициями в тексте.
         

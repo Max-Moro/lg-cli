@@ -24,8 +24,8 @@ class VcsProvider(Protocol):
 @dataclass(frozen=True)
 class NullVcs:
     """Fallback-провайдер, если git недоступен."""
-    def changed_files(self, root: Path) -> set[str]:
+    def changed_files(self, _root: Path) -> set[str]:
         return set()
-    
-    def branch_changed_files(self, root: Path, target_branch: Optional[str] = None) -> set[str]:
+
+    def branch_changed_files(self, _root: Path, _target_branch: Optional[str] = None) -> set[str]:
         return set()

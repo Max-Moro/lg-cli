@@ -5,7 +5,7 @@ import json
 import os
 import shutil
 from dataclasses import asdict, is_dataclass, dataclass
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Optional
 
@@ -134,12 +134,12 @@ class Cache:
                 "v": CACHE_VERSION,
                 "text_hash": text_hash,
                 "tokens": {},
-                "created_at": datetime.utcnow().isoformat() + "Z"
+                "created_at": datetime.now(timezone.utc).isoformat().replace('+00:00', 'Z')
             }
-            
+
             # Обновляем токены для модели
             data["tokens"][model] = int(token_count)
-            data["updated_at"] = datetime.utcnow().isoformat() + "Z"
+            data["updated_at"] = datetime.now(timezone.utc).isoformat().replace('+00:00', 'Z')
             
             self._atom_write(path, data)
         except Exception:
@@ -191,7 +191,7 @@ class Cache:
         return self._load_json(key_path)
 
     def put_processed(self, key_path: Path, *, processed_text: str, meta: dict | None = None) -> None:
-        now = datetime.utcnow().isoformat() + "Z"
+        now = datetime.now(timezone.utc).isoformat().replace('+00:00', 'Z')
         self._atom_write(key_path, {
             "v": CACHE_VERSION,
             "processed_text": processed_text,

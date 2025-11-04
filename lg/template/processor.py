@@ -77,6 +77,7 @@ class TemplateProcessor:
             
             def parse_next_node(self, context) -> Optional[TemplateNode]:
                 """Делегирует парсинг к главному парсеру."""
+                # noinspection PyProtectedMember
                 return processor_self.parser._parse_next_node(context)
             
             def resolve_ast(self, ast, context: str = "") -> list:

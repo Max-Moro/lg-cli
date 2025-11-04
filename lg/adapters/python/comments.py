@@ -138,16 +138,16 @@ def smart_truncate_comment(comment_text: str, max_tokens: int, tokenizer) -> str
         truncated = tokenizer.truncate_to_tokens(comment_text, content_budget)
         return f"{truncated}…"
 
-def is_docstring_node(node, doc: TreeSitterDocument) -> bool:
+def is_docstring_node(node, _doc: TreeSitterDocument) -> bool:
     """
     Проверяет, является ли узел строки докстрингом.
-    
+
     В Python докстрингом считается строка, которая является единственным содержимым
     expression_statement. Это соответствует запросу comments в queries.py.
 
     Args:
         node: Узел строки для проверки
-        doc: Документ для анализа контекста
+        _doc: Документ для анализа контекста
 
     Returns:
         True если узел является докстрингом, False иначе

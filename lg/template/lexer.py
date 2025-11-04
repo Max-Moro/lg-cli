@@ -242,11 +242,9 @@ class ContextualLexer:
         Args:
             token: Токен, который может изменить контекст
         """
-        original_stack_size = len(self.context_stack)
-        
         # Проверяем, является ли токен закрывающим для текущего контекста
         if self.context_stack and token.type in self.context_stack[-1].close_tokens:
-            closed_context = self.context_stack.pop()
+            self.context_stack.pop()
 
             # Очищаем кэш для закрытого контекста
             self._invalidate_context_cache()

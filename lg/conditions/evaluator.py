@@ -106,7 +106,7 @@ class ConditionEvaluator:
         """
         return self.context.is_scope_condition_met(condition.scope_type)
 
-    def _evaluate_task(self, condition: TaskCondition) -> bool:
+    def _evaluate_task(self, _condition: TaskCondition) -> bool:
         """
         Вычисляет условие task.
 

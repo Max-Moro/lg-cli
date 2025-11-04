@@ -9,8 +9,9 @@ from .code_base import CodeAdapter
 from .code_model import CodeCfg
 
 
+# noinspection PyAbstractClass
 class JavaAdapter(CodeAdapter[CodeCfg]):
-    """Java адаптер (заглушка для M7)."""
+    """Java адаптер (заглушка для M7, будет реализован позже)."""
 
     name = "java"
     extensions = {".java"}
