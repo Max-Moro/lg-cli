@@ -115,6 +115,10 @@ if [ -z "$LINTER" ]; then
     exit 1
 fi
 
+# Use project-local results directory to avoid conflicts between projects
+PROJECT_RESULTS_DIR=".qodana/results"
+mkdir -p "$PROJECT_RESULTS_DIR"
+
 # Run Qodana
 echo -e "${GREEN}Running Qodana inspection with linter: ${LINTER}${NC}" >&2
 echo "" >&2
@@ -128,24 +132,16 @@ fi
 
 if [ "$DIFF_MODE" = true ] && [ -n "$DIFF_START" ]; then
     echo "Analyzing changes since: $DIFF_START" >&2
-    qodana scan --linter "$LINTER" --within-docker=false --diff-start="$DIFF_START" --save-report=false $QODANA_CONFIG 2>&1 | grep -E "(Analysis results:|problems detected|problems count|new problems)" >&2 || true
+    qodana scan --linter "$LINTER" --within-docker=false --results-dir="$PROJECT_RESULTS_DIR" --diff-start="$DIFF_START" --save-report=false $QODANA_CONFIG 2>&1 | grep -E "(Analysis results:|problems detected|problems count|new problems)" >&2 || true
 else
     echo "Running full project analysis..." >&2
-    qodana scan --linter "$LINTER" --within-docker=false --save-report=false $QODANA_CONFIG 2>&1 | grep -E "(Analysis results:|problems detected|problems count)" >&2 || true
+    qodana scan --linter "$LINTER" --within-docker=false --results-dir="$PROJECT_RESULTS_DIR" --save-report=false $QODANA_CONFIG 2>&1 | grep -E "(Analysis results:|problems detected|problems count)" >&2 || true
 fi
 
 echo "" >&2
 echo "Parsing results..." >&2
 
-# Find the most recent results directory
-LATEST_RESULTS=$(find "$RESULTS_DIR" -maxdepth 2 -name "results" -type d | sort -r | head -1)
-
-if [ -z "$LATEST_RESULTS" ]; then
-    echo "Error: No results directory found" >&2
-    exit 1
-fi
-
-SARIF_FILE="$LATEST_RESULTS/qodana.sarif.json"
+SARIF_FILE="$PROJECT_RESULTS_DIR/qodana.sarif.json"
 
 if [ ! -f "$SARIF_FILE" ]; then
     echo "Error: SARIF file not found at $SARIF_FILE" >&2

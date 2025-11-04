@@ -9,36 +9,4 @@ linter: qodana-python-community
 # Bootstrap command to install dependencies before analysis
 # This ensures Qodana can resolve all imports and type hints
 bootstrap: |
-  pip install --upgrade pip setuptools wheel
-  pip install -e .
-
-# Use existing PyCharm inspection profile
-profile:
-  path: .idea/inspectionProfiles/Project_Default.xml
-
-# Exclude specific inspections and paths
-exclude:
-  # Exclude PyClassHasNoInitInspection - many valid Python classes don't need __init__
-  - name: PyClassHasNoInitInspection
-    paths:
-      - "**/*.py"
-
-  # You can add more exclusions here if needed after analyzing results
-  # Example:
-  # - name: PyTypeHintsInspection
-  #   paths:
-  #     - "**/*.py"
-
-  # Exclude common non-source directories
-  # (Qodana usually handles these automatically, but explicit is better)
-  - name: All
-    paths:
-      - .venv
-      - .idea
-      - .git
-      - __pycache__
-      - "*.egg-info"
-      - build
-      - dist
-      - .pytest_cache
-      - .mypy_cache
+  python -m pip install -e . || true
