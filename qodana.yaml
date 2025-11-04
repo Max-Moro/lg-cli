@@ -9,4 +9,7 @@ linter: qodana-python-community
 # Bootstrap command to install dependencies before analysis
 # This ensures Qodana can resolve all imports and type hints
 bootstrap: |
-  python -m pip install -e . || true
+  echo "Installing project dependencies..."
+  python -m pip install --upgrade pip
+  python -m pip install -e .[dev]
+  echo "Dependencies installed successfully"

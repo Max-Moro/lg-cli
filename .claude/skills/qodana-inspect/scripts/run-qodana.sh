@@ -115,6 +115,47 @@ if [ -z "$LINTER" ]; then
     exit 1
 fi
 
+# Determine platform and apply fixes
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PLATFORM_FIXES_DIR="$SCRIPT_DIR/platform-fixes"
+
+apply_platform_fixes() {
+    local linter="$1"
+    local platform=""
+
+    # Map linter to platform
+    case "$linter" in
+        qodana-python*|qodana-python-community)
+            platform="pycharm"
+            ;;
+        qodana-jvm*|qodana-android)
+            platform="intellij"
+            ;;
+        qodana-js|qodana-php)
+            platform="webstorm"
+            ;;
+        qodana-dotnet*|qodana-cdnet)
+            platform="rider"
+            ;;
+        *)
+            # Unknown platform, skip fixes
+            return 0
+            ;;
+    esac
+
+    local fix_script="$PLATFORM_FIXES_DIR/$platform/fix-jdk-table.sh"
+
+    if [ -f "$fix_script" ]; then
+        echo -e "${YELLOW}Applying $platform platform fixes...${NC}" >&2
+        bash "$fix_script" "$(pwd)" || {
+            echo -e "${YELLOW}Warning: Platform fix failed, continuing anyway...${NC}" >&2
+        }
+    fi
+}
+
+# Apply platform-specific fixes before analysis
+apply_platform_fixes "$LINTER"
+
 # Use project-local results directory to avoid conflicts between projects
 PROJECT_RESULTS_DIR=".qodana/results"
 mkdir -p "$PROJECT_RESULTS_DIR"

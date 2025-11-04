@@ -1,0 +1,23 @@
+<application>
+  <component name="ProjectJdkTable">
+    <jdk version="2">
+      <name value="{{SDK_NAME}}" />
+      <type value="Python SDK" />
+      <version value="{{PYTHON_VERSION}}" />
+      <homePath value="{{PYTHON_HOME}}" />
+      <roots>
+        <classPath>
+          <root type="composite">
+            <root url="file://{{VENV_SITE_PACKAGES}}" type="simple" />
+            <root url="file://{{PYTHON_LIB}}" type="simple" />
+            <root url="file://{{PYTHON_DLLS}}" type="simple" />
+          </root>
+        </classPath>
+        <sourcePath>
+          <root type="composite" />
+        </sourcePath>
+      </roots>
+      <additional />
+    </jdk>
+  </component>
+</application>

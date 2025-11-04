@@ -50,6 +50,36 @@ View all available linters and options:
 bash .claude/skills/qodana-inspect/scripts/run-qodana.sh --help
 ```
 
+## Platform Fixes (Automatic)
+
+The skill includes automatic platform-specific fixes for known Qodana issues. These fixes are applied automatically before analysis based on the selected linter.
+
+### PyCharm/Python Platform Fix
+
+**Issue:** Qodana native mode for Python may fail to create `jdk.table.xml`, causing it to not recognize installed libraries from virtual environments (bug QD-11375).
+
+**Automatic Fix:** When using `qodana-python` or `qodana-python-community` linters, the skill:
+1. Detects if `jdk.table.xml` is missing in Qodana's config directory
+2. Extracts Python SDK configuration from `.idea/misc.xml`
+3. Automatically generates `jdk.table.xml` with proper paths to:
+   - Virtual environment site-packages
+   - Python standard library
+   - Python DLLs
+
+**Result:** Eliminates false positives like:
+- `PyTypeHintsInspection` errors on valid PEP 604 union types (`dict | None`)
+- `PyClassHasNoInitInspection` errors on `@dataclass` classes
+- Import resolution errors for installed packages
+
+This fix is transparent and requires no user configuration. If the project has `.idea/misc.xml` with a configured Python SDK, the fix applies automatically.
+
+### Future Platform Fixes
+
+The architecture supports adding fixes for other platforms:
+- IntelliJ IDEA (JVM projects)
+- WebStorm (JavaScript/TypeScript)
+- Rider (.NET projects)
+
 ## Output Format
 
 The script returns results grouped by file:
