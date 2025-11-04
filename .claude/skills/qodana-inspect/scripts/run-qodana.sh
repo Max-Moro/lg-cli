@@ -119,12 +119,19 @@ fi
 echo -e "${GREEN}Running Qodana inspection with linter: ${LINTER}${NC}" >&2
 echo "" >&2
 
+# Check if qodana.yaml exists in the project root
+QODANA_CONFIG=""
+if [ -f "qodana.yaml" ]; then
+    echo "Found qodana.yaml configuration file" >&2
+    QODANA_CONFIG="--config=qodana.yaml"
+fi
+
 if [ "$DIFF_MODE" = true ] && [ -n "$DIFF_START" ]; then
     echo "Analyzing changes since: $DIFF_START" >&2
-    qodana scan --linter "$LINTER" --within-docker=false --diff-start="$DIFF_START" --save-report=false 2>&1 | grep -E "(Analysis results:|problems detected|problems count|new problems)" >&2 || true
+    qodana scan --linter "$LINTER" --within-docker=false --diff-start="$DIFF_START" --save-report=false $QODANA_CONFIG 2>&1 | grep -E "(Analysis results:|problems detected|problems count|new problems)" >&2 || true
 else
     echo "Running full project analysis..." >&2
-    qodana scan --linter "$LINTER" --within-docker=false --save-report=false 2>&1 | grep -E "(Analysis results:|problems detected|problems count)" >&2 || true
+    qodana scan --linter "$LINTER" --within-docker=false --save-report=false $QODANA_CONFIG 2>&1 | grep -E "(Analysis results:|problems detected|problems count)" >&2 || true
 fi
 
 echo "" >&2
