@@ -550,14 +550,11 @@ class HeadingContextDetector:
             placeholder_pos.line_number, horizontal_rules, template_headings
         )
         
-        # 7. Проверяем, есть ли вообще заголовки в шаблоне
-        has_any_headings = len(template_headings) > 0
-        
-        # 8. Вычисляем итоговые параметры
+        # 7. Вычисляем итоговые параметры
         heading_level, strip_h1 = self._calculate_parameters(
-            placeholder_pos.inside_heading, parent_level, is_chain, isolated_by_hr, has_any_headings
+            placeholder_pos.inside_heading, parent_level, is_chain, isolated_by_hr
         )
-        
+
         return HeadingContext(
             placeholders_continuous_chain=is_chain,
             placeholder_inside_heading=placeholder_pos.inside_heading,
@@ -652,14 +649,17 @@ class HeadingContextDetector:
         
         return None
     
-    def _find_parent_heading_level(self, placeholder_line: int, headings: List[HeadingInfo], horizontal_rules: List[int]) -> int:
+    def _find_parent_heading_level(self, placeholder_line: int, headings: List[HeadingInfo], horizontal_rules: List[int]) -> Optional[int]:
         """
         Находит уровень ближайшего родительского заголовка с учетом горизонтальных черт.
-        
+
         Горизонтальная черта сбрасывает контекст заголовков до уровня 1.
+
+        Returns:
+            Уровень родительского заголовка или None если родительских заголовков не найдено
         """
-        parent_level = 1
-        
+        parent_level = None
+
         # Находим ближайшую горизонтальную черту перед плейсхолдером
         closest_rule = None
         for rule_line in horizontal_rules:
@@ -667,16 +667,16 @@ class HeadingContextDetector:
                 closest_rule = rule_line
             else:
                 break
-        
+
         # Если есть горизонтальная черта, анализируем только заголовки после неё
         start_line = closest_rule if closest_rule is not None else 0
-        
+
         for heading in headings:
-            if start_line < heading.line_number < placeholder_line:
+            if start_line <= heading.line_number < placeholder_line:
                 parent_level = heading.level
             elif heading.line_number >= placeholder_line:
                 break
-        
+
         return parent_level
     
     def _is_placeholder_isolated_by_horizontal_rule(self, placeholder_line: int, horizontal_rules: List[int], headings: List[HeadingInfo]) -> bool:
@@ -709,17 +709,16 @@ class HeadingContextDetector:
                 
         return True
     
-    def _calculate_parameters(self, inside_heading: bool, parent_level: int, is_chain: bool, isolated_by_hr: bool = False, has_any_headings: bool = True) -> Tuple[int, bool]:
+    def _calculate_parameters(self, inside_heading: bool, parent_level: Optional[int], is_chain: bool, isolated_by_hr: bool = False) -> Tuple[int, bool]:
         """
         Вычисляет итоговые параметры heading_level и strip_h1.
 
         Args:
             inside_heading: Плейсхолдер внутри заголовка
-            parent_level: Уровень родительского заголовка
+            parent_level: Уровень родительского заголовка или None если родительских заголовков не найдено
             is_chain: Плейсхолдеры образуют цепочку
             isolated_by_hr: Плейсхолдер изолирован горизонтальной чертой
-            has_any_headings: Есть ли вообще заголовки в шаблоне
-            
+
         Returns:
             Кортеж (heading_level, strip_h1)
         """
@@ -727,30 +726,32 @@ class HeadingContextDetector:
         # Пример: ### ${md:docs/api}
         # H1 из файла заменяет содержимое заголовка H3
         if inside_heading:
-            return parent_level, False
-        
-        # Случай 2: Нет заголовков в шаблоне
-        # Пример: ${md:README}
+            # parent_level не может быть None для inside_heading (всегда есть уровень заголовка)
+            return parent_level if parent_level is not None else 1, False
+
+        # Случай 2: Нет родительских заголовков
+        # Пример: ${md:README} (без заголовков вообще)
+        # Пример: ${md:README}\n---\n# License (заголовок есть, но после плейсхолдера)
         # Документ вставляется как корневой (верхнего уровня)
-        if not has_any_headings:
+        if parent_level is None:
             return 1, False
-        
+
         # Случай 3: Плейсхолдер изолирован горизонтальной чертой
         # Пример: ## Section\n---\n${md:docs/api}
         # Горизонтальная черта сбрасывает контекст → новый корневой раздел
         if isolated_by_hr:
             return 1, False
-        
+
         # Случай 4: Обычные плейсхолдеры под родительским заголовком
         # Пример: ## Section\n${md:docs/api}\n${md:docs/guide}
         # Вложенность: parent_level + 1 (ограничиваем до H6)
         heading_level = min(parent_level + 1, 6)
-        
+
         # strip_h1 зависит от того, образуют ли плейсхолдеры цепочку:
         # - Цепочка (нет разделяющих заголовков): strip_h1 = false (H1 сохраняется)
         # - Разделены заголовками: strip_h1 = true (H1 удаляется)
         strip_h1 = not is_chain
-        
+
         return heading_level, strip_h1
 
 

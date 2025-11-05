@@ -590,6 +590,40 @@ ${md:docs/guide}""")
     assert_heading_level(result, "Installation", 2)
 
 
+def test_isolated_placeholder_with_unrelated_heading(md_project):
+    """
+    Тест случая с изолированным плейсхолдером и несвязанным заголовком после него.
+
+    ${md:README}
+
+    ---
+
+    # License
+
+    Плейсхолдер изолирован и не должен быть связан с заголовком "License",
+    который идет после горизонтальной черты:
+    - strip_h1=false (H1 из README сохраняется, так как плейсхолдер не в цепочке)
+    - heading_level=1 (документ верхнего уровня, так как нет родительских заголовков)
+    - Заголовок "License" должен остаться на уровне H1 (после горизонтальной черты)
+    """
+    root = md_project
+
+    create_template(root, "isolated-unrelated", """${md:README}
+
+---
+
+# License
+
+Some license text here.""")
+
+    result = render_template(root, "ctx:isolated-unrelated")
+
+    # Плейсхолдер вставляется как корневой документ
+    # H1 из README должен сохраниться (strip_h1=false для изолированного плейсхолдера)
+    assert_heading_level(result, "Main Project", 1)
+    assert_heading_level(result, "Features", 2)
+
+
 def test_multiple_placeholders_no_headings_with_text(md_project):
     """
     Тест случая с несколькими плейсхолдерами и текстом, но без заголовков.
@@ -647,7 +681,6 @@ This is some concluding text.""")
     # Документ вставляется как корневой (нет родительских заголовков)
     assert_heading_level(result, "API Reference", 1)
     assert_heading_level(result, "Authentication", 2)
-
 
 # ===== Специальные случаи =====
 
