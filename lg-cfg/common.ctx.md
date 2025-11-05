@@ -30,3 +30,6 @@ ${md:docs/*}
 # Описание текущей задачи
 
 ${task}{% endif %}
+{% if scope:local AND tag:agent %}
+${tpl:agent/footer}
+{% endif %}

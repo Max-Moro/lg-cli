@@ -6,4 +6,4 @@ ${md@self:agent/listing-generator}
 
 ${md@self:agent/agents-pipeline}
 
-${md@self:agent/stack-intellij-plugin}
+${md@self:agent/stack-python}
