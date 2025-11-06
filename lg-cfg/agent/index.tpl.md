@@ -4,7 +4,7 @@
 
 ${md@self:agent/listing-generator}
 
-${md@self:agent/agents-pipeline}
+${md@self:agent/agents-pipeline, if:tag:claude-code-subagents}
 
 ${md@self:agent/software-design}
 

@@ -1,0 +1,44 @@
+mode-sets:
+  ai-interaction:
+    title: "AI Interaction"
+    modes:
+      ask:
+        title: "Ask"
+        description: "Question-answer mode"
+      agent:
+        title: "Agent"
+        description: "Automatic mode of working with tools"
+        tags: [agent, tools]
+
+  ai-tools:
+    title: "AI Tools"
+    modes:
+      other:
+        title: "Other"
+        description: "Other tools"
+      claude-code:
+        title: "Claude Code"
+        description: "Claude Code by Anthropic"
+        tags: [claude-code]
+      claude-code-subagents:
+        title: "Claude Code (Subagents)"
+        description: "Claude Code with subagents"
+        tags: [claude-code, claude-code-subagents]
+
+  dev-stage:
+    title: "Стадия работы над фичей"
+    modes:
+      planning:
+        title: "Планирование"
+        tags: [architecture, docs]
+      development:
+        title: "Основная разработка"
+      testing:
+        title: "Написание тестов"
+        tags: [tests]
+        default_task: "Напиши тесты для текущего функционального блока."
+      review:
+        title: "Кодревью"
+        tags: [review]
+        default_task: "Проведи code review изменений и дай рекомендации по улучшению."
+        vcs_mode: "branch-changes"
