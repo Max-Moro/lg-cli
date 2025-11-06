@@ -6,4 +6,6 @@ ${md@self:agent/listing-generator}
 
 ${md@self:agent/agents-pipeline}
 
+${md@self:agent/software-design}
+
 ${md@self:agent/stack-python}
