@@ -4,6 +4,10 @@ set -e
 
 cd "$(dirname "$0")/.."  # переходим в корень проекта cli/
 
+echo "🧹 Cleaning stale build artifacts..."
+# Удаляем build/ и *.egg-info для чистой сборки
+rm -rf build/ *.egg-info
+
 echo "🔨 Building wheel..."
 py -3 -m build --wheel
 
