@@ -7,7 +7,7 @@ def test_cli_report_included_paths(tmp_path, monkeypatch):
     # ├── keep.py
     # ├── ignore.log
     # └── secure/
-    #       ├── __init__.py  (тривиальный → отфильтрует адаптер)
+    #       ├── __init__.py  (trivial -> filtered by adapter)
     #       ├── inner_keep.py
     #       └── nope.md
     (tmp_path / "keep.py").write_text("print('ok')", encoding="utf-8")
@@ -17,8 +17,8 @@ def test_cli_report_included_paths(tmp_path, monkeypatch):
     (tmp_path / "secure/inner_keep.py").write_text("print('ok_inner')", encoding="utf-8")
     (tmp_path / "secure/nope.md").write_text("", encoding="utf-8")
 
-    # config: одна секция all, только .py, fencing включён,
-    # блокируем *.log, а в secure/ разрешаем только *.py
+    # config: one section all, only .py, fencing enabled,
+    # block *.log, and in secure/ allow only *.py
     (tmp_path / "lg-cfg").mkdir()
     (tmp_path / "lg-cfg/sections.yaml").write_text(textwrap.dedent("""
       all:
@@ -32,11 +32,11 @@ def test_cli_report_included_paths(tmp_path, monkeypatch):
               allow: ["*.py"]
     """).strip() + "\n", encoding="utf-8")
 
-    # Запрашиваем отчёт по виртуальному контексту секции
+    # Request report for virtual section context
     cp = run_cli(tmp_path, "report", "sec:all")
     assert cp.returncode == 0, cp.stderr
     data = jload(cp.stdout)
 
-    # Собираем пути, которые реально попали в отчёт (после адаптеров)
+    # Collect paths that really made it into the report (after adapters)
     paths = {f["path"] for f in data["files"]}
     assert paths == {"keep.py", "secure/inner_keep.py"}

@@ -8,7 +8,7 @@ from tests.infrastructure import lctx_ts
 
 
 def test_typescript_object_literal_indentation():
-    """Тест отступов в TypeScript объектах."""
+    """Test indentation in TypeScript objects."""
     code = '''export class LiteralDataManager {
     // Class properties with various literal types
     private readonly smallConfig = {
@@ -41,7 +41,7 @@ def test_typescript_object_literal_indentation():
 }'''
 
     cfg = TypeScriptCfg()
-    cfg.literals.max_tokens = 10  # Очень маленький лимит для принудительного тримминга
+    cfg.literals.max_tokens = 10  # Very small limit for forced trimming
 
     adapter = make_adapter(cfg)
     adapter._cfg = cfg
@@ -49,19 +49,19 @@ def test_typescript_object_literal_indentation():
     context = lctx_ts(code)
     result, _ = adapter.process(context)
 
-    # Проверяем, что отступы корректны
+    # Check that indentation is correct
     lines = result.split('\n')
 
-    # Ищем строку с placeholder'ом в smallConfig
+    # Look for line with placeholder in smallConfig
     placeholder_line = None
     for i, line in enumerate(lines):
         if '"…": "…"' in line and 'smallConfig' in lines[i - 2] if i >= 2 else False:
             placeholder_line = i
             break
 
-    assert placeholder_line is not None, "Не найден placeholder в результате"
+    assert placeholder_line is not None, "Placeholder not found in result"
 
-    # Проверяем отступ placeholder'а
+    # Check placeholder indentation
     placeholder_indent = ""
     for char in lines[placeholder_line]:
         if char in ' \t':
@@ -69,16 +69,16 @@ def test_typescript_object_literal_indentation():
         else:
             break
 
-    # Проверяем, что отступ не пустой
-    assert len(placeholder_indent) > 0, f"Placeholder должен иметь отступ, но получили: '{lines[placeholder_line]}'"
+    # Check that indentation is not empty
+    assert len(placeholder_indent) > 0, f"Placeholder should have indentation, but got: '{lines[placeholder_line]}'"
 
-    # Проверяем, что отступ соответствует отступам других элементов объекта
-    expected_indent = "        "  # 8 пробелов (базовый отступ + 4 для элементов)
-    assert placeholder_indent == expected_indent, f"Неправильный отступ placeholder'а: '{placeholder_indent}', ожидался: '{expected_indent}'"
+    # Check that indentation matches other object elements
+    expected_indent = "        "  # 8 spaces (base + 4 for elements)
+    assert placeholder_indent == expected_indent, f"Wrong placeholder indentation: '{placeholder_indent}', expected: '{expected_indent}'"
 
 
     def test_typescript_return_object_indentation(self):
-        """Тест отступов в TypeScript return объектах."""
+        """Test indentation in TypeScript return objects."""
         code = '''    public processData(): DataContainer {
         // Function with various literal data
         const smallArray = ["one", "two", "three"];
@@ -98,7 +98,7 @@ def test_typescript_object_literal_indentation():
     }'''
 
         cfg = TypeScriptCfg()
-        cfg.literals.max_tokens = 10  # Очень маленький лимит для принудительного тримминга
+        cfg.literals.max_tokens = 10  # Very small limit for forced trimming
 
         adapter = make_adapter(cfg)
         adapter._cfg = cfg
@@ -106,10 +106,10 @@ def test_typescript_object_literal_indentation():
         context = lctx_ts(code)
         result, _ = adapter.process(context)
 
-        # Проверяем, что отступы корректны
+        # Check that indentation is correct
         lines = result.split('\n')
 
-        # Ищем строку с placeholder'ом в return объекте
+        # Look for line with placeholder in return object
         placeholder_line = None
         return_line = None
         for i, line in enumerate(lines):
@@ -119,9 +119,9 @@ def test_typescript_object_literal_indentation():
                 placeholder_line = i
                 break
 
-        assert placeholder_line is not None, "Не найден placeholder в return объекте"
+        assert placeholder_line is not None, "Placeholder not found in return object"
 
-        # Проверяем отступ placeholder'а
+        # Check placeholder indentation
         placeholder_indent = ""
         for char in lines[placeholder_line]:
             if char in ' \t':
@@ -129,12 +129,12 @@ def test_typescript_object_literal_indentation():
             else:
                 break
 
-        # Проверяем, что отступ не пустой
-        assert len(placeholder_indent) > 0, f"Placeholder должен иметь отступ, но получили: '{lines[placeholder_line]}'"
+        # Check that indentation is not empty
+        assert len(placeholder_indent) > 0, f"Placeholder should have indentation, but got: '{lines[placeholder_line]}'"
 
-        # Проверяем, что отступ соответствует отступам других элементов объекта
-        expected_indent = "            "  # 12 пробелов (базовый отступ + 8 для элементов)
-        assert placeholder_indent == expected_indent, f"Неправильный отступ placeholder'а: '{placeholder_indent}', ожидался: '{expected_indent}'"
+        # Check that indentation matches other object elements
+        expected_indent = "            "  # 12 spaces (base + 8 for elements)
+        assert placeholder_indent == expected_indent, f"Wrong placeholder indentation: '{placeholder_indent}', expected: '{expected_indent}'"
 
 
     def test_typescript_object_indentation_preserved():

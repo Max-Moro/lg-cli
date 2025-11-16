@@ -17,13 +17,13 @@ Para
 
 """
     doc = parse_markdown(text)
-    # Заголовки: H1 "Title H1", Setext "Section" (H2), ATX "Sub" (H2)
+    # Headings: H1 "Title H1", Setext "Section" (H2), ATX "Sub" (H2)
     titles = [(h.level, h.title) for h in doc.headings]
     assert titles == [(1, "Title H1"), (2, "Section"), (2, "Sub")]
 
 
-    # Поддеревья: H1 → до "Section"; "Section" → до "## Sub"; "Sub" → до конца
-    # Проверим, что границы разумные и монотонные
+    # Subtrees: H1 → until "Section"; "Section" → until "## Sub"; "Sub" → to end
+    # Verify that boundaries are reasonable and monotonic
     assert doc.headings[0].start_line == 0
     assert doc.headings[0].end_line_excl > doc.headings[0].start_line
     assert doc.headings[1].start_line > doc.headings[0].start_line
@@ -45,7 +45,7 @@ tags:
 
 """
     doc = parse_markdown(text)
-    # Парсер возвращает ПОЛНЫЙ диапазон front matter (включая обе полосы и хвостовые пустые строки)
+    # Parser returns the FULL frontmatter range (including both delimiters and trailing empty lines)
     assert doc.frontmatter_range == (0, 9)
-    # Проверим, что H1 всё равно парсится
+    # Verify that H1 is still parsed correctly
     assert [(h.level, h.title) for h in doc.headings] == [(1, "H1")]

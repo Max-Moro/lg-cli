@@ -8,9 +8,9 @@ from tests.infrastructure import write
 
 @pytest.fixture
 def tmpproj(tmp_path: Path):
-    """Минимальный проект под схему: lg-cfg/sections.yaml + ctx/tpl в корне lg-cfg/."""
+    """Minimal project schema: lg-cfg/sections.yaml + ctx/tpl in lg-cfg/ root."""
     root = tmp_path
-    # sections.yaml с двумя секциями
+    # sections.yaml with two sections
     write(
         root / "lg-cfg" / "sections.yaml",
         textwrap.dedent("""
@@ -30,7 +30,7 @@ def tmpproj(tmp_path: Path):
             - match: ["/docs/**.md"]
         """).strip() + "\n",
     )
-    # шаблон и два контекста
+    # template and two contexts
     write(root / "lg-cfg" / "a.tpl.md", "Intro\n\n${docs}\n")
     write(root / "lg-cfg" / "a.ctx.md", "Intro (ctx)\n\n${docs}\n")
     write(root / "lg-cfg" / "b.ctx.md", "X ${tpl:a} Y ${all}\n")
@@ -38,5 +38,5 @@ def tmpproj(tmp_path: Path):
 
 @pytest.fixture(autouse=True)
 def _allow_migrations_without_git(monkeypatch):
-    # безопасно для юнит-тестов: в проде переменная не задана
+    # safe for unit tests: in production the variable is not set
     monkeypatch.setenv("LG_MIGRATE_ALLOW_NO_GIT", "1")

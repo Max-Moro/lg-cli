@@ -1,5 +1,5 @@
 """
-Тесты контекстуального анализа заголовков с горизонтальными чертами.
+Tests for contextual heading analysis with horizontal rules.
 """
 
 from __future__ import annotations
@@ -10,14 +10,14 @@ from tests.md_placeholders.test_contextual_analysis import (
 )
 
 
-# ===== Тесты основного сценария с горизонтальными чертами =====
+# ===== Tests for main scenario with horizontal rules =====
 
 def test_horizontal_rule_resets_context_to_level_1(md_project):
     """
-    Тест что горизонтальная черта сбрасывает контекст заголовков до уровня 1.
+    Test that horizontal rule resets heading context to level 1.
     """
     root = md_project
-    
+
     create_template(root, "horizontal-rule-reset", """# Documentation
 
 ## Main Section
@@ -28,29 +28,29 @@ ${md:docs/guide}
 
 ${md:README}
 """)
-    
+
     result = render_template(root, "ctx:horizontal-rule-reset")
-    
-    # До горизонтальной черты: плейсхолдеры образуют цепочку под H2
-    # strip_h1=FALSE (цепочка), max_heading_level=3 (H2+1)
-    # H1 заголовки сохраняются как H3, H2+ повышены на 2
-    assert_heading_level(result, "API Reference", 3)    # H1→H3 (цепочка, сохранен)
-    assert_heading_level(result, "User Guide", 3)       # H1→H3 (цепочка, сохранен)
-    assert_heading_level(result, "Authentication", 4)   # H2→H4 (повышен на 2)
-    assert_heading_level(result, "Installation", 4)     # H2→H4 (повышен на 2)
-    
-    # После горизонтальной черты: контекст сброшен до уровня 1
-    # strip_h1=false (нет родительского заголовка), max_heading_level=1 
-    assert_heading_level(result, "Main Project", 1)     # H1→H1 (оригинальный уровень)
-    assert_heading_level(result, "Features", 2)         # H2→H2 (оригинальный уровень)
+
+    # Before horizontal rule: placeholders form chain under H2
+    # strip_h1=FALSE (chain), max_heading_level=3 (H2+1)
+    # H1 headings preserved as H3, H2+ increased by 2
+    assert_heading_level(result, "API Reference", 3)    # H1→H3 (chain, preserved)
+    assert_heading_level(result, "User Guide", 3)       # H1→H3 (chain, preserved)
+    assert_heading_level(result, "Authentication", 4)   # H2→H4 (increased by 2)
+    assert_heading_level(result, "Installation", 4)     # H2→H4 (increased by 2)
+
+    # After horizontal rule: context reset to level 1
+    # strip_h1=false (no parent heading), max_heading_level=1
+    assert_heading_level(result, "Main Project", 1)     # H1→H1 (original level)
+    assert_heading_level(result, "Features", 2)         # H2→H2 (original level)
 
 
 def test_multiple_horizontal_rules_create_isolated_sections(md_project):
     """
-    Тест что несколько горизонтальных черт создают изолированные секции.
+    Test that multiple horizontal rules create isolated sections.
     """
     root = md_project
-    
+
     create_template(root, "multiple-rules", """# Documentation
 
 ## Section A
@@ -58,7 +58,7 @@ ${md:docs/api}
 
 ---
 
-## Section B  
+## Section B
 ${md:docs/guide}
 
 ---
@@ -66,31 +66,31 @@ ${md:docs/guide}
 ## Section C
 ${md:README}
 """)
-    
+
     result = render_template(root, "ctx:multiple-rules")
-    
-    # Каждый плейсхолдер изолирован заголовками H2
-    # strip_h1=true (разделены заголовками), max_heading_level=3 (H2+1)
-    
-    # api.md в Section A
-    assert_heading_not_present(result, "API Reference")      # H1 удален  
+
+    # Each placeholder is isolated by H2 headings
+    # strip_h1=true (separated by headings), max_heading_level=3 (H2+1)
+
+    # api.md in Section A
+    assert_heading_not_present(result, "API Reference")      # H1 removed
     assert_heading_level(result, "Authentication", 3)        # H2→H3
-    
-    # guide.md в Section B  
-    assert_heading_not_present(result, "User Guide")         # H1 удален
+
+    # guide.md in Section B
+    assert_heading_not_present(result, "User Guide")         # H1 removed
     assert_heading_level(result, "Installation", 3)          # H2→H3
-    
-    # README.md в Section C
-    assert_heading_not_present(result, "Main Project")       # H1 удален
+
+    # README.md in Section C
+    assert_heading_not_present(result, "Main Project")       # H1 removed
     assert_heading_level(result, "Features", 3)              # H2→H3
 
 
 def test_horizontal_rule_different_formats(md_project):
     """
-    Тест различных форматов горизонтальных черт: ---, ***, ___.
+    Test different horizontal rule formats: ---, ***, ___.
     """
     root = md_project
-    
+
     create_template(root, "rule-formats", """# Documentation
 
 ## Part 1
@@ -108,37 +108,37 @@ ___
 
 ${md:README}
 """)
-    
+
     result = render_template(root, "ctx:rule-formats")
-    
-    # Все форматы горизонтальных черт должны работать одинаково
-    # Каждый плейсхолдер изолирован, контекст сброшен до уровня 1
-    
-    # После первой черты (---)
-    assert_heading_level(result, "User Guide", 1)        # H1→H1 (корневой)
-    assert_heading_level(result, "Installation", 2)      # H2→H2 (корневой)
-    
-    # После второй черты (***)  
-    assert_heading_level(result, "v1.0.0", 1)           # H2→H1 (нет H1 в файле, H2 становится корневым)
+
+    # All horizontal rule formats should work the same
+    # Each placeholder is isolated, context reset to level 1
+
+    # After first rule (---)
+    assert_heading_level(result, "User Guide", 1)        # H1→H1 (root)
+    assert_heading_level(result, "Installation", 2)      # H2→H2 (root)
+
+    # After second rule (***)
+    assert_heading_level(result, "v1.0.0", 1)           # H2→H1 (no H1 in file, H2 becomes root)
     assert_heading_level(result, "v0.9.0", 1)           # H2→H1
-    
-    # После третьей черты (___)
-    assert_heading_level(result, "Main Project", 1)      # H1→H1 (корневой)
-    assert_heading_level(result, "Features", 2)          # H2→H2 (корневой)
+
+    # After third rule (___)
+    assert_heading_level(result, "Main Project", 1)      # H1→H1 (root)
+    assert_heading_level(result, "Features", 2)          # H2→H2 (root)
 
 
-# ===== Тесты прерывания цепочек горизонтальными чертами =====
+# ===== Tests for breaking chains with horizontal rules =====
 
 def test_horizontal_rule_breaks_placeholder_chain(md_project):
     """
-    Тест что горизонтальная черта прерывает цепочку плейсхолдеров.
-    
-    До черты: цепочка (strip_h1=false)
-    После черты: изолированный плейсхолдер (strip_h1=false, но уровень 1)
+    Test that horizontal rule breaks placeholder chain.
+
+    Before rule: chain (strip_h1=false)
+    After rule: isolated placeholder (strip_h1=false, but level 1)
     """
     root = md_project
-    
-    create_template(root, "chain-break", """# Documentation  
+
+    create_template(root, "chain-break", """# Documentation
 
 ## Connected Section
 ${md:docs/api}
@@ -148,28 +148,28 @@ ${md:docs/guide}
 
 ${md:README}
 """)
-    
+
     result = render_template(root, "ctx:chain-break")
-    
-    # До черты: цепочка плейсхолдеров под H2
-    # strip_h1=FALSE (цепочка), max_heading_level=3
-    # H1 заголовки сохраняются как H3, H2+ повышены на 2
-    assert_heading_level(result, "API Reference", 3)     # H1→H3 (цепочка, сохранен)
-    assert_heading_level(result, "User Guide", 3)        # H1→H3 (цепочка, сохранен)
-    assert_heading_level(result, "Authentication", 4)    # H2→H4 (повышен на 2)
-    
-    # После черты: изолированный плейсхолдер, контекст сброшен
-    # strip_h1=false (нет родительского заголовка), max_heading_level=1
-    assert_heading_level(result, "Main Project", 1)      # H1→H1 (корневой)
-    assert_heading_level(result, "Features", 2)          # H2→H2 (корневой)
+
+    # Before rule: chain of placeholders under H2
+    # strip_h1=FALSE (chain), max_heading_level=3
+    # H1 headings preserved as H3, H2+ increased by 2
+    assert_heading_level(result, "API Reference", 3)     # H1→H3 (chain, preserved)
+    assert_heading_level(result, "User Guide", 3)        # H1→H3 (chain, preserved)
+    assert_heading_level(result, "Authentication", 4)    # H2→H4 (increased by 2)
+
+    # After rule: isolated placeholder, context reset
+    # strip_h1=false (no parent heading), max_heading_level=1
+    assert_heading_level(result, "Main Project", 1)      # H1→H1 (root)
+    assert_heading_level(result, "Features", 2)          # H2→H2 (root)
 
 
 def test_chain_before_and_after_horizontal_rule(md_project):
     """
-    Тест цепочек плейсхолдеров до и после горизонтальной черты.
+    Test placeholder chains before and after horizontal rule.
     """
     root = md_project
-    
+
     create_template(root, "chains-separated", """# Main Document
 
 ## Before Rule Section
@@ -178,34 +178,34 @@ ${md:docs/guide}
 
 ---
 
-## After Rule Section  
+## After Rule Section
 ${md:docs/changelog}
 ${md:README}
 """)
-    
+
     result = render_template(root, "ctx:chains-separated")
-    
-    # До горизонтальной черты: цепочка под H2
-    # strip_h1=FALSE (цепочка), max_heading_level=3
-    # H1 заголовки сохраняются как H3, H2+ повышены на 2
-    assert_heading_level(result, "API Reference", 3)     # H1→H3 (цепочка, сохранен)
-    assert_heading_level(result, "User Guide", 3)        # H1→H3 (цепочка, сохранен)
-    
-    # После горизонтальной черты: новая цепочка под H2 (но с новым контекстом)
-    # strip_h1=FALSE (цепочка), max_heading_level=3  
-    # changelog.md не имеет H1, README.md имеет H1 и он сохраняется
-    assert_heading_level(result, "v1.0.0", 3)           # H2→H3 (changelog без H1, повышен на 1)
-    assert_heading_level(result, "Main Project", 3)      # H1→H3 (цепочка, сохранен)
+
+    # Before horizontal rule: chain under H2
+    # strip_h1=FALSE (chain), max_heading_level=3
+    # H1 headings preserved as H3, H2+ increased by 2
+    assert_heading_level(result, "API Reference", 3)     # H1→H3 (chain, preserved)
+    assert_heading_level(result, "User Guide", 3)        # H1→H3 (chain, preserved)
+
+    # After horizontal rule: new chain under H2 (but with new context)
+    # strip_h1=FALSE (chain), max_heading_level=3
+    # changelog.md has no H1, README.md has H1 and it's preserved
+    assert_heading_level(result, "v1.0.0", 3)           # H2→H3 (changelog without H1, increased by 1)
+    assert_heading_level(result, "Main Project", 3)      # H1→H3 (chain, preserved)
 
 
-# ===== Тесты взаимодействия с плейсхолдерами в заголовках =====
+# ===== Tests for interaction with inline placeholders =====
 
 def test_horizontal_rule_with_placeholder_in_heading(md_project):
     """
-    Тест горизонтальной черты в сочетании с плейсхолдерами внутри заголовков.
+    Test horizontal rule in combination with placeholders inside headings.
     """
     root = md_project
-    
+
     create_template(root, "rule-inline-heading", """# Project Documentation
 
 ## Normal Section
@@ -220,30 +220,30 @@ Some additional content.
 ## Regular Section Again
 ${md:README}
 """)
-    
+
     result = render_template(root, "ctx:rule-inline-heading")
-    
-    # До черты: обычный плейсхолдер под H2
-    assert_heading_not_present(result, "API Reference")  # H1 удален (разделен)
+
+    # Before rule: normal placeholder under H2
+    assert_heading_not_present(result, "API Reference")  # H1 removed (separated)
     assert_heading_level(result, "Authentication", 3)    # H2→H3
-    
-    # После черты: плейсхолдер в заголовке H2
-    assert_heading_level(result, "User Guide", 2)        # H1 заменил содержимое H2
-    assert_heading_level(result, "Installation", 3)      # H2→H3 (под inline заголовком)
-    
-    # Еще один плейсхолдер после inline заголовка
-    assert_heading_not_present(result, "Main Project")   # H1 удален (разделен)
+
+    # After rule: placeholder in H2 heading
+    assert_heading_level(result, "User Guide", 2)        # H1 replaced H2 content
+    assert_heading_level(result, "Installation", 3)      # H2→H3 (under inline heading)
+
+    # Another placeholder after inline heading
+    assert_heading_not_present(result, "Main Project")   # H1 removed (separated)
     assert_heading_level(result, "Features", 3)          # H2→H3
 
 
-# ===== Тесты edge cases =====
+# ===== Edge case tests =====
 
 def test_horizontal_rule_at_document_start(md_project):
     """
-    Тест горизонтальной черты в начале документа.
+    Test horizontal rule at document start.
     """
     root = md_project
-    
+
     create_template(root, "rule-at-start", """---
 
 ${md:README}
@@ -251,24 +251,24 @@ ${md:README}
 ## Additional Section
 ${md:docs/api}
 """)
-    
+
     result = render_template(root, "ctx:rule-at-start")
-    
-    # README в самом начале после черты: корневой уровень
+
+    # README at the very beginning after rule: root level
     assert_heading_level(result, "Main Project", 1)      # H1→H1
     assert_heading_level(result, "Features", 2)          # H2→H2
-    
-    # api.md под H2: разделен заголовком
-    assert_heading_not_present(result, "API Reference")  # H1 удален
+
+    # api.md under H2: separated by heading
+    assert_heading_not_present(result, "API Reference")  # H1 removed
     assert_heading_level(result, "Authentication", 3)    # H2→H3
 
 
 def test_horizontal_rule_at_document_end(md_project):
     """
-    Тест горизонтальной черты в конце документа.
+    Test horizontal rule at document end.
     """
     root = md_project
-    
+
     create_template(root, "rule-at-end", """# Documentation
 
 ## Main Section
@@ -277,22 +277,22 @@ ${md:docs/guide}
 
 ---
 """)
-    
+
     result = render_template(root, "ctx:rule-at-end")
-    
-    # Цепочка плейсхолдеров до черты должна работать нормально
-    assert_heading_level(result, "API Reference", 3)     # H1→H3 (цепочка)
-    assert_heading_level(result, "User Guide", 3)        # H1→H3 (цепочка)
+
+    # Chain of placeholders before rule should work normally
+    assert_heading_level(result, "API Reference", 3)     # H1→H3 (chain)
+    assert_heading_level(result, "User Guide", 3)        # H1→H3 (chain)
     assert_heading_level(result, "Authentication", 4)    # H2→H4
     assert_heading_level(result, "Installation", 4)      # H2→H4
 
 
 def test_horizontal_rule_inside_fenced_block_ignored(md_project):
     """
-    Тест что горизонтальные черты внутри fenced-блоков игнорируются.
+    Test that horizontal rules inside fenced blocks are ignored.
     """
     root = md_project
-    
+
     create_template(root, "rule-in-fenced", """# Documentation
 
 ## Code Example
@@ -313,73 +313,73 @@ ${md:docs/guide}
 
 ${md:README}
 """)
-    
+
     result = render_template(root, "ctx:rule-in-fenced")
-    
-    # Черта в fenced-блоке не должна влиять на анализ
-    # api.md и guide.md должны образовывать цепочку под H2
-    # strip_h1=FALSE (цепочка), max_heading_level=3
-    # H1 заголовки сохраняются как H3, H2+ повышены на 2
-    assert_heading_level(result, "API Reference", 3)     # H1→H3 (цепочка, сохранен)
-    assert_heading_level(result, "User Guide", 3)        # H1→H3 (цепочка, сохранен)
-    
-    # README после реальной черты: сброшенный контекст
-    # strip_h1=false (нет родительского заголовка), max_heading_level=1
-    assert_heading_level(result, "Main Project", 1)      # H1→H1 (корневой)
-    assert_heading_level(result, "Features", 2)          # H2→H2 (корневой)
+
+    # Rule in fenced block should not affect analysis
+    # api.md and guide.md should form chain under H2
+    # strip_h1=FALSE (chain), max_heading_level=3
+    # H1 headings preserved as H3, H2+ increased by 2
+    assert_heading_level(result, "API Reference", 3)     # H1→H3 (chain, preserved)
+    assert_heading_level(result, "User Guide", 3)        # H1→H3 (chain, preserved)
+
+    # README after real rule: reset context
+    # strip_h1=false (no parent heading), max_heading_level=1
+    assert_heading_level(result, "Main Project", 1)      # H1→H1 (root)
+    assert_heading_level(result, "Features", 2)          # H2→H2 (root)
 
 
-# ===== Тесты совместимости с существующей логикой =====
+# ===== Tests for backward compatibility =====
 
 def test_horizontal_rule_preserves_existing_logic_for_regular_cases(md_project):
     """
-    Тест что добавление поддержки горизонтальных черт не ломает существующую логику.
-    
-    Шаблоны без горизонтальных черт должны работать как раньше.
+    Test that adding horizontal rule support doesn't break existing logic.
+
+    Templates without horizontal rules should work as before.
     """
     root = md_project
-    
-    # Случай 1: разделенные заголовками (должен быть strip_h1=true)
+
+    # Case 1: separated by headings (should be strip_h1=true)
     create_template(root, "backward-compat-separated", """# Documentation
 
 ## API Section
 ${md:docs/api}
 
-## Guide Section  
+## Guide Section
 ${md:docs/guide}
 """)
-    
+
     separated_result = render_template(root, "ctx:backward-compat-separated")
-    
-    # Плейсхолдеры разделены → strip_h1=true  
+
+    # Placeholders separated → strip_h1=true
     assert_heading_not_present(separated_result, "API Reference")
     assert_heading_not_present(separated_result, "User Guide")
     assert_heading_level(separated_result, "Authentication", 3)
     assert_heading_level(separated_result, "Installation", 3)
-    
-    # Случай 2: непрерывная цепочка (должен быть strip_h1=false)
+
+    # Case 2: continuous chain (should be strip_h1=false)
     create_template(root, "backward-compat-chain", """# Documentation
 
 ## Main Section
 ${md:docs/api}
 ${md:docs/guide}
 """)
-    
+
     chain_result = render_template(root, "ctx:backward-compat-chain")
-    
-    # Плейсхолдеры образуют цепочку → strip_h1=false
-    assert_heading_level(chain_result, "API Reference", 3)    # H1→H3 (сохранен)
-    assert_heading_level(chain_result, "User Guide", 3)       # H1→H3 (сохранен) 
+
+    # Placeholders form chain → strip_h1=false
+    assert_heading_level(chain_result, "API Reference", 3)    # H1→H3 (preserved)
+    assert_heading_level(chain_result, "User Guide", 3)       # H1→H3 (preserved)
     assert_heading_level(chain_result, "Authentication", 4)   # H2→H4
     assert_heading_level(chain_result, "Installation", 4)     # H2→H4
 
 
 def test_explicit_parameters_still_override_horizontal_rule_logic(md_project):
     """
-    Тест что явные параметры всё еще переопределяют логику с горизонтальными чертами.
+    Test that explicit parameters still override horizontal rule logic.
     """
     root = md_project
-    
+
     create_template(root, "explicit-override-with-rule", """# Documentation
 
 ## Section A
@@ -389,13 +389,13 @@ ${md:docs/api}
 
 ${md:README, level:3, strip_h1:true}
 """)
-    
+
     result = render_template(root, "ctx:explicit-override-with-rule")
-    
-    # До черты: обычная логика
-    assert_heading_not_present(result, "API Reference")  # H1 удален (разделен)
+
+    # Before rule: normal logic
+    assert_heading_not_present(result, "API Reference")  # H1 removed (separated)
     assert_heading_level(result, "Authentication", 3)    # H2→H3
-    
-    # После черты: явные параметры переопределяют логику сброса контекста
-    assert_heading_not_present(result, "Main Project")   # strip_h1:true форсирован
-    assert_heading_level(result, "Features", 3)          # level:3 форсирован (H2→H3)
+
+    # After rule: explicit parameters override context reset logic
+    assert_heading_not_present(result, "Main Project")   # strip_h1:true forced
+    assert_heading_level(result, "Features", 3)          # level:3 forced (H2→H3)

@@ -5,57 +5,57 @@ import pytest
 from tests.infrastructure import lctx_md
 
 
-# Помощник: проверяем только ожидаемые поля, не требуя точного совпадения всех ключей.
+# Helper: verify only expected fields without requiring exact match of all keys.
 def assert_meta_subset(meta: dict, expected_subset: dict):
     for k, v in expected_subset.items():
         assert meta.get(k) == v, f"meta[{k!r}] = {meta.get(k)!r}, expected {v!r}"
 
 def make_adapter(max_lvl, strip_h1):
     """
-    Новый способ конфигурирования: через bind(raw_cfg).
-    Передаём сырой dict, поля совпадают с датаклассом MarkdownCfg.
+    New configuration method: via bind(raw_cfg).
+    Pass raw dict; fields match MarkdownCfg dataclass.
     """
     from .conftest import adapter
     raw_cfg = {"max_heading_level": max_lvl, "strip_h1": strip_h1}
     return adapter(raw_cfg)
 
 @pytest.mark.parametrize("text, max_lvl, strip_h1, group_size, expected, expected_meta", [
-    # 1) single-file + max_heading_level=3: убираем H1, сдвигаем H2→H3, H3→H4
+    # 1) single-file + max_heading_level=3: remove H1, shift H2→H3, H3→H4
     (
         "# Title\n## Subtitle\n### Subsubtitle",
         3, True, 1,
         "<!-- FILE: test.md -->\n### Subtitle\n#### Subsubtitle",
         {"md.removed_h1": 1, "md.shifted": True, "md.file_label_inserted": True},
     ),
-    # 2) single-file + max_heading_level=2: убираем H1, H2→H2, H3→H3 (shift=0)
+    # 2) single-file + max_heading_level=2: remove H1, H2→H2, H3→H3 (shift=0)
     (
         "# A\n## B\n### C",
         2, True, 1,
         "<!-- FILE: test.md -->\n## B\n### C",
         {"md.removed_h1": 1, "md.shifted": False, "md.file_label_inserted": True},
     ),
-    # 3) strip_h1=True всегда удаляет H1, затем сдвиг: ## Y → ### Y
+    # 3) strip_h1=True always removes H1, then shift: ## Y → ### Y
     (
         "# X\n## Y\n",
         3, True, 2,
         "<!-- FILE: test.md -->\n### Y",
         {"md.removed_h1": 1, "md.shifted": True, "md.file_label_inserted": True},
     ),
-    # 4) strip_h1=False — только сдвиг (min_lvl=1 → shift=2): H1→###, H2→####
+    # 4) strip_h1=False — only shift (min_lvl=1 → shift=2): H1→###, H2→####
     (
         "# X\n## Y\n",
         3, False, 2,
         "### X\n<!-- FILE: test.md -->\n#### Y",
         {"md.removed_h1": 0, "md.shifted": True, "md.file_label_inserted": True},
     ),
-    # 6) max_heading_level=None, strip_h1=False — не трогаем
+    # 6) max_heading_level=None, strip_h1=False — no changes
     (
         "# Z\n## Q",
         None, False, 1,
         "# Z\n<!-- FILE: test.md -->\n## Q",
         {"md.removed_h1": 0, "md.shifted": False, "md.file_label_inserted": True},
     ),
-    # 7) нет заголовков — возвращаем как есть
+    # 7) no headings — return as is
     (
         "Just some text\n- list item\n",
         2, True, 1,
@@ -66,41 +66,41 @@ def make_adapter(max_lvl, strip_h1):
 def test_header_normalization(text, max_lvl, strip_h1, group_size, expected, expected_meta):
     adapter = make_adapter(max_lvl, strip_h1)
     out, meta = adapter.process(lctx_md(text, group_size))
-    # сравниваем линии напрямую
+    # compare lines directly
     assert out == expected
-    # и метаданные тоже
+    # and metadata too
     assert_meta_subset(meta, expected_meta)
 
 def test_only_strips_single_h1_line_when_alone():
-    # если только H1 и никаких подзаголовков – убираем его, получаем метку файла
+    # if only H1 and no subheadings – remove it, get file label
     text = "# Lone Title\n"
     adapter = make_adapter(3, True)
     out, meta = adapter.process(lctx_md(raw_text=text))
     assert out == "<!-- FILE: test.md -->"
-    # В этом граничном кейсе min_lvl отсутствует → shifted остаётся False,
-    # но removed_h1 обязательно должен быть 1.
+    # In this edge case min_lvl is absent → shifted remains False,
+    # but removed_h1 must be 1.
     assert_meta_subset(meta, {"md.removed_h1": 1, "md.shifted": False, "md.file_label_inserted": True})
 
 def test_complex_markdown_preserves_non_header_content():
     text = "# T\n## A\nPara line\n### B\n- item\n"
     adapter = make_adapter(2, True)
-    # strip_h1=True → удаляет # T, shift = 2-2 = 0
+    # strip_h1=True → removes # T, shift = 2-2 = 0
     out, meta = adapter.process(lctx_md(raw_text=text))
     lines = out.splitlines()
-    # первая строка должна быть метка файла
+    # first line should be file label
     assert lines[0] == "<!-- FILE: test.md -->"
-    # вторая строка должна быть "## A"
+    # second line should be "## A"
     assert lines[1] == "## A"
-    # следующая — "Para line"
+    # next is "Para line"
     assert "Para line" in lines
-    # а потом "### B"
+    # then "### B"
     assert any(re.match(r"^###\s+B", ln) for ln in lines)
-    # метаданные: H1 снят, сдвига нет (но shifted True, т.к. флаг трактуется как «была нормализация»)
+    # metadata: H1 removed, no shift (but shifted True because flag means 'normalization occurred')
     assert_meta_subset(meta, {"md.removed_h1": 1, "md.shifted": False, "md.file_label_inserted": True})
 
 def test_code_block_comments_not_counted_as_headings():
-    # В Markdown-статье есть H1, затем fenced-код с комментарием,
-    # а после — подзаголовок.
+    # Markdown article has H1, then fenced code with comment,
+    # then a subheading.
     text = """\
 # Article Title
 
@@ -114,20 +114,20 @@ print("hello")
 ## Next Section
 
 """
-    # Убираем H1, max_heading_level=2 → Next Section остаётся на уровне 2,
-    # а комментарий в коде не трогаем
+    # Remove H1, max_heading_level=2 → Next Section stays at level 2,
+    # code comment is not touched
     adapter = make_adapter(2, True)
     out, meta = adapter.process(lctx_md(raw_text=text))
     lines = out.splitlines()
 
 
-    # H1 удалён
+    # H1 removed
     assert not any(ln.startswith("# Article Title") for ln in lines)
-    # Комментарий в коде не превращается в H2 или удаляется
+    # Code comment is not converted to H2 or deleted
     assert "# this is a code comment" in lines, "code comment was mangled"
-    # Следующий заголовок остаётся именно "## Next Section"
+    # Next heading stays as "## Next Section"
     assert any(ln == "## Next Section" for ln in lines)
-    # метаданные: H1 снят; сдвиг уровней = 0, но считаем «нормализация была»
+    # metadata: H1 removed; level shift = 0, but consider 'normalization occurred'
     assert_meta_subset(meta, {"md.removed_h1": 1, "md.shifted": False})
 
 

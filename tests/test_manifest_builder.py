@@ -29,14 +29,14 @@ def _write_sections_yaml(tmp: Path, text: str) -> Path:
 
 
 def test_basic_section_manifest(tmp_path: Path):
-    """Тестирует базовую функциональность build_section_manifest."""
-    
-    # Создаем файловую структуру
+    """Tests basic functionality of build_section_manifest."""
+
+    # Create file structure
     _write(tmp_path, "src/main.py", "print('hello')")
     _write(tmp_path, "src/utils.py", "def helper(): pass")
     _write(tmp_path, "tests/test_main.py", "def test(): pass")
-    
-    # Создаем конфигурацию секции
+
+    # Create section configuration
     _write_sections_yaml(tmp_path, """
 py-files:
   extensions: [".py"]
@@ -46,14 +46,14 @@ py-files:
       - "src/**"
       - "tests/**"
 """)
-    
-    # Создаем контекст выполнения
+
+    # Create execution context
     tool_ver = "0.3.0"
     cache = Cache(tmp_path, enabled=None, fresh=False, tool_version=tool_ver)
     vcs = NullVcs()
     tokenizer = TokenService(tmp_path, "tiktoken", "cl100k_base", cache=cache)
     adaptive_loader = AdaptiveConfigLoader(tmp_path)
-    
+
     run_ctx = RunContext(
         root=tmp_path,
         options=RunOptions(),
@@ -64,21 +64,21 @@ py-files:
         mode_options=ModeOptions(),
         active_tags=set()
     )
-    
-    # Создаем контекст шаблона
+
+    # Create template context
     template_ctx = TemplateContext(run_ctx)
-    
-    # Создаем ссылку на секцию
+
+    # Create section reference
     section_ref = SectionRef(
         name="py-files",
         scope_rel="",
         scope_dir=tmp_path
     )
-    
-    # Загружаем конфигурацию и строим манифест
+
+    # Load configuration and build manifest
     config = load_config(tmp_path)
     section_cfg = config.sections.get(section_ref.name)
-    
+
     manifest = build_section_manifest(
         section_ref=section_ref,
         section_config=section_cfg,
@@ -87,27 +87,27 @@ py-files:
         vcs=vcs,
         vcs_mode="all"
     )
-    
-    # Проверяем результат
+
+    # Check result
     assert manifest.ref == section_ref
     assert len(manifest.files) == 3
-    
-    # Проверяем что все файлы правильно включены
+
+    # Check that all files are properly included
     file_paths = {f.rel_path for f in manifest.files}
     assert "src/main.py" in file_paths
-    assert "src/utils.py" in file_paths  
+    assert "src/utils.py" in file_paths
     assert "tests/test_main.py" in file_paths
 
 
 def test_conditional_filters(tmp_path: Path):
-    """Тестирует работу условных фильтров."""
-    
-    # Создаем файловую структуру
+    """Tests conditional filters functionality."""
+
+    # Create file structure
     _write(tmp_path, "src/main.py", "print('hello')")
     _write(tmp_path, "src/test_main.py", "def test(): pass")
     _write(tmp_path, "docs/readme.md", "# README")
-    
-    # Создаем конфигурацию с условными фильтрами
+
+    # Create configuration with conditional filters
     _write_sections_yaml(tmp_path, """
 all-files:
   extensions: [".py", ".md"]
@@ -124,16 +124,16 @@ all-files:
         block:
           - "**/*test*.py"
 """)
-    
-    # Тест 1: без тега tests - test файлы должны быть заблокированы
+
+    # Test 1: without tests tag - test files should be blocked
     run_ctx = _create_run_context(tmp_path, active_tags=set())
     template_ctx = TemplateContext(run_ctx)
-    
+
     section_ref = SectionRef(name="all-files", scope_rel="", scope_dir=tmp_path)
-    
+
     config = load_config(tmp_path)
     section_cfg = config.sections.get(section_ref.name)
-    
+
     manifest = build_section_manifest(
         section_ref=section_ref,
         section_config=section_cfg,
@@ -142,19 +142,19 @@ all-files:
         vcs=NullVcs(),
         vcs_mode="all"
     )
-    
+
     file_paths = {f.rel_path for f in manifest.files}
     assert "src/main.py" in file_paths
-    assert "src/test_main.py" not in file_paths  # Заблокирован условным фильтром
+    assert "src/test_main.py" not in file_paths  # Blocked by conditional filter
     assert "docs/readme.md" in file_paths
-    
-    # Тест 2: с тегом tests - test файлы должны быть включены
+
+    # Test 2: with tests tag - test files should be included
     run_ctx = _create_run_context(tmp_path, active_tags={"tests"})
     template_ctx = TemplateContext(run_ctx)
-    
+
     config = load_config(tmp_path)
     section_cfg = config.sections.get(section_ref.name)
-    
+
     manifest = build_section_manifest(
         section_ref=section_ref,
         section_config=section_cfg,
@@ -163,15 +163,15 @@ all-files:
         vcs=NullVcs(),
         vcs_mode="all"
     )
-    
+
     file_paths = {f.rel_path for f in manifest.files}
     assert "src/main.py" in file_paths
-    assert "src/test_main.py" in file_paths  # Разрешен условным фильтром
+    assert "src/test_main.py" in file_paths  # Allowed by conditional filter
     assert "docs/readme.md" in file_paths
 
 
 def _create_run_context(root: Path, active_tags: set | None = None) -> RunContext:
-    """Вспомогательная функция для создания RunContext."""
+    """Helper function to create RunContext."""
     if active_tags is None:
         active_tags = set()
     

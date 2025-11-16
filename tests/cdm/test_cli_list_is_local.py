@@ -7,19 +7,19 @@ from tests.infrastructure import run_cli, jload
 
 def test_list_commands_are_local_to_self(monorepo: Path):
     """
-    list contexts/sections должны смотреть только на @self (корневой lg-cfg),
-    не поднимать child'ов.
+    list contexts/sections should only look at @self (root lg-cfg),
+    not pick up child-scopes.
     """
     # contexts
     cp = run_cli(monorepo, "list", "contexts")
     assert cp.returncode == 0, cp.stderr
     data = jload(cp.stdout)
-    # В корне у нас только 'a' и `x`
+    # At root we only have 'a' and `x`
     assert data["contexts"] == ["a", "x"]
 
     # sections
     cp = run_cli(monorepo, "list", "sections")
     assert cp.returncode == 0, cp.stderr
     data = jload(cp.stdout)
-    # В корневом sections.yaml у фикстуры только 'root-md'
+    # In root sections.yaml the fixture only has 'root-md'
     assert data["sections"] == ["root-md"]

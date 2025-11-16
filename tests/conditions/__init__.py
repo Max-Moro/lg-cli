@@ -1,1 +1,1 @@
-# Тесты для системы условий
+# Tests for the conditions system

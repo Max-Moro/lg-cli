@@ -1,6 +1,6 @@
 """
-Утилиты для golden-тестов языковых адаптеров.
-Предоставляет унифицированную работу с эталонными файлами.
+Utilities for golden tests of language adapters.
+Provides unified work with golden reference files.
 """
 
 import os
@@ -12,13 +12,13 @@ import pytest
 
 def _get_language_extension(language: str) -> str:
     """
-    Возвращает языковое расширение файла для заданного языка.
+    Returns the file extension for a given language.
 
     Args:
-        language: Название языка ("python", "typescript", etc.)
+        language: Language name ("python", "typescript", etc.)
 
     Returns:
-        str: Расширение файла с точкой (".py", ".ts", etc.)
+        str: File extension with a dot (".py", ".ts", etc.)
     """
     extension_map = {
         "python": ".py",
@@ -60,35 +60,35 @@ def assert_golden_match(
     update_golden: Optional[bool] = None
 ) -> None:
     """
-    Универсальная функция для сравнения результатов с golden-файлами.
+    Generic function for comparing results with golden files.
 
     Args:
-        result: Фактический результат для сравнения
-        optimization_type: Тип оптимизации ("function_bodies", "complex", "comments", etc.)
-        golden_name: Имя golden-файла (без расширения)
-        language: Язык адаптера ("python", "typescript", etc.).
-                 Если не указан, определяется автоматически из контекста теста
-        update_golden: Флаг обновления golden-файла.
-                      Если None, берется из переменной окружения PYTEST_UPDATE_GOLDENS
+        result: Actual result to compare
+        optimization_type: Type of optimization ("function_bodies", "complex", "comments", etc.)
+        golden_name: Golden file name (without extension)
+        language: Adapter language ("python", "typescript", etc.).
+                 If not specified, detected automatically from test context
+        update_golden: Flag to update golden file.
+                      If None, taken from PYTEST_UPDATE_GOLDENS environment variable
 
     Raises:
-        AssertionError: Если результат не совпадает с эталоном
+        AssertionError: If result does not match the reference
     """
-    # Определяем язык автоматически, если не указан
+    # Detect language automatically if not specified
     if language is None:
         language = _detect_language_from_test_context()
 
-    # Определяем флаг обновления
+    # Determine update flag
     if update_golden is None:
         update_golden = os.getenv("PYTEST_UPDATE_GOLDENS") == "1"
 
-    # Формируем путь к golden-файлу
+    # Form path to golden file
     golden_file = _get_golden_file_path(language, optimization_type, golden_name)
 
-    # Нормализуем результат для стабильности
+    # Normalize result for stability
     normalized_result = _normalize_result(result)
 
-    # Логика сравнения/обновления
+    # Comparison/update logic
     if update_golden or not golden_file.exists():
         golden_file.parent.mkdir(parents=True, exist_ok=True)
         golden_file.write_text(normalized_result, encoding='utf-8')
@@ -97,46 +97,46 @@ def assert_golden_match(
 
     expected = golden_file.read_text(encoding='utf-8')
     if normalized_result != expected:
-        # Создаем информативное сообщение об ошибке
+        # Create informative error message
         diff_msg = _create_diff_message(expected, normalized_result, golden_file)
         raise AssertionError(diff_msg)
 
 
 def _detect_language_from_test_context() -> str:
     """
-    Определяет язык адаптера из контекста текущего теста.
-    Анализирует путь к тестовому файлу.
+    Detects adapter language from the current test context.
+    Analyzes the path to the test file.
     """
     import inspect
-    
-    # Получаем стек вызовов и ищем файл теста
+
+    # Get call stack and look for test file
     for frame_info in inspect.stack():
         frame_path = Path(frame_info.filename)
-        
-        # Ищем паттерн tests/adapters/<language>/test_*.py
-        if (frame_path.name.startswith("test_") and 
+
+        # Look for pattern tests/adapters/<language>/test_*.py
+        if (frame_path.name.startswith("test_") and
             frame_path.suffix == ".py" and
             "adapters" in frame_path.parts):
-            
+
             parts = frame_path.parts
             try:
                 adapters_idx = parts.index("adapters")
                 if adapters_idx + 1 < len(parts):
                     language = parts[adapters_idx + 1]
-                    # Проверяем что это действительно язык (не __pycache__ и т.д.)
+                    # Check that this is actually a language (not __pycache__ etc.)
                     if language not in ("__pycache__", "__init__.py") and not language.startswith("."):
                         return language
             except ValueError:
                 continue
-    
-    # Fallback: пытаемся извлечь из имени модуля теста
+
+    # Fallback: try to extract from test module name
     test_module = inspect.getmodule(inspect.stack()[2].frame)
     if test_module and test_module.__name__:
         module_parts = test_module.__name__.split('.')
         for i, part in enumerate(module_parts):
             if part == "adapters" and i + 1 < len(module_parts):
                 return module_parts[i + 1]
-    
+
     raise ValueError(
         "Cannot auto-detect language for golden test. "
         "Please specify language parameter explicitly, or ensure test is in "
@@ -146,67 +146,67 @@ def _detect_language_from_test_context() -> str:
 
 def _get_golden_file_path(language: str, optimization_type: str, golden_name: str) -> Path:
     """
-    Формирует путь к golden-файлу для заданного языка, типа оптимизации и имени.
-    
+    Forms path to golden file for given language, optimization type and name.
+
     Args:
-        language: Имя языка ("python", "typescript", etc.)
-        optimization_type: Тип оптимизации ("function_bodies", "complex", "comments", etc.)
-        golden_name: Имя файла без расширения
-        
+        language: Language name ("python", "typescript", etc.)
+        optimization_type: Type of optimization ("function_bodies", "complex", "comments", etc.)
+        golden_name: File name without extension
+
     Returns:
-        Path к golden-файлу
+        Path to golden file
     """
-    # Находим корень проекта (где есть pyproject.toml)
+    # Find project root (where pyproject.toml exists)
     current = Path(__file__)
     while current.parent != current:
         if (current / "pyproject.toml").exists():
             break
         current = current.parent
     else:
-        # Fallback: от текущего файла вверх
+        # Fallback: from current file upward
         current = Path(__file__).parent.parent.parent
-    
-    # Получаем языковое расширение
+
+    # Get language extension
     extension = _get_language_extension(language)
-    
+
     golden_dir = current / "tests" / "adapters" / language / "goldens" / optimization_type
     return golden_dir / f"{golden_name}{extension}"
 
 
 def _normalize_result(result: str) -> str:
     """
-    Нормализует результат для стабильного сравнения.
-    
+    Normalizes result for stable comparison.
+
     Args:
-        result: Исходный результат
-        
+        result: Original result
+
     Returns:
-        Нормализованный результат
+        Normalized result
     """
-    # Нормализуем переводы строк
+    # Normalize line endings
     normalized = result.replace('\r\n', '\n').replace('\r', '\n')
-    
-    # Убираем trailing whitespace в конце файла, но сохраняем структуру
+
+    # Remove trailing whitespace at end of file, but preserve structure
     normalized = normalized.rstrip() + '\n' if normalized.strip() else ''
-    
+
     return normalized
 
 
 def _create_diff_message(expected: str, actual: str, golden_file: Path) -> str:
     """
-    Создает информативное сообщение об отличиях для AssertionError.
-    
+    Creates informative message about differences for AssertionError.
+
     Args:
-        expected: Ожидаемое содержимое
-        actual: Фактическое содержимое  
-        golden_file: Путь к golden-файлу
-        
+        expected: Expected content
+        actual: Actual content
+        golden_file: Path to golden file
+
     Returns:
-        Форматированное сообщение с diff'ом
+        Formatted message with diff
     """
     import difflib
-    
-    # Создаем unified diff
+
+    # Create unified diff
     diff_lines = list(difflib.unified_diff(
         expected.splitlines(keepends=True),
         actual.splitlines(keepends=True),
@@ -214,12 +214,12 @@ def _create_diff_message(expected: str, actual: str, golden_file: Path) -> str:
         tofile="actual",
         lineterm=""
     ))
-    
-    if len(diff_lines) > 50:  # Ограничиваем очень длинные диффы
+
+    if len(diff_lines) > 50:  # Limit very long diffs
         diff_lines = diff_lines[:25] + ["\n... (diff truncated, showing first 25 lines) ...\n"] + diff_lines[-25:]
-    
+
     diff_text = "".join(diff_lines)
-    
+
     return (
         f"Golden test failed for {golden_file}\n"
         f"To update the golden file, run:\n"
@@ -230,18 +230,18 @@ def _create_diff_message(expected: str, actual: str, golden_file: Path) -> str:
 
 def get_golden_dir(language: str, optimization_type: Optional[str] = None) -> Path:
     """
-    Получает директорию для golden-файлов заданного языка и типа оптимизации.
-    Может быть полезно для внешних скриптов.
-    
+    Gets directory for golden files of given language and optimization type.
+    Can be useful for external scripts.
+
     Args:
-        language: Имя языка
-        optimization_type: Тип оптимизации. Если None, возвращает базовую директорию goldens
-        
+        language: Language name
+        optimization_type: Optimization type. If None, returns base goldens directory
+
     Returns:
-        Path к директории с golden-файлами
+        Path to directory with golden files
     """
     if optimization_type is None:
-        # Возвращаем базовую директорию goldens
+        # Return base goldens directory
         current = Path(__file__)
         while current.parent != current:
             if (current / "pyproject.toml").exists():
@@ -256,38 +256,38 @@ def get_golden_dir(language: str, optimization_type: Optional[str] = None) -> Pa
 
 def list_golden_files(language: Optional[str] = None, optimization_type: Optional[str] = None) -> list[Path]:
     """
-    Возвращает список всех golden-файлов для языка и/или типа оптимизации.
-    
+    Returns list of all golden files for language and/or optimization type.
+
     Args:
-        language: Имя языка или None для всех языков
-        optimization_type: Тип оптимизации или None для всех типов
-        
+        language: Language name or None for all languages
+        optimization_type: Optimization type or None for all types
+
     Returns:
-        Список путей к golden-файлам
+        List of paths to golden files
     """
     result = []
-    
+
     if language:
-        # Конкретный язык
+        # Specific language
         base_golden_dir = get_golden_dir(language)
         if not base_golden_dir.exists():
             return []
-            
+
         if optimization_type:
-            # Конкретный тип оптимизации
+            # Specific optimization type
             opt_dir = base_golden_dir / optimization_type
             if opt_dir.exists():
-                # Ищем файлы с языковыми расширениями
+                # Look for files with language extensions
                 extension = _get_language_extension(language)
                 result.extend(opt_dir.glob(f"*{extension}"))
         else:
-            # Все типы оптимизации для языка (исключаем do/)
+            # All optimization types for language (excluding do/)
             for opt_dir in base_golden_dir.iterdir():
                 if opt_dir.is_dir() and opt_dir.name != "do":
                     extension = _get_language_extension(language)
                     result.extend(opt_dir.glob(f"*{extension}"))
     else:
-        # Все языки
+        # All languages
         adapters_dir = Path(__file__).parent
         for lang_dir in adapters_dir.iterdir():
             if lang_dir.is_dir() and not lang_dir.name.startswith(("_", ".")):
@@ -295,98 +295,98 @@ def list_golden_files(language: Optional[str] = None, optimization_type: Optiona
                 goldens_dir = lang_dir / "goldens"
                 if goldens_dir.exists():
                     if optimization_type:
-                        # Конкретный тип оптимизации для всех языков
+                        # Specific optimization type for all languages
                         opt_dir = goldens_dir / optimization_type
                         if opt_dir.exists():
                             extension = _get_language_extension(lang_name)
                             result.extend(opt_dir.glob(f"*{extension}"))
                     else:
-                        # Все типы оптимизации для всех языков (исключаем do/)
+                        # All optimization types for all languages (excluding do/)
                         for opt_dir in goldens_dir.iterdir():
                             if opt_dir.is_dir() and opt_dir.name != "do":
                                 extension = _get_language_extension(lang_name)
                                 result.extend(opt_dir.glob(f"*{extension}"))
-    
+
     return result
 
 
 def load_sample_code(sample_name: str, language: Optional[str] = None) -> str:
     """
-    Загружает исходный код из файла в директории goldens/do/.
-    
+    Loads source code from file in goldens/do/ directory.
+
     Args:
-        sample_name: Имя файла с образцом (без расширения)
-        language: Язык адаптера. Если не указан, определяется автоматически
-        
+        sample_name: Sample file name (without extension)
+        language: Adapter language. If not specified, detected automatically
+
     Returns:
-        str: Содержимое файла с исходным кодом
-        
+        str: Content of source code file
+
     Raises:
-        FileNotFoundError: Если файл не найден
+        FileNotFoundError: If file not found
     """
     if language is None:
         language = _detect_language_from_test_context()
-    
+
     sample_file = _get_sample_file_path(language, sample_name)
-    
+
     if not sample_file.exists():
         raise FileNotFoundError(
             f"Sample file not found: {sample_file}\n"
             f"Expected location: tests/adapters/{language}/goldens/do/{sample_name}"
             f"{_get_language_extension(language)}"
         )
-    
+
     return sample_file.read_text(encoding='utf-8')
 
 
 def _get_sample_file_path(language: str, sample_name: str) -> Path:
     """
-    Формирует путь к файлу с исходным кодом для заданного языка и имени.
-    
+    Forms path to source code file for given language and name.
+
     Args:
-        language: Имя языка ("python", "typescript", etc.)
-        sample_name: Имя файла без расширения
-        
+        language: Language name ("python", "typescript", etc.)
+        sample_name: File name without extension
+
     Returns:
-        Path к файлу с исходным кодом
+        Path to source code file
     """
-    # Находим корень проекта (где есть pyproject.toml)
+    # Find project root (where pyproject.toml exists)
     current = Path(__file__)
     while current.parent != current:
         if (current / "pyproject.toml").exists():
             break
         current = current.parent
     else:
-        # Fallback: от текущего файла вверх
+        # Fallback: from current file upward
         current = Path(__file__).parent.parent.parent
-    
-    # Получаем языковое расширение
+
+    # Get language extension
     extension = _get_language_extension(language)
-    
+
     sample_dir = current / "tests" / "adapters" / language / "goldens" / "do"
     return sample_dir / f"{sample_name}{extension}"
 
 
 def list_sample_files(language: Optional[str] = None) -> list[Path]:
     """
-    Возвращает список всех файлов с исходными данными для языка или всех языков.
-    
+    Returns list of all source data files for language or all languages.
+
     Args:
-        language: Имя языка или None для всех языков
-        
+        language: Language name or None for all languages
+
     Returns:
-        Список путей к файлам с исходными данными
+        List of paths to source data files
     """
     result = []
-    
+
     if language:
-        # Конкретный язык
+        # Specific language
         sample_dir = _get_sample_file_path(language, "dummy").parent
         if sample_dir.exists():
             extension = _get_language_extension(language)
             result.extend(sample_dir.glob(f"*{extension}"))
     else:
-        # Все языки
+        # All languages
         adapters_dir = Path(__file__).parent
         for lang_dir in adapters_dir.iterdir():
             if lang_dir.is_dir() and not lang_dir.name.startswith(("_", ".")):
@@ -395,5 +395,5 @@ def list_sample_files(language: Optional[str] = None) -> list[Path]:
                 if sample_dir.exists():
                     extension = _get_language_extension(lang_name)
                     result.extend(sample_dir.glob(f"*{extension}"))
-    
+
     return result

@@ -5,10 +5,10 @@ Language-specific fixtures are now in their respective subpackages.
 
 import pytest
 
-# Импорт из унифицированной инфраструктуры
+# Imports from unified infrastructure
 from tests.infrastructure import lctx, lctx_py, lctx_ts, lctx_md  # noqa: F401
 
-# Импорт из унифицированной инфраструктуры
+# Imports from unified infrastructure
 from tests.infrastructure.adapter_utils import is_tree_sitter_available
 
 

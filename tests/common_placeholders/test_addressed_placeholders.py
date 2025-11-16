@@ -1,11 +1,11 @@
 """
-Тесты адресных плейсхолдеров секций.
+Tests for addressed section placeholders.
 
-Проверяет функциональность cross-scope ссылок:
-- ${@origin:section-name} - классический формат
-- ${@[origin]:section-name} - скобочный формат для origin с двоеточиями
-- Федеративные проекты и множественные скоупы
-- Обработка ошибок адресации
+Checks cross-scope reference functionality:
+- ${@origin:section-name} - classic format
+- ${@[origin]:section-name} - bracketed format for origins with colons
+- Federated projects and multiple scopes
+- Addressing error handling
 """
 
 from __future__ import annotations
@@ -20,10 +20,10 @@ from .conftest import (
 
 
 def test_simple_addressed_section_placeholder(federated_project):
-    """Тест простых адресных плейсхолдеров ${@origin:section}."""
+    """Test simple addressed placeholders ${@origin:section}."""
     root = federated_project
-    
-    # Создаем шаблон с адресными ссылками
+
+    # Create template with addressed links
     create_template(root, "addressed-test", """# Addressed Test
 
 ## Root Project Overview
@@ -38,26 +38,26 @@ ${@apps/web:web-src}
 
 ${@libs/core:core-lib}
 """)
-    
+
     result = render_template(root, "ctx:addressed-test")
-    
-    # Проверяем содержимое из корневой секции
+
+    # Check content from root section
     assert "Federated Project" in result
     assert "Project Overview" in result
-    
-    # Проверяем содержимое из apps/web
+
+    # Check content from apps/web
     assert "export const App" in result
     assert "export function webUtil" in result
-    
-    # Проверяем содержимое из libs/core
+
+    # Check content from libs/core
     assert "class Processor:" in result
 
 
 def test_bracketed_addressed_section_placeholder(federated_project):
-    """Тест скобочных адресных плейсхолдеров ${@[origin]:section}.""" 
+    """Test bracketed addressed placeholders ${@[origin]:section}."""
     root = federated_project
-    
-    # Создаем шаблон с скобочной адресацией
+
+    # Create template with bracketed addressing
     create_template(root, "bracketed-test", """# Bracketed Test
 
 ## Web App (bracketed syntax)
@@ -68,18 +68,18 @@ ${@[apps/web]:web-src}
 
 ${@[libs/core]:core-lib}
 """)
-    
+
     result = render_template(root, "ctx:bracketed-test")
-    
-    # Содержимое должно быть идентично обычной адресации
+
+    # Content should be identical to regular addressing
     assert "export const App" in result
     assert "class Processor:" in result
 
 
 def test_mixed_local_and_addressed_placeholders(federated_project):
-    """Тест смешанных локальных и адресных плейсхолдеров."""
+    """Test mixed local and addressed placeholders."""
     root = federated_project
-    
+
     create_template(root, "mixed-test", """# Mixed Test
 
 ## Local Root Sections
@@ -97,87 +97,87 @@ ${@apps/web:web-docs}
 ${@libs/core:core-lib}
 ${@libs/core:core-api}
 """)
-    
+
     result = render_template(root, "ctx:mixed-test")
-    
-    # Локальные секции
+
+    # Local sections
     assert "Federated Project" in result
-    
-    # Web секции
+
+    # Web sections
     assert "export const App" in result
     assert "Deployment instructions" in result
-    
-    # Core секции - обычная и API (с урезанными телами функций)
+
+    # Core sections - regular and API (with stripped function bodies)
     assert "class Processor:" in result
     assert "def get_client():" in result
 
 
 def test_addressed_placeholder_nonexistent_scope_error(federated_project):
-    """Тест ошибки при ссылке на несуществующий скоуп."""
+    """Test error when referencing a nonexistent scope."""
     root = federated_project
-    
+
     create_template(root, "bad-scope-test", """# Bad Scope Test
 
 ${@nonexistent/module:some-section}
 """)
-    
-    # Должна возникнуть ошибка о несуществующем скоупе
+
+    # Should raise error about nonexistent scope
     with pytest.raises(TemplateProcessingError, match=r"Child lg-cfg not found"):
         render_template(root, "ctx:bad-scope-test")
 
 
 def test_addressed_placeholder_nonexistent_section_error(federated_project):
-    """Тест ошибки при ссылке на несуществующую секцию в существующем скоупе."""
+    """Test error when referencing a nonexistent section in an existing scope."""
     root = federated_project
-    
+
     create_template(root, "bad-section-test", """# Bad Section Test
 
 ${@apps/web:nonexistent-section}
 """)
-    
-    # Должна возникнуть ошибка о несуществующей секции
+
+    # Should raise error about nonexistent section
     with pytest.raises(TemplateProcessingError, match=r"Section 'nonexistent-section' not found"):
         render_template(root, "ctx:bad-section-test")
 
 
 def test_addressed_placeholder_complex_paths(federated_project):
-    """Тест адресных плейсхолдеров с комплексными путями."""
+    """Test addressed placeholders with complex paths."""
     root = federated_project
-    
-    # Создаем вложенную структуру скоупов
+
+    # Create nested scope structure
     from .conftest import create_sections_yaml, write_source_file
-    
-    # Глубоко вложенный скоуп
+
+    # Deeply nested scope
     deep_sections = {
         "deep-section": {
             "extensions": [".py"],
             "filters": {
-                "mode": "allow", 
+                "mode": "allow",
                 "allow": ["/deep/**"]
             }
         }
     }
     create_sections_yaml(root / "libs" / "core" / "modules" / "auth", deep_sections)
-    
+
     write_source_file(root / "libs" / "core" / "modules" / "auth" / "deep" / "security.py",
                      "def authenticate(): pass", "python")
-    
+
     create_template(root, "complex-paths-test", """# Complex Paths Test
 
 ## Deep Auth Module
 
 ${@libs/core/modules/auth:deep-section}
 """)
-    
+
     result = render_template(root, "ctx:complex-paths-test")
-    
+
     assert "def authenticate(): pass" in result
 
 
 def test_multiple_addressed_placeholders_same_scope(federated_project):
-    """Тест множественных адресных плейсхолдеров из одного скоупа."""
+    """Test multiple addressed placeholders from the same scope."""
     root = federated_project
-    
+
     create_template(root, "multiple-same-scope-test", """# Multiple Same Scope Test
 
 ## Web Source Code
@@ -192,23 +192,23 @@ ${@apps/web:web-docs}
 
 ${@apps/web:web-src}
 """)
-    
+
     result = render_template(root, "ctx:multiple-same-scope-test")
-    
-    # Содержимое web-src должно появиться дважды
+
+    # Content of web-src should appear twice
     occurrences = result.count("export const App")
     assert occurrences == 2
-    
-    # Содержимое web-docs должно появиться один раз
+
+    # Content of web-docs should appear once
     occurrences = result.count("Deployment instructions")
     assert occurrences == 1
 
 
 def test_deeply_nested_federated_scopes(tmp_path):
     """
-    Тест глубокой вложенности федеративных скоупов (3+ уровня).
+    Test deep nesting of federated scopes (3+ levels).
 
-    Структура:
+    Structure:
     root/
       lg-cfg/
         root-ctx.ctx.md → ${ctx@level1:level1-ctx}
@@ -228,14 +228,14 @@ def test_deeply_nested_federated_scopes(tmp_path):
 
     root = tmp_path
 
-    # === Корневой уровень ===
+    # === Root level ===
     create_sections_yaml(root, {})
     create_template(root, "root-ctx", """# Root Context
 
 ${ctx@level1:level1-ctx}
 """)
 
-    # === Уровень 1 (level1/) ===
+    # === Level 1 (level1/) ===
     create_sections_yaml(root / "level1", {})
     create_template(root / "level1", "level1-tpl", "LEVEL1 TEMPLATE\n", "tpl")
     create_template(root / "level1", "level1-ctx", """# Level1 Context
@@ -245,7 +245,7 @@ ${tpl:level1-tpl}
 ${ctx@level2:level2-ctx}
 """)
 
-    # === Уровень 2 (level1/level2/) ===
+    # === Level 2 (level1/level2/) ===
     create_sections_yaml(root / "level1" / "level2", {})
     create_template(root / "level1" / "level2", "level2-tpl", "LEVEL2 TEMPLATE\n", "tpl")
     create_template(root / "level1" / "level2", "level2-ctx", """# Level2 Context
@@ -255,8 +255,8 @@ ${tpl:level2-tpl}
 ${md@level3:doc}
 """)
 
-    # === Уровень 3 (level1/level2/level3/) ===
-    # Создаем структуру для level3 внутри level1/level2
+    # === Level 3 (level1/level2/level3/) ===
+    # Create structure for level3 inside level1/level2
     level3_root = root / "level1" / "level2" / "level3"
     create_sections_yaml(level3_root, {})
     write(
@@ -264,52 +264,52 @@ ${md@level3:doc}
         "LEVEL3 DOCUMENT\n"
     )
 
-    # Рендерим корневой контекст
+    # Render root context
     result = render_template(root, "ctx:root-ctx")
 
-    # Проверяем, что все уровни правильно резолвились
-    assert "LEVEL1 TEMPLATE" in result, "Level1 template не найден"
-    assert "LEVEL2 TEMPLATE" in result, "Level2 template не найден"
-    assert "LEVEL3 DOCUMENT" in result, "Level3 document не найден"
+    # Check that all levels resolved correctly
+    assert "LEVEL1 TEMPLATE" in result, "Level1 template not found"
+    assert "LEVEL2 TEMPLATE" in result, "Level2 template not found"
+    assert "LEVEL3 DOCUMENT" in result, "Level3 document not found"
 
-    # Проверяем порядок (вложенность должна сохраняться)
+    # Check order (nesting should be preserved)
     level1_pos = result.find("LEVEL1 TEMPLATE")
     level2_pos = result.find("LEVEL2 TEMPLATE")
     level3_pos = result.find("LEVEL3 DOCUMENT")
 
     assert level1_pos < level2_pos < level3_pos, \
-        "Порядок вложенности нарушен"
+        "Nesting order violated"
 
 
 @pytest.mark.parametrize("origin,section,expected_content", [
     ("apps/web", "web-src", "export const App"),
-    ("apps/web", "web-docs", "Deployment instructions"), 
+    ("apps/web", "web-docs", "Deployment instructions"),
     ("libs/core", "core-lib", "class Processor:"),
     ("libs/core", "core-api", "def get_client():")
 ])
 def test_addressed_placeholder_parametrized(federated_project, origin, section, expected_content):
-    """Параметризованный тест различных адресных плейсхолдеров."""
+    """Parametrized test of various addressed placeholders."""
     root = federated_project
-    
+
     create_template(root, f"param-test-{origin.replace('/', '-')}-{section}", f"""# Param Test
 
 ${{@{origin}:{section}}}
 """)
-    
+
     result = render_template(root, f"ctx:param-test-{origin.replace('/', '-')}-{section}")
     assert expected_content in result
 
 
 def test_addressed_placeholder_deep_nesting(federated_project):
-    """Тест глубокой вложенности адресных ссылок."""
+    """Test deep nesting of addressed links."""
     root = federated_project
-    
-    # Создаем глубокую структуру модулей
+
+    # Create deep module structure
     from .conftest import create_sections_yaml, write_source_file
-    
-    # Четыре уровня вложенности
+
+    # Four levels of nesting
     deep_path = root / "libs" / "core" / "modules" / "data" / "processors" / "advanced"
-    
+
     deep_sections = {
         "advanced-processor": {
             "extensions": [".py"],
@@ -320,38 +320,38 @@ def test_addressed_placeholder_deep_nesting(federated_project):
         }
     }
     create_sections_yaml(deep_path, deep_sections)
-    
+
     write_source_file(deep_path / "advanced" / "ml.py",
                      "class MLProcessor: pass", "python")
-    
+
     create_template(root, "deep-nesting-test", """# Deep Nesting Test
 
 ${@libs/core/modules/data/processors/advanced:advanced-processor}
 """)
-    
+
     result = render_template(root, "ctx:deep-nesting-test")
-    
+
     assert "class MLProcessor: pass" in result
 
 
 def test_addressed_placeholder_case_sensitivity(federated_project):
-    """Тест чувствительности к регистру в адресных плейсхолдерах."""
+    """Test case sensitivity in addressed placeholders."""
     root = federated_project
-    
-    # Правильный регистр должен работать
+
+    # Correct case should work
     create_template(root, "case-correct-test", """# Case Test
 
 ${@apps/web:web-src}
 """)
-    
+
     result = render_template(root, "ctx:case-correct-test")
     assert "export const App" in result
-    
-    # Пути не чувствительны к регистру
+
+    # Paths are case-insensitive
     create_template(root, "case-error-test", """# Case Error Test
 
 ${@Apps/Web:web-src}
 """)
-    
+
     result = render_template(root, "ctx:case-error-test")
     assert "export const App" in result

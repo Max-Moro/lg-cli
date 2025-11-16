@@ -8,17 +8,17 @@ from lg.adapters.typescript import TypeScriptCfg
 from tests.infrastructure import lctx_ts, lctx  # noqa: F401
 from ..golden_utils import assert_golden_match, load_sample_code  # noqa: F401
 
-# Импорт из унифицированной инфраструктуры
+# Imports from unified infrastructure
 from tests.infrastructure.adapter_utils import make_typescript_adapter, make_typescript_adapter_real
 
 
-# Для обратной совместимости
+# For backward compatibility
 def make_adapter(cfg: TypeScriptCfg):
-    """TypeScript adapter с предустановленной заглушкой TokenService."""
+    """TypeScript adapter with preset TokenService stub."""
     return make_typescript_adapter(cfg)
 
 def make_adapter_real(cfg: TypeScriptCfg):
-    """Если тесты проверяют реальную математику по токенам."""
+    """If tests check real token mathematics."""
     return make_typescript_adapter_real(cfg)
 
 @pytest.fixture

@@ -1,7 +1,7 @@
 """
-Утилиты для работы с языковыми адаптерами в тестах.
+Utilities for working with language adapters in tests.
 
-Унифицирует создание адаптеров, проверку зависимостей и т.д.
+Unifies adapter creation, dependency checking, etc.
 """
 
 from __future__ import annotations
@@ -21,14 +21,14 @@ from .testing_utils import stub_tokenizer
 # ===== Python Adapter Utils =====
 
 def make_python_adapter(cfg: PythonCfg) -> PythonAdapter:
-    """Python adapter с предустановленной заглушкой TokenService."""
+    """Python adapter with a pre-configured TokenService stub."""
     adapter = PythonAdapter().bind(None, stub_tokenizer())
     adapter._cfg = cfg
     return adapter
 
 
 def make_python_adapter_real(cfg: PythonCfg) -> PythonAdapter:
-    """Если тесты проверяют реальную математику по токенам."""
+    """For tests that verify actual token mathematics."""
     adapter = PythonAdapter().bind(None, default_tokenizer())
     adapter._cfg = cfg
     return adapter
@@ -37,14 +37,14 @@ def make_python_adapter_real(cfg: PythonCfg) -> PythonAdapter:
 # ===== TypeScript Adapter Utils =====
 
 def make_typescript_adapter(cfg: TypeScriptCfg) -> TypeScriptAdapter:
-    """TypeScript adapter с предустановленной заглушкой TokenService."""
+    """TypeScript adapter with a pre-configured TokenService stub."""
     adapter = TypeScriptAdapter().bind(None, stub_tokenizer())
     adapter._cfg = cfg
     return adapter
 
 
 def make_typescript_adapter_real(cfg: TypeScriptCfg) -> TypeScriptAdapter:
-    """Если тесты проверяют реальную математику по токенам."""
+    """For tests that verify actual token mathematics."""
     adapter = TypeScriptAdapter().bind(None, default_tokenizer())
     adapter._cfg = cfg
     return adapter
@@ -53,7 +53,7 @@ def make_typescript_adapter_real(cfg: TypeScriptCfg) -> TypeScriptAdapter:
 # ===== Kotlin Adapter Utils =====
 
 def make_kotlin_adapter(cfg):
-    """Kotlin adapter с предустановленной заглушкой TokenService."""
+    """Kotlin adapter with a pre-configured TokenService stub."""
     # Import locally to avoid circular dependencies
     from lg.adapters.kotlin import KotlinAdapter
     adapter = KotlinAdapter().bind(None, stub_tokenizer())
@@ -62,7 +62,7 @@ def make_kotlin_adapter(cfg):
 
 
 def make_kotlin_adapter_real(cfg):
-    """Если тесты проверяют реальную математику по токенам."""
+    """For tests that verify actual token mathematics."""
     from lg.adapters.kotlin import KotlinAdapter
     adapter = KotlinAdapter().bind(None, default_tokenizer())
     adapter._cfg = cfg
@@ -72,7 +72,7 @@ def make_kotlin_adapter_real(cfg):
 # ===== Markdown Adapter Utils =====
 
 def make_markdown_adapter(raw_cfg: Dict[str, Any]) -> MarkdownAdapter:
-    """Markdown adapter с предустановленным TokenService."""
+    """Markdown adapter with pre-configured TokenService."""
     return MarkdownAdapter().bind(raw_cfg, default_tokenizer())
 
 
@@ -98,12 +98,12 @@ def skip_if_no_tree_sitter():
 
 # ===== Legacy compatibility =====
 
-# Для обратной совместимости с существующими тестами
+# For backward compatibility with existing tests
 def create_temp_file(tmp_path: Path, filename: str, content: str) -> Path:
     """
-    Создает временный файл с содержимым.
-    
-    Совместимость с adapters/conftest.py.
+    Creates a temporary file with content.
+
+    Compatibility with adapters/conftest.py.
     """
     from .file_utils import write
     return write(tmp_path / filename, content)

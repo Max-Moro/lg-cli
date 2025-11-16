@@ -9,10 +9,10 @@ from lg.types import RunOptions
 
 def test_run_report_end_to_end_with_cdm(monorepo: Path):
     """
-    Сквозной тест: run_report на ctx:a.
-      • sectionsUsed — канонические ключи с правильными кратностями
-      • totals — разумные инварианты
-      • files[] — содержит пути из обеих секций
+    End-to-end test: run_report on ctx:a.
+      • sectionsUsed — canonical keys with correct multiplicity
+      • totals — reasonable invariants
+      • files[] — contains paths from both sections
     """
     old = os.getcwd()
     os.chdir(monorepo)
@@ -21,29 +21,29 @@ def test_run_report_end_to_end_with_cdm(monorepo: Path):
     finally:
         os.chdir(old)
 
-    # Контекстный блок
+    # Context block
     assert result.context is not None
     assert result.context.templateName == "ctx:a"
-    # Канонические ключи секций и кратности
+    # Canonical section keys and multiplicity
     su = result.context.sectionsUsed
     assert su.get("sec@packages/svc-a:a") == 2
     assert su.get("sec@apps/web:web-api") == 1
 
-    # Тоталы
+    # Totals
     t = result.total
     assert t.tokensProcessed > 0
-    # Обработанный текст может быть больше исходного из-за плейсхолдеров
-    # Это нормальное поведение для language adapters с плейсхолдерами
-    assert t.tokensRaw > 0  # просто проверяем что есть исходные токены
+    # Processed text may be larger than original due to placeholders
+    # This is normal behavior for language adapters with placeholders
+    assert t.tokensRaw > 0  # just verify there are raw tokens
     assert t.renderedTokens is not None and t.renderedTokens >= 0
-    # Финальный документ не меньше пайплайнового
+    # Final document not smaller than pipeline
     assert result.context.finalRenderedTokens is not None
     assert result.context.finalRenderedTokens >= t.renderedTokens
-    # Template overhead — неотрицателен
+    # Template overhead — non-negative
     assert result.context.templateOverheadPct is not None
     assert result.context.templateOverheadPct >= 0.0
 
-    # Файлы — хотя бы один из svc-a и один из web
+    # Files — at least one from svc-a and one from web
     paths = [f.path for f in result.files]
     assert any(p.startswith("packages/svc-a/") for p in paths)
     assert any(p.startswith("apps/web/") for p in paths)

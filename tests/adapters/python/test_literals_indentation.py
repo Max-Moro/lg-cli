@@ -8,7 +8,7 @@ from tests.infrastructure import lctx_py
 
 
 def test_python_object_literal_indentation():
-    """Тест отступов в Python объектах/словарях."""
+    """Test indentation in Python objects/dictionaries."""
     code = '''class DataContainer:
     def __init__(self):
         # Large dictionary (candidate for trimming)
@@ -35,14 +35,14 @@ def test_python_object_literal_indentation():
         }'''
 
     cfg = PythonCfg()
-    cfg.literals.max_tokens = 10  # Очень маленький лимит для принудительного тримминга
+    cfg.literals.max_tokens = 10  # Very small limit for forced trimming
 
     adapter = make_adapter(cfg)
 
     context = lctx_py(code)
     result, _ = adapter.process(context)
 
-    # Проверяем, что отступы корректны
+    # Check that indentation is correct
     lines = result.split('\n')
     dict_start_line = None
     for i, line in enumerate(lines):
@@ -50,18 +50,18 @@ def test_python_object_literal_indentation():
             dict_start_line = i
             break
 
-    assert dict_start_line is not None, "Не найден словарь для тестирования"
+    assert dict_start_line is not None, "Dictionary for testing not found"
 
-    # Ищем строку с placeholder'ом
+    # Look for line with placeholder
     placeholder_line = None
     for i in range(dict_start_line + 1, len(lines)):
         if '"…": "…"' in lines[i]:
             placeholder_line = i
             break
 
-    assert placeholder_line is not None, "Не найден placeholder в результате"
+    assert placeholder_line is not None, "Placeholder not found in result"
 
-    # Проверяем, что отступ placeholder'а соответствует отступам других элементов
+    # Check that placeholder indentation matches other elements
     placeholder_indent = ""
     for char in lines[placeholder_line]:
         if char in ' \t':
@@ -69,12 +69,12 @@ def test_python_object_literal_indentation():
         else:
             break
 
-    # Проверяем, что отступ не пустой (должен быть как у других элементов)
-    assert len(placeholder_indent) > 0, f"Placeholder должен иметь отступ, но получили: '{lines[placeholder_line]}'"
+    # Check that indentation is not empty (should match other elements)
+    assert len(placeholder_indent) > 0, f"Placeholder should have indentation, but got: '{lines[placeholder_line]}'"
 
-    # Проверяем, что отступ соответствует отступам других элементов словаря
-    expected_indent = "            "  # 12 пробелов (базовый отступ + 4 для элементов)
-    assert placeholder_indent == expected_indent, f"Неправильный отступ placeholder'а: '{placeholder_indent}', ожидался: '{expected_indent}'"
+    # Check that indentation matches other dictionary elements
+    expected_indent = "            "  # 12 spaces (base + 4 for elements)
+    assert placeholder_indent == expected_indent, f"Wrong placeholder indentation: '{placeholder_indent}', expected: '{expected_indent}'"
 
 
 def test_array_indentation_preserved():

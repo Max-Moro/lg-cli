@@ -8,17 +8,17 @@ from lg.adapters.kotlin import KotlinCfg
 from tests.infrastructure import lctx, lctx_kt  # noqa: F401
 from ..golden_utils import assert_golden_match, load_sample_code  # noqa: F401
 
-# Импорт из унифицированной инфраструктуры
+# Imports from unified infrastructure
 from tests.infrastructure.adapter_utils import make_kotlin_adapter, make_kotlin_adapter_real
 
 
-# Для обратной совместимости
+# For backward compatibility
 def make_adapter(cfg: KotlinCfg):
-    """Kotlin adapter с предустановленной заглушкой TokenService."""
+    """Kotlin adapter with preset TokenService stub."""
     return make_kotlin_adapter(cfg)
 
 def make_adapter_real(cfg: KotlinCfg):
-    """Если тесты проверяют реальную математику по токенам."""
+    """If tests check real token mathematics."""
     return make_kotlin_adapter_real(cfg)
 
 @pytest.fixture

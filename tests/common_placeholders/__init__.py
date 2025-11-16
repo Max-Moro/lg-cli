@@ -1,18 +1,18 @@
 """
-Тесты для плейсхолдеров секций и шаблонов.
+Tests for section and template placeholders.
 
-Этот пакет содержит высокоуровневые тесты для основного функционала
-движка шаблонизации Listing Generator, проверяющие внешний контракт
-без зависимости от внутренней реализации.
+This package contains high-level tests for the main functionality
+of the Listing Generator template engine, testing the external contract
+without dependency on internal implementation.
 
-Структура тестов:
+Test structure:
 
-- test_basic_section_placeholders.py - базовые плейсхолдеры секций ${section}
-- test_addressed_placeholders.py - адресные плейсхолдеры ${@origin:section} 
-- test_template_placeholders.py - плейсхолдеры шаблонов ${tpl:name}
-- test_context_placeholders.py - плейсхолдеры контекстов ${ctx:name}
-- test_complex_scenarios.py - комплексные интеграционные сценарии
+- test_basic_section_placeholders.py - basic section placeholders ${section}
+- test_addressed_placeholders.py - addressed placeholders ${@origin:section}
+- test_template_placeholders.py - template placeholders ${tpl:name}
+- test_context_placeholders.py - context placeholders ${ctx:name}
+- test_complex_scenarios.py - complex integration scenarios
 
-Эти тесты предназначены для сохранения работоспособности функционала
-во время рефакторинга движка шаблонизации на модульную архитектуру.
+These tests are intended to ensure functionality remains intact
+during refactoring of the template engine to a modular architecture.
 """

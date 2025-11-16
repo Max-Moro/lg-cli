@@ -26,12 +26,12 @@ ok
         "max_heading_level": 2,
     }
     out, meta = adapter(cfg).process(lctx_md(raw_text=text))
-    # Раздел Installation должен исчезнуть и появиться placeholder
+    # Installation section should disappear and placeholder should appear
     assert "Installation" not in out
     assert "step 1" not in out
     assert "step 2" not in out
     assert "Omitted" in out or "Install removed" in out
-    # Keep остался
+    # Keep section remained
     assert "## Keep" in out
     assert int(meta.get("md.placeholders", 0)) >= 1
 
@@ -54,7 +54,7 @@ title: Doc
         "max_heading_level": None,
     }
     out, meta = adapter(cfg).process(lctx_md(raw_text=text))
-    # frontmatter исчез
+    # frontmatter disappeared
     assert out.startswith("# H1")
     assert meta.get("md.removed.frontmatter") is True
 

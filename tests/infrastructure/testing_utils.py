@@ -1,8 +1,7 @@
 """
-Утилиты для тестирования: стабы, моки и другие тестовые хелперы.
+Testing utilities: stubs, mocks and other test helpers.
 
-Унифицирует тестовые заглушки и утилиты, которые используются 
-в различных тестах.
+Unifies test stubs and utilities used in various tests.
 """
 
 from __future__ import annotations
@@ -14,16 +13,16 @@ from lg.stats import TokenService
 
 
 class TokenServiceStub(TokenService):
-    """Тестовый стаб TokenService с дефолтным энкодером."""
+    """Test stub TokenService with default encoder."""
 
     def is_economical(self, original: str, replacement: str, *, min_ratio: float, replacement_is_none: bool,
                       min_abs_savings_if_none: int) -> bool:
-        """Позволяет в тестах делать замену плейсхолдеров всегда."""
+        """Always allows placeholder replacement in tests."""
         return True
 
 
 def stub_tokenizer() -> TokenService:
-    """Быстрое создание сервиса токенизации без обращения к конфигу."""
+    """Quick creation of tokenization service without config access."""
     return TokenServiceStub(
         root=None,
         lib="tiktoken",
@@ -38,16 +37,16 @@ def lctx(
         file_label: str = None
 ) -> LightweightContext:
     """
-    Создает stub LightweightContext для тестов.
+    Creates a stub LightweightContext for tests.
 
     Args:
-        raw_text: Содержимое файла
-        filename: Имя файла
-        group_size: Размер группы
-        file_label: Метка файла для рендеринга
+        raw_text: File content
+        filename: File name
+        group_size: Group size
+        file_label: File label for rendering
 
     Returns:
-        LightweightContext для использования в тестах
+        LightweightContext for use in tests
     """
     test_path = Path(filename)
     if file_label is None:
@@ -61,22 +60,22 @@ def lctx(
 
 
 def lctx_py(raw_text: str = "# Test Python", group_size: int = 1) -> LightweightContext:
-    """Создает LightweightContext для Python файла."""
+    """Creates LightweightContext for a Python file."""
     return lctx(raw_text=raw_text, filename="test.py", group_size=group_size)
 
 
 def lctx_ts(raw_text: str = "// Test TypeScript", group_size: int = 1) -> LightweightContext:
-    """Создает LightweightContext для TypeScript файла.""" 
+    """Creates LightweightContext for a TypeScript file."""
     return lctx(raw_text=raw_text, filename="test.ts", group_size=group_size)
 
 
 def lctx_md(raw_text: str = "# Test Markdown", group_size: int = 1) -> LightweightContext:
-    """Создает LightweightContext для Markdown файла."""
+    """Creates LightweightContext for a Markdown file."""
     return lctx(raw_text=raw_text, filename="test.md", group_size=group_size)
 
 
 def lctx_kt(raw_text: str = "// Test Kotlin", group_size: int = 1) -> LightweightContext:
-    """Создает LightweightContext для Kotlin файла."""
+    """Creates LightweightContext for a Kotlin file."""
     return lctx(raw_text=raw_text, filename="test.kt", group_size=group_size)
 
 

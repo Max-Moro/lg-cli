@@ -1,5 +1,5 @@
 """
-Фикстуры для тестов task_placeholder.
+Fixtures for task_placeholder tests.
 """
 
 from pathlib import Path
@@ -12,29 +12,29 @@ from tests.infrastructure import write, create_basic_sections_yaml
 @pytest.fixture
 def task_project(tmp_path: Path):
     """
-    Минимальный проект с конфигурацией для тестирования task-плейсхолдеров.
+    Minimal project with configuration for testing task placeholders.
     """
     root = tmp_path
-    
-    # Создаем базовую конфигурацию секций
+
+    # Create basic sections configuration
     create_basic_sections_yaml(root)
-    
-    # Создаем простые файлы для секций
+
+    # Create simple files for sections
     write(root / "src" / "main.py", "def main():\n    pass\n")
     write(root / "docs" / "README.md", "# Project\n\nDocumentation here.\n")
-    
+
     return root
 
 
 @pytest.fixture
 def task_text_simple():
-    """Простой текст задачи для тестов."""
+    """Simple task text for tests."""
     return "Implement caching for API responses"
 
 
 @pytest.fixture
 def task_text_multiline():
-    """Многострочный текст задачи."""
+    """Multiline task text."""
     return """Refactoring tasks:
 - Extract common utilities
 - Add type hints
@@ -43,5 +43,5 @@ def task_text_multiline():
 
 @pytest.fixture
 def task_text_with_quotes():
-    """Текст задачи с кавычками для проверки экранирования."""
+    """Task text with quotes to check escaping."""
     return 'Fix "critical" bug in authentication'

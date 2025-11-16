@@ -5,7 +5,7 @@ from lg.engine import run_render
 from lg.types import RunOptions
 
 def _engine():
-    # корень default-allow, но блочим *.log
+    # root default-allow, but block *.log
     root = FilterNode(
         mode="block",
         block=["**/*.log"],
@@ -32,11 +32,11 @@ def test_secure_allow_only_py():
 
 def test_nested_allow_subtree_only_whitelist():
     """
-    Вложенные mode:allow работают как «жёсткий фильтр»: дочерний allow сужает родительский.
+    Nested mode:allow works as a 'strict filter': child allow narrows the parent.
     """
     root = FilterNode(
         mode="allow",
-        allow=["vscode-ext/"],  # разрешаем только поддерево vscode-ext/
+        allow=["vscode-ext/"],  # allow only vscode-ext/ subtree
         children={
             "vscode-ext": FilterNode(
                 mode="allow",
@@ -50,24 +50,24 @@ def test_nested_allow_subtree_only_whitelist():
     )
     eng = FilterEngine(root)
 
-    # ✅ разрешённые пути
+    # Allowed paths
     assert eng.includes("vscode-ext/src/extension.ts")
     assert eng.includes("vscode-ext/src/client/start.ts")
     assert eng.includes("vscode-ext/package.json")
     assert eng.includes("vscode-ext/tsconfig.json")
 
-    # ❌ не перечисленное в дочернем allow — запрещено
+    # Not listed in child allow - forbidden
     assert not eng.includes("vscode-ext/node_modules/lodash/index.js")
     assert not eng.includes("vscode-ext/README.md")
     assert not eng.includes("vscode-ext/yarn.lock")
 
-    # ❌ за пределами корневого allow — запрещено
+    # Outside of root allow - forbidden
     assert not eng.includes("somewhere_else/file.ts")
 
 def test_may_descend_allow_specific_file():
     """
-    Регресс: если в allow указан конкретный файл (/core/README.md),
-    прунер обязан разрешить спуск в каталог 'core'.
+    Regression: if allow specifies a specific file (/core/README.md),
+    the pruner must allow descent into the 'core' directory.
     """
     root = FilterNode(
         mode="allow",
@@ -79,16 +79,16 @@ def test_may_descend_allow_specific_file():
 
 def test_render_with_allow_specific_file(tmp_path: Path, monkeypatch):
     """
-    Сквозной тест: при секции mode:allow + allow:/core/README.md
-    файл попадает в рендер секции, «шум» — нет.
+    End-to-end test: with section mode:allow + allow:/core/README.md
+    file is rendered in the section, 'noise' is not.
     """
-    # ── файловая структура
+    # file structure
     (tmp_path / "core").mkdir()
     (tmp_path / "core" / "README.md").write_text("# Hello from Core README\nBody\n", encoding="utf-8")
     (tmp_path / "other").mkdir()
     (tmp_path / "other" / "note.md").write_text("noise", encoding="utf-8")
 
-    # ── конфиг: одна секция all
+    # config: one section all
     (tmp_path / "lg-cfg").mkdir()
     (tmp_path / "lg-cfg" / "sections.yaml").write_text(
         "all:\n"
@@ -99,19 +99,19 @@ def test_render_with_allow_specific_file(tmp_path: Path, monkeypatch):
         encoding="utf-8"
     )
 
-    # ── запуск пайплайна (виртуальный контекст секции)
+    # run pipeline (virtual section context)
     monkeypatch.chdir(tmp_path)
     out = run_render("sec:all", RunOptions())
 
-    # В чистом MD режиме путь файла не печатается — проверяем содержимое
+    # In pure MD mode file path is not printed - check content
     assert "Hello from Core README" in out
     assert "Body" in out
     assert "noise" not in out
 
 def test_path_based_keys_simple():
     """
-    Тест базовой функциональности path-based ключей.
-    Path-based ключ "src/main/kotlin" разворачивается в иерархию узлов.
+    Test basic functionality of path-based keys.
+    Path-based key "src/main/kotlin" is expanded into a node hierarchy.
     """
     root = FilterNode(
         mode="block",
@@ -124,20 +124,20 @@ def test_path_based_keys_simple():
     )
     eng = FilterEngine(root)
 
-    # ✅ разрешённые пути (в src/main/kotlin)
+    # Allowed paths (in src/main/kotlin)
     assert eng.includes("src/main/kotlin/app.kt")
     assert eng.includes("src/main/kotlin/utils/helper.kt")
 
-    # ❌ запрещённые пути (другие в src/main)
+    # Forbidden paths (other in src/main)
     assert not eng.includes("src/main/java/App.java")
     assert not eng.includes("src/main/resources/app.properties")
 
-    # ❌ запрещённые пути (вне иерархии)
+    # Forbidden paths (outside hierarchy)
     assert not eng.includes("src/test/kotlin/AppTest.kt")
 
 def test_path_based_keys_multiple():
     """
-    Несколько path-based ключей в одном узле.
+    Multiple path-based keys in one node.
     """
     root = FilterNode(
         mode="allow",
@@ -155,23 +155,23 @@ def test_path_based_keys_multiple():
     )
     eng = FilterEngine(root)
 
-    # ✅ разрешённые пути
+    # Allowed paths
     assert eng.includes("src/main/kotlin/app.kt")
     assert eng.includes("src/main/java/App.java")
 
-    # ❌ запрещённые пути
+    # Forbidden paths
     assert not eng.includes("src/main/kotlin/readme.md")
     assert not eng.includes("src/main/java/readme.txt")
 
 def test_path_based_keys_with_simple_keys():
     """
-    Path-based ключи сосуществуют с простыми ключами.
+    Path-based keys coexist with simple keys.
     """
     root = FilterNode(
         mode="block",
         children={
             "src": FilterNode(
-                mode="allow",  # Используем allow для whitelist
+                mode="allow",  # Use allow for whitelist
                 allow=["**/*.py"],
             ),
             "docs/api": FilterNode(
@@ -182,23 +182,23 @@ def test_path_based_keys_with_simple_keys():
     )
     eng = FilterEngine(root)
 
-    # ✅ через простой ключ "src"
+    # Through simple key "src"
     assert eng.includes("src/main.py")
     assert eng.includes("src/app/utils.py")
 
-    # ✅ через path-based ключ "docs/api"
+    # Through path-based key "docs/api"
     assert eng.includes("docs/api/index.md")
     assert eng.includes("docs/api/endpoints.md")
 
-    # ❌ логика простого ключа (whitelist - только .py)
+    # Logic of simple key (whitelist - .py only)
     assert not eng.includes("src/readme.md")
 
-    # ❌ логика path-based ключа (вне docs/api)
+    # Logic of path-based key (outside docs/api)
     assert not eng.includes("docs/guide/intro.md")
 
 def test_path_based_conflict_with_explicit_hierarchy():
     """
-    Конфликт: path-based ключ пересекается с явно определённой иерархией.
+    Conflict: path-based key overlaps with explicitly defined hierarchy.
     """
     import pytest
 
@@ -221,14 +221,14 @@ def test_path_based_conflict_with_explicit_hierarchy():
         },
     )
 
-    # Должна выброситься ошибка при создании FilterEngine
+    # Error should be raised when creating FilterEngine
     with pytest.raises(RuntimeError, match="Filter path conflict"):
         FilterEngine(root)
 
 def test_path_based_with_transparent_intermediate():
     """
-    Промежуточные узлы, созданные для path-based ключа, прозрачны.
-    Они наследуют mode от родителя и не имеют своих правил.
+    Intermediate nodes created for path-based keys are transparent.
+    They inherit mode from parent and have no own rules.
     """
     root = FilterNode(
         mode="block",
@@ -241,17 +241,17 @@ def test_path_based_with_transparent_intermediate():
     )
     eng = FilterEngine(root)
 
-    # ✅ путь проходит через прозрачные узлы
+    # Path passes through transparent nodes
     assert eng.includes("a/b/c/file.txt")
 
-    # ❌ промежуточные узлы наследуют mode от корня (block)
-    # поэтому файлы в a или a/b без явного разрешения не пройдут
+    # Intermediate nodes inherit mode from root (block)
+    # so files in a or a/b without explicit permission won't pass
     assert not eng.includes("a/file.txt")
     assert not eng.includes("a/b/file.txt")
 
 def test_path_based_normalization():
     """
-    Path-based ключи нормализуются (strip "/", lowercase).
+    Path-based keys are normalized (strip "/", lowercase).
     """
     root = FilterNode(
         mode="block",
@@ -264,24 +264,24 @@ def test_path_based_normalization():
     )
     eng = FilterEngine(root)
 
-    # ✅ нормализованный путь работает с любым регистром
+    # Normalized path works with any case
     assert eng.includes("src/main/kotlin/app.kt")
     assert eng.includes("SRC/MAIN/KOTLIN/app.kt")
     assert eng.includes("Src/Main/Kotlin/app.kt")
 
 def test_path_based_extends_simple_key_no_conflict():
     """
-    Допустимый случай: path-based ключ расширяет простой ключ.
+    Allowed case: path-based key extends simple key.
 
-    Когда есть явный простой ключ "src/main" с детьми,
-    и path-based ключ "src/main/kotlin/lg/intellij", который создает
-    промежуточные узлы "kotlin" -> "lg" -> "intellij" внутри "src/main".
+    When there is an explicit simple key "src/main" with children,
+    and a path-based key "src/main/kotlin/lg/intellij", which creates
+    intermediate nodes "kotlin" -> "lg" -> "intellij" inside "src/main".
 
-    Это НЕ конфликт, потому что:
-    - В "src/main" нет явного дочернего узла "kotlin"
-    - Path-based ключ может свободно создать эту иерархию
+    This is NOT a conflict because:
+    - "src/main" has no explicit child node "kotlin"
+    - Path-based key can freely create this hierarchy
 
-    Имитирует реальную конфигурацию IntelliJ плагина.
+    Mimics real IntelliJ plugin configuration.
     """
     root = FilterNode(
         mode="allow",
@@ -304,32 +304,32 @@ def test_path_based_extends_simple_key_no_conflict():
         },
     )
 
-    # Не должно быть ошибки при создании FilterEngine
+    # No error should occur when creating FilterEngine
     eng = FilterEngine(root)
 
-    # ✅ файлы в явно определённой иерархии работают
+    # Files in explicitly defined hierarchy work
     assert eng.includes("src/main/resources/META-INF/plugin.xml")
 
-    # ✅ файлы в path-based иерархии работают
+    # Files in path-based hierarchy work
     assert eng.includes("src/main/kotlin/lg/intellij/MyClass.kt")
     assert eng.includes("src/main/kotlin/lg/intellij/services/MyService.kt")
 
-    # ❌ файлы вне разрешённых путей не проходят
+    # Files outside allowed paths don't pass
     assert not eng.includes("src/main/kotlin/other/OtherClass.kt")
     assert not eng.includes("src/main/java/App.java")
 
 def test_path_based_multiple_extending_same_prefix():
     """
-    Несколько path-based ключей расширяют общий префикс.
+    Multiple path-based keys extend a common prefix.
 
-    Проблема:
-    - "src/main/kotlin/lg/intellij" разрешает /services/generation/ и /services/vfs/
-    - "src/main/kotlin/lg/intellij/services/ai" добавляет правила для /ai/
+    Problem:
+    - "src/main/kotlin/lg/intellij" allows /services/generation/ and /services/vfs/
+    - "src/main/kotlin/lg/intellij/services/ai" adds rules for /ai/
 
-    Промежуточный узел "services", созданный вторым ключом, НЕ должен затирать
-    разрешения первого ключа для /services/generation/ и /services/vfs/.
+    Intermediate node "services" created by the second key MUST NOT overwrite
+    permissions of the first key for /services/generation/ and /services/vfs/.
 
-    Имитирует реальную проблему из конфигурации IntelliJ плагина.
+    Mimics real problem from IntelliJ plugin configuration.
     """
     root = FilterNode(
         mode="allow",
@@ -352,15 +352,15 @@ def test_path_based_multiple_extending_same_prefix():
 
     eng = FilterEngine(root)
 
-    # ✅ файлы из первого path-based ключа ДОЛЖНЫ работать
+    # Files from first path-based key MUST work
     assert eng.includes("src/main/kotlin/lg/intellij/services/generation/LgGenerationService.kt")
     assert eng.includes("src/main/kotlin/lg/intellij/services/vfs/LgVirtualFileService.kt")
     assert eng.includes("src/main/kotlin/lg/intellij/ui/components/LgButton.kt")
 
-    # ✅ файлы из второго path-based ключа ДОЛЖНЫ работать
+    # Files from second path-based key MUST work
     assert eng.includes("src/main/kotlin/lg/intellij/services/ai/ClipboardProvider.kt")
     assert eng.includes("src/main/kotlin/lg/intellij/services/ai/base/BaseProvider.kt")
 
-    # ❌ файлы вне разрешённых путей НЕ должны проходить
+    # Files outside allowed paths MUST NOT pass
     assert not eng.includes("src/main/kotlin/lg/intellij/services/other/SomeService.kt")
     assert not eng.includes("src/main/kotlin/lg/intellij/actions/SomeAction.kt")

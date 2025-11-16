@@ -1,10 +1,10 @@
 """
-Фикстуры и утилиты для тестов статистики и токенизации.
+Fixtures and utilities for statistics and tokenization tests.
 
-Предоставляет:
-- mock для hf_hub_download (использует предскачанные модели из resources/)
-- фикстуры для создания токенизаторов
-- хелперы для работы с кешем моделей
+Provides:
+- mock for hf_hub_download (uses pre-downloaded models from resources/)
+- fixtures for creating tokenizers
+- helpers for working with model cache
 """
 
 import json
@@ -15,20 +15,20 @@ from typing import Optional
 import pytest
 
 
-# ==================== Пути к ресурсам ====================
+# ==================== Resource Paths ====================
 
 @pytest.fixture(scope="session")
 def resources_dir() -> Path:
-    """Директория с предскачанными моделями для тестов."""
+    """Directory with pre-downloaded models for tests."""
     return Path(__file__).parent / "resources"
 
 
 @pytest.fixture(scope="session")
 def models_manifest(resources_dir: Path) -> dict:
     """
-    Манифест с информацией о предскачанных моделях.
-    
-    Формат:
+    Manifest with information about pre-downloaded models.
+
+    Format:
     {
         "tokenizers": {
             "gpt2": {"filename": "tokenizer.json", "description": "..."},
@@ -43,46 +43,46 @@ def models_manifest(resources_dir: Path) -> dict:
     manifest_file = resources_dir / "models_manifest.json"
     if not manifest_file.exists():
         return {"tokenizers": {}, "sentencepiece": {}}
-    
+
     with manifest_file.open("r", encoding="utf-8") as f:
         return json.load(f)
 
 
-# ==================== Mock для HuggingFace Hub ====================
+# ==================== Mock for HuggingFace Hub ====================
 
 class MockHFHub:
-    """Mock для hf_hub_download, использующий локальные ресурсы."""
-    
+    """Mock for hf_hub_download using local resources."""
+
     def __init__(self, resources_dir: Path, manifest: dict):
         self.resources_dir = resources_dir
         self.manifest = manifest
         self.download_count = 0
-    
+
     def download(
-        self, 
-        repo_id: str, 
-        filename: str, 
+        self,
+        repo_id: str,
+        filename: str,
         cache_dir: Optional[str] = None,
         local_dir: Optional[str] = None,
         local_dir_use_symlinks: bool = False,
         **kwargs
     ) -> str:
         """
-        Имитирует hf_hub_download, но возвращает файлы из resources/.
-        
-        Копирует модель из resources/ в cache_dir для имитации реального поведения.
+        Simulates hf_hub_download but returns files from resources/.
+
+        Copies model from resources/ to cache_dir to simulate real behavior.
         """
         self.download_count += 1
-        
-        # Определяем тип библиотеки по имени файла
+
+        # Determine library type by filename
         if filename == "tokenizer.json":
             lib_type = "tokenizers"
         elif filename in ("tokenizer.model", "spiece.model", "sentencepiece.model"):
             lib_type = "sentencepiece"
         else:
             raise FileNotFoundError(f"Unknown model file type: {filename}")
-        
-        # Проверяем наличие модели в манифесте
+
+        # Check if model is in manifest
         models = self.manifest.get(lib_type, {})
         if repo_id not in models:
             available = list(models.keys())
@@ -90,14 +90,14 @@ class MockHFHub:
                 f"Model '{repo_id}' not found in test resources for {lib_type}. "
                 f"Available models: {available if available else '(none)'}"
             )
-        
+
         model_info = models[repo_id]
         source_file = self.resources_dir / lib_type / repo_id.replace("/", "--") / model_info["filename"]
-        
+
         if not source_file.exists():
             raise FileNotFoundError(f"Model file not found in resources: {source_file}")
-        
-        # Копируем в cache_dir (если указан)
+
+        # Copy to cache_dir (if specified)
         if local_dir:
             target_dir = Path(local_dir)
             target_dir.mkdir(parents=True, exist_ok=True)
@@ -111,47 +111,47 @@ class MockHFHub:
             shutil.copy2(source_file, target_file)
             return str(target_file)
         else:
-            # Без кеша - просто возвращаем путь к файлу в resources
+            # Without cache - just return path to file in resources
             return str(source_file)
 
 
 @pytest.fixture
 def mock_hf_hub(resources_dir: Path, models_manifest: dict, monkeypatch):
     """
-    Подменяет hf_hub_download на mock, использующий локальные ресурсы.
-    
-    Использование в тестах:
+    Replaces hf_hub_download with mock using local resources.
+
+    Usage in tests:
         def test_something(mock_hf_hub):
-            # hf_hub_download теперь использует локальные модели
+            # hf_hub_download now uses local models
             adapter = HFAdapter("gpt2", tmp_path)
             ...
-            
-            # Можно проверить сколько раз скачивалась модель
+
+            # Can check how many times the model was downloaded
             assert mock_hf_hub.download_count == 1
     """
     mock = MockHFHub(resources_dir, models_manifest)
-    
-    # Патчим hf_hub_download в обоих адаптерах
+
+    # Patch hf_hub_download in both adapters
     monkeypatch.setattr(
         "lg.stats.tokenizers.hf_adapter.hf_hub_download",
         mock.download
     )
     monkeypatch.setattr(
-        "lg.stats.tokenizers.sp_adapter.hf_hub_download", 
+        "lg.stats.tokenizers.sp_adapter.hf_hub_download",
         mock.download
     )
-    
+
     return mock
 
 
-# ==================== Фикстуры для токенизаторов ====================
+# ==================== Tokenizer Fixtures ====================
 
 @pytest.fixture
 def tiktoken_service(tmp_path: Path):
-    """Создает TokenService с tiktoken энкодером (дефолтные настройки)."""
+    """Creates TokenService with tiktoken encoder (default settings)."""
     from lg.stats.tokenizer import TokenService
     from tests.infrastructure.cli_utils import DEFAULT_TOKENIZER_LIB, DEFAULT_ENCODER
-    
+
     return TokenService(
         root=tmp_path,
         lib=DEFAULT_TOKENIZER_LIB,
@@ -161,40 +161,40 @@ def tiktoken_service(tmp_path: Path):
 
 @pytest.fixture
 def hf_tokenizer_service(tmp_path: Path, mock_hf_hub):
-    """Создает TokenService с HuggingFace токенизатором."""
+    """Creates TokenService with HuggingFace tokenizer."""
     from lg.stats.tokenizer import TokenService
-    
+
     return TokenService(
         root=tmp_path,
         lib="tokenizers",
-        encoder="gpt2"  # Простая модель для тестов
+        encoder="gpt2"  # Simple model for tests
     )
 
 
 @pytest.fixture
 def sp_tokenizer_service(tmp_path: Path, mock_hf_hub):
-    """Создает TokenService с SentencePiece токенизатором."""
+    """Creates TokenService with SentencePiece tokenizer."""
     from lg.stats.tokenizer import TokenService
-    
+
     return TokenService(
         root=tmp_path,
         lib="sentencepiece",
-        encoder="t5-small"  # Доступная модель без авторизации
+        encoder="t5-small"  # Available model without authorization
     )
 
 
-# ==================== Фикстура для тестовых текстов ====================
+# ==================== Test Text Fixture ====================
 
 @pytest.fixture
 def sample_texts() -> dict:
     """
-    Набор тестовых текстов для сравнения токенизаторов.
-    
-    Включает:
-    - Простой английский текст
-    - Код на Python
-    - Смешанный контент
-    - Специальные символы
+    Set of test texts for comparing tokenizers.
+
+    Includes:
+    - Simple English text
+    - Python code
+    - Mixed content
+    - Special characters
     """
     return {
         "simple": "Hello, world! This is a test.",
@@ -221,11 +221,11 @@ And some explanation text.
     }
 
 
-# ==================== Утилиты ====================
+# ==================== Utilities ====================
 
 @pytest.fixture
 def clear_model_cache(tmp_path: Path):
-    """Очищает кеш моделей перед каждым тестом."""
+    """Clears model cache before each test."""
     cache_dir = tmp_path / ".lg-cache" / "tokenizer-models"
     if cache_dir.exists():
         shutil.rmtree(cache_dir)

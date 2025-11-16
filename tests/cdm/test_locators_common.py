@@ -47,6 +47,6 @@ def test_resolve_cfg_root_missing_and_escape(monorepo: Path):
     with pytest.raises(RuntimeError, match="Child lg-cfg not found"):
         resolve_cfg_root("missing/pkg", current_cfg_root=base, repo_root=monorepo)
 
-    # Попытка выбраться за пределы репо
+    # Attempt to escape beyond repo boundaries
     with pytest.raises(RuntimeError, match=re.escape("escapes repository")):
         resolve_cfg_root("../..", current_cfg_root=base, repo_root=monorepo)

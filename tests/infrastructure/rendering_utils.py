@@ -1,9 +1,7 @@
 """
-Утилиты для рендеринга шаблонов и создания движков в тестах.
+Utilities for rendering templates and creating engines in tests.
 
-Унифицирует все rendering-__all__ = [
-    "make_run_options", "make_engine", "render_template"
-] различных conftest.py.
+Unifies all rendering utilities from various conftest.py files.
 """
 
 from __future__ import annotations
@@ -28,18 +26,17 @@ def make_run_options(
     task_text: Optional[str] = None
 ) -> RunOptions:
     """
-    Создает RunOptions с указанными параметрами.
-    
-    Унифицированная функция для всех тестов.
-    
+    Creates RunOptions with specified parameters.
+
+    Unified function for all tests.
+
     Args:
-        model: Модель для токенизации
-        modes: Словарь активных режимов {modeset: mode}  
-        extra_tags: Дополнительные теги
-        task_text: Текст текущей задачи
-        
+        modes: Dictionary of active modes {modeset: mode}
+        extra_tags: Additional tags
+        task_text: Current task text
+
     Returns:
-        Настроенный RunOptions
+        Configured RunOptions
     """
     return RunOptions(
         modes=modes or {},
@@ -50,14 +47,14 @@ def make_run_options(
 
 def make_run_context(root: Path, options: Optional[RunOptions] = None) -> RunContext:
     """
-    Создает RunContext для тестирования.
+    Creates RunContext for testing.
 
     Args:
-        root: Корень проекта
-        options: Опции выполнения
+        root: Project root
+        options: Execution options
 
     Returns:
-        Настроенный RunContext
+        Configured RunContext
     """
     if options is None:
         options = make_run_options()
@@ -65,7 +62,7 @@ def make_run_context(root: Path, options: Optional[RunOptions] = None) -> RunCon
     cache = Cache(root, enabled=None, fresh=False, tool_version="test")
     adaptive_loader = AdaptiveConfigLoader(root)
 
-    # Используем process_adaptive_options для правильной инициализации active_tags
+    # Use process_adaptive_options for correct active_tags initialization
     active_tags, mode_options, _ = process_adaptive_options(
         root,
         options.modes,
@@ -86,19 +83,19 @@ def make_run_context(root: Path, options: Optional[RunOptions] = None) -> RunCon
 
 def make_engine(root: Path, options: Optional[RunOptions] = None) -> Engine:
     """
-    Создает Engine для тестирования.
-    
+    Creates Engine for testing.
+
     Args:
-        root: Корень проекта  
-        options: Опции выполнения
-        
+        root: Project root
+        options: Execution options
+
     Returns:
-        Настроенный Engine
+        Configured Engine
     """
     if options is None:
         options = make_run_options()
-    
-    # Временно меняем текущую директорию для Engine
+
+    # Temporarily change current directory for Engine
     original_cwd = os.getcwd()
     try:
         os.chdir(root)
@@ -109,22 +106,22 @@ def make_engine(root: Path, options: Optional[RunOptions] = None) -> Engine:
 
 def render_template(root: Path, target: str, options: Optional[RunOptions] = None) -> str:
     """
-    Рендерит шаблон или секцию в указанном проекте.
-    
+    Renders a template or section in the specified project.
+
     Args:
-        root: Корень проекта
-        target: Цель рендеринга (ctx:name, sec:name или name)
-        options: Опции выполнения
-        
+        root: Project root
+        target: Rendering target (ctx:name, sec:name or name)
+        options: Execution options
+
     Returns:
-        Отрендеренный текст
+        Rendered text
     """
     if options is None:
         options = make_run_options()
-    
+
     from lg.engine import _parse_target
-    
-    # Создаем движок с правильной рабочей директорией
+
+    # Create engine with correct working directory
     original_cwd = os.getcwd()
     try:
         os.chdir(root)

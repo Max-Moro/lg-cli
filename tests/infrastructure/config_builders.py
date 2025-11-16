@@ -1,7 +1,7 @@
 """
-Билдеры для создания конфигурационных YAML файлов в тестах.
+Builders for creating configuration YAML files in tests.
 
-Унифицирует создание sections.yaml, modes.yaml, tags.yaml и других конфигов.
+Unifies creation of sections.yaml, modes.yaml, tags.yaml and other configs.
 """
 
 from __future__ import annotations
@@ -17,85 +17,85 @@ from .file_utils import write
 
 def create_sections_yaml(root: Path, sections_config: Dict[str, Dict[str, Any]]) -> Path:
     """
-    Создает lg-cfg/sections.yaml с указанными секциями.
-    
+    Creates lg-cfg/sections.yaml with specified sections.
+
     Args:
-        root: Корень проекта
-        sections_config: Словарь конфигурации секций
-        
+        root: Project root
+        sections_config: Sections configuration dictionary
+
     Returns:
-        Путь к созданному файлу
+        Path to the created file
     """
     sections_file = root / "lg-cfg" / "sections.yaml"
     yaml = YAML()
     yaml.preserve_quotes = True
-    
+
     sections_file.parent.mkdir(parents=True, exist_ok=True)
     with sections_file.open("w", encoding="utf-8") as f:
         yaml.dump(sections_config, f)
-    
+
     return sections_file
 
 
 def create_section_fragment(root: Path, fragment_path: str, sections_config: Dict[str, Dict[str, Any]]) -> Path:
     """
-    Создает фрагмент секций *.sec.yaml.
-    
+    Creates a section fragment *.sec.yaml.
+
     Args:
-        root: Корень проекта
-        fragment_path: Путь к файлу фрагмента относительно lg-cfg/
-        sections_config: Словарь конфигурации секций
-        
+        root: Project root
+        fragment_path: Path to fragment file relative to lg-cfg/
+        sections_config: Sections configuration dictionary
+
     Returns:
-        Путь к созданному файлу
+        Path to the created file
     """
     fragment_file = root / "lg-cfg" / f"{fragment_path}.sec.yaml"
     yaml = YAML()
     yaml.preserve_quotes = True
-    
+
     fragment_file.parent.mkdir(parents=True, exist_ok=True)
     with fragment_file.open("w", encoding="utf-8") as f:
         yaml.dump(sections_config, f)
-    
+
     return fragment_file
 
 
 def create_modes_yaml(
-    root: Path, 
+    root: Path,
     mode_sets: Optional[Dict[str, Any]] = None,
-    include: Optional[List[str]] = None, 
+    include: Optional[List[str]] = None,
     append: bool = False
 ) -> Path:
     """
-    Создает файл modes.yaml с указанными наборами режимов.
-    
+    Creates modes.yaml file with specified mode sets.
+
     Args:
-        root: Корень проекта
-        mode_sets: Словарь наборов режимов (может быть ModeSetConfig или dict)
-        include: Список дочерних скоупов для включения
-        append: Если True, дополняет существующую конфигурацию
-        
+        root: Project root
+        mode_sets: Dictionary of mode sets (can be ModeSetConfig or dict)
+        include: List of child scopes to include
+        append: If True, appends to existing configuration
+
     Returns:
-        Путь к созданному файлу
+        Path to the created file
     """
     modes_file = root / "lg-cfg" / "modes.yaml"
     yaml = YAML()
     yaml.preserve_quotes = True
-    
-    # Загружаем существующую конфигурацию если append=True
+
+    # Load existing configuration if append=True
     existing_data = {}
     if append and modes_file.exists():
         with modes_file.open(encoding="utf-8") as f:
             existing_data = yaml.load(f) or {}
-    
+
     new_data = {}
-    
+
     if mode_sets:
-        # Поддерживаем как plain dict, так и структурированные объекты
+        # Support both plain dict and structured objects
         if isinstance(list(mode_sets.values())[0], dict):
             new_data["mode-sets"] = mode_sets
         else:
-            # Конвертируем из ModeSetConfig в dict (если нужно)
+            # Convert from ModeSetConfig to dict (if needed)
             new_mode_sets = {}
             for set_name, mode_set in mode_sets.items():
                 if hasattr(mode_set, 'modes'):  # ModeSetConfig
@@ -109,7 +109,7 @@ def create_modes_yaml(
                         if hasattr(mode, 'options'):
                             mode_dict.update(mode.options)
                         modes_dict[mode_name] = mode_dict
-                    
+
                     new_mode_sets[set_name] = {
                         "title": mode_set.title,
                         "modes": modes_dict
@@ -117,70 +117,70 @@ def create_modes_yaml(
                 else:
                     new_mode_sets[set_name] = mode_set
             new_data["mode-sets"] = new_mode_sets
-    
+
     if include:
         new_data["include"] = include
-    
-    # Объединяем с существующими данными если append=True
+
+    # Merge with existing data if append=True
     if append:
         if "mode-sets" in existing_data and "mode-sets" in new_data:
             existing_data["mode-sets"].update(new_data["mode-sets"])
         elif "mode-sets" in new_data:
             existing_data["mode-sets"] = new_data["mode-sets"]
-        
+
         if "include" in new_data:
             existing_data["include"] = new_data["include"]
-        
+
         final_data = existing_data
     else:
         final_data = new_data
-    
-    # Записываем обратно
+
+    # Write back
     modes_file.parent.mkdir(parents=True, exist_ok=True)
     with modes_file.open("w", encoding="utf-8") as f:
         yaml.dump(final_data, f)
-    
+
     return modes_file
 
 
 def create_tags_yaml(
-    root: Path, 
+    root: Path,
     tag_sets: Optional[Dict[str, Any]] = None,
-    global_tags: Optional[Dict[str, Any]] = None, 
+    global_tags: Optional[Dict[str, Any]] = None,
     include: Optional[List[str]] = None,
     append: bool = False
 ) -> Path:
     """
-    Создает файл tags.yaml с указанными наборами тегов.
-    
+    Creates tags.yaml file with specified tag sets.
+
     Args:
-        root: Корень проекта
-        tag_sets: Словарь наборов тегов (может быть TagSetConfig или dict)
-        global_tags: Словарь глобальных тегов (может быть TagConfig или dict)
-        include: Список дочерних скоупов для включения
-        append: Если True, дополняет существующую конфигурацию
-        
+        root: Project root
+        tag_sets: Dictionary of tag sets (can be TagSetConfig or dict)
+        global_tags: Dictionary of global tags (can be TagConfig or dict)
+        include: List of child scopes to include
+        append: If True, appends to existing configuration
+
     Returns:
-        Путь к созданному файлу
+        Path to the created file
     """
     tags_file = root / "lg-cfg" / "tags.yaml"
     yaml = YAML()
     yaml.preserve_quotes = True
-    
-    # Загружаем существующую конфигурацию если append=True
+
+    # Load existing configuration if append=True
     existing_data = {}
     if append and tags_file.exists():
         with tags_file.open(encoding="utf-8") as f:
             existing_data = yaml.load(f) or {}
-    
+
     new_data = {}
-    
+
     if tag_sets:
-        # Поддерживаем как plain dict, так и структурированные объекты  
+        # Support both plain dict and structured objects
         if isinstance(list(tag_sets.values())[0], dict):
             new_data["tag-sets"] = tag_sets
         else:
-            # Конвертируем из TagSetConfig в dict
+            # Convert from TagSetConfig to dict
             new_tag_sets = {}
             for set_name, tag_set in tag_sets.items():
                 if hasattr(tag_set, 'tags'):  # TagSetConfig
@@ -190,7 +190,7 @@ def create_tags_yaml(
                         if hasattr(tag, 'description') and tag.description:
                             tag_dict["description"] = tag.description
                         tags_dict[tag_name] = tag_dict
-                    
+
                     new_tag_sets[set_name] = {
                         "title": tag_set.title,
                         "tags": tags_dict
@@ -198,13 +198,13 @@ def create_tags_yaml(
                 else:
                     new_tag_sets[set_name] = tag_set
             new_data["tag-sets"] = new_tag_sets
-    
+
     if global_tags:
-        # Поддерживаем как plain dict, так и TagConfig объекты
+        # Support both plain dict and TagConfig objects
         if isinstance(list(global_tags.values())[0], dict):
-            new_data["tags"] = global_tags  
+            new_data["tags"] = global_tags
         else:
-            # Конвертируем из TagConfig в dict
+            # Convert from TagConfig to dict
             new_global_tags = {}
             for tag_name, tag in global_tags.items():
                 if hasattr(tag, 'title'):  # TagConfig
@@ -215,39 +215,39 @@ def create_tags_yaml(
                 else:
                     new_global_tags[tag_name] = tag
             new_data["tags"] = new_global_tags
-    
+
     if include:
         new_data["include"] = include
-    
-    # Объединяем с существующими данными если append=True
+
+    # Merge with existing data if append=True
     if append:
         if "tag-sets" in existing_data and "tag-sets" in new_data:
             existing_data["tag-sets"].update(new_data["tag-sets"])
         elif "tag-sets" in new_data:
             existing_data["tag-sets"] = new_data["tag-sets"]
-        
+
         if "tags" in existing_data and "tags" in new_data:
             existing_data["tags"].update(new_data["tags"])
         elif "tags" in new_data:
             existing_data["tags"] = new_data["tags"]
-        
+
         if "include" in new_data:
             existing_data["include"] = new_data["include"]
-        
+
         final_data = existing_data
     else:
         final_data = new_data
-    
-    # Записываем обратно
+
+    # Write back
     tags_file.parent.mkdir(parents=True, exist_ok=True)
     with tags_file.open("w", encoding="utf-8") as f:
         yaml.dump(final_data, f)
-    
+
     return tags_file
 
 
 def create_basic_lg_cfg(root: Path) -> Path:
-    """Создает минимальную конфигурацию lg-cfg/sections.yaml."""
+    """Creates minimal configuration lg-cfg/sections.yaml."""
     content = textwrap.dedent("""
     all:
       extensions: [".md"]
@@ -264,23 +264,23 @@ def create_basic_lg_cfg(root: Path) -> Path:
 
 def create_template(root: Path, name: str, content: str, template_type: str = "ctx") -> Path:
     """
-    Создает шаблон или контекст.
-    
+    Creates a template or context.
+
     Args:
-        root: Корень проекта
-        name: Имя файла (без расширения)
-        content: Содержимое шаблона
-        template_type: Тип ("ctx" или "tpl")
-        
+        root: Project root
+        name: File name (without extension)
+        content: Template content
+        template_type: Type ("ctx" or "tpl")
+
     Returns:
-        Путь к созданному файлу
+        Path to the created file
     """
     suffix = f".{template_type}.md"
     return write(root / "lg-cfg" / f"{name}{suffix}", content)
 
 
 def create_basic_sections_yaml(root: Path) -> Path:
-    """Создает базовый sections.yaml для тестов (из adaptive тестов)."""
+    """Creates basic sections.yaml for tests (from adaptive tests)."""
     content = textwrap.dedent("""
     src:
       extensions: [".py", ".md"]
@@ -309,9 +309,9 @@ def create_basic_sections_yaml(root: Path) -> Path:
     return write(root / "lg-cfg" / "sections.yaml", content)
 
 
-# Готовые конфигурации секций
+# Pre-built section configurations
 def get_basic_sections_config() -> Dict[str, Dict[str, Any]]:
-    """Возвращает базовую конфигурацию секций для тестов."""
+    """Returns basic sections configuration for tests."""
     return {
         "src": {
             "extensions": [".py"],
@@ -348,7 +348,7 @@ def get_basic_sections_config() -> Dict[str, Dict[str, Any]]:
 
 
 def get_multilang_sections_config() -> Dict[str, Dict[str, Any]]:
-    """Возвращает конфигурацию секций для многоязычных проектов."""
+    """Returns sections configuration for multilingual projects."""
     return {
         "python-src": {
             "extensions": [".py"],
@@ -381,12 +381,12 @@ def get_multilang_sections_config() -> Dict[str, Dict[str, Any]]:
 
 
 __all__ = [
-    # YAML builders (все поддерживают классы конфигурации)
+    # YAML builders (all support configuration classes)
     "create_sections_yaml", "create_section_fragment", "create_modes_yaml", "create_tags_yaml",
-    
+
     # Simple builders
     "create_basic_lg_cfg", "create_basic_sections_yaml", "create_template",
-    
+
     # Predefined configs
     "get_basic_sections_config", "get_multilang_sections_config"
 ]

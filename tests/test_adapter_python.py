@@ -4,15 +4,15 @@ from lg.types import RunOptions
 
 def test_trivial_init_skipped(tmpproj: Path, monkeypatch):
     monkeypatch.chdir(tmpproj)
-    # Проектный конфиг и контексты создает фикстура tmpproj (см. tests/conftest.py)
+    # Project config and contexts are created by tmpproj fixture (see tests/conftest.py)
     pkg = tmpproj / "pkg"
     pkg.mkdir()
     (pkg / "__init__.py").write_text("pass\n", encoding="utf-8")
 
-    # Рендерируем виртуальный контекст секции all
+    # Render virtual section context for section all
     text = run_render("sec:all", RunOptions())
 
-    # Тривиальный __init__.py должен быть пропущен адаптером → маркера файла нет
+    # Trivial __init__.py should be skipped by adapter -> no file marker
     assert "python:pkg/__init__.py" not in text
 
 def test_non_trivial_init_kept(tmpproj: Path, monkeypatch):
@@ -23,5 +23,5 @@ def test_non_trivial_init_kept(tmpproj: Path, monkeypatch):
 
     text = run_render("sec:all", RunOptions())
 
-    # Нетривиальный __init__.py должен попасть в листинг → маркер присутствует
+    # Non-trivial __init__.py should be included in listing -> marker is present
     assert "python:pkg/__init__.py" in text

@@ -2,7 +2,7 @@ from tests.infrastructure import lctx_md
 from .conftest import adapter
 
 def test_keep_section_by_text():
-    """Тест сохранения одной секции по точному совпадению названия."""
+    """Test preserving a single section by exact name match."""
     text = """\
 # Title
 
@@ -45,7 +45,7 @@ advanced info
 
 
 def test_keep_multiple_sections():
-    """Тест сохранения нескольких секций."""
+    """Test preserving multiple sections."""
     text = """\
 # Title
 
@@ -83,7 +83,7 @@ content C
 
 
 def test_keep_frontmatter():
-    """Тест сохранения frontmatter при удалении всех секций."""
+    """Test preserving frontmatter when deleting all sections."""
     text = """\
 ---
 title: Doc
@@ -115,7 +115,7 @@ text content
 
 
 def test_keep_section_by_slug():
-    """Тест keep режима с использованием slug matching."""
+    """Test keep mode using slug matching."""
     text = """\
 # Main Title
 
@@ -150,7 +150,7 @@ api docs
 
 
 def test_keep_section_by_regex():
-    """Тест keep режима с использованием регулярных выражений."""
+    """Test keep mode using regular expressions."""
     text = """\
 # Documentation
 
@@ -187,7 +187,7 @@ basic usage
 
 
 def test_keep_with_level_constraints():
-    """Тест keep режима с ограничениями по уровню заголовков."""
+    """Test keep mode with heading level constraints."""
     text = """\
 # Main
 
@@ -231,7 +231,7 @@ subcontent B.1
 
 
 def test_keep_no_sections_found():
-    """Тест keep режима когда ни одна секция не найдена - весь контент должен быть удален."""
+    """Test keep mode when no sections are found - all content should be removed."""
     text = """\
 # Title
 
@@ -261,7 +261,7 @@ usage instructions
 
 
 def test_keep_and_drop_mutual_exclusion():
-    """Тест что keep и drop режимы взаимоисключающие."""
+    """Test that keep and drop modes are mutually exclusive."""
     try:
         cfg = {
             "keep": {
@@ -278,7 +278,7 @@ def test_keep_and_drop_mutual_exclusion():
 
 
 def test_keep_with_frontmatter_and_sections():
-    """Тест keep режима с сохранением и frontmatter и определенных секций."""
+    """Test keep mode with both frontmatter and specific sections preserved."""
     text = """\
 ---
 title: Documentation
@@ -318,7 +318,7 @@ unimportant content
 
 
 def test_keep_mode_no_placeholders():
-    """Тест что в keep режиме плейсхолдеры не вставляются."""
+    """Test that no placeholders are inserted in keep mode."""
     text = """\
 # Title
 
@@ -339,8 +339,8 @@ remove content
     
     # No placeholders should be inserted
     assert meta.get("md.placeholders", 0) == 0
-    assert "*(Опущено:" not in out
     assert "*(omitted" not in out.lower()
+    assert "*(Omitted" not in out
     
     # Only kept content should remain
     assert "## Keep This" in out

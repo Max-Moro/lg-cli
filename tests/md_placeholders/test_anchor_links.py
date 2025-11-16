@@ -1,11 +1,11 @@
 """
-Тесты якорных ссылок для md-плейсхолдеров.
+Tests for anchor links in markdown placeholders.
 
-Проверяет функциональность частичного включения документов:
-- ${md:file#section} для включения отдельных разделов
-- Обработка различных форматов заголовков
-- Включение вложенных разделов
-- Обработка несуществующих якорей
+Checks the functionality of partial document inclusion:
+- ${md:file#section} for including individual sections
+- Processing different heading formats
+- Including nested sections
+- Handling non-existent anchors
 """
 
 from __future__ import annotations
@@ -16,11 +16,11 @@ from .conftest import md_project, create_template, render_template, write_markdo
 
 
 def test_anchor_basic_section_inclusion(md_project):
-    """Тест базового включения раздела по якорю."""
+    """Test basic section inclusion by anchor."""
     root = md_project
-    
-    # Создаем файл с несколькими разделами
-    write_markdown(root / "sections.md", 
+
+    # Create file with several sections
+    write_markdown(root / "sections.md",
                   title="Complete Guide",
                   content="""## Getting Started
 
@@ -39,7 +39,7 @@ Advanced features description.
 
 Config file setup.
 
-### Deployment  
+### Deployment
 
 Production deployment guide.
 
@@ -47,27 +47,27 @@ Production deployment guide.
 
 Common issues and solutions.
 """)
-    
+
     create_template(root, "anchor-basic-test", """# Anchor Test
 
 ## Only Getting Started
 ${md:sections#Getting Started}
 
-## Only Advanced Usage  
+## Only Advanced Usage
 ${md:sections#Advanced Usage}
 
 ## Only Troubleshooting
 ${md:sections#Troubleshooting}
 """)
-    
+
     result = render_template(root, "ctx:anchor-basic-test")
-    
-    # Проверяем, что каждый раздел включился отдельно
+
+    # Check that each section is included separately
     assert "Installation instructions here." in result
     assert "Advanced features description." in result
     assert "Common issues and solutions." in result
-    
-    # Проверяем структуру заголовков (должны сохранить иерархию)
+
+    # Check heading structure (should preserve hierarchy)
     assert "## Getting Started" in result
     assert "### Requirements" in result
     assert "## Advanced Usage" in result
@@ -77,9 +77,9 @@ ${md:sections#Troubleshooting}
 
 
 def test_anchor_with_slug_matching(md_project):
-    """Тест сопоставления якорей через slug (приведение к GitHub-стилю)."""
+    """Test anchor matching through slug (GitHub-style conversion)."""
     root = md_project
-    
+
     write_markdown(root / "slugs.md",
                   title="Test Document",
                   content="""## API & Usage
@@ -94,10 +94,10 @@ Frequently asked questions.
 
 Content here.
 """)
-    
+
     create_template(root, "anchor-slug-test", """# Slug Matching Test
 
-## Using exact text  
+## Using exact text
 ${md:slugs#API & Usage}
 
 ## Using slug format
@@ -109,26 +109,26 @@ ${md:slugs#FAQ: Common Questions}
 ## Multi-word using slug
 ${md:slugs#multi-word-section-title}
 """)
-    
+
     result = render_template(root, "ctx:anchor-slug-test")
-    
-    # Все варианты должны работать благодаря slug-сопоставлению
-    assert result.count("API documentation.") >= 2  # должно встречаться дважды
+
+    # All variants should work thanks to slug matching
+    assert result.count("API documentation.") >= 2  # should appear twice
     assert result.count("Frequently asked questions.") >= 1
     assert result.count("Content here.") >= 1
 
 
 def test_anchor_nested_section_inclusion(md_project):
-    """Тест включения вложенных разделов."""
+    """Test inclusion of nested sections."""
     root = md_project
-    
+
     write_markdown(root / "nested.md",
                   title="Documentation",
                   content="""## Installation
 
 Basic installation.
 
-### Prerequisites  
+### Prerequisites
 
 System requirements.
 
@@ -148,57 +148,57 @@ Get the installer.
 
 Setup instructions.
 """)
-    
+
     create_template(root, "anchor-nested-test", """# Nested Sections Test
 
 ## Prerequisites Section (includes subsections)
 ${md:nested#Prerequisites}
 
-## Just Hardware Requirements  
+## Just Hardware Requirements
 ${md:nested#Hardware}
 """)
-    
+
     result = render_template(root, "ctx:anchor-nested-test")
-    
-    # Prerequisites должен включать все подразделы
+
+    # Prerequisites should include all subsections
     assert "System requirements." in result
     assert "Minimum specs." in result
     assert "Required packages." in result
     assert "Get the installer." in result
-    
-    # Hardware должен быть только минимальные specs
-    assert result.count("Minimum specs.") == 2  # встречается в обеих секциях
+
+    # Hardware should only have minimum specs
+    assert result.count("Minimum specs.") == 2  # appears in both sections
 
 
 def test_anchor_nonexistent_section_error(md_project):
-    """Тест обработки ошибки при несуществующем якоре."""
+    """Test error handling for non-existent anchor."""
     root = md_project
-    
+
     create_template(root, "anchor-notfound-test", """# Not Found Test
 
 ${md:docs/api#NonexistentSection}
 """)
-    
-    # Должна возникнуть TemplateProcessingError с информативным сообщением
+
+    # Should raise TemplateProcessingError with informative message
     from lg.template.processor import TemplateProcessingError
     with pytest.raises(TemplateProcessingError) as exc_info:
         render_template(root, "ctx:anchor-notfound-test")
-    
-    # Проверяем что сообщение содержит информацию о проблеме
+
+    # Check that message contains problem information
     error_message = str(exc_info.value)
     assert "NonexistentSection" in error_message
     assert "not found" in error_message
     assert "Available sections" in error_message
-    # Проверяем что показываются доступные секции
+    # Check that available sections are shown
     assert "Authentication" in error_message
     assert "Endpoints" in error_message
 
 
 def test_anchor_error_document_without_headings(md_project):
-    """Тест ошибки при попытке найти якорь в документе без заголовков."""
+    """Test error when trying to find anchor in document without headings."""
     root = md_project
 
-    # Создаем документ без заголовков
+    # Create document without headings
     write_markdown(root / "no-headings.md",
                    title="",
                    content="Just plain text without any headings.\n\nMore text here.")
@@ -218,7 +218,7 @@ ${md:no-headings#SomeSection}
 
 
 def test_anchor_error_with_similar_headings(md_project):
-    """Тест ошибки якоря с показом похожих заголовков для помощи пользователю."""
+    """Test anchor error with display of similar headings to help user."""
     root = md_project
 
     write_markdown(root / "similar.md",
@@ -227,7 +227,7 @@ def test_anchor_error_with_similar_headings(md_project):
 
 Authentication using tokens.
 
-## Authentification  
+## Authentification
 
 Misspelled section.
 
@@ -248,14 +248,14 @@ ${md:similar#Authentication}
     error_message = str(exc_info.value)
     assert "Authentication" in error_message
     assert "not found" in error_message
-    # Должны показаться доступные заголовки для диагностики
+    # Should show available headings for diagnosis
     assert "Authorization" in error_message or "Authentification" in error_message
 
 
 def test_anchor_case_insensitive_matching(md_project):
-    """Тест нечувствительности к регистру при поиске якорей."""
+    """Test case-insensitive anchor matching."""
     root = md_project
-    
+
     write_markdown(root / "case-test.md",
                   title="Case Test",
                   content="""## Installation Guide
@@ -266,30 +266,30 @@ Setup instructions.
 
 API docs.
 """)
-    
+
     create_template(root, "anchor-case-test", """# Case Test
 
 ## Lowercase anchor
 ${md:case-test#installation guide}
 
-## Mixed case anchor  
+## Mixed case anchor
 ${md:case-test#Api Reference}
 
 ## Uppercase anchor
 ${md:case-test#API REFERENCE}
 """)
-    
+
     result = render_template(root, "ctx:anchor-case-test")
-    
-    # Все варианты должны работать
+
+    # All variants should work
     assert result.count("Setup instructions.") >= 1
-    assert result.count("API docs.") >= 2  # встречается дважды
+    assert result.count("API docs.") >= 2  # appears twice
 
 
 def test_anchor_with_special_characters(md_project):
-    """Тест якорей с специальными символами - должны использоваться slug-стиль."""
+    """Test anchors with special characters - should use slug-style."""
     root = md_project
-    
+
     write_markdown(root / "special.md",
                   title="Special Characters",
                   content="""## Section 1: Overview
@@ -308,7 +308,7 @@ Q&A section.
 
 Special formatting.
 """)
-    
+
     create_template(root, "anchor-special-test", """# Special Characters Test
 
 ## Overview section
@@ -323,10 +323,10 @@ ${md:special#faq-frequently-asked-questions}
 ## Quoted section
 ${md:special#quoted-section-title}
 """)
-    
+
     result = render_template(root, "ctx:anchor-special-test")
-    
-    # Все секции должны найтись
+
+    # All sections should be found
     assert "Basic info." in result
     assert "Advanced topics." in result
     assert "Q&A section." in result
@@ -334,9 +334,9 @@ ${md:special#quoted-section-title}
 
 
 def test_anchor_with_contextual_analysis(md_project):
-    """Тест работы якорей с контекстуальным анализом заголовков."""
+    """Test anchor operation with contextual heading analysis."""
     root = md_project
-    
+
     create_template(root, "anchor-contextual-test", """# Main Document
 
 ## API Documentation
@@ -347,48 +347,48 @@ ${md:docs/api#Authentication}
 ### Endpoints Section
 ${md:docs/api#Endpoints}
 """)
-    
+
     result = render_template(root, "ctx:anchor-contextual-test")
-    
-    # Якорные разделы должны быть обработаны с правильными уровнями заголовков
-    # Authentication был H2, под H3 должен стать H4
+
+    # Anchor sections should be processed with correct heading levels
+    # Authentication was H2, under H3 should become H4
     assert "#### Authentication" in result
-    
-    # Содержимое Authentication раздела
+
+    # Content of Authentication section
     assert "Use API keys." in result
-    
-    # Endpoints раздел  
+
+    # Endpoints section
     assert "#### Endpoints" in result
-    assert "### GET /users" in result  # было H3, под H3 стало H4 → H5 (ошибка в ожидании)
+    assert "### GET /users" in result  # was H3, under H3 became H4 → H5 (expectation error)
 
 
 def test_anchor_combined_with_explicit_parameters(md_project):
-    """Тест якорей в комбинации с явными параметрами."""
+    """Test anchors in combination with explicit parameters."""
     root = md_project
-    
+
     create_template(root, "anchor-params-test", """# Parameters Test
 
 ## Authentication (level 5, strip H1)
 ${md:docs/api#Authentication, level:5, strip_h1:true}
 
-## Endpoints (level 2, keep H1)  
+## Endpoints (level 2, keep H1)
 ${md:docs/api#Endpoints, level:2, strip_h1:false}
 """)
-    
+
     result = render_template(root, "ctx:anchor-params-test")
-    
+
     # Authentication: level:5, strip_h1:true
     assert "##### Authentication" in result  # H2 → H5
-    
-    # Endpoints: level:2, strip_h1:false  
+
+    # Endpoints: level:2, strip_h1:false
     assert "## Endpoints" in result         # H2 → H2
     assert "### GET /users" in result       # H3 → H3
 
 
 def test_anchor_with_addressed_placeholders(md_project):
-    """Тест якорей с адресными плейсхолдерами."""
+    """Test anchors with addressed placeholders."""
     root = md_project
-    
+
     create_template(root, "anchor-addressed-test", """# Addressed Anchors Test
 
 ## Internal Authentication
@@ -397,8 +397,8 @@ ${md@self:internal#Authentication}
 ## Main API Authentication
 ${md:docs/api#Authentication}
 """)
-    
-    # Создаем файл в lg-cfg с Authentication разделом
+
+    # Create file in lg-cfg with Authentication section
     write_markdown(root / "lg-cfg" / "internal.md",
                   title="Internal Documentation",
                   content="""## Authentication
@@ -409,18 +409,18 @@ Internal auth process.
 
 Other content.
 """)
-    
+
     result = render_template(root, "ctx:anchor-addressed-test")
-    
-    # Должны быть оба раздела Authentication
-    assert "Internal auth process." in result  # из @self:internal
-    assert "Use API keys." in result           # из docs/api
+
+    # Both Authentication sections should be present
+    assert "Internal auth process." in result  # from @self:internal
+    assert "Use API keys." in result           # from docs/api
 
 
 def test_anchor_empty_section_handling(md_project):
-    """Тест обработки пустых разделов."""
+    """Test handling of empty sections."""
     root = md_project
-    
+
     write_markdown(root / "empty-sections.md",
                   title="Empty Sections Test",
                   content="""## Non-Empty Section
@@ -429,30 +429,30 @@ Some content.
 
 ## Empty Section
 
-## Another Section  
+## Another Section
 
 More content.
 """)
-    
+
     create_template(root, "anchor-empty-test", """# Empty Sections Test
 
 ## Non-empty
 ${md:empty-sections#Non-Empty Section}
 
-## Empty section  
+## Empty section
 ${md:empty-sections#Empty Section}
 
 ## Another
 ${md:empty-sections#Another Section}
 """)
-    
+
     result = render_template(root, "ctx:anchor-empty-test")
-    
-    # Не пустые разделы должны включиться
+
+    # Non-empty sections should be included
     assert "Some content." in result
     assert "More content." in result
-    
-    # Пустой раздел должен обрабатываться корректно (заголовок без содержимого)
+
+    # Empty section should be handled correctly (heading without content)
     assert "## Empty Section" in result
 
 
@@ -463,24 +463,24 @@ ${md:empty-sections#Another Section}
     ("ENDPOINTS", "Get users list."),     # case insensitive
 ])
 def test_anchor_parametrized(md_project, anchor, expected_content):
-    """Параметризованный тест различных якорей."""
+    """Parametrized test for different anchors."""
     root = md_project
-    
+
     create_template(root, f"anchor-param-{anchor.lower()}", f"""# Anchor Test
 
 ${{md:docs/api#{anchor}}}
 """)
-    
+
     result = render_template(root, f"ctx:anchor-param-{anchor.lower()}")
     assert expected_content in result
 
 
 def test_anchor_with_setext_headings(md_project):
-    """Тест якорей с Setext заголовками (подчеркивания)."""
+    """Test anchors with Setext headings (underlines)."""
     root = md_project
-    
+
     write_markdown(root / "setext.md",
-                  title="",  # без H1
+                  title="",  # no H1
                   content="""Setext Example
 ==============
 
@@ -495,22 +495,22 @@ This is a setext H2.
 
 This is ATX H2.
 """)
-    
+
     create_template(root, "anchor-setext-test", """# Setext Test
 
 ## H1 Section
 ${md:setext#Setext Example}
 
-## H2 Section  
+## H2 Section
 ${md:setext#Subsection}
 
 ## ATX Section
 ${md:setext#ATX Section}
 """)
-    
+
     result = render_template(root, "ctx:anchor-setext-test")
-    
-    # Все типы заголовков должны найтись
+
+    # All heading types should be found
     assert "This is a setext H1." in result
-    assert "This is a setext H2." in result  
+    assert "This is a setext H2." in result
     assert "This is ATX H2." in result

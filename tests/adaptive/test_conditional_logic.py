@@ -1,8 +1,8 @@
 """
-Тесты условной логики в шаблонах.
+Tests for conditional logic in templates.
 
-Проверяет работу условных блоков {% if %}, операторов AND/OR/NOT,
-TAGSET условий и их комбинаций в адаптивных шаблонах.
+Tests the functionality of {% if %} conditional blocks, AND/OR/NOT operators,
+TAGSET conditions and their combinations in adaptive templates.
 """
 
 from __future__ import annotations
@@ -18,9 +18,9 @@ from .conftest import (
 
 
 def test_basic_tag_conditions(adaptive_project):
-    """Тест базовых условий на теги."""
+    """Test basic tag conditions."""
     root = adaptive_project
-    
+
     template_content = """# Tag Conditions Test
 
 {% if tag:minimal %}
@@ -36,16 +36,16 @@ This should not be rendered
 ## Always visible
 This is always shown
 """
-    
+
     create_conditional_template(root, "tag-conditions", template_content)
-    
-    # Тест без активных тегов
+
+    # Test without active tags
     result1 = render_template(root, "ctx:tag-conditions", make_run_options())
     assert "Minimal section" not in result1
-    assert "Should not appear" not in result1  
+    assert "Should not appear" not in result1
     assert "Always visible" in result1
-    
-    # Тест с активным тегом
+
+    # Test with active tag
     options = make_run_options(extra_tags={"minimal"})
     result2 = render_template(root, "ctx:tag-conditions", options)
     assert "Minimal section" in result2
@@ -54,16 +54,16 @@ This is always shown
 
 
 def test_negation_conditions(adaptive_project):
-    """Тест условий отрицания NOT."""
+    """Test NOT negation conditions."""
     root = adaptive_project
-    
+
     template_content = """# Negation Test
 
 {% if NOT tag:minimal %}
 ## Full mode
 Complete documentation and code
 {% else %}
-## Minimal mode  
+## Minimal mode
 Condensed version
 {% endif %}
 
@@ -72,17 +72,17 @@ Condensed version
 This should always appear (NOT nonexistent)
 {% endif %}
 """
-    
+
     create_conditional_template(root, "negation-test", template_content)
-    
-    # Без тегов - NOT tag:minimal = true
+
+    # Without tags - NOT tag:minimal = true
     result1 = render_template(root, "ctx:negation-test", make_run_options())
     assert "Full mode" in result1
     assert "Minimal mode" not in result1
     assert "Always true" in result1
-    
-    # С тегом minimal - NOT tag:minimal = false
-    options = make_run_options(extra_tags={"minimal"})  
+
+    # With minimal tag - NOT tag:minimal = false
+    options = make_run_options(extra_tags={"minimal"})
     result2 = render_template(root, "ctx:negation-test", options)
     assert "Full mode" not in result2
     assert "Minimal mode" in result2
@@ -90,9 +90,9 @@ This should always appear (NOT nonexistent)
 
 
 def test_and_or_conditions(adaptive_project):
-    """Тест логических операторов AND и OR."""
+    """Test AND and OR logical operators."""
     root = adaptive_project
-    
+
     template_content = """# AND/OR Test
 
 {% if tag:agent AND tag:tools %}
@@ -115,42 +115,42 @@ Complete Python documentation
 Architecture or docs mode
 {% endif %}
 """
-    
+
     create_conditional_template(root, "and-or-test", template_content)
-    
-    # Тест AND - оба тега активны
+
+    # Test AND - both tags active
     options1 = make_run_options(extra_tags={"agent", "tools"})
     result1 = render_template(root, "ctx:and-or-test", options1)
     assert "Full agent mode" in result1
-    
-    # Тест AND - только один тег активен  
+
+    # Test AND - only one tag active
     options2 = make_run_options(extra_tags={"agent"})
     result2 = render_template(root, "ctx:and-or-test", options2)
     assert "Full agent mode" not in result2
-    
-    # Тест OR - один из тегов активен
+
+    # Test OR - one of the tags active
     options3 = make_run_options(extra_tags={"minimal"})
     result3 = render_template(root, "ctx:and-or-test", options3)
     assert "Compact mode" in result3
-    
+
     options4 = make_run_options(extra_tags={"review"})
     result4 = render_template(root, "ctx:and-or-test", options4)
     assert "Compact mode" in result4
-    
-    # Тест сложной комбинации AND NOT
+
+    # Test complex AND NOT combination
     options5 = make_run_options(extra_tags={"python"})
     result5 = render_template(root, "ctx:and-or-test", options5)
     assert "Full Python" in result5
-    
+
     options6 = make_run_options(extra_tags={"python", "minimal"})
     result6 = render_template(root, "ctx:and-or-test", options6)
     assert "Full Python" not in result6
 
 
 def test_tagset_conditions(adaptive_project):
-    """Тест специальных TAGSET условий."""
+    """Test special TAGSET conditions."""
     root = adaptive_project
-    
+
     template_content = """# TAGSET Test
 
 {% if TAGSET:language:python %}
@@ -159,7 +159,7 @@ Python-specific content
 {% endif %}
 
 {% if TAGSET:language:typescript %}
-## TypeScript section  
+## TypeScript section
 TypeScript-specific content
 {% endif %}
 
@@ -173,35 +173,35 @@ Test-specific content
 Nonexistent tagset should be true
 {% endif %}
 """
-    
+
     create_conditional_template(root, "tagset-test", template_content)
-    
-    # Без активных тегов - все TAGSET условия должны быть true
+
+    # Without active tags - all TAGSET conditions should be true
     result1 = render_template(root, "ctx:tagset-test", make_run_options())
     assert "Python section" in result1
-    assert "TypeScript section" in result1 
+    assert "TypeScript section" in result1
     assert "Test code section" in result1
     assert "Should always show" in result1
-    
-    # Активируем python - только TAGSET:language:python должно быть true
+
+    # Activate python - only TAGSET:language:python should be true
     options2 = make_run_options(extra_tags={"python"})
     result2 = render_template(root, "ctx:tagset-test", options2)
     assert "Python section" in result2
     assert "TypeScript section" not in result2
-    assert "Test code section" in result2  # другой набор, остается true
-    
-    # Активируем tests из code-type набора
+    assert "Test code section" in result2  # different set, remains true
+
+    # Activate tests from code-type set
     options3 = make_run_options(extra_tags={"tests"})
     result3 = render_template(root, "ctx:tagset-test", options3)
-    assert "Python section" in result3      # language набор пуст, true
-    assert "TypeScript section" in result3  # language набор пуст, true
-    assert "Test code section" in result3   # tests активен в code-type
+    assert "Python section" in result3      # language set empty, true
+    assert "TypeScript section" in result3  # language set empty, true
+    assert "Test code section" in result3   # tests active in code-type
 
 
 def test_complex_nested_conditions(adaptive_project):
-    """Тест сложных вложенных условий."""
+    """Test complex nested conditions."""
     root = adaptive_project
-    
+
     template_content = """# Complex Conditions
 
 {% if tag:agent %}
@@ -211,7 +211,7 @@ def test_complex_nested_conditions(adaptive_project):
 ### Agent with review tools
 Full agent capabilities for review
 {% elif tag:tools %}
-### Agent with basic tools  
+### Agent with basic tools
 Standard agent capabilities
 {% else %}
 ### Basic agent
@@ -230,10 +230,10 @@ Agent for specific language
 Simplified interface without agent
 {% endif %}
 """
-    
+
     create_conditional_template(root, "complex-nested", template_content)
-    
-    # Тест агента с полными возможностями
+
+    # Test agent with full capabilities
     options1 = make_run_options(extra_tags={"agent", "tools", "review", "python"})
     result1 = render_template(root, "ctx:complex-nested", options1)
     assert "Agent Mode" in result1
@@ -241,16 +241,16 @@ Simplified interface without agent
     assert "Basic agent" not in result1
     assert "Language-specific agent" in result1
     assert "Minimal non-agent mode" not in result1
-    
-    # Тест агента с базовыми инструментами
-    options2 = make_run_options(extra_tags={"agent", "tools"})  
+
+    # Test agent with basic tools
+    options2 = make_run_options(extra_tags={"agent", "tools"})
     result2 = render_template(root, "ctx:complex-nested", options2)
     assert "Agent Mode" in result2
     assert "Agent with basic tools" in result2
     assert "Agent with review tools" not in result2
-    assert "Language-specific agent" in result2  # TAGSET без активных языков = true
-    
-    # Тест минимального режима без агента
+    assert "Language-specific agent" in result2  # TAGSET without active languages = true
+
+    # Test minimal mode without agent
     options3 = make_run_options(extra_tags={"minimal"})
     result3 = render_template(root, "ctx:complex-nested", options3)
     assert "Agent Mode" not in result3
@@ -258,9 +258,9 @@ Simplified interface without agent
 
 
 def test_parentheses_in_conditions(adaptive_project):
-    """Тест группировки условий с помощью скобок."""
+    """Test condition grouping with parentheses."""
     root = adaptive_project
-    
+
     template_content = """# Parentheses Test
 
 {% if (tag:python OR tag:typescript) AND tag:docs %}
@@ -278,37 +278,37 @@ Agent in specific mode
 Either no agent or agent without tools
 {% endif %}
 """
-    
+
     create_conditional_template(root, "parentheses-test", template_content)
-    
-    # Тест первого условия
+
+    # Test first condition
     options1 = make_run_options(extra_tags={"python", "docs"})
     result1 = render_template(root, "ctx:parentheses-test", options1)
     assert "Documented language" in result1
-    
-    options2 = make_run_options(extra_tags={"python"})  # без docs
+
+    options2 = make_run_options(extra_tags={"python"})  # without docs
     result2 = render_template(root, "ctx:parentheses-test", options2)
     assert "Documented language" not in result2
-    
-    # Тест второго условия
+
+    # Test second condition
     options3 = make_run_options(extra_tags={"agent", "minimal"})
     result3 = render_template(root, "ctx:parentheses-test", options3)
     assert "Focused agent" in result3
-    
-    # Тест третьего условия (отрицание группы)
-    options4 = make_run_options(extra_tags={"agent"})  # agent без tools
+
+    # Test third condition (group negation)
+    options4 = make_run_options(extra_tags={"agent"})  # agent without tools
     result4 = render_template(root, "ctx:parentheses-test", options4)
     assert "Not full agent" in result4
-    
-    options5 = make_run_options(extra_tags={"agent", "tools"})  # полный agent
+
+    options5 = make_run_options(extra_tags={"agent", "tools"})  # full agent
     result5 = render_template(root, "ctx:parentheses-test", options5)
     assert "Not full agent" not in result5
 
 
 def test_else_and_elif_blocks(adaptive_project):
-    """Тест блоков else и elif."""
+    """Test else and elif blocks."""
     root = adaptive_project
-    
+
     template_content = """# Else/Elif Test
 
 {% if tag:agent %}
@@ -327,38 +327,38 @@ def test_else_and_elif_blocks(adaptive_project):
 ### Other language or none
 {% endif %}
 """
-    
+
     create_conditional_template(root, "else-elif-test", template_content)
-    
-    # Тест if (первое условие)
-    options1 = make_run_options(extra_tags={"agent", "minimal"})  # agent имеет приоритет
+
+    # Test if (first condition)
+    options1 = make_run_options(extra_tags={"agent", "minimal"})  # agent takes priority
     result1 = render_template(root, "ctx:else-elif-test", options1)
     assert "Agent active" in result1
     assert "Minimal mode" not in result1
     assert "Default mode" not in result1
-    
-    # Тест elif (второе условие)
+
+    # Test elif (second condition)
     options2 = make_run_options(extra_tags={"minimal"})
     result2 = render_template(root, "ctx:else-elif-test", options2)
     assert "Agent active" not in result2
     assert "Minimal mode" in result2
     assert "Default mode" not in result2
-    
-    # Тест else (ни одно условие не подошло)
+
+    # Test else (no conditions match)
     options3 = make_run_options(extra_tags={"docs"})
     result3 = render_template(root, "ctx:else-elif-test", options3)
     assert "Agent active" not in result3
     assert "Minimal mode" not in result3
     assert "Default mode" in result3
-    
-    # Тест вложенного else
+
+    # Test nested else
     assert "Other language or none" in result3
 
 
 def test_conditions_with_mode_blocks(adaptive_project):
-    """Тест взаимодействия условий с блоками режимов."""
+    """Test interaction of conditions with mode blocks."""
     root = adaptive_project
-    
+
     template_content = """# Conditions with Mode Blocks
 
 {% mode ai-interaction:agent %}
@@ -371,7 +371,7 @@ def test_conditions_with_mode_blocks(adaptive_project):
 {% if tag:minimal %}
 ### Minimal agent
 {% else %}
-### Full agent  
+### Full agent
 {% endif %}
 
 {% endmode %}
@@ -380,39 +380,39 @@ def test_conditions_with_mode_blocks(adaptive_project):
 ## Agent tag detected outside mode block
 {% endif %}
 """
-    
+
     create_conditional_template(root, "mode-conditions", template_content)
-    
-    # Тест 1: без предварительно активированного тега agent
+
+    # Test 1: without pre-activated agent tag
     result1 = render_template(root, "ctx:mode-conditions", make_run_options())
-    
-    # В блоке режима agent активируются теги agent и tools
+
+    # Inside mode block agent and tools tags are activated
     assert "Inside agent mode" in result1
     assert "Tools available in agent mode" in result1
-    assert "Full agent" in result1  # tag:minimal не активен
+    assert "Full agent" in result1  # tag:minimal not active
     assert "Minimal agent" not in result1
-    
-    # Вне блока режима тег agent НЕ должен быть доступен (режим восстанавливается)
+
+    # Outside mode block agent tag should NOT be available (mode is restored)
     assert "Agent tag detected outside mode block" not in result1
-    
-    # Тест 2: с предварительно активированным тегом agent
+
+    # Test 2: with pre-activated agent tag
     result2 = render_template(root, "ctx:mode-conditions", make_run_options(extra_tags={"agent"}))
-    
-    # В блоке режима agent все еще активен
+
+    # Inside mode block agent is still active
     assert "Inside agent mode" in result2
     assert "Tools available in agent mode" in result2
     assert "Full agent" in result2
     assert "Minimal agent" not in result2
-    
-    # Вне блока режима тег agent должен быть доступен (был активен изначально)
+
+    # Outside mode block agent tag should be available (was initially active)
     assert "Agent tag detected outside mode block" in result2
 
 
 def test_custom_tagsets_in_conditions(adaptive_project):
-    """Тест пользовательских наборов тегов в условиях.""" 
+    """Test custom tag sets in conditions."""
     root = adaptive_project
-    
-    # Добавляем кастомный набор тегов
+
+    # Add custom tag set
     custom_tag_sets = {
         "feature-flags": TagSetConfig(
             title="Feature Flags",
@@ -424,7 +424,7 @@ def test_custom_tagsets_in_conditions(adaptive_project):
         )
     }
     create_tags_yaml(root, custom_tag_sets)
-    
+
     template_content = """# Custom TagSet Test
 
 {% if TAGSET:feature-flags:new-ui %}
@@ -442,213 +442,213 @@ Use beta endpoints
 Combined new features
 {% endif %}
 """
-    
+
     create_conditional_template(root, "custom-tagset", template_content)
-    
-    # Без активных флагов - все TAGSET условия true
+
+    # Without active flags - all TAGSET conditions true
     result1 = render_template(root, "ctx:custom-tagset", make_run_options())
     assert "New UI enabled" in result1
     assert "Beta API enabled" in result1
-    assert "Both new features" not in result1  # теги не активны
-    
-    # Активируем один флаг
+    assert "Both new features" not in result1  # tags not active
+
+    # Activate one flag
     options2 = make_run_options(extra_tags={"new-ui"})
     result2 = render_template(root, "ctx:custom-tagset", options2)
     assert "New UI enabled" in result2
-    assert "Beta API enabled" not in result2  # другой тег в наборе активен
+    assert "Beta API enabled" not in result2  # other tag in set is active
     assert "Both new features" not in result2
-    
-    # Активируем оба флага
+
+    # Activate both flags
     options3 = make_run_options(extra_tags={"new-ui", "beta-api"})
     result3 = render_template(root, "ctx:custom-tagset", options3)
     assert "New UI enabled" in result3
-    assert "Beta API enabled" in result3 
+    assert "Beta API enabled" in result3
     assert "Both new features" in result3
 
 
 def test_invalid_condition_syntax_errors(adaptive_project):
-    """Тест обработки ошибок в синтаксисе условий."""
+    """Test error handling in condition syntax."""
     root = adaptive_project
-    
-    # Некорректный синтаксис условий
+
+    # Invalid condition syntax
     invalid_templates = [
-        "{% if tag:python AND %}Invalid{% endif %}",  # незавершенное AND
-        "{% if OR tag:python %}Invalid{% endif %}",   # OR без левого операнда
-        "{% if (tag:python %}Invalid{% endif %}",     # несбалансированные скобки
-        "{% if tag:python) %}Invalid{% endif %}",     # лишняя закрывающая скобка
-        "{% if TAGSET:invalid %}Invalid{% endif %}",  # неполный TAGSET
+        "{% if tag:python AND %}Invalid{% endif %}",  # incomplete AND
+        "{% if OR tag:python %}Invalid{% endif %}",   # OR without left operand
+        "{% if (tag:python %}Invalid{% endif %}",     # unbalanced parentheses
+        "{% if tag:python) %}Invalid{% endif %}",     # extra closing parenthesis
+        "{% if TAGSET:invalid %}Invalid{% endif %}",  # incomplete TAGSET
     ]
-    
+
     for i, invalid_content in enumerate(invalid_templates):
         template_name = f"invalid-{i}"
         create_conditional_template(root, template_name, invalid_content)
-        
-        # Проверяем, что возникает ошибка обработки
+
+        # Check that processing error occurs
         with pytest.raises((TemplateProcessingError, ValueError)):
             render_template(root, f"ctx:{template_name}", make_run_options())
 
 
 def test_condition_evaluation_performance(adaptive_project):
-    """Тест производительности оценки сложных условий."""
+    """Test performance of evaluating complex conditions."""
     root = adaptive_project
-    
-    # Создаем шаблон с большим количеством условий
+
+    # Create template with large number of conditions
     conditions = []
     for i in range(50):
-        conditions.append(f"{{% if tag:tag{i} %}}Section {i:02d}{{% endif %}}")  # используем двузначные номера
-    
+        conditions.append(f"{{% if tag:tag{i} %}}Section {i:02d}{{% endif %}}")  # use two-digit numbers
+
     template_content = "# Performance Test\n\n" + "\n\n".join(conditions)
     create_conditional_template(root, "performance-test", template_content)
-    
-    # Активируем некоторые теги
-    active_tags = {f"tag{i}" for i in range(0, 50, 5)}  # каждый 5-й тег
+
+    # Activate some tags
+    active_tags = {f"tag{i}" for i in range(0, 50, 5)}  # every 5th tag
     options = make_run_options(extra_tags=active_tags)
-    
-    # Проверяем, что рендеринг завершается без ошибок
+
+    # Check that rendering completes without errors
     result = render_template(root, "ctx:performance-test", options)
-    
-    # Проверяем, что активированные секции присутствуют
+
+    # Check that activated sections are present
     for i in range(0, 50, 5):
         assert f"Section {i:02d}" in result
-        
-    # Проверяем, что неактивированные секции отсутствуют 
+
+    # Check that non-activated sections are absent
     for i in [1, 2, 3, 4]:
         assert f"Section {i:02d}" not in result
 
 
 def test_template_comments(adaptive_project):
-    """Тест шаблонных комментариев {# ... #}."""
+    """Test template comments {# ... #}."""
     root = adaptive_project
-    
+
     template_content = """# Template Comments Test
 
-{# Это комментарий для разработчиков шаблонов #}
+{# This is a comment for template developers #}
 ## Visible Section
 
 Some visible content here.
 
-{# 
-   Многострочный комментарий
-   который не должен попасть в результат
-   Здесь могут быть TODO, заметки о структуре и т.п.
+{#
+   Multiline comment
+   that should not appear in output
+   Can contain TODO, structure notes, etc.
 #}
 
 {% if tag:minimal %}
-{# Этот комментарий внутри условного блока #}
+{# This comment is inside a conditional block #}
 ## Minimal Mode
 Content for minimal mode
 {% endif %}
 
-{# Комментарий между секциями #}
+{# Comment between sections #}
 
 ## Another Section
 
 More visible content.
 
-{# Финальный комментарий в конце документа #}
+{# Final comment at the end of the document #}
 """
-    
+
     create_conditional_template(root, "comments-test", template_content)
-    
-    # Тест без активных тегов
+
+    # Test without active tags
     result1 = render_template(root, "ctx:comments-test", make_run_options())
-    
-    # Проверяем, что видимый контент присутствует
+
+    # Check that visible content is present
     assert "Template Comments Test" in result1
     assert "Visible Section" in result1
     assert "Some visible content here" in result1
     assert "Another Section" in result1
     assert "More visible content" in result1
-    
-    # Проверяем, что комментарии удалены
-    assert "Это комментарий для разработчиков" not in result1
-    assert "Многострочный комментарий" not in result1
-    assert "который не должен попасть в результат" not in result1
+
+    # Check that comments are removed
+    assert "This is a comment for template developers" not in result1
+    assert "Multiline comment" not in result1
+    assert "that should not appear in output" not in result1
     assert "TODO" not in result1
-    assert "Комментарий между секциями" not in result1
-    assert "Финальный комментарий" not in result1
+    assert "Comment between sections" not in result1
+    assert "Final comment" not in result1
     assert "{#" not in result1
     assert "#}" not in result1
-    
-    # Тест с активным тегом
+
+    # Test with active tag
     options = make_run_options(extra_tags={"minimal"})
     result2 = render_template(root, "ctx:comments-test", options)
-    
-    # Проверяем, что условный блок появился
+
+    # Check that conditional block appeared
     assert "Minimal Mode" in result2
     assert "Content for minimal mode" in result2
-    
-    # Проверяем, что комментарий внутри условного блока все равно удален
-    assert "Этот комментарий внутри условного блока" not in result2
+
+    # Check that comment inside conditional block is also removed
+    assert "This comment is inside a conditional block" not in result2
     assert "{#" not in result2
     assert "#}" not in result2
 
 
 def test_comments_with_special_characters(adaptive_project):
-    """Тест комментариев со специальными символами."""
+    """Test comments with special characters."""
     root = adaptive_project
-    
+
     template_content = """# Special Characters Test
 
-{# Комментарий с ${плейсхолдером} внутри #}
+{# Comment with ${placeholder} inside #}
 ## Section 1
 
-{# Комментарий с {% директивой %} внутри #}
+{# Comment with {% directive %} inside #}
 ## Section 2
 
-{# Комментарий с <html> тегами и "кавычками" 'разными' #}
+{# Comment with <html> tags and "quotes" 'various' #}
 ## Section 3
 
-{# Комментарий с символами: @, #, $, %, ^, &, * #}
+{# Comment with symbols: @, #, $, %, ^, &, * #}
 ## Section 4
 """
-    
+
     create_conditional_template(root, "special-chars-test", template_content)
-    
+
     result = render_template(root, "ctx:special-chars-test", make_run_options())
-    
-    # Проверяем, что секции присутствуют
+
+    # Check that sections are present
     assert "Section 1" in result
     assert "Section 2" in result
     assert "Section 3" in result
     assert "Section 4" in result
-    
-    # Проверяем, что комментарии удалены
-    assert "плейсхолдером" not in result
-    assert "директивой" not in result
+
+    # Check that comments are removed
+    assert "placeholder" not in result
+    assert "directive" not in result
     assert "<html>" not in result
-    assert "кавычками" not in result
-    # Проверяем, что не осталось маркеров комментариев в неожиданных местах
-    # (допускаем наличие '#}' в других контекстах, но проверяем что сами комментарии удалены)
-    assert "Комментарий с ${" not in result
-    assert "Комментарий с {%" not in result
-    assert "Комментарий с <html>" not in result
-    assert "Комментарий с символами" not in result
+    assert "quotes" not in result
+    # Check that comment markers are not left in unexpected places
+    # (we allow '#}' in other contexts, but check that comments themselves are removed)
+    assert "Comment with ${" not in result
+    assert "Comment with {%" not in result
+    assert "Comment with <html>" not in result
+    assert "Comment with symbols" not in result
 
 
 def test_adjacent_comments_and_content(adaptive_project):
-    """Тест комментариев рядом с контентом без пробелов."""
+    """Test comments adjacent to content without spacing."""
     root = adaptive_project
-    
-    template_content = """{# Комментарий в начале без переноса #}# Title
-{# Комментарий после заголовка #}
+
+    template_content = """{# Comment at start without newline #}# Title
+{# Comment after heading #}
 Content line 1
-{# Встроенный комментарий #}Content line 2
-{# Комментарий перед концом #}"""
-    
+{# Inline comment #}Content line 2
+{# Comment before end #}"""
+
     create_conditional_template(root, "adjacent-test", template_content)
-    
+
     result = render_template(root, "ctx:adjacent-test", make_run_options())
-    
-    # Проверяем корректность склейки контента
+
+    # Check correct joining of content
     assert "# Title" in result
     assert "Content line 1" in result
     assert "Content line 2" in result
-    
-    # Проверяем, что комментарии удалены
-    assert "Комментарий в начале" not in result
-    assert "Комментарий после заголовка" not in result
-    assert "Встроенный комментарий" not in result
-    assert "Комментарий перед концом" not in result
+
+    # Check that comments are removed
+    assert "Comment at start" not in result
+    assert "Comment after heading" not in result
+    assert "Inline comment" not in result
+    assert "Comment before end" not in result
     assert "{#" not in result
     assert "#}" not in result

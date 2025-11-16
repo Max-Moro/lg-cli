@@ -6,7 +6,7 @@ from tests.infrastructure import write, run_cli, jload
 
 def test_grouping_respects_sections(tmp_path: Path):
     root = tmp_path
-    # Конфиг: две секции docs и code, каждая ограничена своим поддеревом
+    # Config: two sections docs and code, each limited to its own subtree
     write(
         root / "lg-cfg" / "sections.yaml",
         textwrap.dedent("""
@@ -24,22 +24,22 @@ def test_grouping_respects_sections(tmp_path: Path):
               - "/code/**"
         """).strip() + "\n",
     )
-    # Контекст использует обе секции
+    # Context uses both sections
     write(root / "lg-cfg" / "mix.ctx.md", "${docs}\n\n${code}\n")
 
-    # docs → два файла .md
+    # docs - two .md files
     write(root / "docs" / "a.md", "# A\n\nText\n")
     write(root / "docs" / "b.md", "## B\n\nMore\n")
-    # code → один файл .md
+    # code - one .md file
     write(root / "code" / "only.md", "# Only\n")
 
-    # Прогоняем report, чтобы получить метаданные файлов
+    # Run report to get file metadata
     cp = run_cli(root, "report", "ctx:mix")
     assert cp.returncode == 0, cp.stderr
     data = jload(cp.stdout)
     files = {row["path"]: row for row in data["files"]}
 
-    # Убедимся, что все 3 файла попали
+    # Ensure all 3 files are included
     assert "docs/a.md" in files
     assert "docs/b.md" in files
     assert "code/only.md" in files

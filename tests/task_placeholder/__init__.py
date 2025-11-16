@@ -1,8 +1,8 @@
 """
-Тесты для плагина task_placeholder.
+Tests for the task_placeholder plugin.
 
-Проверяет функциональность плейсхолдеров задачи:
-- ${task} - простая вставка
-- ${task:prompt:"default"} - вставка с дефолтным значением
-- Условия {% if task %}
+Checks task placeholder functionality:
+- ${task} - simple substitution
+- ${task:prompt:"default"} - substitution with default value
+- Conditions {% if task %}
 """

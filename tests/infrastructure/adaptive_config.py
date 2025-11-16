@@ -1,8 +1,8 @@
 """
-Конфигурационные классы для адаптивных возможностей.
+Configuration classes for adaptive capabilities.
 
-Предоставляет dataclasses для режимов и тегов, используемых в 
-адаптивной системе Listing Generator.
+Provides dataclasses for modes and tags used in
+the Listing Generator adaptive system.
 """
 
 from __future__ import annotations
@@ -13,30 +13,30 @@ from typing import Dict, List, Any
 
 @dataclass
 class ModeConfig:
-    """Конфигурация одного режима."""
+    """Configuration for a single mode."""
     title: str
     description: str = ""
     tags: List[str] = field(default_factory=list)
     options: Dict[str, Any] = field(default_factory=dict)
 
 
-@dataclass  
+@dataclass
 class ModeSetConfig:
-    """Конфигурация набора режимов."""
+    """Configuration for a set of modes."""
     title: str
     modes: Dict[str, ModeConfig]
 
 
 @dataclass
 class TagConfig:
-    """Конфигурация одного тега.""" 
+    """Configuration for a single tag."""
     title: str
     description: str = ""
 
 
 @dataclass
 class TagSetConfig:
-    """Конфигурация набора тегов."""
+    """Configuration for a set of tags."""
     title: str
     tags: Dict[str, TagConfig]
 

@@ -1,5 +1,5 @@
 """
-Тесты для парсера условий.
+Tests for the condition parser.
 """
 
 import pytest
@@ -22,7 +22,7 @@ class TestConditionParser:
         self.parser = ConditionParser()
     
     def test_empty_condition_error(self):
-        """Тест ошибки при пустом условии"""
+        """Test error on empty condition"""
         with pytest.raises(ParseError, match="Empty condition"):
             self.parser.parse("")
         
@@ -30,14 +30,14 @@ class TestConditionParser:
             self.parser.parse("   ")
     
     def test_simple_tag_condition(self):
-        """Тест простого условия тега"""
+        """Test simple tag condition"""
         result = self.parser.parse("tag:python")
         
         assert isinstance(result, TagCondition)
         assert result.name == "python"
     
     def test_tagset_condition(self):
-        """Тест условия набора тегов"""
+        """Test tagset condition"""
         result = self.parser.parse("TAGSET:language:python")
         
         assert isinstance(result, TagSetCondition)
@@ -45,26 +45,26 @@ class TestConditionParser:
         assert result.tag_name == "python"
     
     def test_scope_condition_local(self):
-        """Тест условия локального скоупа"""
+        """Test local scope condition"""
         result = self.parser.parse("scope:local")
         
         assert isinstance(result, ScopeCondition)
         assert result.scope_type == "local"
     
     def test_scope_condition_parent(self):
-        """Тест условия родительского скоупа"""
+        """Test parent scope condition"""
         result = self.parser.parse("scope:parent")
         
         assert isinstance(result, ScopeCondition)
         assert result.scope_type == "parent"
     
     def test_invalid_scope_type(self):
-        """Тест ошибки при неверном типе скоупа"""
+        """Test error on invalid scope type"""
         with pytest.raises(ParseError, match="Invalid scope type"):
             self.parser.parse("scope:invalid")
     
     def test_not_condition(self):
-        """Тест условия отрицания"""
+        """Test NOT condition"""
         result = self.parser.parse("NOT tag:deprecated")
         
         assert isinstance(result, NotCondition)
@@ -72,7 +72,7 @@ class TestConditionParser:
         assert result.condition.name == "deprecated"
     
     def test_and_condition(self):
-        """Тест условия И"""
+        """Test AND condition"""
         result = self.parser.parse("tag:python AND tag:tests")
         
         assert isinstance(result, BinaryCondition)
@@ -85,7 +85,7 @@ class TestConditionParser:
         assert result.right.name == "tests"
     
     def test_or_condition(self):
-        """Тест условия ИЛИ"""
+        """Test OR condition"""
         result = self.parser.parse("tag:python OR tag:javascript")
         
         assert isinstance(result, BinaryCondition)
@@ -98,10 +98,10 @@ class TestConditionParser:
         assert result.right.name == "javascript"
     
     def test_operator_precedence(self):
-        """Тест приоритета операторов: AND имеет больший приоритет чем OR"""
+        """Test operator precedence: AND has higher priority than OR"""
         result = self.parser.parse("tag:a OR tag:b AND tag:c")
-        
-        # Должно быть: tag:a OR (tag:b AND tag:c)
+
+        # Should be: tag:a OR (tag:b AND tag:c)
         assert isinstance(result, BinaryCondition)
         assert result.operator == ConditionType.OR
         
@@ -116,10 +116,10 @@ class TestConditionParser:
         assert result.right.right.name == "c"
     
     def test_not_precedence(self):
-        """Тест приоритета оператора NOT"""
+        """Test NOT operator precedence"""
         result = self.parser.parse("NOT tag:a AND tag:b")
-        
-        # Должно быть: (NOT tag:a) AND tag:b
+
+        # Should be: (NOT tag:a) AND tag:b
         assert isinstance(result, BinaryCondition)
         assert result.operator == ConditionType.AND
         
@@ -131,10 +131,10 @@ class TestConditionParser:
         assert result.right.name == "b"
     
     def test_grouping_with_parentheses(self):
-        """Тест группировки в скобках"""
+        """Test grouping with parentheses"""
         result = self.parser.parse("(tag:a OR tag:b) AND tag:c")
-        
-        # Должно быть: (tag:a OR tag:b) AND tag:c
+
+        # Should be: (tag:a OR tag:b) AND tag:c
         assert isinstance(result, BinaryCondition)
         assert result.operator == ConditionType.AND
         
@@ -147,7 +147,7 @@ class TestConditionParser:
         assert result.right.name == "c"
     
     def test_nested_grouping(self):
-        """Тест вложенных скобок"""
+        """Test nested parentheses"""
         result = self.parser.parse("((tag:a))")
         
         assert isinstance(result, GroupCondition)
@@ -156,10 +156,10 @@ class TestConditionParser:
         assert result.condition.condition.name == "a"
     
     def test_multiple_and_operators(self):
-        """Тест множественных операторов AND (левая ассоциативность)"""
+        """Test multiple AND operators (left associativity)"""
         result = self.parser.parse("tag:a AND tag:b AND tag:c")
-        
-        # Должно быть: (tag:a AND tag:b) AND tag:c
+
+        # Should be: (tag:a AND tag:b) AND tag:c
         assert isinstance(result, BinaryCondition)
         assert result.operator == ConditionType.AND
         
@@ -174,71 +174,71 @@ class TestConditionParser:
         assert result.right.name == "c"
     
     def test_multiple_not_operators(self):
-        """Тест множественных операторов NOT (правая ассоциативность)"""
+        """Test multiple NOT operators (right associativity)"""
         result = self.parser.parse("NOT NOT tag:a")
-        
-        # Должно быть: NOT (NOT tag:a)
+
+        # Should be: NOT (NOT tag:a)
         assert isinstance(result, NotCondition)
         assert isinstance(result.condition, NotCondition)
         assert isinstance(result.condition.condition, TagCondition)
         assert result.condition.condition.name == "a"
     
     def test_complex_expression(self):
-        """Тест сложного выражения с различными операторами"""
+        """Test complex expression with various operators"""
         result = self.parser.parse("tag:python AND (NOT tag:deprecated OR scope:local)")
-        
+
         assert isinstance(result, BinaryCondition)
         assert result.operator == ConditionType.AND
-        
-        # Левая часть
+
+        # Left part
         assert isinstance(result.left, TagCondition)
         assert result.left.name == "python"
-        
-        # Правая часть - группа
+
+        # Right part - group
         assert isinstance(result.right, GroupCondition)
         group = result.right.condition
         assert isinstance(group, BinaryCondition)
         assert group.operator == ConditionType.OR
-        
+
         # NOT tag:deprecated
         assert isinstance(group.left, NotCondition)
         assert isinstance(group.left.condition, TagCondition)
         assert group.left.condition.name == "deprecated"
-        
+
         # scope:local
         assert isinstance(group.right, ScopeCondition)
         assert group.right.scope_type == "local"
     
     def test_syntax_errors(self):
-        """Тест различных синтаксических ошибок"""
-        
-        # Отсутствует двоеточие после tag
+        """Test various syntax errors"""
+
+        # Missing colon after tag
         with pytest.raises(ParseError, match="Expected ':' after 'tag'"):
             self.parser.parse("tag python")
-        
-        # Отсутствует имя тега
+
+        # Missing tag name
         with pytest.raises(ParseError, match="Expected tag name"):
             self.parser.parse("tag:")
-        
-        # Отсутствует закрывающая скобка
+
+        # Missing closing parenthesis
         with pytest.raises(ParseError, match="Expected '\\)'"):
             self.parser.parse("(tag:python")
-        
-        # Неожиданный токен
+
+        # Unexpected token
         with pytest.raises(ParseError, match="Unexpected token"):
             self.parser.parse("AND tag:python")
-        
-        # Неожиданный конец выражения
+
+        # Unexpected end of expression
         with pytest.raises(ParseError, match="Unexpected end of expression"):
             self.parser.parse("tag:python AND")
     
     def test_whitespace_handling(self):
-        """Тест обработки пробелов"""
+        """Test whitespace handling"""
         result1 = self.parser.parse("tag:python")
         result2 = self.parser.parse("  tag  :  python  ")
         result3 = self.parser.parse("tag\t:\tpython")
-        
-        # Все варианты должны дать одинаковый результат
+
+        # All variants should produce the same result
         assert isinstance(result1, TagCondition)
         assert isinstance(result2, TagCondition)
         assert isinstance(result3, TagCondition)
@@ -246,17 +246,17 @@ class TestConditionParser:
         assert result1.name == result2.name == result3.name == "python"
     
     def test_string_representation(self):
-        """Тест строкового представления условий"""
-        # Проверяем, что парсер может разобрать результат str()
-        
+        """Test string representation of conditions"""
+        # Check that the parser can parse the result of str()
+
         original = "tag:python AND NOT tag:deprecated"
         parsed = self.parser.parse(original)
-        
-        # Строковое представление может отличаться форматированием
+
+        # String representation may differ in formatting
         str_repr = str(parsed)
         reparsed = self.parser.parse(str_repr)
-        
-        # Но должно иметь ту же семантику
+
+        # But should have the same semantics
         assert type(parsed) == type(reparsed)
         if isinstance(parsed, BinaryCondition) and isinstance(reparsed, BinaryCondition):
             assert parsed.operator == reparsed.operator

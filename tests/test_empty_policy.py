@@ -12,8 +12,8 @@ def _write(p: Path, text: str = "") -> Path:
 
 def test_empty_policy_include_overrides_section_skip(tmp_path: Path, monkeypatch):
     """
-    Секция запрещает пустые (skip_empty:true), но python.empty_policy: include —
-    пустой m.py должен попасть в рендер.
+    Section forbids empty files (skip_empty:true), but python.empty_policy: include —
+    empty m.py should be included in render.
     """
     (tmp_path / "lg-cfg").mkdir(parents=True, exist_ok=True)
     (tmp_path / "lg-cfg" / "sections.yaml").write_text(
@@ -30,13 +30,13 @@ def test_empty_policy_include_overrides_section_skip(tmp_path: Path, monkeypatch
 
     monkeypatch.chdir(tmp_path)
     out = run_render("sec:all", RunOptions())
-    assert "python:m.py" in out  # файл не отфильтрован
+    assert "python:m.py" in out  # file is not filtered
 
 def test_empty_policy_exclude_overrides_section_allow(tmp_path: Path, monkeypatch):
     """
-    Секция разрешает пустые (skip_empty:false), но markdown.empty_policy: exclude —
-    пустой README.md должен быть исключён.
-    Добавляем также .py, чтобы документ не был md-only (тогда виден маркер файлов).
+    Section allows empty files (skip_empty:false), but markdown.empty_policy: exclude —
+    empty README.md should be excluded.
+    Also add .py so document is not md-only (then file marker is visible).
     """
     (tmp_path / "lg-cfg").mkdir(parents=True, exist_ok=True)
     (tmp_path / "lg-cfg" / "sections.yaml").write_text(
@@ -49,20 +49,20 @@ def test_empty_policy_exclude_overrides_section_allow(tmp_path: Path, monkeypatc
         """).strip() + "\n",
         encoding="utf-8",
     )
-    _write(tmp_path / "README.md", "")     # пустой markdown → должен отфильтроваться
+    _write(tmp_path / "README.md", "")     # empty markdown -> should be filtered
     _write(tmp_path / "x.py", "print('x')\n")
 
     monkeypatch.chdir(tmp_path)
     out = run_render("sec:all", RunOptions())
-    # маркер для README.md отсутствует
+    # marker for README.md is missing
     assert "python:README.md" not in out
-    # а .py виден — чтобы убедиться, что рендер прошёл
+    # and .py is visible - to ensure render succeeded
     assert "python:x.py" in out
 
 def test_empty_policy_inherit_follows_section(tmp_path: Path, monkeypatch):
     """
-    Поведение по умолчанию ('inherit'): следуем секционному флагу skip_empty.
-    Секция skip_empty:true → пустой .py отфильтровывается.
+    Default behavior ('inherit'): follow section's skip_empty flag.
+    Section skip_empty:true -> empty .py is filtered.
     """
     (tmp_path / "lg-cfg").mkdir(parents=True, exist_ok=True)
     (tmp_path / "lg-cfg" / "sections.yaml").write_text(
@@ -75,7 +75,7 @@ def test_empty_policy_inherit_follows_section(tmp_path: Path, monkeypatch):
         """).strip() + "\n",
         encoding="utf-8",
     )
-    _write(tmp_path / "m.py", "")  # пустой .py
+    _write(tmp_path / "m.py", "")  # empty .py
 
     monkeypatch.chdir(tmp_path)
     out = run_render("sec:all", RunOptions())

@@ -1,11 +1,11 @@
 """
-Тесты для lg.stats.tokenizers.model_cache.
+Tests for lg.stats.tokenizers.model_cache.
 
-Проверяют корректность кеширования моделей токенизации:
-- Создание структуры кеша
-- Проверка наличия моделей в кеше
-- Список закешированных моделей
-- Безопасное преобразование имен моделей с '/' в пути
+Verify correct tokenization model caching:
+- Cache structure creation
+- Checking for models in cache
+- List of cached models
+- Safe conversion of model names with '/' to paths
 """
 
 from pathlib import Path
@@ -14,201 +14,201 @@ from lg.stats.tokenizers.model_cache import ModelCache
 
 
 class TestModelCache:
-    """Тесты базовой функциональности ModelCache."""
-    
+    """Tests for basic ModelCache functionality."""
+
     def test_cache_initialization(self, tmp_path: Path):
-        """Проверяет создание структуры кеша при инициализации."""
+        """Verifies cache structure creation on initialization."""
         cache = ModelCache(tmp_path)
         
         assert cache.cache_dir.exists()
         assert cache.cache_dir == tmp_path / ".lg-cache" / "tokenizer-models"
     
     def test_get_lib_cache_dir(self, tmp_path: Path):
-        """Проверяет создание директории для библиотеки."""
+        """Verifies directory creation for library."""
         cache = ModelCache(tmp_path)
-        
+
         tokenizers_dir = cache.get_lib_cache_dir("tokenizers")
         assert tokenizers_dir.exists()
         assert tokenizers_dir == cache.cache_dir / "tokenizers"
-        
+
         sp_dir = cache.get_lib_cache_dir("sentencepiece")
         assert sp_dir.exists()
         assert sp_dir == cache.cache_dir / "sentencepiece"
-    
+
     def test_get_model_cache_dir_simple_name(self, tmp_path: Path):
-        """Проверяет создание директории для модели с простым именем."""
+        """Verifies directory creation for model with simple name."""
         cache = ModelCache(tmp_path)
-        
+
         model_dir = cache.get_model_cache_dir("tokenizers", "gpt2")
-        
+
         assert model_dir.exists()
         assert model_dir == cache.cache_dir / "tokenizers" / "gpt2"
-    
+
     def test_get_model_cache_dir_with_slash(self, tmp_path: Path):
-        """Проверяет безопасное преобразование имен моделей с '/'."""
+        """Verifies safe conversion of model names with '/'."""
         cache = ModelCache(tmp_path)
-        
+
         model_dir = cache.get_model_cache_dir("sentencepiece", "t5-small")
-        
-        # Для t5-small слэшей нет, путь остается t5-small
+
+        # For t5-small there are no slashes, path remains t5-small
         assert model_dir.exists()
         assert model_dir == cache.cache_dir / "sentencepiece" / "t5-small"
-    
+
     def test_is_model_cached_tokenizers(self, tmp_path: Path):
-        """Проверяет определение наличия модели tokenizers в кеше."""
+        """Verifies checking for tokenizers model in cache."""
         cache = ModelCache(tmp_path)
-        
-        # Модель не закеширована
+
+        # Model is not cached
         assert not cache.is_model_cached("tokenizers", "gpt2")
-        
-        # Создаем файл модели
+
+        # Create model file
         model_dir = cache.get_model_cache_dir("tokenizers", "gpt2")
         (model_dir / "tokenizer.json").write_text("{}", encoding="utf-8")
-        
-        # Модель теперь в кеше
+
+        # Model is now in cache
         assert cache.is_model_cached("tokenizers", "gpt2")
-    
+
     def test_is_model_cached_sentencepiece(self, tmp_path: Path):
-        """Проверяет определение наличия модели sentencepiece в кеше."""
+        """Verifies checking for sentencepiece model in cache."""
         cache = ModelCache(tmp_path)
-        
-        # Модель не закеширована
+
+        # Model is not cached
         assert not cache.is_model_cached("sentencepiece", "t5-small")
-        
-        # Создаем файл модели
+
+        # Create model file
         model_dir = cache.get_model_cache_dir("sentencepiece", "t5-small")
         (model_dir / "tokenizer.model").write_bytes(b"fake model data")
-        
-        # Модель теперь в кеше
+
+        # Model is now in cache
         assert cache.is_model_cached("sentencepiece", "t5-small")
-    
+
     def test_list_cached_models_empty(self, tmp_path: Path):
-        """Проверяет список моделей в пустом кеше."""
+        """Verifies list of models in empty cache."""
         cache = ModelCache(tmp_path)
-        
+
         assert cache.list_cached_models("tokenizers") == []
         assert cache.list_cached_models("sentencepiece") == []
-    
+
     def test_list_cached_models_tokenizers(self, tmp_path: Path):
-        """Проверяет список закешированных моделей tokenizers."""
+        """Verifies list of cached tokenizers models."""
         cache = ModelCache(tmp_path)
-        
-        # Создаем несколько моделей
+
+        # Create several models
         for model_name in ["gpt2", "roberta-base", "bert-base-uncased"]:
             model_dir = cache.get_model_cache_dir("tokenizers", model_name)
             (model_dir / "tokenizer.json").write_text("{}", encoding="utf-8")
-        
+
         cached = cache.list_cached_models("tokenizers")
-        
+
         assert len(cached) == 3
         assert "gpt2" in cached
         assert "roberta-base" in cached
         assert "bert-base-uncased" in cached
-    
+
     def test_list_cached_models_sentencepiece(self, tmp_path: Path):
-        """Проверяет список закешированных моделей sentencepiece."""
+        """Verifies list of cached sentencepiece models."""
         cache = ModelCache(tmp_path)
-        
-        # Создаем несколько моделей (с / в имени)
+
+        # Create several models (with / in name)
         models = ["t5-small", "meta-llama/Llama-2-7b-hf"]
         for model_name in models:
             model_dir = cache.get_model_cache_dir("sentencepiece", model_name)
             (model_dir / "tokenizer.model").write_bytes(b"fake model data")
-        
+
         cached = cache.list_cached_models("sentencepiece")
-        
+
         assert len(cached) == 2
-        # Имена должны быть восстановлены с /
+        # Names should be restored with /
         assert "t5-small" in cached
         assert "meta-llama/Llama-2-7b-hf" in cached
-    
+
     def test_list_cached_models_ignores_incomplete(self, tmp_path: Path):
-        """Проверяет что неполные модели (без нужных файлов) игнорируются."""
+        """Verifies that incomplete models (without required files) are ignored."""
         cache = ModelCache(tmp_path)
-        
-        # Создаем директорию без файла модели
+
+        # Create directory without model file
         incomplete_dir = cache.get_model_cache_dir("tokenizers", "incomplete-model")
         (incomplete_dir / "some-other-file.txt").write_text("not a tokenizer")
-        
-        # Создаем полную модель
+
+        # Create complete model
         complete_dir = cache.get_model_cache_dir("tokenizers", "gpt2")
         (complete_dir / "tokenizer.json").write_text("{}", encoding="utf-8")
-        
+
         cached = cache.list_cached_models("tokenizers")
-        
-        # Только полная модель в списке
+
+        # Only complete model in list
         assert len(cached) == 1
         assert "gpt2" in cached
         assert "incomplete-model" not in cached
 
 
 class TestModelCacheIntegration:
-    """Интеграционные тесты кеша с реальными адаптерами."""
-    
+    """Integration tests for cache with real adapters."""
+
     def test_tokenizers_adapter_uses_cache(self, tmp_path: Path, mock_hf_hub):
-        """Проверяет что HFAdapter использует кеш при повторных запросах."""
+        """Verifies that HFAdapter uses cache on repeated requests."""
         from lg.stats.tokenizers.hf_adapter import HFAdapter
-        
-        # Первая загрузка - должна "скачать" модель
+
+        # First load - should "download" model
         adapter1 = HFAdapter("gpt2", tmp_path)
         initial_downloads = mock_hf_hub.download_count
-        
-        # Вторая загрузка - должна использовать кеш
+
+        # Second load - should use cache
         adapter2 = HFAdapter("gpt2", tmp_path)
-        
-        # Количество скачиваний не должно увеличиться
+
+        # Download count should not increase
         assert mock_hf_hub.download_count == initial_downloads
-        
-        # Оба адаптера должны работать
+
+        # Both adapters should work
         text = "Hello, world!"
         tokens1 = adapter1.count_tokens(text)
         tokens2 = adapter2.count_tokens(text)
-        
+
         assert tokens1 == tokens2
         assert tokens1 > 0
-    
+
     def test_sentencepiece_adapter_uses_cache(self, tmp_path: Path, mock_hf_hub):
-        """Проверяет что SPAdapter использует кеш при повторных запросах."""
+        """Verifies that SPAdapter uses cache on repeated requests."""
         from lg.stats.tokenizers.sp_adapter import SPAdapter
-        
-        # Первая загрузка - должна "скачать" модель
+
+        # First load - should "download" model
         adapter1 = SPAdapter("t5-small", tmp_path)
         initial_downloads = mock_hf_hub.download_count
-        
-        # Вторая загрузка - должна использовать кеш
+
+        # Second load - should use cache
         adapter2 = SPAdapter("t5-small", tmp_path)
-        
-        # Количество скачиваний не должно увеличиться
+
+        # Download count should not increase
         assert mock_hf_hub.download_count == initial_downloads
-        
-        # Оба адаптера должны работать
+
+        # Both adapters should work
         text = "Hello, world!"
         tokens1 = adapter1.count_tokens(text)
         tokens2 = adapter2.count_tokens(text)
-        
+
         assert tokens1 == tokens2
         assert tokens1 > 0
-    
+
     def test_cache_persists_across_sessions(self, tmp_path: Path, mock_hf_hub):
-        """Проверяет что кеш сохраняется между "сессиями"."""
+        """Verifies that cache persists between 'sessions'."""
         from lg.stats.tokenizers.hf_adapter import HFAdapter
         from lg.stats.tokenizers.model_cache import ModelCache
-        
-        # Первая "сессия" - загружаем модель
+
+        # First "session" - load model
         adapter1 = HFAdapter("gpt2", tmp_path)
         download_count_after_first = mock_hf_hub.download_count
-        
-        # Проверяем что модель в кеше
+
+        # Check that model is in cache
         cache = ModelCache(tmp_path)
         assert cache.is_model_cached("tokenizers", "gpt2")
-        
-        # Вторая "сессия" - создаем новый адаптер
-        # (имитируем перезапуск программы)
+
+        # Second "session" - create new adapter
+        # (simulate program restart)
         adapter2 = HFAdapter("gpt2", tmp_path)
-        
-        # Модель не должна скачиваться заново
+
+        # Model should not be downloaded again
         assert mock_hf_hub.download_count == download_count_after_first
-        
-        # Адаптер должен работать
+
+        # Adapter should work
         text = "Test text"
         assert adapter2.count_tokens(text) > 0

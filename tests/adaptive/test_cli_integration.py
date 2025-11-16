@@ -1,8 +1,8 @@
 """
-Тесты CLI интерфейса для адаптивных возможностей.
+Tests for CLI interface of adaptive features.
 
-Проверяет команды list mode-sets, list tag-sets и использование
-флагов --mode и --tags через CLI интерфейс.
+Tests the list mode-sets, list tag-sets commands and usage of
+--mode and --tags flags through CLI interface.
 """
 
 from __future__ import annotations
@@ -12,61 +12,61 @@ from .conftest import adaptive_project, federated_project
 
 
 def test_list_mode_sets_cli(adaptive_project, monkeypatch):
-    """Тест команды lg list mode-sets."""
+    """Test lg list mode-sets command."""
     root = adaptive_project
     monkeypatch.chdir(root)
-    
+
     result = run_cli(root, "list", "mode-sets")
-    
+
     assert result.returncode == 0
     data = jload(result.stdout)
-    
-    # Проверяем структуру ответа
+
+    # Check response structure
     assert "mode-sets" in data
     mode_sets = data["mode-sets"]
-    
-    # Проверяем наличие ожидаемых наборов режимов
+
+    # Check presence of expected mode sets
     mode_set_ids = {ms["id"] for ms in mode_sets}
     assert "ai-interaction" in mode_set_ids
     assert "dev-stage" in mode_set_ids
-    
-    # Проверяем структуру одного набора
+
+    # Check structure of one set
     ai_set = next(ms for ms in mode_sets if ms["id"] == "ai-interaction")
-    assert ai_set["title"] == "Способ работы с AI"
+    assert ai_set["title"] == "AI interaction method"
     assert "modes" in ai_set
-    
-    # Проверяем режимы внутри набора
+
+    # Check modes inside the set
     modes = {m["id"]: m for m in ai_set["modes"]}
     assert "ask" in modes
     assert "agent" in modes
-    
+
     agent_mode = modes["agent"]
-    assert agent_mode["title"] == "Агентная работа"
+    assert agent_mode["title"] == "Agent work"
     assert "tags" in agent_mode
     assert "agent" in agent_mode["tags"]
     assert "tools" in agent_mode["tags"]
 
 
 def test_list_tag_sets_cli(adaptive_project, monkeypatch):
-    """Тест команды lg list tag-sets."""
+    """Test lg list tag-sets command."""
     root = adaptive_project
     monkeypatch.chdir(root)
-    
+
     result = run_cli(root, "list", "tag-sets")
-    
+
     assert result.returncode == 0
     data = jload(result.stdout)
-    
-    # Проверяем структуру ответа
+
+    # Check response structure
     assert "tag-sets" in data
     tag_sets = data["tag-sets"]
-    
-    # Проверяем наличие ожидаемых наборов тегов
+
+    # Check presence of expected tag sets
     tag_set_ids = {ts["id"] for ts in tag_sets}
     assert "language" in tag_set_ids
     assert "code-type" in tag_set_ids
-    
-    # Проверяем глобальные теги
+
+    # Check global tags
     global_set = next((ts for ts in tag_sets if ts["id"] == "global"), None)
     if global_set:
         global_tags = {t["id"] for t in global_set["tags"]}
@@ -76,42 +76,42 @@ def test_list_tag_sets_cli(adaptive_project, monkeypatch):
 
 
 def test_render_with_mode_flags(adaptive_project, monkeypatch):
-    """Тест рендеринга с флагами --mode.""" 
+    """Test rendering with --mode flags."""
     from tests.infrastructure.file_utils import write
-    
+
     root = adaptive_project
     monkeypatch.chdir(root)
-    
-    # Создаем простой контекст для тестирования
+
+    # Create a simple context for testing
     write(root / "lg-cfg" / "mode-test.ctx.md", """# Mode Test
 
 {% if tag:agent %}
 ## Agent Mode Active
 {% endif %}
 
-{% if tag:tests %}  
+{% if tag:tests %}
 ## Test Mode Active
 {% endif %}
 
 ## Content
 ${src}
 """)
-    
-    # Тест без режимов
+
+    # Test without modes
     result1 = run_cli(root, "render", "ctx:mode-test")
     assert result1.returncode == 0
     assert "Agent Mode Active" not in result1.stdout
     assert "Test Mode Active" not in result1.stdout
     assert "Content" in result1.stdout
-    
-    # Тест с одним режимом
+
+    # Test with one mode
     result2 = run_cli(root, "render", "ctx:mode-test", "--mode", "ai-interaction:agent")
     assert result2.returncode == 0
     assert "Agent Mode Active" in result2.stdout
     assert "Test Mode Active" not in result2.stdout
-    
-    # Тест с несколькими режимами  
-    result3 = run_cli(root, "render", "ctx:mode-test", 
+
+    # Test with multiple modes
+    result3 = run_cli(root, "render", "ctx:mode-test",
                       "--mode", "ai-interaction:agent",
                       "--mode", "dev-stage:testing")
     assert result3.returncode == 0
@@ -120,13 +120,13 @@ ${src}
 
 
 def test_render_with_tags_flags(adaptive_project, monkeypatch):
-    """Тест рендеринга с флагом --tags."""
+    """Test rendering with --tags flag."""
     from tests.infrastructure.file_utils import write
-    
+
     root = adaptive_project
     monkeypatch.chdir(root)
-    
-    # Создаем контекст для тестирования тегов
+
+    # Create context for testing tags
     write(root / "lg-cfg" / "tags-test.ctx.md", """# Tags Test
 
 {% if tag:minimal %}
@@ -144,20 +144,20 @@ def test_render_with_tags_flags(adaptive_project, monkeypatch):
 ## Base Content
 ${docs}
 """)
-    
-    # Тест без дополнительных тегов
+
+    # Test without additional tags
     result1 = run_cli(root, "render", "ctx:tags-test")
     assert result1.returncode == 0
     assert "Minimal Version" not in result1.stdout
     assert "Python Content" not in result1.stdout
-    
-    # Тест с одним тегом
+
+    # Test with one tag
     result2 = run_cli(root, "render", "ctx:tags-test", "--tags", "minimal")
     assert result2.returncode == 0
     assert "Minimal Version" in result2.stdout
     assert "Python Content" not in result2.stdout
-    
-    # Тест с несколькими тегами
+
+    # Test with multiple tags
     result3 = run_cli(root, "render", "ctx:tags-test", "--tags", "minimal,python,review")
     assert result3.returncode == 0
     assert "Minimal Version" in result3.stdout
@@ -166,12 +166,12 @@ ${docs}
 
 
 def test_combined_modes_and_tags_cli(adaptive_project, monkeypatch):
-    """Тест комбинированного использования --mode и --tags."""
+    """Test combined use of --mode and --tags."""
     from tests.infrastructure.file_utils import write
-    
+
     root = adaptive_project
     monkeypatch.chdir(root)
-    
+
     write(root / "lg-cfg" / "combined-test.ctx.md", """# Combined Test
 
 {% if tag:agent %}
@@ -188,99 +188,99 @@ def test_combined_modes_and_tags_cli(adaptive_project, monkeypatch):
 
 ${src}
 """)
-    
-    # Комбинируем режим (который активирует agent, tools) с дополнительным тегом
+
+    # Combine mode (which activates agent, tools) with additional tag
     result = run_cli(root, "render", "ctx:combined-test",
                      "--mode", "ai-interaction:agent",
                      "--tags", "custom")
-    
+
     assert result.returncode == 0
-    # Теги из режима должны активироваться
+    # Tags from mode should be activated
     assert "Agent from Mode" in result.stdout
-    assert "Tools from Mode" in result.stdout  
-    # Дополнительный тег тоже должен работать
+    assert "Tools from Mode" in result.stdout
+    # Additional tag should also work
     assert "Custom from Tags" in result.stdout
 
 
 def test_report_with_adaptive_options(adaptive_project, monkeypatch):
-    """Тест команды report с адаптивными опциями."""
+    """Test report command with adaptive options."""
     root = adaptive_project
     monkeypatch.chdir(root)
-    
+
     result = run_cli(root, "report", "sec:src",
-                     "--mode", "ai-interaction:agent", 
+                     "--mode", "ai-interaction:agent",
                      "--tags", "python")
-    
+
     assert result.returncode == 0
     data = jload(result.stdout)
-    
-    # Проверяем базовую структуру отчета
+
+    # Check basic report structure
     assert "protocol" in data
     assert "target" in data
     assert "total" in data
     assert "files" in data
-    
-    # Проверяем, что отчет содержит файлы
+
+    # Check that report contains files
     assert len(data["files"]) > 0
-    
-    # Проверяем метаданные
+
+    # Check metadata
     assert data["target"] == "sec:src"
     assert data["scope"] == "section"
 
 
 def test_invalid_mode_cli_error(adaptive_project, monkeypatch):
-    """Тест обработки ошибки неверного режима через CLI."""
+    """Test error handling for invalid mode via CLI."""
     root = adaptive_project
     monkeypatch.chdir(root)
-    
-    # Неверный набор режимов
+
+    # Invalid mode set
     result1 = run_cli(root, "render", "sec:src", "--mode", "invalid:mode")
     assert result1.returncode == 2
     assert "Unknown mode set 'invalid'" in result1.stderr
-    
-    # Неверный режим в правильном наборе
+
+    # Invalid mode in correct set
     result2 = run_cli(root, "render", "sec:src", "--mode", "ai-interaction:invalid")
     assert result2.returncode == 2
     assert "Unknown mode 'invalid' in mode set 'ai-interaction'" in result2.stderr
 
 
 def test_invalid_mode_format_cli_error(adaptive_project, monkeypatch):
-    """Тест обработки неверного формата режима."""
+    """Test error handling for invalid mode format."""
     root = adaptive_project
     monkeypatch.chdir(root)
-    
-    # Неверный формат (без двоеточия)
+
+    # Invalid format (without colon)
     result = run_cli(root, "render", "sec:src", "--mode", "invalid-format")
     assert result.returncode == 2
     assert "Invalid mode format" in result.stderr
 
 
 def test_federated_modes_cli(federated_project, monkeypatch):
-    """Тест CLI команд с федеративной структурой."""
+    """Test CLI commands with federated structure."""
     root = federated_project
     monkeypatch.chdir(root)
-    
-    # Проверяем list mode-sets в федеративном проекте
+
+    # Check list mode-sets in federated project
     result = run_cli(root, "list", "mode-sets")
     assert result.returncode == 0
-    
+
     data = jload(result.stdout)
     mode_set_ids = {ms["id"] for ms in data["mode-sets"]}
-    
-    # Должны быть режимы из всех скоупов
-    assert "workflow" in mode_set_ids      # корневой
-    assert "frontend" in mode_set_ids      # apps/web  
+
+    # Modes from all scopes should be present
+    assert "workflow" in mode_set_ids      # root
+    assert "frontend" in mode_set_ids      # apps/web
     assert "library" in mode_set_ids       # libs/core
 
 
 def test_federated_rendering_cli(federated_project, monkeypatch):
-    """Тест рендеринга с режимами из дочерних скоупов через CLI."""
+    """Test rendering with modes from child scopes via CLI."""
     from tests.infrastructure.file_utils import write
-    
+
     root = federated_project
     monkeypatch.chdir(root)
-    
-    # Создаем тестовый контекст
+
+    # Create test context
     write(root / "lg-cfg" / "fed-test.ctx.md", """# Federated Test
 
 {% if tag:typescript %}
@@ -288,20 +288,20 @@ def test_federated_rendering_cli(federated_project, monkeypatch):
 {% endif %}
 
 {% if tag:python %}
-## Python Mode  
+## Python Mode
 {% endif %}
 
 ## Overview
 ${overview}
 """)
-    
-    # Активируем режим из дочернего скоупа
+
+    # Activate mode from child scope
     result = run_cli(root, "render", "ctx:fed-test", "--mode", "frontend:ui")
     assert result.returncode == 0
     assert "TypeScript Mode" in result.stdout
     assert "Python Mode" not in result.stdout
-    
-    # Активируем режим из другого дочернего скоупа
+
+    # Activate mode from another child scope
     result2 = run_cli(root, "render", "ctx:fed-test", "--mode", "library:internals")
     assert result2.returncode == 0
     assert "Python Mode" in result2.stdout
@@ -309,23 +309,23 @@ ${overview}
 
 
 def test_empty_tags_parameter(adaptive_project, monkeypatch):
-    """Тест пустого параметра --tags."""
+    """Test empty --tags parameter."""
     root = adaptive_project
     monkeypatch.chdir(root)
-    
-    # Пустая строка тегов должна работать как отсутствие тегов
+
+    # Empty tag string should work like no tags
     result = run_cli(root, "render", "sec:src", "--tags", "")
     assert result.returncode == 0
     assert len(result.stdout) > 0
 
 
 def test_whitespace_in_tags_parameter(adaptive_project, monkeypatch):
-    """Тест обработки пробелов в параметре --tags."""
+    """Test handling of whitespace in --tags parameter."""
     from tests.infrastructure.file_utils import write
-    
-    root = adaptive_project  
+
+    root = adaptive_project
     monkeypatch.chdir(root)
-    
+
     write(root / "lg-cfg" / "whitespace-test.ctx.md", """# Whitespace Test
 
 {% if tag:minimal %}
@@ -336,8 +336,8 @@ def test_whitespace_in_tags_parameter(adaptive_project, monkeypatch):
 ## Python Active
 {% endif %}
 """)
-    
-    # Тестируем пробелы вокруг тегов
+
+    # Test whitespace around tags
     result = run_cli(root, "render", "ctx:whitespace-test", "--tags", " minimal , python ")
     assert result.returncode == 0
     assert "Minimal Active" in result.stdout
@@ -345,12 +345,12 @@ def test_whitespace_in_tags_parameter(adaptive_project, monkeypatch):
 
 
 def test_multiple_mode_parameters(adaptive_project, monkeypatch):
-    """Тест множественных параметров --mode."""
+    """Test multiple --mode parameters."""
     from tests.infrastructure.file_utils import write
-    
+
     root = adaptive_project
     monkeypatch.chdir(root)
-    
+
     write(root / "lg-cfg" / "multi-mode-test.ctx.md", """# Multi Mode Test
 
 {% if tag:agent %}
@@ -358,19 +358,19 @@ def test_multiple_mode_parameters(adaptive_project, monkeypatch):
 {% endif %}
 
 {% if tag:tests %}
-## Tests: Active  
+## Tests: Active
 {% endif %}
 
 {% if tag:review %}
 ## Review: Active
 {% endif %}
 """)
-    
-    # Используем несколько --mode флагов
+
+    # Use multiple --mode flags
     result = run_cli(root, "render", "ctx:multi-mode-test",
                      "--mode", "ai-interaction:agent",
                      "--mode", "dev-stage:testing")
-    
+
     assert result.returncode == 0
     assert "Agent: Active" in result.stdout
     assert "Tests: Active" in result.stdout

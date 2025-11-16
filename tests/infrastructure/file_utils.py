@@ -1,8 +1,8 @@
 """
-Утилиты для создания файлов и директорий в тестах.
+Utilities for creating files and directories in tests.
 
-Унифицирует все file-related функции, которые дублировались 
-в различных conftest.py файлах.
+Unifies all file-related functions that were duplicated
+in various conftest.py files.
 """
 
 from __future__ import annotations
@@ -12,17 +12,17 @@ from pathlib import Path
 
 def write(p: Path, text: str) -> Path:
     """
-    Записывает текст в файл, создавая родительские директории при необходимости.
-    
-    Базовая функция для всех file operations. Заменяет дублированные write() 
-    функции из различных conftest.py.
-    
+    Writes text to a file, creating parent directories as needed.
+
+    Base function for all file operations. Replaces duplicated write()
+    functions from various conftest.py files.
+
     Args:
-        p: Путь к файлу
-        text: Содержимое для записи
-        
+        p: Path to the file
+        text: Content to write
+
     Returns:
-        Путь к созданному файлу
+        Path to the created file
     """
     p.parent.mkdir(parents=True, exist_ok=True)
     p.write_text(text, encoding="utf-8")
@@ -31,17 +31,17 @@ def write(p: Path, text: str) -> Path:
 
 def write_source_file(p: Path, content: str, language: str = "python") -> Path:
     """
-    Создает исходный файл с содержимым для конкретного языка.
-    
-    Добавляет комментарий с именем файла и обрабатывает содержимое.
-    
+    Creates a source file with content for a specific language.
+
+    Adds a comment with the file name and processes the content.
+
     Args:
-        p: Путь к файлу
-        content: Содержимое файла
-        language: Язык программирования для корректного комментария
-        
+        p: Path to the file
+        content: File content
+        language: Programming language for correct comment syntax
+
     Returns:
-        Путь к созданному файлу
+        Path to the created file
     """
     comment_map = {
         "python": "# ",
@@ -52,39 +52,39 @@ def write_source_file(p: Path, content: str, language: str = "python") -> Path:
         "c": "// ",
         "scala": "// "
     }
-    
+
     comment_prefix = comment_map.get(language, "# ")
-    
+
     lines = [f"{comment_prefix}Source file: {p.name}", ""]
-    
+
     if content:
         lines.append(content.strip())
-    
+
     return write(p, "\n".join(lines) + "\n")
 
 
 def write_markdown(p: Path, title: str = "", content: str = "", h1_prefix: str = "# ") -> Path:
     """
-    Создает Markdown-файл с заголовком и содержимым.
-    
+    Creates a Markdown file with a title and content.
+
     Args:
-        p: Путь к файлу
-        title: Заголовок (если задан, добавляется как H1)
-        content: Основное содержимое
-        h1_prefix: Префикс для H1 заголовка (позволяет создавать файлы без H1)
-        
+        p: Path to the file
+        title: Title (if set, added as H1)
+        content: Main content
+        h1_prefix: Prefix for H1 title (allows creating files without H1)
+
     Returns:
-        Путь к созданному файлу
+        Path to the created file
     """
     lines = []
-    
+
     if title:
         lines.append(f"{h1_prefix}{title}")
-        lines.append("")  # пустая строка после заголовка
-    
+        lines.append("")  # empty line after title
+
     if content:
         lines.append(content.strip())
-    
+
     return write(p, "\n".join(lines) + "\n")
 
 

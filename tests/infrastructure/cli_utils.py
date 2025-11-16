@@ -1,5 +1,5 @@
 """
-Утилиты для работы с CLI в тестах.
+Utilities for working with CLI in tests.
 """
 
 import json
@@ -9,7 +9,7 @@ import sys
 from pathlib import Path
 
 
-# Дефолтные параметры токенизации для тестов
+# Default tokenization parameters for tests
 DEFAULT_TOKENIZER_LIB = "tiktoken"
 DEFAULT_ENCODER = "cl100k_base"
 DEFAULT_CTX_LIMIT = 128000
@@ -17,22 +17,22 @@ DEFAULT_CTX_LIMIT = 128000
 
 def run_cli(root: Path, *args: str) -> subprocess.CompletedProcess:
     """
-    Запускает lg.cli с указанными аргументами в заданной директории.
-    
-    Автоматически добавляет обязательные параметры токенизации (--lib, --encoder, --ctx-limit)
-    для команд report и render, если они не указаны явно.
-    
+    Runs lg.cli with specified arguments in the given directory.
+
+    Automatically adds required tokenization parameters (--lib, --encoder, --ctx-limit)
+    for report and render commands, if not explicitly specified.
+
     Args:
-        root: Рабочая директория для выполнения команды
-        *args: Аргументы командной строки для lg.cli
-        
+        root: Working directory for command execution
+        *args: Command line arguments for lg.cli
+
     Returns:
-        CompletedProcess с результатами выполнения
+        CompletedProcess with execution results
     """
-    # Преобразуем args в список для модификации
+    # Convert args to list for modification
     args_list = list(args)
-    
-    # Проверяем, нужно ли добавлять параметры токенизации
+
+    # Check if tokenization parameters need to be added
     if _needs_tokenizer_params(args_list):
         args_list = _inject_tokenizer_params(args_list)
     
@@ -45,79 +45,79 @@ def run_cli(root: Path, *args: str) -> subprocess.CompletedProcess:
 
 def _needs_tokenizer_params(args: list[str]) -> bool:
     """
-    Проверяет, требует ли команда параметры токенизации.
-    
-    Параметры нужны для команд report и render, если они еще не указаны.
+    Checks if the command requires tokenization parameters.
+
+    Parameters are needed for report and render commands, if not already specified.
     """
     if not args:
         return False
-    
-    # Проверяем, является ли первый аргумент командой, требующей токенизацию
+
+    # Check if the first argument is a command that requires tokenization
     command = args[0]
     if command not in ("report", "render"):
         return False
-    
-    # Проверяем, не указаны ли уже параметры токенизации
+
+    # Check if tokenization parameters are already specified
     has_lib = "--lib" in args
     has_encoder = "--encoder" in args
     has_ctx_limit = "--ctx-limit" in args
-    
-    # Если все параметры уже есть, добавлять ничего не нужно
+
+    # If all parameters are already present, nothing needs to be added
     if has_lib and has_encoder and has_ctx_limit:
         return False
-    
+
     return True
 
 
 def _inject_tokenizer_params(args: list[str]) -> list[str]:
     """
-    Добавляет дефолтные параметры токенизации в список аргументов.
-    
-    Вставляет параметры после команды (report/render) и target, но перед остальными опциями.
+    Adds default tokenization parameters to the arguments list.
+
+    Inserts parameters after command (report/render) and target, but before other options.
     """
-    # Находим позицию для вставки (после команды и target)
-    # Формат: command target [--options]
-    insert_pos = 2  # После command и target
-    
-    # Если в args меньше 2 элементов, что-то не так, возвращаем как есть
+    # Find insertion position (after command and target)
+    # Format: command target [--options]
+    insert_pos = 2  # After command and target
+
+    # If args has less than 2 elements, something is wrong, return as is
     if len(args) < 2:
         return args
-    
+
     result = args[:insert_pos]
-    
-    # Добавляем параметры токенизации, если их нет
+
+    # Add tokenization parameters if they are not present
     if "--lib" not in args:
         result.extend(["--lib", DEFAULT_TOKENIZER_LIB])
-    
+
     if "--encoder" not in args:
         result.extend(["--encoder", DEFAULT_ENCODER])
-    
+
     if "--ctx-limit" not in args:
         result.extend(["--ctx-limit", str(DEFAULT_CTX_LIMIT)])
-    
-    # Добавляем остальные аргументы
+
+    # Add remaining arguments
     result.extend(args[insert_pos:])
-    
+
     return result
 
 
 def jload(s: str):
     """
-    Парсит JSON строку, автоматически удаляя ANSI escape-коды.
-    
-    Некоторые IDE (например PyCharm) могут добавлять ANSI escape-последовательности
-    к выводу subprocess для цветной подсветки в консоли. Эта функция удаляет такие
-    последовательности перед парсингом JSON.
-    
+    Parses a JSON string, automatically removing ANSI escape codes.
+
+    Some IDEs (e.g., PyCharm) may add ANSI escape sequences
+    to subprocess output for colored console highlighting. This function removes such
+    sequences before parsing JSON.
+
     Args:
-        s: JSON строка (возможно с ANSI escape-кодами)
-        
+        s: JSON string (possibly with ANSI escape codes)
+
     Returns:
-        Распарсенный объект
+        Parsed object
     """
     import re
-    # Удаляем все ANSI escape-последовательности вида \x1b[<digits>m
-    # Например: \x1b[0m (reset), \x1b[32m (green), \x1b[1;31m (bold red)
+    # Remove all ANSI escape sequences of the form \x1b[<digits>m
+    # Examples: \x1b[0m (reset), \x1b[32m (green), \x1b[1;31m (bold red)
     clean = re.sub(r'\x1b\[[0-9;]*m', '', s)
     return json.loads(clean)
 

@@ -5,12 +5,12 @@ from pathlib import Path
 
 import pytest
 
-# Импорт из унифицированной инфраструктуры  
+# Import from unified infrastructure
 from tests.infrastructure import write
 from tests.infrastructure import make_run_context as mk_run_ctx
 
 def _root_sections_yaml() -> str:
-    # Корневой конфиг: хотя бы одна простая секция, но тесты CDM опираются на child-секции
+    # Root config: at least one simple section, but CDM tests rely on child-sections
     return textwrap.dedent("""
     root-md:
       extensions: [".md"]
@@ -22,7 +22,7 @@ def _root_sections_yaml() -> str:
 
 
 def _svc_a_sections() -> str:
-    # Секция 'a' со скоупом packages/svc-a
+    # Section 'a' with scope packages/svc-a
     return textwrap.dedent("""
     a:
       extensions: [".py", ".md"]
@@ -39,7 +39,7 @@ def _svc_a_sections() -> str:
 
 
 def _web_sections() -> str:
-    # Секция 'web-api' в apps/web
+    # Section 'web-api' in apps/web
     return textwrap.dedent("""
     web-api:
       extensions: [".md"]
@@ -53,19 +53,19 @@ def _web_sections() -> str:
 @pytest.fixture
 def monorepo(tmp_path: Path) -> Path:
     """
-    Строит монорепу:
+    Builds a monorepo:
       repo/
         lg-cfg/
           sections.yaml
-          a.ctx.md     (использует tpl:local-intro и адресные секции)
-          local-intro.tpl.md (вставляет секцию @packages/svc-a:a один раз)
+          a.ctx.md     (uses tpl:local-intro and addressed sections)
+          local-intro.tpl.md (inserts section @packages/svc-a:a once)
         packages/svc-a/lg-cfg/
           a.sec.yaml
           docs/guide.tpl.md
         apps/web/lg-cfg/
           web.sec.yaml
           docs/guide.tpl.md
-      и немного исходников под фильтры
+      and some source files for filters
     """
     root = tmp_path
 
@@ -97,9 +97,9 @@ def monorepo(tmp_path: Path) -> Path:
     # --- child: apps/web ---
     write(root / "apps" / "web" / "lg-cfg" / "web.sec.yaml", _web_sections())
     write(root / "apps" / "web" / "lg-cfg" / "docs" / "guide.tpl.md", "WEB GUIDE (no sections here)\n")
-    # Доп. контекст в child для проверки ctx@...
+    # Additional context in child to test ctx@...
     write(root / "apps" / "web" / "lg-cfg" / "external.ctx.md", "# WEBCTX\n\n${web-api}\n")
-    # И корневой контекст, который вставляет child-контекст
+    # And root context that inserts child-context
     write(root / "lg-cfg" / "x.ctx.md", "# ROOT X\n\n${ctx@apps/web:external}\n")
 
     # --- payload files for filters/targets ---

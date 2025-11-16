@@ -1,8 +1,8 @@
 """
-Тесты условной фильтрации файлов на разных уровнях иерархии FilterNode.
+Tests for conditional file filtering at different levels of FilterNode hierarchy.
 
-Проверяет работу условий when в конфигурации секций на корневом уровне
-и на всех уровнях вложенности (children).
+Tests the when conditions in section configuration at root level
+and at all nesting levels (children).
 """
 
 from __future__ import annotations
@@ -20,48 +20,48 @@ from .conftest import (
 @pytest.fixture
 def hierarchical_project(tmp_path: Path) -> Path:
     """
-    Создает проект с иерархической структурой для тестирования
-    условных фильтров на разных уровнях.
+    Creates a project with hierarchical structure for testing
+    conditional filters at different levels.
     """
     root = tmp_path
     
-    # Создаем структуру файлов
+    # Create file structure
     write(root / "pyproject.toml", "[project]\nname = 'test'\n")
     write(root / "lg" / "cli.py", "# CLI module\n")
     write(root / "lg" / "types.py", "# Types module\n")
     write(root / "lg" / "engine.py", "# Engine module\n")
-    
-    # Подструктура config
+
+    # Config sub-structure
     write(root / "lg" / "config" / "load.py", "# Config loader\n")
     write(root / "lg" / "config" / "model.py", "# Config models\n")
     write(root / "lg" / "config" / "extra.py", "# Extra config\n")
-    
-    # Подструктура adapters
+
+    # Adapters sub-structure
     write(root / "lg" / "adapters" / "__init__.py", "# Adapters package\n")
     write(root / "lg" / "adapters" / "registry.py", "# Registry\n")
     write(root / "lg" / "adapters" / "base.py", "# Base adapter\n")
     write(root / "lg" / "adapters" / "markdown.py", "# Markdown adapter\n")
-    
-    # Подструктура template с плагинами
+
+    # Template sub-structure with plugins
     write(root / "lg" / "template" / "processor.py", "# Template processor\n")
     write(root / "lg" / "template" / "context.py", "# Template context\n")
     write(root / "lg" / "template" / "common_placeholders" / "plugin.py", "# Common placeholders\n")
     write(root / "lg" / "template" / "adaptive" / "plugin.py", "# Adaptive plugin\n")
     write(root / "lg" / "template" / "md_placeholders" / "plugin.py", "# MD placeholders\n")
-    
-    # Создаем конфигурацию тегов с наборами для фич шаблонизатора
+
+    # Create tag configuration with sets for templating features
     tag_sets = {
         "template-features": TagSetConfig(
-            title="Фичи шаблонизатора",
+            title="Templating features",
             tags={
-                "common-placeholders": TagConfig(title="Базовые плейсхолдеры"),
-                "adaptive": TagConfig(title="Адаптивные возможности"),
-                "md-placeholders": TagConfig(title="Markdown плейсхолдеры")
+                "common-placeholders": TagConfig(title="Common placeholders"),
+                "adaptive": TagConfig(title="Adaptive capabilities"),
+                "md-placeholders": TagConfig(title="Markdown placeholders")
             }
         )
     }
     global_tags = {
-        "minimal": TagConfig(title="Минимальная версия")
+        "minimal": TagConfig(title="Minimal version")
     }
     create_tags_yaml(root, tag_sets, global_tags)
     
@@ -69,10 +69,10 @@ def hierarchical_project(tmp_path: Path) -> Path:
 
 
 def test_root_level_conditional_filters(hierarchical_project):
-    """Тест условных фильтров на корневом уровне секции."""
+    """Test conditional filters at root level of section."""
     root = hierarchical_project
-    
-    # Конфигурация с условиями на корневом уровне
+
+    # Configuration with conditions at root level
     sections_yaml = """
 src:
   extensions: [".py"]
@@ -85,16 +85,16 @@ src:
       - condition: "tag:minimal"
         allow: ["/lg/engine.py"]
 """
-    
+
     write(root / "lg-cfg" / "sections.yaml", sections_yaml)
-    
-    # Без тега minimal - только cli.py и types.py
+
+    # Without minimal tag - only cli.py and types.py
     result1 = render_template(root, "sec:src", make_run_options())
     assert "cli.py" in result1
     assert "types.py" in result1
     assert "engine.py" not in result1
-    
-    # С тегом minimal - добавляется engine.py
+
+    # With minimal tag - engine.py is added
     options = make_run_options(extra_tags={"minimal"})
     result2 = render_template(root, "sec:src", options)
     assert "cli.py" in result2
@@ -103,10 +103,10 @@ src:
 
 
 def test_child_level_conditional_filters(hierarchical_project):
-    """Тест условных фильтров на уровне children."""
+    """Test conditional filters at children level."""
     root = hierarchical_project
-    
-    # Конфигурация с условиями на уровне children
+
+    # Configuration with conditions at children level
     sections_yaml = """
 src:
   extensions: [".py"]
@@ -124,16 +124,16 @@ src:
           - condition: "tag:minimal"
             allow: ["/types.py"]
 """
-    
+
     write(root / "lg-cfg" / "sections.yaml", sections_yaml)
-    
-    # Без тега minimal - только config и adapters
+
+    # Without minimal tag - only config and adapters
     result1 = render_template(root, "sec:src", make_run_options())
     assert "config/load.py" in result1 or "config" in result1
     assert "adapters/base.py" in result1 or "adapters" in result1
     assert "lg/types.py" not in result1
-    
-    # С тегом minimal - добавляется types.py
+
+    # With minimal tag - types.py is added
     options = make_run_options(extra_tags={"minimal"})
     result2 = render_template(root, "sec:src", options)
     assert "config" in result2
@@ -142,10 +142,10 @@ src:
 
 
 def test_deep_nested_conditional_filters(hierarchical_project):
-    """Тест условных фильтров на глубоко вложенных уровнях."""
+    """Test conditional filters at deeply nested levels."""
     root = hierarchical_project
-    
-    # Конфигурация с условиями на глубоко вложенном уровне
+
+    # Configuration with conditions at deeply nested level
     sections_yaml = """
 src:
   extensions: [".py"]
@@ -171,25 +171,25 @@ src:
               - condition: "TAGSET:template-features:md-placeholders"
                 allow: ["/md_placeholders/"]
 """
-    
+
     write(root / "lg-cfg" / "sections.yaml", sections_yaml)
-    
-    # Без активных тегов из template-features - все плагины включены
+
+    # Without active tags from template-features - all plugins included
     result1 = render_template(root, "sec:src", make_run_options())
     assert "processor.py" in result1
     assert "common_placeholders" in result1
     assert "adaptive" in result1
     assert "md_placeholders" in result1
-    
-    # С активным common-placeholders - только он и базовые файлы
+
+    # With active common-placeholders - only it and base files
     options2 = make_run_options(extra_tags={"common-placeholders"})
     result2 = render_template(root, "sec:src", options2)
     assert "processor.py" in result2
     assert "common_placeholders" in result2
     assert "adaptive" not in result2
     assert "md_placeholders" not in result2
-    
-    # С активным adaptive - только он и базовые файлы
+
+    # With active adaptive - only it and base files
     options3 = make_run_options(extra_tags={"adaptive"})
     result3 = render_template(root, "sec:src", options3)
     assert "processor.py" in result3
@@ -199,9 +199,9 @@ src:
 
 
 def test_multiple_conditional_filters_same_level(hierarchical_project):
-    """Тест нескольких условных фильтров на одном уровне."""
+    """Test multiple conditional filters at the same level."""
     root = hierarchical_project
-    
+
     sections_yaml = """
 src:
   extensions: [".py"]
@@ -220,16 +220,16 @@ src:
           - condition: "NOT tag:minimal"
             allow: ["/template/"]
 """
-    
+
     write(root / "lg-cfg" / "sections.yaml", sections_yaml)
-    
-    # Без тега minimal - config и template
+
+    # Without minimal tag - config and template
     result1 = render_template(root, "sec:src", make_run_options())
     assert "config/load.py" in result1
     assert "adapters" not in result1
     assert "template" in result1
-    
-    # С тегом minimal - config и adapters
+
+    # With minimal tag - config and adapters
     options = make_run_options(extra_tags={"minimal"})
     result2 = render_template(root, "sec:src", options)
     assert "config/load.py" in result2
@@ -238,9 +238,9 @@ src:
 
 
 def test_conditional_filters_with_block_rules(hierarchical_project):
-    """Тест условных фильтров с правилами блокировки."""
+    """Test conditional filters with block rules."""
     root = hierarchical_project
-    
+
     sections_yaml = """
 src:
   extensions: [".py"]
@@ -258,16 +258,16 @@ src:
           - condition: "tag:minimal"
             block: ["/config/extra.py"]
 """
-    
+
     write(root / "lg-cfg" / "sections.yaml", sections_yaml)
-    
-    # Без тега minimal - все файлы config включены
+
+    # Without minimal tag - all config files included
     result1 = render_template(root, "sec:src", make_run_options())
     assert "config/load.py" in result1
     assert "config/model.py" in result1
     assert "config/extra.py" in result1
-    
-    # С тегом minimal - extra.py заблокирован
+
+    # With minimal tag - extra.py blocked
     options = make_run_options(extra_tags={"minimal"})
     result2 = render_template(root, "sec:src", options)
     assert "config/load.py" in result2
@@ -276,9 +276,9 @@ src:
 
 
 def test_conditional_filters_inheritance(hierarchical_project):
-    """Тест наследования условных фильтров по уровням."""
+    """Test inheritance of conditional filters across levels."""
     root = hierarchical_project
-    
+
     sections_yaml = """
 src:
   extensions: [".py"]
@@ -298,16 +298,16 @@ src:
           - condition: "tag:minimal"
             allow: ["/adapters/"]
 """
-    
+
     write(root / "lg-cfg" / "sections.yaml", sections_yaml)
-    
-    # Без тега minimal - только config
+
+    # Without minimal tag - only config
     result1 = render_template(root, "sec:src", make_run_options())
     assert "pyproject.toml" not in result1
     assert "config" in result1
     assert "adapters" not in result1
-    
-    # С тегом minimal - оба уровня применяются
+
+    # With minimal tag - both levels apply
     options = make_run_options(extra_tags={"minimal"})
     result2 = render_template(root, "sec:src", options)
     assert "pyproject.toml" in result2
@@ -316,9 +316,9 @@ src:
 
 
 def test_conditional_filters_complex_conditions(hierarchical_project):
-    """Тест условных фильтров со сложными условиями."""
+    """Test conditional filters with complex conditions."""
     root = hierarchical_project
-    
+
     sections_yaml = """
 src:
   extensions: [".py"]
@@ -337,23 +337,23 @@ src:
           - condition: "tag:minimal"
             allow: ["/adapters/"]
 """
-    
+
     write(root / "lg-cfg" / "sections.yaml", sections_yaml)
-    
-    # Без тегов - template включен (TAGSET без активных тегов = true)
+
+    # Without tags - template is included (TAGSET without active tags = true)
     result1 = render_template(root, "sec:src", make_run_options())
     assert "config" in result1
     assert "template" in result1
     assert "adapters" not in result1
-    
-    # С minimal - template и adapters включены
+
+    # With minimal - template and adapters included
     options2 = make_run_options(extra_tags={"minimal"})
     result2 = render_template(root, "sec:src", options2)
     assert "config" in result2
     assert "template" in result2
     assert "adapters" in result2
-    
-    # С adaptive из TAGSET - template включен, adapters нет (minimal не активен)
+
+    # With adaptive from TAGSET - template included, adapters not (minimal not active)
     options3 = make_run_options(extra_tags={"adaptive"})
     result3 = render_template(root, "sec:src", options3)
     assert "config" in result3
@@ -362,10 +362,10 @@ src:
 
 
 def test_conditional_filters_evaluation_error_handling(hierarchical_project):
-    """Тест обработки ошибок при вычислении условий."""
+    """Test error handling when evaluating conditions."""
     root = hierarchical_project
-    
-    # Конфигурация с невалидным условием
+
+    # Configuration with invalid condition
     sections_yaml = """
 src:
   extensions: [".py"]
@@ -381,53 +381,53 @@ src:
       - condition: "tag:another_valid"
         allow: ["/lg/types.py"]
 """
-    
+
     write(root / "lg-cfg" / "sections.yaml", sections_yaml)
-    
-    # Должно обработаться без падения, но с предупреждением
-    # Валидные условия должны применяться
+
+    # Should process without error but with warning
+    # Valid conditions should be applied
     options = make_run_options(extra_tags={"valid", "another_valid"})
     result = render_template(root, "sec:src", options)
-    
-    # Валидные условия сработали
+
+    # Valid conditions applied
     assert "pyproject.toml" in result
     assert "lg/types.py" in result
-    
-    # Невалидное условие игнорируется (не падает весь процесс)
-    # cli.py может быть или не быть в зависимости от базовых правил
+
+    # Invalid condition ignored (whole process doesn't fail)
+    # cli.py may or may not be present depending on base rules
 
 
 def test_example_from_issue(tmp_path):
     """
-    Тест примера из задачи - иерархическая конфигурация с условными фильтрами.
-    
-    Проверяет работу условий на уровне lg/template/when.
+    Test example from task - hierarchical configuration with conditional filters.
+
+    Verifies operation of conditions at lg/template/when level.
     """
     root = tmp_path
-    
-    # Создаем структуру из примера
+
+    # Create structure from example
     write(root / "pyproject.toml", "[project]\nname = 'lg'\n")
     write(root / "lg" / "cli.py", "# CLI\n")
     write(root / "lg" / "types.py", "# Types\n")
     write(root / "lg" / "engine.py", "# Engine\n")
     write(root / "lg" / "section_processor.py", "# Section processor\n")
-    
+
     write(root / "lg" / "config" / "load.py", "# Load\n")
     write(root / "lg" / "config" / "model.py", "# Model\n")
-    
+
     write(root / "lg" / "adapters" / "__init__.py", "# Init\n")
     write(root / "lg" / "adapters" / "registry.py", "# Registry\n")
     write(root / "lg" / "adapters" / "base.py", "# Base\n")
     write(root / "lg" / "adapters" / "processor.py", "# Processor\n")
     write(root / "lg" / "adapters" / "markdown.py", "# Markdown\n")
-    
+
     write(root / "lg" / "template" / "processor.py", "# Template processor\n")
     write(root / "lg" / "template" / "common.py", "# Template common\n")
     write(root / "lg" / "template" / "common_placeholders" / "plugin.py", "# Common placeholders plugin\n")
     write(root / "lg" / "template" / "adaptive" / "plugin.py", "# Adaptive plugin\n")
     write(root / "lg" / "template" / "md_placeholders" / "plugin.py", "# MD placeholders plugin\n")
-    
-    # Конфигурация из примера задачи
+
+    # Configuration from task example
     sections_yaml = """
 src:
   extensions: [".py", ".toml"]
@@ -473,23 +473,23 @@ src:
               - condition: "TAGSET:template-features:md-placeholders"
                 allow: ["/md_placeholders/"]
 """
-    
-    # Создаем теги
+
+    # Create tags
     tag_sets = {
         "template-features": TagSetConfig(
-            title="Фичи шаблонизатора",
+            title="Templating features",
             tags={
-                "common-placeholders": TagConfig(title="Базовые плейсхолдеры"),
-                "adaptive": TagConfig(title="Адаптивные возможности"),
-                "md-placeholders": TagConfig(title="Markdown плейсхолдеры")
+                "common-placeholders": TagConfig(title="Common placeholders"),
+                "adaptive": TagConfig(title="Adaptive capabilities"),
+                "md-placeholders": TagConfig(title="Markdown placeholders")
             }
         )
     }
     create_tags_yaml(root, tag_sets, {})
-    
+
     write(root / "lg-cfg" / "sections.yaml", sections_yaml)
-    
-    # Тест 1: Без активных тегов - все плагины включены
+
+    # Test 1: Without active tags - all plugins included
     result1 = render_template(root, "sec:src", make_run_options())
     assert "pyproject.toml" in result1
     assert "lg/cli.py" in result1
@@ -499,8 +499,8 @@ src:
     assert "common_placeholders" in result1
     assert "adaptive" in result1
     assert "md_placeholders" in result1
-    
-    # Тест 2: С активным common-placeholders - только этот плагин
+
+    # Test 2: With active common-placeholders - only this plugin
     options2 = make_run_options(extra_tags={"common-placeholders"})
     result2 = render_template(root, "sec:src", options2)
     assert "pyproject.toml" in result2
@@ -508,8 +508,8 @@ src:
     assert "common_placeholders" in result2
     assert "adaptive" not in result2
     assert "md_placeholders" not in result2
-    
-    # Тест 3: С активным adaptive - только этот плагин
+
+    # Test 3: With active adaptive - only this plugin
     options3 = make_run_options(extra_tags={"adaptive"})
     result3 = render_template(root, "sec:src", options3)
     assert "template/processor.py" in result3 or "template/common.py" in result3

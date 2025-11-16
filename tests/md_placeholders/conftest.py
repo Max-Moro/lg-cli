@@ -1,8 +1,8 @@
 """
-Тестовая инфраструктура для md-плейсхолдеров.
+Test infrastructure for markdown placeholders.
 
-Предоставляет фикстуры и хелперы для создания временных проектов
-с Markdown-файлами и тестирования md-плейсхолдеров типа ${md:...}.
+Provides fixtures and helpers for creating temporary projects
+with Markdown files and testing markdown placeholders like ${md:...}.
 """
 
 from __future__ import annotations
@@ -12,29 +12,29 @@ from pathlib import Path
 
 import pytest
 
-# Импорт из унифицированной инфраструктуры
+# Import from unified infrastructure
 from tests.infrastructure import write, write_markdown, render_template, make_run_options
 from tests.infrastructure.config_builders import create_basic_lg_cfg, create_template
 
 
-# ====================== Основные фикстуры ======================
+# ====================== Main Fixtures ======================
 
 @pytest.fixture
 def md_project(tmp_path: Path) -> Path:
     """
-    Создает базовый проект для тестирования md-плейсхолдеров.
+    Creates a basic project for testing markdown placeholders.
 
-    Включает:
-    - Минимальную конфигурацию lg-cfg
-    - Несколько тестовых Markdown-файлов
-    - Базовую структуру директорий
+    Includes:
+    - Minimal lg-cfg configuration
+    - Several test Markdown files
+    - Basic directory structure
     """
     root = tmp_path
 
-    # Создаем базовую конфигурацию
+    # Create basic configuration
     create_basic_lg_cfg(root)
 
-    # Создаем тестовые Markdown-файлы
+    # Create test Markdown files
     write_markdown(root / "README.md",
                    title="Main Project",
                    content="This is the main project documentation.\n\n## Features\n\n- Feature A\n- Feature B")
@@ -47,12 +47,12 @@ def md_project(tmp_path: Path) -> Path:
                    title="API Reference",
                    content="API documentation.\n\n## Authentication\n\nUse API keys.\n\n## Endpoints\n\n### GET /users\n\nGet users list.")
 
-    # Файл без H1 для тестов strip_h1
+    # File without H1 for strip_h1 tests
     write_markdown(root / "docs" / "changelog.md",
                    title="",
                    content="## v1.0.0\n\n- Initial release\n\n## v0.9.0\n\n- Beta version")
 
-    # Файл в lg-cfg для тестов @self:
+    # File in lg-cfg for @self: tests
     write_markdown(root / "lg-cfg" / "internal.md",
                    title="Internal Documentation",
                    content="This is internal documentation stored in lg-cfg.")
@@ -60,40 +60,40 @@ def md_project(tmp_path: Path) -> Path:
     return root
 
 
-@pytest.fixture  
+@pytest.fixture
 def federated_md_project(tmp_path: Path) -> Path:
     """
-    Создает проект с федеративной структурой для тестирования адресных md-плейсхолдеров.
+    Creates a project with federated structure for testing addressed markdown placeholders.
     """
     root = tmp_path
-    
-    # Корневая конфигурация
+
+    # Root configuration
     create_basic_lg_cfg(root)
-    
-    # Корневые документы
-    write_markdown(root / "README.md", 
-                  title="Federated Project", 
+
+    # Root documents
+    write_markdown(root / "README.md",
+                  title="Federated Project",
                   content="Main project in a monorepo structure.")
-    
-    # Внутренняя документация в lg-cfg
+
+    # Internal documentation in lg-cfg
     write_markdown(root / "lg-cfg" / "internal.md",
                   title="Internal Documentation",
                   content="Internal documentation for the federated project.")
-    
-    # === Дочерний скоуп: apps/web ===
+
+    # === Child scope: apps/web ===
     create_basic_lg_cfg(root / "apps" / "web")
-    
+
     write_markdown(root / "apps" / "web" / "web-readme.md",
                   title="Web Application",
                   content="Frontend web application.\n\n## Components\n\n- Header\n- Footer\n- Main content")
-    
+
     write_markdown(root / "apps" / "web" / "lg-cfg" / "deployment.md",
-                  title="Web Deployment Guide", 
+                  title="Web Deployment Guide",
                   content="How to deploy the web app.\n\n## Build\n\nnpm run build\n\n## Deploy\n\nDeploy to staging.")
-    
-    # === Дочерний скоуп: libs/utils ===  
+
+    # === Child scope: libs/utils ===
     create_basic_lg_cfg(root / "libs" / "utils")
-    
+
     write_markdown(root / "libs" / "utils" / "utils-readme.md",
                   title="Utility Library",
                   content="Shared utility functions.\n\n## Math Utils\n\n- add()\n- multiply()\n\n## String Utils\n\n- capitalize()\n- trim()")
@@ -104,14 +104,14 @@ def federated_md_project(tmp_path: Path) -> Path:
 @pytest.fixture
 def adaptive_md_project(tmp_path: Path) -> Path:
     """
-    Создает проект с поддержкой адаптивных возможностей для тестирования условных md-плейсхолдеров.
+    Creates a project with adaptive capabilities for testing conditional markdown placeholders.
     """
     root = tmp_path
-    
-    # Создаем базовую конфигурацию
+
+    # Create basic configuration
     create_basic_lg_cfg(root)
-    
-    # Конфигурация тегов
+
+    # Configure tags
     write(root / "lg-cfg" / "tags.yaml", textwrap.dedent("""
     tags:
       cloud:
@@ -121,8 +121,8 @@ def adaptive_md_project(tmp_path: Path) -> Path:
       basic:
         title: "Basic documentation"
     """).strip() + "\n")
-    
-    # Создаем документы для условного включения
+
+    # Create documents for conditional inclusion
     write_markdown(root / "deployment" / "cloud.md",
                   title="Cloud Deployment",
                   content="Instructions for cloud deployment.\n\n## AWS\n\nUse CloudFormation.\n\n## Azure\n\nUse ARM templates.")
@@ -138,46 +138,46 @@ def adaptive_md_project(tmp_path: Path) -> Path:
     return root
 
 
-# ====================== Хелперы для глобов ======================
+# ====================== Glob Helpers ======================
 
 def create_glob_test_files(root: Path) -> None:
-    """Создает набор файлов для тестирования глобов."""
-    
-    # Создаем несколько файлов в docs/
+    """Creates a set of files for testing globs."""
+
+    # Create several files in docs/
     write_markdown(root / "docs" / "overview.md",
-                  title="Overview", 
+                  title="Overview",
                   content="Project overview")
-    
+
     write_markdown(root / "docs" / "tutorial.md",
                   title="Tutorial",
                   content="Step by step tutorial")
-    
+
     write_markdown(root / "docs" / "faq.md",
-                  title="FAQ", 
+                  title="FAQ",
                   content="Frequently asked questions")
-    
-    # Создаем файлы в подпапках
+
+    # Create files in subdirectories
     write_markdown(root / "docs" / "advanced" / "internals.md",
                   title="Internals",
                   content="Internal architecture")
-    
-    write_markdown(root / "docs" / "advanced" / "plugins.md", 
+
+    write_markdown(root / "docs" / "advanced" / "plugins.md",
                   title="Plugins",
                   content="Plugin development")
 
 
-# ====================== Экспорты ======================
+# ====================== Exports ======================
 
 __all__ = [
-    # Основные фикстуры
+    # Main fixtures
     "md_project", "federated_md_project", "adaptive_md_project",
-    
-    # Хелперы для создания файлов  
+
+    # File creation helpers
     "write", "write_markdown", "create_basic_lg_cfg", "create_template",
-    
-    # Хелперы для рендеринга
+
+    # Rendering helpers
     "render_template", "make_run_options",
-    
-    # Хелперы для глобов
+
+    # Glob helpers
     "create_glob_test_files"
 ]

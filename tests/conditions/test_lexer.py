@@ -1,5 +1,5 @@
 """
-Тесты для лексера условий.
+Tests for the condition lexer.
 """
 
 import pytest
@@ -13,19 +13,19 @@ class TestConditionLexer:
         self.lexer = ConditionLexer()
     
     def test_empty_string(self):
-        """Тест токенизации пустой строки"""
+        """Test tokenization of empty string"""
         tokens = self.lexer.tokenize("")
         assert len(tokens) == 1
         assert tokens[0].type == 'EOF'
     
     def test_whitespace_ignored(self):
-        """Тест игнорирования пробелов"""
+        """Test whitespace is ignored"""
         tokens = self.lexer.tokenize("   \t  ")
         assert len(tokens) == 1
         assert tokens[0].type == 'EOF'
     
     def test_keywords(self):
-        """Тест распознавания ключевых слов"""
+        """Test recognition of keywords"""
         test_cases = [
             "tag", "TAGSET", "scope", "AND", "OR", "NOT"
         ]
@@ -38,7 +38,7 @@ class TestConditionLexer:
             assert tokens[1].type == 'EOF'
     
     def test_symbols(self):
-        """Тест распознавания символов"""
+        """Test recognition of symbols"""
         test_cases = ["(", ")", ":"]
         
         for symbol in test_cases:
@@ -49,7 +49,7 @@ class TestConditionLexer:
             assert tokens[1].type == 'EOF'
     
     def test_identifiers(self):
-        """Тест распознавания идентификаторов"""
+        """Test recognition of identifiers"""
         test_cases = [
             "python", "test_tag", "my-tag", "Tag123", "_private", "x"
         ]
@@ -62,7 +62,7 @@ class TestConditionLexer:
             assert tokens[1].type == 'EOF'
     
     def test_simple_tag_condition(self):
-        """Тест простого условия тега"""
+        """Test simple tag condition"""
         tokens = self.lexer.tokenize("tag:python")
         
         expected = [
@@ -78,7 +78,7 @@ class TestConditionLexer:
             assert actual.value == expected_token.value
     
     def test_tagset_condition(self):
-        """Тест условия набора тегов"""
+        """Test tagset condition"""
         tokens = self.lexer.tokenize("TAGSET:language:python")
         
         expected_types = ['KEYWORD', 'SYMBOL', 'IDENTIFIER', 'SYMBOL', 'IDENTIFIER', 'EOF']
@@ -90,7 +90,7 @@ class TestConditionLexer:
             assert token.value == expected_values[i]
     
     def test_complex_expression(self):
-        """Тест сложного выражения с несколькими операторами"""
+        """Test complex expression with multiple operators"""
         tokens = self.lexer.tokenize("tag:python AND (NOT tag:deprecated OR scope:local)")
         
         expected_types = [
@@ -110,7 +110,7 @@ class TestConditionLexer:
             assert token.type == expected_types[i]
     
     def test_positions(self):
-        """Тест правильности позиций токенов"""
+        """Test token positions are correct"""
         tokens = self.lexer.tokenize("tag:test")
         
         assert tokens[0].position == 0  # tag
@@ -119,10 +119,10 @@ class TestConditionLexer:
         assert tokens[3].position == 8  # EOF
     
     def test_positions_with_whitespace(self):
-        """Тест позиций с учетом пробелов"""
+        """Test positions accounting for whitespace"""
         tokens = self.lexer.tokenize("  tag  :  test  ")
-        
-        # Пробелы игнорируются, но позиции должны быть правильными
+
+        # Whitespace is ignored, but positions should be correct
         assert tokens[0].type == 'KEYWORD'
         assert tokens[0].value == 'tag'
         assert tokens[0].position == 2
@@ -136,21 +136,21 @@ class TestConditionLexer:
         assert tokens[2].position == 10
     
     def test_unknown_character_error(self):
-        """Тест обработки неизвестных символов"""
+        """Test handling of unknown characters"""
         with pytest.raises(ValueError, match="Unexpected character"):
             self.lexer.tokenize("tag@invalid")
     
     def test_case_sensitivity(self):
-        """Тест чувствительности к регистру"""
-        # Ключевые слова должны быть точными
+        """Test case sensitivity"""
+        # Keywords must be exact
         tokens = self.lexer.tokenize("Tag")
-        assert tokens[0].type == 'IDENTIFIER'  # не KEYWORD
-        
+        assert tokens[0].type == 'IDENTIFIER'  # not KEYWORD
+
         tokens = self.lexer.tokenize("and")
-        assert tokens[0].type == 'IDENTIFIER'  # не KEYWORD (должно быть AND)
+        assert tokens[0].type == 'IDENTIFIER'  # not KEYWORD (should be AND)
     
     def test_token_stream(self):
-        """Тест генератора токенов"""
+        """Test token generator"""
         token_stream = list(self.lexer.tokenize_stream("tag:python"))
         tokens_list = self.lexer.tokenize("tag:python")
         

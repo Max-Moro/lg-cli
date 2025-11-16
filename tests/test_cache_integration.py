@@ -7,10 +7,10 @@ from lg.types import RunOptions
 def test_processed_cache_skips_adapter_on_second_run(tmpproj: Path, monkeypatch):
     monkeypatch.chdir(tmpproj)
 
-    # исходники
+    # source files
     (tmpproj / "m.py").write_text("print('ok')\n", encoding="utf-8")
 
-    # счётчик вызовов process у PythonAdapter
+    # call counter for PythonAdapter.process
     calls = {"process": 0}
 
     import lg.adapters.python.adapter as py_ad
@@ -22,15 +22,15 @@ def test_processed_cache_skips_adapter_on_second_run(tmpproj: Path, monkeypatch)
 
     monkeypatch.setattr(py_ad.PythonAdapter, "process", wrapped_process, raising=True)
 
-    # первый прогон — адаптер обязан сработать
+    # first run - adapter must execute
     r1 = run_report("sec:all", RunOptions())
     assert r1.total.tokensProcessed > 0
     assert calls["process"] >= 1
 
-    # второй прогон — ничего не меняем → берём processed из кэша
+    # second run - nothing changes -> use processed from cache
     r2 = run_report("sec:all", RunOptions())
     assert r2.total.tokensProcessed == r1.total.tokensProcessed
-    # процессингов быть не должно
+    # processing should not happen again
     assert calls["process"] == 1
 
 
@@ -38,10 +38,10 @@ def test_token_counts_cached_between_runs(tmpproj: Path, monkeypatch):
     monkeypatch.chdir(tmpproj)
     (tmpproj / "x.md").write_text("# T\nbody\n", encoding="utf-8")
 
-    # Счётчик вызовов encode
+    # Encode call counter
     counter = {"encode": 0}
 
-    # Мокаем count_tokens в TokenService для отслеживания вызовов
+    # Mock count_tokens in TokenService to track calls
     from lg.stats.tokenizer import TokenService
     orig_count = TokenService.count_text
 
@@ -51,26 +51,26 @@ def test_token_counts_cached_between_runs(tmpproj: Path, monkeypatch):
 
     monkeypatch.setattr(TokenService, "count_text", wrapped_count, raising=True)
 
-    # первый запуск — посчитает raw/processed + rendered (итоговый и sections-only)
+    # first run - count raw/processed + rendered (final and sections-only)
     r1 = run_report("sec:docs", RunOptions())
     enc_calls_first = counter["encode"]
     assert enc_calls_first > 0
 
-    # второй запуск — должен брать ВСЕ токены из кэша → encode не зовётся
+    # second run - should get ALL tokens from cache -> encode not called
     r2 = run_report("sec:docs", RunOptions())
-    # Кеш работает через count_text_cached, но базовый count_text все равно не должен вызываться больше
+    # Cache works through count_text_cached, but basic count_text should not be called more
     assert counter["encode"] == enc_calls_first
 
 
 def test_rendered_tokens_cached(tmpproj: Path, monkeypatch):
     monkeypatch.chdir(tmpproj)
-    # контекст a: "Intro\n\n${docs}\n"
+    # context a: "Intro\n\n${docs}\n"
     (tmpproj / "README.md").write_text("# A\nZ\n", encoding="utf-8")
 
-    # Счётчик вызовов
+    # Call counter
     counter = {"encode": 0}
 
-    # Мокаем count_tokens в TokenService для отслеживания вызовов
+    # Mock count_tokens in TokenService to track calls
     from lg.stats.tokenizer import TokenService
     orig_count = TokenService.count_text
 
@@ -80,12 +80,12 @@ def test_rendered_tokens_cached(tmpproj: Path, monkeypatch):
 
     monkeypatch.setattr(TokenService, "count_text", wrapped_count, raising=True)
 
-    # первый запуск (посчитает rendered для final и sections-only)
+    # first run (count rendered for final and sections-only)
     r1 = run_report("ctx:a", RunOptions())
     calls1 = counter["encode"]
     assert calls1 >= 2  # final + sections-only
 
-    # второй запуск (ничего не меняем) — оба rendered должны прийти из кэша
+    # second run (nothing changes) - both rendered should come from cache
     r2 = run_report("ctx:a", RunOptions())
-    # Все должно прийти из кэша
+    # Everything should come from cache
     assert counter["encode"] == calls1
