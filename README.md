@@ -187,7 +187,7 @@ ${task}
 * `${task:prompt:"дефолтный текст"}` — с дефолтным значением
 * `{% if task %}...{% endif %}` — условная вставка блока
 
-*Подробнее:* [docs/templates.md](docs/templates.md).
+*Подробнее:* [docs/templates.md](docs/ru/templates.md).
 
 ---
 
@@ -242,11 +242,11 @@ core:
 * Снести **YAML front matter** в начале.
 * Вставить **плейсхолдеры** на месте удалённого (по желанию).
 
-*Подробнее:* [docs/markdown.md](docs/markdown.md).
+*Подробнее:* [docs/markdown.md](docs/ru/markdown.md).
 
 #### Языки программирования
 
-*Подробнее:* [docs/adapters.md](docs/adapters.md).
+*Подробнее:* [docs/adapters.md](docs/ru/adapters.md).
 
 ---
 
@@ -256,13 +256,13 @@ core:
 
 LG поддерживает несколько опенсорсных библиотек токенизации (tiktoken, tokenizers, sentencepiece) и требует явного указания параметров токенизации при каждом запуске.
 
-*Подробнее:* [docs/tokenizers.md](docs/tokenizers.md).
+*Подробнее:* [docs/tokenizers.md](docs/ru/tokenizers.md).
 
 ---
 
 ## Адаптивные возможности
 
-Все способы создания универсальных шаблонов и конфигураций секций описаны в разделе [Адаптивные возможности](docs/adaptability.md).
+Все способы создания универсальных шаблонов и конфигураций секций описаны в разделе [Адаптивные возможности](docs/ru/adaptability.md).
 <!-- lg:comment:start -->
 ---
 
