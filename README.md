@@ -1,71 +1,71 @@
 # Listing Generator
 
-Инструмент для сборки «плотных» контекстов из исходников: обходит проект, фильтрует и нормализует файлы, а затем собирает из них один аккуратный Markdown-документ — идеально подходящий для ChatGPT/Copilot/Gemini/Claude и других LLM-ассистентов.
+A tool for building dense contexts from source code: traverses projects, filters and normalizes files, then assembles them into a single clean Markdown document — perfect for ChatGPT/Copilot/Gemini/Claude and other LLM assistants.
 
-> Коротко: вы храните правила отбора в `lg-cfg/` (YAML + шаблоны контекстов), а LG рендерит «готовый к вставке» текст или возвращает JSON-отчёт со статистикой токенов.
-
----
-
-## Зачем это и для кого
-
-**Категория пользователей:** разработчики, тимлиды и техписы, которые ведут диалоги с AI-агентами по реальному коду, делают ревью, выдают задания, фиксируют контекст итераций, а окно модели — ограничено.
-
-**Зачем:** современные агенты работают заметно лучше, когда видят **ровно нужный код** и **минимум шума**: никакого мусора из `node_modules/`, логов, сгенерированных файлов, огромных бинарников и т. п. Ручная подготовка такого контекста — боль. LG автоматизирует:
-
-* выбор релевантных файлов (по фильтрам и расширениям),
-* лёгкую нормализацию (напр., Markdown-заголовки, «тривиальные» `__init__.py`),
-* склейку в один документ с **видимыми метками файлов**,
-* учёт `.gitignore`,
-* **режим `changes`** (только изменённые файлы),
-* **шаблоны и контексты** (вставки секций и вложенные шаблоны),
-* оценку размера/токенов и долей («кто ест промт»).
-
-Существует множество способов формирования промтов и прикладывания к ним нужных участков кода: начиная от ручного копирования и заканчивая функциями формирования контекстных вложений в IDE с интегрированными AI-чатами. LG отличается тем, что делает это **системно и воспроизводимо**: правила хранятся в репозитории, а не в голове или истории диалога с AI-агентом.
-
-Вы заранее описываете, **что** и **как** попадёт в промт (через секции и шаблоны). Это дисциплинирует, позволяет «подкручивать» плотность и **не вываливать модель за окно**, а также воспроизводить успешные запросы через сохранённые шаблоны.
+> In short: you store selection rules in `lg-cfg/` (YAML + context templates), and LG renders "ready-to-paste" text or returns a JSON report with token statistics.
 
 ---
 
-## Как выглядит «здоровый» процесс с AI-агентом
+## Why and Who Is It For
 
-1. **Опишите правила в репозитории**
-   Создайте `lg-cfg/sections.yaml` и при необходимости дополнительные `*.sec.yaml`. В них описываются секции (наборы файлов + фильтры). Для шаблонов и контекстов используйте `*.tpl.md` и `*.ctx.md`.
+**Target audience:** developers, team leads, and technical writers who engage in dialogues with AI agents about real code, perform reviews, assign tasks, capture iteration context, while model window size is limited.
 
-2. **Соберите контекст**
-   Рендерите: или «секцию» (виртуальный контекст одного набора файлов), или «контекст» (шаблон, который может включать несколько секций и других шаблонов).
+**Why:** modern agents work noticeably better when they see **exactly the needed code** with **minimal noise**: no junk from `node_modules/`, logs, generated files, huge binaries, etc. Manual preparation of such context is painful. LG automates:
 
-3. **Итеративно ужимайте**
-   Смотрите на статистику токенов (у кого «самая тяжёлая доля»), выносите второстепенное в отдельные секции, подключайте по требованию. Для «малых апдейтов» используйте `--mode changes`.
+* selection of relevant files (by filters and extensions),
+* light normalization (e.g., Markdown headers, "trivial" `__init__.py`),
+* assembly into a single document with **visible file markers**,
+* `.gitignore` awareness,
+* **`changes` mode** (only modified files),
+* **templates and contexts** (section insertions and nested templates),
+* size/token estimation and shares ("who's eating the prompt").
 
-4. **Фиксируйте удачные промты**
-   Контексты и шаблоны (`*.ctx.md` и `*.tpl.md`) — это ваши «хорошо работающие» форматы запросов: можно воспроизводить, версионировать, делать варианты для разных задач и агентов.
+There are many ways to form prompts and attach relevant code snippets: from manual copying to context embedding features in IDEs with integrated AI chats. LG differs by doing this **systematically and reproducibly**: rules are stored in the repository, not in your head or AI conversation history.
+
+You describe **what** and **how** goes into the prompt in advance (through sections and templates). This enforces discipline, allows you to "tune" density and **avoid overflowing the model window**, as well as reproduce successful queries through saved templates.
 
 ---
 
-## Быстрый старт
+## What a "Healthy" AI Agent Workflow Looks Like
 
-### Установка и запуск
+1. **Describe rules in the repository**
+   Create `lg-cfg/sections.yaml` and additional `*.sec.yaml` as needed. These describe sections (file sets + filters). Use `*.tpl.md` and `*.ctx.md` for templates and contexts.
 
-Минимально нужен Python ≥ 3.10.
+2. **Build context**
+   Render: either a "section" (virtual context of one file set), or a "context" (template that can include multiple sections and other templates).
 
-Установка:
+3. **Iteratively compress**
+   Check token statistics (who has the "heaviest share"), move secondary content to separate sections, include on demand. For "small updates" use `--mode changes`.
+
+4. **Save successful prompts**
+   Contexts and templates (`*.ctx.md` and `*.tpl.md`) are your "well-working" query formats: reproducible, versionable, with variants for different tasks and agents.
+
+---
+
+## Quick Start
+
+### Installation and Running
+
+Requires Python ≥ 3.10.
+
+Installation:
 
 ```bash
-# Установка из директории с проектом
+# Install from project directory
 pip install -e .
 ```
 
-Проверка:
+Verification:
 
 ```bash
-# Проверка через модуль
+# Check via module
 python -m lg.cli --version
 
-# Или через установленную команду
+# Or via installed command
 lg --version
 ```
 
-Проверка окружения и кэша:
+Environment and cache check:
 
 ```bash
 python -m lg.cli diag
@@ -74,49 +74,49 @@ python -m lg.cli diag --rebuild-cache
 
 ---
 
-## Что положить в `lg-cfg/`
+## What Goes in `lg-cfg/`
 
-> Важно: каталог конфигурации всегда называется **`lg-cfg/`**.
+> Important: the configuration directory is always named **`lg-cfg/`**.
 
-Пример структуры:
+Example structure:
 
 ```
 lg-cfg/
-├─ sections.yaml           # основной YAML с секциями (обязателен)
-├─ additional.sec.yaml     # дополнительный набор секций (может быть много)
-├─ intro.tpl.md            # шаблон (может быть много, в любых подпапках)
-├─ onboarding.ctx.md       # контекст (может быть много, в любых подпапках)
+├─ sections.yaml           # main YAML with sections (required)
+├─ additional.sec.yaml     # additional section set (can have many)
+├─ intro.tpl.md            # template (can have many, in any subfolders)
+├─ onboarding.ctx.md       # context (can have many, in any subfolders)
 └─ sub-fold/
    └─ extra.sec.yaml
 ```
 
-### Секции
+### Sections
 
-* `sections.yaml` — файл с базовыми секциями.
-* `*.sec.yaml` — дополнительные наборы секций (фрагменты). В них версия опциональна.
+* `sections.yaml` — file with base sections.
+* `*.sec.yaml` — additional section sets (fragments). Version is optional in them.
 
-Секция описывает:
+A section describes:
 
-* расширения файлов, которые рассматривать,
-* фильтры allow/block по дереву,
-* политику для пустых файлов, code-fence и адаптеров языков.
+* which file extensions to consider,
+* allow/block filters over the tree,
+* policy for empty files, code-fence, and language adapters.
 
-Минимальный пример:
+Minimal example:
 
 ```yaml
-# Секция для документации по проекту
+# Section for project documentation
 docs:
   extensions: [".md"]
   markdown:
-    # Нормализовать заголовки до H2 (вне fenced-блоков), одиночный H1 в начале — удалить
+    # Normalize headings to H2 (outside fenced blocks), remove single H1 at start
     max_heading_level: 2
   filters:
-    mode: allow            # default-deny внутри секции
+    mode: allow            # default-deny within section
     allow:
       - "/README.md"
       - "/docs/**"
 
-# Исходники подмодуля core-model
+# Core-model submodule sources
 core-model-src:
   extensions: [".py", ".md", ".yaml", ".json", ".toml"]
   skip_empty: true
@@ -135,7 +135,7 @@ core-model-src:
           - "**/.pytest_cache/**"
           - "/ROADMAP.md"
 
-# Отдельная секция для дорожной карты (как текст)
+# Separate section for roadmap (as text)
 core-model-roadmap:
   extensions: [".md"]
   filters:
@@ -144,65 +144,65 @@ core-model-roadmap:
       - "/core-model/ROADMAP.md"
 ```
 
-### Фильтры: как они работают
+### Filters: How They Work
 
-* Дерево правил — **default-allow** (`mode: block`) или **default-deny** (`mode: allow`).
-* На каждом уровне: сначала `block`, потом (если узел `allow`) — **жёсткая** проверка на `allow`.
-  Если `mode: allow` и путь не совпал с локальным `allow`, он **сразу отбрасывается**.
-* `block` всегда сильнее `allow`.
-* Учитывается `.gitignore` проекта.
-* LG также бережно **не спускается** в поддеревья, которые точно ничего не дадут (ранний pruner).
+* Rule tree — **default-allow** (`mode: block`) or **default-deny** (`mode: allow`).
+* At each level: first `block`, then (if node is `allow`) — **strict** check against `allow`.
+  If `mode: allow` and path doesn't match local `allow`, it's **immediately rejected**.
+* `block` is always stronger than `allow`.
+* Project's `.gitignore` is respected.
+* LG also carefully **doesn't descend** into subtrees that won't yield anything (early pruner).
 
-### Контексты и шаблоны
+### Contexts and Templates
 
-* Контексты: `*.ctx.md` (верхнеуровневые документы).
-* Шаблоны: `*.tpl.md` (фрагменты для вставки).
+* Contexts: `*.ctx.md` (top-level documents).
+* Templates: `*.tpl.md` (fragments for insertion).
 
-Пример:
+Example:
 
 ```markdown
-# Вводная по проекту
+# Project Introduction
 
 ${tpl:intro}
 
-## Исходный код модуля core-model
+## Core-model module source code
 
 ${core-model-src}
 
-## Доп. секция
+## Additional section
 
 ${sub-fold/extra/bar}
 
-## Текущая задача
+## Current task
 
 ${task}
 ```
 
-Секции из `sections.yaml` доступны напрямую (`${docs}`),
-а из фрагментов — по иерархическому пути:
-файл `sub-fold/extra.sec.yaml` → секция `bar` → `${sub-fold/extra/bar}`.
+Sections from `sections.yaml` are accessible directly (`${docs}`),
+and from fragments — by hierarchical path:
+file `sub-fold/extra.sec.yaml` → section `bar` → `${sub-fold/extra/bar}`.
 
-Специальный плейсхолдер `${task}` вставляет текст из аргумента `--task`:
-* `${task}` — простая вставка (пустая строка если не задано)
-* `${task:prompt:"дефолтный текст"}` — с дефолтным значением
-* `{% if task %}...{% endif %}` — условная вставка блока
+Special placeholder `${task}` inserts text from `--task` argument:
+* `${task}` — simple insertion (empty string if not specified)
+* `${task:prompt:"default text"}` — with default value
+* `{% if task %}...{% endif %}` — conditional block insertion
 
-*Подробнее:* [docs/templates.md](docs/ru/templates.md).
+*More details:* [templates.md](docs/en/templates.md).
 
 ---
 
-## Языковые адаптеры
+## Language Adapters
 
-Listing Generator использует адаптеры для разных языков и форматов. Они помогают «оптимизировать» листинг: убирать мусор, нормализовать заголовки, фильтровать параграфы или даже вырезать тела функций, оставляя только сигнатуры. Настройки адаптеров задаются прямо в YAML секций — глобально для секции или адресно для отдельных путей через `targets`.
+Listing Generator uses adapters for different languages and formats. They help "optimize" listings: remove junk, normalize headings, filter paragraphs, or even strip function bodies leaving only signatures. Adapter settings are specified right in section YAML — globally for the section or targeted to specific paths via `targets`.
 
-### Пример конфигурации
+### Configuration Example
 
 ```yaml
 core:
   extensions: [".py", ".md"]
   skip_empty: true
 
-  # Глобальные правила для всей секции
+  # Global rules for entire section
   python:
     skip_trivial_inits: true
     strip_function_bodies: false
@@ -210,11 +210,11 @@ core:
   markdown:
     max_heading_level: 2
 
-  # Локальные оверрайды для отдельных папок и файлов
+  # Local overrides for specific folders and files
   targets:
     - match: "/pkg/**.py"
       python:
-        strip_function_bodies: true      # только сигнатуры в этой папке
+        strip_function_bodies: true      # only signatures in this folder
 
     - match: ["/docs/**.md", "/notes/*.md"]
       markdown:
@@ -223,135 +223,133 @@ core:
             - match: { kind: regex, pattern: "^(License|Changelog|Contributing)$", flags: "i" }
 ```
 
-В этом примере секция `core` описывает сразу два языка. Для Python глобально отключено вырезание тел функций, но внутри папки `/pkg/` оно включено. Для Markdown выставлен общий уровень заголовков, но в `/docs/` и `/notes/` будут дополнительно фильтроваться параграфы по заданным шаблонам.
+In this example, the `core` section describes two languages. For Python, stripping function bodies is globally disabled, but inside the `/pkg/` folder it's enabled. For Markdown, a general heading level is set, but in `/docs/` and `/notes/` paragraphs will additionally be filtered by specified patterns.
 
-Ключ `match` принимает либо строку, либо массив glob-шаблонов. При совпадении нескольких правил выигрывает более специфичный (длиннее и конкретнее), при равенстве — более поздний в списке. Это позволяет аккуратно накладывать локальные «оверрайды» поверх секционных настроек.
+The `match` key accepts either a string or a list of glob patterns. When multiple rules match, the more specific (longer and more concrete) one wins; if equal — the later one in the list. This allows neatly layering local "overrides" on top of section settings.
 
-Отдельная политика пустых файлов (`skip_empty` на уровне секции и `empty_policy` в адаптерах) работает так же, будто это часть языковых опций: секция задаёт общую стратегию, а адаптер при необходимости может её уточнить. Возможные варианты: `empty_policy: inherit|include|exclude`.
-
+Separate empty file policy (`skip_empty` at section level and `empty_policy` in adapters) works as if it's part of language options: the section sets the general strategy, and the adapter can refine it if needed. Possible values: `empty_policy: inherit|include|exclude`.
 
 ---
 
-### Уже доступные адаптеры
+### Available Adapters
 
 #### Markdown
 
-* Нормализовать заголовки (снять одинокий H1, сдвинуть уровни).
-* Системно **вырезать целые разделы** по заголовкам (с поддеревом).
+* Normalize headings (remove lone H1, shift levels).
+* Systematically **drop entire sections** by headings (with subtree).
+* Remove **YAML front matter** at the beginning.
+* Insert **placeholders** in place of removed content (optionally).
 
-* Снести **YAML front matter** в начале.
-* Вставить **плейсхолдеры** на месте удалённого (по желанию).
+*More details:* [markdown.md](docs/en/markdown.md).
 
-*Подробнее:* [docs/markdown.md](docs/ru/markdown.md).
+#### Programming Languages
 
-#### Языки программирования
-
-*Подробнее:* [docs/adapters.md](docs/ru/adapters.md).
-
----
-
-## Статистика по токенам
-
-Для облегчения процесса оптимизации листингов и контекстов LG позволяет получать сводный отчет по используемым токенам. 
-
-LG поддерживает несколько опенсорсных библиотек токенизации (tiktoken, tokenizers, sentencepiece) и требует явного указания параметров токенизации при каждом запуске.
-
-*Подробнее:* [docs/tokenizers.md](docs/ru/tokenizers.md).
+*More details:* [adapters.md](docs/en/adapters.md).
 
 ---
 
-## Адаптивные возможности
+## Token Statistics
 
-Все способы создания универсальных шаблонов и конфигураций секций описаны в разделе [Адаптивные возможности](docs/ru/adaptability.md).
+To facilitate the process of optimizing listings and contexts, LG provides a summary report on token usage.
+
+LG supports several open-source tokenization libraries (tiktoken, tokenizers, sentencepiece) and requires explicit specification of tokenization parameters on each run.
+
+*More details:* [tokenizers.md](docs/en/tokenizers.md).
+
+---
+
+## Adaptive Capabilities
+
+All methods for creating universal templates and section configurations are described in the [Adaptive Capabilities](docs/en/adaptability.md) section.
 <!-- lg:comment:start -->
 ---
 
-## CLI-опции
+## CLI Options
 
-Общий формат:
+General format:
 
 ```bash
 lg <command> <target> [--mode MODESET:MODE] [--tags TAG1,TAG2] [<additional_flags>]
 
-# Для render/report обязательны параметры токенизации:
+# For render/report, tokenization parameters are required:
 lg render|report <target> \
   --lib <tiktoken|tokenizers|sentencepiece> \
   --encoder <encoder_name> \
   --ctx-limit <tokens>
 ```
 
-Где `<target>`:
+Where `<target>`:
 
-* `ctx:<name>` — берётся файл `lg-cfg/<name>.ctx.md` (поддерживаются подпапки).
-* `sec:<id>` — виртуальный контекст одной секции (канонический ID).
-* `<name>` — сначала ищется как `ctx:<name>`, иначе как `sec:<id>`.
+* `ctx:<name>` — takes file `lg-cfg/<name>.ctx.md` (subfolders supported).
+* `sec:<id>` — virtual context of a single section (canonical ID).
+* `<name>` — searches first as `ctx:<name>`, otherwise as `sec:<id>`.
 
-Команды:
+Commands:
 
-* `render` — вывести **только финальный текст** (Markdown).
-* `report` — **JSON-отчёт** (формат v5): статистика, файлы, контекстный блок.
-* `list contexts|sections|tokenizer-libs|encoders` — перечисление доступных сущностей (JSON).
-* `diag` — диагностика окружения/кэша/конфига (JSON), есть `--rebuild-cache`.
+* `render` — output **final text only** (Markdown).
+* `report` — **JSON report** (format v5): statistics, files, context block.
+* `list contexts|sections|tokenizer-libs|encoders` — list available entities (JSON).
+* `diag` — environment/cache/config diagnostics (JSON), has `--rebuild-cache`.
 
-Параметры токенизации:
+Tokenization parameters:
 
-* `--lib` — библиотека токенизации (`tiktoken`, `tokenizers`, `sentencepiece`)
-* `--encoder` — имя энкодера/модели (например: `cl100k_base`, `gpt2`, `google/gemma-2-2b`)
-* `--ctx-limit` — размер контекстного окна в токенах (например: `128000`, `200000`)
+* `--lib` — tokenization library (`tiktoken`, `tokenizers`, `sentencepiece`)
+* `--encoder` — encoder/model name (e.g.: `cl100k_base`, `gpt2`, `google/gemma-2-2b`)
+* `--ctx-limit` — context window size in tokens (e.g.: `128000`, `200000`)
 
-Примеры:
+Examples:
 
 ```bash
-# Рендерим контекст из шаблона с токенизацией для GPT-4
+# Render context from template with tokenization for GPT-4
 lg render ctx:onboarding \
   --lib tiktoken \
   --encoder cl100k_base \
   --ctx-limit 128000 > prompt.md
 
-# Рендерим «только секцию» (без шаблона)
+# Render "section only" (no template)
 lg render sec:core-model-src \
   --lib tiktoken \
   --encoder cl100k_base \
   --ctx-limit 128000 > prompt.md
 
-# То же, но только изменённые файлы рабочего дерева
+# Same but only changed files in working tree
 lg render ctx:onboarding \
   --lib tiktoken \
   --encoder cl100k_base \
   --ctx-limit 128000 \
   --mode vcs:branch-changes > prompt.md
 
-# JSON-отчёт со статистикой токенов для GPT-4o
+# JSON report with token stats for GPT-4o
 lg report ctx:onboarding \
   --lib tiktoken \
   --encoder o200k_base \
   --ctx-limit 200000 > report.json
 
-# Отчет для Gemini с использованием sentencepiece
+# Report for Gemini using sentencepiece
 lg report ctx:onboarding \
   --lib sentencepiece \
   --encoder google/gemma-2-2b \
   --ctx-limit 1000000 > report.json
 
-# Рендерим контекст с описанием текущей задачи
+# Render context with current task description
 lg render ctx:dev \
   --lib tiktoken --encoder cl100k_base --ctx-limit 128000 \
-  --task "Реализовать кеширование результатов"
+  --task "Implement result caching"
 
-# Многострочная задача через stdin
-echo -e "Задачи:\n- Исправить баг #123\n- Добавить тесты" | \
+# Multi-line task via stdin
+echo -e "Tasks:\n- Fix bug #123\n- Add tests" | \
   lg render ctx:dev --lib tiktoken --encoder cl100k_base --ctx-limit 128000 --task -
 
-# Задача из файла
+# Task from file
 lg render ctx:dev \
   --lib tiktoken --encoder cl100k_base --ctx-limit 128000 \
   --task @.current-task.txt
 
-# Диагностика
+# Diagnostics
 lg diag
 lg diag --rebuild-cache
 
-# Списки
+# Lists
 lg list contexts
 lg list sections
 lg list tokenizer-libs
@@ -361,50 +359,50 @@ lg list encoders --lib tokenizers
 
 ---
 
-## Как именно LG рендерит документы
+## How LG Renders Documents
 
-* Если **все файлы — Markdown/plain**, LG просто конкатенирует их содержимое.
-* В остальных случаях:
+* If **all files are Markdown/plain text**, LG simply concatenates their content.
+* Otherwise:
 
-  * **с code-fence** (по умолчанию): блоки по языкам, сгруппированные **по порядку следования**;
-    внутри каждого блока — маркер файла `# —— FILE: path ——`, затем содержимое.
-  * **без code-fence**: линейный документ с маркером перед каждым файлом.
+  * **with code-fence** (default): blocks by languages, grouped **in order of occurrence**;
+    inside each block — file marker `# —— FILE: path ——`, then content.
+  * **without code-fence**: linear document with marker before each file.
 
-Это делает промт **читаемым** для человека и удобным для агентов: видно, откуда какой фрагмент.
-
----
-
-## Кэш и производительность
-
-LG использует файловый кэш `.lg-cache`:
-
-* **Processed-кэш** — результат работы адаптеров + их метаданные.
-* **Raw/Processed tokens** — сохранённые подсчёты токенов (по модели/режиму).
-* **Rendered tokens** — подсчёт финального документа («с клеем») и «sections-only».
-
-Ключи кэша учитывают версию инструмента, fingerprint файла, конфиг адаптера, состав групп и т. п.
-Управление: `lg diag`, `lg diag --rebuild-cache`. Можно отключить кэш через `LG_CACHE=0`.
+This makes the prompt **readable** for humans and convenient for agents: it's clear where each fragment comes from.
 
 ---
 
-## Практические советы по «плотным» контекстам
+## Cache and Performance
 
-* **Держите секции мелкими и тематическими.** Лучше несколько секций, чем одна «всё обо всём».
-* **Жёсткие `allow`-узлы** используйте там, где нужна полная предсказуемость содержимого.
-* **Markdown-шаблоны** применяйте как «рамку» промта: краткая вводная, задачи, place-holders секций.
-* **Режим `changes`** — лучший друг для патч-итераций и code-review через LLM.
-* **Следите за долями** (`promptShare`/`ctxShare`) в `report`: это помогает «холдинг-кост» распределять.
-* **Нормализуйте заголовки** (`max_heading_level`) — так удобнее читать длинные контексты.
-* **Не тащите секреты.** Настройте `block` для артефактов/ключей/секретов/бинарников.
+LG uses file cache `.lg-cache`:
+
+* **Processed cache** — adapter results + their metadata.
+* **Raw/Processed tokens** — saved token counts (by model/mode).
+* **Rendered tokens** — count of final document ("with glue") and "sections-only".
+
+Cache keys consider tool version, file fingerprint, adapter config, group composition, etc.
+Management: `lg diag`, `lg diag --rebuild-cache`. Can disable cache via `LG_CACHE=0`.
 
 ---
 
-## Интеграция с IDE/плагинами
+## Practical Tips for "Dense" Contexts
 
-В большинстве случаев вы будете запускать LG **через интеграцию** (VS Code / JetBrains и т. п.).
-Тем не менее, **вся логика отбора/шаблонов лежит в репозитории** (`lg-cfg/`), поэтому:
+* **Keep sections small and thematic.** Better several sections than one "everything about everything".
+* **Strict `allow` nodes** use where full content predictability is needed.
+* **Markdown templates** apply as prompt "frame": brief intro, tasks, section placeholders.
+* **`changes` mode** — best friend for patch iterations and code review via LLM.
+* **Watch shares** (`promptShare`/`ctxShare`) in `report`: helps distribute "holding cost".
+* **Normalize headings** (`max_heading_level`) — makes reading long contexts easier.
+* **Don't drag secrets.** Configure `block` for artifacts/keys/secrets/binaries.
 
-* ревьюить и эволюционировать правила просто (PR-ами),
-* переносить удачные промты между проектами — тривиально,
-* одна и та же конфигурация работает в CLI и в IDE.
+---
+
+## IDE/Plugin Integration
+
+In most cases you'll run LG **through integration** (VS Code / JetBrains, etc.).
+Nevertheless, **all selection/template logic lives in the repository** (`lg-cfg/`), so:
+
+* reviewing and evolving rules is simple (via PRs),
+* transferring successful prompts between projects — trivial,
+* same configuration works in CLI and IDE.
 <!-- lg:comment:end -->
