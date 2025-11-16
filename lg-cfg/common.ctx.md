@@ -15,7 +15,7 @@ ${docs/intro}
 
 ${src}
 {% if tag:tests %}
-## Unit tests
+## Test code
 
 ${tests}
 {% endif %}{% endif %}{% if tag:docs %}

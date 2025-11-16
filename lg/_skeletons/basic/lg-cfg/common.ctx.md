@@ -10,7 +10,7 @@ ${md:README}
 
 ${src}
 {% if tag:tests %}
-## Unit tests
+## Test code
 
 ${tests}
 {% endif %} {% if task AND scope:local %}
