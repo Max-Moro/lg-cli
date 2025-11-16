@@ -1,64 +1,64 @@
 tag-sets:
   basic-functions:
-    title: "Базовые функции"
+    title: "Basic functions"
     tags:
       cli:
         title: "CLI"
       diag:
-        title: "Самодиагностика"
+        title: "Self-diagnosis"
       migrate:
-        title: "Миграция конфигурации"
+        title: "Configuration migration"
       scaffold:
-        title: "Пресеты конфигурации"
+        title: "Configuration presets"
 
   code-type:
-    title: "Тип кода"
+    title: "Code Type"
     tags:
       product:
-        title: "Продуктовый код"
+        title: "Production Code"
       tests:
-        title: "Тестовый код"
+        title: "Test Code"
       tests-infra:
-        title: "Тестовая инфраструктура"
+        title: "Test infrastructure"
       generated:
-        title: "Сгенерированный код"
+        title: "Generated Code"
     
   template-features:
-    title: "Возможности шаблонизатора"
+    title: "Template engine features"
     tags:
       core:
-        title: "Только ядро"
+        title: "Core"
       common-placeholders:
-        title: "Плейсхолдер секций и шаблонов"
+        title: "Section and template placeholders"
       adaptive:
-        title: "Адаптивные возможности"
+        title: "Adaptive capabilities"
       md-placeholders:
-        title: "Плейсхолдер Markdown"
+        title: "Markdown placeholder"
       conditions:
-        title: "Условные выражения"
+        title: "Conditional expressions"
       task-placeholder:
-        title: "Плейсхолдер текущей задачи"
+        title: "Task placeholder"
 
   markdown-features:
-    title: "Работа с Markdown"
+    title: "Markdown features"
     tags:
       common:
-        title: "Базовые возможности"
+        title: "Common features"
       adaptive:
-        title: "Адаптивные возможности (HTML-комментарии)"
+        title: "Adaptive capabilities (HTML-comments)"
 
   section-pipeline:
-    title: "Секционный пайплайн"
+    title: "Section pipeline"
     tags:
       filtering:
-        title: "Фильтрация"
+        title: "Filtering"
       rendering:
-        title: "Рендеринг"
+        title: "Rendering"
       vcs:
         title: "VCS"
 
   language:
-    title: "Языки программирования"
+    title: "Programming Languages"
     tags:
       python:
         title: "Python"
@@ -76,10 +76,10 @@ tag-sets:
         title: "Scala"
 
   adapters-optimizations:
-    title: "Способы оптимизации"
+    title: "Adapters optimizations"
     tags:
       core:
-        title: "Только ядро"
+        title: "Core"
       function-bodies:
         title: "Function body optimization"
       comments:
@@ -93,15 +93,15 @@ tag-sets:
       budget:
         title: "Budget System"
 
-# Глобальные теги (не входят в определенные наборы)
+# Global tags (not part of specific sets and usually toggled through modes)
 tags:
   agent:
-    title: "Агентные возможности"
+    title: "Agent capabilities"
   review:
-    title: "Правила проведения кодревью"
+    title: "Code review guidelines"
   architecture:
-    title: "Архитектурная документация"
+    title: "Architecture documentation"
   docs:
-    title: "Документация"
+    title: "Documentation"
   tools:
-    title: "Инструменты"
+    title: "Tools"

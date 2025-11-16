@@ -26,19 +26,19 @@ mode-sets:
         tags: [claude-code, claude-code-subagents]
 
   dev-stage:
-    title: "Стадия работы над фичей"
+    title: "Dev stage"
     modes:
       planning:
-        title: "Планирование"
+        title: "Planning"
         tags: [architecture, docs]
-      development:
-        title: "Основная разработка"
-      testing:
-        title: "Написание тестов"
+      code-writing:
+        title: "Code writing"
+      tests-writing:
+        title: "Tests writing"
         tags: [tests]
-        default_task: "Напиши тесты для текущего функционального блока."
+        default_task: "Write tests for the current functional block."
       review:
-        title: "Кодревью"
+        title: "Code review"
         tags: [review]
-        default_task: "Проведи code review изменений и дай рекомендации по улучшению."
+        default_task: "Conduct code review of changes and provide improvement recommendations."
         vcs_mode: "branch-changes"

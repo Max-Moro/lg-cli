@@ -236,17 +236,17 @@ DEFAULT_MODES_CONFIG = ModesConfig(
             }
         ),
         "dev-stage": ModeSet(
-            title="Feature development stage",
+            title="Dev stage",
             modes={
                 "planning": Mode(
                     title="Planning",
                     tags=["architecture", "docs"]
                 ),
-                "development": Mode(
-                    title="Main development"
+                "code-writing": Mode(
+                    title="Code writing"
                 ),
-                "testing": Mode(
-                    title="Writing tests",
+                "tests-writing": Mode(
+                    title="Tests writing",
                     tags=["tests"],
                     default_task="Write tests for the current functional block."
                 ),
@@ -285,7 +285,6 @@ DEFAULT_TAGS_CONFIG = TagsConfig(
         "review": Tag(title="Code review guidelines"),
         "architecture": Tag(title="Architecture documentation"),
         "docs": Tag(title="Documentation"),
-        "tests": Tag(title="Test code"),
         "tools": Tag(title="Tools")
     }
 )

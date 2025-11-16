@@ -2,20 +2,20 @@ ${md:README}
 
 ---
 {% if tag:review %}
-# Измененный исходный код в текущей ветке
+# Changed source code in current branch
 {% else %}
-# Исходный код
+# Source code
 {% endif %}
-{% if tag:tests %}## Основной код{% endif %}
+{% if tag:tests %}## Main code{% endif %}
 
 ${src}
 {% if tag:tests %}
-## Unit-тесты
+## Unit tests
 
 ${tests}
 {% endif %} {% if task AND scope:local %}
 ---
 
-# Описание текущей задачи
+# Current task description
 
 ${task}{% endif %}
