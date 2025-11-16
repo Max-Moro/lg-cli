@@ -23,7 +23,7 @@ ${tests}
 
 # Расширенная документация
 
-${md:docs/*}
+${md:docs/en/*}
 {% endif %}{% if task AND scope:local %}
 ---
 
