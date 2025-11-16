@@ -193,7 +193,6 @@ class _MigrationLock:
         self.base = self.cache_dir / "locks"
         self.lock_dir = self.base / f"migrate-{h}"
         self.acquired = False
-        self.completed_marker = self.lock_dir / "completed.marker"
 
     def try_acquire(self) -> bool:
         """
@@ -258,36 +257,22 @@ class _MigrationLock:
 
     def wait_for_completion(self) -> None:
         """
-        Ожидает завершения миграций другим процессом с exponential backoff.
+        Ожидает освобождения лока другим процессом с exponential backoff.
 
-        Использует polling для проверки появления completed.marker.
-        После успешного завершения возвращает управление, позволяя
-        процессу продолжить работу.
+        Использует polling для проверки существования лока.
+        Когда лок исчезает (освобожден), возвращает управление.
 
         Raises:
-            MigrationFatalError: При timeout или неожиданном исчезновении лока
+            MigrationFatalError: При timeout ожидания
         """
         start = time.time()
         delay = 0.05  # Начальная задержка 50ms
         max_delay = 1.0  # Максимальная задержка между проверками
 
         while (time.time() - start) < self.wait_timeout:
-            # Проверка 1: Миграции завершены успешно
-            if self._is_completed():
-                return
-
-            # Проверка 2: Лок исчез (процесс-владелец упал?)
+            # Лок освобожден = миграции завершены
             if not self._lock_exists():
-                # Double-check через небольшую задержку
-                time.sleep(0.1)
-                if self._is_completed():
-                    return
-                # Лок исчез без маркера завершения - возможно crash
-                raise MigrationFatalError(
-                    "Migration lock disappeared without completion marker. "
-                    "Previous migration process may have crashed. "
-                    "Try running the command again."
-                )
+                return
 
             # Exponential backoff
             time.sleep(delay)
@@ -304,27 +289,6 @@ class _MigrationLock:
             f"If the process is stuck, manually remove: {self.lock_dir}"
         )
 
-    def mark_completed(self) -> None:
-        """
-        Создает маркер успешного завершения миграций.
-        Должен вызваться владельцем лока после успешного выполнения всех миграций.
-        """
-        if not self.acquired:
-            return
-
-        try:
-            self.completed_marker.write_text(
-                json.dumps({
-                    "pid": os.getpid(),
-                    "completed_at": _now_utc(),
-                }, ensure_ascii=False),
-                encoding="utf-8"
-            )
-        except Exception:
-            # Best-effort: если не удалось создать маркер, не критично
-            # Ждущие процессы увидят что лок освобожден и сделают свою проверку
-            pass
-
     def release(self) -> None:
         """
         Освобождает лок после завершения работы.
@@ -339,10 +303,6 @@ class _MigrationLock:
             pass
         finally:
             self.acquired = False
-
-    def _is_completed(self) -> bool:
-        """Проверяет наличие маркера завершения миграций."""
-        return self.completed_marker.exists()
 
     def _lock_exists(self) -> bool:
         """Проверяет существование директории лока."""
@@ -408,7 +368,7 @@ def ensure_cfg_actual(cfg_root: Path) -> None:
         try:
             # Double-check после захвата лока (другой процесс мог завершить миграции)
             if is_actual():
-                lock.mark_completed()
+                # Конфигурация уже актуальна после двойной проверки
                 return
 
             # Выполнение миграций (существующая логика)
@@ -478,9 +438,6 @@ def ensure_cfg_actual(cfg_root: Path) -> None:
                 applied=applied,
                 last_error=None,
             )
-
-            # Сигнализируем об успешном завершении
-            lock.mark_completed()
 
         finally:
             # Всегда освобождаем лок

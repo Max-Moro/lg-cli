@@ -33,7 +33,6 @@ def test_multiple_rapid_acquisitions_after_release(migration_lock: _MigrationLoc
     """Multiple processes can acquire lock sequentially after proper release."""
     # First acquisition
     assert migration_lock.try_acquire() is True
-    migration_lock.mark_completed()
     migration_lock.release()
 
     # Second acquisition (should succeed immediately)
