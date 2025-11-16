@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-# Регистрация всех доступных миграций.
+# Registration of all available migrations.
 from ..registry import register_many
 from .m001_config_to_sections import MIGRATION as M001
 from .m002_skip_empty_to_enum import MIGRATION as M002

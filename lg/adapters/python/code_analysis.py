@@ -1,6 +1,6 @@
 """
-Python-специфичная реализация унифицированного анализатора кода.
-Объединяет функциональность анализа структуры и видимости для Python.
+Python-specific implementation of unified code analyzer.
+Combines structure analysis and visibility analysis functionality for Python.
 """
 
 from __future__ import annotations
@@ -12,17 +12,17 @@ from ..tree_sitter_support import Node
 
 
 class PythonCodeAnalyzer(CodeAnalyzer):
-    """Python-специфичная реализация унифицированного анализатора кода."""
+    """Python-specific implementation of unified code analyzer."""
 
     def determine_element_type(self, node: Node) -> str:
         """
-        Определяет тип элемента Python на основе структуры узла.
-        
+        Determine the type of Python element based on node structure.
+
         Args:
-            node: Tree-sitter узел
-            
+            node: Tree-sitter node
+
         Returns:
-            Строка с типом элемента: "function", "method", "class"
+            String with element type: "function", "method", "class"
         """
         node_type = node.type
         
@@ -33,7 +33,7 @@ class PythonCodeAnalyzer(CodeAnalyzer):
         elif node_type == "assignment":
             return "variable"
         else:
-            # Fallback: пытаемся определить по родительскому контексту
+            # Fallback: try to determine from parent context
             if self.is_method_context(node):
                 return "method"
             else:
@@ -41,84 +41,84 @@ class PythonCodeAnalyzer(CodeAnalyzer):
 
     def extract_element_name(self, node: Node) -> Optional[str]:
         """
-        Извлекает имя элемента Python из узла Tree-sitter.
-        
+        Extract name of Python element from Tree-sitter node.
+
         Args:
-            node: Tree-sitter узел элемента
-            
+            node: Tree-sitter node of element
+
         Returns:
-            Имя элемента или None если не найдено
+            Element name or None if not found
         """
-        # Специальная обработка для assignments
+        # Special handling for assignments
         if node.type == "assignment":
-            # В assignment левая часть - это имя переменной
+            # In assignment, the left side is the variable name
             for child in node.children:
                 if child.type == "identifier":
                     return self.doc.get_node_text(child)
-        
-        # Ищем дочерний узел с именем функции/класса/метода
+
+        # Search for child node with function/class/method name
         for child in node.children:
             if child.type == "identifier":
                 return self.doc.get_node_text(child)
-        
-        # Для некоторых типов узлов имя может быть в поле name
+
+        # For some node types, name may be in the name field
         name_node = node.child_by_field_name("name")
         if name_node:
             return self.doc.get_node_text(name_node)
-        
+
         return None
 
     def determine_visibility(self, node: Node) -> Visibility:
         """
-        Определяет видимость элемента Python по соглашениям об underscore.
-        
-        Правила:
-        - Имена, начинающиеся с одного _ считаются "protected" (внутренние)
-        - Имена, начинающиеся с двух __ считаются "private" 
-        - Имена без _ или с trailing _ считаются публичными
-        - Специальные методы __method__ считаются публичными
-        
+        Determine visibility of Python element by underscore naming conventions.
+
+        Rules:
+        - Names starting with single _ are considered "protected" (internal)
+        - Names starting with __ are considered "private"
+        - Names without _ or with trailing _ are considered public
+        - Special methods __method__ are considered public
+
         Args:
-            node: Tree-sitter узел элемента
-            
+            node: Tree-sitter node of element
+
         Returns:
-            Уровень видимости элемента
+            Visibility level of element
         """
         element_name = self.extract_element_name(node)
         if not element_name:
-            return Visibility.PUBLIC  # Если имя не найдено, считаем публичным
-        
-        # Специальные методы Python (dunder methods) считаются публичными
+            return Visibility.PUBLIC  # If name not found, consider public
+
+        # Special Python methods (dunder methods) are considered public
         if element_name.startswith("__") and element_name.endswith("__"):
             return Visibility.PUBLIC
-        
-        # Имена с двумя подчеркиваниями в начале - приватные
+
+        # Names starting with two underscores are private
         if element_name.startswith("__"):
             return Visibility.PRIVATE
-        
-        # Имена с одним подчеркиванием в начале - защищенные
+
+        # Names starting with one underscore are protected
         if element_name.startswith("_"):
             return Visibility.PROTECTED
-        
-        # Все остальные - публичные
+
+        # All others are public
         return Visibility.PUBLIC
 
     def determine_export_status(self, node: Node) -> ExportStatus:
         """
-        Определяет статус экспорта элемента Python.
-        
-        В Python экспорт определяется через __all__ или по умолчанию все публичные элементы.
-        Пока упрощенная реализация - считаем все публичные элементы экспортируемыми.
-        
+        Determine export status of Python element.
+
+        In Python, export is determined through __all__ or by default all public elements.
+        Currently simplified implementation - all public elements are considered exported.
+
         Args:
-            node: Tree-sitter узел элемента
-            
+            node: Tree-sitter node of element
+
         Returns:
-            Статус экспорта элемента
+            Export status of element
         """
-        # TODO: Реализовать проверку __all__ в будущих итерациях
+        # TODO: Implement __all__ check in future iterations
         visibility = self.determine_visibility(node)
-        
+
         if visibility == Visibility.PUBLIC:
             return ExportStatus.EXPORTED
         else:
@@ -126,20 +126,20 @@ class PythonCodeAnalyzer(CodeAnalyzer):
 
     def is_method_context(self, node: Node) -> bool:
         """
-        Определяет, является ли узел методом класса Python.
-        
+        Determine if node is a method of Python class.
+
         Args:
-            node: Tree-sitter узел для анализа
-            
+            node: Tree-sitter node to analyze
+
         Returns:
-            True если узел является методом класса, False если функцией верхнего уровня
+            True if node is class method, False if top-level function
         """
-        # Проходим вверх по дереву в поисках определения класса
+        # Walk up the tree looking for class definition
         current = node.parent
         while current:
             if current.type == "class_definition":
                 return True
-            # Останавливаемся на границах модуля/файла
+            # Stop at module/file boundaries
             if current.type in ("module", "program"):
                 break
             current = current.parent
@@ -147,13 +147,13 @@ class PythonCodeAnalyzer(CodeAnalyzer):
 
     def find_function_definition_in_parents(self, node: Node) -> Optional[Node]:
         """
-        Находит function_definition для данного узла, поднимаясь по дереву.
-        
+        Find function_definition for given node by walking up the tree.
+
         Args:
-            node: Узел для поиска родительской функции
-            
+            node: Node to find parent function
+
         Returns:
-            Function definition или None если не найден
+            Function definition or None if not found
         """
         current = node.parent
         while current:
@@ -164,10 +164,10 @@ class PythonCodeAnalyzer(CodeAnalyzer):
 
     def get_decorated_definition_types(self) -> Set[str]:
         """
-        Возвращает типы узлов для wrapped decorated definitions в Python.
-        
+        Return node types for wrapped decorated definitions in Python.
+
         Returns:
-            Множество типов узлов
+            Set of node types
         """
         return {
             "decorated_definition",    # Python @decorator
@@ -175,10 +175,10 @@ class PythonCodeAnalyzer(CodeAnalyzer):
 
     def get_decorator_types(self) -> Set[str]:
         """
-        Возвращает типы узлов для отдельных декораторов в Python.
-        
+        Return node types for individual decorators in Python.
+
         Returns:
-            Множество типов узлов
+            Set of node types
         """
         return {
             "decorator",              # Python @decorator
@@ -186,47 +186,47 @@ class PythonCodeAnalyzer(CodeAnalyzer):
 
     def collect_language_specific_private_elements(self) -> List[ElementInfo]:
         """
-        Собирает Python-специфичные приватные элементы.
-        
-        Включает обработку переменных/assignments и других Python-специфичных конструкций.
-        
+        Collect Python-specific private elements.
+
+        Includes handling of variables/assignments and other Python-specific constructs.
+
         Returns:
-            Список Python-специфичных приватных элементов
+            List of Python-specific private elements
         """
         private_elements = []
-        
-        # Собираем assignments (переменные)
+
+        # Collect assignments (variables)
         self._collect_variable_assignments(private_elements)
-        
+
         return private_elements
     
     def _collect_variable_assignments(self, private_elements: List[ElementInfo]) -> None:
         """
-        Собирает Python переменные, которые должны быть удалены в режиме public API.
-        
+        Collect Python variables that should be removed in public API mode.
+
         Args:
-            private_elements: Список для добавления приватных элементов
+            private_elements: List to add private elements to
         """
         assignments = self.doc.query_opt("assignments")
         for node, capture_name in assignments:
             if capture_name == "variable_name":
-                # Получаем узел assignment statement
+                # Get assignment statement node
                 assignment_def = node.parent
                 if assignment_def:
                     element_info = self.analyze_element(assignment_def)
-                    
-                    # Для top-level переменных проверяем публичность и экспорт
+
+                    # For top-level variables check visibility and export
                     if not element_info.in_public_api:
                         private_elements.append(element_info)
 
     def _is_whitespace_or_comment(self, node: Node) -> bool:
         """
-        Проверяет, является ли узел пробелом или комментарием в Python.
-        
+        Check if node is whitespace or comment in Python.
+
         Args:
-            node: Tree-sitter узел для проверки
-            
+            node: Tree-sitter node to check
+
         Returns:
-            True если узел является пробелом или комментарием
+            True if node is whitespace or comment
         """
         return node.type in ("comment", "newline", "\n", " ", "\t")

@@ -1,5 +1,5 @@
 """
-Фабрика виртуальных секций для движка шаблонизации.
+Factory for virtual sections for the templating engine.
 """
 
 from __future__ import annotations
@@ -18,64 +18,64 @@ from ...types import SectionRef
 
 class VirtualSectionFactory:
     """
-    Фабрика для создания виртуальных секций из Markdown-файлов.
-    
-    Генерирует уникальные секции для обработки отдельных документов
-    с автоматической настройкой адаптеров на основе параметров плейсхолдера.
+    Factory for creating virtual sections from Markdown files.
+
+    Generates unique sections for processing individual documents
+    with automatic adapter configuration based on placeholder parameters.
     """
-    
+
     def __init__(self):
-        """Инициализирует фабрику."""
+        """Initializes factory."""
         self._counter = 0
 
     def create_for_markdown_file(
-        self, 
+        self,
         node: MarkdownFileNode,
         repo_root: Path,
         current_origin: str,
         heading_context: HeadingContext
     ) -> tuple[SectionCfg, SectionRef]:
         """
-        Создает виртуальную секцию для Markdown-файла или набора файлов.
-        
+        Creates virtual section for Markdown file or set of files.
+
         Args:
-            node: Узел MarkdownFileNode с полной информацией о включаемом файле
-            repo_root: Корень репозитория для резолвинга путей
-            current_origin: Текущий origin из контекста шаблона ("self" или путь к скоупу)
-            heading_context: Контекст заголовков
-            
+            node: MarkdownFileNode with complete information about included file
+            repo_root: Repository root for path resolution
+            current_origin: Current origin from template context ("self" or scope path)
+            heading_context: Heading context
+
         Returns:
-            Кортеж (section_config, section_ref)
-            
+            Tuple (section_config, section_ref)
+
         Raises:
-            ValueError: При некорректных параметрах
+            ValueError: For invalid parameters
         """
-        # Нормализуем путь к файлу(ам)
+        # Normalize file path(s)
         normalized_path = self._normalize_file_path(node.path, node.origin, node.is_glob)
-        
-        # Создаем конфигурацию фильтров
+
+        # Create filter configuration
         filters = self._create_file_filter(normalized_path)
 
-        # Создаем конфигурацию Markdown-адаптера
+        # Create Markdown adapter configuration
         markdown_config_raw = self._create_markdown_config(node, heading_context).to_dict()
 
-        # Создаем полную конфигурацию секции
+        # Create full section configuration
         section_config = SectionCfg(
             extensions=[".md"],
             filters=filters,
             adapters={"markdown": AdapterConfig(base_options=markdown_config_raw)}
         )
 
-        # Склеиваем базовый origin из контекста с origin узла
+        # Merge base origin from context with node origin
         effective_origin = merge_origins(current_origin, node.origin)
-        
-        # Создаем SectionRef
+
+        # Create SectionRef
         if effective_origin == "self":
-            # Корневой скоуп
+            # Root scope
             scope_dir = repo_root.resolve()
             scope_rel = ""
         else:
-            # Вложенный или составной скоуп
+            # Nested or composite scope
             scope_dir = (repo_root / effective_origin).resolve()
             scope_rel = effective_origin
 
@@ -89,48 +89,48 @@ class VirtualSectionFactory:
 
     def _generate_name(self) -> str:
         """
-        Генерирует уникальное имя для виртуальной секции.
+        Generates unique name for virtual section.
 
         Returns:
-            Строка вида "_virtual_<counter>"
+            String like "_virtual_<counter>"
         """
         self._counter += 1
         return f"_virtual_{self._counter}"
 
     def _normalize_file_path(self, path: str, origin: Optional[str], is_glob: bool) -> str:
         """
-        Нормализует путь к файлу для создания фильтра.
+        Normalizes file path for filter creation.
 
         Args:
-            path: Исходный путь к файлу или паттерн глоба
-            origin: Скоуп ("self" или путь к области, None для обычных md:)
-            is_glob: True если path содержит символы глобов
+            path: Original file path or glob pattern
+            origin: Scope ("self" or scope path, None for regular md:)
+            is_glob: True if path contains glob symbols
 
         Returns:
-            Нормализованный путь для фильтра allow
+            Normalized path for allow filter
         """
-        # Нормализуем путь
+        # Normalize path
         normalized = path.strip()
 
-        # Автоматически добавляем расширение .md, если оно отсутствует
+        # Automatically add .md extension if missing
         if not is_glob:
-            # Для обычных файлов проверяем и добавляем .md
+            # For regular files, check and add .md
             if not normalized.endswith('.md') and not normalized.endswith('.markdown'):
                 normalized += '.md'
         else:
-            # Для глобов не добавляем расширение автоматически
+            # For globs, do not add extension automatically
             pass
 
-        # Для разных типов origin формируем разные пути
+        # Format different paths based on origin type
         if origin is not None:
-            # Для @origin: файлы ВСЕГДА ищутся в lg-cfg/ области скоупа origin
+            # For @origin: files are ALWAYS searched in lg-cfg/ area of origin scope
             if normalized.startswith('/'):
                 return f"/lg-cfg{normalized}"
             else:
                 return f"/lg-cfg/{normalized}"
 
         else:
-            # Для обычных md: файлы ищутся относительно корня репы
+            # For regular md: files are searched relative to the repository root
             if normalized.startswith('/'):
                 return normalized
             else:
@@ -138,50 +138,50 @@ class VirtualSectionFactory:
 
     def _create_file_filter(self, path: str) -> FilterNode:
         """
-        Создает фильтр для включения указанных файлов.
+        Creates filter for including specified files.
 
         Args:
-            path: Нормализованный путь к файлу
+            path: Normalized file path
 
         Returns:
-            FilterNode с режимом allow для указанных файлов
+            FilterNode with allow mode for specified files
         """
         return FilterNode(mode="allow", allow=[path])
-    
+
     def _create_markdown_config(
-        self, 
+        self,
         node: MarkdownFileNode,
         heading_context: HeadingContext
     ) -> MarkdownCfg:
         """
-        Создает конфигурацию Markdown-адаптера.
-        
+        Creates Markdown adapter configuration.
+
         Args:
-            node: Узел MarkdownFileNode с полной информацией о включаемом файле
-            heading_context: Контекст заголовков для определения параметров
-            
+            node: MarkdownFileNode with complete information about included file
+            heading_context: Heading context for parameter determination
+
         Returns:
-            Типизированная конфигурация Markdown-адаптера
+            Typed Markdown adapter configuration
         """
-        # Получаем эффективные значения с учетом приоритета: явные > контекстуальные
+        # Get effective values considering priority: explicit > contextual
         effective_heading_level = node.heading_level if node.heading_level is not None else heading_context.heading_level
         effective_strip_h1 = node.strip_h1 if node.strip_h1 is not None else heading_context.strip_h1
-        
-        # Создаем базовую конфигурацию
+
+        # Create base configuration
         config = MarkdownCfg(
             max_heading_level=effective_heading_level,
             strip_h1=effective_strip_h1 if effective_strip_h1 is not None else False,
             placeholder_inside_heading=heading_context.placeholder_inside_heading
         )
 
-        # Если есть якорь (anchor), создаем keep-конфигурацию для включения только нужной секции
+        # If an anchor is present, create keep-configuration to include only the needed section
         if node.anchor:
             from ...markdown.model import MarkdownKeepCfg, SectionRule, SectionMatch
             from ...markdown.slug import slugify_github
-            
-            # Создаем правило для включения секции по названию
-            # Используем slug-сопоставление для более гибкого поиска
-            # Нормализуем якорь перед созданием slug (добавляем пробелы в разумных местах)
+
+            # Create rule for including section by name
+            # Use slug-matching for more flexible search
+            # Normalize anchor before slug creation (add spaces in reasonable places)
             normalized_anchor = self._normalize_anchor_for_slug(node.anchor)
             anchor_slug = slugify_github(normalized_anchor)
             section_rule = SectionRule(
@@ -194,35 +194,35 @@ class VirtualSectionFactory:
             
             config.keep = MarkdownKeepCfg(
                 sections=[section_rule],
-                frontmatter=False  # По умолчанию не включаем frontmatter для якорных вставок
+                frontmatter=False  # By default, do not include frontmatter for anchor insertions
             )
         
         return config
 
     def _normalize_anchor_for_slug(self, anchor: str) -> str:
         """
-        Нормализует якорь для создания согласованного slug.
+        Normalizes anchor for consistent slug generation.
 
-        Добавляет пробелы после двоеточий и других разделителей,
-        чтобы slug от якоря соответствовал slug от реального заголовка.
+        Adds spaces after colons and other separators
+        so that anchor slug matches real heading slug.
 
         Args:
-            anchor: Исходный якорь из плейсхолдера
+            anchor: Original anchor from placeholder
 
         Returns:
-            Нормализованный якорь
+            Normalized anchor
         """
         import re
 
-        # Добавляем пробел после двоеточия, если его нет
+        # Add space after colon if not present
         # FAQ:Common Questions -> FAQ: Common Questions
         normalized = re.sub(r':(?!\s)', ': ', anchor)
 
-        # Добавляем пробел после амперсанда, если его нет
+        # Add space after ampersand if not present
         # API&Usage -> API & Usage
         normalized = re.sub(r'&(?!\s)', ' & ', normalized)
 
-        # Убираем лишние пробелы
+        # Remove extra spaces
         normalized = re.sub(r'\s+', ' ', normalized).strip()
 
         return normalized

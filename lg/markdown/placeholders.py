@@ -15,15 +15,15 @@ def render_placeholder(
     override_template: str | None,
 ) -> str:
     """
-    Возвращает одну строку плейсхолдера (без завершающего \n).
+    Returns a single placeholder line (without trailing \n).
     """
     if policy.mode == "none":
-        return ""  # не вставляем ничего
+        return ""  # don't insert anything
 
     template = (override_template or policy.template or "> *(omitted)*").strip()
-    # Подстановка простая, без формат-спеков:
+    # Simple substitution, without format specs:
     def _fmt(s: str) -> str:
-        s = s.replace("{title}", title or "раздел")
+        s = s.replace("{title}", title or "section")
         s = s.replace("{lines}", str(lines_removed))
         s = s.replace("{bytes}", str(bytes_removed))
         s = s.replace("{level}", "" if level is None else str(level))

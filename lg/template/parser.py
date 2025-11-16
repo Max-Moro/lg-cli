@@ -1,7 +1,7 @@
 """
-Синтаксический анализатор для шаблонизатора.
+Parser for template engine.
 
-Использует правила парсинга из зарегистрированных плагинов для построения AST.
+Uses parsing rules from registered plugins to build AST.
 """
 
 from __future__ import annotations
@@ -19,78 +19,78 @@ logger = logging.getLogger(__name__)
 
 class ModularParser:
     """
-    Синтаксический анализатор, использующий правила из плагинов.
-    
-    Применяет зарегистрированные в TemplateRegistry правила парсинга
-    в порядке приоритета для создания AST.
+    Parser using rules from plugins.
+
+    Applies parsing rules registered in TemplateRegistry
+    in priority order to create AST.
     """
-    
+
     def __init__(self, registry: TemplateRegistry):
         """
-        Инициализирует парсер с указанным реестром.
-        
+        Initializes parser with specified registry.
+
         Args:
-            registry: Реестр компонентов (по умолчанию - глобальный)
+            registry: Component registry (default is global)
         """
         self.registry = registry
-    
+
     @property
     def parser_rules(self) -> List[ParsingRule]:
         """
-        Возвращает правила парсинга, отсортированные по приоритету.
-        
-        Правила получаются динамически из реестра, что позволяет
-        регистрировать новые правила после создания парсера.
+        Returns parsing rules sorted by priority.
+
+        Rules are obtained dynamically from registry, allowing
+        registration of new rules after parser creation.
         """
         return self.registry.get_sorted_parser_rules()
-    
+
     def parse(self, tokens: List[Token]) -> TemplateAST:
         """
-        Парсит токены в AST с использованием зарегистрированных правил.
-        
+        Parses tokens into AST using registered rules.
+
         Args:
-            tokens: Список токенов для парсинга
-            
+            tokens: List of tokens to parse
+
         Returns:
-            AST шаблона
-            
+            Template AST
+
         Raises:
-            ParserError: При ошибке синтаксического анализа
+            ParserError: If parsing error occurs
         """
         context = ParsingContext(tokens)
         ast: List[TemplateNode] = []
-        
+
         while not context.is_at_end():
             node = self._parse_next_node(context)
             if node:
                 ast.append(node)
             else:
-                # Если ни одно правило не сработало, пытаемся обработать как текст
+                # If no rule matched, try to handle as text
                 self._handle_unparsed_token(context, ast)
-        
+
         return ast
     
     def _parse_next_node(self, context: ParsingContext) -> Optional[TemplateNode]:
         """
-        Пытается применить каждое правило парсинга для текущей позиции.
-        
-        Публичный метод для использования из плагинов через обработчики.
-        
-        Правила парсинга должны:
-        - Вернуть узел AST если успешно распарсили
-        - Вернуть None если правило не подходит (позиция должна быть откачена самим правилом!)
-        - Бросить ParserError при фатальной синтаксической ошибке
-        
+        Attempts to apply each parsing rule for current position.
+
+        Public method for use from plugins via handlers.
+
+        Parsing rules should:
+        - Return AST node if successful parse
+        - Return None if rule doesn't match (position must be reset by rule itself!)
+        - Throw ParserError on fatal syntax error
+
         Args:
-            context: Контекст парсинга
-            
+            context: Parsing context
+
         Returns:
-            Узел AST или None если ни одно правило не сработало
-            
+            AST node or None if no rule matched
+
         Raises:
-            ParserError: При фатальной ошибке синтаксиса
+            ParserError: On fatal syntax error
         """
-        # Пробуем каждое правило в порядке приоритета
+        # Try each rule in priority order
         for rule in self.parser_rules:
             if not rule.enabled:
                 continue
@@ -98,22 +98,22 @@ class ModularParser:
             if node is not None:
                 return node
         return None
-    
+
     def _handle_unparsed_token(self, context: ParsingContext, ast: List[TemplateNode]) -> None:
         """
-        Обрабатывает токен, который не удалось распарсить правилами.
-        
+        Handles token that couldn't be parsed by rules.
+
         Args:
-            context: Контекст парсинга
-            ast: Текущий AST для добавления узла
+            context: Parsing context
+            ast: Current AST for adding node
         """
         current_token = context.current()
 
-        # Обрабатываем как текст
+        # Handle as text
         text_value = current_token.value
         context.advance()
 
-        # Объединяем с предыдущим TextNode если возможно
+        # Merge with previous TextNode if possible
         if ast and isinstance(ast[-1], TextNode):
             ast[-1] = TextNode(text=ast[-1].text + text_value)
         else:
@@ -122,24 +122,24 @@ class ModularParser:
 
 def parse_template(text: str, registry: TemplateRegistry) -> TemplateAST:
     """
-    Удобная функция для парсинга шаблона из текста.
-    
+    Convenience function for parsing template from text.
+
     Args:
-        text: Исходный текст шаблона
-        registry: Реестр компонентов (если None, создает базовый)
-        
+        text: Source text of template
+        registry: Component registry (if None, creates base one)
+
     Returns:
-        AST шаблона
-        
+        Template AST
+
     Raises:
-        LexerError: При ошибке лексического анализа 
-        ParserError: При ошибке синтаксического анализа
+        LexerError: If lexical analysis error occurs
+        ParserError: If syntax analysis error occurs
     """
     from .lexer import ContextualLexer
-    
+
     lexer = ContextualLexer(registry)
     tokens = lexer.tokenize(text)
-    
+
     parser = ModularParser(registry)
     return parser.parse(tokens)
 

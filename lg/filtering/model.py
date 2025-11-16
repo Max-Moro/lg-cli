@@ -9,20 +9,20 @@ Mode = Literal["allow", "block"]
 @dataclass
 class ConditionalFilter:
     """
-    Условное правило фильтрации файлов.
-    
-    Если условие истинно, применяются указанные allow/block правила.
+    Conditional file filtering rule.
+
+    If the condition is true, the specified allow/block rules are applied.
     """
-    condition: str  # Условие в виде строки (например, "tag:python AND NOT tag:minimal")
-    allow: List[str] = field(default_factory=list)  # Дополнительные allow паттерны
-    block: List[str] = field(default_factory=list)  # Дополнительные block паттерны
-    
+    condition: str  # Condition as a string (e.g., "tag:python AND NOT tag:minimal")
+    allow: List[str] = field(default_factory=list)  # Additional allow patterns
+    block: List[str] = field(default_factory=list)  # Additional block patterns
+
     @classmethod
     def from_dict(cls, data: dict) -> "ConditionalFilter":
-        """Создает экземпляр из словаря YAML."""
+        """Creates an instance from a YAML dictionary."""
         if "condition" not in data:
             raise ValueError("ConditionalFilter requires 'condition' field")
-        
+
         return cls(
             condition=str(data["condition"]),
             allow=list(data.get("allow", [])),
@@ -33,13 +33,13 @@ class ConditionalFilter:
 @dataclass
 class FilterNode:
     """
-    Узел фильтрации.
+    Filter node.
 
-    • `mode`:  "allow"  → default-deny,  "block" → default-allow
-    • `allow`: белый список; `block`: чёрный список.
-      При совпадении с обоими списками побеждает block.
-    • `children`: переопределения для подпапок (имя папки → FilterNode).
-    • `conditional_filters`: условные правила фильтрации для данного узла.
+    • `mode`: "allow" → default-deny, "block" → default-allow
+    • `allow`: whitelist; `block`: blacklist.
+      When matching both lists, block wins.
+    • `children`: overrides for subdirectories (folder name → FilterNode).
+    • `conditional_filters`: conditional filtering rules for this node.
     """
     mode: Mode
     allow: List[str] = field(default_factory=list)
@@ -50,13 +50,13 @@ class FilterNode:
     @classmethod
     def from_dict(cls, obj: dict, path: str = "") -> FilterNode:
         """
-        Построить FilterNode рекурсивно из словаря из конфига.
-        path — внутренний путь для ошибок/ворнингов.
+        Recursively build a FilterNode from a config dictionary.
+        path - internal path for errors/warnings.
         """
         if "mode" not in obj:
             raise RuntimeError(f"Missing 'mode' in filters at '{path or '/'}'")
 
-        # Парсим условные фильтры (when)
+        # Parse conditional filters (when)
         conditional_filters: List[ConditionalFilter] = []
         when_raw = obj.get("when", []) or []
         if when_raw:

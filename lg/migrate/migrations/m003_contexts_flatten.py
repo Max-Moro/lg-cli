@@ -10,21 +10,21 @@ from ..errors import PreflightRequired
 
 class _M003_ContextsFlatten:
     """
-    Миграция №3:
-      • Переносим ВСЕ *.md из lg-cfg/contexts/** → lg-cfg/** (с сохранением поддиректорий относительно contexts/).
-      • Классифицируем файлы:
-          – если файл упоминается как `${tpl:<resource>}` хотя бы в одном документе текущего lg-cfg → шаблон (*.tpl.md);
-          – иначе → считаем контекстом (*.ctx.md).
-      • Плейсхолдеры НЕ переписываем.
-      • Конфликты по месту назначения:
-          – если содержимое совпадает → удаляем исходник;
-          – иначе → переносим как `<name>.from-contexts(.N).tpl.md` или `.ctx.md`.
-      • Идемпотентно.
+    Migration #3:
+      • Move ALL *.md from lg-cfg/contexts/** → lg-cfg/** (preserving subdirectories relative to contexts/).
+      • Classify files:
+          – if a file is referenced as `${tpl:<resource>}` in at least one document in lg-cfg → template (*.tpl.md);
+          – otherwise → treat as context (*.ctx.md).
+      • Placeholders are NOT rewritten.
+      • Destination conflicts:
+          – if content matches → delete source;
+          – otherwise → move as `<name>.from-contexts(.N).tpl.md` or `.ctx.md`.
+      • Idempotent.
     """
     id = 3
     title = "Flatten lg-cfg/contexts/** → lg-cfg/** with smart suffix (.tpl/.ctx) by usage"
 
-    # Ровно та же семантика токенов, что и в TemplateTokens: ${...} и $...
+    # Exactly the same token semantics as in TemplateTokens: ${...} and $...
     _PH_RE = re.compile(
         r"""
         \$\{
@@ -39,26 +39,26 @@ class _M003_ContextsFlatten:
 
     def run(self, fs: CfgFs, *, allow_side_effects: bool) -> bool:
         """
-        Возвращает True, если реально модифицировал дерево (перенос/удаление/очистка каталога),
-        иначе False. Если требуется модификация, но сайд-эффекты запрещены — бросает PreflightRequired.
+        Returns True if the tree was actually modified (moved/deleted/directory cleanup),
+        otherwise False. If modification is required but side effects are forbidden — raises PreflightRequired.
         """
-        # 1) Собираем все кандидаты под перенос
+        # 1) Collect all candidates for migration
         src_files = fs.glob_rel("contexts/**/*.md")
         src_files += [rel for rel in fs.glob_rel("contexts/*.md") if rel not in src_files]
         if not src_files:
-            return False  # нечего делать
+            return False  # nothing to do
 
-        # Любое наличие файлов под contexts/ → потребуются сайд-эффекты
+        # Any presence of files under contexts/ → side effects will be needed
         if not allow_side_effects:
             raise PreflightRequired(
                 "Migration #3 requires side effects (moving/removing files from lg-cfg/contexts). "
                 "Run inside a Git repo or enable no-git mode."
             )
 
-        # 2) Сканируем использование ${tpl:...} во ВСЕХ md файлах текущего lg-cfg/
+        # 2) Scan usage of ${tpl:...} in ALL md files of the current lg-cfg/
         used_as_tpl = self._collect_tpl_usages(fs)
 
-        # 3) Переносим/удаляем по классификации
+        # 3) Move/delete by classification
         any_changed = False
         for src_rel in src_files:
             resource = self._resource_name(src_rel)
@@ -74,12 +74,12 @@ class _M003_ContextsFlatten:
                     dst_text = None
 
                 if dst_text is not None and src_text == dst_text:
-                    # Совпадает — просто удалить исходник
+                    # Matches — just delete the source
                     fs.remove_file(src_rel)
                     any_changed = True
                     continue
 
-                # Конфликт по содержимому — размещаем рядом .from-contexts(-N)
+                # Content conflict — place nearby as .from-contexts(-N)
                 n = 1
                 alt_rel = self._with_variant(dst_rel, n)
                 while fs.exists(alt_rel):
@@ -89,16 +89,16 @@ class _M003_ContextsFlatten:
                 any_changed = True
                 continue
 
-            # Обычный перенос
+            # Regular move
             fs.move_atomic(src_rel, dst_rel)
             any_changed = True
 
-        # 4) Если contexts/ опустела — удалим хвост
+        # 4) If contexts/ is empty — clean up the remainder
         if not fs.dir_has_files("contexts"):
             fs.remove_dir_tree("contexts")
-            # даже если тут больше нечего удалять — это безопасно; считать это изменением не обязательно,
-            # но логично: раз переносили — any_changed уже True. Если же вдруг единственным действием
-            # стала очистка пустой папки — засчитаем это как изменение:
+            # even if there's nothing more to delete — it's safe; counting this as a change is not required,
+            # but logical: since we were moving files — any_changed is already True. If the only action
+            # was to clean up an empty folder — count this as a change:
             any_changed = True or any_changed
 
         return any_changed
@@ -153,9 +153,9 @@ class _M003_ContextsFlatten:
 
     def _collect_tpl_usages(self, fs: CfgFs) -> Set[str]:
         """
-        Парсим ВСЕ *.md под текущим lg-cfg/ и собираем ресурсы, встречающиеся как ${tpl:...}.
-        Учитываем только локальные формы ('tpl:...'), адресные ('tpl@...') пропускаем.
-        Возвращаем набор resource-имен (с поддиректориями).
+        Parse ALL *.md under the current lg-cfg/ and collect resources referenced as ${tpl:...}.
+        Consider only local forms ('tpl:...'), skip addressed forms ('tpl@...').
+        Return a set of resource names (with subdirectories).
         """
         used_as_tpl: Set[str] = set()
         for rel in fs.glob_rel("**/*.md"):

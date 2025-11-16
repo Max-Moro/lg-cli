@@ -1,8 +1,8 @@
 """
-Инкрементальный коллектор статистики.
+Incremental statistics collector.
 
-Собирает метрики постепенно в процессе рендеринга шаблонов и секций,
-обеспечивая корректный учет активных режимов, тегов и условных блоков.
+Collects metrics gradually during the rendering of templates and sections,
+ensuring correct accounting of active modes, tags, and conditional blocks.
 """
 
 from __future__ import annotations
@@ -15,69 +15,69 @@ from ..types import FileRow, Totals, ContextBlock, ProcessedFile, RenderedSectio
 
 class StatsCollector:
     """
-    Коллектор статистики, встроенный в процесс рендеринга шаблонов.
-    
-    Собирает метрики инкрементально, по мере обработки шаблонов и секций.
-    Обеспечивает корректный учет:
-    - Активных режимов и тегов
-    - Условных блоков 
-    - Переопределений режимов через {% mode %} блоки
-    - Кэширования токенов
+    Statistics collector embedded in the template rendering process.
+
+    Collects metrics incrementally as templates and sections are processed.
+    Ensures correct accounting of:
+    - Active modes and tags
+    - Conditional blocks
+    - Mode overrides via {% mode %} blocks
+    - Token caching
     """
     
     def __init__(self, ctx_limit: int, tokenizer: TokenService):
         """
-        Инициализирует коллектор статистики.
-        
+        Initialize the statistics collector.
+
         Args:
-            tokenizer: Сервис подсчета токенов (с встроенным кешированием)
-            ctx_limit: Размер контекстного окна в токенах
+            tokenizer: Token counting service (with built-in caching)
+            ctx_limit: Context window size in tokens
         """
         self.ctx_limit = ctx_limit
         self.tokenizer = tokenizer
         self.target_name: Optional[str] = None
-        
-        # Статистика по файлам (ключ: rel_path)
+
+        # Statistics by file (key: rel_path)
         self.files_stats: Dict[str, FileStats] = {}
-        
-        # Статистика по секциям (ключ: canon_key)
+
+        # Statistics by section (key: canon_key)
         self.sections_stats: Dict[str, SectionStats] = {}
 
-        # Карта использования секций {canon_key: count}
+        # Map of section usage {canon_key: count}
         self.sections_usage: Dict[str, int] = {}
 
-        # Итоговые тексты для подсчета финальных токенов
+        # Final text for counting final tokens
         self.final_text: Optional[str] = None
 
     def set_target_name(self, target_name: str) -> None:
-        """Устанавливает имя цели (контекста/секции)."""
+        """Set the target name (context/section)."""
         self.target_name = target_name
     
     def register_processed_file(
-        self, 
-        file: ProcessedFile, 
+        self,
+        file: ProcessedFile,
         section_ref: SectionRef
     ) -> None:
         """
-        Регистрирует статистику обработанного файла.
-        
+        Register statistics for a processed file.
+
         Args:
-            file: Обработанный файл
-            section_ref: Ссылка на секцию, в которой используется файл
+            file: Processed file
+            section_ref: Reference to the section where the file is used
         """
         rel_path = file.rel_path
         canon_key = section_ref.canon_key()
-        
-        # Подсчитываем токены с использованием кэша
+
+        # Count tokens using cache
         t_proc = self.tokenizer.count_text_cached(file.processed_text)
         t_raw = self.tokenizer.count_text_cached(file.raw_text)
-        
-        # Вычисляем статистику для файла
-        # Может быть как положительным (оптимизация), так и отрицательным (дополнительный рендеринг)
+
+        # Calculate file statistics
+        # Can be positive (optimization) or negative (additional rendering)
         saved_tokens = t_raw - t_proc
         saved_pct = (1 - (t_proc / t_raw)) * 100.0 if t_raw else 0.0
-        
-        # Регистрируем или обновляем статистику файла
+
+        # Register or update file statistics
         if rel_path not in self.files_stats:
             self.files_stats[rel_path] = FileStats(
                 path=rel_path,
@@ -90,39 +90,39 @@ class StatsCollector:
                 sections=[canon_key]
             )
         else:
-            # Файл уже учтен, добавляем секцию если её еще нет
+            # File already registered, add section if not present
             stats = self.files_stats[rel_path]
             if canon_key not in stats.sections:
                 stats.sections.append(canon_key)
 
     def register_section_rendered(self, section: RenderedSection) -> None:
         """
-        Регистрирует статистику отрендеренной секции.
-        Подсчитывает статистику на основе содержимого секции и файлов.
-        
+        Register statistics for a rendered section.
+        Calculates statistics based on section content and files.
+
         Args:
-            section: Отрендеренная секция
+            section: Rendered section
         """
         canon_key = section.ref.canon_key()
-        
+
         self.sections_usage[canon_key] = self.sections_usage.get(canon_key, 0) + 1
-        
-        # Подсчитываем токены отрендеренной секции с использованием кэша
+
+        # Count rendered section tokens using cache
         tokens_rendered = self.tokenizer.count_text_cached(section.text)
-        
-        # Подсчитываем общий размер файлов
+
+        # Calculate total file size
         total_size_bytes = sum(
-            file.abs_path.stat().st_size if file.abs_path.exists() else 0 
+            file.abs_path.stat().st_size if file.abs_path.exists() else 0
             for file in section.files
         )
-        
-        # Собираем метаданные со всех файлов
+
+        # Collect metadata from all files
         meta_summary = {}
         for file in section.files:
             for k, v in self._extract_numeric_meta(file.meta).items():
                 meta_summary[k] = meta_summary.get(k, 0) + v
-        
-        # Создаем статистику секции
+
+        # Create section statistics
         self.sections_stats[canon_key] = SectionStats(
             ref=section.ref,
             text=section.text,
@@ -133,54 +133,52 @@ class StatsCollector:
     
     def set_final_texts(self, final_text: str) -> None:
         """
-        Устанавливает итоговые тексты для подсчета финальных токенов.
-        
+        Set final text for counting final tokens.
+
         Args:
-            final_text: Полностью отрендеренный документ (с шаблонным "клеем")
+            final_text: Fully rendered document (with template "glue")
         """
         self.final_text = final_text
 
     def compute_final_stats(self) -> Tuple[List[FileRow], Totals, ContextBlock]:
         """
-        Вычисляет итоговую статистику на основе собранных данных.
-        
-        Возвращает структуру, совместимую со старым API:
-        - список статистики по файлам
-        - общую статистику
-        - статистику контекста
-        
+        Calculate final statistics based on collected data.
+
+        Returns a structure compatible with the legacy API:
+        - list of file statistics
+        - overall statistics
+        - context statistics
+
         Returns:
-            Кортеж (files_rows, totals, context_block)
-            
+            Tuple (files_rows, totals, context_block)
+
         Raises:
-            ValueError: Если итоговые тексты не установлены
+            ValueError: If final texts are not set
         """
         if self.final_text is None:
             raise ValueError("Final texts not set. Call set_final_texts() before computing stats.")
 
-        # Подсчитываем токены с использованием кэша
+        # Count tokens using cache
         final_tokens = self.tokenizer.count_text_cached(self.final_text)
         sections_only_tokens = sum(s.tokens_rendered for s in self.sections_stats.values())
 
-        # Вычисляем общие суммы
+        # Calculate totals
         total_raw = sum(f.tokens_raw for f in self.files_stats.values())
         total_proc = sum(f.tokens_processed for f in self.files_stats.values())
         total_size = sum(f.size_bytes for f in self.files_stats.values())
-        
-        # Собираем общую метасводку
+
+        # Collect overall metadata summary
         meta_summary = {}
         for file_stats in self.files_stats.values():
             for k, v in self._extract_numeric_meta(file_stats.meta).items():
                 meta_summary[k] = meta_summary.get(k, 0) + v
-        
-        # Получаем информацию о модели для подсчета shares
-        
-        # Преобразуем статистику файлов в формат API
+
+        # Convert file statistics to API format
         files_rows = []
         for file_stats in sorted(self.files_stats.values(), key=lambda x: x.path):
             prompt_share = (file_stats.tokens_processed / total_proc * 100.0) if total_proc else 0.0
             ctx_share = (file_stats.tokens_processed / self.ctx_limit * 100.0) if self.ctx_limit else 0.0
-            
+
             files_rows.append(FileRow(
                 path=file_stats.path,
                 sizeBytes=file_stats.size_bytes,
@@ -192,9 +190,9 @@ class StatsCollector:
                 ctxShare=ctx_share,
                 meta=file_stats.meta or {}
             ))
-        
-        # Создаем итоговую статистику
-        # savedTokens может быть отрицательным, если адаптеры добавили больше контента (метки, комментарии)
+
+        # Create overall statistics
+        # savedTokens can be negative if adapters added more content (tags, comments)
         totals = Totals(
             sizeBytes=total_size,
             tokensProcessed=total_proc,
@@ -206,13 +204,13 @@ class StatsCollector:
             renderedOverheadTokens=(sections_only_tokens or 0) - total_proc,
             metaSummary=meta_summary
         )
-        
-        # Создаем статистику контекста
+
+        # Create context statistics
         template_overhead_tokens = max(0, (final_tokens or 0) - (sections_only_tokens or 0))
         template_overhead_pct = 0.0
         if final_tokens and final_tokens > 0:
             template_overhead_pct = (template_overhead_tokens / final_tokens * 100.0)
-        
+
         ctx_block = ContextBlock(
             templateName=self.target_name or "unknown",
             sectionsUsed=self.sections_usage.copy(),
@@ -221,20 +219,20 @@ class StatsCollector:
             templateOverheadPct=template_overhead_pct,
             finalCtxShare=(final_tokens / self.ctx_limit * 100.0) if self.ctx_limit and final_tokens else 0.0
         )
-        
+
         return files_rows, totals, ctx_block
 
-    # -------------------- Внутренние методы -------------------- #
-    
+    # -------------------- Internal methods -------------------- #
+
     def _extract_numeric_meta(self, meta: Dict) -> Dict[str, int]:
         """
-        Извлекает числовые метаданные для агрегации.
-        
+        Extract numeric metadata for aggregation.
+
         Args:
-            meta: Словарь метаданных
-            
+            meta: Dictionary of metadata
+
         Returns:
-            Словарь с числовыми значениями
+            Dictionary with numeric values
         """
         out: Dict[str, int] = {}
         for k, v in (meta or {}).items():

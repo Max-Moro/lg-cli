@@ -17,120 +17,120 @@ def remove_function_body_with_kdoc(
         func_type: str
 ) -> None:
     """
-    Удаление тел функций Kotlin с сохранением KDoc.
-    
-    KDoc может находиться в двух местах:
-    1. Перед функцией как предыдущий sibling (стандартный случай)
-    2. Внутри тела функции как первый элемент (нестандартно, но возможно)
-    
+    Remove Kotlin function bodies while preserving KDoc.
+
+    KDoc can be in two places:
+    1. Before function as previous sibling (standard case)
+    2. Inside function body as first element (non-standard, but possible)
+
     Args:
-        root_optimizer: Универсальный оптимизатор тел функций
-        context: Контекст обработки с доступом к документу
-        func_def: Узел function_declaration (может быть None для lambda)
-        body_node: Узел тела функции
-        func_type: Тип функции ("function" или "method")
+        root_optimizer: Universal function body optimizer
+        context: Processing context with document access
+        func_def: function_declaration node (can be None for lambda)
+        body_node: Function body node
+        func_type: Function type ("function" or "method")
     """
-    # Для lambda нет KDoc, используем стандартную обработку
+    # For lambda there is no KDoc, use standard handling
     if func_def is None or func_def.type != "function_declaration":
         return root_optimizer.remove_function_body(context, body_node, func_type)
-    
-    # 1. Проверяем KDoc перед функцией (стандартный случай)
+
+    # 1. Check for KDoc before function (standard case)
     kdoc_before = _find_kdoc_before_function(func_def, context)
-    
+
     if kdoc_before is not None:
-        # KDoc находится снаружи, просто удаляем тело
-        # KDoc будет сохранен автоматически
-        return root_optimizer.remove_function_body(context, body_node, func_type)
-    
-    # 2. Проверяем KDoc внутри тела функции
-    kdoc_inside = _find_kdoc_in_body(body_node, context)
-    
-    if kdoc_inside is None:
-        # Нет KDoc вообще - удаляем тело стандартным образом
+        # KDoc is outside, just remove body
+        # KDoc will be preserved automatically
         return root_optimizer.remove_function_body(context, body_node, func_type)
 
-    # KDoc внутри тела - удаляем только часть после него
+    # 2. Check for KDoc inside function body
+    kdoc_inside = _find_kdoc_in_body(body_node, context)
+
+    if kdoc_inside is None:
+        # No KDoc at all - remove body normally
+        return root_optimizer.remove_function_body(context, body_node, func_type)
+
+    # KDoc inside body - remove only part after it
     return _remove_function_body_preserve_kdoc(root_optimizer, context, kdoc_inside, body_node, func_type)
 
 
 def _find_kdoc_before_function(func_node: Node, context: ProcessingContext) -> Optional[Node]:
     """
-    Ищет KDoc комментарий непосредственно перед функцией.
-    
-    KDoc должен быть block_comment, начинающимся с /** и находящимся
-    непосредственно перед function_declaration.
-    
+    Find KDoc comment directly before function.
+
+    KDoc should be block_comment starting with /** and located
+    directly before function_declaration.
+
     Args:
-        func_node: Узел function_declaration
-        context: Контекст обработки
-        
+        func_node: function_declaration node
+        context: Processing context
+
     Returns:
-        Узел block_comment с KDoc или None
+        block_comment node with KDoc or None
     """
     parent = func_node.parent
     if not parent:
         return None
-    
-    # Находим индекс текущей функции среди siblings
+
+    # Find index of current function among siblings
     siblings = parent.children
     func_index = None
     for i, sibling in enumerate(siblings):
         if sibling == func_node:
             func_index = i
             break
-    
+
     if func_index is None or func_index == 0:
         return None
-    
-    # Проверяем предыдущий sibling
+
+    # Check previous sibling
     prev_sibling = siblings[func_index - 1]
-    
+
     if prev_sibling.type == "block_comment":
-        # Проверяем, является ли это KDoc (начинается с /**)
+        # Check if it is KDoc (starts with /**)
         text = context.doc.get_node_text(prev_sibling)
         if text.startswith("/**"):
             return prev_sibling
-    
+
     return None
 
 
 def _find_kdoc_in_body(body_node: Node, context: ProcessingContext) -> Optional[Node]:
     """
-    Ищет KDoc комментарий в начале тела функции.
-    
+    Find KDoc comment at start of function body.
+
     Args:
-        body_node: Узел function_body
-        context: Контекст обработки
-        
+        body_node: function_body node
+        context: Processing context
+
     Returns:
-        Узел block_comment с KDoc или None
+        block_comment node with KDoc or None
     """
-    # Тело функции в Kotlin - это function_body -> block -> statements
-    # Ищем первый block внутри function_body
+    # Function body in Kotlin is function_body -> block -> statements
+    # Look for first block inside function_body
     block_node = None
     for child in body_node.children:
         if child.type == "block":
             block_node = child
             break
-    
+
     if not block_node:
         return None
-    
-    # Ищем первый block_comment в block
+
+    # Look for first block_comment in block
     for child in block_node.children:
-        # Пропускаем открывающую скобку {
+        # Skip opening brace {
         if child.type in ("{", "}"):
             continue
-        
-        # Если первый значимый узел - block_comment, проверяем его
+
+        # If first significant node is block_comment, check it
         if child.type == "block_comment":
             text = context.doc.get_node_text(child)
             if text.startswith("/**"):
                 return child
-        
-        # Если встретили что-то другое - KDoc должен быть первым
+
+        # If we encounter something else - KDoc should be first
         break
-    
+
     return None
 
 
@@ -142,41 +142,41 @@ def _remove_function_body_preserve_kdoc(
         func_type: str
 ) -> None:
     """
-    Удаляет тело функции, сохраняя KDoc внутри него.
-    
+    Remove function body while preserving KDoc inside it.
+
     Args:
-        root_optimizer: Универсальный оптимизатор тел функций
-        context: Контекст обработки
-        kdoc_node: Узел KDoc комментария
-        body_node: Узел тела функции
-        func_type: Тип функции
+        root_optimizer: Universal function body optimizer
+        context: Processing context
+        kdoc_node: KDoc comment node
+        body_node: Function body node
+        func_type: Function type
     """
-    # Получаем диапазоны
+    # Get ranges
     body_start_char, body_end_char = context.doc.get_node_range(body_node)
     kdoc_end_char = context.doc.byte_to_char_position(kdoc_node.end_byte)
-    
-    # Проверяем, есть ли код после KDoc
+
+    # Check if there is code after KDoc
     if kdoc_end_char >= body_end_char:
-        # Нет кода после KDoc - оставляем только KDoc и закрывающую скобку
+        # No code after KDoc - keep only KDoc and closing brace
         return None
-    
-    # Вычисляем что удаляем (от конца KDoc до конца тела)
+
+    # Calculate what to remove (from end of KDoc to end of body)
     removal_start = kdoc_end_char
     removal_end = body_end_char
-    
-    # Проверяем, есть ли что удалять
+
+    # Check if there is anything to remove
     removal_start_line = context.doc.get_line_number(removal_start)
     body_end_line = context.doc.get_line_range(body_node)[1]
     lines_removed = max(0, body_end_line - removal_start_line + 1)
-    
+
     if lines_removed <= 0:
-        # Нечего удалять после KDoc
+        # Nothing to remove after KDoc
         return None
-    
-    # Определяем правильный отступ на основе типа функции
+
+    # Determine correct indentation based on function type
     indent_prefix = _get_indent_prefix(func_type)
-    
-    # Используем общий helper с правильным форматированием
+
+    # Use common helper with proper formatting
     return root_optimizer.apply_function_body_removal(
         context=context,
         start_char=removal_start,
@@ -188,16 +188,16 @@ def _remove_function_body_preserve_kdoc(
 
 def _get_indent_prefix(func_type: str) -> str:
     """
-    Определяет правильный отступ для плейсхолдера на основе типа функции.
-    
+    Determine correct indentation for placeholder based on function type.
+
     Args:
-        func_type: Тип функции ("method" или "function")
-        
+        func_type: Function type ("method" or "function")
+
     Returns:
-        Строка с правильным отступом для плейсхолдера
+        String with correct indentation for placeholder
     """
     if func_type == "method":
-        return "\n        "  # Метод класса: 8 пробелов
+        return "\n        "  # Class method: 8 spaces
     else:
-        return "\n    "      # Функция верхнего уровня: 4 пробела
+        return "\n    "      # Top-level function: 4 spaces
 

@@ -18,19 +18,19 @@ from ..tree_sitter_support import TreeSitterDocument
 
 @dataclass
 class PythonCfg(CodeCfg):
-    """Конфигурация для Python адаптера."""
-    skip_trivial_inits: bool = True  # Пропускать тривиальные __init__.py
+    """Configuration for Python adapter."""
+    skip_trivial_inits: bool = True  # Skip trivial __init__.py files
 
     @staticmethod
     def from_dict(d: Optional[Dict[str, Any]]) -> PythonCfg:
-        """Загрузка конфигурации из словаря YAML."""
+        """Load configuration from YAML dictionary."""
         if not d:
             return PythonCfg()
 
         cfg = PythonCfg()
         cfg.general_load(d)
 
-        # Python-специфичные настройки
+        # Python-specific settings
         cfg.skip_trivial_inits = bool(d.get("skip_trivial_inits", True))
 
         return cfg
@@ -56,28 +56,28 @@ class PythonAdapter(CodeAdapter[PythonCfg]):
         return PythonDocument(text, ext)
 
     def create_import_classifier(self, external_patterns: List[str]) -> ImportClassifier:
-        """Создает Python-специфичный классификатор импортов."""
+        """Create Python-specific import classifier."""
         from .imports import PythonImportClassifier
         return PythonImportClassifier(external_patterns)
-    
+
     def create_import_analyzer(self, classifier: ImportClassifier) -> TreeSitterImportAnalyzer:
-        """Создает Python-специфичный анализатор импортов."""
+        """Create Python-specific import analyzer."""
         from .imports import PythonImportAnalyzer
         return PythonImportAnalyzer(classifier)
 
     def create_code_analyzer(self, doc: TreeSitterDocument):
-        """Создает Python-специфичный унифицированный анализатор кода."""
+        """Create Python-specific unified code analyzer."""
         from .code_analysis import PythonCodeAnalyzer
         return PythonCodeAnalyzer(doc)
 
     def should_skip(self, lightweight_ctx: LightweightContext) -> bool:
         """
-        Python-специфичные эвристики пропуска.
+        Python-specific file skip heuristics.
         """
         from .file_heuristics import should_skip_python_file
         return should_skip_python_file(lightweight_ctx, self.cfg.skip_trivial_inits)
 
-    # == ХУКИ, которые использует Python адаптер ==
+    # == HOOKS used by Python adapter ==
 
     def hook__remove_function_body(self, *args, **kwargs) -> None:
         from .function_bodies import remove_function_body_with_definition
@@ -87,7 +87,7 @@ class PythonAdapter(CodeAdapter[PythonCfg]):
         return "#", ('"""', '"""'), ('"""', '"""')
 
     def is_documentation_comment(self, comment_text: str) -> bool:
-        return False # Используется явный захват в `QUERIES["comments"]` — capture_name == "docstring"
+        return False # Use explicit capture in `QUERIES["comments"]` — capture_name == "docstring"
 
     def is_docstring_node(self, node, doc: TreeSitterDocument) -> bool:
         from .comments import is_docstring_node

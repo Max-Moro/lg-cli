@@ -1,7 +1,7 @@
 """
-Функции формирования финального отчета.
+Final report generation functions.
 
-Преобразует данные из инкрементального коллектора статистики в формат API v4.
+Transforms data from the incremental statistics collector into API v4 format.
 """
 
 from __future__ import annotations
@@ -17,22 +17,22 @@ def build_run_result_from_collector(
     target_spec: TargetSpec
 ) -> RunResult:
     """
-    Строит RunResult из собранной коллектором статистики.
-    
+    Build RunResult from statistics collected by the collector.
+
     Args:
-        collector: Коллектор с собранной статистикой
-        target_spec: Спецификация обработанной цели
+        collector: Collector with gathered statistics
+        target_spec: Specification of the processed target
 
     Returns:
-        Модель RunResult в формате API v4
-        
+        RunResult model in API v4 format
+
     Raises:
-        ValueError: Если статистика не была собрана (отсутствуют итоговые тексты)
+        ValueError: If statistics were not collected (final texts missing)
     """
-    # Получаем статистику из коллектора
+    # Get statistics from collector
     files_rows, totals, ctx_block = collector.compute_final_stats()
-    
-    # Мэппинг Totals в TotalM
+
+    # Map Totals to Total
     total = Total(
         sizeBytes=totals.sizeBytes,
         tokensProcessed=totals.tokensProcessed,
@@ -45,7 +45,7 @@ def build_run_result_from_collector(
         metaSummary=dict(totals.metaSummary or {}),
     )
 
-    # Мэппинг файлов в FileM
+    # Map files to File models
     files = [
         File(
             path=row.path,
@@ -61,11 +61,11 @@ def build_run_result_from_collector(
         for row in files_rows
     ]
 
-    # Определяем scope и target
+    # Determine scope and target
     scope = Scope.context if target_spec.kind == "context" else Scope.section
     target_norm = f"{'ctx' if target_spec.kind == 'context' else 'sec'}:{target_spec.name}"
 
-    # Контекстный блок только для scope=context
+    # Context block only for scope=context
     context: Context | None = None
     if scope is Scope.context:
         context = Context(
@@ -77,7 +77,7 @@ def build_run_result_from_collector(
             finalCtxShare=ctx_block.finalCtxShare,
         )
 
-    # Финальная модель
+    # Final model
     result = RunResult(
         protocol=PROTOCOL_VERSION,
         scope=scope,
@@ -89,5 +89,5 @@ def build_run_result_from_collector(
         files=files,
         context=context,
     )
-    
+
     return result

@@ -1,8 +1,8 @@
 """
-Парсер для условных конструкций в Markdown.
+Parser for conditional constructs in Markdown.
 
-Преобразует токены HTML-комментариев в AST с поддержкой 
-условных блоков и комментариев-инструкций.
+Transforms HTML comment tokens into AST with support for
+conditional blocks and instruction comments.
 """
 
 from __future__ import annotations
@@ -17,11 +17,11 @@ from .nodes import (
 
 
 class MarkdownTemplateParserError(Exception):
-    """Ошибка синтаксического анализа Markdown с условными конструкциями."""
-    
+    """Error in parsing Markdown with conditional constructs."""
+
     def __init__(self, message: str, token: Optional[CommentToken] = None):
         if token:
-            super().__init__(f"{message} в токене '{token.type}' на позиции {token.start_pos}")
+            super().__init__(f"{message} in token '{token.type}' at position {token.start_pos}")
         else:
             super().__init__(message)
         self.token = token
@@ -29,58 +29,58 @@ class MarkdownTemplateParserError(Exception):
 
 class MarkdownTemplateParser:
     """
-    Парсер для Markdown с условными конструкциями в HTML-комментариях.
-    
-    Преобразует последовательность токенов комментариев и текстовых сегментов
-    в AST, корректно обрабатывая вложенные условные конструкции.
+    Parser for Markdown with conditional constructs in HTML comments.
+
+    Transforms sequence of comment tokens and text segments
+    into AST, correctly handling nested conditional constructs.
     """
-    
+
     def __init__(self, text: str):
         """
-        Инициализирует парсер с исходным текстом.
-        
+        Initialize parser with source text.
+
         Args:
-            text: Исходный Markdown-текст для парсинга
+            text: Source Markdown text for parsing
         """
         self.text = text
         self.lexer = MarkdownTemplateLexer(text)
         
     def parse(self) -> MarkdownAST:
         """
-        Парсит текст в AST.
-        
+        Parse text into AST.
+
         Returns:
-            AST с условными конструкциями
-            
+            AST with conditional constructs
+
         Raises:
-            MarkdownTemplateParserError: При ошибке синтаксического анализа
+            MarkdownTemplateParserError: On parsing error
         """
-        # Получаем токены комментариев
+        # Get comment tokens
         tokens = self.lexer.tokenize()
-        
-        # Валидируем структуру токенов
+
+        # Validate token structure
         validation_errors = self.lexer.validate_tokens(tokens)
         if validation_errors:
             raise MarkdownTemplateParserError(
-                f"Ошибки валидации структуры: {'; '.join(validation_errors)}"
+                f"Structure validation errors: {'; '.join(validation_errors)}"
             )
-        
-        # Если токенов нет, возвращаем простой текстовый узел
+
+        # If no tokens, return simple text node
         if not tokens:
             return [TextNode(text=self.text)]
-        
-        # Парсим с учетом токенов
+
+        # Parse considering tokens
         return self._parse_with_tokens(tokens)
     
     def _parse_with_tokens(self, tokens: List[CommentToken]) -> MarkdownAST:
         """
-        Парсит текст с учетом найденных токенов комментариев.
-        
+        Parse text considering found comment tokens.
+
         Args:
-            tokens: Список токенов комментариев
-            
+            tokens: List of comment tokens
+
         Returns:
-            Список узлов AST
+            List of AST nodes
         """
         ast = []
         current_pos = 0
@@ -88,137 +88,137 @@ class MarkdownTemplateParser:
         
         while token_index < len(tokens):
             token = tokens[token_index]
-            
-            # Добавляем текст перед токеном
+
+            # Add text before token
             if current_pos < token.start_pos:
                 text_content = self.text[current_pos:token.start_pos]
                 if text_content:
                     ast.append(TextNode(text=text_content))
             
-            # Обрабатываем токен
+            # Process token
             if token.type == 'if':
-                # Парсим условный блок
+                # Parse conditional block
                 if_block, consumed_tokens = self._parse_conditional_block(tokens, token_index)
                 ast.append(if_block)
                 token_index += consumed_tokens
-                # Обновляем позицию на конец последнего обработанного токена
+                # Update position to end of last processed token
                 if token_index < len(tokens):
                     current_pos = tokens[token_index - 1].end_pos
                 else:
                     current_pos = tokens[-1].end_pos
-            
+
             elif token.type == 'comment:start':
-                # Парсим блок комментария
+                # Parse comment block
                 comment_block, consumed_tokens = self._parse_comment_block(tokens, token_index)
                 ast.append(comment_block)
                 token_index += consumed_tokens
-                # Обновляем позицию на конец последнего обработанного токена
+                # Update position to end of last processed token
                 if token_index < len(tokens):
                     current_pos = tokens[token_index - 1].end_pos
                 else:
                     current_pos = tokens[-1].end_pos
-            
+
             elif token.type == 'raw:start':
-                # Парсим raw-блок
+                # Parse raw block
                 raw_block, consumed_tokens = self._parse_raw_block(tokens, token_index)
                 ast.append(raw_block)
                 token_index += consumed_tokens
-                # Обновляем позицию на конец последнего обработанного токена
+                # Update position to end of last processed token
                 if token_index < len(tokens):
                     current_pos = tokens[token_index - 1].end_pos
                 else:
                     current_pos = tokens[-1].end_pos
-            
+
             else:
-                # Неожиданный токен на верхнем уровне
+                # Unexpected token at top level
                 raise MarkdownTemplateParserError(
-                    f"Неожиданный токен '{token.type}' на верхнем уровне", token
+                    f"Unexpected token '{token.type}' at top level", token
                 )
         
-        # Добавляем оставшийся текст
+        # Add remaining text
         if current_pos < len(self.text):
             remaining_text = self.text[current_pos:]
             if remaining_text:
                 ast.append(TextNode(text=remaining_text))
-        
+
         return ast
     
     def _parse_conditional_block(self, tokens: List[CommentToken], start_index: int) -> tuple[ConditionalBlockNode, int]:
         """
-        Парсит условный блок if...elif...else...endif.
-        
+        Parse conditional block if...elif...else...endif.
+
         Args:
-            tokens: Список всех токенов
-            start_index: Индекс токена 'if'
-            
+            tokens: List of all tokens
+            start_index: Index of 'if' token
+
         Returns:
-            Кортеж (узел условного блока, количество обработанных токенов)
+            Tuple (conditional block node, number of processed tokens)
         """
         if_token = tokens[start_index]
         if if_token.type != 'if':
-            raise MarkdownTemplateParserError("Ожидался токен 'if'", if_token)
-        
-        # Ищем соответствующий endif
+            raise MarkdownTemplateParserError("Expected 'if' token", if_token)
+
+        # Find matching endif
         endif_index = self._find_matching_endif(tokens, start_index)
         if endif_index == -1:
-            raise MarkdownTemplateParserError("Не найден соответствующий 'endif'", if_token)
+            raise MarkdownTemplateParserError("Matching 'endif' not found", if_token)
         
-        # Парсим содержимое условного блока
+        # Parse conditional block content
         condition_text = if_token.content
-        
-        # Ищем elif и else токены внутри блока
+
+        # Find elif and else tokens within block
         elif_indices = []
         else_index = -1
-        
+
         for i in range(start_index + 1, endif_index):
             token = tokens[i]
             if token.type == 'elif' and self._is_at_same_level(tokens, start_index, i):
                 elif_indices.append(i)
             elif token.type == 'else' and self._is_at_same_level(tokens, start_index, i):
                 if else_index != -1:
-                    raise MarkdownTemplateParserError("Множественные 'else' в одном блоке", token)
+                    raise MarkdownTemplateParserError("Multiple 'else' in one block", token)
                 else_index = i
         
-        # Проверяем порядок elif и else
+        # Check elif and else order
         if else_index != -1 and elif_indices:
             if any(ei > else_index for ei in elif_indices):
                 else_token = tokens[else_index]
-                raise MarkdownTemplateParserError("'elif' после 'else'", else_token)
-        
-        # Парсим тело if блока
+                raise MarkdownTemplateParserError("'elif' after 'else'", else_token)
+
+        # Parse if block body
         body_start = if_token.end_pos
         body_end = tokens[elif_indices[0]].start_pos if elif_indices else (
             tokens[else_index].start_pos if else_index != -1 else tokens[endif_index].start_pos
         )
-        
+
         if_body = self._parse_body_between_positions(tokens, start_index + 1, body_start, body_end)
-        
-        # Парсим elif блоки
+
+        # Parse elif blocks
         elif_blocks = []
         for i, elif_idx in enumerate(elif_indices):
             elif_token = tokens[elif_idx]
             elif_body_start = elif_token.end_pos
-            
-            # Определяем конец тела elif блока
+
+            # Determine end of elif block body
             next_idx = elif_indices[i + 1] if i + 1 < len(elif_indices) else (
                 else_index if else_index != -1 else endif_index
             )
             elif_body_end = tokens[next_idx].start_pos
-            
+
             elif_body = self._parse_body_between_positions(tokens, elif_idx + 1, elif_body_start, elif_body_end)
-            
+
             elif_blocks.append(ElifBlockNode(
                 condition_text=elif_token.content,
                 body=elif_body
             ))
-        
-        # Парсим else блок
+
+        # Parse else block
         else_block = None
         if else_index != -1:
             else_token = tokens[else_index]
             else_body_start = else_token.end_pos
             else_body_end = tokens[endif_index].start_pos
-            
+
             else_body = self._parse_body_between_positions(tokens, else_index + 1, else_body_start, else_body_end)
             else_block = ElseBlockNode(body=else_body)
         
@@ -228,65 +228,65 @@ class MarkdownTemplateParser:
             elif_blocks=elif_blocks,
             else_block=else_block
         )
-        
-        # Возвращаем узел и количество обработанных токенов
+
+        # Return node and number of processed tokens
         consumed_tokens = endif_index - start_index + 1
         return conditional_block, consumed_tokens
     
     def _parse_comment_block(self, tokens: List[CommentToken], start_index: int) -> tuple[CommentBlockNode, int]:
         """
-        Парсит блок комментария comment:start...comment:end.
-        
+        Parse comment block comment:start...comment:end.
+
         Args:
-            tokens: Список всех токенов  
-            start_index: Индекс токена 'comment:start'
-            
+            tokens: List of all tokens
+            start_index: Index of 'comment:start' token
+
         Returns:
-            Кортеж (узел комментария, количество обработанных токенов)
+            Tuple (comment node, number of processed tokens)
         """
         start_token = tokens[start_index]
         if start_token.type != 'comment:start':
-            raise MarkdownTemplateParserError("Ожидался токен 'comment:start'", start_token)
-        
-        # Ищем соответствующий comment:end
+            raise MarkdownTemplateParserError("Expected 'comment:start' token", start_token)
+
+        # Find matching comment:end
         end_index = -1
         for i in range(start_index + 1, len(tokens)):
             if tokens[i].type == 'comment:end':
                 end_index = i
                 break
-        
+
         if end_index == -1:
-            raise MarkdownTemplateParserError("Не найден соответствующий 'comment:end'", start_token)
-        
-        # Извлекаем текст комментария
+            raise MarkdownTemplateParserError("Matching 'comment:end' not found", start_token)
+
+        # Extract comment text
         comment_start = start_token.end_pos
         comment_end = tokens[end_index].start_pos
         comment_text = self.text[comment_start:comment_end]
-        
+
         comment_block = CommentBlockNode(text=comment_text)
-        
+
         consumed_tokens = end_index - start_index + 1
         return comment_block, consumed_tokens
     
     def _parse_raw_block(self, tokens: List[CommentToken], start_index: int) -> tuple[RawBlockNode, int]:
         """
-        Парсит блок raw-текста raw:start...raw:end.
-        
+        Parse raw text block raw:start...raw:end.
+
         Args:
-            tokens: Список всех токенов
-            start_index: Индекс токена 'raw:start'
-            
+            tokens: List of all tokens
+            start_index: Index of 'raw:start' token
+
         Returns:
-            Кортеж (узел raw-блока, количество обработанных токенов)
+            Tuple (raw block node, number of processed tokens)
         """
         start_token = tokens[start_index]
         if start_token.type != 'raw:start':
-            raise MarkdownTemplateParserError("Ожидался токен 'raw:start'", start_token)
-        
-        # Ищем соответствующий raw:end с учетом вложенности
+            raise MarkdownTemplateParserError("Expected 'raw:start' token", start_token)
+
+        # Find matching raw:end considering nesting
         end_index = -1
         nesting_level = 1
-        
+
         for i in range(start_index + 1, len(tokens)):
             if tokens[i].type == 'raw:start':
                 nesting_level += 1
@@ -295,49 +295,49 @@ class MarkdownTemplateParser:
                 if nesting_level == 0:
                     end_index = i
                     break
-        
+
         if end_index == -1:
-            raise MarkdownTemplateParserError("Не найден соответствующий 'raw:end'", start_token)
-        
-        # Извлекаем текст raw-блока БЕЗ обработки (as-is)
+            raise MarkdownTemplateParserError("Matching 'raw:end' not found", start_token)
+
+        # Extract raw block text WITHOUT processing (as-is)
         raw_start = start_token.end_pos
         raw_end = tokens[end_index].start_pos
         raw_text = self.text[raw_start:raw_end]
-        
+
         raw_block = RawBlockNode(text=raw_text)
-        
+
         consumed_tokens = end_index - start_index + 1
         return raw_block, consumed_tokens
     
     def _parse_body_between_positions(self, all_tokens: List[CommentToken],
                                     _start_token_index: int, start_pos: int, end_pos: int) -> List[MarkdownNode]:
         """
-        Парсит тело между указанными позициями в тексте.
-        
+        Parse body between specified positions in text.
+
         Args:
-            all_tokens: Все токены документа
-            start_token_index: Индекс начального токена (для определения уровня вложенности)
-            start_pos: Начальная позиция в тексте
-            end_pos: Конечная позиция в тексте
-            
+            all_tokens: All document tokens
+            start_token_index: Start token index (for determining nesting level)
+            start_pos: Start position in text
+            end_pos: End position in text
+
         Returns:
-            Список узлов для тела
+            List of nodes for body
         """
-        # Фильтруем токены, которые попадают в диапазон
+        # Filter tokens that fall in range
         relevant_tokens = [
-            token for token in all_tokens 
+            token for token in all_tokens
             if start_pos <= token.start_pos < end_pos
         ]
-        
+
         if not relevant_tokens:
-            # Если токенов в диапазоне нет, возвращаем просто текст
+            # If no tokens in range, return just text
             body_text = self.text[start_pos:end_pos]
             return [TextNode(text=body_text)] if body_text else []
-        
-        # Создаем временный парсер для этого фрагмента
+
+        # Create temporary parser for this fragment
         body_text = self.text[start_pos:end_pos]
-        
-        # Корректируем позиции токенов относительно начала фрагмента
+
+        # Adjust token positions relative to fragment start
         adjusted_tokens = []
         for token in relevant_tokens:
             adjusted_token = CommentToken(
@@ -348,24 +348,24 @@ class MarkdownTemplateParser:
                 full_match=token.full_match
             )
             adjusted_tokens.append(adjusted_token)
-        
-        # Создаем временный парсер
+
+        # Create temporary parser
         temp_parser = MarkdownTemplateParser(body_text)
         return temp_parser._parse_with_tokens(adjusted_tokens)
     
     def _find_matching_endif(self, tokens: List[CommentToken], if_index: int) -> int:
         """
-        Находит соответствующий endif для if токена.
-        
+        Find matching endif for if token.
+
         Args:
-            tokens: Список токенов
-            if_index: Индекс if токена
-            
+            tokens: List of tokens
+            if_index: Index of if token
+
         Returns:
-            Индекс соответствующего endif или -1 если не найден
+            Index of matching endif or -1 if not found
         """
-        if_count = 1  # Начинаем с 1 для текущего if
-        
+        if_count = 1  # Start with 1 for current if
+
         for i in range(if_index + 1, len(tokens)):
             token = tokens[i]
             if token.type == 'if':
@@ -374,45 +374,45 @@ class MarkdownTemplateParser:
                 if_count -= 1
                 if if_count == 0:
                     return i
-        
+
         return -1
     
     def _is_at_same_level(self, tokens: List[CommentToken], if_index: int, target_index: int) -> bool:
         """
-        Проверяет, находится ли токен на том же уровне вложенности что и if.
-        
+        Check if token is at same nesting level as if.
+
         Args:
-            tokens: Список токенов
-            if_index: Индекс if токена
-            target_index: Индекс проверяемого токена
-            
+            tokens: List of tokens
+            if_index: Index of if token
+            target_index: Index of token to check
+
         Returns:
-            True если токены на одном уровне
+            True if tokens are at same level
         """
-        if_count = 1  # Начинаем с 1 для исходного if
-        
+        if_count = 1  # Start with 1 for original if
+
         for i in range(if_index + 1, target_index):
             token = tokens[i]
             if token.type == 'if':
                 if_count += 1
             elif token.type == 'endif':
                 if_count -= 1
-        
+
         return if_count == 1
 
 
 def parse_markdown_template(text: str) -> MarkdownAST:
     """
-    Удобная функция для парсинга Markdown с условными конструкциями.
-    
+    Convenience function for parsing Markdown with conditional constructs.
+
     Args:
-        text: Исходный Markdown-текст
-        
+        text: Source Markdown text
+
     Returns:
-        AST с условными конструкциями
-        
+        AST with conditional constructs
+
     Raises:
-        MarkdownTemplateParserError: При ошибке синтаксического анализа
+        MarkdownTemplateParserError: On parsing error
     """
     parser = MarkdownTemplateParser(text)
     return parser.parse()

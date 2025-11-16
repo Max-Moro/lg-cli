@@ -1,6 +1,6 @@
 """
-Модель конфигурации для языковых адаптеров программирования.
-Унифицированная базовая конфигурация + язык-специфичные расширения.
+Configuration model for language programming adapters.
+Unified base configuration + language-specific extensions.
 """
 
 from __future__ import annotations
@@ -8,7 +8,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Dict, List, Optional, Literal, Union, Any
 
-# ---- Типы для конфигурации ----
+# ---- Types for configuration ----
 
 VisibilityLevel = Literal["public", "protected", "private", "internal", "exported"]
 FunctionBodyStrip = Literal["none", "all", "public_only", "non_public", "large_only"]
@@ -19,79 +19,79 @@ PlaceholderStyle = Literal["inline", "block", "none"]
 
 @dataclass
 class FunctionBodyConfig:
-    """Конфигурация удаления тел функций/методов."""
+    """Configuration for function/method body removal."""
     mode: FunctionBodyStrip = "none"
-    min_lines: int = 5  # минимальное количество строк для удаления при mode="large_only"
-    except_patterns: List[str] = field(default_factory=list)  # regex имен функций-исключений
-    keep_annotated: List[str] = field(default_factory=list)  # regex аннотаций для сохранения
+    min_lines: int = 5  # minimum number of lines for removal when mode="large_only"
+    except_patterns: List[str] = field(default_factory=list)  # regex for exception function names
+    keep_annotated: List[str] = field(default_factory=list)  # regex annotations for preservation
 
 
 @dataclass
 class CommentConfig:
-    """Конфигурация обработки комментариев и документации."""
+    """Configuration for comment and documentation processing."""
     policy: CommentPolicy = "keep_all"
-    max_tokens: Optional[int] = None  # максимальное количество токенов для сохраняемого комментария
-    keep_annotations: List[str] = field(default_factory=list)  # regex аннотаций для сохранения
-    strip_patterns: List[str] = field(default_factory=list)  # regex паттернов для удаления
+    max_tokens: Optional[int] = None  # maximum number of tokens for preserved comment
+    keep_annotations: List[str] = field(default_factory=list)  # regex annotations for preservation
+    strip_patterns: List[str] = field(default_factory=list)  # regex patterns for removal
 
 
 @dataclass
 class ImportConfig:
-    """Конфигурация обработки импортов."""
+    """Configuration for import processing."""
     policy: ImportPolicy = "keep_all"
-    summarize_long: bool = False  # включить суммаризацию длинных списков импортов
-    max_items_before_summary: int = 10  # количество импортов, после которого включается суммаризация
-    external_patterns: List[str] = field(default_factory=list)  # regex для определения внешних пакетов
+    summarize_long: bool = False  # enable summarization of long import lists
+    max_items_before_summary: int = 10  # number of imports after which summarization is enabled
+    external_patterns: List[str] = field(default_factory=list)  # regex for identifying external packages
 
 @dataclass
 class LiteralConfig:
-    """Конфигурация обработки литералов."""
-    max_tokens: Optional[int] = None  # максимальный допустимый размер контента литерала в токенах
+    """Configuration for literal processing."""
+    max_tokens: Optional[int] = None  # maximum allowed size of literal content in tokens
 
 
 @dataclass
 class BudgetConfig:
-    """Бюджетирование токенов на файл."""
+    """Token budgeting per file."""
     max_tokens_per_file: Optional[int] = None
     priority_order: List[str] = field(default_factory=list)
 
 
 @dataclass
 class PlaceholderConfig:
-    """Конфигурация плейсхолдеров для удаленного кода."""
+    """Configuration for placeholders of removed code."""
     style: PlaceholderStyle = "inline"
-    # Порог экономии токенов: savings / placeholder >= min_savings_ratio
+    # Token savings threshold: savings / placeholder >= min_savings_ratio
     min_savings_ratio: float = 2.0
-    # Абсолютный порог экономии для стиля style=="none" (полное удаление).
+    # Absolute savings threshold for style=="none" (complete removal).
     min_abs_savings_if_none: int = 5
 
 
 @dataclass
 class CodeCfg:
     """
-    Базовая конфигурация для всех языковых адаптеров программирования.
-    Наследуется язык-специфичными конфигурациями.
+    Base configuration for all language programming adapters.
+    Inherited by language-specific configurations.
     """
-    # Основные политики
+    # Main policies
     public_api_only: bool = False
     strip_function_bodies: Union[bool, FunctionBodyConfig] = False
     comment_policy: Union[CommentPolicy, CommentConfig] = "keep_all"
-    
-    # Дополнительные оптимизации
+
+    # Additional optimizations
     imports: ImportConfig = field(default_factory=ImportConfig)
     literals: LiteralConfig = field(default_factory=LiteralConfig)
 
-    # Система плейсхолдеров
+    # Placeholder system
     placeholders: PlaceholderConfig = field(default_factory=PlaceholderConfig)
 
-    # Бюджетирование
+    # Budgeting
     budget: Optional[BudgetConfig] = None
 
     def general_load(self, d: Optional[Dict[str, Any]]):
-        """Загрузка универсальной части конфигурации из словаря YAML."""
+        """Load universal part of configuration from YAML dictionary."""
         d = d or {}
 
-        # Парсинг основных полей
+        # Parse main fields
         self.public_api_only = bool(d.get("public_api_only", False))
 
         # strip_function_bodies: bool | dict
@@ -119,7 +119,7 @@ class CodeCfg:
                 strip_patterns=list(cp.get("strip_patterns", []))
             )
 
-        # Вложенные конфиги
+        # Nested configs
         if "imports" in d:
             ic = d["imports"]
             self.imports = ImportConfig(

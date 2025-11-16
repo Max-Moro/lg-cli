@@ -6,7 +6,7 @@ from ..types import PathLabelMode
 
 
 def _split(rel_posix: str) -> List[str]:
-    # Всегда POSIX (‘/’), вход — из Manifest.rel_path
+    # Always POSIX ('/'), input comes from Manifest.rel_path
     return rel_posix.split("/")
 
 
@@ -16,15 +16,15 @@ def _join(parts: List[str]) -> str:
 
 def _common_dir_prefix(paths: List[List[str]]) -> List[str]:
     """
-    Общий префикс директорий по всем путям (без имени файла).
-    Возвращает список компонент директории, которые совпадают у всех.
+    Common directory prefix across all paths (excluding file name).
+    Returns a list of directory components that match for all paths.
     """
     if not paths:
         return []
-    # Сравниваем только директории (все кроме последней компоненты — basename)
+    # Compare only directories (all except the last component — basename)
     dirs = [p[:-1] if p else [] for p in paths]
     if not all(dirs):
-        # Если у кого-то путь плоский (только basename), префикса нет
+        # If any path is flat (only basename), no prefix exists
         pass
     pref: List[str] = []
     i = 0
@@ -48,11 +48,11 @@ def _common_dir_prefix(paths: List[List[str]]) -> List[str]:
 
 def _minimal_unique_suffixes(paths: List[List[str]]) -> List[str]:
     """
-    Для каждого пути выбираем минимальный уникальный суффикс (по компонентам справа).
-    Пример: ["lg","engine.py"], ["io","engine.py"] → "lg/engine.py", "io/engine.py".
+    For each path, select the minimal unique suffix (by components from the right).
+    Example: ["lg","engine.py"], ["io","engine.py"] → "lg/engine.py", "io/engine.py".
     """
     n = len(paths)
-    # Начинаем с basename (последняя компонента)
+    # Start with basename (last component)
     suffix_len = [1] * n
 
     def key(i: int) -> Tuple[str, ...]:
@@ -77,11 +77,11 @@ def _minimal_unique_suffixes(paths: List[List[str]]) -> List[str]:
         for i in range(n):
             k = key(i)
             if k in clash:
-                # увеличиваем суффикс, если можно
+                # Increase suffix if possible
                 if suffix_len[i] < len(paths[i]):
                     suffix_len[i] += 1
                     changed = True
-        # цикл завершится, когда коллизии исчезнут или все дойдут до полного пути
+        # Loop ends when collisions disappear or all reach the full path
 
     out: List[str] = []
     for i in range(n):
@@ -91,20 +91,20 @@ def _minimal_unique_suffixes(paths: List[List[str]]) -> List[str]:
 
 def build_labels(rel_paths: Iterable[str], *, mode: PathLabelMode, origin: str = "self") -> Dict[str, str]:
     """
-    Построить карту {rel_path → label} с учётом выбранного режима.
-    Аргумент rel_paths — POSIX-пути (как в Manifest.rel_path).
-    
+    Build a map {rel_path → label} considering the selected mode.
+    The rel_paths argument contains POSIX paths (as in Manifest.rel_path).
+
     Args:
-        rel_paths: Итерируемая коллекция относительных путей
-        mode: Режим отображения меток
-        origin: Текущий origin из template context ("self" или путь к подобласти)
+        rel_paths: Iterable collection of relative paths
+        mode: Label display mode
+        origin: Current origin from template context ("self" or path to a subregion)
     """
     rel_list = list(rel_paths)
     if not rel_list:
         return {}
 
     if mode == "relative":
-        # Тривиально — метка равна исходному относительному пути
+        # Trivially — label equals the original relative path
         return {p: p for p in rel_list}
 
     parts_all: List[List[str]] = [_split(p) for p in rel_list]
@@ -113,24 +113,24 @@ def build_labels(rel_paths: Iterable[str], *, mode: PathLabelMode, origin: str =
         labels = _minimal_unique_suffixes(parts_all)
         return {p: lbl for p, lbl in zip(rel_list, labels)}
 
-    # mode == "scope_relative": снимаем origin (если не "self")
+    # mode == "scope_relative": strip origin (if not "self")
     if mode == "scope_relative":
         if origin and origin != "self":
-            # Снимаем origin префикс со всех путей
+            # Strip origin prefix from all paths
             origin_prefix = origin.rstrip("/") + "/"
             stripped_paths = []
             for p in rel_list:
                 if p.startswith(origin_prefix):
                     stripped_paths.append(p[len(origin_prefix):])
                 elif p == origin.rstrip("/"):
-                    # Путь совпадает с origin (без слэша)
+                    # Path matches origin (without slash)
                     stripped_paths.append(_split(p)[-1] if _split(p) else p)
                 else:
-                    # Путь не начинается с origin - оставляем как есть
+                    # Path does not start with origin - keep as is
                     stripped_paths.append(p)
             return {p: lbl for p, lbl in zip(rel_list, stripped_paths)}
         else:
-            # origin == "self" или пустой — эквивалентно "relative"
+            # origin == "self" or empty — equivalent to "relative"
             return {p: p for p in rel_list}
 
     return {p: p for p in rel_list}

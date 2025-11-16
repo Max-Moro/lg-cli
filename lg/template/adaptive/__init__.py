@@ -1,12 +1,12 @@
 """
-Плагин для адаптивных возможностей шаблонизатора.
+Plugin for adaptive template features.
 
-Обрабатывает:
-- {% if condition %}...{% elif condition %}...{% else %}...{% endif %} - условные конструкции
-- {% mode modeset:mode %}...{% endmode %} - режимные блоки
-- {# комментарий #} - комментарии
-- Логические операторы: AND, OR, NOT
-- Операторы условий: tag:name, TAGSET:set:tag, scope:local
+Handles:
+- {% if condition %}...{% elif condition %}...{% else %}...{% endif %} - conditional blocks
+- {% mode modeset:mode %}...{% endmode %} - mode blocks
+- {# comment #} - comments
+- Logical operators: AND, OR, NOT
+- Condition operators: tag:name, TAGSET:set:tag, scope:local
 """
 
 from __future__ import annotations

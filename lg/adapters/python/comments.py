@@ -140,24 +140,24 @@ def smart_truncate_comment(comment_text: str, max_tokens: int, tokenizer) -> str
 
 def is_docstring_node(node, _doc: TreeSitterDocument) -> bool:
     """
-    Проверяет, является ли узел строки докстрингом.
+    Check if node is a docstring.
 
-    В Python докстрингом считается строка, которая является единственным содержимым
-    expression_statement. Это соответствует запросу comments в queries.py.
+    In Python, a docstring is a string that is the sole content
+    of an expression_statement. This corresponds to the comments query in queries.py.
 
     Args:
-        node: Узел строки для проверки
-        _doc: Документ для анализа контекста
+        node: String node to check
+        _doc: Document for context analysis
 
     Returns:
-        True если узел является докстрингом, False иначе
+        True if node is a docstring, False otherwise
     """
-    # Проверяем, является ли родительский узел expression_statement
-    # и содержит ли он только эту строку (без других выражений)
+    # Check if parent node is expression_statement
+    # and if it contains only this string (no other expressions)
     parent = node.parent
     if parent and parent.type == "expression_statement":
-        # Если expression_statement содержит только одну строку, это докстринг
+        # If expression_statement contains only one string, it's a docstring
         if len(parent.children) == 1:
             return True
-    
+
     return False

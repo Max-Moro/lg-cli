@@ -157,94 +157,94 @@ class ImportOptimizer:
     def _process_summarize_long(self, imports: List[ImportInfo], context: ProcessingContext) -> None:
         """
         Summarize imports with too many items.
-        
-        Для языков с from-импортами (Python, TypeScript):
-        - Проверяет количество элементов в одном импорте
-        
-        Для языков с отдельными импортами (Kotlin, Java):
-        - Группирует последовательные импорты из одного базового модуля
-        - Суммаризирует группы, превышающие порог
+
+        For languages with from-imports (Python, TypeScript):
+        - Check number of items in single import
+
+        For languages with separate imports (Kotlin, Java):
+        - Group consecutive imports from one base module
+        - Summarize groups exceeding threshold
         """
         max_items = self.cfg.max_items_before_summary
-        
-        # Сначала проверяем импорты с множественными элементами (Python/TS style)
+
+        # First check imports with multiple items (Python/TS style)
         for imp in imports:
             if len(imp.imported_items) > max_items:
                 self._remove_import(context, imp)
-        
-        # Затем группируем последовательные импорты из одного базового модуля (Kotlin/Java style)
-        # Базовый модуль - это первые 2 сегмента пути (например, io.ktor для io.ktor.server.*)
+
+        # Then group consecutive imports from one base module (Kotlin/Java style)
+        # Base module is first 2 path segments (e.g., io.ktor for io.ktor.server.*)
         grouped_by_base = self._group_consecutive_imports_by_base_module(imports, context)
-        
+
         for base_module, group in grouped_by_base.items():
             if len(group) > max_items:
-                # Суммаризируем всю группу
+                # Summarize entire group
                 for imp in group:
                     self._remove_import(context, imp)
     
     def _group_consecutive_imports_by_base_module(self, imports: List[ImportInfo], context: ProcessingContext) -> Dict[str, List[ImportInfo]]:
         """
-        Группирует последовательные импорты по базовому модулю.
-        
-        Последовательность разрывается если:
-        - Базовый модуль изменился
-        - Между импортами есть непустые строки (комментарии, код)
-        
-        Например:
+        Group consecutive imports by base module.
+
+        Sequence is broken if:
+        - Base module changes
+        - Non-empty lines between imports (comments, code)
+
+        Example:
         import io.ktor.server.Application
         import io.ktor.server.call
-        // Комментарий - разрыв!
+        // Comment - break!
         import io.ktor.http.HttpStatus
-        
-        Создаст ДВЕ группы io.ktor, а не одну.
+
+        Creates TWO io.ktor groups, not one.
         """
         groups: Dict[str, List[ImportInfo]] = {}
         current_base = None
         current_group_key = None
         prev_end_byte = None
-        
+
         for imp in imports:
             if not imp.module_name:
                 continue
-            
-            # Определяем базовый модуль (первые 2 сегмента)
+
+            # Determine base module (first 2 segments)
             parts = imp.module_name.split('.')
             if len(parts) >= 2:
                 base = '.'.join(parts[:2])
             else:
                 base = imp.module_name
-            
-            # Проверяем разрыв последовательности
+
+            # Check for sequence break
             is_consecutive = True
             if prev_end_byte is not None:
-                # Проверяем, что между предыдущим и текущим импортом только пробелы/переводы строк
+                # Check that only spaces/newlines between previous and current import
                 between_text = context.raw_text[prev_end_byte:imp.start_byte]
-                # Если есть непустые строки (комментарии, код) - разрыв
+                # If non-empty lines (comments, code) - break
                 if between_text.strip():
                     is_consecutive = False
-            
-            # Проверяем, является ли этот импорт частью текущей последовательности
+
+            # Check if this import is part of current sequence
             if base == current_base and is_consecutive:
-                # Продолжаем текущую группу
+                # Continue current group
                 if current_group_key:
                     groups[current_group_key].append(imp)
             else:
-                # Начинаем новую группу
+                # Start new group
                 current_base = base
-                # Создаем уникальный ключ для группы (base + позиция первого импорта)
+                # Create unique key for group (base + position of first import)
                 current_group_key = f"{base}@{imp.start_byte}"
                 groups[current_group_key] = [imp]
-            
+
             prev_end_byte = imp.end_byte
-        
+
         return groups
-    
+
     @staticmethod
     def _remove_import(context: ProcessingContext, import_info: ImportInfo) -> None:
         """Remove an import and add appropriate placeholder."""
         count = len(import_info.imported_items)
-        
-        # Используем новое простое API
+
+        # Use new simple API
         context.add_placeholder_for_node("import", import_info.node, count=count)
     
 # Export the classes that will be used by language adapters

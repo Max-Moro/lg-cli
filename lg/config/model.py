@@ -10,16 +10,16 @@ from ..types import PathLabelMode
 @dataclass
 class ConditionalAdapterOptions:
     """
-    Условные опции адаптера.
+    Conditional adapter options.
 
-    Если условие истинно, применяются указанные опции адаптера.
+    If condition is true, specified adapter options are applied.
     """
-    condition: str  # Условие в виде строки (например, "tag:include-inits")
-    options: Dict[str, Any] = field(default_factory=dict)  # Опции адаптера для применения
+    condition: str  # Condition as string (e.g., "tag:include-inits")
+    options: Dict[str, Any] = field(default_factory=dict)  # Adapter options to apply
 
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> ConditionalAdapterOptions:
-        """Создание из словаря YAML."""
+        """Create from YAML dictionary."""
         if not isinstance(data, dict):
             raise ValueError("ConditionalAdapterOptions data must be a dictionary")
 
@@ -28,7 +28,7 @@ class ConditionalAdapterOptions:
 
         condition = str(data["condition"])
 
-        # Все остальные ключи (кроме condition) являются опциями адаптера
+        # All other keys (except condition) are adapter options
         options = {k: v for k, v in data.items() if k != "condition"}
 
         return cls(condition=condition, options=options)
@@ -36,43 +36,43 @@ class ConditionalAdapterOptions:
 @dataclass
 class AdapterConfig:
     """
-    Конфигурация адаптера с поддержкой условных опций.
+    Adapter configuration with conditional options support.
     """
-    base_options: Dict[str, Any] = field(default_factory=dict)  # базовые опции адаптера
-    conditional_options: List[ConditionalAdapterOptions] = field(default_factory=list)  # условные опции
-    
+    base_options: Dict[str, Any] = field(default_factory=dict)  # base adapter options
+    conditional_options: List[ConditionalAdapterOptions] = field(default_factory=list)  # conditional options
+
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> AdapterConfig:
-        """Создание из словаря YAML."""
+        """Create from YAML dictionary."""
         if not isinstance(data, dict):
             return cls(base_options=dict(data) if data else {})
-        
+
         base_options = {}
         conditional_options = []
-        
+
         for key, value in data.items():
             if key == "when":
-                # Обрабатываем условные опции
+                # Process conditional options
                 if isinstance(value, list):
                     for when_item in value:
                         conditional_options.append(ConditionalAdapterOptions.from_dict(when_item))
                 else:
                     raise ValueError(f"'when' must be a list, got {type(value)}")
             else:
-                # Обычные опции адаптера
+                # Regular adapter options
                 base_options[key] = value
-        
+
         return cls(base_options=base_options, conditional_options=conditional_options)
 
 @dataclass
 class TargetRule:
     """
-    Адресные оверрайды конфигураций адаптеров для конкретных путей.
-    Поле match поддерживает строку или список строк-глобов (относительно корня репо).
-    Все остальные ключи в исходном YAML внутри правила трактуются как имена адаптеров.
+    Targeted overrides of adapter configurations for specific paths.
+    The match field supports string or list of glob strings (relative to repo root).
+    All other keys in source YAML inside the rule are treated as adapter names.
     """
     match: List[str] = field(default_factory=list)
-    # имя_адаптера -> сырой dict-конфиг (как в секции)
+    # adapter_name -> raw dict-config (as in section)
     adapter_cfgs: Dict[str, Dict] = field(default_factory=dict)
 
 @dataclass
@@ -81,22 +81,22 @@ class SectionCfg:
     filters: FilterNode = field(
         default_factory=lambda: FilterNode(mode="block")  # default-allow
     )
-    skip_empty: bool = True                  # глобальное правило
-    path_labels: PathLabelMode = "scope_relative"      # Как печатать файл-маркеры в секции
+    skip_empty: bool = True                  # global rule
+    path_labels: PathLabelMode = "scope_relative"      # How to print file markers in section
 
-    # Конфиги адаптеров с поддержкой условных опций: имя_адаптера → AdapterConfig
+    # Adapter configs with conditional options support: adapter_name → AdapterConfig
     adapters: Dict[str, AdapterConfig] = field(default_factory=dict)
 
-    # Адресные оверрайды по путям
+    # Targeted overrides by paths
     targets: List[TargetRule] = field(default_factory=list)
 
     @staticmethod
     def from_dict(name: str, node: dict) -> SectionCfg:
         # extensions
         exts = list(map(str, node.get("extensions", [".py"])))
-        # filters (теперь with-условия обрабатываются внутри FilterNode.from_dict)
+        # filters (now with-conditions are processed inside FilterNode.from_dict)
         filters = FilterNode.from_dict(node.get("filters", {"mode": "block"}))
-        # adapters config (всё, что не service keys)
+        # adapters config (everything except service keys)
         service_keys = {"extensions", "filters", "skip_empty", "targets", "path_labels"}
         adapters_cfg: Dict[str, AdapterConfig] = {}
         for k, v in node.items():

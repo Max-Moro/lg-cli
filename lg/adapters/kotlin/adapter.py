@@ -21,14 +21,14 @@ class KotlinCfg(CodeCfg):
 
     @staticmethod
     def from_dict(d: Optional[Dict[str, Any]]) -> KotlinCfg:
-        """Загрузка конфигурации из словаря YAML."""
+        """Load configuration from YAML dictionary."""
         if not d:
             return KotlinCfg()
 
         cfg = KotlinCfg()
         cfg.general_load(d)
 
-        # Kotlin-специфичные настройки (на данный момент нет)
+        # Kotlin-specific settings (currently none)
 
         return cfg
 
@@ -53,48 +53,48 @@ class KotlinAdapter(CodeAdapter[KotlinCfg]):
         return KotlinDocument(text, ext)
 
     def create_import_classifier(self, external_patterns: List[str]) -> ImportClassifier:
-        """Создает Kotlin-специфичный классификатор импортов."""
+        """Create a Kotlin-specific import classifier."""
         from .imports import KotlinImportClassifier
         return KotlinImportClassifier(external_patterns)
-    
+
     def create_import_analyzer(self, classifier: ImportClassifier) -> TreeSitterImportAnalyzer:
-        """Создает Kotlin-специфичный анализатор импортов."""
+        """Create a Kotlin-specific import analyzer."""
         from .imports import KotlinImportAnalyzer
         return KotlinImportAnalyzer(classifier)
 
     def create_code_analyzer(self, doc: TreeSitterDocument):
-        """Создает Kotlin-специфичный унифицированный анализатор кода."""
+        """Create a Kotlin-specific unified code analyzer."""
         from .code_analysis import KotlinCodeAnalyzer
         return KotlinCodeAnalyzer(doc)
 
     def should_skip(self, lightweight_ctx: LightweightContext) -> bool:
         """
-        Kotlin-специфичные эвристики пропуска файлов.
+        Kotlin-specific file skipping heuristics.
         """
-        # Можно добавить эвристики, например, для сгенерированных файлов
+        # Can add heuristics for generated files, etc.
         return False
 
-    # == ХУКИ, которые использует Kotlin адаптер ==
+    # == Hooks used by Kotlin adapter ==
 
     def get_comment_style(self) -> tuple[str, tuple[str, str], tuple[str, str]]:
-        # Kotlin использует Java-style комментарии
+        # Kotlin uses Java-style comments
         return "//", ("/*", "*/"), ("/**", "*/")
 
     def is_documentation_comment(self, comment_text: str) -> bool:
-        """Проверяет, является ли комментарий KDoc документацией."""
+        """Check if comment is KDoc documentation."""
         return comment_text.strip().startswith('/**')
 
     def is_docstring_node(self, node, doc: TreeSitterDocument) -> bool:
-        """В Kotlin нет docstring как в Python, только KDoc комментарии."""
+        """Kotlin has no docstring like Python, only KDoc comments."""
         return False
 
     def hook__remove_function_body(self, *args, **kwargs) -> None:
-        """Kotlin-специфичная обработка удаления тел функций с сохранением KDoc."""
+        """Kotlin-specific function body removal with KDoc preservation."""
         from .function_bodies import remove_function_body_with_kdoc
         remove_function_body_with_kdoc(*args, **kwargs)
 
     def hook__process_additional_literals(self, context: ProcessingContext, max_tokens: Optional[int]) -> None:
-        """Обрабатывает Kotlin-специфичные литералы (коллекции listOf/mapOf/setOf)."""
+        """Process Kotlin-specific literals (collections listOf/mapOf/setOf)."""
         from .literals import process_kotlin_literals
         process_kotlin_literals(context, max_tokens)
 

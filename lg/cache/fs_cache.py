@@ -14,7 +14,7 @@ from .gitignore_helper import ensure_gitignore_entry
 CACHE_VERSION = 1
 
 def _sha1_text(text: str) -> str:
-    """Простой хеш от текста для кеширования токенов."""
+    """Simple hash of text for token caching."""
     return hashlib.sha1(text.encode("utf-8")).hexdigest()
 
 def _sha1_json(payload: dict) -> str:
@@ -25,7 +25,7 @@ def _ensure_dir(p: Path) -> None:
 
 def _fingerprint_cfg(cfg_obj: Any) -> Any:
     """
-    Стабильный сериализуемый fingerprint конфигурации адаптера/опций.
+    Stable serializable fingerprint of adapter/options configuration.
     """
     try:
         if is_dataclass(cfg_obj):
@@ -47,23 +47,23 @@ class CacheSnapshot:
 
 class Cache:
     """
-    Файловый кэш для обработки файлов и подсчета токенов LG.
-    
-    Хранит:
-      • processed-тексты (по ключу processed)
-      • токены raw/processed (by model+mode)
-      • rendered-токены (на итоговый документ)
-      • состояние конфигурации (cfg_state)
-    
-    Структура директории .lg-cache/:
-      • tokens/     - кеш подсчета токенов
-      • processed/  - кеш обработанных файлов
-      • cfg_state/  - состояние конфигурации и миграций
-      • diag/       - диагностические бандлы
-      • tokenizer-models/ - кеш моделей токенизации (ОТДЕЛЬНАЯ ПОДСИСТЕМА, не управляется Cache)
+    File cache for LG file processing and token counting.
 
-    Ключи раскладываются по подкаталогам по префиксу sha1.
-    Любые ошибки — best-effort (не роняют пайплайн).
+    Stores:
+      - processed texts (by processed key)
+      - tokens raw/processed (by model+mode)
+      - rendered tokens (for final document)
+      - configuration state (cfg_state)
+
+    Directory structure of .lg-cache/:
+      - tokens/ - token counting cache
+      - processed/ - processed files cache
+      - cfg_state/ - configuration and migration state
+      - diag/ - diagnostic bundles
+      - tokenizer-models/ - tokenization model cache (SEPARATE SUBSYSTEM, not managed by Cache)
+
+    Keys are distributed into subdirectories by sha1 prefix.
+    All errors are best-effort (do not break the pipeline).
     """
 
     def __init__(self, root: Path, *, enabled: Optional[bool] = None, fresh: bool = False, tool_version: str = "0.0.0"):
@@ -81,23 +81,23 @@ class Cache:
         if self.enabled:
             try:
                 _ensure_dir(self.dir)
-                # Обеспечиваем наличие записи в .gitignore
+                # Ensure entry in .gitignore
                 ensure_gitignore_entry(root, ".lg-cache/", comment="LG cache directory")
             except Exception:
                 self.enabled = False
 
-    # --------------------------- ПРОСТОЕ КЕШИРОВАНИЕ ТОКЕНОВ --------------------------- #
+    # ----------------------- SIMPLE TOKEN CACHING ----------------------- #
 
     def get_text_tokens(self, text: str, cache_key: str) -> Optional[int]:
         """
-        Получает количество токенов для текста из кэша по простому хешу.
-        
+        Get token count for text from cache by simple hash.
+
         Args:
-            text: Текст для подсчета токенов
-            cache_key: Ключ токенизатора
-            
+            text: Text for token counting
+            cache_key: Tokenizer key
+
         Returns:
-            Количество токенов или None если нет в кэше
+            Token count or None if not in cache
         """
         if not self.enabled or not text:
             return None
@@ -115,12 +115,12 @@ class Cache:
     
     def put_text_tokens(self, text: str, model: str, token_count: int) -> None:
         """
-        Сохраняет количество токенов для текста в кэш по простому хешу.
-        
+        Save token count for text to cache by simple hash.
+
         Args:
-            text: Текст
-            model: Имя модели
-            token_count: Количество токенов
+            text: Text
+            model: Model name
+            token_count: Token count
         """
         if not self.enabled or not text:
             return
@@ -129,7 +129,7 @@ class Cache:
         path = self._bucket_path("tokens", text_hash)
         
         try:
-            # Загружаем существующие данные или создаем новые
+            # Load existing data or create new
             data = self._load_json(path) or {
                 "v": CACHE_VERSION,
                 "text_hash": text_hash,
@@ -137,15 +137,15 @@ class Cache:
                 "created_at": datetime.now(timezone.utc).isoformat().replace('+00:00', 'Z')
             }
 
-            # Обновляем токены для модели
+            # Update tokens for model
             data["tokens"][model] = int(token_count)
             data["updated_at"] = datetime.now(timezone.utc).isoformat().replace('+00:00', 'Z')
-            
+
             self._atom_write(path, data)
         except Exception:
             pass
 
-    # --------------------------- PROCESSED --------------------------- #
+    # ----------------------- PROCESSED ----------------------- #
 
     def build_processed_key(
         self,
@@ -154,8 +154,8 @@ class Cache:
         active_tags: set[str],
     ) -> tuple[str, Path]:
         """
-        Ключ processed-кэша. Включает файловый fingerprint (mtime/size),
-        а также контекст обработки (adapter, cfg, group_size, tool_version).
+        Processed cache key. Includes file fingerprint (mtime/size),
+        as well as processing context (adapter, cfg, group_size, tool_version).
         """
         try:
             st = abs_path.stat()
@@ -173,8 +173,8 @@ class Cache:
             "cfg": _fingerprint_cfg(adapter_cfg),
             "tool": self.tool_version,
         }
-        
-        # Добавляем информацию о тегах для адаптивных возможностей
+
+        # Add tag information for adaptive capabilities
         if active_tags:
             payload["active_tags"] = sorted(active_tags)
 
@@ -184,9 +184,9 @@ class Cache:
 
     def get_processed(self, key_path: Path) -> Optional[dict]:
         """
-        Возвращает entry:
+        Return entry:
           { "v":1, "processed_text":str, "meta":{}, "created_at":..., "updated_at":... }
-        или None.
+        or None.
         """
         return self._load_json(key_path)
 
@@ -200,7 +200,7 @@ class Cache:
             "updated_at": now,
         })
 
-    # --------------------------- IO helpers --------------------------- #
+    # ----------------------- IO helpers ----------------------- #
 
     def _bucket_path(self, bucket: str, key: str) -> Path:
         d = self.dir / bucket / key[:2] / key[2:4]
@@ -227,9 +227,9 @@ class Cache:
         except Exception:
             pass
 
-    # --------------------------- CFG STATE (lg-cfg) --------------------------- #
+    # ----------------------- CFG STATE (lg-cfg) ----------------------- #
     def _cfg_state_path(self, cfg_root: Path) -> Path:
-        # ключ по абсолютному пути (sha1), чтобы устойчиво к переносам/линкам
+        # Key by absolute path (sha1) to be robust against moves/links
         h = hashlib.sha1(str(cfg_root.resolve()).encode("utf-8")).hexdigest()
         return self._bucket_path("cfg_state", h)
 
@@ -239,60 +239,60 @@ class Cache:
     def put_cfg_state(self, cfg_root: Path, data: dict) -> None:
         self._atom_write(self._cfg_state_path(cfg_root), data or {})
 
-    # --------------------------- MAINTENANCE --------------------------- #
+    # ----------------------- MAINTENANCE ----------------------- #
     def purge_all(self) -> bool:
         """
-        Полная очистка содержимого кэша LG.
-        
-        Удаляет только поддиректории кэша LG (tokens, processed, cfg_state, diag),
-        НЕ затрагивая другие подсистемы (например, tokenizer-models).
+        Complete cleanup of LG cache contents.
+
+        Deletes only LG cache subdirectories (tokens, processed, cfg_state, diag),
+        NOT affecting other subsystems (e.g., tokenizer-models).
         """
         try:
             if not self.dir.exists():
                 return True
-            
-            # Список поддиректорий кэша LG (не затрагиваем другие подсистемы)
+
+            # List of LG cache subdirectories (not affecting other subsystems)
             lg_cache_buckets = ["tokens", "processed", "cfg_state", "diag"]
-            
+
             for bucket in lg_cache_buckets:
                 bucket_dir = self.dir / bucket
                 if bucket_dir.exists():
                     shutil.rmtree(bucket_dir, ignore_errors=True)
-            
+
             return True
         except Exception:
             return False
 
     def snapshot(self) -> CacheSnapshot:
         """
-        Собрать best-effort снимок состояния кэша LG.
-        
-        Учитывает только поддиректории кэша LG (tokens, processed, cfg_state, diag),
-        НЕ затрагивая другие подсистемы (например, tokenizer-models).
+        Collect a best-effort snapshot of LG cache state.
+
+        Counts only LG cache subdirectories (tokens, processed, cfg_state, diag),
+        NOT affecting other subsystems (e.g., tokenizer-models).
         """
         size = 0
         entries = 0
-        
-        # Список поддиректорий кэша LG (не затрагиваем другие подсистемы)
+
+        # List of LG cache subdirectories (not affecting other subsystems)
         lg_cache_buckets = ["tokens", "processed", "cfg_state", "diag"]
-        
+
         try:
             if self.dir.exists():
                 for bucket in lg_cache_buckets:
                     bucket_dir = self.dir / bucket
                     if not bucket_dir.exists():
                         continue
-                    
+
                     for p in bucket_dir.rglob("*"):
                         try:
                             if p.is_file():
                                 entries += 1
                                 size += p.stat().st_size
                         except Exception:
-                            # best-effort — пропускаем проблемные файлы
+                            # best-effort — skip problematic files
                             pass
         except Exception:
-            # оставляем size=0, entries=0
+            # leave size=0, entries=0
             pass
         return CacheSnapshot(
             enabled=bool(self.enabled),
@@ -303,6 +303,6 @@ class Cache:
         )
 
     def rebuild(self) -> CacheSnapshot:
-        """Очистить и вернуть новый снимок."""
+        """Clear and return a new snapshot."""
         self.purge_all()
         return self.snapshot()

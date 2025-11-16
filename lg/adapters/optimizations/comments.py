@@ -63,21 +63,21 @@ class CommentOptimizer:
             replacement: str = None
     ) -> bool:
         """
-        Удаляет комментарий с автоматическим учетом метрик.
+        Remove comment with automatic metrics accounting.
 
         Args:
-            context: Контекст обработки с доступом к документу
-            comment_node: Узел комментария для удаления
-            is_docstring: Является ли данный комментарий докстрингом
-            replacement: Кастомная замена (если None, используется плейсхолдер)
+            context: Processing context with document access
+            comment_node: Comment node to remove
+            is_docstring: Whether this comment is a docstring
+            replacement: Custom replacement (if None, placeholder is used)
         """
         element_type = "docstring" if is_docstring else "comment"
 
         if replacement is None:
-            # Используем API для плейсхолдеров
+            # Use placeholder API
             context.add_placeholder_for_node(element_type, comment_node)
         else:
-            # Кастомная замена
+            # Custom replacement
             start_char, end_char = context.doc.get_node_range(comment_node)
             context.editor.add_replacement(
                 start_char, end_char, replacement,

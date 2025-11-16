@@ -1,11 +1,11 @@
 """
-Плагин для обработки базовых плейсхолдеров секций и шаблонов.
+Plugin for processing basic section and template placeholders.
 
-Обрабатывает:
-- ${section_name} - вставка секций
-- ${tpl:template_name} - включение шаблонов  
-- ${ctx:context_name} - включение контекстов
-- Адресные ссылки @origin:name для межскоуповых включений
+Handles:
+- ${section_name} - section insertion
+- ${tpl:template_name} - template inclusion
+- ${ctx:context_name} - context inclusion
+- Addressed references @origin:name for cross-scope inclusions
 """
 
 from __future__ import annotations

@@ -1,6 +1,6 @@
 """
-Загрузчик конфигурации режимов.
-Поддерживает федеративную конфигурацию с включением дочерних скоупов.
+Modes configuration loader.
+Supports federated configuration with child scope inclusions.
 """
 
 from __future__ import annotations
@@ -22,7 +22,7 @@ _yaml = YAML(typ="safe")
 
 
 def _read_yaml_map(path: Path) -> dict:
-    """Читает YAML файл и возвращает словарь."""
+    """Reads a YAML file and returns a dictionary."""
     if not path.is_file():
         return {}
     raw = _yaml.load(path.read_text(encoding="utf-8")) or {}
@@ -32,96 +32,96 @@ def _read_yaml_map(path: Path) -> dict:
 
 
 def _load_modes_from_path(path: Path) -> ModesConfig:
-    """Загружает режимы из одного файла modes.yaml."""
+    """Loads modes from a single modes.yaml file."""
     raw = _read_yaml_map(path)
     return ModesConfig.from_dict(raw)
 
 
 def _merge_mode_sets(parent: Dict[str, ModeSet], child: Dict[str, ModeSet]) -> Dict[str, ModeSet]:
     """
-    Объединяет наборы режимов с приоритетом родительской конфигурации.
-    
-    Правила объединения:
-    - Если набор режимов с одинаковым именем есть в родительском и дочернем скоупе,
-      приоритет имеет родительская конфигурация
-    - Индивидуальные режимы внутри набора объединяются, с приоритетом родительских режимов
+    Merges mode sets with parent configuration priority.
+
+    Merge rules:
+    - If a mode set with the same name exists in both parent and child scopes,
+      the parent configuration has priority
+    - Individual modes within a set are merged, with parent modes taking priority
     """
-    result = dict(child)  # Начинаем с дочерних режимов
-    
+    result = dict(child)  # Start with child modes
+
     for name, parent_mode_set in parent.items():
         if name in result:
-            # Набор существует в обеих конфигурациях - объединяем режимы
+            # Set exists in both configurations - merge modes
             child_mode_set = result[name]
             merged_modes = dict(child_mode_set.modes)
-            merged_modes.update(parent_mode_set.modes)  # Родительские перезаписывают дочерние
-            
+            merged_modes.update(parent_mode_set.modes)  # Parent modes override child
+
             result[name] = ModeSet(
-                title=parent_mode_set.title,  # Приоритет родительского title
+                title=parent_mode_set.title,  # Parent title takes priority
                 modes=merged_modes
             )
         else:
-            # Набор только в родительской конфигурации
+            # Set only in parent configuration
             result[name] = parent_mode_set
-    
+
     return result
 
 
 def load_modes(root: Path) -> ModesConfig:
     """
-    Загружает конфигурацию режимов с поддержкой федеративной структуры.
-    
+    Loads modes configuration with support for federated structure.
+
     Args:
-        root: Корень репозитория
-        
+        root: Repository root
+
     Returns:
-        Объединенная конфигурация режимов
+        Merged modes configuration
     """
     base = cfg_root(root)
     if not base.is_dir():
         return DEFAULT_MODES_CONFIG
-    
-    # Приводим lg-cfg/ к актуальному формату
+
+    # Update lg-cfg/ to actual format
     ensure_cfg_actual(base)
-    
-    # Загружаем основную конфигурацию
+
+    # Load main configuration
     modes_file = modes_path(root)
     if not modes_file.is_file():
         return DEFAULT_MODES_CONFIG
-    
+
     config = _load_modes_from_path(modes_file)
-    
-    # Обрабатываем включения дочерних скоупов
+
+    # Process child scope inclusions
     for child_scope in config.include:
         child_root = (root / child_scope).resolve()
         if not child_root.is_dir():
             continue
-        
+
         child_cfg_root = cfg_root(child_root)
         if not child_cfg_root.is_dir():
             continue
-        
+
         child_modes_file = modes_path(child_root)
         if not child_modes_file.is_file():
             continue
-        
+
         try:
             child_config = _load_modes_from_path(child_modes_file)
-            # Объединяем наборы режимов
+            # Merge mode sets
             config.mode_sets = _merge_mode_sets(config.mode_sets, child_config.mode_sets)
         except Exception as e:
-            # Логируем ошибку, но не прерываем загрузку
+            # Log error but don't interrupt loading
             import logging
             logging.warning(f"Failed to load child modes from {child_scope}: {e}")
-    
+
     return config
 
 
 def list_mode_sets(root: Path) -> ModeSetsList:
     """
-    Возвращает типизированный объект со списком наборов режимов для CLI команды 'lg list mode-sets'.
-    
+    Returns a typed object with a list of mode sets for CLI command 'lg list mode-sets'.
+
     Returns:
-        ModeSetsList: Типизированный объект с массивом наборов режимов
+        ModeSetsList: Typed object with an array of mode sets
     """
     config = load_modes(root)
     mode_sets_list = []
@@ -144,8 +144,8 @@ def list_mode_sets(root: Path) -> ModeSetsList:
             modes=modes_list
         )
         mode_sets_list.append(mode_set_schema)
-    
-    # Сортируем по id для стабильного порядка
+
+    # Sort by id for stable order
     mode_sets_list.sort(key=lambda x: x.id)
-    
+
     return ModeSetsList(**{"mode-sets": mode_sets_list})

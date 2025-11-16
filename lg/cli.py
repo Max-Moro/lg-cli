@@ -22,63 +22,63 @@ def _build_parser() -> argparse.ArgumentParser:
     p.add_argument("-v", "--version", action="version", version=f"%(prog)s {tool_version()}")
     sub = p.add_subparsers(dest="cmd", required=True)
 
-    # Общие аргументы для render/report
+    # Common arguments for render/report commands
     def add_common(sp: argparse.ArgumentParser) -> None:
         sp.add_argument(
             "target",
-            help="ctx:<name> | sec:<name> | <name> (сначала ищется контекст, иначе секция)",
+            help="ctx:<name> | sec:<name> | <name> (context is searched first, then section)",
         )
-        # Параметры токенизации
+        # Tokenization parameters
         sp.add_argument(
             "--lib",
             required=True,
             choices=["tiktoken", "tokenizers", "sentencepiece"],
-            help="библиотека токенизации"
+            help="tokenization library"
         )
         sp.add_argument(
             "--encoder",
             required=True,
-            help="имя энкодера/модели"
+            help="encoder/model name"
         )
         sp.add_argument(
             "--ctx-limit",
             type=int,
             required=True,
-            help="размер контекстного окна в токенах"
+            help="context window size in tokens"
         )
         sp.add_argument(
             "--mode",
             action="append",
             metavar="MODESET:MODE",
-            help="активный режим в формате 'modeset:mode' (можно указать несколько)",
+            help="active mode in 'modeset:mode' format (can be specified multiple times)",
         )
         sp.add_argument(
             "--tags",
-            help="дополнительные теги через запятую (например: python,tests,minimal)",
+            help="additional tags comma-separated (e.g.: python,tests,minimal)",
         )
         sp.add_argument(
             "--task",
             metavar="TEXT|@FILE|-",
             help=(
-                "текст текущей задачи: прямая строка, @file для чтения из файла, "
-                "или - для чтения из stdin"
+                "current task text: direct string, @file to read from file, "
+                "or - to read from stdin"
             ),
         )
         sp.add_argument(
             "--target-branch",
             metavar="BRANCH",
             help=(
-                "целевая ветка для сравнения при использовании режима vcs_mode: 'branch-changes'"
+                "target branch for comparison when using vcs_mode: 'branch-changes'"
             ),
         )
 
-    sp_report = sub.add_parser("report", help="JSON-отчёт: статистика")
+    sp_report = sub.add_parser("report", help="JSON report: statistics")
     add_common(sp_report)
 
-    sp_render = sub.add_parser("render", help="Только финальный текст (не JSON)")
+    sp_render = sub.add_parser("render", help="Final text only (not JSON)")
     add_common(sp_render)
 
-    sp_list = sub.add_parser("list", help="Списки сущностей (JSON)")
+    sp_list = sub.add_parser("list", help="Entity lists (JSON)")
     sp_list.add_argument(
         "what",
         choices=[
@@ -89,48 +89,48 @@ def _build_parser() -> argparse.ArgumentParser:
             "tokenizer-libs",
             "encoders"
         ],
-        help="что вывести"
+        help="what to output"
     )
     sp_list.add_argument(
         "--lib",
         choices=["tiktoken", "tokenizers", "sentencepiece"],
-        help="библиотека для списка энкодеров (требуется для what=encoders)"
+        help="library for encoder list (required for what=encoders)"
     )
 
-    sp_diag = sub.add_parser("diag", help="Диагностика окружения и конфига (JSON) [--bundle] [--rebuild-cache]")
+    sp_diag = sub.add_parser("diag", help="Environment and config diagnostics (JSON) [--bundle] [--rebuild-cache]")
     sp_diag.add_argument(
         "--rebuild-cache",
         action="store_true",
-        help="очистить и заново инициализировать кэш (.lg-cache) перед диагностикой",
+        help="clear and reinitialize cache (.lg-cache) before diagnostics",
     )
     sp_diag.add_argument(
         "--bundle",
         action="store_true",
-        help="собрать диагностический бандл (.zip) с diag.json, lg-cfg и git-метаданными",
+        help="create diagnostic bundle (.zip) with diag.json, lg-cfg and git metadata",
     )
 
-    # Регистрация внешних подкоманд (расширяемость без правок CLI)
+    # Register external subcommands (extensibility without CLI modifications)
     try:
         from .scaffold import add_cli as _add_scaffold_cli
         _add_scaffold_cli(sub)
     except Exception:
-        # best-effort: отсутствие модуля не должно ломать базовый CLI
+        # best-effort: missing module should not break basic CLI
         pass
 
     return p
 
 
 def _opts(ns: argparse.Namespace) -> RunOptions:
-    # Парсим режимы и теги
+    # Parse modes and tags
     modes = _parse_modes(getattr(ns, "mode", None))
     extra_tags = _parse_tags(getattr(ns, "tags", None))
-    
-    # Парсим task
+
+    # Parse task
     task_text = _parse_task(getattr(ns, "task", None))
-    
-    # Парсим target-branch
+
+    # Parse target-branch
     target_branch = getattr(ns, "target_branch", None)
-    
+
     return RunOptions(
         tokenizer_lib=ns.lib,
         encoder=ns.encoder,
@@ -143,53 +143,53 @@ def _opts(ns: argparse.Namespace) -> RunOptions:
 
 
 def _parse_modes(modes: list[str] | None) -> Dict[str, str]:
-    """Парсит список режимов в формате 'modeset:mode' в словарь."""
+    """Parse list of modes in 'modeset:mode' format into a dictionary."""
     result = {}
     if not modes:
         return result
-    
+
     for mode_spec in modes:
         if ":" not in mode_spec:
             raise ValueError(f"Invalid mode format '{mode_spec}'. Expected 'modeset:mode'")
         modeset, mode = mode_spec.split(":", 1)
         result[modeset.strip()] = mode.strip()
-    
+
     return result
 
 
 def _parse_tags(tags_str: str | None) -> set[str]:
-    """Парсит строку тегов в множество."""
+    """Parse tags string into a set."""
     if not tags_str:
         return set()
-    
+
     return {tag.strip() for tag in tags_str.split(",") if tag.strip()}
 
 
 def _parse_task(task_arg: Optional[str]) -> Optional[str]:
     """
-    Парсит аргумент --task.
-    
-    Поддерживает три формата:
-    - Прямая строка: "текст задачи"
-    - Из файла: @path/to/file.txt
-    - Из stdin: -
-    
+    Parse --task argument.
+
+    Supports three formats:
+    - Direct string: "task text"
+    - From file: @path/to/file.txt
+    - From stdin: -
+
     Args:
-        task_arg: Значение аргумента --task или None
-        
+        task_arg: Value of --task argument or None
+
     Returns:
-        Текст задачи или None
+        Task text or None
     """
     if not task_arg:
         return None
-    
-    # Чтение из stdin
+
+    # Read from stdin
     if task_arg == "-":
         import sys
         content = sys.stdin.read().strip()
         return content if content else None
-    
-    # Чтение из файла
+
+    # Read from file
     if task_arg.startswith("@"):
         file_path = Path(task_arg[1:])
         if not file_path.exists():
@@ -199,8 +199,8 @@ def _parse_task(task_arg: Optional[str]) -> Optional[str]:
             return content if content else None
         except Exception as e:
             raise ValueError(f"Failed to read task file {file_path}: {e}")
-    
-    # Прямая строка
+
+    # Direct string
     content = task_arg.strip()
     return content if content else None
 
@@ -209,7 +209,7 @@ def main(argv: list[str] | None = None) -> int:
     ns = _build_parser().parse_args(argv)
 
     try:
-        # Унифицированный хук для внешних подкоманд: subparser.set_defaults(func=...)
+        # Unified hook for external subcommands: subparser.set_defaults(func=...)
         if hasattr(ns, "func") and callable(getattr(ns, "func")):
             rc = ns.func(ns)
             return int(rc) if isinstance(rc, int) else 0
@@ -257,7 +257,7 @@ def main(argv: list[str] | None = None) -> int:
 
         if ns.cmd == "diag":
             report = run_diag(rebuild_cache=bool(getattr(ns, "rebuild_cache", False)))
-            # По флагу --bundle собираем zip; путь пишем в stderr, stdout остаётся JSON
+            # With --bundle flag, create zip; write path to stderr, keep stdout as JSON
             if bool(getattr(ns, "bundle", False)):
                 try:
                     from .diag.diagnostics import build_diag_bundle

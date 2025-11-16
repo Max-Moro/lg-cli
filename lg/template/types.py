@@ -12,75 +12,75 @@ from .tokens import Token, TokenType, TokenTypeName, ParserError
 
 
 class PluginPriority(enum.IntEnum):
-    """Приоритеты для определения порядка применения правил парсинга."""
+    """Priorities for determining parsing rules application order."""
 
-    # Специальные конструкции должны обрабатываться раньше обычного текста
-    DIRECTIVE = 100      # Директивы {% ... %}
-    PLACEHOLDER = 90     # Плейсхолдеры ${ ... }
-    COMMENT = 80        # Комментарии {# ... #}
-    TEXT = 10           # Обычный текст (самый низкий приоритет)
+    # Special constructs must be processed before plain text
+    DIRECTIVE = 100      # Directives {% ... %}
+    PLACEHOLDER = 90     # Placeholders ${ ... }
+    COMMENT = 80        # Comments {# ... #}
+    TEXT = 10           # Plain text (lowest priority)
 
 
 @dataclass
 class TokenSpec:
     """
-    Спецификация токена для регистрации в лексере.
+    Token specification for registration in lexer.
     """
-    name: str                    # Имя токена (например, "PLACEHOLDER_START")
-    pattern: Pattern[str]        # Скомпилированное регулярное выражение
-    priority: int = 50           # Приоритет (больше = проверяется раньше)
+    name: str                    # Token name (e.g., "PLACEHOLDER_START")
+    pattern: Pattern[str]        # Compiled regular expression
+    priority: int = 50           # Priority (higher = checked first)
 
 
 @dataclass
 class ParsingRule:
     """
-    Правило парсинга для регистрации в парсере.
+    Parsing rule for registration in parser.
     """
-    name: str                    # Имя правила
-    priority: int     # Приоритет применения
-    parser_func: Callable[[ParsingContext], Optional[TemplateNode]]  # Функция парсинга
-    enabled: bool = True        # Включено ли правило
+    name: str                    # Rule name
+    priority: int                # Application priority
+    parser_func: Callable[[ParsingContext], Optional[TemplateNode]]  # Parsing function
+    enabled: bool = True        # Whether rule is enabled
 
 
 @dataclass
 class ProcessingContext:
     """
-    Контекст обработки узла AST.
-    
-    Предоставляет плагинам доступ к состоянию обработки без нарушения инкапсуляции.
+    AST node processing context.
+
+    Provides plugins access to processing state without violating encapsulation.
     """
-    ast: List[TemplateNode]  # Текущий AST
-    node_index: int          # Индекс обрабатываемого узла
-    
+    ast: List[TemplateNode]  # Current AST
+    node_index: int          # Index of node being processed
+
     def get_node(self) -> TemplateNode:
-        """Возвращает текущий обрабатываемый узел."""
+        """Returns current node being processed."""
         return self.ast[self.node_index]
 
 
 @dataclass
 class ProcessorRule:
     """
-    Правило обработки узлов AST.
+    Rule for processing AST nodes.
     """
-    node_type: Type[TemplateNode]  # Тип узла, который обрабатывает правило
-    processor_func: Callable[[ProcessingContext], str]  # Функция обработки (node, context)
+    node_type: Type[TemplateNode]  # Type of node this rule processes
+    processor_func: Callable[[ProcessingContext], str]  # Processing function
 
 
 @dataclass
 class ResolverRule:
     """
-    Правило резолвинга узлов AST.
+    Rule for resolving AST nodes.
     """
-    node_type: Type[TemplateNode]  # Тип узла, который резолвит правило
-    resolver_func: Callable[[TemplateNode, str], TemplateNode]  # Функция резолвинга (node, context) -> resolved_node
+    node_type: Type[TemplateNode]  # Type of node this rule resolves
+    resolver_func: Callable[[TemplateNode, str], TemplateNode]  # Resolving function (node, context) -> resolved_node
 
 
 class ParsingContext:
     """
-    Контекст для парсинга токенов.
+    Context for token parsing.
 
-    Предоставляет методы для навигации по токенам и управления позицией
-    в процессе синтаксического анализа.
+    Provides methods for navigating tokens and managing position
+    during syntax analysis.
     """
 
     def __init__(self, tokens: List[Token]):
@@ -88,44 +88,44 @@ class ParsingContext:
         self.position = 0
         self.length = len(tokens)
 
-        # Стек для сохранения/восстановления позиции
+        # Stack for saving/restoring position
         self._position_stack: List[int] = []
 
     def current(self) -> Token:
-        """Возвращает текущий токен."""
+        """Returns current token."""
         if self.position >= self.length:
-            # Возвращаем EOF токен
+            # Return EOF token
             return Token(TokenType.EOF.value, "", self.position, 0, 0)
         return self.tokens[self.position]
 
     def peek(self, offset: int = 1) -> Token:
-        """Возвращает токен на указанном смещении от текущей позиции."""
+        """Returns token at specified offset from current position."""
         pos = self.position + offset
         if pos >= self.length:
             return Token(TokenType.EOF.value, "", pos, 0, 0)
         return self.tokens[pos]
 
     def advance(self) -> Token:
-        """Продвигается к следующему токену и возвращает предыдущий."""
+        """Advances to next token and returns previous."""
         current = self.current()
         if self.position < self.length:
             self.position += 1
         return current
 
     def is_at_end(self) -> bool:
-        """Проверяет, достигнут ли конец токенов."""
+        """Checks if end of tokens reached."""
         return self.position >= self.length or self.current().type == TokenType.EOF.value
 
     def match(self, *token_types: TokenTypeName) -> bool:
-        """Проверяет, соответствует ли текущий токен одному из указанных типов."""
+        """Checks if current token matches one of specified types."""
         return self.current().type in token_types
 
     def consume(self, expected_type: TokenTypeName) -> Token:
         """
-        Потребляет токен ожидаемого типа.
+        Consumes token of expected type.
 
         Raises:
-            ParserError: Если токен не соответствует ожидаемому типу
+            ParserError: If token doesn't match expected type
         """
         current = self.current()
         if current.type != expected_type:
@@ -141,27 +141,27 @@ logger = logging.getLogger(__name__)
 @dataclass
 class TokenContext:
     """
-    Контекст для токенизации с группами связанных токенов.
+    Context for tokenization with groups of related tokens.
 
-    Определяет область действия определенного набора токенов,
-    что позволяет избежать коллизий и повысить производительность.
+    Defines scope of specific set of tokens,
+    allowing collision prevention and performance improvement.
     """
-    name: str  # Уникальное имя контекста
-    open_tokens: Set[str]  # Токены, открывающие контекст
-    close_tokens: Set[str]  # Токены, закрывающие контекст
-    inner_tokens: Set[str]  # Токены, допустимые только в этом контексте
-    allow_nesting: bool = False  # Разрешает/запрещает вложенные контексты
-    priority: int = 50  # Приоритет (для разрешения конфликтов)
+    name: str  # Unique context name
+    open_tokens: Set[str]  # Tokens that open context
+    close_tokens: Set[str]  # Tokens that close context
+    inner_tokens: Set[str]  # Tokens allowed only in this context
+    allow_nesting: bool = False  # Allows/disallows nested contexts
+    priority: int = 50  # Priority (for conflict resolution)
 
     def __post_init__(self):
-        """Валидация настроек контекста."""
+        """Validates context settings."""
         if not self.name:
             raise ValueError("Token context name cannot be empty")
 
         if not self.open_tokens and not self.close_tokens:
             raise ValueError(f"Context '{self.name}' must have at least open or close tokens")
 
-        # Проверяем пересечения между наборами токенов
+        # Check for intersections between token sets
         if self.open_tokens & self.close_tokens:
             overlapping = self.open_tokens & self.close_tokens
             logger.warning(

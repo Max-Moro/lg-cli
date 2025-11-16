@@ -1,7 +1,7 @@
 """
-Построитель манифеста одной секции.
+Builder of manifest for a single section.
 
-Учитывает активный контекст шаблона (режимы, теги, условия).
+Takes into account the active template context (modes, tags, conditions).
 """
 
 from __future__ import annotations
@@ -32,59 +32,59 @@ def build_section_manifest(
     target_branch: Optional[str] = None
 ) -> SectionManifest:
     """
-    Строит манифест секции на основе готовой конфигурации (для виртуальных секций).
-    
+    Builds a section manifest based on a ready configuration (for virtual sections).
+
     Args:
-        section_ref: Ссылка на секцию
-        section_config: Готовая конфигурация секции
-        template_ctx: Контекст шаблона с активными режимами/тегами
-        root: Корень репозитория
-        vcs: VCS провайдер
-        vcs_mode: Режим VCS ("all", "changes" или "branch-changes")
-        target_branch: Целевая ветка для режима "branch-changes" (опционально)
+        section_ref: Section reference
+        section_config: Ready section configuration
+        template_ctx: Template context with active modes/tags
+        root: Repository root
+        vcs: VCS provider
+        vcs_mode: VCS mode ("all", "changes" or "branch-changes")
+        target_branch: Target branch for "branch-changes" mode (optional)
 
     Returns:
-        Манифест секции с отфильтрованными файлами
+        Section manifest with filtered files
     """
     vcs = vcs or NullVcs()
-    
-    # Создаем базовый фильтр с условными дополнениями
+
+    # Create base filter with conditional additions
     filter_engine = _create_enhanced_filter_engine(section_config, template_ctx)
 
-    # Вычисляем финальные опции адаптеров с учетом условий
+    # Compute final adapter options considering conditions
     adapters_cfg = _compute_final_adapter_configs(section_config, template_ctx)
 
-    # Предварительная проверка: определяем, является ли секция документальной
-    # Собираем файлы с vcs_mode: all для проверки типа секции
+    # Preliminary check: determine if section is documentation-only
+    # Collect files with vcs_mode: all to check section type
     preview_files = _collect_section_files(
         section_ref=section_ref,
         section_cfg=section_config,
         filter_engine=filter_engine,
-        changed_files=set(),  # пустой набор = все файлы при vcs_mode == "all"
+        changed_files=set(),  # empty set = all files when vcs_mode == "all"
         vcs_mode="all",
         root=root,
         adapters_cfg=adapters_cfg
     )
-    
-    # Определяем, является ли секция документальной
+
+    # Determine if section is documentation-only
     is_doc_only = _is_doc_only_section(preview_files)
-    
-    # Для документальных секций принудительно используем vcs_mode: all
+
+    # For doc-only sections, force vcs_mode: all
     effective_vcs_mode = "all" if is_doc_only else vcs_mode
-    
-    # Получаем изменённые файлы в зависимости от эффективного режима VCS
+
+    # Get changed files depending on effective VCS mode
     changed: Set[str] = set()
     if effective_vcs_mode == "changes":
         changed = vcs.changed_files(root)
     elif effective_vcs_mode == "branch-changes":
         changed = vcs.branch_changed_files(root, target_branch)
-    
-    # Собираем финальный набор файлов
+
+    # Collect final file set
     if effective_vcs_mode == "all":
-        # Переиспользуем предварительный результат, если режим не изменился
+        # Reuse preview result if mode didn't change
         files = preview_files
     else:
-        # Пересобираем с учетом VCS-фильтрации
+        # Rebuild with VCS filtering applied
         files = _collect_section_files(
             section_ref=section_ref,
             section_cfg=section_config,
@@ -95,7 +95,7 @@ def build_section_manifest(
             adapters_cfg=adapters_cfg
         )
 
-    # Создаем манифест
+    # Create manifest
     return SectionManifest(
         ref=section_ref,
         files=files,
@@ -107,112 +107,112 @@ def build_section_manifest(
 
 def _compute_final_adapter_configs(section_cfg: SectionCfg, template_ctx: TemplateContext) -> Dict[str, Dict]:
     """
-    Вычисляет финальные опции адаптеров с учетом условных правил.
-    
+    Computes final adapter options considering conditional rules.
+
     Args:
-        section_cfg: Конфигурация секции с AdapterConfig объектами
-        template_ctx: Контекст шаблона с активными тегами
-        
+        section_cfg: Section configuration with AdapterConfig objects
+        template_ctx: Template context with active tags
+
     Returns:
-        Словарь финальных опций адаптеров (имя_адаптера -> опции)
+        Dictionary of final adapter options (adapter_name -> options)
     """
     final_configs = {}
     for adapter_name, adapter_config in section_cfg.adapters.items():
-        # Начинаем с базовых опций
+        # Start with base options
         final_options = dict(adapter_config.base_options)
 
-        # Применяем условные опции в порядке их определения
-        # Более поздние правила переопределяют более ранние
+        # Apply conditional options in order of definition
+        # Later rules override earlier ones
         for conditional_option in adapter_config.conditional_options:
-            # Вычисляем условие
+            # Evaluate condition
             condition_met = template_ctx.evaluate_condition_text(conditional_option.condition)
 
             if condition_met:
-                # Применяем опции из этого условного блока
+                # Apply options from this conditional block
                 final_options.update(conditional_option.options)
 
         final_configs[adapter_name] = final_options
-    
+
     return final_configs
 
 
 def _is_doc_only_section(files: List[FileEntry]) -> bool:
     """
-    Определяет, является ли секция документальной.
-    
-    Секция считается документальной, если все её файлы имеют language_hint
-    в ('markdown', '') - т.е. markdown или plain text.
-    
+    Determines if a section is documentation-only.
+
+    A section is considered documentation-only if all its files have language_hint
+    in ('markdown', '') - i.e., markdown or plain text.
+
     Args:
-        files: Список файлов секции
-        
+        files: List of section files
+
     Returns:
-        True если секция содержит только markdown/plain text файлы
+        True if section contains only markdown/plain text files
     """
     if not files:
         return False
-    
+
     return all(f.language_hint in ("markdown", "") for f in files)
 
 
 def _create_enhanced_filter_engine(section_cfg: SectionCfg, template_ctx: TemplateContext) -> FilterEngine:
     """
-    Создает движок фильтрации с учетом условных фильтров из контекста шаблона.
-    
-    Рекурсивно применяет активные условные фильтры ко всем узлам FilterNode,
-    добавляя дополнительные allow/block правила при выполнении условий.
+    Creates a filtering engine considering conditional filters from template context.
+
+    Recursively applies active conditional filters to all FilterNode nodes,
+    adding additional allow/block rules when conditions are met.
     """
-    # Начинаем с базового фильтра секции
+    # Start with the section's base filter
     base_filter = section_cfg.filters
-    
-    # Рекурсивно применяем условные фильтры ко всем узлам
+
+    # Recursively apply conditional filters to all nodes
     enhanced_filter = _apply_conditional_filters_recursive(base_filter, template_ctx)
-    
+
     return FilterEngine(enhanced_filter)
 
 
 def _apply_conditional_filters_recursive(node: FilterNode, template_ctx: TemplateContext) -> FilterNode:
     """
-    Рекурсивно применяет условные фильтры к узлу и всем его дочерним узлам.
-    
+    Recursively applies conditional filters to a node and all its child nodes.
+
     Args:
-        node: Исходный узел фильтрации
-        template_ctx: Контекст шаблона для вычисления условий
-        
+        node: Source filtering node
+        template_ctx: Template context for condition evaluation
+
     Returns:
-        Новый узел с примененными условными фильтрами
+        New node with applied conditional filters
     """
     import logging
-    
-    # Создаем копию узла с базовыми правилами
+
+    # Create a copy of the node with base rules
     enhanced_node = FilterNode(
         mode=node.mode,
         allow=list(node.allow),
         block=list(node.block),
-        conditional_filters=list(node.conditional_filters),  # Сохраняем для информации
-        children={}  # Заполним позже
+        conditional_filters=list(node.conditional_filters),  # Keep for information
+        children={}  # Will fill later
     )
-    
-    # Применяем условные фильтры текущего узла
+
+    # Apply conditional filters of current node
     for conditional_filter in node.conditional_filters:
         try:
-            # Вычисляем условие в контексте шаблона
+            # Evaluate condition in template context
             condition_met = template_ctx.evaluate_condition_text(conditional_filter.condition)
-            
+
             if condition_met:
-                # Добавляем дополнительные правила фильтрации
+                # Add additional filtering rules
                 enhanced_node.allow.extend(conditional_filter.allow)
                 enhanced_node.block.extend(conditional_filter.block)
         except Exception as e:
-            # Логируем ошибку оценки условия, но не прерываем обработку
+            # Log condition evaluation error, but do not interrupt processing
             logging.warning(
                 f"Failed to evaluate conditional filter condition '{conditional_filter.condition}': {e}"
             )
-    
-    # Рекурсивно обрабатываем дочерние узлы
+
+    # Recursively process child nodes
     for child_name, child_node in node.children.items():
         enhanced_node.children[child_name] = _apply_conditional_filters_recursive(child_node, template_ctx)
-    
+
     return enhanced_node
 
 
@@ -226,96 +226,96 @@ def _collect_section_files(
     adapters_cfg: dict[str, dict]
 ) -> List[FileEntry]:
     """
-    Собирает файлы для секции с применением всех фильтров.
+    Collects files for a section with all filters applied.
     """
     scope_rel = section_ref.scope_rel
 
-    # Функция проверки принадлежности файла к скоупу секции
+    # Function to check if a file belongs to the section's scope
     def in_scope(path_posix: str) -> bool:
         if scope_rel == "":
             return True
         return path_posix == scope_rel or path_posix.startswith(f"{scope_rel}/")
-    
+
     def rel_for_engine(path_posix: str) -> str:
-        """Путь относительно scope_dir для применения фильтров секции."""
+        """Path relative to scope_dir for applying section filters."""
         if scope_rel == "":
             return path_posix
         return path_posix[len(scope_rel):].lstrip("/")
-    
-    # Расширения файлов
+
+    # File extensions
     extensions = {e.lower() for e in section_cfg.extensions}
-    
-    # Gitignore спецификация
+
+    # Gitignore specification
     spec_git = build_gitignore_spec(root)
-    
-    # Подготовка правил targets для адресных оверрайдов
+
+    # Prepare target rules for targeted overrides
     target_specs = _prepare_target_specs(section_cfg)
-    
-    # Pruner для раннего отсечения директорий
+
+    # Pruner for early directory pruning
     def _pruner(rel_dir: str) -> bool:
-        """Решаем, углубляться ли в каталог rel_dir (repo-root relative, POSIX)."""
+        """Decide whether to descend into directory rel_dir (repo-root relative, POSIX)."""
         if scope_rel == "":
-            # Глобальный скоуп (корень репо): применяем фильтры везде
+            # Global scope (repo root): apply filters everywhere
             sub_rel = rel_dir
             if is_cfg_relpath(sub_rel):
-                # Для виртуальных секций проверяем, может ли фильтр включать lg-cfg файлы
-                # Если в allow есть пути, начинающиеся с /lg-cfg/, разрешаем спуск
+                # For virtual sections check if filter can include lg-cfg files
+                # If allow has paths starting with /lg-cfg/, allow descent
                 return filter_engine.may_descend(sub_rel)
             return filter_engine.may_descend(sub_rel)
-        
+
         if rel_dir == "":
-            # корень репо — всегда можно спуститься
+            # repo root - always can descend
             return True
-        
+
         is_ancestor_of_scope = scope_rel.startswith(rel_dir + "/") or scope_rel == rel_dir
         is_inside_scope = rel_dir.startswith(scope_rel + "/") or rel_dir == scope_rel
-        
+
         if not (is_ancestor_of_scope or is_inside_scope):
-            # Ветка гарантированно вне интереса данной секции
+            # Branch is definitely not of interest to this section
             return False
-        
+
         if is_ancestor_of_scope and not is_inside_scope:
-            # Мы выше scope_rel: фильтры секции ещё не применимы
+            # We are above scope_rel: section filters not yet applicable
             return True
-        
-        # Мы в пределах scope_rel: применяем фильтры секции
+
+        # We are within scope_rel: apply section filters
         sub_rel = rel_for_engine(rel_dir)
         if is_cfg_relpath(sub_rel):
-            # Для виртуальных секций проверяем, может ли фильтр включать lg-cfg файлы
-            # Если в allow есть пути, начинающиеся с /lg-cfg/, разрешаем спуск
+            # For virtual sections check if filter can include lg-cfg files
+            # If allow has paths starting with /lg-cfg/, allow descent
             return filter_engine.may_descend(sub_rel)
         return filter_engine.may_descend(sub_rel)
-    
-    # Собираем файлы
+
+    # Collect files
     files: List[FileEntry] = []
-    
+
     for fp in iter_files(root, extensions=extensions, spec_git=spec_git, dir_pruner=_pruner):
         rel_posix = fp.resolve().relative_to(root.resolve()).as_posix()
-        
-        # Фильтр по режиму VCS
+
+        # Filter by VCS mode
         if vcs_mode in ("changes", "branch-changes") and rel_posix not in changed_files:
             continue
-        
-        # Ограничиваемся файлами внутри scope_rel
+
+        # Restrict to files within scope_rel
         if not in_scope(rel_posix):
             continue
-        
-        # Применяем фильтры секции
+
+        # Apply section filters
         rel_engine = rel_for_engine(rel_posix)
         if not filter_engine.includes(rel_engine):
             continue
-        
-        # Обработка пустых файлов
+
+        # Handle empty files
         if _should_skip_empty_file(fp, bool(section_cfg.skip_empty), adapters_cfg):
             continue
-        
-        # Определяем язык файла
+
+        # Determine file language
         lang = get_language_for_file(fp)
-        
-        # Определяем адресные оверрайды адаптеров
+
+        # Determine targeted adapter overrides
         overrides = _calculate_adapter_overrides(rel_engine, target_specs)
-        
-        # Создаем FileEntry
+
+        # Create FileEntry
         files.append(FileEntry(
             abs_path=fp,
             rel_path=rel_posix,
@@ -323,79 +323,79 @@ def _collect_section_files(
             adapter_overrides=overrides
         ))
 
-    # Сортируем по rel_path для стабильности
+    # Sort by rel_path for stability
     files.sort(key=lambda f: f.rel_path)
-    
+
     return files
 
 
 def _prepare_target_specs(section_cfg: SectionCfg) -> List[tuple]:
     """
-    Подготавливает спецификации целей с метрикой специфичности.
+    Prepares target specifications with specificity metric.
     """
     target_specs = []
     for idx, target_rule in enumerate(section_cfg.targets):
-        # Простейшая метрика специфичности: сумма длин строк без '*' и '?'
+        # Simple specificity metric: sum of string lengths without '*' and '?'
         pat_clean_len = sum(len(p.replace("*", "").replace("?", "")) for p in target_rule.match)
         target_specs.append((pat_clean_len, idx, target_rule.match, target_rule.adapter_cfgs))
-    
+
     return target_specs
 
 
 def _should_skip_empty_file(file_path: Path, effective_exclude_empty: bool, adapters_cfg: dict[str, dict]) -> bool:
     """
-    Определяет, следует ли пропустить пустой файл.
-    
-    Учитывает политику секции и адаптера с учетом условных правил.
+    Determines whether to skip an empty file.
+
+    Considers section and adapter policies considering conditional rules.
     """
     try:
         size0 = (file_path.stat().st_size == 0)
     except Exception:
         size0 = False
-    
+
     if not size0:
-        return False  # Файл не пустой
-    
-    # Определяем адаптер и его политику
+        return False  # File is not empty
+
+    # Determine adapter and its policy
     adapter_cls = get_adapter_for_path(file_path)
 
-    # Проверяем политику адаптера
+    # Check adapter policy
     raw_cfg = adapters_cfg.get(adapter_cls.name)
     if raw_cfg and "empty_policy" in raw_cfg:
         empty_policy = cast(EmptyPolicy, raw_cfg["empty_policy"])
-        
+
         if empty_policy == "include":
             effective_exclude_empty = False
         elif empty_policy == "exclude":
             effective_exclude_empty = True
-    
+
     return effective_exclude_empty
 
 
 def _calculate_adapter_overrides(rel_path: str, target_specs: List[tuple]) -> Dict[str, dict]:
     """
-    Вычисляет адресные оверрайды конфигураций адаптеров.
+    Calculates targeted adapter configuration overrides.
     """
     overrides: Dict[str, dict] = {}
-    
-    # Сортируем по специфичности, затем по порядковому номеру
+
+    # Sort by specificity, then by index
     for _spec_len, _idx, patterns, acfgs in sorted(target_specs, key=lambda x: (x[0], x[1])):
         matched = False
         for pat in patterns:
-            # Нормализуем паттерн к относительному стилю
+            # Normalize pattern to relative style
             pat_rel = pat.lstrip("/")
             if fnmatch.fnmatch(rel_path, pat_rel):
                 matched = True
                 break
-        
+
         if not matched:
             continue
-        
-        # Применяем shallow-merge по именам адаптеров
+
+        # Apply shallow-merge by adapter names
         for adapter_name, patch_cfg in acfgs.items():
             base = overrides.get(adapter_name, {})
             merged = dict(base)
             merged.update(patch_cfg or {})
             overrides[adapter_name] = merged
-    
+
     return overrides

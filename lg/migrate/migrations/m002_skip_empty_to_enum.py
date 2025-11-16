@@ -11,24 +11,24 @@ from ..yaml_rt import rewrite_yaml_rt, load_yaml_rt
 
 class _M002_SkipEmptyToEnum:
     """
-    Миграция №2:
-      Ранее: в адаптерах встречалось `skip_empty: true|false`
-      Теперь: `empty_policy: exclude|include`
-      Применяем к:
+    Migration #2:
+      Before: adapters had `skip_empty: true|false`
+      Now: `empty_policy: exclude|include`
+      Applies to:
         • lg-cfg/sections.yaml
         • lg-cfg/**.sec.yaml
-      NB: секционный `skip_empty` НЕ трогаем — остаётся глобальной политикой.
+      NB: section-level `skip_empty` is NOT touched — remains a global policy.
     """
     id = 2
     title = "Adapters: skip_empty(bool) → empty_policy(enum)"
 
     _SERVICE_KEYS = {"extensions", "filters", "skip_empty", "code_fence", "targets", "path_labels"}
 
-    # ---------- helpers (детектирование) ----------
+    # ---------- helpers (detection) ----------
     def _would_patch_adapter_map(self, amap: CommentedMap) -> bool:
         """
-        True, если в конкретном адаптере есть ключ 'skip_empty' (любой тип),
-        т.е. при трансформации потребуется модификация.
+        True if a specific adapter has the 'skip_empty' key (any type),
+        i.e., transformation will require modification.
         """
         return isinstance(amap, CommentedMap) and "skip_empty" in amap
 
@@ -47,7 +47,7 @@ class _M002_SkipEmptyToEnum:
         return False
 
     def _would_patch_section(self, sec_map: CommentedMap) -> bool:
-        # адаптеры: все ключи, кроме служебных — это конфиги адаптеров
+        # adapters: all keys except service keys are adapter configs
         for k, v in sec_map.items():
             if k in self._SERVICE_KEYS:
                 continue
@@ -58,7 +58,7 @@ class _M002_SkipEmptyToEnum:
             return True
         return False
 
-    # ---------- helpers (патчинг) ----------
+    # ---------- helpers (patching) ----------
     def _bool_to_policy(self, val: Any) -> str | None:
         if isinstance(val, bool):
             return "exclude" if val else "include"
@@ -66,8 +66,8 @@ class _M002_SkipEmptyToEnum:
 
     def _patch_adapter_map(self, amap: CommentedMap) -> bool:
         """
-        Заменяет skip_empty → empty_policy внутри конкретного адаптера.
-        Возвращает True, если были изменения.
+        Replaces skip_empty → empty_policy within a specific adapter.
+        Returns True if there were changes.
         """
         if not isinstance(amap, CommentedMap):
             return False
@@ -75,7 +75,7 @@ class _M002_SkipEmptyToEnum:
             return False
         pol = self._bool_to_policy(amap.get("skip_empty"))
         if pol is None:
-            # Неочевидное значение — лучше удалить ключ и не добавлять policy
+            # Non-obvious value — better to delete the key without adding policy
             try:
                 del amap["skip_empty"]
             except Exception:
@@ -106,7 +106,7 @@ class _M002_SkipEmptyToEnum:
 
     def _patch_section(self, sec_map: CommentedMap) -> bool:
         changed = False
-        # адаптеры: все ключи, кроме служебных — это конфиги адаптеров
+        # adapters: all keys except service keys are adapter configs
         for k, v in list(sec_map.items()):
             if k in self._SERVICE_KEYS:
                 continue
@@ -118,26 +118,26 @@ class _M002_SkipEmptyToEnum:
             changed = True
         return changed
 
-    # ---------- основной метод ----------
+    # ---------- main method ----------
     def run(self, fs: CfgFs, *, allow_side_effects: bool) -> bool:
         """
-        Выполняет замену skip_empty(bool) → empty_policy(enum) в адаптерах.
-        Возвращает True, если были реальные изменения хотя бы в одном файле,
-        иначе False. При необходимости модификаций и запрете сайд-эффектов —
-        бросает PreflightRequired.
+        Performs skip_empty(bool) → empty_policy(enum) replacement in adapters.
+        Returns True if there were real changes in at least one file,
+        otherwise False. If modifications are needed and side effects are forbidden —
+        raises PreflightRequired.
         """
         files: list[str] = []
         if fs.exists("sections.yaml"):
             files.append("sections.yaml")
         files.extend(fs.glob_rel("**/*.sec.yaml"))
 
-        # 1) «сухая» проверка — действительно ли есть, что патчить
+        # 1) "dry" check — is there actually something to patch
         need_change = False
         for rel in files:
             try:
                 doc = load_yaml_rt(fs.cfg_root / rel)
             except Exception:
-                # Некорректный YAML — пропускаем (пусть ругнётся позже другая подсистема)
+                # Malformed YAML — skip (let another subsystem complain later)
                 continue
             for _, node in (doc.items() if isinstance(doc, CommentedMap) else []):
                 if not isinstance(node, CommentedMap):
@@ -157,7 +157,7 @@ class _M002_SkipEmptyToEnum:
                 "Run inside a Git repo or allow no-git mode."
             )
 
-        # 2) Применение трансформаций (идемпотентно), агрегируем факт изменений
+        # 2) Apply transformations (idempotently), aggregate the fact of changes
         any_changed = False
         for rel in files:
             path = fs.cfg_root / rel
@@ -175,8 +175,8 @@ class _M002_SkipEmptyToEnum:
                 if rewrite_yaml_rt(path, _transform):
                     any_changed = True
             except Exception:
-                # Если файл сломан и не парсится — пропустим его; серьёзную
-                # диагностику отдаст Doctor/CLI на другом этапе.
+                # If file is broken and cannot be parsed — skip it; serious
+                # diagnostics will be provided by Doctor/CLI at a later stage.
                 continue
 
         return any_changed

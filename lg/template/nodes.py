@@ -1,8 +1,8 @@
 """
-Базовые AST-узлы.
+Base AST nodes.
 
-Определяет базовую иерархию неизменяемых классов узлов для представления
-структуры шаблонов. Конкретные узлы определяются в плагинах.
+Defines base hierarchy of immutable node classes for representing
+template structure. Concrete nodes are defined in plugins.
 """
 
 from __future__ import annotations
@@ -13,22 +13,22 @@ from typing import List
 
 @dataclass(frozen=True)
 class TemplateNode:
-    """Базовый класс для всех узлов AST шаблона."""
+    """Base class for all template AST nodes."""
     pass
 
 
 @dataclass(frozen=True)
 class TextNode(TemplateNode):
     """
-    Обычный текстовый контент в шаблоне.
-    
-    Представляет статический текст, который не требует обработки
-    и выводится в результат как есть.
+    Plain text content in template.
+
+    Represents static text that requires no processing
+    and is output as-is.
     """
     text: str
 
 
-# Алиас для списка узлов (AST)
+# Alias for node list (AST)
 TemplateAST = List[TemplateNode]
 
 

@@ -1,7 +1,7 @@
 """
-Токены для парсинга адаптивных конструкций в шаблонах.
+Tokens for parsing adaptive constructs in templates.
 
-Определяет токены для директив, условий, режимов и комментариев.
+Defines tokens for directives, conditions, modes, and comments.
 """
 
 from __future__ import annotations
@@ -14,43 +14,43 @@ from ..types import TokenSpec
 
 def get_adaptive_token_specs() -> List[TokenSpec]:
     """
-    Возвращает спецификации токенов для адаптивных конструкций.
+    Returns token specifications for adaptive constructs.
     """
     return [
-        # Разделители директив {% %}
+        # Directive separators {% %}
         TokenSpec(
             name="DIRECTIVE_START",
             pattern=re.compile(r'\{%'),
         ),
-        
+
         TokenSpec(
             name="DIRECTIVE_END",
             pattern=re.compile(r'%}'),
         ),
-        
-        # Разделители комментариев {# #}
+
+        # Comment separators {# #}
         TokenSpec(
             name="COMMENT_START",
             pattern=re.compile(r'\{#'),
         ),
-        
+
         TokenSpec(
             name="COMMENT_END",
             pattern=re.compile(r'#}'),
         ),
-        
-        # Ключевые слова директив (регистрируются как идентификаторы)
-        # Распознавание происходит при парсинге
-        
-        # Логические операторы AND, OR, NOT
-        # (распознаются как ключевые слова при парсинге идентификаторов)
-        
-        # Скобки для группировки в условиях
+
+        # Directive keywords (registered as identifiers)
+        # Recognition happens during parsing
+
+        # Logical operators AND, OR, NOT
+        # (recognized as keywords during identifier parsing)
+
+        # Parentheses for grouping in conditions
         TokenSpec(
             name="LPAREN",
             pattern=re.compile(r'\('),
         ),
-        
+
         TokenSpec(
             name="RPAREN",
             pattern=re.compile(r'\)'),

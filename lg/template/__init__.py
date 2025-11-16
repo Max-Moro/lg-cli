@@ -1,5 +1,5 @@
 """
-Шаблонизатор для Listing Generator.
+Template engine for Listing Generator.
 """
 
 from __future__ import annotations

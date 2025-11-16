@@ -9,12 +9,12 @@ _slug_keep = re.compile(r"[^a-z0-9\-]+")
 
 def slugify_github(title: str) -> str:
     """
-    Примерно GitHub-style slug:
-      • NFKD нормализация, lower
-      • пробелы → '-'
-      • убрать пунктуацию, кроме '-'
-      • сжать повторяющиеся '-'
-      • обрезать по краям
+    Approximately GitHub-style slug:
+      • NFKD normalization, lower
+      • spaces → '-'
+      • remove punctuation except '-'
+      • compress repeated '-'
+      • trim edges
     """
     t = unicodedata.normalize("NFKD", title).lower()
     t = _slug_ws.sub("-", t.strip())

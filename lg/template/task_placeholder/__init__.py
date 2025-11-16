@@ -1,9 +1,9 @@
 """
-Плагин для обработки task-плейсхолдеров.
+Plugin for processing task placeholders.
 
-Обрабатывает:
-- ${task} - простая вставка текста задачи
-- ${task:prompt:"default text"} - вставка с дефолтным значением
+Handles:
+- ${task} - simple task text insertion
+- ${task:prompt:"default text"} - insertion with default value
 """
 
 from __future__ import annotations

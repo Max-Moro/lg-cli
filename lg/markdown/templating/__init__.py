@@ -1,8 +1,8 @@
 """
-Пакет для обработки условных конструкций в Markdown.
+Package for processing conditional constructs in Markdown.
 
-Предоставляет AST-based подход для обработки LG-инструкций
-в HTML-комментариях внутри Markdown-документов.
+Provides AST-based approach for processing LG instructions
+in HTML comments inside Markdown documents.
 """
 
 from .processor import process_markdown_template, MarkdownTemplateProcessorError
@@ -10,14 +10,14 @@ from .parser import parse_markdown_template, MarkdownTemplateParserError
 from .lexer import tokenize_markdown_template, CommentToken
 
 __all__ = [
-    # Основная функция для использования
+    # Main function for use
     "process_markdown_template",
-    
-    # Исключения
+
+    # Exceptions
     "MarkdownTemplateProcessorError",
     "MarkdownTemplateParserError",
-    
-    # Низкоуровневые функции (для тестирования и отладки)
+
+    # Low-level functions (for testing and debugging)
     "parse_markdown_template",
     "tokenize_markdown_template",
 ]

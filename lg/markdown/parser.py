@@ -14,7 +14,7 @@ _FRONTMATTER_LINE = re.compile(r"^ {0,3}-{3,}\s*$")
 
 
 def _scan_fenced(lines: List[str]) -> List[Tuple[int, int]]:
-    """Возвращает интервалы fenced-блоков [start, end_excl]."""
+    """Returns fenced block intervals [start, end_excl]."""
     out: List[Tuple[int, int]] = []
     i = 0
     n = len(lines)
@@ -37,7 +37,7 @@ def _scan_fenced(lines: List[str]) -> List[Tuple[int, int]]:
             out.append((start, end))
             i = end
         else:
-            # незакрытый блок — считаем до конца
+            # unclosed block — count to end
             out.append((start, n))
             break
     return out
@@ -52,30 +52,30 @@ def _in_any_range(i: int, ranges: List[Tuple[int, int]]) -> bool:
 
 def _scan_frontmatter(lines: List[str], fenced: List[Tuple[int, int]]) -> Optional[Tuple[int, int]]:
     """
-    YAML front matter — только если начинается с первой строки и не внутри fenced.
-    Ищем:
-      ---...\n   (3+ дефисов, допускается отступ до 3 пробелов)
+    YAML front matter — only if starts with first line and not inside fenced.
+    Search for:
+      ---...\n   (3+ hyphens, indentation up to 3 spaces allowed)
       ...\n
-      ---...\n   (закрывающая полоса из дефисов)
-    Удаляем БЛОК ПОЛНОСТЬЮ (включая обе полосы) и дополнительно
-    проглатываем последующие пустые строки после закрывающей полосы.
-    Возвращаем (start=0, end_excl) — индекс первой строки ПОСЛЕ всего блока.
+      ---...\n   (closing line of hyphens)
+    Remove BLOCK COMPLETELY (including both lines) and additionally
+    consume subsequent blank lines after closing line.
+    Return (start=0, end_excl) — index of first line AFTER entire block.
     """
     if not lines:
         return None
     if not _FRONTMATTER_LINE.match(lines[0]):
         return None
-    # Найдём закрывающую '---' далее, не попав в fenced
+    # Find closing '---' further, not entering fenced
     i = 1
     n = len(lines)
     while i < n:
         if _in_any_range(i, fenced):
-            # если внезапно fenced начался раньше закрытия — прекращаем (невалидный фронтматтер)
+            # if fenced unexpectedly started before closure — stop (invalid frontmatter)
             return None
         if _FRONTMATTER_LINE.match(lines[i]):
-            # включаем закрывающую полосу
+            # include closing line
             end_excl = i + 1
-            # проглатываем последующие пустые строки
+            # consume subsequent blank lines
             while end_excl < n and not lines[end_excl].strip():
                 end_excl += 1
             return 0, end_excl
@@ -85,9 +85,9 @@ def _scan_frontmatter(lines: List[str], fenced: List[Tuple[int, int]]) -> Option
 
 def parse_markdown(text: str) -> ParsedDoc:
     """
-    Лёгкий парсер Markdown:
-      • fenced-блоки (``` / ~~~)
-      • заголовки ATX (#..######) и Setext (====/----)
+    Lightweight Markdown parser:
+      • fenced blocks (``` / ~~~)
+      • ATX headings (#..######) and Setext (====/----)
       • YAML front matter
     """
     lines = text.splitlines()
@@ -96,7 +96,7 @@ def parse_markdown(text: str) -> ParsedDoc:
 
     headings: List[HeadingNode] = []
 
-    # Скан ATX-заголовков (игнорируем строки внутри fenced)
+    # Scan ATX headings (ignore lines inside fenced)
     for i, ln in enumerate(lines):
         if _in_any_range(i, fenced):
             continue
@@ -108,7 +108,7 @@ def parse_markdown(text: str) -> ParsedDoc:
             headings.append(HeadingNode(level=level, title=title, slug=slug,
                                         start_line=i, end_line_excl=-1, parents=[]))
 
-    # Скан Setext: строка X + следующая линия ==== или ---- (не внутри fenced)
+    # Scan Setext: line X + next line ==== or ---- (not inside fenced)
     i = 0
     n = len(lines)
     while i + 1 < n:
@@ -118,10 +118,10 @@ def parse_markdown(text: str) -> ParsedDoc:
         title_line = lines[i]
         under = lines[i + 1]
         if _SETEXT_U.match(under) or _SETEXT_L.match(under):
-            # Уровень: '=' → 1, '-' → 2
+            # Level: '=' → 1, '-' → 2
             level = 1 if _SETEXT_U.match(under) else 2
             title = title_line.strip()
-            if title:  # пустой заголовок не учитываем
+            if title:  # don't count empty headings
                 slug = slugify_github(title)
                 headings.append(HeadingNode(level=level, title=title, slug=slug,
                                             start_line=i, end_line_excl=-1, parents=[]))
@@ -129,23 +129,23 @@ def parse_markdown(text: str) -> ParsedDoc:
         else:
             i += 1
 
-    # Отсортировать по порядку появления
+    # Sort by appearance order
     headings.sort(key=lambda h: h.start_line)
 
-    # Посчитать границы поддеревьев и родителей (стек уровней)
-    stack: List[int] = []  # индексы headings
+    # Calculate subtree boundaries and parents (level stack)
+    stack: List[int] = []  # heading indices
     for idx, h in enumerate(headings):
-        # поп пока верхний уровень >= текущего
+        # pop while top level >= current
         while stack and headings[stack[-1]].level >= h.level:
             stack.pop()
-            # end_line_excl для завершённых позже поставим, когда узнаем start следующего
-        # родители = копия стека
+            # end_line_excl for completed will be set later when we know next start
+        # parents = copy of stack
         h.parents = list(stack)
         stack.append(idx)
 
-    # end_line_excl: ближайший следующий с уровнем <=, иначе до конца документа
+    # end_line_excl: nearest next with level <=, otherwise to end of document
     for i, h in enumerate(headings):
-        # найти следующий заголовок j > i с level <= h.level
+        # find next heading j > i with level <= h.level
         end = len(lines)
         for j in range(i + 1, len(headings)):
             if headings[j].level <= h.level:

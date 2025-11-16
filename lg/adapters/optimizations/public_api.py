@@ -24,26 +24,26 @@ class PublicApiOptimizer:
         """
         Apply public API filtering.
         Removes private/protected elements, keeping only public/exported ones.
-        
+
         Args:
             context: Processing context with document and editor
         """
-        # Получаем унифицированный анализатор кода для языка
+        # Get unified code analyzer for language
         code_analyzer = self.adapter.create_code_analyzer(context.doc)
-        
-        # Собираем все приватные элементы с помощью анализатора
+
+        # Collect all private elements using analyzer
         private_elements = code_analyzer.collect_private_elements_for_public_api()
-        
-        # Сначала вычисляем диапазоны с декораторами для всех элементов
+
+        # First compute ranges with decorators for all elements
         element_ranges = [
             (code_analyzer.get_element_range_with_decorators(elem), elem)
             for elem in private_elements
         ]
-        
-        # Сортируем по позиции (в обратном порядке для безопасного удаления)
+
+        # Sort by position (in reverse order for safe removal)
         element_ranges.sort(key=lambda x: x[0][0], reverse=True)
-        
-        # Удаляем приватные элементы с соответствующими плейсхолдерами
+
+        # Remove private elements with appropriate placeholders
         for (start_char, end_char), private_element in element_ranges:
             start_line = context.doc.get_line_number(start_char)
             end_line = context.doc.get_line_number(end_char)

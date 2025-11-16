@@ -24,8 +24,8 @@ from lg.version import tool_version
 
 def run_diag(*, rebuild_cache: bool = False) -> DiagReport:
     """
-    Формирует JSON-отчёт диагностики. Никогда не кидает наружу исключения —
-    все ошибки превращаются в «ok=False/details» или «error: str».
+    Generates a JSON diagnostics report. Never throws exceptions externally —
+    all errors are converted to "ok=False/details" or "error: str".
     """
     root = Path.cwd().resolve()
     tool_ver = tool_version()
@@ -45,7 +45,7 @@ def run_diag(*, rebuild_cache: bool = False) -> DiagReport:
         current=CFG_CURRENT,
     )
 
-    # Перечень секций: теперь стараемся прочитать даже БЕЗ Git, без запуска миграций (best-effort).
+    # Section list: now try to read even WITHOUT Git, without running migrations (best-effort).
     sections: list[str] = []
     if cfg_block.exists:
         try:
@@ -73,7 +73,7 @@ def run_diag(*, rebuild_cache: bool = False) -> DiagReport:
             rebuilt=bool(rebuild_cache),
         )
     except Exception as e:
-        # даже если snapshot упал — выдаём минимально осмысленный блок
+        # even if snapshot failed — provide a minimally meaningful block
         cache_block = DiagCache(
             enabled=bool(cache.enabled),
             path=str(cache.dir),
@@ -101,29 +101,29 @@ def run_diag(*, rebuild_cache: bool = False) -> DiagReport:
     applied_refs: list[DiagMigrationRef] = []
 
     if cfg_dir.is_dir():
-        # Если просили rebuild-cache — после очистки кэша запустим ensure_cfg_actual,
-        # чтобы восстановить CFG STATE. Ошибки — в warn/error, но не фатальные.
+        # If rebuild-cache was requested — after clearing cache run ensure_cfg_actual,
+        # to restore CFG STATE. Errors are warn/error, but not fatal.
         if rebuild_cache:
             try:
                 ensure_cfg_actual(cfg_dir)
             except MigrationFatalError as e:
-                # ошибка уже зафиксирована в cfg_state, но подсветим чек
+                # error is already recorded in cfg_state, but highlight the check
                 _mk("config.migrations.rebuild", Severity.warn if not git_ok else Severity.error,
                     str(e).splitlines()[0])
 
-        # --- Миграционное состояние lg-cfg/ ---
+        # --- Migration state of lg-cfg/ ---
         try:
             state = cache.get_cfg_state(cfg_dir) or {}
             cfg_actual = int(state.get("actual", 0))
             cfg_fingerprint = state.get("fingerprint") or None
-            # applied из кэша
+            # applied from cache
             applied_raw = state.get("applied") or []
             for item in applied_raw:
                 try:
                     applied_refs.append(DiagMigrationRef(id=int(item.get("id", 0)), title=str(item.get("title", ""))))
                 except Exception:
                     continue
-            # last_error из кэша
+            # last_error from cache
             if state.get("last_error"):
                 le = state["last_error"]
                 try:
@@ -138,10 +138,10 @@ def run_diag(*, rebuild_cache: bool = False) -> DiagReport:
                     # best-effort
                     cfg_block.last_error = DiagLastError(message=str(state.get("last_error")))
         except Exception:
-            # игнорируем проблемы миграционной подсистемы в диагностике
+            # ignore migration subsystem issues in diagnostics
             pass
 
-    # Заполняем блок config миграционными полями
+    # Fill config block with migration fields
     cfg_block.actual = cfg_actual
     cfg_block.fingerprint = cfg_fingerprint
     cfg_block.applied = applied_refs
@@ -194,7 +194,7 @@ def run_diag(*, rebuild_cache: bool = False) -> DiagReport:
     except Exception as e:
         _mk("adapters.implemented", Severity.warn, str(e))
 
-    # Конфиг/миграции quick hints
+    # Config/migration quick hints
     if not cfg_block.exists:
         _mk("config.exists", Severity.error, str(cfg_dir))
     else:
@@ -202,7 +202,7 @@ def run_diag(*, rebuild_cache: bool = False) -> DiagReport:
             _mk("config.load", Severity.warn, cfg_block.error)
         else:
             _mk("sections.count", Severity.ok, str(len(sections)))
-        # миграционная сводка (без фатальности при отсутствии Git)
+        # migration summary (non-fatal if Git is missing)
         appl = len(applied_refs) if applied_refs else 0
         mig_level = Severity.ok
         mig_details = f"current={CFG_CURRENT}, actual={cfg_actual or 0}, applied={appl}"
@@ -240,8 +240,8 @@ def _git(root: Path, args: list[str]) -> str:
 
 def build_diag_bundle(report: DiagReport) -> str:
     """
-    Собирает zip-бандл с diag.json и содержимым lg-cfg/.
-    Возвращает абсолютный путь к архиву.
+    Builds a zip bundle with diag.json and lg-cfg/ contents.
+    Returns the absolute path to the archive.
     """
     root = Path(report.root).resolve()
     cache = Cache(root, enabled=None, fresh=False, tool_version=tool_version())
@@ -254,10 +254,10 @@ def build_diag_bundle(report: DiagReport) -> str:
     cfg_dir = cfg_root(root)
 
     with ZipFile(zpath, "w", compression=ZIP_DEFLATED) as zf:
-        # diag.json (тот же отчёт, что в stdout)
+        # diag.json (same report as in stdout)
         zf.writestr("diag.json", json.dumps(report.model_dump(mode="json"), ensure_ascii=False, indent=2))
 
-        # env.txt — краткая сводка
+        # env.txt — brief summary
         env_lines = [
             f"tool_version: {report.tool_version}",
             f"protocol: {report.protocol}",
@@ -276,7 +276,7 @@ def build_diag_bundle(report: DiagReport) -> str:
         if status:
             zf.writestr("git/status.txt", status)
 
-        # lg-cfg/** (если существует)
+        # lg-cfg/** (if it exists)
         if cfg_dir.is_dir():
             base = cfg_dir
             for p in base.rglob("*"):
@@ -287,10 +287,10 @@ def build_diag_bundle(report: DiagReport) -> str:
                 try:
                     zf.write(p, arcname=arc)
                 except Exception:
-                    # best-effort: пропускаем проблемные файлы
+                    # best-effort: skip problematic files
                     pass
 
-        # migrations/state.json + last_error.txt (если есть)
+        # migrations/state.json + last_error.txt (if present)
         try:
             cache = Cache(root, enabled=None, fresh=False, tool_version=tool_version())
             state = cache.get_cfg_state(cfg_dir) or {}

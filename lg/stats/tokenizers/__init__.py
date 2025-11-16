@@ -8,18 +8,18 @@ from .sp_adapter import SPAdapter
 
 def create_tokenizer(lib: str, encoder: str, root: Path) -> BaseTokenizer:
     """
-    Создает токенизатор по параметрам.
-    
+    Create a tokenizer based on parameters.
+
     Args:
-        lib: Имя библиотеки (tiktoken, tokenizers, sentencepiece)
-        encoder: Имя энкодера/модели
-        root: Корень проекта
-        
+        lib: Library name (tiktoken, tokenizers, sentencepiece)
+        encoder: Encoder/model name
+        root: Project root
+
     Returns:
-        Инстанс токенизатора
-        
+        Tokenizer instance
+
     Raises:
-        ValueError: Если библиотека неизвестна
+        ValueError: If library is unknown
     """
     if lib == "tiktoken":
         return TiktokenAdapter(encoder)
@@ -34,22 +34,22 @@ def create_tokenizer(lib: str, encoder: str, root: Path) -> BaseTokenizer:
         )
 
 def list_tokenizer_libs() -> List[str]:
-    """Возвращает список поддерживаемых библиотек токенизации."""
+    """Return list of supported tokenization libraries."""
     return ["tiktoken", "tokenizers", "sentencepiece"]
 
 def list_encoders(lib: str, root: Path) -> List[str]:
     """
-    Возвращает список доступных энкодеров для библиотеки.
-    
+    Return list of available encoders for a library.
+
     Args:
-        lib: Имя библиотеки
-        root: Корень проекта (для доступа к кешу)
-        
+        lib: Library name
+        root: Project root (for cache access)
+
     Returns:
-        Список имен энкодеров/моделей
-        
+        List of encoder/model names
+
     Raises:
-        ValueError: Если библиотека неизвестна
+        ValueError: If library is unknown
     """
     if lib == "tiktoken":
         return TiktokenAdapter.list_available_encoders(root)

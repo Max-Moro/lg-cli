@@ -6,7 +6,7 @@ from typing import Any
 
 def dumps(obj: Any) -> str:
     """
-    Минимальный JSON-дампер для простых ответов CLI.
-    — без prettify; ensure_ascii=False; без заботы о завершающем \n (CLI решает сам).
+    Minimal JSON dumper for simple CLI responses.
+    — no prettify; ensure_ascii=False; no care for trailing \n (CLI decides).
     """
     return json.dumps(obj, ensure_ascii=False)

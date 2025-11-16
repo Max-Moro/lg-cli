@@ -26,7 +26,7 @@ def _read_yaml_map(path: Path) -> dict:
 
 def _collect_sections_from_sections_yaml(root: Path) -> Dict[str, SectionCfg]:
     """
-    Читает lg-cfg/sections.yaml. Все ключи трактуются как секции с КОРОТКИМИ id (без префикса пути)
+    Read lg-cfg/sections.yaml. All keys are treated as sections with SHORT ids (without path prefix)
     """
     p = sections_path(root)
     if not p.is_file():
@@ -41,53 +41,53 @@ def _collect_sections_from_sections_yaml(root: Path) -> Dict[str, SectionCfg]:
 
 def _collect_sections_from_fragments(root: Path) -> Dict[str, SectionCfg]:
     """
-    Собирает секции из всех **/*.sec.yaml.
-    Канонический ID секции формируется так:
-      • Если фрагмент содержит РОВНО одну секцию → канон-ID = <директорный_префикс>/<имя_секции>.
-        Префикс имени файла отбрасывается, но префикс директорий сохраняется.
-        Пример: 'subdir/web.sec.yaml' c единственной секцией 'web-api' → 'subdir/web-api'.
-      • Иначе:
-          – prefix = путь к файлу без суффикса '.sec.yaml' относительно lg-cfg/ (POSIX).
-          – Если последний сегмент prefix совпадает с именем секции → канон-ID = prefix
-            (устраняем "a/a", "pkg/core/core").
-          – Иначе → канон-ID = 'prefix/<section_local_name>'.
+    Collect sections from all **/*.sec.yaml.
+    Canonical section ID is formed as follows:
+      • If fragment contains EXACTLY one section → canon-ID = <directory_prefix>/<section_name>.
+        File name prefix is dropped, but directory prefix is preserved.
+        Example: 'subdir/web.sec.yaml' with single section 'web-api' → 'subdir/web-api'.
+      • Otherwise:
+          – prefix = file path without '.sec.yaml' suffix relative to lg-cfg/ (POSIX).
+          – If last segment of prefix matches section name → canon-ID = prefix
+            (eliminates "a/a", "pkg/core/core").
+          – Otherwise → canon-ID = 'prefix/<section_local_name>'.
     """
     acc: Dict[str, SectionCfg] = {}
     for frag in iter_section_fragments(root):
         raw = _read_yaml_map(frag)
         prefix = canonical_fragment_prefix(root, frag)
 
-        # Соберём список секций
+        # Collect list of sections
         section_items = [(name, node) for name, node in raw.items()]
         if not section_items:
-            # Пустой фрагмент — корректен, но нечего добавлять
+            # Empty fragment — valid, but nothing to add
             continue
 
-        # Правило 1: одинарная секция → канон = директорный_префикс + имя_секции
+        # Rule 1: single section → canon = directory_prefix + section_name
         if len(section_items) == 1:
             local_name, node = section_items[0]
             if not isinstance(node, dict):
                 raise RuntimeError(f"Section '{local_name}' in {frag} must be a mapping")
-            
-            # Извлекаем директорный префикс (все сегменты кроме последнего)
+
+            # Extract directory prefix (all segments except last)
             prefix_parts = prefix.split("/") if prefix else []
             if len(prefix_parts) > 1:
-                # Есть поддиректории - сохраняем их
+                # Has subdirectories - preserve them
                 dir_prefix = "/".join(prefix_parts[:-1])
                 canon_id = f"{dir_prefix}/{local_name}"
             else:
-                # Нет поддиректорий - только имя секции
+                # No subdirectories - just section name
                 canon_id = local_name
-            
+
             acc[canon_id] = SectionCfg.from_dict(canon_id, node)
             continue
 
-        # Правило 2: несколько секций → нормализация "хвоста" по prefix
+        # Rule 2: multiple sections → normalize "tail" by prefix
         pref_tail = prefix.split("/")[-1] if prefix else ""
         for local_name, node in section_items:
             if not isinstance(node, dict):
                 raise RuntimeError(f"Section '{local_name}' in {frag} must be a mapping")
-            # Нормализация канон-ID без повторения хвоста (исправляет "a/a" и т. п.)
+            # Normalize canon-ID without repeating tail (fixes "a/a" etc.)
             canon_id = prefix if (pref_tail and local_name == pref_tail) else f"{prefix}/{local_name}"
             acc[canon_id] = SectionCfg.from_dict(canon_id, node)
     return acc
@@ -95,20 +95,20 @@ def _collect_sections_from_fragments(root: Path) -> Dict[str, SectionCfg]:
 
 def load_config(root: Path) -> Config:
     """
-    Схема:
-      • lg-cfg/sections.yaml — файл с базовыми секциями
-      • lg-cfg/**\/*.sec.yaml — произвольное число фрагментов секций
+    Schema:
+      • lg-cfg/sections.yaml — file with base sections
+      • lg-cfg/**/*.sec.yaml — arbitrary number of section fragments
     """
     base = cfg_root(root)
     if not base.is_dir():
         raise RuntimeError(f"Config directory not found: {base}")
-    # Перед любым чтением приводим lg-cfg/ к актуальному формату
+    # Before any reading, bring lg-cfg/ to current format
     ensure_cfg_actual(base)
 
     core_sections = _collect_sections_from_sections_yaml(root)
     frag_sections = _collect_sections_from_fragments(root)
 
-    # Сшиваем с проверкой дубликатов канонических ID
+    # Merge with duplicate canonical ID check
     all_sections: Dict[str, SectionCfg] = dict(core_sections)
     for k, v in frag_sections.items():
         if k in all_sections:
@@ -120,16 +120,16 @@ def load_config(root: Path) -> Config:
 
 def list_sections(root: Path) -> List[str]:
     """
-    Строгий список (через load_config) — МИГРАЦИИ ВОЗМОЖНЫ.
-    Используется там, где формат гарантированно актуален.
+    Strict list (via load_config) — MIGRATIONS POSSIBLE.
+    Used where format is guaranteed to be up-to-date.
     """
     cfg = load_config(root)
     return sorted(cfg.sections.keys())
 
 def list_sections_peek(root: Path) -> List[str]:
     """
-    Безопасный список без запуска миграций.
-    Читает lg-cfg/sections.yaml и все **/*.sec.yaml напрямую.
+    Safe list without running migrations.
+    Reads lg-cfg/sections.yaml and all **/*.sec.yaml directly.
     """
     base = cfg_root(root)
     if not base.is_dir():

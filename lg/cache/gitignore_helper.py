@@ -1,8 +1,8 @@
 """
-Утилита для управления корневым .gitignore файлом.
+Utility for managing the root .gitignore file.
 
-Предоставляет централизованную логику добавления записей в .gitignore
-для различных компонентов системы кеширования.
+Provides centralized logic for adding entries to .gitignore
+for various caching system components.
 """
 
 from __future__ import annotations
@@ -17,32 +17,32 @@ __all__ = ["ensure_gitignore_entry"]
 
 def ensure_gitignore_entry(root: Path, entry: str, *, comment: str | None = None) -> bool:
     """
-    Гарантирует наличие записи в корневом .gitignore файле.
-    
+    Ensure an entry exists in the root .gitignore file.
+
     Args:
-        root: Корень проекта (где находится .gitignore)
-        entry: Запись для добавления (например, ".lg-cache/")
-        comment: Опциональный комментарий перед записью
-        
+        root: Project root (where .gitignore is located)
+        entry: Entry to add (e.g., ".lg-cache/")
+        comment: Optional comment before the entry
+
     Returns:
-        True если запись была добавлена, False если уже существовала
-        
+        True if entry was added, False if it already existed
+
     Note:
-        - Создает .gitignore если его нет
-        - Проверяет существующие записи (игнорирует комментарии и пустые строки)
-        - Добавляет запись в конец файла с переводом строки
-        - Все операции best-effort (не роняют программу при ошибках)
+        - Creates .gitignore if it doesn't exist
+        - Checks existing entries (ignores comments and empty lines)
+        - Adds entry at end of file with newline
+        - All operations are best-effort (do not break on errors)
     """
     gitignore_path = root / ".gitignore"
-    
+
     try:
-        # Нормализуем запись (убираем лишние пробелы, обеспечиваем trailing slash для директорий)
+        # Normalize entry (remove extra whitespace, ensure trailing slash for directories)
         entry_normalized = entry.strip()
         if not entry_normalized:
             logger.warning("Empty gitignore entry requested, skipping")
             return False
-        
-        # Читаем существующий файл если есть
+
+        # Read existing file if it exists
         existing_lines = []
         if gitignore_path.exists():
             try:
@@ -50,45 +50,45 @@ def ensure_gitignore_entry(root: Path, entry: str, *, comment: str | None = None
                 existing_lines = content.splitlines()
             except Exception as e:
                 logger.warning(f"Failed to read .gitignore: {e}")
-                # Продолжаем работу с пустым списком
-        
-        # Проверяем наличие записи (игнорируем комментарии и пустые строки)
+                # Continue with empty list
+
+        # Check for existing entry (ignore comments and empty lines)
         for line in existing_lines:
             line_stripped = line.strip()
             if line_stripped and not line_stripped.startswith("#"):
                 if line_stripped == entry_normalized:
-                    # Запись уже существует
+                    # Entry already exists
                     return False
-        
-        # Формируем новую запись с опциональным комментарием
+
+        # Build new entry with optional comment
         new_content_parts = []
-        
-        # Сохраняем существующее содержимое
+
+        # Preserve existing content
         if existing_lines:
             new_content_parts.append("\n".join(existing_lines))
-            # Добавляем пустую строку перед нашей записью если файл не пустой
-            # и последняя строка не пустая
+            # Add blank line before our entry if file is not empty
+            # and last line is not empty
             if existing_lines[-1].strip():
                 new_content_parts.append("")
-        
-        # Добавляем комментарий если указан
+
+        # Add comment if provided
         if comment:
             new_content_parts.append(f"# {comment}")
-        
-        # Добавляем саму запись
+
+        # Add the entry itself
         new_content_parts.append(entry_normalized)
-        
-        # Записываем обновленный .gitignore
+
+        # Write updated .gitignore
         final_content = "\n".join(new_content_parts)
         if not final_content.endswith("\n"):
             final_content += "\n"
-        
+
         gitignore_path.write_text(final_content, encoding="utf-8")
-        
+
         logger.info(f"Added '{entry_normalized}' to .gitignore")
         return True
-        
+
     except Exception as e:
-        # Best-effort: логируем ошибку но не роняем программу
+        # Best-effort: log error but do not break the program
         logger.warning(f"Failed to update .gitignore: {e}")
         return False

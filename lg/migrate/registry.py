@@ -4,15 +4,15 @@ from typing import Iterable, List, Optional, Protocol, Sequence
 
 
 class Migration(Protocol):
-    """Строгий контракт миграции."""
+    """Strict migration contract."""
     id: int
     title: str
 
     """
-    ДОЛЖНА быстро выйти (return False), если миграция не нужна.
-    Вернуть True, если реально изменила содержимое lg-cfg/.
-    Если нужны сайд-эффекты при allow_side_effects=False — бросить PreflightRequired.
-    Любые другие исключения трактуются как ошибка миграции (фаза "run").
+    MUST exit quickly (return False) if the migration is not needed.
+    Return True if the lg-cfg/ content was actually changed.
+    If side effects are needed when allow_side_effects=False — raise PreflightRequired.
+    Any other exceptions are treated as migration errors (phase "run").
     """
     def run(self, fs: "CfgFs", *, allow_side_effects: bool) -> bool: ...   # noqa: E701
 
@@ -22,15 +22,15 @@ _FROZEN: Optional[Sequence[Migration]] = None
 
 
 def register(migration: Migration) -> None:
-    """Регистрация одной миграции."""
+    """Registration of a single migration."""
     global _FROZEN
     if _FROZEN is not None:
-        # Защитимся от поздней регистрации после первого запроса списка
+        # Protect against late registration after the first request for the list
         raise RuntimeError("Migrations are already frozen; call register/register_many before get_migrations()")
     _MIGRATIONS.append(migration)
 
 def register_many(migrations: Iterable[Migration]) -> None:
-    """Пакетная регистрация миграций."""
+    """Batch registration of migrations."""
     global _FROZEN
     if _FROZEN is not None:
         raise RuntimeError("Migrations are already frozen; call register_many before get_migrations()")
@@ -38,8 +38,8 @@ def register_many(migrations: Iterable[Migration]) -> None:
 
 def get_migrations() -> List[Migration]:
     """
-    Возвращает миграции, отсортированные по id (возрастающе).
-    Сортировка и «заморозка» происходят один раз при первом вызове.
+    Returns migrations sorted by id (ascending).
+    Sorting and "freezing" happen once on the first call.
     """
     global _FROZEN
     if _FROZEN is None:
@@ -47,8 +47,8 @@ def get_migrations() -> List[Migration]:
     return list(_FROZEN)
 
 
-# Ленивая импорт-подписка на тип CfgFs (избегаем циклов)
-class CfgFs:  # pragma: no cover - подсказка типов
+# Lazy import subscription to the CfgFs type (avoid cycles)
+class CfgFs:  # pragma: no cover - type hint
     pass
 
 __all__ = ["Migration", "register", "register_many", "get_migrations"]

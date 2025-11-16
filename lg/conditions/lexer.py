@@ -1,11 +1,11 @@
 """
-Лексер для разбора условных выражений.
+Lexer for parsing conditional expressions.
 
-Выполняет токенизацию строки условия, разбивая её на значимые элементы:
-- Ключевые слова (tag, TAGSET, scope, AND, OR, NOT)
-- Идентификаторы (имена тегов, наборов и скоупов)
-- Символы (скобки, двоеточия)
-- Пробелы (игнорируются)
+Performs tokenization of a condition string, breaking it into meaningful elements:
+- Keywords (tag, TAGSET, scope, AND, OR, NOT)
+- Identifiers (names of tags, sets, and scopes)
+- Symbols (parentheses, colons)
+- Whitespace (ignored)
 """
 
 from __future__ import annotations
@@ -18,12 +18,12 @@ from typing import List, Iterator
 @dataclass
 class Token:
     """
-    Токен для парсинга условий.
-    
+    Token for condition parsing.
+
     Attributes:
-        type: Тип токена (KEYWORD, IDENTIFIER, SYMBOL, EOF)
-        value: Значение токена
-        position: Позиция в исходной строке
+        type: Token type (KEYWORD, IDENTIFIER, SYMBOL, EOF)
+        value: Token value
+        position: Position in the source string
     """
     type: str
     value: str
@@ -35,40 +35,40 @@ class Token:
 
 class ConditionLexer:
     """
-    Лексер для разбиения строки условия на токены.
-    
-    Поддерживаемые токены:
+    Lexer for splitting condition strings into tokens.
+
+    Supported tokens:
     - KEYWORD: tag, TAGSET, scope, AND, OR, NOT
-    - IDENTIFIER: имена тегов, наборов, скоупов
+    - IDENTIFIER: names of tags, sets, scopes
     - SYMBOL: (, ), :
-    - EOF: конец строки
+    - EOF: end of string
     """
-    
-    # Спецификация токенов: (regex_pattern, token_type, ignore_flag)
+
+    # Token specification: (regex_pattern, token_type, ignore_flag)
     TOKEN_SPECS = [
-        # Пробелы и табуляция (игнорируем)
+        # Whitespace and tabs (ignored)
         (r'\s+', 'WHITESPACE', True),
-        
-        # Символы (проверяем перед идентификаторами)
+
+        # Symbols (checked before identifiers)
         (r'\(', 'SYMBOL', False),
         (r'\)', 'SYMBOL', False),
         (r':', 'SYMBOL', False),
-        
-        # Идентификаторы (Unicode буквы, цифры, подчёркивания, дефисы)
-        # Ключевые слова будем определять после захвата
+
+        # Identifiers (Unicode letters, digits, underscores, hyphens)
+        # Keywords will be determined after capture
         (r'[\w][\w-]*', 'IDENTIFIER', False),
-        
-        # Неизвестный символ (ошибка)
+
+        # Unknown symbol (error)
         (r'.', 'UNKNOWN', False),
     ]
-    
-    # Ключевые слова для постпроцессинга
+
+    # Keywords for post-processing
     KEYWORDS = {
         'TAGSET', 'scope', 'tag', 'task', 'AND', 'OR', 'NOT'
     }
-    
+
     def __init__(self):
-        # Компилируем регулярные выражения для лучшей производительности
+        # Compile regular expressions for better performance
         self._compiled_patterns = [
             (re.compile(pattern), token_type, ignore)
             for pattern, token_type, ignore in self.TOKEN_SPECS
@@ -76,65 +76,65 @@ class ConditionLexer:
     
     def tokenize(self, text: str) -> List[Token]:
         """
-        Разбивает строку на токены.
-        
+        Split a string into tokens.
+
         Args:
-            text: Строка условия для разбора
-            
+            text: Condition string to parse
+
         Returns:
-            Список токенов, включая EOF в конце
-            
+            List of tokens, including EOF at the end
+
         Raises:
-            ValueError: При обнаружении неизвестного символа
+            ValueError: When an unknown character is detected
         """
         tokens: List[Token] = []
         position = 0
-        
+
         while position < len(text):
             match_found = False
-            
+
             for pattern, token_type, ignore in self._compiled_patterns:
                 match = pattern.match(text, position)
                 if match:
                     value = match.group(0)
-                    
+
                     if not ignore:
                         if token_type == 'UNKNOWN':
                             raise ValueError(f"Unexpected character '{value}' at position {position}")
-                        
-                        # Определяем тип токена: ключевое слово или идентификатор
+
+                        # Determine token type: keyword or identifier
                         final_type = token_type
                         if token_type == 'IDENTIFIER' and value in self.KEYWORDS:
                             final_type = 'KEYWORD'
-                        
+
                         tokens.append(Token(
                             type=final_type,
                             value=value,
                             position=position
                         ))
-                    
+
                     position = match.end()
                     match_found = True
                     break
-            
+
             if not match_found:
-                # Это не должно происходить, так как у нас есть паттерн для любого символа
+                # This should not happen since we have a pattern for any character
                 raise ValueError(f"Failed to tokenize at position {position}")
-        
-        # Добавляем EOF токен
+
+        # Add EOF token
         tokens.append(Token(type='EOF', value='', position=position))
-        
+
         return tokens
     
     def tokenize_stream(self, text: str) -> Iterator[Token]:
         """
-        Генератор для ленивой токенизации.
-        
+        Generator for lazy tokenization.
+
         Args:
-            text: Строка условия для разбора
-            
+            text: Condition string to parse
+
         Yields:
-            Token: Очередной токен
+            Token: Next token
         """
         for token in self.tokenize(text):
             yield token

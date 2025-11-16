@@ -12,7 +12,7 @@ from typing import Any, Dict, List, Optional
 from lg.cache.fs_cache import Cache
 from .errors import MigrationFatalError, PreflightRequired
 from .fs import CfgFs
-from . import migrations  # noqa: F401  # важно: side-effect регистрации
+from . import migrations  # noqa: F401  # important: registration side-effect
 from .registry import get_migrations
 from .version import CFG_CURRENT
 from ..version import tool_version
@@ -29,8 +29,8 @@ def _sha1_lines(lines: List[str]) -> str:
 
 def _fingerprint_cfg(repo_root: Path, cfg_root: Path) -> str:
     """
-    Отпечаток текущего содержимого lg-cfg/ по рабочему дереву (tracked + untracked).
-    Не опираемся на git-индекс — ловим любые правки без `git add`.
+    Fingerprint of the current lg-cfg/ content from the working tree (tracked + untracked).
+    We don't rely on git index — we catch any edits without `git add`.
     """
     lines: list[str] = []
     base = cfg_root.resolve()
@@ -41,7 +41,7 @@ def _fingerprint_cfg(repo_root: Path, cfg_root: Path) -> str:
         try:
             rel = p.resolve().relative_to(rr).as_posix()
         except Exception:
-            # Если вдруг не внутри repo_root — используем абсолютный POSIX
+            # If somehow not inside repo_root — use absolute POSIX
             rel = p.resolve().as_posix()
         try:
             data = p.read_bytes()
@@ -68,9 +68,9 @@ def _put_state(
     last_error: Optional[Dict[str, Any]],
 ) -> None:
     """
-    Единая точка записи состояния миграций в кэш.
-    Обратите внимание: applied — кумулятивное множество успехов,
-    не зависящее от fingerprint.
+    Single point of writing migration state to cache.
+    Note: applied is a cumulative set of successes,
+    independent of fingerprint.
     """
     cache.put_cfg_state(
         cfg_root,
@@ -131,30 +131,30 @@ def _allow_no_git() -> bool:
 
 def _user_msg(migration_id: int, title: str, phase: str, exc: Exception | str) -> str:
     """
-    Человекопонятное сообщение для пользователя в зависимости от фазы:
-      • run         — ошибка выполнения миграции
-      • preflight   — требуется подготовка (обычно Git/бэкап)
+    Human-readable message for the user depending on the phase:
+      • run         — migration execution error
+      • preflight   — preparation required (usually Git/backup)
     """
     if phase == "run":
-        action = "выполнить миграцию"
+        action = "execute the migration"
         tips = (
-            "  • Выполните `lg diag --bundle` и приложите получившийся архив.\n"
-            "  • Временно откатите локальные правки в `lg-cfg/` (например, `git restore -- lg-cfg/`) и повторите."
+            "  • Run `lg diag --bundle` and attach the resulting archive.\n"
+            "  • Temporarily revert local changes in `lg-cfg/` (e.g., `git restore -- lg-cfg/`) and try again."
         )
     elif phase == "preflight":
-        action = "начать применение миграции — требуется Git/бэкап"
+        action = "start applying the migration — Git/backup required"
         tips = (
-            "  • Запустите команду внутри Git-репозитория "
-            "(или инициализируйте его: `git init && git add lg-cfg && git commit -m \"init lg-cfg\"`).\n"
-            "  • Затем повторите команду."
+            "  • Run the command inside a Git repository "
+            "(or initialize it: `git init && git add lg-cfg && git commit -m \"init lg-cfg\"`).\n"
+            "  • Then retry the command."
         )
     else:
         action = phase
-        tips = "  • Выполните `lg diag --bundle` и приложите получившийся архив."
+        tips = "  • Run `lg diag --bundle` and attach the resulting archive."
 
     return (
-        f"Миграция #{migration_id} «{title}» не смогла {action}: {exc}\n\n"
-        f"Что делать:\n{tips}"
+        f"Migration #{migration_id} \"{title}\" could not {action}: {exc}\n\n"
+        f"What to do:\n{tips}"
     )
 
 
@@ -162,12 +162,12 @@ def _user_msg(migration_id: int, title: str, phase: str, exc: Exception | str) -
 
 class _MigrationLock:
     """
-    Межпроцессный лок миграций, хранящийся ВНЕ `lg-cfg/`, под `.lg-cache/locks/`.
-    • Имя лока уникально для конкретного cfg_root (sha1 от абсолютного пути).
-    • Создаётся атомарно (os.mkdir).
-    • Уважает «свежие» локи, стягивает «протухшие».
-    • Поддерживает wait-based coordination: один процесс захватывает лок и выполняет миграции,
-      остальные ждут завершения с exponential backoff.
+    Inter-process migration lock stored OUTSIDE `lg-cfg/`, under `.lg-cache/locks/`.
+    • Lock name is unique for a specific cfg_root (sha1 of absolute path).
+    • Created atomically (os.mkdir).
+    • Respects "fresh" locks, removes "stale" ones.
+    • Supports wait-based coordination: one process acquires the lock and runs migrations,
+      others wait for completion with exponential backoff.
     """
 
     def __init__(
@@ -188,7 +188,7 @@ class _MigrationLock:
             wait_timeout if wait_timeout is not None
             else os.environ.get("LG_MIGRATE_WAIT_TIMEOUT", "180")
         )
-        # Уникальное имя по cfg_root (как и в Cache._cfg_state_path)
+        # Unique name per cfg_root (same as in Cache._cfg_state_path)
         h = hashlib.sha1(str(self.cfg_root).encode("utf-8")).hexdigest()
         self.base = self.cache_dir / "locks"
         self.lock_dir = self.base / f"migrate-{h}"
@@ -196,14 +196,14 @@ class _MigrationLock:
 
     def try_acquire(self) -> bool:
         """
-        Неблокирующая попытка захватить лок для выполнения миграций.
+        Non-blocking attempt to acquire a lock for migration execution.
 
         Returns:
-            True если лок успешно захвачен (этот процесс должен выполнить миграции)
-            False если лок занят другим процессом (нужно вызвать wait_for_completion)
+            True if lock was successfully acquired (this process should run migrations)
+            False if lock is held by another process (call wait_for_completion)
 
         Raises:
-            MigrationFatalError: При невозможности определить состояние лока
+            MigrationFatalError: If unable to determine lock state
         """
         try:
             self.base.mkdir(parents=True, exist_ok=True)
@@ -215,23 +215,23 @@ class _MigrationLock:
         now_ts = time.time()
 
         try:
-            # Попытка создать директорию лока атомарно
+            # Attempt to create lock directory atomically
             os.mkdir(self.lock_dir)
             self._write_info({"pid": os.getpid(), "started_at": _now_utc()})
             self.acquired = True
             return True
 
         except FileExistsError:
-            # Лок уже существует - проверяем его свежесть
+            # Lock already exists - check its freshness
             try:
                 st = self.lock_dir.stat()
                 age = now_ts - st.st_mtime
 
                 if age <= self.stale_seconds:
-                    # Свежий лок - другой процесс активно работает
+                    # Fresh lock - another process is actively working
                     return False
 
-                # Протухший лок - перехватываем
+                # Stale lock - take over
                 info = self._read_info()
                 old_pid = info.get("pid", "unknown")
 
@@ -257,20 +257,20 @@ class _MigrationLock:
 
     def wait_for_completion(self) -> None:
         """
-        Ожидает освобождения лока другим процессом с exponential backoff.
+        Wait for lock release by another process with exponential backoff.
 
-        Использует polling для проверки существования лока.
-        Когда лок исчезает (освобожден), возвращает управление.
+        Uses polling to check lock directory existence.
+        When the lock disappears (released), returns control.
 
         Raises:
-            MigrationFatalError: При timeout ожидания
+            MigrationFatalError: On wait timeout
         """
         start = time.time()
-        delay = 0.05  # Начальная задержка 50ms
-        max_delay = 1.0  # Максимальная задержка между проверками
+        delay = 0.05  # Initial delay 50ms
+        max_delay = 1.0  # Maximum delay between checks
 
         while (time.time() - start) < self.wait_timeout:
-            # Лок освобожден = миграции завершены
+            # Lock released = migrations completed
             if not self._lock_exists():
                 return
 
@@ -291,8 +291,8 @@ class _MigrationLock:
 
     def release(self) -> None:
         """
-        Освобождает лок после завершения работы.
-        Best-effort: игнорирует ошибки при удалении.
+        Release the lock after completion.
+        Best-effort: ignores errors during deletion.
         """
         if not self.acquired:
             return
@@ -305,11 +305,11 @@ class _MigrationLock:
             self.acquired = False
 
     def _lock_exists(self) -> bool:
-        """Проверяет существование директории лока."""
+        """Check if lock directory exists."""
         return self.lock_dir.exists()
 
     def _read_info(self) -> Dict[str, Any]:
-        """Читает метаданные из lock.json (best-effort)."""
+        """Read metadata from lock.json (best-effort)."""
         try:
             return json.loads((self.lock_dir / "lock.json").read_text(encoding="utf-8"))
         except Exception:
@@ -328,18 +328,18 @@ class _MigrationLock:
 
 def ensure_cfg_actual(cfg_root: Path) -> None:
     """
-    Приводит lg-cfg/ к актуальному формату с wait-based coordination:
-      • Быстрая проверка актуальности без лока
-      • Попытка захватить лок для выполнения миграций
-      • Если лок занят - ожидание завершения миграций другим процессом
-      • После завершения все процессы продолжают работу
+    Brings lg-cfg/ to the current format with wait-based coordination:
+      • Quick validity check without lock
+      • Attempt to acquire lock for migration execution
+      • If lock is held - wait for other process to complete migrations
+      • After completion all processes continue
     """
     cfg_root = cfg_root.resolve()
     repo_root = cfg_root.parent.resolve()
 
     cache = Cache(repo_root, enabled=None, fresh=False, tool_version=tool_version())
 
-    # Вспомогательная функция для проверки актуальности
+    # Helper function to check if configuration is current
     def is_actual() -> bool:
         state = cache.get_cfg_state(cfg_root) or {}
         old_actual = int(state.get("actual", 0))
@@ -347,31 +347,31 @@ def ensure_cfg_actual(cfg_root: Path) -> None:
         fp = _fingerprint_cfg(repo_root, cfg_root)
         return old_fp == fp and old_actual >= CFG_CURRENT and not state.get("last_error")
 
-    # Фаза 1: Быстрая проверка БЕЗ лока (fast path для параллельных запусков)
+    # Phase 1: Quick check WITHOUT lock (fast path for parallel runs)
     if is_actual():
         return
 
-    # Конфигурация новее поддерживаемой инструментом версии
+    # Configuration is newer than tool's supported version
     state = cache.get_cfg_state(cfg_root) or {}
     old_actual = int(state.get("actual", 0))
     if old_actual > CFG_CURRENT:
         raise MigrationFatalError(
-            f"Формат конфигурации ({old_actual}) новее версии инструмента (поддерживается до {CFG_CURRENT}).\n"
-            "Обновите Listing Generator."
+            f"Configuration format ({old_actual}) is newer than tool version (supports up to {CFG_CURRENT}).\n"
+            "Please update Listing Generator."
         )
 
-    # Фаза 2: Координация через лок
+    # Phase 2: Coordination via lock
     lock = _MigrationLock(cache.dir, cfg_root)
 
     if lock.try_acquire():
-        # Я владелец лока - выполняю миграции
+        # I own the lock - execute migrations
         try:
-            # Double-check после захвата лока (другой процесс мог завершить миграции)
+            # Double-check after acquiring lock (another process might have completed migrations)
             if is_actual():
-                # Конфигурация уже актуальна после двойной проверки
+                # Configuration is already current after double-check
                 return
 
-            # Выполнение миграций (существующая логика)
+            # Run migrations (existing logic)
             state = cache.get_cfg_state(cfg_root) or {}
             applied: List[Dict[str, Any]] = list(state.get("applied") or [])
 
@@ -428,7 +428,7 @@ def ensure_cfg_actual(cfg_root: Path) -> None:
                     )
                     raise MigrationFatalError(_user_msg(mid, mtitle, "run", e)) from e
 
-            # Финальная фиксация
+            # Final fixation
             actual = max(actual, CFG_CURRENT)
             _put_state(
                 cache,
@@ -440,15 +440,15 @@ def ensure_cfg_actual(cfg_root: Path) -> None:
             )
 
         finally:
-            # Всегда освобождаем лок
+            # Always release the lock
             lock.release()
 
     else:
-        # Лок занят другим процессом - ЖДЕМ завершения миграций
+        # Lock is held by another process - WAIT for migration completion
         lock.wait_for_completion()
 
-        # После завершения ожидания проверяем актуальность
-        # (на случай если миграции завершились с ошибкой)
+        # After waiting, check if configuration is current
+        # (in case migrations completed with an error)
         if not is_actual():
             raise MigrationFatalError(
                 "Migration completed by another process, but configuration is still not actual. "

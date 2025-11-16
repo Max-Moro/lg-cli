@@ -21,17 +21,17 @@ class _LazySpec:
     extensions: Tuple[str, ...]
 
 
-# Ленивые спецификации: ext → где лежит класс
+# Lazy specifications: ext → where the class is located
 _LAZY_BY_EXT: Dict[str, _LazySpec] = {}
 
-# Разрешённые классы: по расширению
+# Registered classes: by extension
 _CLASS_BY_EXT: Dict[str, Type[BaseAdapter]] = {}
 
 
 def register_lazy(*, module: str, class_name: str, extensions: List[str] | Tuple[str, ...]) -> None:
     """
-    Зарегистрировать адаптер «по строкам» без импорта модуля.
-    Один и тот же класс можно объявлять по нескольким расширениям.
+    Register adapter "by strings" without importing the module.
+    The same class can be declared for multiple extensions.
     """
     spec = _LazySpec(module=module, class_name=class_name, extensions=tuple(e.lower() for e in extensions))
     for ext in spec.extensions:
@@ -39,7 +39,7 @@ def register_lazy(*, module: str, class_name: str, extensions: List[str] | Tuple
 
 
 def _load_adapter_from_spec(spec: _LazySpec) -> Type[BaseAdapter]:
-    # Поддерживаем как относительные (".python") так и абсолютные имена модулей.
+    # Support both relative (".python") and absolute module names.
     mod = importlib.import_module(spec.module, package=__package__)
     cls = getattr(mod, spec.class_name, None)
     if cls is None:
@@ -47,7 +47,7 @@ def _load_adapter_from_spec(spec: _LazySpec) -> Type[BaseAdapter]:
     if not issubclass(cls, BaseAdapter):
         raise TypeError(f"{spec.module}.{spec.class_name} is not a subclass of BaseAdapter")
 
-    # Регистрация реального класса (актуализирует карты по всем расширениям класса)
+    # Register actual class (updates maps for all extensions of the class)
     for ext in cls.extensions:
         _CLASS_BY_EXT[ext.lower()] = cls
 
@@ -55,44 +55,44 @@ def _load_adapter_from_spec(spec: _LazySpec) -> Type[BaseAdapter]:
 
 
 def _resolve_class_by_ext(ext: str) -> Type[BaseAdapter]:
-    # Уже зарегистрирован класс?
+    # Is class already registered?
     cls = _CLASS_BY_EXT.get(ext)
     if cls:
         return cls
-    # Есть ленивый spec?
+    # Is there a lazy spec?
     spec = _LAZY_BY_EXT.get(ext)
     if spec:
         return _load_adapter_from_spec(spec)
-    # Фолбэк — базовый адаптер
+    # Fallback - base adapter
     return BaseAdapter
 
 
 def get_adapter_for_path(path: Path) -> Type[BaseAdapter]:
     """
-    Вернуть КЛАСС адаптера по расширению пути. Ничего не инстанцируем.
-    Если неизвестно — возвращаем BaseAdapter.
+    Return adapter CLASS by path extension. Don't instantiate anything.
+    If unknown - return BaseAdapter.
     """
     return _resolve_class_by_ext(path.suffix.lower())
 
 
 def list_implemented_adapters() -> List[str]:
     """
-    Возвращает список имен полностью реализованных языковых адаптеров.
-    
+    Return list of fully implemented language adapter names.
+
     Returns:
-        Список имен адаптеров (например: ["python", "typescript", "markdown"])
+        List of adapter names (e.g.: ["python", "typescript", "markdown"])
     """
     implemented = set()
-    
-    # Проходим по всем зарегистрированным расширениям
+
+    # Iterate through all registered extensions
     for ext in _LAZY_BY_EXT.keys():
         try:
             adapter_cls = _resolve_class_by_ext(ext)
-            # Пропускаем базовый адаптер
+            # Skip base adapter
             if adapter_cls is not BaseAdapter:
                 implemented.add(adapter_cls.name)
         except Exception:
-            # Если не удалось загрузить - пропускаем
+            # Skip if failed to load
             continue
-    
+
     return sorted(implemented)

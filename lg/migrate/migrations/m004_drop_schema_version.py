@@ -9,22 +9,22 @@ from ..yaml_rt import rewrite_yaml_rt, load_yaml_rt
 
 class _M004_DropSchemaVersion:
     """
-    Миграция №4:
-      Удаляем устаревшее верхнеуровневое поле `schema_version` из lg-cfg/sections.yaml,
-      чтобы новый парсер не принимал его за секцию.
+    Migration #4:
+      Remove deprecated top-level field `schema_version` from lg-cfg/sections.yaml,
+      so the new parser doesn't mistakenly treat it as a section.
     """
     id = 4
     title = "Remove legacy top-level 'schema_version' from sections.yaml"
 
     def _needs(self, fs: CfgFs) -> bool:
-        """Быстрый детектор необходимости правки."""
+        """Fast detector for necessity of fix."""
         if not fs.exists("sections.yaml"):
             return False
         try:
             doc = load_yaml_rt(fs.cfg_root / "sections.yaml")
             return isinstance(doc, CommentedMap) and "schema_version" in doc
         except Exception:
-            # Фолбэк: грубая эвристика по тексту
+            # Fallback: rough heuristic by text
             try:
                 txt = fs.read_text("sections.yaml")
                 return "schema_version" in txt
@@ -33,9 +33,9 @@ class _M004_DropSchemaVersion:
 
     def run(self, fs: CfgFs, *, allow_side_effects: bool) -> bool:
         """
-        Удаляет верхнеуровневый ключ schema_version из sections.yaml.
-        Возвращает True при реальном изменении файла, иначе False.
-        Если требуется изменить файл, но сайд-эффекты запрещены — PreflightRequired.
+        Removes top-level schema_version key from sections.yaml.
+        Returns True if the file was actually changed, otherwise False.
+        If the file needs to be changed but side effects are forbidden — raises PreflightRequired.
         """
         need = self._needs(fs)
         if not need:
@@ -61,7 +61,7 @@ class _M004_DropSchemaVersion:
         try:
             return bool(rewrite_yaml_rt(fs.cfg_root / "sections.yaml", _transform))
         except Exception:
-            # Некорректный YAML — оставляем как есть; диагностика всплывёт в Doctor/CLI.
+            # Malformed YAML — leave as is; diagnostics will bubble up in Doctor/CLI.
             return False
 
 

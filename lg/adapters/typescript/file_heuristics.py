@@ -1,6 +1,6 @@
 """
-TypeScript файловые эвристики для определения barrel files.
-Выделен в отдельный модуль для упрощения основного адаптера.
+TypeScript file heuristics for identifying barrel files.
+Separated into a dedicated module to simplify the main adapter.
 """
 
 from __future__ import annotations
@@ -11,119 +11,119 @@ from ..tree_sitter_support import TreeSitterDocument
 
 def is_barrel_file(lightweight_ctx: LightweightContext, adapter, tokenizer) -> bool:
     """
-    Определяет, является ли файл barrel file (index.ts или содержит только реэкспорты).
-    Использует ленивую инициализацию - сначала простые эвристики, затем парсинг если нужно.
-    
+    Determine if file is a barrel file (index.ts or contains only re-exports).
+    Uses lazy initialization - first simple heuristics, then parsing if needed.
+
     Args:
-        lightweight_ctx: Облегченный контекст с информацией о файле
-        adapter: Адаптер для создания документа при необходимости
-        tokenizer: Токенайзер для парсинга
-        
+        lightweight_ctx: Lightweight context with file information
+        adapter: Adapter for creating document if needed
+        tokenizer: Tokenizer for parsing
+
     Returns:
-        True если файл является barrel file
+        True if file is a barrel file
     """
-    # Быстрая проверка по имени файла
+    # Quick check by filename
     if lightweight_ctx.filename in ("index.ts", "index.tsx"):
         return True
-    
-    # Анализируем содержимое текстуально - если большинство строк содержат export ... from
+
+    # Analyze content textually - if most lines contain export ... from
     lines = lightweight_ctx.raw_text.split('\n')
     export_lines = 0
     non_empty_lines = 0
-    
+
     for line in lines:
         stripped = line.strip()
         if stripped and not stripped.startswith('//') and not stripped.startswith('/*'):
             non_empty_lines += 1
             if 'export' in stripped and 'from' in stripped:
                 export_lines += 1
-    
-    # Если нет значимых строк, не barrel file
+
+    # If no significant lines, not barrel file
     if non_empty_lines == 0:
         return False
-    
-    # Эвристика: если больше 70% строк - реэкспорты, считаем barrel file
+
+    # Heuristic: if more than 70% of lines are re-exports, consider barrel file
     export_ratio = export_lines / non_empty_lines
-    
-    # Если очевидно barrel file (много реэкспортов), возвращаем True
+
+    # If obviously barrel file (many re-exports), return True
     if export_ratio > 0.7:
         return True
-    
-    # Если очевидно НЕ barrel file (мало реэкспортов), возвращаем False
+
+    # If obviously NOT barrel file (few re-exports), return False
     if export_ratio < 0.3:
         return False
-    
-    # Для промежуточных случаев (30-70%) используем ленивую инициализацию Tree-sitter
-    # для более точного анализа структуры файла
+
+    # For intermediate cases (30-70%) use lazy Tree-sitter initialization
+    # for more accurate analysis of file structure
     try:
         full_context = lightweight_ctx.get_full_context(adapter, tokenizer)
         return _deep_barrel_file_analysis(full_context.doc)
     except Exception:
-        # Если Tree-sitter парсинг не удался, полагаемся на текстовую эвристику
+        # If Tree-sitter parsing failed, rely on text heuristic
         return export_ratio > 0.5
 
 
 def _deep_barrel_file_analysis(doc: TreeSitterDocument) -> bool:
     """
-    Глубокий анализ barrel file через Tree-sitter парсинг.
-    Вызывается только в сложных случаях.
-    
+    Deep analysis of barrel file through Tree-sitter parsing.
+    Called only in complex cases.
+
     Args:
-        doc: Разобранный Tree-sitter документ
-        
+        doc: Parsed Tree-sitter document
+
     Returns:
-        True если документ является barrel file
+        True if document is a barrel file
     """
     try:
-        # Ищем все export statements
+        # Find all export statements
         exports = doc.query("exports")
         export_count = len(exports)
-        
-        # Ищем re-export statements (export ... from ...)
+
+        # Find re-export statements (export ... from ...)
         reexport_count = 0
         for node, capture_name in exports:
             node_text = doc.get_node_text(node)
             if ' from ' in node_text:
                 reexport_count += 1
-        
-        # Также ищем обычные объявления (functions, classes, interfaces)
+
+        # Also find regular declarations (functions, classes, interfaces)
         functions = doc.query("functions")
         classes = doc.query("classes")
         interfaces = doc.query("interfaces")
-        
+
         declaration_count = len(functions) + len(classes) + len(interfaces)
-        
-        # Barrel file если:
-        # 1. Много реэкспортов и мало собственных объявлений
-        # 2. Или очень высокий процент реэкспортов
+
+        # Barrel file if:
+        # 1. Many re-exports and few own declarations
+        # 2. Or very high percentage of re-exports
         if export_count > 0:
             reexport_ratio = reexport_count / export_count
             return reexport_ratio > 0.6 and declaration_count < 3
-        
+
         return False
-        
+
     except Exception:
-        # При ошибках парсинга возвращаем False
+        # On parsing errors return False
         return False
 
 
 def should_skip_typescript_file(lightweight_ctx: LightweightContext, skip_barrel_files: bool, adapter, tokenizer) -> bool:
     """
-    Определяет, следует ли пропустить TypeScript файл целиком.
-    
+    Determine if TypeScript file should be skipped entirely.
+
     Args:
-        lightweight_ctx: Облегченный контекст с информацией о файле
-        skip_barrel_files: Флаг пропуска barrel files
-        adapter: Адаптер для создания документа при необходимости
-        tokenizer: Токенайзер для парсинга
-        
+        lightweight_ctx: Lightweight context with file information
+        skip_barrel_files: Flag for skipping barrel files
+        adapter: Adapter for creating document if needed
+        tokenizer: Tokenizer for parsing
+
     Returns:
-        True если файл должен быть пропущен
+        True if file should be skipped
     """
-    # Пропускаем barrel files если включена соответствующая опция
+    # Skip barrel files if the option is enabled
     if skip_barrel_files:
         if is_barrel_file(lightweight_ctx, adapter, tokenizer):
             return True
-    
-    # Можно добавить другие эвристики пропуска для TypeScript
+
+    # Can add other skip heuristics for TypeScript
     return False

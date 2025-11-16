@@ -10,44 +10,44 @@ Interval = Tuple[int, int, dict]  # (start, end_excl, payload_meta)
 
 def _merge_intervals(intervals: List[Interval]) -> List[Interval]:
     """
-    Слияние перекрывающихся и соприкасающихся интервалов.
-    Политика: объединяем, payload метаданные агрегируем (суммарно).
+    Merge overlapping and touching intervals.
+    Policy: combine intervals, aggregate payload metadata (cumulatively).
     """
     if not intervals:
         return []
     intervals = sorted(intervals, key=lambda x: (x[0], x[1]))
     merged: List[Interval] = []
     cur_s, cur_e, cur_meta = intervals[0]
-    # трекаем лучший источник placeholder/reason по ширине
+    # track best placeholder/reason by width
     best_width = max(0, cur_e - cur_s)
     best_placeholder = cur_meta.get("placeholder") if isinstance(cur_meta, dict) else None
     best_reason = cur_meta.get("reason") if isinstance(cur_meta, dict) else None
     for s, e, m in intervals[1:]:
-        if s <= cur_e:  # перекрытие или касание
-            # extend границу
+        if s <= cur_e:  # overlap or touch
+            # extend boundary
             if e > cur_e:
                 cur_e = e
-            # агрегируем счётчики
+            # aggregate counters
             for k, v in m.items():
                 if isinstance(v, int):
                     cur_meta[k] = int(cur_meta.get(k, 0)) + v
                 else:
-                    # списки/строки можем аккумулировать в списки
+                    # lists/strings can accumulate as lists
                     if isinstance(v, list):
                         cur_meta[k] = list(cur_meta.get(k, [])) + v
                     else:
-                        # по умолчанию — сохраняем предыдущее (стабильно),
-                        # т.к. placeholder/reason выберем отдельной логикой.
+                        # by default — preserve previous (stable),
+                        # since placeholder/reason will be selected by separate logic.
                         cur_meta.setdefault(k, v)
-            # политика выбора placeholder/reason: от самого широкого интервала,
-            # при равной ширине — из более раннего (т.е. оставляем текущий).
+            # policy for selecting placeholder/reason: from widest interval,
+            # if width is equal — from earlier one (i.e., keep current).
             width_now = e - s
             if width_now > best_width:
                 best_width = width_now
                 best_placeholder = m.get("placeholder")
                 best_reason = m.get("reason")
         else:
-            # финализируем placeholder/reason для собранного окна
+            # finalize placeholder/reason for accumulated window
             if isinstance(cur_meta, dict):
                 if best_placeholder is not None:
                     cur_meta["placeholder"] = best_placeholder
@@ -58,7 +58,7 @@ def _merge_intervals(intervals: List[Interval]) -> List[Interval]:
             best_width = max(0, e - s)
             best_placeholder = m.get("placeholder")
             best_reason = m.get("reason")
-    # финализируем хвост
+    # finalize tail
     if isinstance(cur_meta, dict):
         if best_placeholder is not None:
             cur_meta["placeholder"] = best_placeholder
@@ -112,27 +112,27 @@ def invert_intervals(keep_intervals: List[Interval], doc_length: int) -> List[In
 
 
 def build_drop_intervals(
-    doc: ParsedDoc, 
-    *, 
+    doc: ParsedDoc,
+    *,
     section_rules: List[SectionRule] | None = None,
     drop_frontmatter: bool = False,
     keep_mode: bool = False,
     keep_frontmatter: bool = False,
 ) -> List[Interval]:
     """
-    Строит итоговый, слитый список интервалов для удаления.
-    В режиме keep_mode=True строит интервалы для сохранения, а затем инвертирует их.
-    payload_meta содержит:
+    Builds final merged list of intervals for removal.
+    In keep_mode=True, builds intervals to preserve, then inverts them.
+    payload_meta contains:
       • kind: "section" | "frontmatter" | "inverse"
-      • title, level, reason (когда применимо)
+      • title, level, reason (when applicable)
       • placeholders: {template_override?}
     """
     if keep_mode and section_rules is None:
         section_rules = []
-        
+
     intervals: List[Interval] = []
 
-    # 1) Секции
+    # 1) Sections
     if section_rules:
         for s, e, rule, h in select_section_intervals(doc, section_rules):
             meta = {
@@ -152,13 +152,13 @@ def build_drop_intervals(
         # In keep mode: add frontmatter to intervals if keep_frontmatter=True
         if (not keep_mode and drop_frontmatter) or (keep_mode and keep_frontmatter):
             intervals.append((
-                s, e, 
+                s, e,
                 {
-                    "kind": "frontmatter", 
-                    "title": None, 
-                    "level": None, 
-                    "reason": "frontmatter", 
-                    "placeholder": None, 
+                    "kind": "frontmatter",
+                    "title": None,
+                    "level": None,
+                    "reason": "frontmatter",
+                    "placeholder": None,
                     "count": 1
                 }
             ))
@@ -166,6 +166,6 @@ def build_drop_intervals(
     # 3) In keep mode, invert the intervals
     if keep_mode:
         return invert_intervals(intervals, doc.line_count())
-        
-    # 4) Слияние
+
+    # 4) Merge
     return _merge_intervals(intervals)

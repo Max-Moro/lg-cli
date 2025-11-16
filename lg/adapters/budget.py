@@ -144,7 +144,7 @@ class BudgetController(Generic[Cc]):
                 effective_cfg.comment_policy = CommentConfig(policy=cast(CommentPolicy, "keep_doc"), max_tokens=None)
 
             elif step == "imports_local":
-                # "strip_external" + "strip_local" вместе дают "strip_all"
+                # "strip_external" + "strip_local" together give "strip_all"
                 step_after_text = self._apply_imports(lightweight_ctx, text_current, policy="strip_all", summarize_long=True)
                 effective_cfg.imports = replace(effective_cfg.imports, policy="strip_all", summarize_long=True)
 
@@ -165,7 +165,7 @@ class BudgetController(Generic[Cc]):
                 effective_cfg.public_api_only = True
 
             elif step == "public_bodies":
-                # "non_public" + "public_only" вместе дают "all", поэтому тут "all", а не "public_only"
+                # "non_public" + "public_only" together give "all", so use "all" instead of "public_only"
                 step_after_text = self._apply_function_bodies(lightweight_ctx, text_current, mode="all")
                 eff_sfb = effective_cfg.strip_function_bodies
                 if isinstance(eff_sfb, bool) and eff_sfb is True:

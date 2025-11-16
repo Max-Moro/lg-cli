@@ -1,5 +1,5 @@
 """
-AST узлы для Markdown-плейсхолдеров.
+AST nodes for Markdown placeholders.
 """
 
 from __future__ import annotations
@@ -13,64 +13,64 @@ from ..nodes import TemplateNode
 @dataclass(frozen=True)
 class MarkdownFileNode(TemplateNode):
     """
-    Плейсхолдер для прямого включения Markdown-файла ${md:path} или ${md:path#section}.
-    
-    Представляет ссылку на Markdown-файл (или набор файлов через глобы),
-    который должен быть обработан и включен в текущее место.
-    
+    Placeholder for direct Markdown file inclusion ${md:path} or ${md:path#section}.
+
+    Represents a reference to a Markdown file (or set of files via globs)
+    that should be processed and included in the current location.
+
     Attributes:
-        path: Путь к файлу относительно скоупа (например, "docs/api" или "*.md")
-        origin: Скоуп для адресных ссылок ("self", путь к lg-cfg или None)
-        
-        # Параметры обработки заголовков
-        heading_level: Явно заданный уровень заголовков (если None - автоопределение)
-        strip_h1: Флаг удаления H1 (если None - автоопределение)
-        
-        # Частичное включение
-        anchor: Якорь для включения только определенной секции
-        
-        # Условное включение
-        condition: Текст условия для проверки тегов/режимов
-        
-        # Поддержка глобов
-        is_glob: Флаг того, что path содержит глоб-паттерн
+        path: File path relative to scope (e.g., "docs/api" or "*.md")
+        origin: Scope for addressed references ("self", path to lg-cfg or None)
+
+        # Heading processing parameters
+        heading_level: Explicitly set heading level (None for auto-detection)
+        strip_h1: Flag for H1 removal (None for auto-detection)
+
+        # Partial inclusion
+        anchor: Anchor for including only specific section
+
+        # Conditional inclusion
+        condition: Condition text for checking tags/modes
+
+        # Glob support
+        is_glob: Flag indicating path contains glob pattern
     """
-    path: str                      # Путь к файлу (может содержать глобы)
-    origin: Optional[str] = None   # "self" или путь к скоупу
-    
-    # Параметры обработки заголовков (автоматические или явные)
-    heading_level: Optional[int] = None    # Явный уровень заголовков
-    strip_h1: Optional[bool] = None        # Флаг удаления H1
-    
-    # Частичное включение
-    anchor: Optional[str] = None           # Якорь для включения секции
-    
-    # Условное включение
-    condition: Optional[str] = None        # Условие для проверки
-    
-    # Поддержка глобов
-    is_glob: bool = False                  # Флаг глоб-паттерна
+    path: str                      # File path (may contain globs)
+    origin: Optional[str] = None   # "self" or path to scope
+
+    # Heading processing parameters (automatic or explicit)
+    heading_level: Optional[int] = None    # Explicit heading level
+    strip_h1: Optional[bool] = None        # Flag for H1 removal
+
+    # Partial inclusion
+    anchor: Optional[str] = None           # Anchor for section inclusion
+
+    # Conditional inclusion
+    condition: Optional[str] = None        # Condition to check
+
+    # Glob support
+    is_glob: bool = False                  # Flag for glob pattern
 
     def canon_key(self) -> str:
         """
-        Возвращает канонический ключ для кэширования и дедупликации.
-        
+        Returns canonical key for caching and deduplication.
+
         Returns:
-            Строка вида "md:path" или "md@origin:path" с параметрами
+            String like "md:path" or "md@origin:path" with parameters
         """
         parts = ["md"]
-        
-        # Добавляем origin если указан
+
+        # Add origin if specified
         if self.origin and self.origin != "self":
             parts.append(f"@{self.origin}")
-        
+
         parts.append(f":{self.path}")
-        
-        # Добавляем якорь если указан
+
+        # Add anchor if specified
         if self.anchor:
             parts.append(f"#{self.anchor}")
-        
-        # Добавляем параметры если указаны
+
+        # Add parameters if specified
         params = []
         if self.heading_level is not None:
             params.append(f"level:{self.heading_level}")
@@ -78,10 +78,10 @@ class MarkdownFileNode(TemplateNode):
             params.append(f"strip_h1:{str(self.strip_h1).lower()}")
         if self.condition:
             params.append(f"if:{self.condition}")
-        
+
         if params:
             parts.append("," + ",".join(params))
-        
+
         return "".join(parts)
 
 

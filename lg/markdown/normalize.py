@@ -11,77 +11,77 @@ def normalize_markdown(
     placeholder_inside_heading: bool = False,
 ) -> tuple[str, dict]:
     """
-      • Если max_heading_level=None → не трогаем (кроме снятия H1).
-      • Если strip_h1=True → снимаем верхний H1 (ATX/Setext).
-      • Сдвиг уровней заголовков так, чтобы минимальный уровень стал равен max_heading_level.
-      • Если file_label задан → вставляем HTML-комментарий с меткой файла.
+      • If max_heading_level=None → don't touch (except H1 removal).
+      • If strip_h1=True → remove top H1 (ATX/Setext).
+      • Shift heading levels so minimum level equals max_heading_level.
+      • If file_label provided → insert HTML comment with file marker.
     """
     meta = {"md.removed_h1": 0, "md.shifted": False, "md.file_label_inserted": False}
 
     lines = text.splitlines()
 
-    # 1) специальная обработка для плейсхолдеров внутри заголовков
+    # 1) special processing for placeholders inside headings
     removed_h1 = False
-    h1_line_index = -1  # индекс строки где был/есть H1
-    
+    h1_line_index = -1  # line index where H1 was/is
+
     if placeholder_inside_heading and lines:
-        # Для плейсхолдеров внутри заголовков извлекаем только текст H1 без символов #
+        # For placeholders inside headings, extract H1 text without # symbols
         atx_match = re.match(r"^#\s+(.*)$", lines[0])
         if atx_match:
-            # Заменяем H1 на просто текст
+            # Replace H1 with plain text
             heading_text = atx_match.group(1).strip()
             lines[0] = heading_text
             removed_h1 = True
             h1_line_index = 0
             meta["md.removed_h1"] = 1
         elif len(lines) >= 2 and lines[0].strip() and re.match(r"^={2,}\s*$", lines[1]):
-            # Setext заголовок - оставляем только текст, убираем подчеркивание
+            # Setext heading - keep only text, remove underline
             heading_text = lines[0].strip()
             lines = [heading_text] + lines[2:]
             removed_h1 = True
             h1_line_index = 0
             meta["md.removed_h1"] = 1
     elif strip_h1:
-        # Обычная обработка strip_h1
+        # Standard strip_h1 processing
         if lines:
             # ATX: "# Title"
             if re.match(r"^#\s", lines[0]):
                 lines = lines[1:]
                 removed_h1 = True
-                h1_line_index = -1  # H1 удален, метка в начало
+                h1_line_index = -1  # H1 removed, marker at start
                 meta["md.removed_h1"] = 1
             # Setext: Title + "===="
             elif len(lines) >= 2 and lines[0].strip() and re.match(r"^={2,}\s*$", lines[1]):
                 lines = lines[2:]
                 removed_h1 = True
-                h1_line_index = -1  # H1 удален, метка в начало
+                h1_line_index = -1  # H1 removed, marker at start
                 meta["md.removed_h1"] = 1
     else:
-        # H1 не удаляется - найдем его позицию для вставки метки после него
+        # H1 not removed - find its position for marker insertion after it
         if lines:
             # ATX: "# Title"
             if re.match(r"^#\s", lines[0]):
                 h1_line_index = 0
             # Setext: Title + "===="
             elif len(lines) >= 2 and lines[0].strip() and re.match(r"^={2,}\s*$", lines[1]):
-                h1_line_index = 1  # после подчеркивания
+                h1_line_index = 1  # after underline
 
-    # Вставка метки файла (до нормализации уровней заголовков)
+    # File marker insertion (before heading level normalization)
     file_comment = f"<!-- FILE: {file_label} -->"
 
     if placeholder_inside_heading and removed_h1 and h1_line_index >= 0:
-        # Особый случай: placeholder_inside_heading + H1 был преобразован в текст
-        # Вставляем комментарий ПОСЛЕ строки с текстом заголовка
+        # Special case: placeholder_inside_heading + H1 was converted to text
+        # Insert comment AFTER heading text line
         insert_pos = h1_line_index + 1
         lines.insert(insert_pos, file_comment)
     elif removed_h1 or h1_line_index < 0:
-        # H1 был полностью удален или не найден - вставляем метку в начало
+        # H1 was completely removed or not found - insert marker at start
         lines.insert(0, file_comment)
-        # Корректируем индекс если был найден H1 после вставки
+        # Adjust index if H1 was found after insertion
         if h1_line_index >= 0:
             h1_line_index += 1
     else:
-        # H1 оставлен - вставляем метку после него
+        # H1 kept - insert marker after it
         insert_pos = h1_line_index + 1
         lines.insert(insert_pos, file_comment)
 
@@ -95,13 +95,13 @@ def normalize_markdown(
     in_fence = False
     fence_pat = re.compile(r"^```")
     head_pat = re.compile(r"^(#+)\s")
-    
+
     if placeholder_inside_heading and removed_h1:
-        # Специальная логика для плейсхолдеров внутри заголовков
-        # H2 должен стать уровнем max_heading_level + 1
-        shift = (max_lvl + 1) - 2  # H2 (уровень 2) становится max_lvl + 1
+        # Special logic for placeholders inside headings
+        # H2 should become level max_heading_level + 1
+        shift = (max_lvl + 1) - 2  # H2 (level 2) becomes max_lvl + 1
     else:
-        # 2) собрать min_lvl
+        # 2) collect min_lvl
         min_lvl: int | None = None
         for ln in lines:
             if fence_pat.match(ln):
@@ -115,7 +115,7 @@ def normalize_markdown(
                 min_lvl = lvl if min_lvl is None else min(min_lvl, lvl)
 
         if min_lvl is None:
-            # заголовков нет
+            # no headings
             return "\n".join(lines), meta
 
         shift = max_lvl - min_lvl
@@ -124,7 +124,7 @@ def normalize_markdown(
     if shift == 0:
         return "\n".join(lines), meta
 
-    # 3) применить сдвиг
+    # 3) apply shift
     out: list[str] = []
     in_fence = False
     for ln in lines:
@@ -138,7 +138,7 @@ def normalize_markdown(
         m = head_pat.match(ln)
         if m:
             new_level = len(m.group(1)) + shift
-            # Ограничиваем максимальный уровень заголовков до H6
+            # Limit max heading level to H6
             if new_level > 6:
                 new_level = 6
             new_hashes = "#" * new_level

@@ -15,13 +15,13 @@ from .stats import TokenService
 @dataclass
 class ConditionContext:
     """
-    Контекст для вычисления условий в адаптивных шаблонах.
+    Context for evaluating conditions in adaptive templates.
 
-    Содержит информацию об активных тегах, наборах тегов и скоупах,
-    необходимую для правильной оценки условий типа:
+    Contains information about active tags, tag sets and scopes,
+    necessary for correct evaluation of conditions like:
     - tag:name
     - TAGSET:set_name:tag_name
-    - origin: "self" или путь к области (например, "apps/web")
+    - origin: "self" or path to scope (e.g., "apps/web")
     """
     active_tags: Set[str] = field(default_factory=set)
     tagsets: Dict[str, Set[str]] = field(default_factory=dict)
@@ -29,44 +29,44 @@ class ConditionContext:
     task_text: Optional[str] = None
 
     def is_tag_active(self, tag_name: str) -> bool:
-        """Проверяет, активен ли указанный тег."""
+        """Check if specified tag is active."""
         return tag_name in self.active_tags
 
     def is_tagset_condition_met(self, set_name: str, tag_name: str) -> bool:
         """
-        Проверяет условие TAGSET:set_name:tag_name.
+        Check TAGSET:set_name:tag_name condition.
 
-        Правила:
-        - Истинно, если ни один тег из набора не активен
-        - Истинно, если указанный тег активен
-        - Ложно во всех остальных случаях
+        Rules:
+        - True if no tag from the set is active
+        - True if specified tag is active
+        - False in all other cases
         """
         tagset_tags = self.tagsets.get(set_name, set())
         if not tagset_tags:
-            # Набор не существует или пуст - условие истинно (ни один тег не активен)
+            # Set doesn't exist or is empty - condition is true (no tag is active)
             return True
 
-        # Проверяем, какие теги из набора активны
+        # Check which tags from the set are active
         active_in_set = tagset_tags.intersection(self.active_tags)
 
         if not active_in_set:
-            # Ни один тег из набора не активен - условие истинно
+            # No tag from the set is active - condition is true
             return True
 
-        # Есть активные теги из набора - условие истинно только если указанный тег активен
+        # There are active tags from the set - condition is true only if specified tag is active
         return tag_name in active_in_set
 
     def is_scope_condition_met(self, scope_type: str) -> bool:
         """
-        Проверяет условие scope:local/parent.
-        
+        Check scope:local/parent condition.
+
         Args:
-            scope_type: "local" или "parent"
-            
+            scope_type: "local" or "parent"
+
         Returns:
-            True если условие выполнено:
-            - scope:local - истинно для локального скоупа (origin == "self" или пустой)
-            - scope:parent - истинно для родительского скоупа (origin != "self" и не пустой)
+            True if condition is met:
+            - scope:local - true for local scope (origin == "self" or empty)
+            - scope:parent - true for parent scope (origin != "self" and not empty)
         """
         if scope_type == "local":
             return not self.origin or self.origin == "self"
@@ -76,12 +76,12 @@ class ConditionContext:
 
     def is_task_provided(self) -> bool:
         """
-        Проверяет, задан ли непустой эффективный текст задачи.
-        
-        Учитывает как явно указанный --task, так и задачи из активных режимов.
-        
+        Check if non-empty effective task text is provided.
+
+        Takes into account both explicitly specified --task and tasks from active modes.
+
         Returns:
-            True если есть эффективный task_text (явный или из режимов)
+            True if there is effective task_text (explicit or from modes)
         """
         return bool(self.task_text and self.task_text.strip())
 
@@ -94,56 +94,56 @@ class RunContext:
     vcs: VcsProvider
     tokenizer: TokenService
     adaptive_loader: AdaptiveConfigLoader
-    mode_options: ModeOptions = field(default_factory=ModeOptions)  # смердженные опции от режимов
-    active_tags: Set[str] = field(default_factory=set)  # все активные теги
+    mode_options: ModeOptions = field(default_factory=ModeOptions)  # merged options from modes
+    active_tags: Set[str] = field(default_factory=set)  # all active tags
 
     def get_effective_task_text(self) -> Optional[str]:
         """
-        Возвращает эффективный текст задачи с учетом приоритетов.
-        
-        Приоритет:
-        1. Явно указанный --task (если не пустой)
-        2. Задачи из активных режимов (объединенные через параграфы)
-        3. None, если ни то ни другое не задано
-        
+        Return effective task text considering priorities.
+
+        Priority:
+        1. Explicitly specified --task (if not empty)
+        2. Tasks from active modes (combined through paragraphs)
+        3. None if neither is specified
+
         Returns:
-            Эффективный текст задачи или None
+            Effective task text or None
         """
-        # Приоритет 1: явно указанный --task
+        # Priority 1: explicitly specified --task
         if self.options.task_text and self.options.task_text.strip():
             return self.options.task_text
-        
-        # Приоритет 2: задачи из активных режимов
+
+        # Priority 2: tasks from active modes
         mode_tasks = self._collect_mode_tasks()
         if mode_tasks:
-            # Объединяем задачи через двойной перевод строки (параграфы)
+            # Combine tasks through double newline (paragraphs)
             return "\n\n".join(mode_tasks)
-        
-        # Приоритет 3: ничего не задано
+
+        # Priority 3: nothing specified
         return None
-    
+
     def _collect_mode_tasks(self) -> list[str]:
         """
-        Собирает default_task из всех активных режимов.
-        
+        Collect default_task from all active modes.
+
         Returns:
-            Список непустых задач из режимов в порядке имени modeset (для детерминизма)
+            List of non-empty tasks from modes in modeset name order (for determinism)
         """
         modes_config = self.adaptive_loader.get_modes_config()
         tasks = []
-        
-        # Сортируем по имени modeset для детерминизма
+
+        # Sort by modeset name for determinism
         for modeset_name in sorted(self.options.modes.keys()):
             mode_name = self.options.modes[modeset_name]
-            
+
             modeset = modes_config.mode_sets.get(modeset_name)
             if not modeset:
                 continue
-            
+
             mode = modeset.modes.get(mode_name)
             if not mode or not mode.default_task:
                 continue
-            
+
             tasks.append(mode.default_task)
-        
+
         return tasks

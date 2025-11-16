@@ -5,8 +5,8 @@ from importlib import metadata
 
 def tool_version() -> str:
     """
-    Единый способ получить версию установленного пакета.
-    Не зависит от остальных модулей (во избежание циклов).
+    Single way to get the version of the installed package.
+    Independent from other modules (to avoid cycles).
     """
     for dist in ("listing-generator", "lg"):
         try:

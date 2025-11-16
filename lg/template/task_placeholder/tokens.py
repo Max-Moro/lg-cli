@@ -1,5 +1,5 @@
 """
-Токены для парсинга task-плейсхолдеров.
+Tokens for parsing task placeholders.
 """
 
 from __future__ import annotations
@@ -12,10 +12,10 @@ from ..types import TokenSpec
 
 def get_task_token_specs() -> List[TokenSpec]:
     """
-    Возвращает спецификации токенов для task-плейсхолдеров.
+    Returns token specifications for task placeholders.
     """
     return [
-        # Строковый литерал в двойных кавычках с escape-последовательностями
+        # String literal in double quotes with escape sequences
         TokenSpec(
             name="STRING_LITERAL",
             pattern=re.compile(r'"(?:[^"\\]|\\.)*"'),

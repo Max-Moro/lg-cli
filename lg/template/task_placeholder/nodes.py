@@ -1,5 +1,5 @@
 """
-AST узел для task-плейсхолдера.
+AST node for task placeholder.
 """
 
 from __future__ import annotations
@@ -13,17 +13,17 @@ from ..nodes import TemplateNode
 @dataclass(frozen=True)
 class TaskNode(TemplateNode):
     """
-    Плейсхолдер для текста задачи ${task} или ${task:prompt:"..."}.
-    
+    Placeholder for task text ${task} or ${task:prompt:"..."}.
+
     Attributes:
-        default_prompt: Дефолтное значение, если task не задан (None для простого ${task})
+        default_prompt: Default value if task not set (None for simple ${task})
     """
     default_prompt: Optional[str] = None
-    
+
     def canon_key(self) -> str:
-        """Возвращает канонический ключ для кэширования."""
+        """Returns canonical key for caching."""
         if self.default_prompt:
-            # Экранируем кавычки и обрезаем для читаемости
+            # Escape quotes and truncate for readability
             escaped = self.default_prompt.replace('"', '\\"')[:50]
             return f'task:prompt:"{escaped}"'
         return "task"

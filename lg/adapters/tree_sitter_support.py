@@ -192,9 +192,9 @@ class TreeSitterDocument(ABC):
 
     def get_line_number(self, char_offset: int) -> int:
         """
-        Получает номер строки (0-based) для данного смещения.
+        Get line number (0-based) for given offset.
         """
-        # Простая реализация - подсчитываем переводы строк до этой позиции символа
+        # Simple implementation - count line breaks up to this character position
         text_before = self.text[:char_offset]
         return text_before.count('\n')
 
@@ -260,18 +260,18 @@ class TreeSitterDocument(ABC):
 
     def byte_to_char_position(self, byte_pos: int) -> int:
         """
-        Корректно конвертирует байтовую позицию в позицию символа в Unicode-тексте.
-        Гарантирует, что если позиция указывает на середину многобайтового символа,
-        возвращается позиция до этого символа.
+        Correctly convert byte position to character position in Unicode text.
+        Guarantees that if position points to the middle of a multi-byte character,
+        returns position before that character.
         """
         if byte_pos <= 0:
             return 0
         if byte_pos >= len(self._text_bytes):
-            # Если позиция за пределами текста, возвращаем длину текста в символах
+            # If position is beyond text, return text length in characters
             return len(self.text)
 
-        # Ищем максимально длинный валидный срез
-        # (UTF-8 гарантирует, что максимум 4 байта на символ)
+        # Search for longest valid slice
+        # (UTF-8 guarantees maximum 4 bytes per character)
         start = max(0, byte_pos - 4)
         for end in range(byte_pos, start - 1, -1):
             try:
@@ -279,5 +279,5 @@ class TreeSitterDocument(ABC):
                 return len(decoded)
             except UnicodeDecodeError:
                 continue
-        # Если не удалось декодировать ни один срез, возвращаем 0
+        # If couldn't decode any slice, return 0
         return 0

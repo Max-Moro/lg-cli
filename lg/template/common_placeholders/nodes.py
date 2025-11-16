@@ -1,5 +1,5 @@
 """
-AST узлы для базовых плейсхолдеров секций и шаблонов.
+AST nodes for basic section and template placeholders.
 """
 
 from __future__ import annotations
@@ -14,34 +14,34 @@ from ...types import SectionRef
 @dataclass(frozen=True)
 class SectionNode(TemplateNode):
     """
-    Плейсхолдер секции ${section}.
-    
-    Представляет ссылку на секцию, которая должна быть разрешена
-    и заменена на отрендеренное содержимое секции.
+    Section placeholder ${section}.
+
+    Represents a reference to a section that should be resolved
+    and replaced with rendered section content.
     """
     section_name: str
-    # Резолвленная ссылка на секцию (заполняется резолвером)
+    # Resolved section reference (filled by resolver)
     resolved_ref: Optional[SectionRef] = None
 
 
 @dataclass(frozen=True)
 class IncludeNode(TemplateNode):
     """
-    Плейсхолдер для включения шаблона ${tpl:name} или ${ctx:name}.
-    
-    Представляет ссылку на другой шаблон или контекст, который должен
-    быть загружен, обработан и включен в текущее место.
+    Placeholder for including a template ${tpl:name} or ${ctx:name}.
+
+    Represents a reference to another template or context that should
+    be loaded, processed, and included in the current location.
     """
-    kind: str  # "tpl" или "ctx"
+    kind: str  # "tpl" or "ctx"
     name: str
-    origin: str  # "self" для локальных, или путь к скоупу для адресных
-    
-    # Включаемое содержимое (заполняется резолвером)
+    origin: str  # "self" for local, or scope path for addressed
+
+    # Included content (filled by resolver)
     children: Optional[List[TemplateNode]] = None
 
     def canon_key(self) -> str:
         """
-        Возвращает канонический ключ для кэширования.
+        Returns canonical key for caching.
         """
         if self.origin == "self":
             return f"{self.kind}:{self.name}"

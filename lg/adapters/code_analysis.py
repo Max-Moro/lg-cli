@@ -1,6 +1,6 @@
 """
-Унифицированная система анализа кода для языковых адаптеров.
-Объединяет анализ структуры и видимости в единый компонент без дублирования.
+Unified code analysis system for language adapters.
+Combines structure analysis and visibility analysis into a single component without duplication.
 """
 
 from __future__ import annotations
@@ -13,10 +13,10 @@ from typing import Dict, List, Optional, Set, Tuple
 from .tree_sitter_support import Node, TreeSitterDocument
 
 
-# ============= Модели данных =============
+# ============= Data models =============
 
 class Visibility(Enum):
-    """Уровни видимости элементов кода."""
+    """Visibility levels for code elements."""
     PUBLIC = "public"
     PROTECTED = "protected"
     PRIVATE = "private"
@@ -24,7 +24,7 @@ class Visibility(Enum):
 
 
 class ExportStatus(Enum):
-    """Статусы экспорта элементов."""
+    """Export statuses for elements."""
     EXPORTED = "exported"
     NOT_EXPORTED = "not_exported"
     UNKNOWN = "unknown"
@@ -32,7 +32,7 @@ class ExportStatus(Enum):
 
 @dataclass(frozen=True)
 class ElementInfo:
-    """Полная информация об элементе кода."""
+    """Complete information about a code element."""
     node: Node
     element_type: str           # "function", "method", "class", "interface", etc.
     name: Optional[str] = None
@@ -40,29 +40,29 @@ class ElementInfo:
     export_status: ExportStatus = ExportStatus.UNKNOWN
     is_method: bool = False
     decorators: List[Node] = None
-    
+
     def __post_init__(self):
         if self.decorators is None:
             object.__setattr__(self, 'decorators', [])
-    
+
     @property
     def is_public(self) -> bool:
-        """Является ли элемент публичным."""
+        """Is the element public."""
         return self.visibility == Visibility.PUBLIC
-    
+
     @property
     def is_private(self) -> bool:
-        """Является ли элемент приватным или защищенным."""
+        """Is the element private or protected."""
         return self.visibility in (Visibility.PRIVATE, Visibility.PROTECTED)
-    
+
     @property
     def is_exported(self) -> bool:
-        """Экспортируется ли элемент."""
+        """Is the element exported."""
         return self.export_status == ExportStatus.EXPORTED
-    
+
     @property
     def in_public_api(self) -> bool:
-        """Должен ли элемент быть включен в публичное API."""
+        """Should the element be included in the public API."""
         if self.is_method:
             return self.is_public
         else:
@@ -71,34 +71,34 @@ class ElementInfo:
 
 @dataclass(frozen=True)
 class FunctionGroup:
-    """Группа узлов, относящихся к одной функции/методу."""
+    """Group of nodes related to a single function/method."""
     definition: Node
     element_info: ElementInfo
     name_node: Optional[Node] = None
     body_node: Optional[Node] = None
 
-# ============= Основной анализатор =============
+# ============= Main analyzer =============
 
 class CodeAnalyzer(ABC):
     """
-    Унифицированный анализатор кода.
-    Объединяет функциональность анализа структуры и видимости.
+    Unified code analyzer.
+    Combines functionality for structure analysis and visibility analysis.
     """
-    
+
     def __init__(self, doc: TreeSitterDocument):
         self.doc = doc
-    
-    # ============= Основной API =============
-    
+
+    # ============= Main API =============
+
     def analyze_element(self, node: Node) -> ElementInfo:
         """
-        Полный анализ элемента кода.
-        
+        Complete analysis of a code element.
+
         Args:
-            node: Tree-sitter узел элемента
-            
+            node: Tree-sitter node for the element
+
         Returns:
-            Полная информация об элементе
+            Complete information about the element
         """
         element_type = self.determine_element_type(node)
         name = self.extract_element_name(node)
@@ -106,7 +106,7 @@ class CodeAnalyzer(ABC):
         export_status = self.determine_export_status(node)
         is_method = self.is_method_context(node)
         decorators = self.find_decorators_for_element(node)
-        
+
         return ElementInfo(
             node=node,
             element_type=element_type,
@@ -116,91 +116,91 @@ class CodeAnalyzer(ABC):
             is_method=is_method,
             decorators=decorators
         )
-    
+
     def collect_private_elements_for_public_api(self) -> List[ElementInfo]:
         """
-        Собирает все приватные элементы для удаления в режиме public API.
-        
+        Collects all private elements for removal in public API mode.
+
         Returns:
-            Список приватных элементов для удаления
+            List of private elements for removal
         """
         private_elements = []
-        
-        # 1. Анализируем функции и методы
+
+        # 1. Analyze functions and methods
         self._collect_functions_and_methods(private_elements)
-        
-        # 2. Анализируем классы
+
+        # 2. Analyze classes
         self._collect_classes(private_elements)
-        
-        # 3. Анализируем интерфейсы и типы (если поддерживаются языком)
+
+        # 3. Analyze interfaces and types (if supported by language)
         self._collect_interfaces_and_types(private_elements)
 
-        # 4. Собираем язык-специфичные элементы
+        # 4. Collect language-specific elements
         language_specific_elements = self.collect_language_specific_private_elements()
         private_elements.extend(language_specific_elements)
-        
+
         return private_elements
-    
-    # ============= Вспомогательные методы для сбора приватных элементов =============
-    
+
+    # ============= Helper methods for collecting private elements =============
+
     def _collect_functions_and_methods(self, private_elements: List[ElementInfo]) -> None:
         """
-        Собирает приватные функции и методы для удаления в режиме public API.
-        
+        Collects private functions and methods for removal in public API mode.
+
         Args:
-            private_elements: Список для добавления найденных приватных элементов
+            private_elements: List for adding found private elements
         """
-        # Найти все функции и методы используя язык-специфичные запросы
+        # Find all functions and methods using language-specific queries
         functions = self.doc.query("functions")
-        
-        # Группировать function-like захваты используя язык-специфичные утилиты
+
+        # Group function-like captures using language-specific utilities
         function_groups = self.collect_function_like_elements(functions)
 
         for func_def, func_group in function_groups.items():
             element_info = func_group.element_info
 
-            # Универсальная логика на основе типа элемента
+            # Universal logic based on element type
             if element_info.is_method:
-                # Метод удаляется если приватный/защищенный
+                # Method is removed if private/protected
                 should_remove = not element_info.is_public
             else:  # function, arrow_function, etc.
-                # Top-level функция удаляется если не экспортируется
+                # Top-level function is removed if not exported
                 should_remove = not element_info.is_exported
 
             if should_remove:
                 private_elements.append(element_info)
-    
+
     def _collect_classes(self, private_elements: List[ElementInfo]) -> None:
         """
-        Собирает неэкспортируемые классы для удаления в режиме public API.
-        
+        Collects non-exported classes for removal in public API mode.
+
         Args:
-            private_elements: Список для добавления найденных приватных элементов
+            private_elements: List for adding found private elements
         """
-        # Проверяем классы только если язык их поддерживает
+        # Check classes only if language supports them
         if not self.doc.has_query("classes"):
             return
-            
+
         classes = self.doc.query("classes")
         for node, capture_name in classes:
             if capture_name == "class_name":
                 class_def = node.parent
                 if class_def:
                     element_info = self.analyze_element(class_def)
-                    
-                    # Для top-level классов экспорт - основное условие
+
+                    # For top-level classes export is the main condition
                     if not element_info.in_public_api:
                         private_elements.append(element_info)
-    
+
     def _collect_interfaces_and_types(self, private_elements: List[ElementInfo]) -> None:
         """
-        Собирает неэкспортируемые интерфейсы и типы для удаления в режиме public API.
-        Этот метод применим к языкам с поддержкой типов (например, TypeScript).
-        
+        Collects non-exported interfaces and types for removal in public API mode.
+        This method is applicable to languages with type support (e.g., TypeScript).
+
         Args:
-            private_elements: Список для добавления найденных приватных элементов
+            private_elements: List for adding found private elements
         """
-        # Собираем интерфейсы если поддерживаются
+        # Collect interfaces if supported
         if self.doc.has_query("interfaces"):
             interfaces = self.doc.query("interfaces")
             for node, capture_name in interfaces:
@@ -210,8 +210,8 @@ class CodeAnalyzer(ABC):
                         element_info = self.analyze_element(interface_def)
                         if not element_info.in_public_api:
                             private_elements.append(element_info)
-        
-        # Собираем алиасы типов если поддерживаются
+
+        # Collect type aliases if supported
         if self.doc.has_query("types"):
             types = self.doc.query("types")
             for node, capture_name in types:
@@ -221,22 +221,22 @@ class CodeAnalyzer(ABC):
                         element_info = self.analyze_element(type_def)
                         if not element_info.in_public_api:
                             private_elements.append(element_info)
-    
-    # ============= Структурный анализ =============
-    
+
+    # ============= Structural analysis =============
+
     def collect_function_like_elements(self, captures: List[Tuple[Node, str]]) -> Dict[Node, FunctionGroup]:
         """
-        Группирует захваты Tree-sitter по функциям/методам.
-        
+        Groups Tree-sitter captures by functions/methods.
+
         Args:
-            captures: Список (node, capture_name) из Tree-sitter запроса
-            
+            captures: List of (node, capture_name) from Tree-sitter query
+
         Returns:
-            Словарь: function_node -> FunctionGroup с информацией о функции
+            Dictionary: function_node -> FunctionGroup with function information
         """
         function_groups = {}
-        
-        # Сначала собираем все определения функций
+
+        # First collect all function definitions
         for node, capture_name in captures:
             if self.is_function_definition_capture(capture_name):
                 element_info = self.analyze_element(node)
@@ -244,8 +244,8 @@ class CodeAnalyzer(ABC):
                     definition=node,
                     element_info=element_info
                 )
-        
-        # Затем ищем соответствующие тела и имена
+
+        # Then find corresponding bodies and names
         for node, capture_name in captures:
             if self.is_function_body_capture(capture_name):
                 func_def = self.find_function_definition_in_parents(node)
@@ -257,7 +257,7 @@ class CodeAnalyzer(ABC):
                         name_node=old_group.name_node,
                         body_node=node
                     )
-            
+
             elif self.is_function_name_capture(capture_name):
                 func_def = self.find_function_definition_in_parents(node)
                 if func_def and func_def in function_groups:
@@ -268,8 +268,8 @@ class CodeAnalyzer(ABC):
                         name_node=node,
                         body_node=old_group.body_node
                     )
-        
-        # Обрабатываем случаи когда нет явного definition в захватах
+
+        # Handle cases where there's no explicit definition in captures
         for node, capture_name in captures:
             if self.is_function_name_capture(capture_name) and node not in function_groups:
                 func_def = self.find_function_definition_in_parents(node)
@@ -280,53 +280,53 @@ class CodeAnalyzer(ABC):
                         element_info=element_info,
                         name_node=node
                     )
-        
+
         return function_groups
 
     def find_decorators_for_element(self, node: Node) -> List[Node]:
         """
-        Находит все декораторы/аннотации для элемента кода Python.
+        Finds all decorators/annotations for a Python code element.
 
-        Работает в двух режимах:
-        1. Если элемент обернут в decorated_definition - извлекает декораторы из него
-        2. Иначе ищет декораторы среди предыдущих sibling узлов
+        Works in two modes:
+        1. If the element is wrapped in decorated_definition - extracts decorators from it
+        2. Otherwise finds decorators among preceding sibling nodes
 
         Args:
-            node: Узел элемента (функция, класс, метод)
+            node: Node of element (function, class, method)
 
         Returns:
-            Список узлов декораторов в порядке их появления в коде
+            List of decorator nodes in order of appearance in code
         """
         decorators = []
 
-        # Режим 1: Проверяем parent на decorated_definition
+        # Mode 1: Check parent for decorated_definition
         parent = node.parent
         if parent and parent.type in self.get_decorated_definition_types():
-            # Ищем дочерние узлы-декораторы в wrapped definition
+            # Look for child nodes that are decorators in wrapped definition
             for child in parent.children:
                 if child.type in self.get_decorator_types():
                     decorators.append(child)
                 elif child == node:
-                    # Дошли до самого элемента - прекращаем поиск
+                    # Reached the element itself - stop searching
                     break
 
-        # Режим 2: Ищем декораторы среди предыдущих sibling узлов
+        # Mode 2: Find decorators among preceding sibling nodes
         preceding_decorators = self._find_preceding_decorators(node)
 
-        # Объединяем результаты, избегая дубликатов
+        # Combine results, avoiding duplicates
         all_decorators = decorators + [d for d in preceding_decorators if d not in decorators]
 
         return all_decorators
 
     def get_element_range_with_decorators(self, elem: ElementInfo) -> Tuple[int, int]:
         """
-        Получает диапазон элемента включая его декораторы/аннотации.
-        
+        Gets the range of element including its decorators/annotations.
+
         Args:
-            elem: Элемент
+            elem: Element
 
         Returns:
-            Tuple (start_char, end_char) включая все связанные декораторы
+            Tuple (start_char, end_char) including all related decorators
         """
         if elem.decorators:
             start_char = self.doc.byte_to_char_position(min(decorator.start_byte for decorator in elem.decorators))
@@ -334,85 +334,85 @@ class CodeAnalyzer(ABC):
             return start_char, end_char
         else:
             return self.doc.get_node_range(elem.node)
-    
-    # ============= Абстрактные методы для реализации в подклассах =============
-    
+
+    # ============= Abstract methods for implementation in subclasses =============
+
     @abstractmethod
     def determine_element_type(self, node: Node) -> str:
-        """Определяет тип элемента."""
+        """Determine element type."""
         pass
-    
+
     @abstractmethod
     def extract_element_name(self, node: Node) -> Optional[str]:
-        """Извлекает имя элемента."""
+        """Extract element name."""
         pass
-    
+
     @abstractmethod
     def determine_visibility(self, node: Node) -> Visibility:
-        """Определяет видимость элемента."""
+        """Determine element visibility."""
         pass
-    
+
     @abstractmethod
     def determine_export_status(self, node: Node) -> ExportStatus:
-        """Определяет статус экспорта элемента."""
+        """Determine element export status."""
         pass
-    
+
     @abstractmethod
     def is_method_context(self, node: Node) -> bool:
-        """Определяет, является ли элемент методом класса."""
+        """Determine if element is a class method."""
         pass
-    
+
     @abstractmethod
     def find_function_definition_in_parents(self, node: Node) -> Optional[Node]:
-        """Находит определение функции в родительских узлах."""
+        """Find function definition in parent nodes."""
         pass
-    
+
     @abstractmethod
     def get_decorated_definition_types(self) -> Set[str]:
-        """Возвращает типы узлов для wrapped decorated definitions."""
+        """Return node types for wrapped decorated definitions."""
         pass
-    
+
     @abstractmethod
     def get_decorator_types(self) -> Set[str]:
-        """Возвращает типы узлов для отдельных декораторов."""
+        """Return node types for individual decorators."""
         pass
-    
+
     @abstractmethod
     def collect_language_specific_private_elements(self) -> List[ElementInfo]:
-        """Собирает язык-специфичные приватные элементы."""
+        """Collect language-specific private elements."""
         pass
-    
-    # ============= Вспомогательные методы =============
-    
+
+    # ============= Helper methods =============
+
     def is_function_definition_capture(self, capture_name: str) -> bool:
-        """Проверяет, является ли capture определением функции."""
+        """Check if capture is a function definition."""
         return capture_name in ("function_definition", "method_definition")
-    
+
     def is_function_body_capture(self, capture_name: str) -> bool:
-        """Проверяет, является ли capture телом функции."""
+        """Check if capture is a function body."""
         return capture_name in ("function_body", "method_body")
-    
+
     def is_function_name_capture(self, capture_name: str) -> bool:
-        """Проверяет, является ли capture именем функции."""
+        """Check if capture is a function name."""
         return capture_name in ("function_name", "method_name")
-    
+
     def _find_preceding_decorators(self, node: Node) -> List[Node]:
-        """Находит декораторы среди предыдущих sibling узлов."""
+        """Find decorators among preceding sibling nodes."""
         decorators = []
-        
+
         if not node.parent:
             return decorators
-        
+
         siblings = node.parent.children
         node_index = None
         for i, sibling in enumerate(siblings):
             if sibling == node:
                 node_index = i
                 break
-        
+
         if node_index is None:
             return decorators
-        
+
         for i in range(node_index - 1, -1, -1):
             sibling = siblings[i]
             if sibling.type in self.get_decorator_types():
@@ -421,20 +421,20 @@ class CodeAnalyzer(ABC):
                 continue
             else:
                 break
-        
+
         return decorators
-    
+
     @abstractmethod
     def _is_whitespace_or_comment(self, node: Node) -> bool:
-        """Проверяет, является ли узел пробелом или комментарием."""
+        """Check if node is whitespace or comment."""
         pass
 
 
-# ============= Экспорт =============
+# ============= Exports =============
 
 __all__ = [
     "CodeAnalyzer",
-    "ElementInfo", 
+    "ElementInfo",
     "FunctionGroup",
     "Visibility",
     "ExportStatus"

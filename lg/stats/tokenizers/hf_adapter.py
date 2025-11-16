@@ -10,69 +10,69 @@ from .model_cache import ModelCache
 
 logger = logging.getLogger(__name__)
 
-# Рекомендуемые универсальные токенизаторы (не привязаны к продуктовым LLM)
-# Все модели доступны для анонимного скачивания с HuggingFace Hub
+# Recommended universal tokenizers (not tied to specific LLMs)
+# All models available for anonymous download from HuggingFace Hub
 RECOMMENDED_TOKENIZERS = [
-    "gpt2",                         # GPT-2 BPE (универсальный для кода и текста)
-    "roberta-base",                 # RoBERTa BPE (улучшенный GPT-2)
-    "t5-base",                      # T5 SentencePiece-based (универсальный)
-    "EleutherAI/gpt-neo-125m",      # GPT-Neo BPE (открытая альтернатива GPT)
-    "microsoft/phi-2",              # Phi-2 (современная компактная модель)
-    "mistralai/Mistral-7B-v0.1",    # Mistral (современная open-source модель)
+    "gpt2",                         # GPT-2 BPE (universal for code and text)
+    "roberta-base",                 # RoBERTa BPE (improved GPT-2)
+    "t5-base",                      # T5 SentencePiece-based (universal)
+    "EleutherAI/gpt-neo-125m",      # GPT-Neo BPE (open-source GPT alternative)
+    "microsoft/phi-2",              # Phi-2 (modern compact model)
+    "mistralai/Mistral-7B-v0.1",    # Mistral (modern open-source model)
 ]
 
 class HFAdapter(BaseTokenizer):
-    """Адаптер для библиотеки tokenizers (HuggingFace)."""
+    """Adapter for tokenizers library (HuggingFace)."""
     
     def __init__(self, encoder: str, root: Path):
         super().__init__(encoder)
         self.root = root
         self.model_cache = ModelCache(root)
-        
-        # Загружаем токенизатор
+
+        # Load tokenizer
         self._tokenizer = self._load_tokenizer(encoder)
     
     def _load_tokenizer(self, model_spec: str) -> Tokenizer:
         """
-        Загружает токенизатор из локального файла, кеша или HuggingFace Hub.
-        
+        Load tokenizer from local file, cache, or HuggingFace Hub.
+
         Args:
-            model_spec: Может быть:
-                - Путь к локальному файлу tokenizer.json: /path/to/tokenizer.json
-                - Путь к директории с tokenizer.json: /path/to/model/
-                - Имя модели на HF: gpt2, mistralai/Mistral-7B-v0.1
-            
+            model_spec: Can be:
+                - Path to local tokenizer.json file: /path/to/tokenizer.json
+                - Path to directory with tokenizer.json: /path/to/model/
+                - Model name on HF: gpt2, mistralai/Mistral-7B-v0.1
+
         Returns:
-            Загруженный токенизатор
+            Loaded tokenizer
         """
-        # Локальный файл или директория
+        # Local file or directory
         local_path = Path(model_spec)
-        
-        # Проверяем файл tokenizer.json напрямую
+
+        # Check tokenizer.json file directly
         if local_path.exists() and local_path.is_file() and local_path.suffix == ".json":
             logger.info(f"Importing tokenizer from local file: {local_path}")
             try:
-                # Импортируем в кэш для постоянного переиспользования
+                # Import to cache for permanent reuse
                 cache_name = self.model_cache.import_local_model("tokenizers", local_path)
                 logger.info(f"Tokenizer imported as '{cache_name}' and available for future use")
-                
-                # Загружаем из кэша
+
+                # Load from cache
                 cache_dir = self.model_cache.get_model_cache_dir("tokenizers", cache_name)
                 return Tokenizer.from_file(str(cache_dir / "tokenizer.json"))
             except Exception as e:
                 raise RuntimeError(f"Failed to import and load tokenizer from {local_path}: {e}") from e
-        
-        # Проверяем директорию с tokenizer.json
+
+        # Check directory with tokenizer.json
         if local_path.exists() and local_path.is_dir():
             tokenizer_file = local_path / "tokenizer.json"
             if tokenizer_file.exists():
                 logger.info(f"Importing tokenizer from local directory: {local_path}")
                 try:
-                    # Импортируем в кэш для постоянного переиспользования
+                    # Import to cache for permanent reuse
                     cache_name = self.model_cache.import_local_model("tokenizers", local_path)
                     logger.info(f"Tokenizer imported as '{cache_name}' and available for future use")
-                    
-                    # Загружаем из кэша
+
+                    # Load from cache
                     cache_dir = self.model_cache.get_model_cache_dir("tokenizers", cache_name)
                     return Tokenizer.from_file(str(cache_dir / "tokenizer.json"))
                 except Exception as e:
@@ -81,20 +81,20 @@ class HFAdapter(BaseTokenizer):
                 raise FileNotFoundError(
                     f"Directory {local_path} exists but does not contain tokenizer.json"
                 )
-        
-        # Проверяем кеш
+
+        # Check cache
         if self.model_cache.is_model_cached("tokenizers", model_spec):
             cache_dir = self.model_cache.get_model_cache_dir("tokenizers", model_spec)
             tokenizer_path = cache_dir / "tokenizer.json"
             logger.info(f"Loading tokenizer from cache: {tokenizer_path}")
             return Tokenizer.from_file(str(tokenizer_path))
-        
-        # Скачиваем с HuggingFace Hub
+
+        # Download from HuggingFace Hub
         logger.info(f"Downloading tokenizer '{model_spec}' from HuggingFace Hub...")
         try:
             cache_dir = self.model_cache.get_model_cache_dir("tokenizers", model_spec)
-            
-            # Скачиваем tokenizer.json
+
+            # Download tokenizer.json
             tokenizer_file = hf_hub_download(
                 repo_id=model_spec,
                 filename="tokenizer.json",
@@ -102,11 +102,11 @@ class HFAdapter(BaseTokenizer):
                 local_dir=str(cache_dir),
                 local_dir_use_symlinks=False,
             )
-            
+
             tokenizer = Tokenizer.from_file(tokenizer_file)
             logger.info(f"Tokenizer '{model_spec}' downloaded and cached successfully")
             return tokenizer
-        
+
         except Exception as e:
             raise RuntimeError(
                 f"Failed to load tokenizer '{model_spec}' from HuggingFace Hub. "
@@ -129,33 +129,33 @@ class HFAdapter(BaseTokenizer):
     @staticmethod
     def list_available_encoders(root: Path | None = None) -> List[str]:
         """
-        Возвращает список доступных токенизаторов.
-        
-        Включает:
-        - Рекомендуемые модели
-        - Уже скачанные модели
-        - Подсказку про локальные файлы
-        
+        Return list of available tokenizers.
+
+        Includes:
+        - Recommended models
+        - Already downloaded models
+        - Hint about local files
+
         Args:
-            root: Корень проекта
-            
+            root: Project root
+
         Returns:
-            Список имен моделей и подсказок
+            List of model names and hints
         """
         if root is None:
-            # Без root возвращаем только рекомендуемые
+            # Without root, return only recommended
             all_models = list(RECOMMENDED_TOKENIZERS)
         else:
             model_cache = ModelCache(root)
             cached = model_cache.list_cached_models("tokenizers")
-            
-            # Объединяем рекомендуемые и кешированные (без дубликатов)
+
+            # Combine recommended and cached (without duplicates)
             all_models = list(RECOMMENDED_TOKENIZERS)
             for cached_model in cached:
                 if cached_model not in all_models:
                     all_models.append(cached_model)
-        
-        # Добавляем подсказку про локальные файлы
+
+        # Add hint about local files
         all_models.append("(or specify local file: /path/to/tokenizer.json)")
-        
+
         return all_models

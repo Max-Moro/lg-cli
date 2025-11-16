@@ -1,8 +1,8 @@
 """
-Внутренние обработчики для модульного шаблонизатора.
+Internal handlers for modular template engine.
 
-Предоставляет типизированный интерфейс для взаимодействия плагинов
-с ядром шаблонизатора, избегая загрязнения внешних контрактов.
+Provides typed interface for plugin interaction with core,
+avoiding pollution of external contracts.
 """
 
 from __future__ import annotations
@@ -17,64 +17,64 @@ from ..types import SectionRef
 @runtime_checkable
 class TemplateProcessorHandlers(Protocol):
     """
-    Протокол для внутренних обработчиков шаблонизатора.
-    
-    Определяет типизированный интерфейс для вызова функций ядра
-    из плагинов без нарушения инкапсуляции.
+    Protocol for internal template engine handlers.
+
+    Defines typed interface for calling core functions
+    from plugins without violating encapsulation.
     """
-    
+
     def process_ast_node(self, context: ProcessingContext) -> str:
         """
-        Обрабатывает один узел AST с контекстом.
-        
+        Processes single AST node with context.
+
         Args:
-            context: Контекст обработки (ProcessingContext)
-            
+            context: Processing context (ProcessingContext)
+
         Returns:
-            Отрендеренное содержимое узла
+            Rendered node content
         """
         ...
-    
+
     def process_section_ref(self, section_ref: SectionRef) -> str:
         """
-        Обрабатывает ссылку на секцию.
-        
+        Processes section reference.
+
         Args:
-            section_ref: Ссылка на секцию для обработки
-            
+            section_ref: Section reference to process
+
         Returns:
-            Отрендеренное содержимое секции
+            Rendered section content
         """
         ...
-    
+
     def parse_next_node(self, context) -> TemplateNode | None:
         """
-        Парсит следующий узел из контекста парсинга.
-        
-        Применяет все зарегистрированные правила парсинга для текущей позиции.
-        Используется для рекурсивного парсинга вложенных структур.
-        
+        Parses next node from parsing context.
+
+        Applies all registered parsing rules for current position.
+        Used for recursive parsing of nested structures.
+
         Args:
-            context: Контекст парсинга (ParsingContext)
-            
+            context: Parsing context (ParsingContext)
+
         Returns:
-            Узел AST или None если ни одно правило не сработало
+            AST node or None if no rule matched
         """
         ...
-    
+
     def resolve_ast(self, ast, context: str = "") -> list:
         """
-        Резолвит AST рекурсивно через все зарегистрированные резолверы.
-        
-        Применяет резолверы всех плагинов, обрабатывая вложенные узлы.
-        Используется плагинами для делегирования рекурсивного резолвинга ядру.
-        
+        Recursively resolves AST through all registered resolvers.
+
+        Applies all plugin resolvers, processing nested nodes.
+        Used by plugins to delegate recursive resolving to core.
+
         Args:
-            ast: AST для резолвинга
-            context: Контекст для диагностики
-            
+            ast: AST to resolve
+            context: Context for diagnostics
+
         Returns:
-            Резолвленный AST
+            Resolved AST
         """
         ...
 

@@ -1,7 +1,7 @@
 """
-Модели данных для системы условий.
+Data models for the conditions system.
 
-Содержит классы для представления различных типов условий в адаптивных шаблонах.
+Contains classes for representing various types of conditions in adaptive templates.
 """
 
 from __future__ import annotations
@@ -13,7 +13,7 @@ from typing import Union
 
 
 class ConditionType(Enum):
-    """Типы условий в системе."""
+    """Types of conditions in the system."""
     TAG = "tag"
     TAGSET = "tagset"
     SCOPE = "scope"
@@ -21,34 +21,34 @@ class ConditionType(Enum):
     AND = "and"
     OR = "or"
     NOT = "not"
-    GROUP = "group"  # для явной группировки в скобках
+    GROUP = "group"  # for explicit grouping in parentheses
 
 
 @dataclass
 class Condition(ABC):
-    """Базовый абстрактный класс для всех условий."""
-    
+    """Base abstract class for all conditions."""
+
     @abstractmethod
     def get_type(self) -> ConditionType:
-        """Возвращает тип условия."""
+        """Returns the condition type."""
         pass
-    
+
     def __str__(self) -> str:
-        """Строковое представление условия."""
+        """String representation of the condition."""
         return self._to_string()
-    
+
     @abstractmethod
     def _to_string(self) -> str:
-        """Внутренний метод для создания строкового представления."""
+        """Internal method for creating string representation."""
         pass
 
 
 @dataclass
 class TagCondition(Condition):
     """
-    Условие наличия тега: tag:name
-    
-    Истинно, если указанный тег активен в текущем контексте.
+    Tag existence condition: tag:name
+
+    True if the specified tag is active in the current context.
     """
     name: str
     
@@ -62,12 +62,12 @@ class TagCondition(Condition):
 @dataclass
 class TagSetCondition(Condition):
     """
-    Условие на набор тегов: TAGSET:set_name:tag_name
-    
-    Правила оценки:
-    - Истинно, если ни один тег из набора не активен
-    - Истинно, если указанный тег активен
-    - Ложно во всех остальных случаях
+    Tag set condition: TAGSET:set_name:tag_name
+
+    Evaluation rules:
+    - True if no tags in the set are active
+    - True if the specified tag is active
+    - False in all other cases
     """
     set_name: str
     tag_name: str
@@ -82,13 +82,13 @@ class TagSetCondition(Condition):
 @dataclass
 class ScopeCondition(Condition):
     """
-    Условие скоупа: scope:type
-    
-    Поддерживаемые типы:
-    - "local": применяется только в локальном скоупе
-    - "parent": применяется только при рендере из родительского скоупа
+    Scope condition: scope:type
+
+    Supported types:
+    - "local": applies only in local scope
+    - "parent": applies only when rendering from parent scope
     """
-    scope_type: str  # "local" или "parent"
+    scope_type: str  # "local" or "parent"
     
     def get_type(self) -> ConditionType:
         return ConditionType.SCOPE
@@ -100,9 +100,9 @@ class ScopeCondition(Condition):
 @dataclass
 class TaskCondition(Condition):
     """
-    Условие наличия task: task
-    
-    Истинно, если задан непустой текст задачи через --task.
+    Task condition: task
+
+    True if a non-empty task text is provided via --task.
     """
     
     def get_type(self) -> ConditionType:
@@ -115,9 +115,9 @@ class TaskCondition(Condition):
 @dataclass
 class GroupCondition(Condition):
     """
-    Группа условий в скобках: (condition)
-    
-    Используется для явной группировки и изменения приоритета операторов.
+    Group of conditions in parentheses: (condition)
+
+    Used for explicit grouping and changing operator precedence.
     """
     condition: Condition
     
@@ -131,9 +131,9 @@ class GroupCondition(Condition):
 @dataclass
 class NotCondition(Condition):
     """
-    Отрицание условия: NOT condition
-    
-    Инвертирует результат вычисления вложенного условия.
+    Negation of a condition: NOT condition
+
+    Inverts the evaluation result of the nested condition.
     """
     condition: Condition
     
@@ -147,15 +147,15 @@ class NotCondition(Condition):
 @dataclass
 class BinaryCondition(Condition):
     """
-    Бинарная операция: left op right
-    
-    Поддерживаемые операторы:
-    - AND: истинно, если оба операнда истинны
-    - OR: истинно, если хотя бы один операнд истинен
+    Binary operation: left op right
+
+    Supported operators:
+    - AND: true if both operands are true
+    - OR: true if at least one operand is true
     """
     left: Condition
     right: Condition
-    operator: ConditionType  # AND или OR
+    operator: ConditionType  # AND or OR
     
     def get_type(self) -> ConditionType:
         return self.operator
@@ -165,7 +165,7 @@ class BinaryCondition(Condition):
         return f"{self.left} {op_str} {self.right}"
 
 
-# Объединенный тип для всех условий
+# Union type for all conditions
 AnyCondition = Union[
     TagCondition,
     TagSetCondition,

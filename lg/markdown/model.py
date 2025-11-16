@@ -16,21 +16,21 @@ def _assert_only_keys(d: Dict[str, Any] | None, allowed: Iterable[str], *, ctx: 
 @dataclass
 class MarkdownCfg:
     """
-    Конфиг Markdown-адаптера.
+    Markdown adapter configuration.
     """
     max_heading_level: int | None = None
     strip_h1: bool = False
-    # блок drop: секции/маркеры/frontmatter/политика плейсхолдеров
+    # drop block: sections/markers/frontmatter/placeholder policy
     drop: MarkdownDropCfg | None = None
-    # блок keep: секции которые нужно оставить
+    # keep block: sections to keep
     keep: MarkdownKeepCfg | None = None
-    # включение обработки условных конструкций в HTML-комментариях
+    # enable conditional constructs processing in HTML comments
     enable_templating: bool = True
-    # флаг что плейсхолдер находится внутри заголовка (влияет на обработку H1)
+    # flag that placeholder is inside heading (affects H1 processing)
     placeholder_inside_heading: bool = False
 
     def to_dict(self) -> Dict[str, Any]:
-        """Сериализует конфигурацию в словарь."""
+        """Serialize configuration to dictionary."""
         result = {}
         
         if self.max_heading_level is not None:
@@ -45,10 +45,10 @@ class MarkdownCfg:
         if self.keep is not None:
             result["keep"] = self.keep.to_dict()
         
-        if not self.enable_templating:  # только если False (True - дефолт)
+        if not self.enable_templating:  # only if False (True - default)
             result["enable_templating"] = self.enable_templating
-        
-        if self.placeholder_inside_heading:  # только если True (False - дефолт)
+
+        if self.placeholder_inside_heading:  # only if True (False - default)
             result["placeholder_inside_heading"] = self.placeholder_inside_heading
         
         return result
@@ -56,7 +56,7 @@ class MarkdownCfg:
     @staticmethod
     def from_dict(d: Optional[Dict[str, Any]]) -> MarkdownCfg:
         if not d:
-            # Конфиг не задан → возвращаем дефолтный конфиг
+            # Config not provided → return default config
             return MarkdownCfg(
                 max_heading_level=None,
                 strip_h1=False,
@@ -72,12 +72,12 @@ class MarkdownCfg:
         placeholder_inside_heading = d.get("placeholder_inside_heading", False)
         drop_cfg = d.get("drop", None)
         keep_cfg = d.get("keep", None)
-        
-        # Обеспечиваем взаимоисключение drop и keep
+
+        # Ensure mutual exclusion of drop and keep
         if drop_cfg and keep_cfg:
             raise ValueError("Cannot use both 'drop' and 'keep' modes simultaneously")
-            
-        # Если блок drop не задан — None.
+
+        # If drop block not provided — None.
         drop = MarkdownDropCfg.from_dict(drop_cfg) if drop_cfg is not None else None
         keep = MarkdownKeepCfg.from_dict(keep_cfg) if keep_cfg is not None else None
         
@@ -96,10 +96,10 @@ MatchKind = Literal["text", "slug", "regex"]
 class SectionMatch:
     kind: MatchKind                       # "text" | "slug" | "regex"
     pattern: str
-    flags: Optional[str] = None           # для regex: напр. "i", "ms"
+    flags: Optional[str] = None           # for regex: e.g. "i", "ms"
 
     def to_dict(self) -> Dict[str, Any]:
-        """Сериализует правило соответствия секций в словарь."""
+        """Serialize section match rule to dictionary."""
         result = {
             "kind": self.kind,
             "pattern": self.pattern
@@ -128,19 +128,19 @@ class SectionMatch:
 
 @dataclass
 class SectionRule:
-    # Один из вариантов должен быть задан: match или path
+    # One of the following must be set: match or path
     match: Optional[SectionMatch] = None
-    path: Optional[List[str]] = None      # путь предков по точным названиям
-    # Ограничители уровней
+    path: Optional[List[str]] = None      # path of ancestors by exact names
+    # Level restrictions
     level_exact: Optional[int] = None
     level_at_most: Optional[int] = None
     level_at_least: Optional[int] = None
-    # Мета
+    # Meta
     reason: Optional[str] = None
-    placeholder: Optional[str] = None     # локальный шаблон плейсхолдера
+    placeholder: Optional[str] = None     # local placeholder template
 
     def to_dict(self) -> Dict[str, Any]:
-        """Сериализует правило секции в словарь."""
+        """Serialize section rule to dictionary."""
         result = {}
         
         if self.match:
@@ -188,14 +188,14 @@ class SectionRule:
                 path = list(path_raw)
             else:
                 raise TypeError("SectionRule.path must be a list of strings")
-        # уровни
+        # levels
         le = d.get("level_exact", None)
         leq = d.get("level_at_most", None)
         geq = d.get("level_at_least", None)
         # meta
         reason = d.get("reason")
         placeholder = d.get("placeholder")
-        # инвариант: хотя бы одно из match/path должно быть задано
+        # invariant: at least one of match/path must be set
         if match is None and path is None:
             raise ValueError("SectionRule requires either 'match' or 'path'")
         return SectionRule(
@@ -213,16 +213,16 @@ class SectionRule:
 @dataclass
 class PlaceholderPolicy:
     mode: Literal["none", "summary"] = "none"
-    template: Optional[str] = "> *(Опущено: {title}; −{lines} строк)*"
+    template: Optional[str] = "> *(Omitted: {title}; −{lines} lines)*"
 
     def to_dict(self) -> Dict[str, Any]:
-        """Сериализует политику плейсхолдеров в словарь."""
+        """Serialize placeholder policy to dictionary."""
         result = {}
         
         if self.mode != "none":
             result["mode"] = self.mode
         
-        if self.template != "> *(Опущено: {title}; −{lines} строк)*":
+        if self.template != "> *(Omitted: {title}; −{lines} lines)*":
             result["template"] = self.template
         
         return result
@@ -235,7 +235,7 @@ class PlaceholderPolicy:
         mode = d.get("mode", "none")
         if mode not in ("none", "summary"):
             raise ValueError("PlaceholderPolicy.mode must be 'none' or 'summary'")
-        template = d.get("template", "> *(Опущено: {title}; −{lines} строк)*")
+        template = d.get("template", "> *(Omitted: {title}; −{lines} lines)*")
         if template is not None and not isinstance(template, str):
             raise TypeError("PlaceholderPolicy.template must be a string or null")
         return PlaceholderPolicy(mode=mode, template=template)
@@ -247,13 +247,13 @@ class MarkdownDropCfg:
     placeholder: PlaceholderPolicy = field(default_factory=PlaceholderPolicy)
 
     def to_dict(self) -> Dict[str, Any]:
-        """Сериализует конфигурацию drop в словарь."""
+        """Serialize drop configuration to dictionary."""
         result = {}
-        
+
         if self.sections:
             result["sections"] = [section.to_dict() for section in self.sections]
-        
-        if not self.frontmatter:  # только если False (True - дефолт)
+
+        if not self.frontmatter:  # only if False (True - default)
             result["frontmatter"] = self.frontmatter
         
         placeholder_dict = self.placeholder.to_dict()
@@ -265,14 +265,14 @@ class MarkdownDropCfg:
     @staticmethod
     def from_dict(d: Optional[Dict[str, Any]]) -> MarkdownDropCfg:
         """
-        Разбор блока drop:
+        Parse drop block:
           - sections: list[SectionRule]
           - frontmatter: bool
           - placeholder: PlaceholderPolicy
-        Допускает d=None → вернётся пустой конфиг.
+        Accepts d=None → returns empty config.
         """
         if not d:
-            # drop не задан → возвращаем пустой конфиг
+            # drop not provided → return empty config
             return MarkdownDropCfg()
         _assert_only_keys(d, ["sections", "frontmatter", "placeholder"], ctx="MarkdownDropCfg")
         sections_raw = d.get("sections", []) or []
@@ -293,13 +293,13 @@ class MarkdownKeepCfg:
     frontmatter: bool = False  # True = keep frontmatter
 
     def to_dict(self) -> Dict[str, Any]:
-        """Сериализует конфигурацию keep в словарь."""
+        """Serialize keep configuration to dictionary."""
         result = {}
-        
+
         if self.sections:
             result["sections"] = [section.to_dict() for section in self.sections]
-        
-        if self.frontmatter:  # только если True (False - дефолт для keep)
+
+        if self.frontmatter:  # only if True (False - default for keep)
             result["frontmatter"] = self.frontmatter
         
         return result
@@ -307,10 +307,10 @@ class MarkdownKeepCfg:
     @staticmethod
     def from_dict(d: Optional[Dict[str, Any]]) -> MarkdownKeepCfg:
         """
-        Разбор блока keep:
+        Parse keep block:
           - sections: list[SectionRule]
           - frontmatter: bool
-        Допускает d=None → вернётся пустой конфиг.
+        Accepts d=None → returns empty config.
         """
         if not d:
             return MarkdownKeepCfg()
@@ -329,23 +329,23 @@ class MarkdownKeepCfg:
 
 @dataclass
 class HeadingNode:
-    """Узел заголовка в документе."""
+    """Heading node in document."""
     level: int                 # 1..6
-    title: str                 # текст заголовка (без '#', без подчеркивания setext)
+    title: str                 # heading text (without '#', without setext underline)
     slug: str                  # github-style slug
-    start_line: int            # индекс строки заголовка (0-based)
-    end_line_excl: int         # первая строка после поддерева этого заголовка
-    parents: List[int] = field(default_factory=list)  # индексы родителей по стеку
+    start_line: int            # heading line index (0-based)
+    end_line_excl: int         # first line after this heading's subtree
+    parents: List[int] = field(default_factory=list)  # parent indices by stack
 
 
 @dataclass
 class ParsedDoc:
     """
-    Результат парсинга Markdown:
-      • исходные строки;
-      • список заголовков и их поддеревьев;
-      • интервалы fenced-блоков (для информации/отладки);
-      • frontmatter-интервал (если есть).
+    Result of Markdown parsing:
+      • source lines;
+      • list of headings and their subtrees;
+      • fenced block intervals (for info/debugging);
+      • frontmatter interval (if present).
     """
     lines: List[str]
     headings: List[HeadingNode]

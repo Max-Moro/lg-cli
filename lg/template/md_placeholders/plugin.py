@@ -1,8 +1,8 @@
 """
-Плагин для обработки Markdown-плейсхолдеров.
+Plugin for processing Markdown placeholders.
 
-Регистрирует все необходимые токены, правила парсинга и обработчики
-для поддержки ${md:path}, ${md@origin:path}, глобов, якорей и параметров.
+Registers all necessary tokens, parsing rules, and handlers
+for supporting ${md:path}, ${md@origin:path}, globs, anchors and parameters.
 """
 
 from __future__ import annotations
@@ -20,81 +20,81 @@ from ...template import TemplateContext
 
 class MdPlaceholdersPlugin(TemplatePlugin):
     """
-    Плагин для обработки Markdown-плейсхолдеров.
-    
-    Обеспечивает функциональность:
-    - ${md:path} - прямое включение Markdown-файла
-    - ${md:path#anchor} - включение конкретной секции
-    - ${md:path,level:3,strip_h1:true} - включение с параметрами
-    - ${md@origin:path} - адресные ссылки на файлы в других скоупах
-    - ${md:docs/*} - глобы для включения множества файлов
-    - ${md:path,if:tag:condition} - условные включения
+    Plugin for processing Markdown placeholders.
+
+    Provides functionality:
+    - ${md:path} - direct Markdown file inclusion
+    - ${md:path#anchor} - inclusion of specific section
+    - ${md:path,level:3,strip_h1:true} - inclusion with parameters
+    - ${md@origin:path} - addressed references to files in other scopes
+    - ${md:docs/*} - globs for including multiple files
+    - ${md:path,if:tag:condition} - conditional inclusions
     """
 
     def __init__(self, template_ctx: TemplateContext):
         """
-        Инициализирует плагин с контекстом шаблона.
+        Initializes plugin with template context.
 
         Args:
-            template_ctx: Контекст шаблона для управления состоянием
+            template_ctx: Template context for state management
         """
         super().__init__()
         self.template_ctx = template_ctx
-        
-        # Фабрика виртуальных секций (создается один раз)
+
+        # Virtual section factory (created once)
         self.virtual_factory = VirtualSectionFactory()
 
     @property
     def name(self) -> str:
-        """Возвращает имя плагина."""
+        """Returns plugin name."""
         return "md_placeholders"
-    
+
     @property
     def priority(self) -> PluginPriority:
-        """Возвращает приоритет плагина."""
+        """Returns plugin priority."""
         return PluginPriority.PLACEHOLDER
-    
+
     def initialize(self) -> None:
-        """Добавляет md-специфичные токены в контекст плейсхолдеров."""
-        # Добавляем токены в существующий контекст плейсхолдеров
-        # Не добавляем MD_PREFIX, так как 'md' проверяется через IDENTIFIER
+        """Adds MD-specific tokens to placeholder context."""
+        # Add tokens to existing placeholder context
+        # Don't add MD_PREFIX since 'md' is checked via IDENTIFIER
         self.registry.register_tokens_in_context(
             "placeholder",
             ["HASH", "COMMA", "BOOL_TRUE", "BOOL_FALSE", "NUMBER", "GLOB_STAR"]
         )
-    
+
     def register_tokens(self) -> List[TokenSpec]:
-        """Регистрирует токены для MD-плейсхолдеров."""
+        """Registers tokens for MD placeholders."""
         return get_md_token_specs()
 
     def register_parser_rules(self) -> List[ParsingRule]:
-        """Регистрирует правила парсинга MD-плейсхолдеров."""
+        """Registers parsing rules for MD placeholders."""
         return get_md_parser_rules()
 
     def register_processors(self) -> List[ProcessorRule]:
         """
-        Регистрирует обработчики узлов AST.
-        
-        Создает замыкания над типизированными обработчиками для обработки MD-узлов.
+        Registers AST node handlers.
+
+        Creates closures over typed handlers for processing MD nodes.
         """
         def process_markdown_node(processing_context: ProcessingContext) -> str:
-            """Обрабатывает узел MarkdownFileNode через виртуальную секцию."""
+            """Processes MarkdownFileNode through virtual section."""
             node = processing_context.get_node()
             if not isinstance(node, MarkdownFileNode):
                 raise RuntimeError(f"Expected MarkdownFileNode, got {type(node)}")
-            
-            # Проверяем условие включения если оно задано
+
+            # Check inclusion condition if set
             if node.condition:
                 should_include = self.template_ctx.evaluate_condition_text(node.condition)
                 if not should_include:
-                    # Условие не выполнено - пропускаем узел
+                    # Condition not met - skip node
                     return ""
 
-            # Используем ProcessingContext для анализа контекста заголовков
+            # Use ProcessingContext for analyzing heading context
             from .heading_context import detect_heading_context_for_node
             heading_context = detect_heading_context_for_node(processing_context)
 
-            # Получаем текущий origin из контекста шаблона
+            # Get current origin from template context
             current_origin = self.template_ctx.get_origin()
 
             section_config, section_ref = self.virtual_factory.create_for_markdown_file(
@@ -104,17 +104,17 @@ class MdPlaceholdersPlugin(TemplatePlugin):
                 heading_context=heading_context
             )
 
-            # Устанавливаем виртуальную секцию в контекст
+            # Set virtual section in context
             self.template_ctx.set_virtual_section(section_config)
 
             try:
-                # Обрабатываем через section_handler
+                # Process through section_handler
                 result = self.handlers.process_section_ref(section_ref)
                 return result
             finally:
-                # Всегда очищаем виртуальную секцию после обработки
+                # Always clear virtual section after processing
                 self.template_ctx.clear_virtual_section()
-        
+
         return [
             ProcessorRule(
                 node_type=MarkdownFileNode,

@@ -1,8 +1,8 @@
 """
-Контекст рендеринга для движка шаблонизации.
+Rendering context for template engine.
 
-Управляет состоянием во время обработки шаблона, включая активные теги,
-режимы и их переопределения через блоки {% mode %}.
+Manages state during template processing, including active tags,
+modes, and their overrides via {% mode %} blocks.
 """
 
 from __future__ import annotations
@@ -19,20 +19,20 @@ from ..run_context import RunContext, ConditionContext
 @dataclass
 class TemplateState:
     """
-    Снимок состояния шаблона для сохранения/восстановления.
+    Snapshot of template state for saving/restoring.
 
-    Используется для реализации стека состояний при входе/выходе
-    из блоков {% mode %}.
+    Used for implementing state stack when entering/exiting
+    {% mode %} blocks.
     """
     origin: str
     mode_options: ModeOptions
     active_tags: Set[str]
     active_modes: Dict[str, str]  # modeset -> mode_name
-    # Виртуальная секция (для обработки ${md:...} плейсхолдеров)
+    # Virtual section (for processing ${md:...} placeholders)
     current_virtual_section: Optional[SectionCfg] = None
 
     def copy(self) -> TemplateState:
-        """Создает глубокую копию состояния."""
+        """Creates a deep copy of the state."""
         return TemplateState(
             origin=self.origin,
             mode_options=self.mode_options,
@@ -44,24 +44,24 @@ class TemplateState:
 
 class TemplateContext:
     """
-    Контекст рендеринга шаблона с управлением состоянием.
+    Template rendering context with state management.
 
-    Отслеживает активные теги, режимы и их переопределения во время
-    обработки шаблона. Поддерживает стек состояний для корректной
-    обработки вложенных блоков {% mode %}.
+    Tracks active tags, modes, and their overrides during
+    template processing. Maintains state stack for proper handling
+    of nested {% mode %} blocks.
     """
 
     def __init__(self, run_ctx: RunContext):
         """
-        Инициализирует контекст шаблона.
+        Initializes the template context.
 
         Args:
-            run_ctx: Контекст выполнения с базовыми настройками
+            run_ctx: Execution context with base settings
         """
         self.run_ctx = run_ctx
         self.adaptive_loader = run_ctx.adaptive_loader
 
-        # Текущее состояние (инициализируется из run_ctx)
+        # Current state (initialized from run_ctx)
         self.current_state = TemplateState(
             origin="self",
             mode_options=run_ctx.mode_options,
@@ -70,25 +70,25 @@ class TemplateContext:
             current_virtual_section=None
         )
 
-        # Стек состояний для вложенных блоков режимов
+        # State stack for nested mode blocks
         self.state_stack: List[TemplateState] = []
 
-        # Кэш наборов тегов для оценки условий
+        # Cache of tag sets for condition evaluation
         self._tagsets_cache: Optional[Dict[str, Set[str]]] = None
 
-        # Оценщик условий (создается лениво)
+        # Condition evaluator (created lazily)
         self._condition_evaluator: Optional[TemplateConditionEvaluator] = None
 
     def get_condition_evaluator(self) -> TemplateConditionEvaluator:
         """
-        Возвращает оценщик условий для текущего состояния.
+        Returns condition evaluator for current state.
 
-        Создает новый оценщик или обновляет существующий при изменении состояния.
+        Creates new evaluator or updates existing one when state changes.
         """
         if self._condition_evaluator is None:
             self._condition_evaluator = self._create_condition_evaluator()
         else:
-            # Обновляем контекст оценщика при изменении состояния
+            # Update evaluator context when state changes
             condition_context = self._create_condition_context()
             self._condition_evaluator.update_context(condition_context)
 
@@ -96,22 +96,22 @@ class TemplateContext:
 
     def enter_mode_block(self, modeset: str, mode: str) -> None:
         """
-        Входит в блок режима {% mode modeset:mode %}.
+        Enters mode block {% mode modeset:mode %}.
 
-        Сохраняет текущее состояние и применяет новый режим,
-        активируя связанные с ним теги и опции.
+        Saves current state and applies new mode,
+        activating associated tags and options.
 
         Args:
-            modeset: Имя набора режимов
-            mode: Имя режима в наборе
+            modeset: Name of mode set
+            mode: Name of mode in the set
 
         Raises:
-            ValueError: Если режим не найден в конфигурации
+            ValueError: If mode not found in configuration
         """
-        # Сохраняем текущее состояние в стек
+        # Save current state to stack
         self.state_stack.append(self.current_state.copy())
 
-        # Получаем информацию о режиме
+        # Get mode information
         modes_config = self.adaptive_loader.get_modes_config()
         mode_set = modes_config.mode_sets.get(modeset)
 
@@ -126,136 +126,136 @@ class TemplateContext:
                 f"Available modes: {', '.join(available_modes)}"
             )
 
-        # Применяем новый режим
+        # Apply new mode
         self.current_state.active_modes[modeset] = mode
 
-        # Активируем теги режима
+        # Activate mode tags
         self.current_state.active_tags.update(mode_info.tags)
 
-        # Обновляем опции режима
+        # Update mode options
         self.current_state.mode_options = ModeOptions.merge_from_modes(
             modes_config,
             self.current_state.active_modes
         )
 
-        # Сбрасываем кэш оценщика условий
+        # Reset condition evaluator cache
         self._condition_evaluator = None
 
     def exit_mode_block(self) -> None:
         """
-        Выходит из блока режима {% endmode %}.
+        Exits mode block {% endmode %}.
 
-        Восстанавливает предыдущее состояние из стека.
+        Restores previous state from stack.
 
         Raises:
-            RuntimeError: Если стек состояний пуст (нет соответствующего входа)
+            RuntimeError: If state stack is empty (no matching entry)
         """
         if not self.state_stack:
             raise RuntimeError("No mode block to exit (state stack is empty)")
 
-        # Восстанавливаем предыдущее состояние
+        # Restore previous state
         self.current_state = self.state_stack.pop()
 
-        # Сбрасываем кэш оценщика условий
+        # Reset condition evaluator cache
         self._condition_evaluator = None
 
     def set_virtual_section(self, section_config: SectionCfg) -> None:
         """
-        Устанавливает текущую виртуальную секцию для обработки ${md:...} плейсхолдера.
+        Sets current virtual section for processing ${md:...} placeholder.
 
         Args:
-            section_config: Конфигурация виртуальной секции
+            section_config: Virtual section configuration
         """
         self.current_state.current_virtual_section = section_config
 
     def get_virtual_section(self) -> Optional[SectionCfg]:
         """
-        Возвращает текущую виртуальную секцию, если установлена.
+        Returns current virtual section if set.
 
         Returns:
-            Кортеж (section_ref, section_config) или None
+            Tuple (section_ref, section_config) or None
         """
         return self.current_state.current_virtual_section
 
     def clear_virtual_section(self) -> None:
         """
-        Очищает текущую виртуальную секцию после обработки.
+        Clears current virtual section after processing.
         """
         self.current_state.current_virtual_section = None
 
     def push_origin(self, origin: str) -> None:
         """
-        Входит в новый origin (скоуп) при обработке вложенных включений.
-        
-        Сохраняет текущее состояние в стек и обновляет origin.
-        Используется при обработке ${ctx@origin:name} и ${tpl@origin:name}.
-        
+        Enters new origin (scope) when processing nested includes.
+
+        Saves current state to stack and updates origin.
+        Used when processing ${ctx@origin:name} and ${tpl@origin:name}.
+
         Args:
-            origin: Новый origin для вложенного контекста
+            origin: New origin for nested context
         """
-        # Сохраняем текущее состояние в стек
+        # Save current state to stack
         self.state_stack.append(self.current_state.copy())
-        
-        # Обновляем origin в текущем состоянии
+
+        # Update origin in current state
         self.current_state.origin = origin
 
     def pop_origin(self) -> None:
         """
-        Выходит из вложенного origin, восстанавливая предыдущее состояние.
-        
-        Должен вызываться после завершения обработки вложенного контекста.
-        
+        Exits nested origin, restoring previous state.
+
+        Should be called after completion of nested context processing.
+
         Raises:
-            RuntimeError: Если стек состояний пуст
+            RuntimeError: If state stack is empty
         """
         if not self.state_stack:
             raise RuntimeError("No origin to pop (state stack is empty)")
-        
-        # Восстанавливаем предыдущее состояние
+
+        # Restore previous state
         self.current_state = self.state_stack.pop()
 
     def get_origin(self) -> str:
         """
-        Возвращает текущий origin из состояния шаблона.
-        
+        Returns current origin from template state.
+
         Returns:
-            Текущий origin ("self" для корневого скоупа или путь к подобласти)
+            Current origin ("self" for root scope or path to subdomain)
         """
         return self.current_state.origin
 
     def evaluate_condition(self, condition_ast) -> bool:
         """
-        Вычисляет условие в текущем контексте.
+        Evaluates condition in current context.
 
         Args:
-            condition_ast: AST условия для вычисления
+            condition_ast: AST of condition to evaluate
 
         Returns:
-            Результат вычисления условия
+            Result of condition evaluation
         """
         evaluator = self.get_condition_evaluator()
         return evaluator.evaluate(condition_ast)
 
     def evaluate_condition_text(self, condition_text: str) -> bool:
         """
-        Вычисляет условие из текстового представления.
+        Evaluates condition from text representation.
 
         Args:
-            condition_text: Текстовое представление условия
+            condition_text: Text representation of condition
 
         Returns:
-            Результат вычисления условия
+            Result of condition evaluation
         """
         evaluator = self.get_condition_evaluator()
         return evaluator.evaluate_condition_text(condition_text)
 
     def _create_condition_evaluator(self) -> TemplateConditionEvaluator:
-        """Создает новый оценщик условий для текущего состояния."""
+        """Creates new condition evaluator for current state."""
         condition_context = self._create_condition_context()
         return TemplateConditionEvaluator(condition_context)
 
     def _create_condition_context(self) -> ConditionContext:
-        """Создает контекст условий из текущего состояния шаблона."""
+        """Creates condition context from current template state."""
         tagsets = self._get_tagsets()
 
         return ConditionContext(
@@ -267,20 +267,20 @@ class TemplateContext:
 
     def _get_tagsets(self) -> Dict[str, Set[str]]:
         """
-        Возвращает карту наборов тегов.
+        Returns map of tag sets.
 
-        Кэширует результат для избежания повторной загрузки.
+        Caches result to avoid repeated loading.
         """
         if self._tagsets_cache is None:
             tags_config = self.adaptive_loader.get_tags_config()
 
             self._tagsets_cache = {}
 
-            # Добавляем наборы тегов
+            # Add tag sets
             for set_name, tag_set in tags_config.tag_sets.items():
                 self._tagsets_cache[set_name] = set(tag_set.tags.keys())
 
-            # Добавляем глобальные теги как отдельный набор
+            # Add global tags as separate set
             if tags_config.global_tags:
                 self._tagsets_cache["global"] = set(tags_config.global_tags.keys())
 

@@ -1,6 +1,6 @@
 """
-Контекст обработки для языковых адаптеров.
-Инкапсулирует состояние и предоставляет методы для типовых операций.
+Processing context for language adapters.
+Encapsulates state and provides methods for typical operations.
 """
 
 from __future__ import annotations
@@ -26,16 +26,16 @@ class LightState:
         self.raw_text = raw_text
         self.group_size = group_size
 
-        # Вычисляем производные поля
+        # Calculate derived fields
         self.filename = file_path.name
         self.ext = file_path.suffix.lstrip(".") if file_path.suffix else ""
 
 class LightweightContext(LightState):
     """
-    Облегченный контекст обработки с базовой информацией о файле.
-    Создается на раннем этапе и может быть ленивым образом расширен до ProcessingContext.
+    Lightweight processing context with basic file information.
+    Created at an early stage and can be lazily extended to ProcessingContext.
     """
-    
+
     def __init__(
         self,
         file_path: Path,
@@ -45,36 +45,36 @@ class LightweightContext(LightState):
         file_label: str = None
     ):
         super().__init__(file_path, raw_text, group_size)
-        
-        # Для ленивой инициализации полноценного контекста
+
+        # For lazy initialization of full context
         self._full_context: Optional[ProcessingContext] = None
-        # Контекст шаблона для обработки условных конструкций
+        # Template context for processing conditional constructs
         self.template_ctx = template_ctx
-        # Метка файла для вставки в документацию
+        # File label for insertion into documentation
         self.file_label = file_label
 
     def get_full_context(self, adapter, tokenizer: TokenService) -> ProcessingContext:
         """
-        Ленивое создание полноценного ProcessingContext при необходимости.
-        
+        Lazy creation of full ProcessingContext when needed.
+
         Args:
-            tokenizer: Сервис подсчёта токенов
-            adapter: Языковой адаптер для создания документа и генератора плейсхолдеров
-            
+            tokenizer: Token counting service
+            adapter: Language adapter for creating document and placeholder generator
+
         Returns:
-            ProcessingContext инициализированный из этого облегченного контекста
+            ProcessingContext initialized from this lightweight context
         """
         if self._full_context is None:
             self._full_context = ProcessingContext.from_lightweight(self, adapter, tokenizer)
-        
+
         return self._full_context
 
 
 class ProcessingContext(LightState):
     """
-    Контекст обработки, инкапсулирующий doc, editor, placeholders и metrics.
+    Processing context, encapsulating doc, editor, placeholders and metrics.
     """
-    
+
     def __init__(
         self,
         file_path: Path,
@@ -96,7 +96,7 @@ class ProcessingContext(LightState):
 
     def add_placeholder(self, element_type: str, start_char: int, end_char: int, start_line: int, end_line: int,
                         placeholder_prefix: str = "", count: int = 1) -> None:
-        """Добавить плейсхолдер."""
+        """Add placeholder."""
         self.placeholders.add_placeholder(
             element_type, start_char, end_char, start_line, end_line, placeholder_prefix, count
         )
@@ -104,7 +104,7 @@ class ProcessingContext(LightState):
         self.metrics.mark_placeholder_inserted()
 
     def add_placeholder_for_node(self, element_type: str, node: Node, count: int = 1) -> None:
-        """Добавить плейсхолдер ровно по границам ноды."""
+        """Add placeholder exactly at node boundaries."""
         self.placeholders.add_placeholder_for_node(element_type, node, self.doc, count=count)
         self.metrics.mark_element_removed(element_type, count)
         self.metrics.mark_placeholder_inserted()
@@ -117,24 +117,24 @@ class ProcessingContext(LightState):
         tokenizer: TokenService
     ) -> ProcessingContext:
         """
-        Создать полноценный ProcessingContext из облегченного контекста.
-        
+        Create full ProcessingContext from lightweight context.
+
         Args:
-            lightweight_ctx: Облегченный контекст с базовой информацией
-            adapter: Языковой адаптер для создания компонентов
-            tokenizer: Cервис подсчёта токенов
+            lightweight_ctx: Lightweight context with basic information
+            adapter: Language adapter for creating components
+            tokenizer: Token counting service
 
         Returns:
-            Полноценный ProcessingContext
+            Full ProcessingContext
         """
-        # Создаем компоненты для полноценного контекста
+        # Create components for full context
         doc = adapter.create_document(lightweight_ctx.raw_text, lightweight_ctx.ext)
         editor = RangeEditor(lightweight_ctx.raw_text)
-        
-        # Создаем PlaceholderManager с настройками из адаптера
+
+        # Create PlaceholderManager with settings from adapter
         placeholders = create_placeholder_manager(
             lightweight_ctx.raw_text,
-            adapter.get_comment_style(), 
+            adapter.get_comment_style(),
             adapter.cfg.placeholders.style,
         )
 

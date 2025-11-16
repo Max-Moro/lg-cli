@@ -1,6 +1,6 @@
 """
-Базовый класс для адаптеров языков программирования.
-Предоставляет общую функциональность для обработки кода и оркестрацию оптимизаций.
+Base class for language programming adapters.
+Provides common functionality for code processing and optimization orchestration.
 """
 
 from __future__ import annotations
@@ -27,8 +27,8 @@ C = TypeVar("C", bound=CodeCfg)
 
 class CodeAdapter(BaseAdapter[C], ABC):
     """
-    Базовый класс для всех адаптеров языков программирования.
-    Предоставляет общие методы для обработки кода и системы плейсхолдеров.
+    Base class for all language programming adapters.
+    Provides common methods for code processing and placeholder system.
     """
 
     @abstractmethod
@@ -38,20 +38,20 @@ class CodeAdapter(BaseAdapter[C], ABC):
 
     @abstractmethod
     def create_import_classifier(self, external_patterns: List[str]) -> ImportClassifier:
-        """Создает языко-специфичный классификатор импортов. Должен быть переопределен наследниками."""
+        """Create language-specific import classifier. Must be overridden by subclasses."""
         pass
 
     @abstractmethod
     def create_import_analyzer(self, classifier: ImportClassifier) -> TreeSitterImportAnalyzer:
-        """Создает языко-специфичный анализатор импортов. Должен быть переопределен наследниками."""
+        """Create language-specific import analyzer. Must be overridden by subclasses."""
         pass
 
     @abstractmethod
     def create_code_analyzer(self, doc: TreeSitterDocument) -> CodeAnalyzer:
-        """Создает языко-специфичный унифицированный анализатор кода."""
+        """Create language-specific unified code analyzer."""
         pass
 
-    # ============= ХУКИ для вклинивания в процесс оптимизации ===========
+    # ============= HOOKS for injecting into optimization process ===========
 
     def hook__remove_function_body(
             self,
@@ -61,49 +61,49 @@ class CodeAdapter(BaseAdapter[C], ABC):
             body_node: Node,
             func_type: str
     ) -> None:
-        """Хук для кастомизации удаления тел функций."""
+        """Hook for customizing function body removal."""
         root_optimizer.remove_function_body(context, body_node, func_type)
 
     def get_comment_style(self) -> Tuple[str, tuple[str, str], tuple[str, str]]:
-        """Cтиль комментариев для языка (однострочный, многострочный, докстринг)."""
+        """Comment style for language (single-line, multi-line, docstring)."""
         return "//", ("/*", "*/"), ('/**', '*/')
 
     def is_documentation_comment(self, comment_text: str) -> bool:
-        """Является ли этот комментарий частью системы документирования."""
+        """Is this comment part of the documentation system."""
         return comment_text.strip().startswith('/**')
 
     def is_docstring_node(self, node, doc: TreeSitterDocument) -> bool:
-        """Проверяет, является ли узел строки докстрингом."""
+        """Check if node is a docstring."""
         return False
 
     def hook__extract_first_sentence(self, root_optimizer: CommentOptimizer, text: str) -> str:
-        """Хук для извлечения первого предложение из текста комментария."""
+        """Hook for extracting first sentence from comment text."""
         return root_optimizer.extract_first_sentence(text)
 
     def hook__smart_truncate_comment(self, root_optimizer: CommentOptimizer, comment_text: str, max_tokens: int, tokenizer) -> str:
-        """Хук для корректного закрытия многострочных комментариев и докстрингов после обрезания."""
+        """Hook for correctly closing multi-line comments and docstrings after truncation."""
         return root_optimizer.smart_truncate_comment(comment_text, max_tokens, tokenizer)
 
     def hook__process_additional_literals(self, context: ProcessingContext, max_tokens: Optional[int]) -> None:
         """
-        Хук для обработки языко-специфичных литералов.
-        По умолчанию ничего не делает - языки могут переопределить для своих конструкций.
-        
+        Hook for processing language-specific literals.
+        By default does nothing - languages can override for their constructs.
+
         Args:
-            context: Контекст обработки
-            max_tokens: Максимальное количество токенов для литерала
+            context: Processing context
+            max_tokens: Maximum number of tokens for literal
         """
         pass
 
 
-    # ============= Основной пайплайн работы языковых оптимизаторов ===========
+    # ============= Main pipeline for language optimizer operations ===========
 
     def process(self, lightweight_ctx: LightweightContext) -> Tuple[str, Dict[str, Any]]:
         """
-        Основной метод обработки кода.
-        Применяет все конфигурированные оптимизации.
+        Main code processing method.
+        Applies all configured optimizations.
         """
-        # Подбираем эффективный конфиг при активном бюджете (sandbox без плейсхолдеров)
+        # Select effective config with active budget (sandbox without placeholders)
         effective_cfg = self.cfg
         budget_metrics: dict[str, int] | None = None
         if self.cfg.budget and self.cfg.budget.max_tokens_per_file:
@@ -111,17 +111,17 @@ class CodeAdapter(BaseAdapter[C], ABC):
             controller = BudgetController[C](self, self.tokenizer, self.cfg.budget)
             effective_cfg, budget_metrics = controller.fit_config(lightweight_ctx, self.cfg)
 
-        # Получаем полноценный контекст из облегченного уже для реального прогона
+        # Get full context from lightweight context for actual run
         context = lightweight_ctx.get_full_context(self, self.tokenizer)
 
-        # Затем применяем оптимизации по подобранному конфигу
+        # Then apply optimizations based on selected config
         # Cast for type-narrowing: effective_cfg matches adapter's config type
         self._apply_optimizations(context, cast(C, effective_cfg))
 
-        # Финализируем плейсхолдеры
+        # Finalize placeholders
         text, meta = self._finalize_placeholders(context, effective_cfg.placeholders)
 
-        # Примешиваем метрики бюджета
+        # Mix in budget metrics
         if budget_metrics:
             meta.update(budget_metrics)
 
@@ -129,34 +129,34 @@ class CodeAdapter(BaseAdapter[C], ABC):
 
     def _apply_optimizations(self, context: ProcessingContext, code_cfg: C) -> None:
         """
-        Применение оптимизаций через специализированные модули.
-        Каждый модуль отвечает за свой тип оптимизации.
+        Apply optimizations via specialized modules.
+        Each module is responsible for its type of optimization.
         """
-        # Фильтрация по публичному API
+        # Filter by public API
         if code_cfg.public_api_only:
             public_api_optimizer = PublicApiOptimizer(self)
             public_api_optimizer.apply(context)
 
-        # Обработка тел функций
+        # Process function bodies
         if code_cfg.strip_function_bodies:
             function_body_optimizer = FunctionBodyOptimizer(code_cfg.strip_function_bodies, self)
             function_body_optimizer.apply(context)
 
-        # Обработка комментариев
+        # Process comments
         comment_optimizer = CommentOptimizer(code_cfg.comment_policy, self)
         comment_optimizer.apply(context)
 
-        # Обработка импортов
+        # Process imports
         import_optimizer = ImportOptimizer(code_cfg.imports, self)
         import_optimizer.apply(context)
 
-        # Обработка литералов
+        # Process literals
         literal_optimizer = LiteralOptimizer(code_cfg.literals, self)
         literal_optimizer.apply(context)
 
     def _finalize_placeholders(self, context: ProcessingContext, ph_cfg: PlaceholderConfig) -> Tuple[str, Dict[str, Any]]:
         """
-        Финализируем плейсхолдеры и применяем их к редактору, получаем финальные метрики.
+        Finalize placeholders and apply them to editor, get final metrics.
         """
         collapsed_edits, placeholder_stats = context.placeholders.finalize_edits()
 
@@ -164,13 +164,13 @@ class CodeAdapter(BaseAdapter[C], ABC):
         min_abs_savings_if_none = ph_cfg.min_abs_savings_if_none
 
         for spec, repl in collapsed_edits:
-            # Получаем исходный текст диапазона
+            # Get original text for range
             src = context.raw_text[spec.start_char:spec.end_char]
 
-            # Определяем флаг "пустой" замены
+            # Determine "empty" replacement flag
             is_none = (repl == "")
 
-            # Проверка целесообразности
+            # Check feasibility
             if not self.tokenizer.is_economical(
                     src,
                     repl,
@@ -178,24 +178,24 @@ class CodeAdapter(BaseAdapter[C], ABC):
                     replacement_is_none=is_none,
                     min_abs_savings_if_none=min_abs_savings_if_none,
             ):
-                # Пропускаем замену, оставляем оригинал
+                # Skip replacement, keep original
                 continue
 
-            # Применяем уместные плейсхолдеры к редактору
+            # Apply relevant placeholders to editor
             context.editor.add_replacement(spec.start_char, spec.end_char, repl,
-                # Тип специально не указываем, так как контекст сам собирает метаинформацию по плейсхолдерам
+                # Type not specified as context collects metadata itself about placeholders
                 edit_type=None
             )
 
-        # Обновляем метрики из плейсхолдеров
+        # Update metrics from placeholders
         for key, value in placeholder_stats.items():
             if isinstance(value, (int, float)):
                 context.metrics.set(key, value)
 
-        # Применяем все изменения в редакторе текста и возвращаем статистику
+        # Apply all changes in text editor and return statistics
         result_text, edit_stats = context.editor.apply_edits()
 
-        # Объединяем метрики из редактора и контекста
+        # Combine metrics from editor and context
         metrics = context.metrics.to_dict()
         metrics.update(edit_stats)
         return result_text, metrics

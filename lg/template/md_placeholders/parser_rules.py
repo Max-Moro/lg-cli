@@ -1,7 +1,7 @@
 """
-Правила парсинга для Markdown-плейсхолдеров.
+Parsing rules for Markdown placeholders.
 
-Обрабатывает конструкции вида:
+Handles constructs like:
 - ${md:path}
 - ${md:path#anchor}
 - ${md:path,level:3,strip_h1:true}
@@ -23,54 +23,54 @@ from ..types import PluginPriority, ParsingRule, ParsingContext
 
 def parse_md_placeholder(context: ParsingContext) -> Optional[TemplateNode]:
     """
-    Парсит MD-плейсхолдер ${md:...}.
-    
-    Возвращает MarkdownFileNode если распознан MD-плейсхолдер, иначе None.
+    Parse MD placeholder ${md:...}.
+
+    Returns MarkdownFileNode if MD placeholder is recognized, otherwise None.
     """
-    # Проверяем начало плейсхолдера
+    # Check placeholder start
     if not context.match("PLACEHOLDER_START"):
         return None
-    
-    # Сохраняем позицию для отката
+
+    # Save position for rollback
     saved_position = context.position
-    
-    # Потребляем ${
+
+    # Consume ${
     context.consume("PLACEHOLDER_START")
-    
-    # Проверяем префикс 'md' через IDENTIFIER
+
+    # Check 'md' prefix via IDENTIFIER
     if not context.match("IDENTIFIER"):
         context.position = saved_position
         return None
-    
+
     first_token = context.current()
     if first_token.value != 'md':
         context.position = saved_position
         return None
-    
-    # Теперь мы уверены что это MD-плейсхолдер - любые ошибки дальше должны пробрасываться!
-    context.advance()  # Потребляем 'md'
-    
-    # Парсим содержимое плейсхолдера (НЕ ловим исключения - пусть летят наверх)
+
+    # Now we are sure this is an MD placeholder - all errors below should propagate!
+    context.advance()  # Consume 'md'
+
+    # Parse placeholder content (do NOT catch exceptions - let them propagate)
     node = _parse_md_content(context)
-    
-    # Потребляем }
+
+    # Consume }
     context.consume("PLACEHOLDER_END")
-    
+
     return node
 
 
 def _parse_md_content(context: ParsingContext) -> MarkdownFileNode:
     """
-    Парсит содержимое MD-плейсхолдера после 'md'.
-    
-    Определяет тип (простой/адресный) и создает MarkdownFileNode.
+    Parse MD placeholder content after 'md'.
+
+    Determines type (simple/addressed) and creates MarkdownFileNode.
     """
-    # Проверяем, адресное это включение или простое
+    # Check if this is addressed inclusion or simple
     if context.match("AT"):
-        # Адресное включение: md@origin:path[,params...]
+        # Addressed inclusion: md@origin:path[,params...]
         return _parse_addressed_md(context)
     elif context.match("COLON"):
-        # Простое включение: md:path[,params...]
+        # Simple inclusion: md:path[,params...]
         return _parse_simple_md(context)
     else:
         raise ParserError(f"Expected ':' or '@' after 'md'", context.current())
@@ -78,19 +78,19 @@ def _parse_md_content(context: ParsingContext) -> MarkdownFileNode:
 
 def _parse_simple_md(context: ParsingContext) -> MarkdownFileNode:
     """
-    Парсит простое MD-включение: md:path[#anchor][,params...]
+    Parse simple MD inclusion: md:path[#anchor][,params...]
     """
-    context.consume("COLON")  # Потребляем :
-    
-    # Парсим путь, якорь и параметры
+    context.consume("COLON")  # Consume :
+
+    # Parse path, anchor and parameters
     path, anchor, params = _parse_path_anchor_params(context)
-    
-    # Определяем, содержит ли путь глобы
+
+    # Determine if path contains globs
     is_glob = _path_contains_globs(path)
-    
+
     return MarkdownFileNode(
         path=path,
-        origin=None,  # Для обычных md: origin не задан
+        origin=None,  # For ordinary md: origin is not set
         heading_level=params.get('level'),
         strip_h1=params.get('strip_h1'),
         anchor=anchor,
@@ -101,23 +101,23 @@ def _parse_simple_md(context: ParsingContext) -> MarkdownFileNode:
 
 def _parse_addressed_md(context: ParsingContext) -> MarkdownFileNode:
     """
-    Парсит адресное MD-включение: md@origin:path[#anchor][,params...]
-    или md@[origin]:path[#anchor][,params...]
+    Parse addressed MD inclusion: md@origin:path[#anchor][,params...]
+    or md@[origin]:path[#anchor][,params...]
     """
-    context.consume("AT")  # Потребляем @
-    
-    # Парсим origin
+    context.consume("AT")  # Consume @
+
+    # Parse origin
     origin = _parse_origin(context)
-    
-    # Потребляем :
+
+    # Consume :
     context.consume("COLON")
-    
-    # Парсим путь, якорь и параметры
+
+    # Parse path, anchor and parameters
     path, anchor, params = _parse_path_anchor_params(context)
-    
-    # Определяем, содержит ли путь глобы
+
+    # Determine if path contains globs
     is_glob = _path_contains_globs(path)
-    
+
     return MarkdownFileNode(
         path=path,
         origin=origin,
@@ -131,222 +131,222 @@ def _parse_addressed_md(context: ParsingContext) -> MarkdownFileNode:
 
 def _parse_origin(context: ParsingContext) -> str:
     """
-    Парсит origin в адресном MD-плейсхолдере.
-    
-    Поддерживает:
-    - origin (простая форма)
-    - [origin] (скобочная форма для путей с двоеточиями)
+    Parse origin in addressed MD placeholder.
+
+    Supports:
+    - origin (simple form)
+    - [origin] (bracketed form for paths with colons)
     """
-    # Проверяем скобочную форму
+    # Check bracketed form
     if context.match("LBRACKET"):
-        context.advance()  # Потребляем [
-        
-        # Собираем origin внутри скобок
+        context.advance()  # Consume [
+
+        # Collect origin inside brackets
         origin_parts = []
         while not context.match("RBRACKET") and not context.is_at_end():
             token = context.advance()
             origin_parts.append(token.value)
-        
+
         if context.is_at_end():
             raise ParserError("Expected ']' to close bracketed origin", context.current())
-        
-        context.consume("RBRACKET")  # Потребляем ]
-        
+
+        context.consume("RBRACKET")  # Consume ]
+
         return "".join(origin_parts)
-    
-    # Простая форма - собираем до двоеточия
+
+    # Simple form - collect until colon
     origin_parts = []
     while not context.match("COLON") and not context.is_at_end():
-        # Останавливаемся на специальных токенах
+        # Stop on special tokens
         if context.match("PLACEHOLDER_END", "COMMA", "HASH"):
             break
         token = context.advance()
         origin_parts.append(token.value)
-    
+
     if not origin_parts:
         raise ParserError("Empty origin in MD reference", context.current())
-    
+
     return "".join(origin_parts)
 
 
 def _parse_path_anchor_params(context: ParsingContext) -> Tuple[str, Optional[str], dict]:
     """
-    Парсит путь, якорь и параметры из текущей позиции.
-    
-    Формат: path[#anchor][,param:value,...]
-    
+    Parse path, anchor and parameters from current position.
+
+    Format: path[#anchor][,param:value,...]
+
     Returns:
-        Кортеж (path, anchor, params_dict)
+        Tuple (path, anchor, params_dict)
     """
-    # Парсим путь
+    # Parse path
     path = _parse_file_path(context)
-    
-    # Парсим якорь если есть
+
+    # Parse anchor if present
     anchor = None
     if context.match("HASH"):
-        context.advance()  # Потребляем #
+        context.advance()  # Consume #
         anchor = _parse_anchor(context)
-    
-    # Парсим параметры если есть
+
+    # Parse parameters if present
     params = {}
     while context.match("COMMA"):
-        context.advance()  # Потребляем ,
-        
+        context.advance()  # Consume ,
+
         param_name, param_value = _parse_parameter(context)
         params[param_name] = param_value
-    
+
     return path, anchor, params
 
 
 def _parse_file_path(context: ParsingContext) -> str:
     """
-    Парсит путь к файлу, включая поддержку глобов и слешей.
-    
+    Parse file path including support for globs and slashes.
+
     Returns:
-        Строка пути (например, "docs/api" или "docs/*.md")
+        Path string (e.g., "docs/api" or "docs/*.md")
     """
     path_parts = []
-    
+
     while not context.is_at_end():
         current = context.current()
-        
-        # Останавливаемся на специальных токенах
+
+        # Stop on special tokens
         if current.type in ("HASH", "COMMA", "PLACEHOLDER_END"):
             break
-        
-        # Добавляем токен к пути
+
+        # Add token to path
         if current.type in ("IDENTIFIER", "GLOB_STAR", "TEXT"):
             path_parts.append(current.value)
             context.advance()
         elif current.value in ("/", ".", "-", "_"):
-            # Разрешенные символы в пути
+            # Allowed characters in path
             path_parts.append(current.value)
             context.advance()
         else:
-            # Неожиданный токен - останавливаемся
+            # Unexpected token - stop
             break
-    
+
     if not path_parts:
         raise ParserError("Expected file path", context.current())
-    
+
     return "".join(path_parts)
 
 
 def _parse_anchor(context: ParsingContext) -> str:
     """
-    Парсит якорь после #.
-    
+    Parse anchor after #.
+
     Returns:
-        Строка якоря (название заголовка)
+        Anchor string (heading name)
     """
     anchor_parts = []
-    
+
     while not context.is_at_end():
         current = context.current()
-        
-        # Останавливаемся на разделителях
+
+        # Stop on delimiters
         if current.type in ("COMMA", "PLACEHOLDER_END"):
             break
-        
-        # Добавляем токен к якорю
+
+        # Add token to anchor
         anchor_parts.append(current.value)
         context.advance()
-    
+
     if not anchor_parts:
         raise ParserError("Expected anchor name after '#'", context.current())
-    
+
     return "".join(anchor_parts).strip()
 
 
 def _parse_parameter(context: ParsingContext) -> Tuple[str, Any]:
     """
-    Парсит один параметр вида name:value.
-    
+    Parse a single parameter of the form name:value.
+
     Returns:
-        Кортеж (param_name, param_value)
+        Tuple (param_name, param_value)
     """
-    # Пропускаем пробелы перед именем параметра
+    # Skip whitespace before parameter name
     while context.match("WHITESPACE"):
         context.advance()
-    
-    # Парсим имя параметра через IDENTIFIER (включая 'if')
+
+    # Parse parameter name via IDENTIFIER (including 'if')
     if not context.match("IDENTIFIER"):
         raise ParserError("Expected parameter name", context.current())
-    
+
     param_token = context.advance()
     param_name = param_token.value
-    
-    # Потребляем двоеточие
+
+    # Consume colon
     context.consume("COLON")
-    
-    # Пропускаем пробелы после двоеточия
+
+    # Skip whitespace after colon
     while context.match("WHITESPACE"):
         context.advance()
-    
-    # Парсим значение параметра
+
+    # Parse parameter value
     if param_name == 'if':
-        # Для 'if' собираем всё до запятой или конца как условие
+        # For 'if' collect everything until comma or end as condition
         param_value = _parse_condition_value(context)
     elif param_name == 'level':
-        # Числовые параметры
+        # Numeric parameters
         param_value = _parse_number_value(context)
     elif param_name == 'strip_h1':
-        # Булевы параметры
+        # Boolean parameters
         param_value = _parse_bool_value(context)
     elif param_name == 'anchor':
-        # Якорь для частичного включения
+        # Anchor for partial inclusion
         param_value = _parse_string_value(context)
         if not param_value.strip():
             raise ParserError("Anchor cannot be empty", param_token)
     else:
-        # Неизвестный параметр - вызываем ошибку
+        # Unknown parameter - raise error
         raise ParserError(
             f"Unknown parameter '{param_name}'. Supported parameters: level, strip_h1, if, anchor",
             param_token
         )
-    
+
     return param_name, param_value
 
 
 def _parse_condition_value(context: ParsingContext) -> str:
     """
-    Парсит значение условия для параметра 'if'.
-    
-    Собирает все токены до запятой или конца плейсхолдера.
+    Parse condition value for 'if' parameter.
+
+    Collects all tokens until comma or end of placeholder.
     """
     value_parts = []
-    
+
     while not context.is_at_end():
         current = context.current()
-        
-        # Останавливаемся на разделителях
+
+        # Stop on delimiters
         if current.type in ("COMMA", "PLACEHOLDER_END"):
             break
-        
-        # Добавляем пробел перед токеном (если не первый и не специальный)
+
+        # Add space before token (if not first and not special)
         if value_parts and current.value not in (":", "(", ")"):
             prev_value = value_parts[-1] if value_parts else ""
             if prev_value not in (":", "(", ")"):
                 value_parts.append(" ")
-        
+
         value_parts.append(current.value)
         context.advance()
-    
+
     if not value_parts:
         raise ParserError("Expected condition value after 'if:'", context.current())
-    
+
     return "".join(value_parts)
 
 
 def _parse_number_value(context: ParsingContext) -> int:
-    """Парсит числовое значение параметра."""
+    """Parse numeric parameter value."""
     if not context.match("NUMBER"):
         raise ParserError("Expected number value", context.current())
-    
+
     token = context.advance()
     try:
         value = int(token.value)
-        # Валидация диапазона для level (должно быть от 1 до 6)
+        # Validate range for level (must be between 1 and 6)
         if not 1 <= value <= 6:
             raise ParserError(f"Level must be between 1 and 6, got {value}", token)
         return value
@@ -355,9 +355,9 @@ def _parse_number_value(context: ParsingContext) -> int:
 
 
 def _parse_bool_value(context: ParsingContext) -> bool:
-    """Парсит булево значение параметра."""
+    """Parse boolean parameter value."""
     current = context.current()
-    
+
     if current.type == "BOOL_TRUE":
         context.advance()
         return True
@@ -365,7 +365,7 @@ def _parse_bool_value(context: ParsingContext) -> bool:
         context.advance()
         return False
     elif current.type == "NUMBER":
-        # Числа 1 и 0 как булевы значения
+        # Numbers 1 and 0 as boolean values
         value = current.value
         context.advance()
         if value == "1":
@@ -375,59 +375,59 @@ def _parse_bool_value(context: ParsingContext) -> bool:
         else:
             raise ParserError(f"Boolean number must be 0 or 1, got '{value}'", current)
     elif current.type == "IDENTIFIER":
-        # Fallback для обычных идентификаторов
+        # Fallback for regular identifiers
         value = current.value.lower()
         context.advance()
         if value in ("true", "yes"):
             return True
         elif value in ("false", "no"):
             return False
-    
+
     raise ParserError(f"Expected boolean value (true/false/1/0/yes/no)", current)
 
 
 def _parse_string_value(context: ParsingContext) -> str:
-    """Парсит строковое значение параметра."""
+    """Parse string parameter value."""
     value_parts = []
-    
-    # Собираем значение до запятой или конца, включая возможные двоеточия
+
+    # Collect value until comma or end, including possible colons
     while not context.is_at_end():
         current = context.current()
-        
-        # Останавливаемся на разделителях
+
+        # Stop on delimiters
         if current.type in ("COMMA", "PLACEHOLDER_END"):
             break
-        
+
         value_parts.append(current.value)
         context.advance()
-    
+
     if not value_parts:
         raise ParserError("Expected parameter value", context.current())
-    
+
     return "".join(value_parts)
 
 
 def _path_contains_globs(path: str) -> bool:
     """
-    Проверяет, содержит ли путь глоб-паттерны.
-    
+    Check if path contains glob patterns.
+
     Args:
-        path: Путь для проверки
-        
+        path: Path to check
+
     Returns:
-        True если путь содержит * или **
+        True if path contains * or **
     """
     return '*' in path
 
 
 def get_md_parser_rules() -> List[ParsingRule]:
     """
-    Возвращает правила парсинга для MD-плейсхолдеров.
+    Return parsing rules for MD placeholders.
     """
     return [
         ParsingRule(
             name="parse_md_placeholder",
-            priority=PluginPriority.PLACEHOLDER,  # Тот же приоритет что у обычных плейсхолдеров
+            priority=PluginPriority.PLACEHOLDER,  # Same priority as regular placeholders
             parser_func=parse_md_placeholder
         )
     ]

@@ -1,12 +1,12 @@
 """
-Правила парсинга для базовых плейсхолдеров секций и шаблонов.
+Parsing rules for basic section and template placeholders.
 
-Обрабатывает конструкции вида:
+Handles constructs like:
 - ${section_name}
-- ${tpl:template_name}  
+- ${tpl:template_name}
 - ${ctx:context_name}
-- ${@origin:name} (адресные ссылки)
-- ${tpl@[origin]:name} (скобочная форма адресации)
+- ${@origin:name} (addressed references)
+- ${tpl@[origin]:name} (bracketed addressing form)
 """
 
 from __future__ import annotations
@@ -21,113 +21,113 @@ from ..types import PluginPriority, ParsingRule, ParsingContext
 
 def parse_placeholder(context: ParsingContext) -> Optional[TemplateNode]:
     """
-    Парсит плейсхолдер ${...}.
-    
-    Возвращает SectionNode или IncludeNode в зависимости от содержимого.
+    Parses a placeholder ${...}.
+
+    Returns SectionNode or IncludeNode depending on content.
     """
-    # Проверяем начало плейсхолдера
+    # Check for placeholder start
     if not context.match("PLACEHOLDER_START"):
         return None
-    
-    # Сохраняем позицию для отката в случае ошибки
+
+    # Save position for rollback on error
     saved_position = context.position
-    
+
     try:
-        # Потребляем ${
+        # Consume ${
         context.consume("PLACEHOLDER_START")
-        
-        # Парсим содержимое плейсхолдера
+
+        # Parse placeholder content
         node = _parse_placeholder_content(context)
-        
-        # Потребляем }
+
+        # Consume }
         context.consume("PLACEHOLDER_END")
-        
+
         return node
-        
+
     except (ParserError, Exception):
-        # Откатываемся при ошибке
+        # Rollback on error
         context.position = saved_position
         return None
 
 
 def _parse_placeholder_content(context: ParsingContext) -> TemplateNode:
     """
-    Парсит содержимое плейсхолдера после ${.
-    
-    Определяет тип плейсхолдера и создает соответствующий узел.
+    Parses placeholder content after ${.
+
+    Determines placeholder type and creates appropriate node.
     """
-    # Проверяем, есть ли tpl: или ctx: в начале
+    # Check for tpl: or ctx: at beginning
     if _check_include_prefix(context):
         return _parse_include_placeholder(context)
-    
-    # Проверяем адресную ссылку @origin:name
+
+    # Check for addressed reference @origin:name
     if context.match("AT"):
         return _parse_addressed_section(context)
-    
-    # Обычная секция
+
+    # Regular section
     return _parse_simple_section(context)
 
 
 def _check_include_prefix(context: ParsingContext) -> bool:
-    """Проверяет, начинается ли плейсхолдер с tpl: или ctx: (включая адресные формы tpl@origin:name)."""
+    """Checks if placeholder starts with tpl: or ctx: (including addressed forms tpl@origin:name)."""
     current = context.current()
     if current.type != "IDENTIFIER":
         return False
-    
-    # Проверяем, что идентификатор - это tpl или ctx
+
+    # Check that identifier is tpl or ctx
     if current.value not in ["tpl", "ctx"]:
         return False
-    
-    # Проверяем следующий токен после идентификатора
+
+    # Check token after identifier
     next_token = context.peek(1)
-    # Допускаем как : (локальные ссылки tpl:name), так и @ (адресные ссылки tpl@origin:name)
+    # Allow both : (local references tpl:name) and @ (addressed references tpl@origin:name)
     return next_token.type in ("COLON", "AT")
 
 
 def _parse_include_placeholder(context: ParsingContext) -> IncludeNode:
     """
-    Парсит плейсхолдер включения tpl:name или ctx:name.
-    
-    Поддерживает адресные формы:
+    Parses include placeholder tpl:name or ctx:name.
+
+    Supports addressed forms:
     - tpl@origin:name
     - tpl@[origin]:name
     """
-    # Получаем тип включения
+    # Get include type
     kind_token = context.consume("IDENTIFIER")
     kind = kind_token.value
-    
+
     if kind not in ["tpl", "ctx"]:
         raise ParserError(f"Expected 'tpl' or 'ctx', got '{kind}'", kind_token)
-    
-    # Проверяем на адресную ссылку
+
+    # Check for addressed reference
     if context.match("AT"):
-        # Адресная форма: tpl@origin:name или tpl@[origin]:name
-        context.advance()  # потребляем @
+        # Addressed form: tpl@origin:name or tpl@[origin]:name
+        context.advance()  # consume @
         origin, name = _parse_addressed_reference(context)
         return IncludeNode(kind=kind, name=name, origin=origin)
-    
-    # Обычная форма: tpl:name
+
+    # Regular form: tpl:name
     context.consume("COLON")
     name = _parse_identifier_path(context)
-    
+
     return IncludeNode(kind=kind, name=name, origin="self")
 
 
 def _parse_addressed_section(context: ParsingContext) -> SectionNode:
     """
-    Парсит адресную ссылку на секцию @origin:name.
+    Parses addressed section reference @origin:name.
     """
-    context.consume("AT")  # потребляем @
+    context.consume("AT")  # consume @
     origin, name = _parse_addressed_reference(context)
-    
-    # Создаем SectionNode с адресной ссылкой
-    # resolved_ref будет заполнен резолвером
+
+    # Create SectionNode with addressed reference
+    # resolved_ref will be filled by resolver
     return SectionNode(section_name=f"@{origin}:{name}")
 
 
 def _parse_simple_section(context: ParsingContext) -> SectionNode:
     """
-    Парсит простую ссылку на секцию section_name.
+    Parses simple section reference section_name.
     """
     name = _parse_identifier_path(context)
     return SectionNode(section_name=name)
@@ -135,57 +135,57 @@ def _parse_simple_section(context: ParsingContext) -> SectionNode:
 
 def _parse_addressed_reference(context: ParsingContext) -> tuple[str, str]:
     """
-    Парсит адресную ссылку origin:name или [origin]:name.
-    
+    Parses addressed reference origin:name or [origin]:name.
+
     Returns:
-        Кортеж (origin, name)
+        Tuple (origin, name)
     """
-    # Проверяем скобочную форму [origin]:name
+    # Check for bracketed form [origin]:name
     if context.match("LBRACKET"):
-        context.advance()  # потребляем [
-        
-        # Парсим origin внутри скобок (может содержать :)
+        context.advance()  # consume [
+
+        # Parse origin inside brackets (may contain :)
         origin_parts = []
         while not context.match("RBRACKET") and not context.is_at_end():
             token = context.advance()
             origin_parts.append(token.value)
-        
+
         if context.is_at_end():
             raise ParserError("Expected ']' to close bracketed origin", context.current())
-            
-        context.consume("RBRACKET")  # потребляем ]
-        context.consume("COLON")     # потребляем :
-        
+
+        context.consume("RBRACKET")  # consume ]
+        context.consume("COLON")     # consume :
+
         origin = "".join(origin_parts)
         name = _parse_identifier_path(context)
-        
+
         return origin, name
-    
-    # Обычная форма origin:name
+
+    # Regular form origin:name
     origin = _parse_identifier_path(context)
     context.consume("COLON")
     name = _parse_identifier_path(context)
-    
+
     return origin, name
 
 
 def _parse_identifier_path(context: ParsingContext) -> str:
     """
-    Парсит путь-идентификатор, который может состоять из нескольких частей.
-    
-    Например: docs/api или simple-name
+    Parses identifier path, which may consist of multiple parts.
+
+    Example: docs/api or simple-name
     """
     if not context.match("IDENTIFIER"):
         raise ParserError("Expected identifier", context.current())
-    
-    # Простая версия - берем один идентификатор
+
+    # Simple version - take one identifier
     token = context.advance()
     return token.value
 
 
 def get_placeholder_parser_rules() -> List[ParsingRule]:
     """
-    Возвращает правила парсинга для плейсхолдеров.
+    Returns parsing rules for placeholders.
     """
     return [
         ParsingRule(

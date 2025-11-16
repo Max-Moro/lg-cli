@@ -1,16 +1,16 @@
 from __future__ import annotations
 
-# Публичный API пакета adapters:
-#  • process_files — движок обработки файлов
-#  • get_adapter_for_path — ленивое получение класса адаптера по пути
+# Public API of adapters package:
+#  • process_files — file processing engine
+#  • get_adapter_for_path — lazy retrieval of adapter class by path
 from .processor import process_files
 from .registry import get_adapter_for_path, register_lazy
 
 __all__ = ["process_files", "get_adapter_for_path", "register_lazy"]
 
-# ---- Лёгкая (ленивая) регистрация встроенных адаптеров --------------------
-# Никаких импортов тяжёлых модулей здесь нет — только строки module:class.
-# Модуль адаптера будет импортирован ровно в момент первого запроса по расширению.
+# ---- Lightweight (lazy) registration of built-in adapters --------------------
+# No heavy module imports here — only module:class strings.
+# The adapter module will be imported exactly at the moment of first request by extension.
 
 # Tree-sitter based adapters
 register_lazy(module=".python", class_name="PythonAdapter", extensions=[".py"])

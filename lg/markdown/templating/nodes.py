@@ -1,8 +1,8 @@
 """
-AST-узлы для условной логики в Markdown.
+AST nodes for conditional logic in Markdown.
 
-Определяет иерархию узлов для представления условных конструкций
-в HTML-комментариях внутри Markdown-документов.
+Defines node hierarchy for representing conditional constructs
+in HTML comments inside Markdown documents.
 """
 
 from __future__ import annotations
@@ -13,17 +13,17 @@ from typing import List, Optional
 
 @dataclass(frozen=True)
 class MarkdownNode:
-    """Базовый класс для всех узлов AST Markdown с условной логикой."""
+    """Base class for all AST nodes in Markdown with conditional logic."""
     pass
 
 
 @dataclass(frozen=True)
 class TextNode(MarkdownNode):
     """
-    Обычный текстовый контент в Markdown.
-    
-    Представляет статический текст, который не требует обработки
-    и выводится в результат как есть.
+    Regular text content in Markdown.
+
+    Represents static text that doesn't require processing
+    and is output as-is in the result.
     """
     text: str
 
@@ -31,17 +31,17 @@ class TextNode(MarkdownNode):
 @dataclass(frozen=True)
 class ConditionalBlockNode(MarkdownNode):
     """
-    Условный блок <!-- lg:if condition -->...<!-- lg:endif -->.
-    
-    Представляет условную конструкцию в HTML-комментариях, которая 
-    включает или исключает содержимое на основе вычисления условного 
-    выражения с поддержкой цепочек elif блоков.
+    Conditional block <!-- lg:if condition -->...<!-- lg:endif -->.
+
+    Represents conditional construct in HTML comments that
+    includes or excludes content based on condition evaluation
+    with support for elif block chains.
     """
-    condition_text: str  # Исходный текст условия
+    condition_text: str  # Original condition text
     body: List[MarkdownNode]
     elif_blocks: Optional[List[ElifBlockNode]] = None
     else_block: Optional[ElseBlockNode] = None
-    
+
     def __post_init__(self):
         if self.elif_blocks is None:
             object.__setattr__(self, 'elif_blocks', [])
@@ -50,22 +50,22 @@ class ConditionalBlockNode(MarkdownNode):
 @dataclass(frozen=True)
 class ElifBlockNode(MarkdownNode):
     """
-    Блок <!-- lg:elif condition --> внутри условных конструкций.
-    
-    Представляет условное альтернативное содержимое, которое проверяется
-    если предыдущие условия в цепочке if/elif не выполнились.
+    Block <!-- lg:elif condition --> within conditional constructs.
+
+    Represents alternative content that is checked
+    if previous conditions in the if/elif chain didn't succeed.
     """
-    condition_text: str  # Исходный текст условия
+    condition_text: str  # Original condition text
     body: List[MarkdownNode]
 
 
 @dataclass(frozen=True)
 class ElseBlockNode(MarkdownNode):
     """
-    Блок <!-- lg:else --> внутри условных конструкций.
-    
-    Представляет альтернативное содержимое, которое используется
-    если условие в ConditionalBlockNode не выполняется.
+    Block <!-- lg:else --> within conditional constructs.
+
+    Represents alternative content used
+    if the condition in ConditionalBlockNode is false.
     """
     body: List[MarkdownNode]
 
@@ -73,10 +73,10 @@ class ElseBlockNode(MarkdownNode):
 @dataclass(frozen=True)
 class CommentBlockNode(MarkdownNode):
     """
-    Блок комментария <!-- lg:comment:start -->...<!-- lg:comment:end -->.
-    
-    Представляет комментарий в Markdown, который должен быть удален
-    при обработке LG, но остается видимым в обычных Markdown-просмотрщиках.
+    Comment block <!-- lg:comment:start -->...<!-- lg:comment:end -->.
+
+    Represents comment in Markdown that should be removed
+    during LG processing but remains visible in regular Markdown viewers.
     """
     text: str
 
@@ -84,28 +84,28 @@ class CommentBlockNode(MarkdownNode):
 @dataclass(frozen=True)
 class RawBlockNode(MarkdownNode):
     """
-    Блок raw-текста <!-- lg:raw:start -->...<!-- lg:raw:end -->.
-    
-    Представляет блок текста, который должен быть выведен как есть,
-    без обработки вложенных LG-инструкций. Все HTML-комментарии внутри
-    такого блока сохраняются в итоговом выводе.
+    Raw text block <!-- lg:raw:start -->...<!-- lg:raw:end -->.
+
+    Represents block of text that should be output as-is,
+    without processing nested LG instructions. All HTML comments inside
+    such blocks are preserved in the final output.
     """
     text: str
 
 
-# Тип для коллекции узлов Markdown
+# Type for collection of Markdown nodes
 MarkdownAST = List[MarkdownNode]
 
 
 def collect_text_content(ast: MarkdownAST) -> str:
     """
-    Собирает весь текстовый контент из AST (для тестирования и отладки).
-    
+    Collects all text content from AST (for testing and debugging).
+
     Args:
-        ast: AST для обработки
-        
+        ast: AST to process
+
     Returns:
-        Объединенный текстовый контент
+        Combined text content
     """
     result_parts = []
     
@@ -124,10 +124,10 @@ def collect_text_content(ast: MarkdownAST) -> str:
             for child in node.body:
                 collect_from_node(child)
         elif isinstance(node, CommentBlockNode):
-            # Комментарии не включаются в текстовый контент
+            # Comments not included in text content
             pass
         elif isinstance(node, RawBlockNode):
-            # Raw-блоки выводятся как есть
+            # Raw blocks output as-is
             result_parts.append(node.text)
     
     for node in ast:
@@ -137,13 +137,13 @@ def collect_text_content(ast: MarkdownAST) -> str:
 
 
 def format_ast_tree(ast: MarkdownAST, indent: int = 0) -> str:
-    """Форматирует AST как дерево для отладки."""
+    """Format AST as tree for debugging."""
     lines = []
     prefix = "  " * indent
-    
+
     for node in ast:
         if isinstance(node, TextNode):
-            # Показываем только начало текста для читабельности
+            # Show only beginning of text for readability
             text_preview = repr(node.text[:50] + "..." if len(node.text) > 50 else node.text)
             lines.append(f"{prefix}TextNode({text_preview})")
         elif isinstance(node, ConditionalBlockNode):

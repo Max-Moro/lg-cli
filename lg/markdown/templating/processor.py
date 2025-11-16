@@ -1,8 +1,8 @@
 """
-Процессор для обработки Markdown с условными конструкциями.
+Processor for handling Markdown with conditional constructs.
 
-Объединяет лексер, парсер и оценщик условий для полной обработки
-Markdown-документов с LG-инструкциями в HTML-комментариях.
+Combines lexer, parser, and condition evaluator for complete processing
+of Markdown documents with LG instructions in HTML comments.
 """
 
 from __future__ import annotations
@@ -17,8 +17,8 @@ from .parser import parse_markdown_template, MarkdownTemplateParserError
 
 
 class MarkdownTemplateProcessorError(Exception):
-    """Ошибка обработки Markdown с условными конструкциями."""
-    
+    """Error in processing Markdown with conditional constructs."""
+
     def __init__(self, message: str, cause: Optional[Exception] = None):
         super().__init__(message)
         self.cause = cause
@@ -26,155 +26,155 @@ class MarkdownTemplateProcessorError(Exception):
 
 class MarkdownTemplateProcessor:
     """
-    Процессор для Markdown с условными конструкциями.
-    
-    Выполняет полный цикл обработки: лексический анализ, парсинг,
-    оценка условий и генерация итогового текста.
+    Processor for Markdown with conditional constructs.
+
+    Performs complete processing cycle: lexical analysis, parsing,
+    condition evaluation, and final text generation.
     """
-    
+
     def __init__(self, template_ctx=None):
         """
-        Инициализирует процессор.
-        
+        Initialize processor.
+
         Args:
-            template_ctx: Контекст шаблона для оценки условий (опционально)
+            template_ctx: Template context for condition evaluation (optional)
         """
         self.template_ctx = template_ctx
-    
+
     def process(self, text: str) -> Tuple[str, dict]:
         """
-        Обрабатывает Markdown-текст с условными конструкциями.
-        
+        Process Markdown text with conditional constructs.
+
         Args:
-            text: Исходный Markdown-текст
-            
+            text: Source Markdown text
+
         Returns:
-            Кортеж (обработанный_текст, метаданные)
-            
+            Tuple (processed_text, metadata)
+
         Raises:
-            MarkdownTemplateProcessorError: При ошибке обработки
+            MarkdownTemplateProcessorError: On processing error
         """
         try:
-            # 1. Парсим текст в AST
+            # 1. Parse text into AST
             ast = parse_markdown_template(text)
-            
-            # 2. Оцениваем условия и генерируем результат
+
+            # 2. Evaluate conditions and generate result
             processed_text = self._evaluate_ast(ast)
-            
-            # 3. Собираем метаданные
+
+            # 3. Collect metadata
             meta = self._collect_metadata(ast)
-            
+
             return processed_text, meta
-            
+
         except MarkdownTemplateParserError as e:
-            raise MarkdownTemplateProcessorError(f"Ошибка парсинга: {e}", e)
+            raise MarkdownTemplateProcessorError(f"Parsing error: {e}", e)
         except Exception as e:
-            raise MarkdownTemplateProcessorError(f"Неожиданная ошибка обработки: {e}", e)
+            raise MarkdownTemplateProcessorError(f"Unexpected processing error: {e}", e)
     
     def _evaluate_ast(self, ast: MarkdownAST) -> str:
         """
-        Оценивает AST и генерирует итоговый текст.
-        
+        Evaluate AST and generate final text.
+
         Args:
-            ast: AST для оценки
-            
+            ast: AST to evaluate
+
         Returns:
-            Итоговый обработанный текст
+            Final processed text
         """
         result_parts = []
-        
+
         for node in ast:
             result_parts.append(self._evaluate_node(node))
-        
+
         return "".join(result_parts)
-    
+
     def _evaluate_node(self, node: MarkdownNode) -> str:
         """
-        Оценивает один узел AST.
-        
+        Evaluate single AST node.
+
         Args:
-            node: Узел для оценки
-            
+            node: Node to evaluate
+
         Returns:
-            Текстовое представление узла
+            Text representation of node
         """
         if isinstance(node, TextNode):
             return node.text
-        
+
         elif isinstance(node, ConditionalBlockNode):
             return self._evaluate_conditional_block(node)
-        
+
         elif isinstance(node, CommentBlockNode):
-            # Комментарии удаляются при обработке
+            # Comments are removed during processing
             return ""
-        
+
         elif isinstance(node, RawBlockNode):
-            # Raw-блоки выводятся как есть без обработки
+            # Raw blocks output as-is without processing
             return node.text
-        
+
         else:
-            # Неизвестный тип узла - возвращаем как есть
+            # Unknown node type - return as-is
             return f"<!-- Unknown node type: {type(node).__name__} -->"
     
     def _evaluate_conditional_block(self, node: ConditionalBlockNode) -> str:
         """
-        Оценивает условный блок.
-        
+        Evaluate conditional block.
+
         Args:
-            node: Узел условного блока
-            
+            node: Conditional block node
+
         Returns:
-            Текст соответствующей ветки условия или пустая строка
+            Text of matching condition branch or empty string
         """
-        # Оцениваем основное условие
+        # Evaluate main condition
         if self._evaluate_condition(node.condition_text):
             return self._evaluate_ast(node.body)
-        
-        # Проверяем elif блоки по порядку
+
+        # Check elif blocks in order
         if node.elif_blocks:
             for elif_block in node.elif_blocks:
                 if self._evaluate_condition(elif_block.condition_text):
                     return self._evaluate_ast(elif_block.body)
-        
-        # Если ни одно условие не выполнилось, проверяем else блок
+
+        # If no condition matched, check else block
         if node.else_block:
             return self._evaluate_ast(node.else_block.body)
-        
+
         return ""
     
     def _evaluate_condition(self, condition_text: str) -> bool:
         """
-        Оценивает текстовое условие.
-        
+        Evaluate text condition.
+
         Args:
-            condition_text: Текст условия для оценки
-            
+            condition_text: Condition text to evaluate
+
         Returns:
-            Результат оценки условия
+            Result of condition evaluation
         """
         if not condition_text:
             return False
-        
+
         if self.template_ctx is None:
-            # Если контекст шаблона не задан, возвращаем False для всех условий
+            # If template context not set, return False for all conditions
             return False
-        
+
         try:
-            # Используем оценщик условий из контекста шаблона
+            # Use condition evaluator from template context
             return self.template_ctx.evaluate_condition_text(condition_text)
         except Exception:
-            # При ошибке оценки условия возвращаем False
+            # On condition evaluation error, return False
             return False
-    
+
     def _collect_metadata(self, ast: MarkdownAST) -> dict:
         """
-        Собирает метаданные обработки.
-        
+        Collect processing metadata.
+
         Args:
-            ast: AST для анализа
-            
+            ast: AST to analyze
+
         Returns:
-            Словарь метаданных
+            Metadata dictionary
         """
         meta = {
             "md.templating.processed": True,
@@ -183,26 +183,26 @@ class MarkdownTemplateProcessor:
             "md.templating.conditions_evaluated": 0,
             "md.templating.conditions_true": 0
         }
-        
+
         def analyze_node(node: MarkdownNode) -> None:
             if isinstance(node, ConditionalBlockNode):
                 meta["md.templating.conditional_blocks"] += 1
-                
-                # Анализируем основное условие
+
+                # Analyze main condition
                 if node.condition_text:
                     meta["md.templating.conditions_evaluated"] += 1
                     if self._evaluate_condition(node.condition_text):
                         meta["md.templating.conditions_true"] += 1
-                
-                # Анализируем elif условия
+
+                # Analyze elif conditions
                 if node.elif_blocks:
                     for elif_block in node.elif_blocks:
                         if elif_block.condition_text:
                             meta["md.templating.conditions_evaluated"] += 1
                             if self._evaluate_condition(elif_block.condition_text):
                                 meta["md.templating.conditions_true"] += 1
-                
-                # Рекурсивно анализируем содержимое
+
+                # Recursively analyze content
                 for child in node.body:
                     analyze_node(child)
                 if node.elif_blocks:
@@ -212,33 +212,33 @@ class MarkdownTemplateProcessor:
                 if node.else_block:
                     for child in node.else_block.body:
                         analyze_node(child)
-            
+
             elif isinstance(node, CommentBlockNode):
                 meta["md.templating.comment_blocks"] += 1
-            
+
             elif isinstance(node, RawBlockNode):
-                # Raw-блоки не считаем отдельно, но можем добавить метрику если нужно
+                # Raw blocks not counted separately, but can add metric if needed
                 pass
-        
+
         for node in ast:
             analyze_node(node)
-        
+
         return meta
 
 
 def process_markdown_template(text: str, template_ctx=None) -> Tuple[str, dict]:
     """
-    Удобная функция для обработки Markdown с условными конструкциями.
-    
+    Convenience function for processing Markdown with conditional constructs.
+
     Args:
-        text: Исходный Markdown-текст
-        template_ctx: Контекст шаблона для оценки условий (опционально)
-        
+        text: Source Markdown text
+        template_ctx: Template context for condition evaluation (optional)
+
     Returns:
-        Кортеж (обработанный_текст, метаданные)
-        
+        Tuple (processed_text, metadata)
+
     Raises:
-        MarkdownTemplateProcessorError: При ошибке обработки
+        MarkdownTemplateProcessorError: On processing error
     """
     processor = MarkdownTemplateProcessor(template_ctx)
     return processor.process(text)

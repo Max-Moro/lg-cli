@@ -15,18 +15,18 @@ from ..tree_sitter_support import Node, TreeSitterDocument
 
 @dataclass
 class LiteralInfo:
-    """Информация о структуре литерала для умного тримминга."""
+    """Information about literal structure for smart trimming."""
     type: str  # "string", "array", "object", "set", "tuple"
     opening: str  # "[", "{", "(", '"""', etc.
     closing: str  # "]", "}", ")", '"""', etc.
-    content: str  # содержимое без границ
+    content: str  # content without boundaries
     is_multiline: bool
     language: str  # "python", "typescript", etc.
 
 
 @dataclass
 class CommentPlacement:
-    """Информация о размещении комментария."""
+    """Information about comment placement."""
     char_offset: int
     text: str
 
@@ -44,23 +44,23 @@ class LiteralOptimizer:
         """Apply literal processing based on configuration."""
         max_tokens = self.cfg.max_tokens
         if max_tokens is None:
-            return  # Оптимизация отключена
+            return  # Optimization disabled
 
-        # Находим все литералы в коде
+        # Find all literals in code
         literals = context.doc.query("literals")
 
         for node, capture_name in literals:
-            # Пропускаем докстринги - они обрабатываются отдельной логикой комментариев
+            # Skip docstrings - they are handled by separate comment logic
             if capture_name == "string" and self.adapter.is_docstring_node(node, context.doc):
                 continue
-                
+
             literal_text = context.doc.get_node_text(node)
             token_count = context.tokenizer.count_text(literal_text)
 
             if token_count > max_tokens:
                 self._trim_literal(context, node, capture_name, literal_text, max_tokens)
-        
-        # Хук для языко-специфичных литералов (например, коллекции в Kotlin)
+
+        # Hook for language-specific literals (e.g., collections in Kotlin)
         self.adapter.hook__process_additional_literals(context, max_tokens)
 
     def _trim_literal(
@@ -71,44 +71,44 @@ class LiteralOptimizer:
         literal_text: str,
         max_tokens: int
     ) -> None:
-        """Умно урезает литерал с сохранением валидности AST."""
-        # Анализируем структуру литерала
+        """Smart trim literal while preserving AST validity."""
+        # Analyze literal structure
         literal_info = self._analyze_literal_structure(literal_text, capture_name, self.adapter.name)
 
-        # Умно урезаем содержимое
+        # Smart trim content
         trimmed_content = self._smart_trim_content(context, literal_info, max_tokens, node)
 
-        # Формируем корректную замену
+        # Form correct replacement
         replacement = f"{literal_info.opening}{trimmed_content}{literal_info.closing}"
 
-        # Вычисляем экономию токенов
+        # Calculate token savings
         original_tokens = context.tokenizer.count_text(literal_text)
         saved_tokens = original_tokens - context.tokenizer.count_text(replacement)
 
-        # Применяем замену литерала
+        # Apply literal replacement
         start_char, end_char = context.doc.get_node_range(node)
         context.editor.add_replacement(
             start_char, end_char, replacement,
             edit_type="literal_trimmed"
         )
 
-        # Проверяем стиль плейсхолдеров из конфигурации адаптера
+        # Check placeholder style from adapter configuration
         placeholder_style = self.adapter.cfg.placeholders.style
 
-        # Если стиль "none", то комментарий не добавляем
+        # If style is "none", don't add comment
         if placeholder_style != "none":
             self._add_comment(context, literal_info, saved_tokens, end_char)
 
-        # Обновляем метрики
+        # Update metrics
         context.metrics.mark_element_removed("literal")
         context.metrics.add_chars_saved(len(literal_text) - len(replacement))
 
     def _analyze_literal_structure(self, literal_text: str, capture_name: str, language: str) -> LiteralInfo:
-        """Анализирует структуру литерала для умного тримминга."""
+        """Analyze literal structure for smart trimming."""
         stripped = literal_text.strip()
         is_multiline = '\n' in literal_text
 
-        # Определяем тип и границы литерала
+        # Determine type and boundaries of literal
         if capture_name == "string":
             return self._analyze_string_literal(stripped, is_multiline, language)
         elif capture_name == "set":
@@ -120,11 +120,11 @@ class LiteralOptimizer:
             content = self._extract_content(literal_text, "{", "}")
             return LiteralInfo("object", "{", "}", content, is_multiline, language)
         else:
-            # Универсальный анализ по символам
+            # Universal analysis by syntax
             return self._analyze_by_syntax(stripped, literal_text, is_multiline, language)
 
     def _analyze_string_literal(self, stripped: str, is_multiline: bool, language: str) -> LiteralInfo:
-        """Анализирует строковые литералы."""
+        """Analyze string literals."""
         if stripped.startswith('"""') or stripped.startswith("'''"):
             # Python triple quotes
             quote = stripped[:3]
@@ -145,24 +145,24 @@ class LiteralOptimizer:
             return LiteralInfo("string", '"', '"', stripped, is_multiline, language)
 
     def _analyze_array_literal(self, stripped: str, literal_text: str, is_multiline: bool, language: str) -> LiteralInfo:
-        """Анализирует массивы/списки."""
+        """Analyze arrays/lists."""
         if stripped.startswith('[') and stripped.endswith(']'):
             content = self._extract_content(literal_text, "[", "]")
             return LiteralInfo("array", "[", "]", content, is_multiline, language)
         elif stripped.startswith('(') and stripped.endswith(')'):
-            # Tuple в Python
+            # Tuple in Python
             content = self._extract_content(literal_text, "(", ")")
             return LiteralInfo("tuple", "(", ")", content, is_multiline, language)
         elif stripped.startswith('{') and stripped.endswith('}'):
             content = self._extract_content(literal_text, "{", "}")
             return LiteralInfo("object", "{", "}", content, is_multiline, language)
         else:
-            # Fallback к массиву
+            # Fallback to array
             content = self._extract_content(literal_text, "[", "]")
             return LiteralInfo("array", "[", "]", content, is_multiline, language)
 
     def _analyze_by_syntax(self, stripped: str, literal_text: str, is_multiline: bool, language: str) -> LiteralInfo:
-        """Универсальный анализ по синтаксису."""
+        """Universal analysis by syntax."""
         if stripped.startswith('[') and stripped.endswith(']'):
             content = self._extract_content(literal_text, "[", "]")
             return LiteralInfo("array", "[", "]", content, is_multiline, language)
@@ -176,7 +176,7 @@ class LiteralOptimizer:
             return LiteralInfo("literal", "", "", stripped, is_multiline, language)
 
     def _extract_content(self, literal_text: str, opening: str, closing: str) -> str:
-        """Извлекает содержимое литерала без открывающих/закрывающих символов."""
+        """Extract literal content without opening/closing characters."""
         stripped = literal_text.strip()
 
         if opening and closing and stripped.startswith(opening) and stripped.endswith(closing):
@@ -185,7 +185,7 @@ class LiteralOptimizer:
         return stripped
 
     def _smart_trim_content(self, context: ProcessingContext, literal_info: LiteralInfo, max_tokens: int, node: Node) -> str:
-        """Умно урезает содержимое с учетом структуры литерала."""
+        """Smart trim content considering literal structure."""
         if literal_info.type == "string":
             return self._trim_string_content(context, literal_info, max_tokens)
         elif literal_info.type in ("array", "tuple", "set"):
@@ -196,45 +196,45 @@ class LiteralOptimizer:
             return context.tokenizer.truncate_to_tokens(literal_info.content, max_tokens)
 
     def _trim_string_content(self, context: ProcessingContext, literal_info: LiteralInfo, max_tokens: int) -> str:
-        """Урезает строковые литералы."""
+        """Trim string literals."""
         content = literal_info.content
 
-        # Резервируем место для границ и символа урезания
+        # Reserve space for boundaries and trim character
         overhead_text = f"{literal_info.opening}…{literal_info.closing}"
         overhead_tokens = context.tokenizer.count_text(overhead_text)
         content_budget = max(1, max_tokens - overhead_tokens)
 
-        # Урезаем содержимое до бюджета
+        # Trim content to budget
         trimmed = context.tokenizer.truncate_to_tokens(content, content_budget)
         return f"{trimmed}…"
 
     def _trim_array_content(self, context: ProcessingContext, literal_info: LiteralInfo, max_tokens: int, node: Node) -> str:
-        """Урезает массивы/списки с добавлением корректного элемента-заглушки."""
+        """Trim arrays/lists with correct placeholder element."""
         content = literal_info.content.strip()
 
-        # Резервируем место для границ и заглушки
+        # Reserve space for boundaries and placeholder
         placeholder_element = '"…"'
         overhead = f"{literal_info.opening}{placeholder_element},{literal_info.closing}"
         overhead_tokens = context.tokenizer.count_text(overhead)
         content_budget = max(10, max_tokens - overhead_tokens)
 
-        # Парсим элементы
+        # Parse elements
         elements = self._parse_elements(content)
 
-        # Находим элементы, которые помещаются в бюджет
+        # Find elements that fit in budget
         included_elements = self._select_elements_within_budget(context, elements, content_budget)
 
         if not included_elements:
-            # Если не помещается ни один элемент, берем первый частично
+            # If no element fits, take first one partially
             first_element = elements[0] if elements else '""'
             trimmed_element = context.tokenizer.truncate_to_tokens(first_element, content_budget - 10)
             return f"{trimmed_element}, \"…\""
 
-        # Формируем результат
+        # Form result
         if literal_info.is_multiline:
-            # Определяем правильные отступы из контекста
+            # Determine correct indentation from context
             element_indent, base_indent = self._get_base_indentations(context.doc, node, context.raw_text)
-            # Добавляем отступы к каждому элементу
+            # Add indentation to each element
             indented_elements = [f"{element_indent}{element}" for element in included_elements]
             joined = f",\n".join(indented_elements)
             return f"\n{joined},\n{element_indent}\"…\",\n{base_indent}"
@@ -243,35 +243,35 @@ class LiteralOptimizer:
             return f"{joined}, \"…\""
 
     def _trim_object_content(self, context: ProcessingContext, literal_info: LiteralInfo, max_tokens: int, node: Node) -> str:
-        """Урезает объекты/словари с добавлением корректной заглушки."""
+        """Trim objects/dictionaries with correct placeholder."""
         content = literal_info.content.strip()
 
-        # Резервируем место для границ и заглушки
+        # Reserve space for boundaries and placeholder
         placeholder_pair = '"…": "…"'
         overhead = f"{literal_info.opening}{placeholder_pair},{literal_info.closing}"
         overhead_tokens = context.tokenizer.count_text(overhead)
         content_budget = max(10, max_tokens - overhead_tokens)
 
-        # Парсим пары ключ-значение
+        # Parse key-value pairs
         pairs = self._parse_elements(content)
 
-        # Находим пары, которые помещаются в бюджет
+        # Find pairs that fit in budget
         included_pairs = self._select_elements_within_budget(context, pairs, content_budget)
 
         if not included_pairs:
-            # Если не помещается ни одна пара, используем только заглушку
+            # If no pair fits, use only placeholder
             if literal_info.is_multiline:
-                # Определяем правильные отступы из контекста
+                # Determine correct indentation from context
                 element_indent, base_indent = self._get_base_indentations(context.doc, node, context.raw_text)
                 return f"\n{element_indent}\"…\": \"…\",\n{base_indent}"
             else:
                 return '"…": "…"'
 
-        # Формируем результат
+        # Form result
         if literal_info.is_multiline:
-            # Определяем правильные отступы из контекста
+            # Determine correct indentation from context
             element_indent, base_indent = self._get_base_indentations(context.doc, node, context.raw_text)
-            # Добавляем отступы к каждому элементу
+            # Add indentation to each element
             indented_pairs = [f"{element_indent}{pair}" for pair in included_pairs]
             joined = f",\n".join(indented_pairs)
             return f"\n{joined},\n{element_indent}\"…\": \"…\",\n{base_indent}"
@@ -280,7 +280,7 @@ class LiteralOptimizer:
             return f"{joined}, \"…\": \"…\""
 
     def _select_elements_within_budget(self, context: ProcessingContext, elements: List[str], budget: int) -> List[str]:
-        """Выбирает элементы, которые помещаются в бюджет токенов."""
+        """Select elements that fit in token budget."""
         included_elements = []
         current_tokens = 0
 
@@ -296,8 +296,8 @@ class LiteralOptimizer:
 
     def _parse_elements(self, content: str) -> List[str]:
         """
-        Универсальный парсер элементов с учетом вложенности.
-        Работает как для массивов, так и для объектов.
+        Universal element parser considering nesting.
+        Works for both arrays and objects.
         """
         if not content.strip():
             return []
@@ -309,20 +309,20 @@ class LiteralOptimizer:
         string_char = None
 
         for i, char in enumerate(content):
-            # Обработка строк
+            # Handle strings
             if char in ('"', "'", "`") and not in_string:
                 in_string = True
                 string_char = char
                 current_element += char
             elif char == string_char and in_string:
-                # Проверяем экранирование
+                # Check for escaping
                 if i > 0 and content[i-1] != '\\':
                     in_string = False
                     string_char = None
                 current_element += char
             elif in_string:
                 current_element += char
-            # Обработка вложенности вне строк
+            # Handle nesting outside strings
             elif char in ('(', '[', '{'):
                 depth += 1
                 current_element += char
@@ -330,14 +330,14 @@ class LiteralOptimizer:
                 depth -= 1
                 current_element += char
             elif char == ',' and depth == 0:
-                # Найден разделитель на верхнем уровне
+                # Found top-level separator
                 if current_element.strip():
                     elements.append(current_element.strip())
                 current_element = ""
             else:
                 current_element += char
 
-        # Добавляем последний элемент
+        # Add last element
         if current_element.strip():
             elements.append(current_element.strip())
 
@@ -345,16 +345,16 @@ class LiteralOptimizer:
 
     def _get_base_indentations(self, doc: TreeSitterDocument, node: Node, raw_text: str) -> tuple[str, str]:
         """
-        Определяет правильные отступы для элементов и базовый отступ литерала.
-        
+        Determine correct indentation for elements and base literal indentation.
+
         Returns:
             Tuple of (element_indent, base_indent)
         """
-        # Получаем полный текст литерала из исходного файла
+        # Get full literal text from source file
         full_literal_text = doc.get_node_text(node)
         start_char, end_char = doc.get_node_range(node)
-        
-        # Определяем базовый отступ (отступ строки, где начинается литерал)
+
+        # Determine base indentation (indentation of line where literal starts)
         start_line = doc.get_line_number(start_char)
         lines = raw_text.split('\n')
         base_indent = ""
@@ -365,46 +365,46 @@ class LiteralOptimizer:
                     base_indent += char
                 else:
                     break
-        
-        # Определяем отступ элементов внутри литерала
+
+        # Determine indentation for elements inside literal
         element_indent = self._detect_element_indentation_from_full_text(full_literal_text, base_indent)
-        
+
         return element_indent, base_indent
 
     def _detect_element_indentation_from_full_text(self, full_literal_text: str, base_indent: str) -> str:
         """
-        Определяет отступ элементов внутри литерала из полного текста литерала.
+        Determine element indentation inside literal from full literal text.
         """
         lines = full_literal_text.split('\n')
         if len(lines) < 2:
-            return "    "  # 4 пробела по умолчанию
+            return "    "  # 4 spaces by default
 
-        # Ищем первую строку с содержимым элемента (не пустую, не закрывающую скобку)
+        # Look for first line with element content (not empty, not closing bracket)
         for line in lines[1:]:
             stripped = line.strip()
             if stripped and not stripped.startswith(('}', ']', ')')):
-                # Извлекаем leading whitespace
+                # Extract leading whitespace
                 element_indent = ""
                 for char in line:
                     if char in ' \t':
                         element_indent += char
                     else:
                         break
-                # Если нашли отступ, используем его
+                # If found indentation, use it
                 if element_indent:
                     return element_indent
 
-        # Fallback - добавляем стандартный отступ к базовому
+        # Fallback - add standard indentation to base
         return base_indent + "    "
 
     def _add_comment(self, context: ProcessingContext, literal_info: LiteralInfo, saved_tokens: int, end_char: int) -> None:
-        """Добавляет комментарий в правильное место."""
+        """Add comment in correct place."""
         comment_style = self.adapter.get_comment_style()
         single_comment = comment_style[0]
 
         comment_text = f"literal {literal_info.type} (−{saved_tokens} tokens)"
 
-        # Ищем лучшее место для размещения комментария
+        # Find best place for comment placement
         placement = self._find_comment_placement(context.raw_text, end_char, comment_text, single_comment)
 
         context.editor.add_insertion(
@@ -413,69 +413,69 @@ class LiteralOptimizer:
         )
 
     def _find_comment_placement(self, text: str, end_char: int, comment_text: str, single_comment: str) -> CommentPlacement:
-        """Находит лучшее место для размещения комментария."""
+        """Find best place for comment placement."""
         text_after = text[end_char:]
         line_after = text_after.split('\n')[0]
 
-        # 1. Ищем закрывающие скобки/кавычки сразу после литерала
+        # 1. Look for closing brackets/quotes right after literal
         bracket_pos = self._find_closing_brackets_after_literal(line_after)
         if bracket_pos is not None:
             insertion_pos = end_char + bracket_pos + 1
             text_after_bracket = line_after[bracket_pos + 1:].strip()
             if text_after_bracket and not text_after_bracket.startswith((';', ',', ')')):
-                # Есть код после - используем блочный комментарий
+                # Code after - use block comment
                 block_open, block_close = self.adapter.get_comment_style()[1]
                 comment = f" {block_open} {comment_text} {block_close}"
             else:
-                # Нет кода - используем однострочный
+                # No code - use single-line
                 comment = f" {single_comment} {comment_text}"
             return CommentPlacement(insertion_pos, comment)
 
-        # 2. Ищем точку с запятой
+        # 2. Look for semicolon
         semicolon_pos = line_after.find(';')
         if semicolon_pos != -1:
             insertion_pos = end_char + semicolon_pos + 1
             text_after_semicolon = line_after[semicolon_pos + 1:].strip()
             if text_after_semicolon:
-                # Есть код после - используем блочный комментарий
+                # Code after - use block comment
                 block_open, block_close = self.adapter.get_comment_style()[1]
                 comment = f" {block_open} {comment_text} {block_close}"
             else:
-                # Нет кода - используем однострочный
+                # No code - use single-line
                 comment = f" {single_comment} {comment_text}"
             return CommentPlacement(insertion_pos, comment)
 
-        # 3. Ищем запятую (для массивов, объектов)
+        # 3. Look for comma (for arrays, objects)
         comma_pos = line_after.find(',')
         if comma_pos != -1:
             insertion_pos = end_char + comma_pos + 1
             text_after_comma = line_after[comma_pos + 1:].strip()
             if text_after_comma and not text_after_comma.startswith((']', '}', ')')):
-                # Есть код после - используем блочный комментарий
+                # Code after - use block comment
                 block_open, block_close = self.adapter.get_comment_style()[1]
                 comment = f" {block_open} {comment_text} {block_close}"
             else:
-                # Нет кода - используем однострочный
+                # No code - use single-line
                 comment = f" {single_comment} {comment_text}"
             return CommentPlacement(insertion_pos, comment)
 
-        # 4. Если ничего не найдено - размещаем сразу после литерала
+        # 4. If nothing found - place right after literal
         if line_after.strip():
-            # Есть код после - используем блочный комментарий
+            # Code after - use block comment
             block_open, block_close = self.adapter.get_comment_style()[1]
             comment = f" {block_open} {comment_text} {block_close}"
         else:
-            # Нет кода - используем однострочный
+            # No code - use single-line
             comment = f" {single_comment} {comment_text}"
 
         return CommentPlacement(end_char, comment)
 
     def _find_closing_brackets_after_literal(self, line_after: str) -> int | None:
-        """Ищет закрывающие скобки сразу после литерала."""
-        # Ищем закрывающие скобки в начале строки (после литерала)
+        """Find closing brackets right after literal."""
+        # Look for closing brackets at start of line (after literal)
         for i, char in enumerate(line_after):
             if char in '])}':
                 return i
-            elif char not in ' \t':  # Прерываем на первом не-пробельном символе
+            elif char not in ' \t':  # Stop on first non-whitespace character
                 break
         return None

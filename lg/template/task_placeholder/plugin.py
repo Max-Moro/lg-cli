@@ -1,5 +1,5 @@
 """
-Плагин для обработки task-плейсхолдеров.
+Plugin for processing task placeholders.
 """
 
 from __future__ import annotations
@@ -16,73 +16,73 @@ from ...template import TemplateContext
 
 class TaskPlaceholderPlugin(TemplatePlugin):
     """
-    Плагин для обработки task-плейсхолдеров.
-    
-    Обеспечивает функциональность:
-    - ${task} - простая вставка текста задачи
-    - ${task:prompt:"default text"} - вставка с дефолтным значением
+    Plugin for processing task placeholders.
+
+    Provides functionality:
+    - ${task} - simple task text insertion
+    - ${task:prompt:"default text"} - insertion with default value
     """
 
     def __init__(self, template_ctx: TemplateContext):
         """
-        Инициализирует плагин с контекстом шаблона.
+        Initializes plugin with template context.
 
         Args:
-            template_ctx: Контекст шаблона для управления состоянием
+            template_ctx: Template context for state management
         """
         super().__init__()
         self.template_ctx = template_ctx
 
     @property
     def name(self) -> str:
-        """Возвращает имя плагина."""
+        """Returns plugin name."""
         return "task_placeholder"
-    
+
     @property
     def priority(self) -> PluginPriority:
-        """Возвращает приоритет плагина."""
+        """Returns plugin priority."""
         return PluginPriority.PLACEHOLDER
-    
+
     def initialize(self) -> None:
-        """Добавляет task-специфичные токены в контекст плейсхолдеров."""
-        # Добавляем только STRING_LITERAL, так как task/prompt проверяются через IDENTIFIER
+        """Adds task-specific tokens to placeholder context."""
+        # Add only STRING_LITERAL since task/prompt are checked via IDENTIFIER
         self.registry.register_tokens_in_context(
             "placeholder",
             ["STRING_LITERAL"]
         )
-    
+
     def register_tokens(self) -> List[TokenSpec]:
-        """Регистрирует токены для task-плейсхолдеров."""
+        """Registers tokens for task placeholders."""
         return get_task_token_specs()
 
     def register_parser_rules(self) -> List[ParsingRule]:
-        """Регистрирует правила парсинга task-плейсхолдеров."""
+        """Registers parsing rules for task placeholders."""
         return get_task_parser_rules()
 
     def register_processors(self) -> List[ProcessorRule]:
         """
-        Регистрирует обработчики узлов AST.
+        Registers AST node handlers.
         """
         def process_task_node(processing_context: ProcessingContext) -> str:
-            """Обрабатывает узел TaskNode."""
+            """Processes TaskNode."""
             node = processing_context.get_node()
             if not isinstance(node, TaskNode):
                 raise RuntimeError(f"Expected TaskNode, got {type(node)}")
-            
-            # Получаем эффективный текст задачи (с учетом режимов)
+
+            # Get effective task text (considering modes)
             effective_task_text = self.template_ctx.run_ctx.get_effective_task_text()
-            
-            # Если эффективный task_text есть - возвращаем его
+
+            # If effective task_text exists - return it
             if effective_task_text:
                 return effective_task_text
-            
-            # Если эффективной задачи нет и есть default_prompt - возвращаем его
+
+            # If no effective task and default_prompt exists - return it
             if node.default_prompt is not None:
                 return node.default_prompt
-            
-            # Иначе возвращаем пустую строку
+
+            # Otherwise return empty string
             return ""
-        
+
         return [
             ProcessorRule(
                 node_type=TaskNode,

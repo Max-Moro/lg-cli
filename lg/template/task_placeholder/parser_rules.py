@@ -1,7 +1,7 @@
 """
-Правила парсинга для task-плейсхолдеров.
+Parsing rules for task placeholders.
 
-Обрабатывает:
+Handles:
 - ${task}
 - ${task:prompt:"default text"}
 """
@@ -18,83 +18,83 @@ from ..types import ParsingRule, ParsingContext
 
 def parse_task_placeholder(context: ParsingContext) -> Optional[TemplateNode]:
     """
-    Парсит task-плейсхолдер ${task} или ${task:prompt:"..."}.
+    Parses task placeholder ${task} or ${task:prompt:"..."}.
     """
-    # Проверяем начало плейсхолдера
+    # Check for placeholder start
     if not context.match("PLACEHOLDER_START"):
         return None
-    
-    # Сохраняем позицию для отката
+
+    # Save position for rollback
     saved_position = context.position
-    
-    # Потребляем ${
+
+    # Consume ${
     context.consume("PLACEHOLDER_START")
-    
-    # Пропускаем пробелы
+
+    # Skip whitespace
     while context.match("WHITESPACE"):
         context.advance()
-    
-    # Проверяем ключевое слово 'task' через IDENTIFIER
+
+    # Check for 'task' keyword via IDENTIFIER
     if not context.match("IDENTIFIER"):
         context.position = saved_position
         return None
-    
+
     task_token = context.current()
     if task_token.value != "task":
         context.position = saved_position
         return None
-    
-    # Теперь мы уверены что это task-плейсхолдер
-    context.advance()  # Потребляем 'task'
-    
-    # Пропускаем пробелы
+
+    # Now we are sure this is a task placeholder
+    context.advance()  # Consume 'task'
+
+    # Skip whitespace
     while context.match("WHITESPACE"):
         context.advance()
-    
-    # Проверяем наличие :prompt:"..."
+
+    # Check for presence of :prompt:"..."
     default_prompt = None
     if context.match("COLON"):
-        context.advance()  # Потребляем :
-        
-        # Пропускаем пробелы
+        context.advance()  # Consume :
+
+        # Skip whitespace
         while context.match("WHITESPACE"):
             context.advance()
-        
-        # Ожидаем 'prompt'
+
+        # Expect 'prompt'
         if not context.match("IDENTIFIER"):
             raise ParserError("Expected 'prompt' after ':' in task placeholder", context.current())
-        
+
         prompt_token = context.current()
         if prompt_token.value != "prompt":
             raise ParserError("Expected 'prompt' after ':' in task placeholder", prompt_token)
         context.advance()
-        
-        # Пропускаем пробелы
+
+        # Skip whitespace
         while context.match("WHITESPACE"):
             context.advance()
-        
-        # Ожидаем :
+
+        # Expect :
         if not context.match("COLON"):
             raise ParserError("Expected ':' after 'prompt' in task placeholder", context.current())
         context.advance()
-        
-        # Пропускаем пробелы
+
+        # Skip whitespace
         while context.match("WHITESPACE"):
             context.advance()
-        
-        # Ожидаем строковый литерал
+
+        # Expect string literal
         if not context.match("STRING_LITERAL"):
             raise ParserError("Expected string literal after 'prompt:' in task placeholder", context.current())
-        
+
         string_token = context.advance()
-        # Парсим строковый литерал (убираем кавычки и обрабатываем escape-последовательности)
+        # Parse string literal (remove quotes and process escape sequences)
         default_prompt = _parse_string_literal(string_token.value)
-        
-        # Пропускаем пробелы
+
+        # Skip whitespace
         while context.match("WHITESPACE"):
             context.advance()
-    
-    # Потребляем }
+
+    # Consume }
     if not context.match("PLACEHOLDER_END"):
         raise ParserError("Expected '}' to close task placeholder", context.current())
     context.consume("PLACEHOLDER_END")
@@ -104,19 +104,19 @@ def parse_task_placeholder(context: ParsingContext) -> Optional[TemplateNode]:
 
 def _parse_string_literal(literal: str) -> str:
     """
-    Парсит строковый литерал, убирая кавычки и обрабатывая escape-последовательности.
-    
+    Parses string literal, removing quotes and processing escape sequences.
+
     Args:
-        literal: Строка вида "text" с возможными escape-последовательностями
-        
+        literal: String like "text" with possible escape sequences
+
     Returns:
-        Обработанная строка
+        Processed string
     """
-    # Убираем окружающие кавычки
+    # Remove surrounding quotes
     if literal.startswith('"') and literal.endswith('"'):
         literal = literal[1:-1]
-    
-    # Обрабатываем escape-последовательности
+
+    # Process escape sequences
     result = []
     i = 0
     while i < len(literal):
@@ -133,28 +133,28 @@ def _parse_string_literal(literal: str) -> str:
             elif next_char == '"':
                 result.append('"')
             else:
-                # Неизвестная escape-последовательность - оставляем как есть
+                # Unknown escape sequence - keep as is
                 result.append('\\')
                 result.append(next_char)
             i += 2
         else:
             result.append(literal[i])
             i += 1
-    
+
     return ''.join(result)
 
 
 def get_task_parser_rules() -> List[ParsingRule]:
     """
-    Возвращает правила парсинга для task-плейсхолдеров.
-    
-    Приоритет выше обычных PLACEHOLDER (95 > 90), чтобы
-    task-плейсхолдеры обрабатывались раньше общих секций.
+    Returns parsing rules for task placeholders.
+
+    Priority higher than normal PLACEHOLDER (95 > 90) so
+    task placeholders are processed before general sections.
     """
     return [
         ParsingRule(
             name="parse_task_placeholder",
-            priority=95,  # Выше PLACEHOLDER (90), но ниже DIRECTIVE (100)
+            priority=95,  # Higher than PLACEHOLDER (90), but lower than DIRECTIVE (100)
             parser_func=parse_task_placeholder
         )
     ]

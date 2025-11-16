@@ -1,7 +1,7 @@
 """
-Правила обработки для адаптивных конструкций в шаблонах.
+Processing rules for adaptive constructs in templates.
 
-Обрабатывает условные блоки, режимные блоки и комментарии.
+Handles conditional blocks, mode blocks, and comments.
 """
 
 from __future__ import annotations
@@ -12,121 +12,121 @@ from .nodes import ConditionalBlockNode, ModeBlockNode, CommentNode
 from ..types import ProcessorRule, ProcessingContext
 from ...template.context import TemplateContext
 
-# Тип функтора для обработки узла AST
+# Callable type for AST node processing
 ProcessASTNodeFunc = Callable[[ProcessingContext], str]
 
 
 class AdaptiveProcessorRules:
     """
-    Класс правил обработки для адаптивных конструкций.
-    
-    Инкапсулирует все правила обработки с доступом к функтору
-    обработки узлов через состояние экземпляра.
+    Processing rules class for adaptive constructs.
+
+    Encapsulates all processing rules with access to the
+    AST node processing functor through instance state.
     """
-    
+
     def __init__(self, process_ast_node: ProcessASTNodeFunc, template_ctx: TemplateContext):
         """
-        Инициализирует правила обработки.
-        
+        Initializes processing rules.
+
         Args:
-            process_ast_node: Функтор для обработки узлов AST
-            template_ctx: Контекст шаблона для управления состоянием
+            process_ast_node: Functor for processing AST nodes
+            template_ctx: Template context for state management
         """
         self.process_ast_node = process_ast_node
         self.template_ctx = template_ctx
-    
+
     def process_conditional(self, processing_context: ProcessingContext) -> str:
         """
-        Обрабатывает условный блок {% if ... %}.
-        
-        Вычисляет условие и возвращает соответствующее содержимое.
+        Processes a conditional block {% if ... %}.
+
+        Evaluates the condition and returns appropriate content.
         """
         node = processing_context.get_node()
         if not isinstance(node, ConditionalBlockNode):
             raise RuntimeError(f"Expected ConditionalBlockNode, got {type(node)}")
-        
-        # Вычисляем основное условие
+
+        # Evaluate main condition
         if node.condition_ast:
             condition_result = self.template_ctx.evaluate_condition(node.condition_ast)
         else:
-            # Fallback на текстовое вычисление
+            # Fallback to text evaluation
             condition_result = self.template_ctx.evaluate_condition_text(node.condition_text)
-        
-        # Если основное условие истинно, рендерим тело if
+
+        # If main condition is true, render if body
         if condition_result:
             return self._render_body(node.body)
-        
-        # Проверяем elif блоки
+
+        # Check elif blocks
         for elif_block in node.elif_blocks:
             if elif_block.condition_ast:
                 elif_result = self.template_ctx.evaluate_condition(elif_block.condition_ast)
             else:
                 elif_result = self.template_ctx.evaluate_condition_text(elif_block.condition_text)
-            
+
             if elif_result:
                 return self._render_body(elif_block.body)
-        
-        # Если все условия ложны, рендерим else блок если есть
+
+        # If all conditions are false, render else block if it exists
         if node.else_block:
             return self._render_body(node.else_block.body)
-        
-        # Все условия ложны и нет else - возвращаем пустую строку
+
+        # All conditions false and no else - return empty string
         return ""
-    
+
     def process_mode_block(self, processing_context: ProcessingContext) -> str:
         """
-        Обрабатывает режимный блок {% mode ... %}.
-        
-        Переключает режим и обрабатывает тело блока с новым режимом.
+        Processes a mode block {% mode ... %}.
+
+        Switches mode and processes block body with new mode.
         """
         node = processing_context.get_node()
         if not isinstance(node, ModeBlockNode):
             raise RuntimeError(f"Expected ModeBlockNode, got {type(node)}")
-        
-        # Входим в режимный блок
+
+        # Enter mode block
         self.template_ctx.enter_mode_block(node.modeset, node.mode)
-        
+
         try:
-            # Рендерим тело блока с активным режимом
+            # Render block body with active mode
             result = self._render_body(node.body)
         finally:
-            # Всегда выходим из блока, даже при ошибке
+            # Always exit block, even on error
             self.template_ctx.exit_mode_block()
-        
+
         return result
-    
+
     def process_comment(self, processing_context: ProcessingContext) -> str:
         """
-        Обрабатывает комментарий {# ... #}.
-        
-        Комментарии не попадают в вывод.
+        Processes a comment {# ... #}.
+
+        Comments do not appear in output.
         """
         node = processing_context.get_node()
         if not isinstance(node, CommentNode):
             raise RuntimeError(f"Expected CommentNode, got {type(node)}")
-        
-        # Комментарии игнорируются при рендеринге
+
+        # Comments are ignored during rendering
         return ""
-    
+
     def _render_body(self, body: list) -> str:
         """
-        Рендерит список узлов в теле блока.
-        
+        Renders a list of nodes in block body.
+
         Args:
-            body: Список узлов для рендеринга
-            
+            body: List of nodes to render
+
         Returns:
-            Отрендеренное содержимое
+            Rendered content
         """
         result_parts = []
-        
+
         for i, child_node in enumerate(body):
-            # Создаем контекст обработки для каждого узла
+            # Create processing context for each node
             processing_context = ProcessingContext(ast=body, node_index=i)
             rendered = self.process_ast_node(processing_context)
             if rendered:
                 result_parts.append(rendered)
-        
+
         return "".join(result_parts)
 
 
@@ -135,17 +135,17 @@ def get_adaptive_processor_rules(
     template_ctx: TemplateContext
 ) -> List[ProcessorRule]:
     """
-    Возвращает правила обработки для адаптивных конструкций.
-    
+    Returns processing rules for adaptive constructs.
+
     Args:
-        process_ast_node: Функтор для обработки узлов AST
-        template_ctx: Контекст шаблона для управления состоянием
-        
+        process_ast_node: Functor for processing AST nodes
+        template_ctx: Template context for state management
+
     Returns:
-        Список правил обработки с привязанными функторами
+        List of processing rules with bound functors
     """
     rules_instance = AdaptiveProcessorRules(process_ast_node, template_ctx)
-    
+
     return [
         ProcessorRule(
             node_type=ConditionalBlockNode,
@@ -159,7 +159,7 @@ def get_adaptive_processor_rules(
             node_type=CommentNode,
             processor_func=rules_instance.process_comment
         ),
-        # ElifBlockNode не обрабатывается отдельно - он часть ConditionalBlockNode
+        # ElifBlockNode is not processed separately - it's part of ConditionalBlockNode
     ]
 
 

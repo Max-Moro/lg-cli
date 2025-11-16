@@ -6,18 +6,18 @@ from ..errors import PreflightRequired
 
 class _M001_ConfigToSections:
     """
-    Миграция №1:
-      Ранее: основной конфиг секций назывался `config.yaml`
-      Теперь: `sections.yaml`
+    Migration #1:
+      Before: main section config was called `config.yaml`
+      Now: `sections.yaml`
     """
     id = 1
     title = "Rename lg-cfg/config.yaml → lg-cfg/sections.yaml"
 
     def run(self, fs: CfgFs, *, allow_side_effects: bool) -> bool:
         """
-        Переносит lg-cfg/config.yaml → lg-cfg/sections.yaml.
-        Возвращает True, если реально выполнила перенос (были изменения),
-        иначе False (ничего делать не нужно).
+        Moves lg-cfg/config.yaml → lg-cfg/sections.yaml.
+        Returns True if the move was actually performed (there were changes),
+        otherwise False (nothing to do).
         """
         needs = fs.exists("config.yaml") and not fs.exists("sections.yaml")
         if not needs:

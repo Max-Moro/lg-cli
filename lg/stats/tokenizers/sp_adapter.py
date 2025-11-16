@@ -10,17 +10,17 @@ from .model_cache import ModelCache
 
 logger = logging.getLogger(__name__)
 
-# Рекомендуемые универсальные модели SentencePiece
-# Все модели доступны для анонимного скачивания с HuggingFace Hub
+# Recommended universal SentencePiece models
+# All models available for anonymous download from HuggingFace Hub
 RECOMMENDED_MODELS = [
-    "t5-small",              # T5 Small (компактный, универсальный)
-    "t5-base",               # T5 Base (больше vocab)
-    "google/flan-t5-base",   # FLAN-T5 (улучшенный T5, instruction-tuned)
-    "google/mt5-base",       # mT5 (мультиязычный T5)
+    "t5-small",              # T5 Small (compact, universal)
+    "t5-base",               # T5 Base (larger vocab)
+    "google/flan-t5-base",   # FLAN-T5 (improved T5, instruction-tuned)
+    "google/mt5-base",       # mT5 (multilingual T5)
 ]
 
 class SPAdapter(BaseTokenizer):
-    """Адаптер для библиотеки SentencePiece."""
+    """Adapter for SentencePiece library."""
     
     def __init__(self, encoder: str, root: Path):
         super().__init__(encoder)
@@ -28,34 +28,34 @@ class SPAdapter(BaseTokenizer):
         self.model_cache = ModelCache(root)
         
         self._sp = spm.SentencePieceProcessor()
-        
-        # Загружаем модель
+
+        # Load model
         model_path = self._load_model(encoder)
         self._sp.load(str(model_path))
     
     def _load_model(self, model_spec: str) -> Path:
         """
-        Загружает SentencePiece модель.
-        
+        Load SentencePiece model.
+
         Args:
-            model_spec: Может быть:
-                - Путь к локальному .model/.spm файлу: /path/to/model.spm
-                - Путь к директории с .model файлом: /path/to/model/
-                - Имя модели на HF: google/gemma-2-2b
-        
+            model_spec: Can be:
+                - Path to local .model/.spm file: /path/to/model.spm
+                - Path to directory with .model file: /path/to/model/
+                - Model name on HF: google/gemma-2-2b
+
         Returns:
-            Путь к загруженной модели
+            Path to loaded model
         """
-        # Локальный файл
+        # Local file
         local_path = Path(model_spec)
         if local_path.exists() and local_path.is_file() and local_path.suffix in [".model", ".spm"]:
             logger.info(f"Importing SentencePiece model from local file: {local_path}")
             try:
-                # Импортируем в кэш для постоянного переиспользования
+                # Import to cache for permanent reuse
                 cache_name = self.model_cache.import_local_model("sentencepiece", local_path)
                 logger.info(f"Model imported as '{cache_name}' and available for future use")
-                
-                # Загружаем из кэша
+
+                # Load from cache
                 cache_dir = self.model_cache.get_model_cache_dir("sentencepiece", cache_name)
                 model_files = list(cache_dir.glob("*.model"))
                 if not model_files:
@@ -63,16 +63,16 @@ class SPAdapter(BaseTokenizer):
                 return model_files[0]
             except Exception as e:
                 raise RuntimeError(f"Failed to import and load model from {local_path}: {e}") from e
-        
-        # Локальная директория
+
+        # Local directory
         if local_path.exists() and local_path.is_dir():
             logger.info(f"Importing SentencePiece model from local directory: {local_path}")
             try:
-                # Импортируем в кэш для постоянного переиспользования
+                # Import to cache for permanent reuse
                 cache_name = self.model_cache.import_local_model("sentencepiece", local_path)
                 logger.info(f"Model imported as '{cache_name}' and available for future use")
-                
-                # Загружаем из кэша
+
+                # Load from cache
                 cache_dir = self.model_cache.get_model_cache_dir("sentencepiece", cache_name)
                 model_files = list(cache_dir.glob("*.model"))
                 if not model_files:
@@ -80,22 +80,22 @@ class SPAdapter(BaseTokenizer):
                 return model_files[0]
             except Exception as e:
                 raise RuntimeError(f"Failed to import and load model from {local_path}: {e}") from e
-        
-        # Проверяем кеш
+
+        # Check cache
         if self.model_cache.is_model_cached("sentencepiece", model_spec):
             cache_dir = self.model_cache.get_model_cache_dir("sentencepiece", model_spec)
-            # Ищем .model файл
+            # Look for .model file
             model_files = list(cache_dir.glob("*.model"))
             if model_files:
                 logger.info(f"Loading SentencePiece model from cache: {model_files[0]}")
                 return model_files[0]
-        
-        # Скачиваем с HuggingFace Hub
+
+        # Download from HuggingFace Hub
         logger.info(f"Downloading SentencePiece model '{model_spec}' from HuggingFace Hub...")
         try:
             cache_dir = self.model_cache.get_model_cache_dir("sentencepiece", model_spec)
-            
-            # Пробуем разные стандартные имена файлов
+
+            # Try different standard filenames
             for filename in ["tokenizer.model", "spiece.model", "sentencepiece.model"]:
                 try:
                     model_file = hf_hub_download(
@@ -109,12 +109,12 @@ class SPAdapter(BaseTokenizer):
                     return Path(model_file)
                 except Exception:
                     continue
-            
+
             raise FileNotFoundError(
                 f"Could not find SentencePiece model file in repository '{model_spec}'. "
                 f"Tried: tokenizer.model, spiece.model, sentencepiece.model"
             )
-        
+
         except Exception as e:
             raise RuntimeError(
                 f"Failed to load SentencePiece model '{model_spec}'. "
@@ -136,33 +136,33 @@ class SPAdapter(BaseTokenizer):
     @staticmethod
     def list_available_encoders(root: Path | None = None) -> List[str]:
         """
-        Возвращает список доступных SentencePiece моделей.
-        
-        Включает:
-        - Рекомендуемые модели
-        - Уже скачанные модели
-        - Подсказку про локальные файлы
-        
+        Return list of available SentencePiece models.
+
+        Includes:
+        - Recommended models
+        - Already downloaded models
+        - Hint about local files
+
         Args:
-            root: Корень проекта
-            
+            root: Project root
+
         Returns:
-            Список имен моделей и подсказок
+            List of model names and hints
         """
         if root is None:
-            # Без root возвращаем только рекомендуемые
+            # Without root, return only recommended
             all_models = list(RECOMMENDED_MODELS)
         else:
             model_cache = ModelCache(root)
             cached = model_cache.list_cached_models("sentencepiece")
-            
-            # Объединяем рекомендуемые и кешированные
+
+            # Combine recommended and cached
             all_models = list(RECOMMENDED_MODELS)
             for cached_model in cached:
                 if cached_model not in all_models:
                     all_models.append(cached_model)
-        
-        # Добавляем подсказку про локальные файлы
+
+        # Add hint about local files
         all_models.append("(or specify local file: /path/to/model.spm)")
-        
+
         return all_models

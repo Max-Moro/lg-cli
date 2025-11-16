@@ -1,11 +1,11 @@
 """
-Процессор шаблонов для движка шаблонизации.
+Template processor for template engine.
 
-Публичный API, объединяющий все компоненты движка шаблонизации
-в удобный интерфейс для обработки шаблонов с поддержкой условий,
-режимов и включений.
+Public API combining all template engine components
+into convenient interface for processing templates with support for conditions,
+modes, and includes.
 
-Позволяет расширять функционал через плагины.
+Allows extending functionality through plugins.
 """
 
 from __future__ import annotations
@@ -27,7 +27,7 @@ logger = logging.getLogger(__name__)
 
 
 class TemplateProcessingError(Exception):
-    """Общая ошибка обработки шаблона."""
+    """General template processing error."""
 
     def __init__(self, message: str, template_name: str = "", cause: Optional[Exception] = None):
         super().__init__(f"Template processing error in '{template_name}': {message}")
@@ -37,123 +37,123 @@ class TemplateProcessingError(Exception):
 
 class TemplateProcessor:
     """
-    Основной процессор шаблонов.
+    Main template processor.
     """
-    
+
     def __init__(self, run_ctx: RunContext, registry: TemplateRegistry):
         """
-        Инициализирует процессор шаблонов.
-        
+        Initializes template processor.
+
         Args:
-            run_ctx: Контекст выполнения с настройками и сервисами
-            registry: Реестр компонентов (передается извне для избежания глобального состояния)
+            run_ctx: Execution context with settings and services
+            registry: Component registry (passed externally to avoid global state)
         """
         self.run_ctx = run_ctx
         self.template_ctx = TemplateContext(run_ctx)
-        
-        # Используем переданный реестр или создаем новый
+
+        # Use passed registry or create new one
         self.registry = registry
-        
-        # Инициализируем компоненты
+
+        # Initialize components
         self.lexer = ContextualLexer(self.registry)
         self.parser = ModularParser(self.registry)
-        
-        # Кэши для производительности
+
+        # Caches for performance
         self._template_cache: Dict[str, TemplateAST] = {}
-        
-        # Обработчик секций (устанавливается извне)
+
+        # Section handler (set externally)
         self.section_handler: Optional[Callable[[SectionRef, TemplateContext], str]] = None
-        
-        # Создаем анонимный класс обработчиков прямо здесь
+
+        # Create handlers class inline here
         class ProcessorHandlers(TemplateProcessorHandlers):
             def process_ast_node(self, context: ProcessingContext) -> str:
-                """Делегирует обработку узла с контекстом."""
+                """Delegates node processing with context."""
                 return processor_self._evaluate_node(context.get_node(), context.ast, context.node_index)
-            
+
             def process_section_ref(self, section_ref: SectionRef) -> str:
                 if processor_self.section_handler is None:
                     raise RuntimeError(f"No section handler set for processing section '{section_ref.name}'")
                 return processor_self.section_handler(section_ref, processor_self.template_ctx)
-            
+
             def parse_next_node(self, context) -> Optional[TemplateNode]:
-                """Делегирует парсинг к главному парсеру."""
+                """Delegates parsing to main parser."""
                 # noinspection PyProtectedMember
                 return processor_self.parser._parse_next_node(context)
-            
+
             def resolve_ast(self, ast, context: str = "") -> list:
-                """Делегирует резолвинг к процессору."""
+                """Delegates resolving to processor."""
                 return processor_self._resolve_template_references(ast, context)
-        
-        # Сохраняем ссылку на self для замыкания
+
+        # Save self reference for closure
         processor_self = self
         self.handlers = ProcessorHandlers()
 
     def set_section_handler(self, handler: Callable[[SectionRef, TemplateContext], str]) -> None:
         """
-        Устанавливает обработчик секций.
-        
+        Sets section handler.
+
         Args:
-            handler: Функция для обработки плейсхолдеров секций
+            handler: Function for processing section placeholders
         """
         self.section_handler = handler
-    
+
     def process_template_file(self, template_name: str) -> str:
         """
-        Обрабатывает шаблон из файла lg-cfg/<name>.tpl.md или lg-cfg/<name>.ctx.md.
-        
+        Processes template from file lg-cfg/<name>.tpl.md or lg-cfg/<name>.ctx.md.
+
         Args:
-            template_name: Имя шаблона (без суффикса .tpl.md/.ctx.md)
-            
+            template_name: Template name (without .tpl.md/.ctx.md suffix)
+
         Returns:
-            Отрендеренный текст шаблона
-            
+            Rendered template text
+
         Raises:
-            TemplateProcessingError: При ошибке обработки шаблона
+            TemplateProcessingError: If template processing error occurs
         """
         def process_file():
             template_text = self._load_template_text(template_name)
             return self.process_template_text(template_text, template_name)
-        
+
         return self._handle_template_errors(
-            process_file, 
-            template_name, 
+            process_file,
+            template_name,
             "Failed to process template file"
         )
-    
+
     def process_template_text(self, template_text: str, template_name: str = "") -> str:
         """
-        Обрабатывает шаблон из текста.
-        
+        Processes template from text.
+
         Args:
-            template_text: Текст шаблона для обработки
-            template_name: Опциональное имя шаблона для диагностики
-            
+            template_text: Template text to process
+            template_name: Optional template name for diagnostics
+
         Returns:
-            Отрендеренный текст
-            
+            Rendered text
+
         Raises:
-            TemplateProcessingError: При ошибке обработки шаблона
+            TemplateProcessingError: If template processing error occurs
         """
         def process_text():
-            # 1. Парсим шаблон в AST
+            # 1. Parse template into AST
             ast = self._parse_template(template_text, template_name)
-            
-            # 2. Резолвим ссылки в AST  
+
+            # 2. Resolve references in AST
             resolved_ast = self._resolve_template_references(ast, template_name)
-            
-            # 3. Обрабатываем резолвленный AST
+
+            # 3. Process resolved AST
             return self._evaluate_ast(resolved_ast)
-        
+
         return self._handle_template_errors(
             process_text,
             template_name,
             "Unexpected error during processing"
         )
 
-    # ======= Внутренние методы =======
+    # ======= Internal methods =======
 
     def _parse_template(self, template_text: str, template_name: str) -> TemplateAST:
-        """Парсит текст шаблона в AST с кэшированием."""
+        """Parses template text into AST with caching."""
         cache_key = f"{template_name}:{hash(template_text)}"
         
         if cache_key not in self._template_cache:
@@ -167,52 +167,52 @@ class TemplateProcessor:
         return self._template_cache[cache_key]
 
     def _evaluate_ast(self, ast: TemplateAST) -> str:
-        """Оценивает AST и возвращает отрендеренный текст."""
+        """Evaluates AST and returns rendered text."""
         try:
             result_parts = []
-            
+
             for i, node in enumerate(ast):
                 rendered = self._evaluate_node(node, ast, i)
                 if rendered:
                     result_parts.append(rendered)
-            
+
             return "".join(result_parts)
         except Exception as e:
             raise TemplateProcessingError(f"Failed to evaluate AST: {e}", cause=e)
 
     def _evaluate_node(self, node: TemplateNode, ast: TemplateAST, node_index: int) -> str:
-        """Оценивает один узел AST."""
+        """Evaluates single AST node."""
         from .types import ProcessingContext
-        
-        # Создаем контекст обработки
+
+        # Create processing context
         processing_context = ProcessingContext(ast=ast, node_index=node_index)
-        
-        # Получаем обработчики для данного типа узла
+
+        # Get processors for this node type
         processors = self.registry.get_processors_for_node(type(node))
 
         if processors:
-            # Используем первый (наивысший приоритет) обработчик
+            # Use first (highest priority) processor
             processor_rule = processors[0]
             return processor_rule.processor_func(processing_context)
 
-        # Fallback для базовых узлов
+        # Fallback for base nodes
         if isinstance(node, TextNode):
             return node.text
 
-        # Неизвестный тип узла - возвращаем заглушку
+        # Unknown node type - return stub
         logger.warning(f"No processor found for node type: {type(node).__name__}")
         return f"[{type(node).__name__}]"
 
     def _load_template_text(self, template_name: str) -> str:
-        """Загружает текст шаблона из файла."""
+        """Loads template text from file."""
         try:
-            # Попытка загрузить как контекст
+            # Try to load as context
             from .common import load_context_from
             _, text = load_context_from(self.run_ctx.root / "lg-cfg", template_name)
             return text
         except FileNotFoundError:
             try:
-                # Попытка загрузить как шаблон
+                # Try to load as template
                 from .common import load_template_from
                 _, text = load_template_from(self.run_ctx.root / "lg-cfg", template_name)
                 return text
@@ -221,14 +221,14 @@ class TemplateProcessor:
 
     def _resolve_template_references(self, ast: TemplateAST, template_name: str = "") -> TemplateAST:
         """
-        Резолвит все ссылки в AST рекурсивно через плагины.
+        Recursively resolves all references in AST through plugins.
 
         Args:
-            ast: AST для резолвинга
-            template_name: Имя шаблона для диагностики
+            ast: AST to resolve
+            template_name: Template name for diagnostics
 
         Returns:
-            AST с резолвленными ссылками
+            AST with resolved references
         """
         try:
             resolved_nodes = []
@@ -238,105 +238,105 @@ class TemplateProcessor:
             return resolved_nodes
         except Exception as e:
             raise TemplateProcessingError(f"Failed to resolve template references: {e}", template_name, e)
-    
+
     def _resolve_node(self, node: TemplateNode, context: str = "") -> TemplateNode:
         """
-        Резолвит один узел AST рекурсивно.
-        
-        Использует резолверы плагинов для специфичных типов узлов,
-        автоматически обрабатывает вложенные структуры через рефлексию.
+        Recursively resolves single AST node.
+
+        Uses plugin resolvers for specific node types,
+        automatically processes nested structures via reflection.
         """
         from dataclasses import fields, replace
-        
-        # Пытаемся применить специфичные резолверы плагинов
+
+        # Try to apply plugin-specific resolvers
         resolved = self._apply_plugin_resolvers(node, context)
         if resolved is not node:
-            # Плагин обработал узел - возвращаем как есть БЕЗ рекурсивной обработки
-            # Это важно, так как резолвер плагина уже обработал вложенные узлы
+            # Plugin processed node - return as-is WITHOUT recursive processing
+            # Important: plugin resolver already processed nested nodes
             return resolved
 
         has_changes = False
         updates = {}
-        
+
         for field in fields(node):
             field_value = getattr(node, field.name)
-            
-            # Обрабатываем списки узлов
+
+            # Handle lists of nodes
             if isinstance(field_value, list):
                 if field_value and all(isinstance(item, TemplateNode) for item in field_value):
                     resolved_list = [self._resolve_node(n, context) for n in field_value]
                     updates[field.name] = resolved_list
                     has_changes = True
-                    
-            # Обрабатываем одиночные узлы
+
+            # Handle single nodes
             elif isinstance(field_value, TemplateNode):
                 resolved = self._resolve_node(field_value, context)
                 if resolved is not field_value:
                     updates[field.name] = resolved
                     has_changes = True
-        
+
         if has_changes:
             return replace(node, **updates)
-        
+
         return node
-    
+
     def _apply_plugin_resolvers(self, node: TemplateNode, context: str) -> TemplateNode:
         """
-        Применяет резолверы плагинов к узлу через registry.
-        
-        Использует зарегистрированные резолверы для специфичных типов узлов.
+        Applies plugin resolvers to node via registry.
+
+        Uses registered resolvers for specific node types.
         """
-        # Получаем резолверы для типа узла
+        # Get resolvers for node type
         resolvers = self.registry.get_resolvers_for_node(type(node))
-        
+
         if not resolvers:
-            # Нет зарегистрированных резолверов для этого типа
+            # No registered resolvers for this type
             return node
-        
-        # Применяем резолвер с наивысшим приоритетом
+
+        # Apply resolver with highest priority
         resolver_rule = resolvers[0]
         return resolver_rule.resolver_func(node, context)
 
     def _handle_template_errors(self, func, template_name: str, error_message: str):
-        """Общий обработчик ошибок для операций с шаблонами."""
+        """General error handler for template operations."""
         try:
             return func()
         except TemplateProcessingError:
-            # Передаем ошибки обработки как есть
+            # Pass processing errors as-is
             raise
         except Exception as e:
-            # Оборачиваем другие ошибки в TemplateProcessingError
+            # Wrap other errors in TemplateProcessingError
             raise TemplateProcessingError(error_message, template_name, e)
 
 
 def create_template_processor(run_ctx: RunContext) -> TemplateProcessor:
     """
-    Создает процессор шаблонов с уже установленными доступными плагинами.
-    
+    Creates template processor with available plugins already set up.
+
     Args:
-        run_ctx: Контекст выполнения
-        
+        run_ctx: Execution context
+
     Returns:
-        Настроенный процессор шаблонов
+        Configured template processor
     """
-    # Создаем новый реестр для этого процессора
+    # Create new registry for this processor
     registry = TemplateRegistry()
-    
-    # Создаем процессор (обработчики настроятся автоматически в конструкторе)
+
+    # Create processor (handlers auto-configure in constructor)
     processor = TemplateProcessor(run_ctx, registry)
-    
-    # Регистрируем доступные плагины (в порядке приоритета)
+
+    # Register available plugins (in priority order)
     from .common_placeholders import CommonPlaceholdersPlugin
     from .adaptive import AdaptivePlugin
     from .md_placeholders import MdPlaceholdersPlugin
     from .task_placeholder import TaskPlaceholderPlugin
-    
+
     registry.register_plugin(CommonPlaceholdersPlugin(processor.template_ctx))
     registry.register_plugin(AdaptivePlugin(processor.template_ctx))
     registry.register_plugin(MdPlaceholdersPlugin(processor.template_ctx))
     registry.register_plugin(TaskPlaceholderPlugin(processor.template_ctx))
-    
-    # Инициализируем плагины после регистрации всех компонентов
+
+    # Initialize plugins after all components registered
     registry.initialize_plugins(processor.handlers)
 
     return processor

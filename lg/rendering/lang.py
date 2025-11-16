@@ -1,6 +1,6 @@
 """
 Mapping of file names and extensions to languages for markdown fencing.
-Дополняется по мере надобности.
+Extended as needed.
 """
 
 from pathlib import Path
@@ -8,9 +8,9 @@ from typing import Final
 
 from ..types import LangName
 
-# Основной словарь: name (lowercase) или extension → fence language
+# Main dictionary: name (lowercase) or extension → fence language
 LANG_MAPPING: Final[dict[str, str]] = {
-    # Расширения
+    # Extensions
     ".py": "python",
     ".java": "java",
     ".js": "javascript",
@@ -40,7 +40,7 @@ LANG_MAPPING: Final[dict[str, str]] = {
     ".h": "c",
     ".sql": "sql",
 
-    # Специальные имена
+    # Special file names
     "pyproject.toml": "toml",
     "Pipfile": "",
     "pom.xml": "xml",
@@ -51,19 +51,19 @@ LANG_MAPPING: Final[dict[str, str]] = {
     "webpack.config.js": "javascript",
     "Dockerfile": "dockerfile",
     "Makefile": "make",
-    "README": "",        # без расширения
+    "README": "",        # without extension
 }
 
 def get_language_for_file(path: Path) -> LangName:
     """
-    Возвращает язык для fenced-кода по имени файла или расширению.
-    Сначала пробуем полное имя (без учёта регистра), затем suffix.lower().
-    По умолчанию — пустая строка (без указания языка).
+    Returns the language for fenced code based on file name or extension.
+    First, tries exact name match (case-insensitive), then suffix.lower().
+    By default, returns an empty string (no language specified).
     """
     name = path.name
-    # точное совпадение имени (без регистра)
+    # Exact name match (case-insensitive)
     lang = LANG_MAPPING.get(name) or LANG_MAPPING.get(name.lower())
     if lang is not None:
         return lang
-    # по расширению
+    # By extension
     return LANG_MAPPING.get(path.suffix.lower(), "")

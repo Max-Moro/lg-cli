@@ -1,7 +1,7 @@
 """
-Резолвер ссылок для базовых плейсхолдеров секций и шаблонов.
+Reference resolver for basic section and template placeholders.
 
-Обработка адресных ссылок и загрузки включаемых шаблонов из других lg-cfg скоупов.
+Handles addressed references and loading of included templates from other lg-cfg scopes.
 """
 
 from __future__ import annotations
@@ -25,7 +25,7 @@ from ...types import SectionRef
 
 @dataclass(frozen=True)
 class ResolvedInclude:
-    """Результат резолвинга включения с загруженным и распарсенным AST."""
+    """Result of resolving an inclusion with loaded and parsed AST."""
     kind: str  # "tpl" | "ctx"
     name: str
     origin: str
@@ -35,12 +35,12 @@ class ResolvedInclude:
 
 class CommonPlaceholdersResolver:
     """
-    Резолвер ссылок для базовых плейсхолдеров.
-    
-    Обрабатывает адресные ссылки, загружает включаемые шаблоны
-    и заполняет метаданные узлов для последующей обработки.
+    Reference resolver for basic placeholders.
+
+    Handles addressed references, loads included templates,
+    and fills node metadata for subsequent processing.
     """
-    
+
     def __init__(
             self,
             run_ctx: RunContext,
@@ -48,56 +48,56 @@ class CommonPlaceholdersResolver:
             registry: TemplateRegistryProtocol,
     ):
         """
-        Инициализирует резолвер.
-        
+        Initializes resolver.
+
         Args:
-            run_ctx: Контекст выполнения с настройками и путями
-            handlers: Типизированные обработчики для парсинга шаблонов
-            registry: Реестр компонентов для парсинга
+            run_ctx: Runtime context with settings and paths
+            handlers: Typed handlers for template parsing
+            registry: Registry of components for parsing
         """
         self.run_ctx = run_ctx
         self.handlers: TemplateProcessorHandlers = handlers
         self.registry = registry
         self.repo_root = run_ctx.root
         self.current_cfg_root = run_ctx.root / "lg-cfg"
-        
-        # Стек origin'ов для поддержки вложенных включений
+
+        # Stack of origins for supporting nested inclusions
         self._origin_stack: List[str] = ["self"]
-        
-        # Кэш резолвленных включений
+
+        # Cache of resolved inclusions
         self._resolved_includes: Dict[str, ResolvedInclude] = {}
         self._resolution_stack: List[str] = []
 
     def resolve_node(self, node: TemplateNode, context: str = "") -> TemplateNode:
         """
-        Резолвит узел базового плейсхолдера (SectionNode или IncludeNode).
-        
-        Публичный метод для использования процессором.
+        Resolves a basic placeholder node (SectionNode or IncludeNode).
+
+        Public method for use by processor.
         """
         if isinstance(node, SectionNode):
             return self._resolve_section_node(node, context)
         elif isinstance(node, IncludeNode):
             return self._resolve_include_node(node, context)
         else:
-            # Не наш узел - возвращаем как есть
+            # Not our node - return as is
             return node
 
     def _resolve_section_node(self, node: SectionNode, _context: str = "") -> SectionNode:
         """
-        Резолвит секционный узел, обрабатывая адресные ссылки.
-        
-        Поддерживает форматы:
-        - "section_name" → текущий скоуп (использует стек origin)
-        - "@origin:section_name" → указанный скоуп
-        - "@[origin]:section_name" → скоуп с двоеточиями в имени
+        Resolves section node, handling addressed references.
+
+        Supports formats:
+        - "section_name" → current scope (uses origin stack)
+        - "@origin:section_name" → specified scope
+        - "@[origin]:section_name" → scope with colons in name
         """
         section_name = node.section_name
         
         try:
-            # Всегда используем _parse_section_reference
+            # Always use _parse_section_reference
             cfg_root, resolved_name = self._parse_section_reference(section_name)
-            
-            # Создаем SectionRef для использования в остальной части пайплайна
+
+            # Create SectionRef for use in the rest of the pipeline
             scope_dir = cfg_root.parent.resolve()
             try:
                 scope_rel = scope_dir.relative_to(self.repo_root.resolve()).as_posix()
@@ -119,36 +119,36 @@ class CommonPlaceholdersResolver:
 
     def _resolve_include_node(self, node: IncludeNode, context: str = "") -> IncludeNode:
         """
-        Резолвит узел включения, загружает и парсит включаемый шаблон.
+        Resolves include node, loads and parses the included template.
         """
-        # Создаем ключ кэша
+        # Create cache key
         cache_key = node.canon_key()
-        
-        # Проверяем циклические зависимости
+
+        # Check for circular dependencies
         if cache_key in self._resolution_stack:
             cycle_info = " -> ".join(self._resolution_stack + [cache_key])
             raise RuntimeError(f"Circular include dependency: {cycle_info}")
 
-        # Проверяем кэш
+        # Check cache
         if cache_key in self._resolved_includes:
             resolved_include = self._resolved_includes[cache_key]
             return IncludeNode(
                 kind=node.kind,
                 name=node.name,
-                origin=resolved_include.origin,  # Используем эффективный origin из кэша
+                origin=resolved_include.origin,  # Use effective origin from cache
                 children=resolved_include.ast
             )
-        
-        # Резолвим включение
+
+        # Resolve the include
         self._resolution_stack.append(cache_key)
         try:
             resolved_include = self._load_and_parse_include(node, context)
             self._resolved_includes[cache_key] = resolved_include
-            
+
             return IncludeNode(
                 kind=node.kind,
                 name=node.name,
-                origin=resolved_include.origin,  # Используем эффективный origin из резолвинга
+                origin=resolved_include.origin,  # Use effective origin from resolution
                 children=resolved_include.ast
             )
         finally:
@@ -156,30 +156,30 @@ class CommonPlaceholdersResolver:
 
     def _parse_section_reference(self, section_name: str) -> tuple[Path, str]:
         """
-        Парсит ссылку на секцию в различных форматах.
-        
+        Parses section reference in various formats.
+
         Args:
-            section_name: Имя секции (может быть адресным)
-            
+            section_name: Section name (may be addressed)
+
         Returns:
-            Кортеж (cfg_root, resolved_name)
+            Tuple (cfg_root, resolved_name)
         """
         if section_name.startswith("@["):
-            # Скобочная форма: @[origin]:name
+            # Bracket form: @[origin]:name
             close_bracket = section_name.find("]:")
             if close_bracket < 0:
                 raise RuntimeError(f"Invalid section reference format: {section_name}")
             origin = section_name[2:close_bracket]
             name = section_name[close_bracket + 2:]
         elif section_name.startswith("@"):
-            # Простая адресная форма: @origin:name
+            # Simple addressed form: @origin:name
             colon_pos = section_name.find(":", 1)
             if colon_pos < 0:
                 raise RuntimeError(f"Invalid section reference format: {section_name}")
             origin = section_name[1:colon_pos]
             name = section_name[colon_pos + 1:]
         else:
-            # Простая ссылка без адресности - использует текущий origin из стека
+            # Simple reference without addressing - uses current origin from stack
             current_origin = self._origin_stack[-1] if self._origin_stack else "self"
             cfg_root = resolve_cfg_root(
                 current_origin,
@@ -187,8 +187,8 @@ class CommonPlaceholdersResolver:
                 repo_root=self.repo_root
             )
             return cfg_root, section_name
-        
-        # Резолвим cfg_root для указанного origin
+
+        # Resolve cfg_root for specified origin
         cfg_root = resolve_cfg_root(
             origin,
             current_cfg_root=self.current_cfg_root,
@@ -198,46 +198,46 @@ class CommonPlaceholdersResolver:
 
     def _load_and_parse_include(self, node: IncludeNode, context: str) -> ResolvedInclude:
         """
-        Загружает и парсит включаемый шаблон.
-        
+        Loads and parses the included template.
+
         Args:
-            node: Узел включения для обработки
-            context: Контекст для диагностики
-            
+            node: Include node to process
+            context: Context for diagnostics
+
         Returns:
-            Резолвленное включение с AST
+            Resolved inclusion with AST
         """
-        # Склеиваем базовый origin из стека с origin узла
+        # Merge base origin from stack with node origin
         base_origin = self._origin_stack[-1] if self._origin_stack else "self"
         effective_origin = merge_origins(base_origin, node.origin)
-        
-        # Резолвим cfg_root
+
+        # Resolve cfg_root
         cfg_root = resolve_cfg_root(
             effective_origin,
             current_cfg_root=self.current_cfg_root,
             repo_root=self.repo_root
         )
-        
-        # Загружаем содержимое
+
+        # Load content
         if node.kind == "ctx":
             _, template_text = load_context_from(cfg_root, node.name)
         elif node.kind == "tpl":
-            _, template_text = load_template_from(cfg_root, node.name) 
+            _, template_text = load_template_from(cfg_root, node.name)
         else:
             raise RuntimeError(f"Unknown include kind: {node.kind}")
-        
-        # Парсим шаблон
+
+        # Parse template
         from ..parser import parse_template
         from ..registry import TemplateRegistry
         include_ast = parse_template(template_text, registry=cast(TemplateRegistry, self.registry))
-        
-        # Рекурсивно резолвим включение с новым origin в стеке
+
+        # Recursively resolve inclusion with new origin on stack
         self._origin_stack.append(effective_origin)
         try:
-            # Ядро применит резолверы всех плагинов, включая наш
+            # Core will apply resolvers from all plugins, including ours
             ast: TemplateAST = self.handlers.resolve_ast(include_ast, context)
         finally:
-            # Восстанавливаем стек origin после резолвинга
+            # Restore origin stack after resolution
             self._origin_stack.pop()
 
         return ResolvedInclude(

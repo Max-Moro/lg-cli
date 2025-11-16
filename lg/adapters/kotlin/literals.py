@@ -1,6 +1,6 @@
 """
-Kotlin-специфичная обработка литералов.
-Включает поддержку коллекций (listOf, mapOf, setOf) и строковых шаблонов.
+Kotlin-specific literal handling.
+Includes support for collections (listOf, mapOf, setOf) and string templates.
 """
 
 from __future__ import annotations
@@ -8,7 +8,7 @@ from __future__ import annotations
 from ..context import ProcessingContext
 from ..tree_sitter_support import Node, TreeSitterDocument
 
-# Kotlin коллекционные функции, которые создают литеральные данные
+# Kotlin collection functions that create literal data
 KOTLIN_COLLECTION_FUNCTIONS = {
     "listOf", "mutableListOf", "arrayListOf",
     "setOf", "mutableSetOf", "hashSetOf", "linkedSetOf",
@@ -18,37 +18,37 @@ KOTLIN_COLLECTION_FUNCTIONS = {
 
 def is_collection_literal(node: Node, doc: TreeSitterDocument) -> bool:
     """
-    Проверяет, является ли нода вызовом коллекционной функции Kotlin.
-    
+    Check if node is a Kotlin collection function call.
+
     Args:
-        node: Нода для проверки
-        doc: Tree-sitter документ
-        
+        node: Node to check
+        doc: Tree-sitter document
+
     Returns:
-        True если это вызов listOf/mapOf/setOf и т.п.
+        True if this is a listOf/mapOf/setOf call, etc.
     """
     if node.type != "call_expression":
         return False
-    
-    # Ищем имя функции (первый дочерний identifier)
+
+    # Look for function name (first child identifier)
     for child in node.children:
         if child.type == "identifier":
             func_name = doc.get_node_text(child)
             return func_name in KOTLIN_COLLECTION_FUNCTIONS
-    
+
     return False
 
 
 def get_collection_type(node: Node, doc: TreeSitterDocument) -> str:
     """
-    Определяет тип коллекции (list, map, set).
-    
+    Determine collection type (list, map, set).
+
     Args:
-        node: Нода вызова коллекции
-        doc: Tree-sitter документ
-        
+        node: Collection call node
+        doc: Tree-sitter document
+
     Returns:
-        Тип коллекции ("list", "map", "set") или "collection"
+        Collection type ("list", "map", "set") or "collection"
     """
     for child in node.children:
         if child.type == "identifier":
@@ -59,19 +59,19 @@ def get_collection_type(node: Node, doc: TreeSitterDocument) -> str:
                 return "map"
             elif "set" in func_name.lower():
                 return "set"
-    
+
     return "collection"
 
 
 def get_value_arguments_node(node: Node) -> Node | None:
     """
-    Находит ноду value_arguments в вызове функции.
-    
+    Find value_arguments node in function call.
+
     Args:
-        node: Нода call_expression
-        
+        node: call_expression node
+
     Returns:
-        Нода value_arguments или None
+        value_arguments node or None
     """
     for child in node.children:
         if child.type == "value_arguments":
@@ -85,112 +85,112 @@ def process_kotlin_collection_literal(
     max_tokens: int
 ) -> None:
     """
-    Обрабатывает коллекционный литерал Kotlin (listOf/mapOf/setOf).
-    
-    Применяет умную обрезку содержимого с сохранением структуры.
-    
+    Process Kotlin collection literal (listOf/mapOf/setOf).
+
+    Apply smart content trimming while preserving structure.
+
     Args:
-        context: Контекст обработки
-        node: Нода call_expression
-        max_tokens: Максимальное количество токенов
+        context: Processing context
+        node: call_expression node
+        max_tokens: Maximum number of tokens
     """
-    # Получаем полный текст вызова
+    # Get full call text
     full_text = context.doc.get_node_text(node)
     token_count = context.tokenizer.count_text(full_text)
-    
-    # Если не превышает лимит - пропускаем
+
+    # If does not exceed limit - skip
     if token_count <= max_tokens:
         return
-    
-    # Определяем тип коллекции
+
+    # Determine collection type
     collection_type = get_collection_type(node, context.doc)
-    
-    # Находим аргументы
+
+    # Find arguments
     value_args = get_value_arguments_node(node)
     if not value_args:
         return
-    
-    # Получаем все value_argument ноды
+
+    # Get all value_argument nodes
     arguments = [child for child in value_args.children if child.type == "value_argument"]
-    
+
     if not arguments:
         return
-    
-    # Вычисляем сколько аргументов можем оставить
-    # Резервируем токены на имя функции, скобки и плейсхолдер
+
+    # Calculate how many arguments we can keep
+    # Reserve tokens for function name, brackets and placeholder
     func_name_text = full_text.split('(')[0]
-    overhead = context.tokenizer.count_text(func_name_text + '("…")' )
+    overhead = context.tokenizer.count_text(func_name_text + '("…")')
     content_budget = max(10, max_tokens - overhead)
-    
-    # Определяем, многострочный ли это вызов (до выбора аргументов)
+
+    # Determine if this is multiline call (before argument selection)
     is_multiline = '\n' in full_text
-    
-    # Выбираем аргументы, которые помещаются в бюджет
+
+    # Select arguments that fit in budget
     included_args = []
     current_tokens = 0
-    
+
     for arg in arguments:
         arg_text = context.doc.get_node_text(arg)
         arg_tokens = context.tokenizer.count_text(arg_text + ", ")
-        
+
         if current_tokens + arg_tokens <= content_budget:
             included_args.append(arg)
             current_tokens += arg_tokens
         else:
             break
-    
-    # Если не можем включить ни один аргумент - используем только плейсхолдер
+
+    # If we cannot include any argument - use only placeholder
     if not included_args:
         start_char, end_char = context.doc.get_node_range(node)
-        
-        # Формируем минимальную замену - только плейсхолдер
+
+        # Form minimal replacement - placeholder only
         if is_multiline:
-            # Многострочный формат
+            # Multiline format
             base_indent = _get_line_indent_at_position(context.raw_text, start_char)
             element_indent = base_indent + "    "
             placeholder = '"…"' if collection_type in ("list", "set") else '"…" to "…"'
             replacement = f'{func_name_text}(\n{element_indent}{placeholder}\n{base_indent})'
         else:
-            # Однострочный формат
+            # Single-line format
             placeholder = '"…"' if collection_type in ("list", "set") else '"…" to "…"'
             replacement = f'{func_name_text}({placeholder})'
-        
+
         context.editor.add_replacement(
             start_char, end_char, replacement,
             edit_type="literal_trimmed"
         )
-        
+
         _add_savings_comment(context, node, full_text, replacement, collection_type)
-        
-        # Обновляем метрики
+
+        # Update metrics
         context.metrics.mark_element_removed("literal")
         context.metrics.add_chars_saved(len(full_text) - len(replacement))
         return
-    
-    # Формируем замену с включенными аргументами и плейсхолдером
+
+    # Form replacement with included arguments and placeholder
     start_char, end_char = context.doc.get_node_range(node)
-    
+
     if is_multiline:
-        # Многострочный формат
+        # Multiline format
         replacement = _build_multiline_replacement(
             context, node, func_name_text, included_args, collection_type
         )
     else:
-        # Однострочный формат
+        # Single-line format
         replacement = _build_inline_replacement(
             context, included_args, func_name_text, collection_type
         )
-    
-    # Применяем замену
+
+    # Apply replacement
     context.editor.add_replacement(
         start_char, end_char, replacement,
         edit_type="literal_trimmed"
     )
-    
-    # Добавляем комментарий об экономии
+
+    # Add savings comment
     _add_savings_comment(context, node, full_text, replacement, collection_type)
-    
-    # Обновляем метрики
+
+    # Update metrics
     context.metrics.mark_element_removed("literal")
     context.metrics.add_chars_saved(len(full_text) - len(replacement))
 
@@ -201,16 +201,16 @@ def _build_inline_replacement(
     func_name: str,
     collection_type: str
 ) -> str:
-    """Строит однострочную замену для коллекции."""
+    """Build single-line replacement for collection."""
     args_texts = []
     for arg in included_args:
         arg_text = context.doc.get_node_text(arg)
         args_texts.append(arg_text)
-    
-    # Добавляем плейсхолдер
+
+    # Add placeholder
     placeholder = '"…"' if collection_type in ("list", "set") else '"…" to "…"'
     args_texts.append(placeholder)
-    
+
     return f'{func_name}({", ".join(args_texts)})'
 
 
@@ -221,66 +221,66 @@ def _build_multiline_replacement(
     included_args: list[Node],
     collection_type: str
 ) -> str:
-    """Строит многострочную замену для коллекции с правильными отступами."""
-    # Базовый отступ (отступ строки с началом вызова)
+    """Build multiline replacement for collection with proper indentation."""
+    # Base indentation (indentation of line where call starts)
     start_byte = node.start_byte
     base_indent = _get_line_indent_at_position(context.raw_text, start_byte)
-    
-    # Отступ для элементов (определяем из первого аргумента или добавляем 4 пробела)
+
+    # Element indentation (determine from first argument or add 4 spaces)
     if included_args:
         element_indent = _detect_element_indent(context, included_args[0])
     else:
         element_indent = base_indent + "    "
-    
-    # Формируем строки
+
+    # Form lines
     result_lines = [f'{func_name}(']
-    
+
     for i, arg in enumerate(included_args):
         arg_text = context.doc.get_node_text(arg)
-        # Убедимся, что после каждого элемента стоит запятая
+        # Ensure each element has a comma
         if not arg_text.strip().endswith(','):
             arg_text = arg_text + ','
         result_lines.append(f'{element_indent}{arg_text}')
-    
-    # Добавляем плейсхолдер (без запятой в конце - Kotlin trailing comma опционально)
+
+    # Add placeholder (no trailing comma - Kotlin trailing comma is optional)
     placeholder = '"…"' if collection_type in ("list", "set") else '"…" to "…"'
     result_lines.append(f'{element_indent}{placeholder}')
     result_lines.append(f'{base_indent})')
-    
+
     return '\n'.join(result_lines)
 
 
 def _get_line_indent_at_position(text: str, byte_pos: int) -> str:
     """
-    Возвращает отступ строки, на которой находится указанная байтовая позиция.
-    
+    Get indentation of line where byte position is located.
+
     Args:
-        text: Исходный текст
-        byte_pos: Байтовая позиция
-        
+        text: Source text
+        byte_pos: Byte position
+
     Returns:
-        Строка с отступом (пробелы/табы)
+        String with indentation (spaces/tabs)
     """
-    # Находим начало строки
+    # Find line start
     line_start = text.rfind('\n', 0, byte_pos)
     if line_start == -1:
         line_start = 0
     else:
-        line_start += 1  # Пропускаем сам символ \n
-    
-    # Собираем отступ
+        line_start += 1  # Skip the \n character itself
+
+    # Collect indentation
     indent = ""
     for i in range(line_start, len(text)):
         if text[i] in ' \t':
             indent += text[i]
         else:
             break
-    
+
     return indent
 
 
 def _detect_element_indent(context: ProcessingContext, arg_node: Node) -> str:
-    """Определяет отступ элемента из позиции аргумента."""
+    """Determine element indentation from argument position."""
     return _get_line_indent_at_position(context.raw_text, arg_node.start_byte)
 
 
@@ -291,36 +291,36 @@ def _add_savings_comment(
     replacement: str,
     collection_type: str
 ) -> None:
-    """Добавляет комментарий об экономии токенов после литерала."""
+    """Add token savings comment after literal."""
 
-    # Вычисляем экономию токенов
+    # Calculate token savings
     original_tokens = context.tokenizer.count_text(original_text)
     replacement_tokens = context.tokenizer.count_text(replacement)
     saved_tokens = original_tokens - replacement_tokens
-    
-    # Если нет экономии - не добавляем комментарий
+
+    # If no savings - don't add comment
     if saved_tokens <= 0:
         return
-    
-    # Определяем тип литерала для комментария
+
+    # Determine literal type for comment
     literal_type_name = {
         "list": "array",
         "set": "set",
         "map": "object",
         "collection": "collection"
     }.get(collection_type, "literal")
-    
-    # Формируем текст комментария
+
+    # Form comment text
     comment_text = f" // literal {literal_type_name} (−{saved_tokens} tokens)"
-    
-    # Находим конец литерала и место для вставки комментария
+
+    # Find end of literal and place for comment insertion
     end_char = node.end_byte
-    
-    # Проверяем, что после литерала идет
+
+    # Check what comes after literal
     text_after = context.raw_text[end_char:min(end_char + 100, len(context.raw_text))]
-    
-    # Ищем конец строки или точку с запятой
-    # Если после литерала идет закрывающая скобка или запятая, вставляем после неё
+
+    # Look for end of line or semicolon
+    # If closing bracket or comma after literal, insert after it
     for i, char in enumerate(text_after):
         if char in ('\n', '\r'):
             insertion_offset = i
@@ -335,12 +335,12 @@ def _add_savings_comment(
             _ = i + 1  # Continue scanning for ; or , after )
             continue
     else:
-        # Если не нашли перевод строки в первых 100 символах, вставляем сразу
+        # If not found newline in first 100 characters, insert immediately
         insertion_offset = min(20, len(text_after))
-    
+
     insertion_pos = end_char + insertion_offset
-    
-    # Добавляем комментарий
+
+    # Add comment
     context.editor.add_insertion(
         insertion_pos,
         comment_text,
@@ -350,43 +350,43 @@ def _add_savings_comment(
 
 def process_kotlin_literals(context: ProcessingContext, max_tokens: int | None) -> None:
     """
-    Обрабатывает Kotlin-специфичные литералы (коллекции).
-    
-    Этот метод вызывается через хук из базового LiteralOptimizer
-    для обработки специфичных для Kotlin конструкций.
-    
+    Process Kotlin-specific literals (collections).
+
+    This method is called via hook from base LiteralOptimizer
+    to process Kotlin-specific constructs.
+
     Args:
-        context: Контекст обработки
-        max_tokens: Максимальное количество токенов для литерала
+        context: Processing context
+        max_tokens: Maximum number of tokens for literal
     """
     if max_tokens is None:
         return
-    
-    # Находим все вызовы функций, исключая вложенные
+
+    # Find all function calls, excluding nested ones
     def find_top_level_collection_calls(node: Node, inside_collection: bool = False):
         """
-        Находит только top-level вызовы коллекционных функций.
-        Не рекурсирует внутрь найденных коллекций, чтобы избежать двойной обработки.
+        Find only top-level collection function calls.
+        Does not recurse inside found collections to avoid double processing.
         """
         calls = []
-        
-        # Если это коллекция
+
+        # If this is a collection
         if is_collection_literal(node, context.doc):
-            # Если мы НЕ внутри другой коллекции - добавляем
+            # If we are NOT inside another collection - add it
             if not inside_collection:
                 calls.append(node)
-                # Теперь помечаем, что мы внутри коллекции для детей
+                # Now mark that we are inside collection for children
                 inside_collection = True
-        
-        # Рекурсивно обходим детей
+
+        # Recursively walk children
         for child in node.children:
             calls.extend(find_top_level_collection_calls(child, inside_collection))
-        
+
         return calls
-    
-    # Находим только top-level коллекционные литералы
+
+    # Find only top-level collection literals
     collection_calls = find_top_level_collection_calls(context.doc.root_node)
-    
-    # Обрабатываем каждый вызов
+
+    # Process each call
     for call_node in collection_calls:
         process_kotlin_collection_literal(context, call_node, max_tokens)

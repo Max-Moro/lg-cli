@@ -72,7 +72,7 @@ class FunctionBodyOptimizer:
             func_type: str
     ) -> None:
         """
-        Удаляет тело функции/метода с автоматическим учетом метрик.
+        Remove function/method body with automatic metrics accounting.
         """
         start_char, end_char = context.doc.get_node_range(body_node)
 
@@ -92,18 +92,14 @@ class FunctionBodyOptimizer:
             placeholder_prefix: str = ""
     ) -> None:
         """
-        Общий helper для применения удаления тела функции с placeholder'ами и метриками.
-        
-        Args:
-            context: Контекст обработки
-            start_char: Начальная позиция для удаления
-            end_char: Конечная позиция для удаления
-            func_type: Тип функции ("function" или "method")
-            placeholder_prefix: Префикс для placeholder'а (например "\n    ")
-        """
+        Common helper for applying function body removal with placeholders and metrics.
 
-        """
-        Удаляет тело функции/метода с автоматическим учетом метрик.
+        Args:
+            context: Processing context
+            start_char: Starting position for removal
+            end_char: Ending position for removal
+            func_type: Function type ("function" or "method")
+            placeholder_prefix: Prefix for placeholder (e.g. "\n    ")
         """
         start_line = context.doc.get_line_number(start_char)
         end_line = context.doc.get_line_number(end_char)

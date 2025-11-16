@@ -1,7 +1,7 @@
 """
-Токены для парсинга Markdown-плейсхолдеров.
+Tokens for parsing Markdown placeholders.
 
-Расширяет существующий контекст плейсхолдеров специфичными для MD токенами.
+Extends existing placeholder context with MD-specific tokens.
 """
 
 from __future__ import annotations
@@ -14,46 +14,46 @@ from ..types import TokenSpec
 
 def get_md_token_specs() -> List[TokenSpec]:
     """
-    Возвращает спецификации токенов для MD-плейсхолдеров.
-    
-    Эти токены будут добавлены в существующий контекст 'placeholder'.
+    Returns token specifications for MD placeholders.
+
+    These tokens will be added to existing 'placeholder' context.
     """
     return [
-        # Решётка # (для якорей md:path#anchor)
+        # Hash # (for anchors md:path#anchor)
         TokenSpec(
             name="HASH",
             pattern=re.compile(r'#'),
         ),
-        
-        # Запятая , (для параметров md:path,level:3)
+
+        # Comma , (for parameters md:path,level:3)
         TokenSpec(
             name="COMMA",
             pattern=re.compile(r','),
         ),
-        
-        # Булевы значения для параметров
+
+        # Boolean values for parameters
         TokenSpec(
             name="BOOL_TRUE",
             pattern=re.compile(r'\btrue\b'),
-            priority=60,  # Выше дефолтного 50
+            priority=60,  # Higher than default 50
         ),
-        
+
         TokenSpec(
             name="BOOL_FALSE",
             pattern=re.compile(r'\bfalse\b'),
-            priority=60,  # Выше дефолтного 50
+            priority=60,  # Higher than default 50
         ),
-        
-        # Числа для параметров (например, level:3)
+
+        # Numbers for parameters (e.g., level:3)
         TokenSpec(
             name="NUMBER",
             pattern=re.compile(r'\d+'),
         ),
-        
-        # Глоб-символы (* и **)
+
+        # Glob symbols (* and **)
         TokenSpec(
             name="GLOB_STAR",
-            pattern=re.compile(r'\*+'),  # * или **
+            pattern=re.compile(r'\*+'),  # * or **
         ),
     ]
 

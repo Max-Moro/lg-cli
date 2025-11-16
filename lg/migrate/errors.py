@@ -4,14 +4,14 @@ from __future__ import annotations
 
 class MigrationFatalError(RuntimeError):
     """
-    Исключение верхнего уровня для фатальных сбоев миграций.
-    Текст сообщения предназначен ДЛЯ ПОЛЬЗОВАТЕЛЯ (с подсказками).
-    Оригинальная причина доступна через __cause__.
+    Top-level exception for fatal migration failures.
+    The message text is intended FOR THE USER (with hints).
+    The original cause is available via __cause__.
     """
     pass
 
 class PreflightRequired(RuntimeError):
-    """Поднимается миграцией, если для применения обязательно требуется Git."""
+    """Raised by a migration if Git is required for application."""
     pass
 
 __all__ = ["MigrationFatalError", "PreflightRequired"]

@@ -8,32 +8,32 @@ from .context import LightweightContext
 
 class MarkdownAdapter(BaseAdapter[MarkdownCfg]):
     """
-    Адаптер для Markdown (.md) файлов.
+    Adapter for Markdown (.md) files.
     """
     name = "markdown"
     extensions = {".md"}
 
     def process(self, lightweight_ctx: LightweightContext):
-        # Проверяем, нужна ли обработка шаблонизации
+        # Check if templating processing is needed
         if self.cfg.enable_templating and lightweight_ctx.template_ctx:
-            # Применяем шаблонизацию перед основной обработкой
+            # Apply templating before main processing
             templated_text, templating_meta = process_markdown_template(
                 lightweight_ctx.raw_text,
                 lightweight_ctx.template_ctx
             )
         else:
-            # Используем исходный текст без шаблонизации
+            # Use original text without templating
             templated_text = lightweight_ctx.raw_text
             templating_meta = {}
-        
-        # Применяем основную обработку Markdown
+
+        # Apply main Markdown processing
         processed_text, markdown_meta = process_markdown(
-            templated_text, 
+            templated_text,
             self.cfg,
             file_label=lightweight_ctx.file_label
         )
-        
-        # Объединяем метаданные
+
+        # Merge metadata
         combined_meta = {**templating_meta, **markdown_meta}
         
         return processed_text, combined_meta

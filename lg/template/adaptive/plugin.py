@@ -1,8 +1,8 @@
 """
-Плагин для адаптивных возможностей шаблонизатора.
+Plugin for adaptive template features.
 
-Регистрирует все необходимые токены, правила парсинга и обработчики
-для поддержки условных конструкций, режимных блоков и комментариев.
+Registers all necessary tokens, parsing rules, and handlers
+for supporting conditional blocks, mode blocks, and comments.
 """
 
 from __future__ import annotations
@@ -19,42 +19,42 @@ from ...template.context import TemplateContext
 
 class AdaptivePlugin(TemplatePlugin):
     """
-    Плагин для адаптивных возможностей шаблонизатора.
-    
-    Обеспечивает функциональность:
-    - {% if condition %}...{% elif %}...{% else %}...{% endif %} - условные конструкции
-    - {% mode modeset:mode %}...{% endmode %} - режимные блоки  
-    - {# комментарий #} - комментарии
-    - Логические операторы AND, OR, NOT
-    - Операторы условий: tag:name, TAGSET:set:tag, scope:local
+    Plugin for adaptive template features.
+
+    Provides functionality:
+    - {% if condition %}...{% elif %}...{% else %}...{% endif %} - conditional blocks
+    - {% mode modeset:mode %}...{% endmode %} - mode blocks
+    - {# comment #} - comments
+    - Logical operators AND, OR, NOT
+    - Condition operators: tag:name, TAGSET:set:tag, scope:local
     """
-    
+
     def __init__(self, template_ctx: TemplateContext):
         """
-        Инициализирует плагин с контекстом шаблона.
-        
+        Initializes plugin with template context.
+
         Args:
-            template_ctx: Контекст шаблона для управления состоянием
+            template_ctx: Template context for state management
         """
         super().__init__()
         self.template_ctx = template_ctx
-    
+
     @property
     def name(self) -> str:
-        """Возвращает имя плагина."""
+        """Returns plugin name."""
         return "adaptive"
-    
+
     @property
     def priority(self) -> PluginPriority:
-        """Возвращает приоритет плагина."""
+        """Returns plugin priority."""
         return PluginPriority.DIRECTIVE
-    
+
     def register_tokens(self) -> List[TokenSpec]:
-        """Регистрирует токены для адаптивных конструкций."""
+        """Registers tokens for adaptive constructs."""
         return get_adaptive_token_specs()
-    
+
     def register_token_contexts(self) -> List[TokenContext]:
-        """Регистрирует контексты токенов для адаптивных конструкций."""
+        """Registers token contexts for adaptive constructs."""
         return [
             TokenContext(
                 name="directive",
@@ -69,24 +69,24 @@ class AdaptivePlugin(TemplatePlugin):
                 name="comment",
                 open_tokens={"COMMENT_START"},
                 close_tokens={"COMMENT_END"},
-                inner_tokens=set(),  # Внутри комментария все - текст
+                inner_tokens=set(),  # Inside comment, everything is text
                 allow_nesting=False,
             )
         ]
-    
+
     def register_parser_rules(self) -> List[ParsingRule]:
         """
-        Регистрирует правила парсинга адаптивных конструкций.
-        
-        Использует замыкание для ленивого доступа к handlers.parse_next_node.
+        Registers parsing rules for adaptive constructs.
+
+        Uses closure for lazy access to handlers.parse_next_node.
         """
         return get_adaptive_parser_rules(lambda ctx: self.handlers.parse_next_node(ctx))
-    
+
     def register_processors(self) -> List[ProcessorRule]:
         """
-        Регистрирует обработчики узлов AST.
-        
-        Использует замыкания для ленивого доступа к handlers.
+        Registers AST node handlers.
+
+        Uses closures for lazy access to handlers.
         """
         return get_adaptive_processor_rules(
             process_ast_node=lambda ctx: self.handlers.process_ast_node(ctx),

@@ -1,5 +1,5 @@
 """
-Основной пайплайн обработки.
+Main processing pipeline.
 """
 
 from __future__ import annotations
@@ -24,36 +24,36 @@ from .version import tool_version
 
 class Engine:
     """
-    Координирующий класс движка.
+    Engine coordinating class.
 
-    Управляет взаимодействием между компонентами:
-    - TemplateProcessor для обработки шаблонов
-    - SectionProcessor для обработки секций
-    - StatsCollector для сбора статистики
+    Manages interaction between components:
+    - TemplateProcessor for template processing
+    - SectionProcessor for section processing
+    - StatsCollector for statistics collection
     """
 
     def __init__(self, options: RunOptions):
         """
-        Инициализирует движок с указанными опциями.
+        Initialize engine with specified options.
 
         Args:
-            options: Опции выполнения
+            options: Execution options
         """
         self.options = options
         self.root = Path.cwd().resolve()
 
-        # Инициализируем сервисы
+        # Initialize services
         self._init_services()
 
-        # Создаем процессоры
+        # Create processors
         self._init_processors()
 
-        # Настраиваем взаимодействие между компонентами
+        # Setup component integration
         self._setup_component_integration()
 
     def _init_services(self) -> None:
-        """Инициализирует базовые сервисы."""
-        # Кэш
+        """Initialize basic services."""
+        # Cache
         tool_ver = tool_version()
         self.cache = Cache(self.root, enabled=None, fresh=False, tool_version=tool_ver)
 
@@ -84,92 +84,92 @@ class Engine:
         )
 
     def _init_processors(self) -> None:
-        """Создает основные процессоры."""
-        # Коллектор статистики
+        """Create main processors."""
+        # Statistics collector
         self.stats_collector = StatsCollector(self.options.ctx_limit, self.tokenizer)
 
-        # Процессор секций
+        # Section processor
         self.section_processor = SectionProcessor(
             run_ctx=self.run_ctx,
             stats_collector=self.stats_collector
         )
 
-        # Процессор шаблонов
+        # Template processor
         self.template_processor = create_template_processor(self.run_ctx)
-    
+
     def _setup_component_integration(self) -> None:
-        """Настраивает взаимодействие между компонентами."""
-        # Связываем процессор шаблонов с обработчиком секций
+        """Setup component integration."""
+        # Link template processor with section handler
         def section_handler(section_ref: SectionRef, template_ctx: TemplateContext) -> str:
             rendered_section = self.section_processor.process_section(section_ref, template_ctx)
             return rendered_section.text
-        
+
         self.template_processor.set_section_handler(section_handler)
     
     def render_context(self, context_name: str) -> str:
         """
-        Рендерит контекст из шаблона.
-        
+        Render context from template.
+
         Args:
-            context_name: Имя контекста для рендеринга
-            
+            context_name: Context name to render
+
         Returns:
-            Отрендеренный документ
-            
+            Rendered document
+
         Raises:
-            TemplateProcessingError: При ошибке обработки шаблона
-            FileNotFoundError: Если шаблон контекста не найден
+            TemplateProcessingError: On template processing error
+            FileNotFoundError: If context template not found
         """
-        # Обеспечиваем актуальность конфигурации
+        # Ensure configuration is up to date
         ensure_cfg_actual(cfg_root(self.root))
-        
-        # Устанавливаем target в коллекторе статистики
+
+        # Set target in statistics collector
         self.stats_collector.set_target_name(f"ctx:{context_name}")
-        
-        # Обрабатываем шаблон
+
+        # Process template
         final_text = self.template_processor.process_template_file(context_name)
 
-        # Устанавливаем итоговые тексты в коллекторе
+        # Set final texts in collector
         self.stats_collector.set_final_texts(final_text)
 
         return final_text
 
     def render_section(self, section_name: str) -> str:
         """
-        Рендерит отдельную секцию.
-        
+        Render individual section.
+
         Args:
-            section_name: Имя секции для рендеринга (может быть адресной ссылкой)
-            
+            section_name: Section name to render (may be an addressable reference)
+
         Returns:
-            Отрендеренный документ
+            Rendered document
         """
-        # Обеспечиваем актуальность конфигурации
+        # Ensure configuration is up to date
         ensure_cfg_actual(cfg_root(self.root))
-        
-        # Устанавливаем target в коллекторе статистики
+
+        # Set target in statistics collector
         self.stats_collector.set_target_name(f"sec:{section_name}")
-        
+
         template_ctx = TemplateContext(self.run_ctx)
-        
-        # Парсим адресную ссылку, если это необходимо
+
+        # Parse addressable reference if necessary
         section_ref = self._create_section_ref(section_name)
         rendered_section = self.section_processor.process_section(section_ref, template_ctx)
-        
-        # Устанавливаем итоговые тексты в коллекторе (для секции они совпадают)
+
+        # Set final texts in collector (for section they are the same)
         self.stats_collector.set_final_texts(rendered_section.text)
-        
+
         return rendered_section.text
 
     def _create_section_ref(self, section_name: str) -> SectionRef:
         """
-        Создает SectionRef из имени секции, поддерживая адресные ссылки.
-        
+        Create SectionRef from section name, supporting addressable references.
+
         Args:
-            section_name: Имя секции (может быть адресной ссылкой типа @origin:name)
-            
+            section_name: Section name (may be addressable reference like @origin:name)
+
         Returns:
-            SectionRef с правильными scope_rel и scope_dir
+            SectionRef with correct scope_rel and scope_dir
         """
         if section_name.startswith("@["):
             # @[origin]:name
@@ -186,26 +186,26 @@ class Engine:
             origin = section_name[1:colon]
             name = section_name[colon + 1:]
         else:
-            # Простая ссылка без адресности
+            # Simple reference without addressing
             return SectionRef(section_name, "", self.root)
-        
-        # Для адресных ссылок вычисляем scope_dir
+
+        # For addressable references, calculate scope_dir
         scope_dir = (self.root / origin).resolve()
         scope_rel = origin
-        
+
         return SectionRef(name, scope_rel, scope_dir)
 
     def render_text(self, target_spec: TargetSpec) -> str:
         """
-        Рендерит финальный текст.
+        Render final text.
 
         Args:
-            target_spec: Спецификация цели для отчета
+            target_spec: Target specification for report
 
         Returns:
-            Отрендеренный контекст или секция
+            Rendered context or section
         """
-        # Рендерим цель в зависимости от типа
+        # Render target based on type
         if target_spec.kind == "context":
             return self.render_context(target_spec.name)
         else:
@@ -213,21 +213,21 @@ class Engine:
 
     def generate_report(self, target_spec: TargetSpec) -> RunResult:
         """
-        Генерирует полный отчет с статистикой.
-        
+        Generate complete report with statistics.
+
         Args:
-            target_spec: Спецификация цели для отчета
-            
+            target_spec: Target specification for report
+
         Returns:
-            Модель RunResult в формате API v4
+            RunResult model in API v4 format
         """
-        # Рендерим цель в зависимости от типа
+        # Render target based on type
         if target_spec.kind == "context":
             self.render_context(target_spec.name)
         else:
             self.render_section(target_spec.name)
-        
-        # Генерируем отчет из коллектора статистики
+
+        # Generate report from statistics collector
         return build_run_result_from_collector(
             collector=self.stats_collector,
             target_spec=target_spec,
@@ -238,60 +238,60 @@ class Engine:
 
 def _parse_target(target: str, root: Optional[Path] = None) -> TargetSpec:
     """
-    Парсит строку цели в TargetSpec.
-    
+    Parse target string into TargetSpec.
+
     Args:
-        target: Строка цели в формате "ctx:name", "sec:name" или "name"
-        root: Корень проекта (если None, используется cwd)
-        
+        target: Target string in format "ctx:name", "sec:name" or "name"
+        root: Project root (if None, cwd is used)
+
     Returns:
-        Спецификация цели
+        Target specification
     """
     from .template.common import CTX_SUFFIX
-    
+
     if root is None:
         root = Path.cwd().resolve()
     else:
         root = root.resolve()
     cfg_path = cfg_root(root)
-    
+
     kind = "auto"
     name = target.strip()
-    
+
     if name.startswith("ctx:"):
         kind, name = "context", name[4:]
     elif name.startswith("sec:"):
         kind, name = "section", name[4:]
-    
-    # Для auto режима проверяем наличие контекста
+
+    # For auto mode, check if context exists
     if kind in ("auto", "context"):
         template_path = cfg_path / f"{name}{CTX_SUFFIX}"
         if template_path.is_file():
             return TargetSpec(
-                kind="context", 
-                name=name, 
+                kind="context",
+                name=name,
                 template_path=template_path
             )
         if kind == "context":
             raise FileNotFoundError(f"Context template not found: {template_path}")
-    
-    # Fallback к секции
+
+    # Fallback to section
     return TargetSpec(
         kind="section",
         name=name,
-        template_path=Path()  # Не используется для секций
+        template_path=Path()  # Not used for sections
     )
 
 
 def run_render(target: str, options: RunOptions) -> str:
-    """Точка входа для рендеринга."""
+    """Entry point for rendering."""
     engine = Engine(options)
     target_spec = _parse_target(target, engine.root)
     return engine.render_text(target_spec)
 
 
 def run_report(target: str, options: RunOptions) -> RunResult:
-    """Точка входа для генерации отчета."""
+    """Entry point for report generation."""
     engine = Engine(options)
     target_spec = _parse_target(target, engine.root)
     return engine.generate_report(target_spec)

@@ -11,7 +11,7 @@ from .code_model import CodeCfg
 
 # noinspection PyAbstractClass
 class JavaAdapter(CodeAdapter[CodeCfg]):
-    """Java адаптер (заглушка для M7, будет реализован позже)."""
+    """Java adapter (stub for M7, will be implemented later)."""
 
     name = "java"
     extensions = {".java"}

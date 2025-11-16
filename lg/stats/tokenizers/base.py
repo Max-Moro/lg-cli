@@ -4,79 +4,79 @@ from pathlib import Path
 
 class BaseTokenizer(ABC):
     """
-    Абстрактный базовый класс для всех токенизаторов.
-    
-    Унифицирует интерфейс работы с разными библиотеками токенизации.
+    Abstract base class for all tokenizers.
+
+    Unifies the interface for working with different tokenization libraries.
     """
-    
+
     def __init__(self, encoder: str):
         """
         Args:
-            encoder: Имя энкодера (для tiktoken) или модели (для HF/SP)
+            encoder: Encoder name (for tiktoken) or model (for HF/SP)
         """
         self.encoder = encoder
-    
+
     @abstractmethod
     def count_tokens(self, text: str) -> int:
         """
-        Подсчитывает количество токенов в тексте.
-        
+        Count the number of tokens in text.
+
         Args:
-            text: Исходный текст
-            
+            text: Original text
+
         Returns:
-            Количество токенов
+            Number of tokens
         """
         pass
-    
+
     @abstractmethod
     def encode(self, text: str) -> List[int]:
         """
-        Кодирует текст в список token IDs.
-        
+        Encode text into list of token IDs.
+
         Args:
-            text: Исходный текст
-            
+            text: Original text
+
         Returns:
-            Список token IDs
+            List of token IDs
         """
         pass
-    
+
     @abstractmethod
     def decode(self, token_ids: List[int]) -> str:
         """
-        Декодирует token IDs обратно в текст.
-        
+        Decode token IDs back to text.
+
         Args:
-            token_ids: Список token IDs
-            
+            token_ids: List of token IDs
+
         Returns:
-            Декодированный текст
+            Decoded text
         """
         pass
-    
+
     @staticmethod
     @abstractmethod
     def list_available_encoders(root: Path | None = None) -> List[str]:
         """
-        Возвращает список доступных энкодеров для данной библиотеки.
-        
-        Включает:
-        - Встроенные энкодеры (для tiktoken)
-        - Рекомендуемые модели (для HF/SP)
-        - Уже скачанные модели
-        
+        Return list of available encoders for this library.
+
+        Includes:
+        - Built-in encoders (for tiktoken)
+        - Recommended models (for HF/SP)
+        - Already downloaded models
+
         Returns:
-            Список имен энкодеров/моделей
+            List of encoder/model names
         """
         pass
-    
+
     @property
     def lib_name(self) -> str:
-        """Имя библиотеки токенизации (tiktoken, tokenizers, sentencepiece)."""
+        """Tokenization library name (tiktoken, tokenizers, sentencepiece)."""
         return self.__class__.__name__.replace("Adapter", "").lower()
-    
+
     @property
     def full_name(self) -> str:
-        """Полное имя токенизатора в формате 'lib:encoder'."""
+        """Full tokenizer name in format 'lib:encoder'."""
         return f"{self.lib_name}:{self.encoder}"

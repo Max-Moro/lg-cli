@@ -1,5 +1,5 @@
 """
-Утилиты для работы с режимами и тегами в адаптивной системе.
+Utilities for working with modes and tags in the adaptive system.
 """
 
 from __future__ import annotations
@@ -14,29 +14,29 @@ from .adaptive_model import ModeOptions
 
 class AdaptiveConfigLoader:
     """
-    Централизованный загрузчик конфигурации режимов и тегов с кэшированием.
-    Избегает повторной загрузки одних и тех же YAML-файлов.
+    Centralized loader for modes and tags configuration with caching.
+    Avoids repeated loading of the same YAML files.
     """
-    
+
     def __init__(self, root: Path):
         self.root = root
         self._modes_config: Optional[ModesConfig] = None
         self._tags_config: Optional[TagsConfig] = None
-    
+
     def get_modes_config(self) -> ModesConfig:
-        """Загружает конфигурацию режимов с кэшированием."""
+        """Load modes configuration with caching."""
         if self._modes_config is None:
             self._modes_config = load_modes(self.root)
         return self._modes_config
-    
+
     def get_tags_config(self) -> TagsConfig:
-        """Загружает конфигурацию тегов с кэшированием."""
+        """Load tags configuration with caching."""
         if self._tags_config is None:
             self._tags_config = load_tags(self.root)
         return self._tags_config
-    
+
     def get_all_available_tags(self) -> Tuple[Dict[str, TagSet], Dict[str, Tag]]:
-        """Возвращает все доступные теги, разделенные на наборы и глобальные."""
+        """Return all available tags, separated into sets and global."""
         config = self.get_tags_config()
         return config.tag_sets, config.global_tags
 
@@ -47,56 +47,56 @@ def process_adaptive_options(
     extra_tags: Set[str]
 ) -> Tuple[Set[str], ModeOptions, AdaptiveConfigLoader]:
     """
-    Основная функция для обработки адаптивных опций.
-    Выполняет валидацию режимов и тегов, вычисляет активные теги и мержит опции режимов.
-    
+    Main function for processing adaptive options.
+    Validates modes and tags, computes active tags and merges mode options.
+
     Args:
-        root: Корень репозитория
-        modes: Словарь активных режимов {modeset_name: mode_name}
-        extra_tags: Дополнительные теги, указанные явно
-        
+        root: Repository root
+        modes: Dictionary of active modes {modeset_name: mode_name}
+        extra_tags: Additional explicitly specified tags
+
     Returns:
-        Кортеж (активные_теги, смердженные_опции_режимов, загрузчик_конфигурации)
-        
+        Tuple (active_tags, merged_mode_options, config_loader)
+
     Raises:
-        ValueError: Если режим или набор режимов не найден
+        ValueError: If mode or mode set not found
     """
     loader = AdaptiveConfigLoader(root)
-    
-    # Валидируем режимы
+
+    # Validate modes
     if modes:
         _validate_modes_with_config(loader.get_modes_config(), modes)
-    
-    # Валидируем теги
+
+    # Validate tags
     if extra_tags:
         _validate_tags_with_config(loader.get_all_available_tags(), extra_tags)
-    
-    # Вычисляем активные теги
+
+    # Compute active tags
     active_tags = _compute_active_tags_with_config(
-        loader.get_modes_config(), 
+        loader.get_modes_config(),
         modes,
         extra_tags
     )
-    
-    # Мержим опции от всех активных режимов
+
+    # Merge options from all active modes
     mode_options = ModeOptions.merge_from_modes(
-        loader.get_modes_config(), 
+        loader.get_modes_config(),
         modes
     )
-    
+
     return active_tags, mode_options, loader
 
 
 def _validate_modes_with_config(modes_config: ModesConfig, modes: Dict[str, str]) -> None:
     """
-    Проверяет корректность указанных режимов с использованием уже загруженной конфигурации.
-    
+    Validate specified modes using already loaded configuration.
+
     Args:
-        modes_config: Загруженная конфигурация режимов
-        modes: Словарь режимов для проверки
-        
+        modes_config: Loaded modes configuration
+        modes: Dictionary of modes to validate
+
     Raises:
-        ValueError: Если режим или набор режимов не найден
+        ValueError: If mode or mode set not found
     """
     for modeset_name, mode_name in modes.items():
         modeset = modes_config.mode_sets.get(modeset_name)
@@ -106,7 +106,7 @@ def _validate_modes_with_config(modes_config: ModesConfig, modes: Dict[str, str]
                 f"Unknown mode set '{modeset_name}'. "
                 f"Available mode sets: {', '.join(available_modesets)}"
             )
-        
+
         if mode_name not in modeset.modes:
             available_modes = list(modeset.modes.keys())
             raise ValueError(
@@ -117,24 +117,24 @@ def _validate_modes_with_config(modes_config: ModesConfig, modes: Dict[str, str]
 
 def _validate_tags_with_config(all_tags: Tuple[Dict[str, TagSet], Dict[str, Tag]], tags: Set[str]) -> None:
     """
-    Проверяет корректность указанных тегов с использованием уже загруженной конфигурации.
-    Выводит предупреждения для неизвестных тегов.
-    
+    Validate specified tags using already loaded configuration.
+    Outputs warnings for unknown tags.
+
     Args:
-        all_tags: Кортеж (наборы_тегов, глобальные_теги)
-        tags: Множество тегов для проверки
+        all_tags: Tuple (tag_sets, global_tags)
+        tags: Set of tags to validate
     """
     if not tags:
         return
-    
+
     tag_sets, global_tags = all_tags
-    
-    # Собираем все известные теги
+
+    # Collect all known tags
     all_known_tags = set(global_tags.keys())
     for tag_set in tag_sets.values():
         all_known_tags.update(tag_set.tags.keys())
-    
-    # Проверяем на неизвестные теги
+
+    # Check for unknown tags
     unknown_tags = tags - all_known_tags
     if unknown_tags:
         import logging
@@ -145,36 +145,36 @@ def _validate_tags_with_config(all_tags: Tuple[Dict[str, TagSet], Dict[str, Tag]
 
 
 def _compute_active_tags_with_config(
-    modes_config: ModesConfig, 
+    modes_config: ModesConfig,
     modes: Dict[str, str],
     extra_tags: Set[str]
 ) -> Set[str]:
     """
-    Вычисляет множество активных тегов с использованием уже загруженной конфигурации.
-    
+    Compute set of active tags using already loaded configuration.
+
     Args:
-        modes_config: Загруженная конфигурация режимов
-        modes: Словарь активных режимов {modeset_name: mode_name}
-        extra_tags: Дополнительные теги, указанные явно
-        
+        modes_config: Loaded modes configuration
+        modes: Dictionary of active modes {modeset_name: mode_name}
+        extra_tags: Additional explicitly specified tags
+
     Returns:
-        Множество всех активных тегов
+        Set of all active tags
     """
-    active_tags = set(extra_tags)  # Начинаем с явно указанных тегов
-    
-    # Собираем теги из активных режимов
+    active_tags = set(extra_tags)  # Start with explicitly specified tags
+
+    # Collect tags from active modes
     for modeset_name, mode_name in modes.items():
         modeset = modes_config.mode_sets.get(modeset_name)
         if not modeset:
-            # Неизвестный набор режимов - пропускаем (уже проверено в валидации)
+            # Unknown mode set - skip (already checked in validation)
             continue
-        
+
         mode = modeset.modes.get(mode_name)
         if not mode:
-            # Неизвестный режим - пропускаем (уже проверено в валидации)
+            # Unknown mode - skip (already checked in validation)
             continue
-        
-        # Добавляем теги режима
+
+        # Add mode tags
         active_tags.update(mode.tags)
-    
+
     return active_tags

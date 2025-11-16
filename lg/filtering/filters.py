@@ -1,11 +1,11 @@
 """
-Движок фильтрации путей файловой системы.
+Filtering engine for filesystem paths.
 
-Реализует древовидную систему фильтрации с поддержкой:
-- Режимов allow/block (default-deny/default-allow)
-- Иерархических правил с переопределениями
-- Path-based синтаксиса для компактного описания правил
-- Раннего отсечения директорий (pruning)
+Implements a tree-based filtering system with support for:
+- Allow/block modes (default-deny/default-allow)
+- Hierarchical rules with overrides
+- Path-based syntax for compact rule descriptions
+- Early directory pruning
 """
 
 from __future__ import annotations
@@ -20,30 +20,30 @@ from .model import FilterNode
 
 
 # ============================================================================
-# Вспомогательные структуры
+# Helper structures
 # ============================================================================
 
 @dataclass(frozen=True)
 class PathMatch:
-    """Результат проверки пути на соответствие правилам."""
+    """Result of checking a path against filtering rules."""
     matched: bool
-    reason: str  # Для отладки: почему принято такое решение
+    reason: str  # For debugging: why this decision was made
 
 
 @dataclass(frozen=True)
 class CompiledPatterns:
-    """Скомпилированные паттерны для быстрой проверки."""
+    """Compiled patterns for fast checking."""
     allow_spec: Optional[pathspec.PathSpec]
     block_spec: Optional[pathspec.PathSpec]
-    allow_raw: List[str]  # Сырые паттерны для эвристик
+    allow_raw: List[str]  # Raw patterns for heuristics
     block_raw: List[str]
 
     @classmethod
     def compile(cls, allow: List[str], block: List[str]) -> CompiledPatterns:
         """
-        Компилирует списки паттернов в PathSpec объекты.
+        Compiles pattern lists into PathSpec objects.
 
-        Все паттерны приводятся к lowercase для case-insensitive сравнения.
+        All patterns are converted to lowercase for case-insensitive matching.
         """
         allow_lower = [pat.lower() for pat in allow]
         block_lower = [pat.lower() for pat in block]
@@ -57,15 +57,15 @@ class CompiledPatterns:
 
 
 # ============================================================================
-# Компилированный узел фильтрации
+# Compiled filter node
 # ============================================================================
 
 class CompiledFilterNode:
     """
-    Скомпилированный узел фильтрации с готовыми PathSpec объектами.
+    Compiled filter node with ready-to-use PathSpec objects.
 
-    Представляет узел дерева фильтров после разворачивания path-based ключей
-    и компиляции паттернов для эффективной проверки.
+    Represents a filter tree node after expanding path-based keys
+    and compiling patterns for efficient matching.
     """
 
     __slots__ = ("mode", "patterns", "children")
@@ -78,21 +78,21 @@ class CompiledFilterNode:
     @classmethod
     def from_filter_node(cls, node: FilterNode) -> CompiledFilterNode:
         """
-        Компилирует FilterNode в эффективное представление.
+        Compiles a FilterNode into an efficient representation.
 
-        Разворачивает path-based ключи в полную иерархию и компилирует
-        все паттерны в PathSpec объекты.
+        Expands path-based keys into a full hierarchy and compiles
+        all patterns into PathSpec objects.
         """
-        # Сначала разворачиваем path-based ключи
+        # First expand path-based keys
         expanded_node = PathBasedExpander.expand(node)
 
-        # Компилируем паттерны
+        # Compile patterns
         patterns = CompiledPatterns.compile(
             expanded_node.allow,
             expanded_node.block
         )
 
-        # Рекурсивно компилируем дочерние узлы
+        # Recursively compile child nodes
         children = {
             name.lower(): cls.from_filter_node(child)
             for name, child in expanded_node.children.items()
@@ -101,35 +101,35 @@ class CompiledFilterNode:
         return cls(expanded_node.mode, patterns, children)
 
     def check_block(self, subpath: str) -> bool:
-        """Проверяет, блокируется ли путь."""
+        """Checks if a path is blocked."""
         if self.patterns.block_spec:
             return self.patterns.block_spec.match_file(subpath)
         return False
 
     def check_allow(self, subpath: str) -> bool:
-        """Проверяет, явно разрешен ли путь."""
+        """Checks if a path is explicitly allowed."""
         if self.patterns.allow_spec:
             return self.patterns.allow_spec.match_file(subpath)
         return False
 
     def get_child(self, name: str) -> Optional[CompiledFilterNode]:
-        """Получает дочерний узел по имени (case-insensitive)."""
+        """Gets a child node by name (case-insensitive)."""
         return self.children.get(name.lower())
 
 
 # ============================================================================
-# Разворачивание path-based иерархий
+# Path-based hierarchy expansion
 # ============================================================================
 
 class PathBasedExpander:
     """
-    Разворачивает path-based ключи в полную иерархию узлов фильтрации.
+    Expands path-based keys into a full hierarchy of filter nodes.
 
-    Преобразует компактный синтаксис типа:
+    Transforms compact syntax like:
         children:
           "main/kotlin": {...}
 
-    В полную иерархию:
+    Into a full hierarchy:
         children:
           main:
             mode: allow
@@ -141,21 +141,21 @@ class PathBasedExpander:
     @staticmethod
     def expand(node: FilterNode) -> FilterNode:
         """
-        Разворачивает path-based ключи в узле и его детях.
+        Expands path-based keys in a node and its children.
 
         Args:
-            node: Исходный узел для разворачивания
+            node: Source node for expansion
 
         Returns:
-            Узел с развернутыми детьми
+            Node with expanded children
 
         Raises:
-            RuntimeError: При обнаружении конфликтов между path-based и явными узлами
+            RuntimeError: If conflicts between path-based and explicit nodes are detected
         """
         if not node.children:
             return node
 
-        # Разделяем ключи на простые и path-based
+        # Split keys into simple and path-based
         simple_children: Dict[str, FilterNode] = {}
         path_children: Dict[str, FilterNode] = {}
 
@@ -166,7 +166,7 @@ class PathBasedExpander:
             else:
                 simple_children[normalized] = child
 
-        # Если нет path-based ключей, просто рекурсивно обрабатываем детей
+        # If there are no path-based keys, just recursively process children
         if not path_children:
             expanded_children = {
                 name: PathBasedExpander.expand(child)
@@ -180,16 +180,16 @@ class PathBasedExpander:
                 conditional_filters=node.conditional_filters
             )
 
-        # Проверяем конфликты
+        # Validate for conflicts
         PathBasedExpander._validate_no_conflicts(simple_children, path_children)
 
-        # Строим развернутую иерархию
+        # Build expanded hierarchy
         expanded_children = dict(simple_children)
 
         for path, target_node in sorted(path_children.items()):
             PathBasedExpander._insert_path(expanded_children, path, target_node)
 
-        # Рекурсивно обрабатываем всех детей
+        # Recursively process all children
         final_children = {
             name: PathBasedExpander.expand(child)
             for name, child in expanded_children.items()
@@ -209,23 +209,23 @@ class PathBasedExpander:
         path_children: Dict[str, FilterNode]
     ) -> None:
         """
-        Проверяет отсутствие конфликтов между простыми и path-based ключами.
+        Validates the absence of conflicts between simple and path-based keys.
 
-        Конфликт возникает, если path-based ключ пересекается с явно
-        определённой иерархией в простых детях или других path-based ключах.
+        A conflict occurs if a path-based key intersects with an explicitly
+        defined hierarchy in simple children or other path-based keys.
 
-        Допускается расширение path-based ключа другим path-based ключом,
-        если нет конфликтующих явных определений дочерних узлов.
+        Extending a path-based key with another path-based key is allowed,
+        as long as there are no conflicting explicit child definitions.
         """
         for path_key in path_children.keys():
             parts = path_key.split("/")
 
-            # Проверяем каждый префикс пути
+            # Check each path prefix
             for i in range(1, len(parts)):
                 prefix = "/".join(parts[:i])
                 suffix = "/".join(parts[i:])
 
-                # Конфликт с простым ключом
+                # Conflict with simple key
                 if prefix in simple_children:
                     if PathBasedExpander._has_child_prefix(simple_children[prefix], suffix):
                         raise RuntimeError(
@@ -233,12 +233,12 @@ class PathBasedExpander:
                             f"explicit definition under '{prefix}'"
                         )
 
-                # Конфликт с другим path-based ключом
+                # Conflict with another path-based key
                 if prefix in path_children:
                     prefix_node = path_children[prefix]
-                    # Если префиксный узел имеет детей, проверяем конфликт с суффиксом
-                    # Пример: "src/main" с детьми "resources", и "src/main/kotlin/..." - OK
-                    #         "src/main" с детьми "kotlin", и "src/main/kotlin/..." - КОНФЛИКТ
+                    # If the prefix node has children, check for conflict with suffix
+                    # Example: "src/main" with child "resources", and "src/main/kotlin/..." - OK
+                    #          "src/main" with child "kotlin", and "src/main/kotlin/..." - CONFLICT
                     if PathBasedExpander._has_child_prefix(prefix_node, suffix):
                         raise RuntimeError(
                             f"Filter path conflict: '{path_key}' conflicts with "
@@ -247,7 +247,7 @@ class PathBasedExpander:
 
     @staticmethod
     def _has_child_prefix(node: FilterNode, path: str) -> bool:
-        """Проверяет наличие хотя бы префикса пути в детях узла."""
+        """Checks if at least a prefix of the path exists in the node's children."""
         if not path:
             return False
 
@@ -257,17 +257,17 @@ class PathBasedExpander:
     @staticmethod
     def _extract_inherited_rules(parent_node: Optional[FilterNode], child_name: str) -> List[str]:
         """
-        Извлекает правила из родительского узла, которые относятся к дочернему узлу.
+        Extracts rules from a parent node that apply to a child node.
 
-        Если родительский узел имеет allow-правила типа "/child_name/subpath",
-        извлекаем "/subpath" для наследования дочерним узлом.
+        If the parent node has allow-rules like "/child_name/subpath",
+        extract "/subpath" for inheritance by the child node.
 
         Args:
-            parent_node: Родительский узел (или None)
-            child_name: Имя дочернего узла
+            parent_node: Parent node (or None)
+            child_name: Name of the child node
 
         Returns:
-            Список унаследованных правил (пути относительно дочернего узла)
+            List of inherited rules (paths relative to the child node)
         """
         if not parent_node or not parent_node.allow:
             return []
@@ -277,12 +277,12 @@ class PathBasedExpander:
 
         for rule in parent_node.allow:
             if rule.startswith(prefix):
-                # Убираем префикс и добавляем в наследуемые правила
+                # Remove prefix and add to inherited rules
                 inherited_rule = rule[len(prefix):]
-                # Нормализуем: добавляем "/" в начало если его нет
+                # Normalize: add "/" at the beginning if missing
                 if inherited_rule and not inherited_rule.startswith("/"):
                     inherited_rule = "/" + inherited_rule
-                if inherited_rule:  # Пропускаем пустые правила
+                if inherited_rule:  # Skip empty rules
                     inherited.append(inherited_rule)
 
         return inherited
@@ -294,17 +294,17 @@ class PathBasedExpander:
         target_node: FilterNode
     ) -> None:
         """
-        Вставляет path-based узел в иерархию, создавая промежуточные узлы.
+        Inserts a path-based node into the hierarchy, creating intermediate nodes.
 
-        Промежуточные узлы создаются с mode="allow" и allow=["/{next_segment}/"] +
-        унаследованные правила из родительского узла (если есть).
+        Intermediate nodes are created with mode="allow" and allow=["/{next_segment}/"] +
+        inherited rules from the parent node (if any).
 
-        Наследование правил: если родительский узел имеет allow=["/services/generation/..."],
-        и мы создаём промежуточный узел "services", то он получит allow=["/ai/", "/generation/..."].
+        Rule inheritance: if the parent node has allow=["/services/generation/..."],
+        and we create an intermediate node "services", it will get allow=["/ai/", "/generation/..."].
         """
         parts = path.split("/")
 
-        # Проходим до предпоследнего сегмента
+        # Iterate up to the second-to-last segment
         current_dict = children_dict
         parent_node: Optional[FilterNode] = None
 
@@ -312,10 +312,10 @@ class PathBasedExpander:
             next_segment = parts[idx + 1]
 
             if part not in current_dict:
-                # Извлекаем унаследованные правила от родителя
+                # Extract inherited rules from parent
                 inherited_rules = PathBasedExpander._extract_inherited_rules(parent_node, part)
 
-                # Создаем промежуточный узел с унаследованными правилами
+                # Create intermediate node with inherited rules
                 current_dict[part] = FilterNode(
                     mode="allow",
                     allow=[f"/{next_segment}/"] + inherited_rules,
@@ -324,51 +324,51 @@ class PathBasedExpander:
                     conditional_filters=[]
                 )
             else:
-                # Узел существует - добавляем новый сегмент в allow
+                # Node exists - add new segment to allow list
                 existing = current_dict[part]
                 new_pattern = f"/{next_segment}/"
                 if new_pattern not in existing.allow:
                     existing.allow.append(new_pattern)
 
-            # Запоминаем текущий узел как родительский для следующей итерации
+            # Remember current node as parent for next iteration
             parent_node = current_dict[part]
             current_dict = current_dict[part].children
 
-        # Вставляем целевой узел
+        # Insert target node
         current_dict[parts[-1]] = target_node
 
 
 # ============================================================================
-# Цепочка узлов для проверки
+# Node chain for checking
 # ============================================================================
 
 @dataclass(frozen=True)
 class NodeInChain:
-    """Узел в цепочке проверки с относительным подпутем."""
+    """Node in a checking chain with a relative subpath."""
     node: CompiledFilterNode
-    subpath: str  # Путь относительно этого узла
+    subpath: str  # Path relative to this node
 
 
 class NodeChainBuilder:
     """
-    Строит цепочку узлов от корня до самого глубокого узла,
-    соответствующего сегментам пути.
+    Builds a chain of nodes from root to the deepest node
+    corresponding to path segments.
     """
 
     @staticmethod
     def build(root: CompiledFilterNode, path: str) -> List[NodeInChain]:
         """
-        Строит цепочку узлов для проверки пути.
+        Builds a chain of nodes for path checking.
 
-        Проходит по сегментам пути (кроме последнего, который может быть файлом)
-        и собирает все узлы, для которых нужно проверить правила.
+        Iterates through path segments (except the last, which might be a file)
+        and collects all nodes for which rules need to be checked.
 
         Args:
-            root: Корневой узел фильтрации
-            path: Нормализованный путь (lowercase, POSIX)
+            root: Root filtering node
+            path: Normalized path (lowercase, POSIX)
 
         Returns:
-            Список узлов с соответствующими подпутями для проверки
+            List of nodes with corresponding subpaths for checking
         """
         norm = path.lower().strip("/")
         parts = PurePosixPath(norm).parts
@@ -377,7 +377,7 @@ class NodeChainBuilder:
 
         current_node = root
 
-        # Проходим по всем сегментам кроме последнего
+        # Iterate through all segments except the last
         for idx, part in enumerate(parts[:-1]):
             child = current_node.get_child(part)
             if child is None:
@@ -391,37 +391,37 @@ class NodeChainBuilder:
 
 
 # ============================================================================
-# Оценщик путей
+# Path evaluator
 # ============================================================================
 
 class PathEvaluator:
     """
-    Оценивает, следует ли включать путь в выборку.
+    Evaluates whether a path should be included in the selection.
 
-    Реализует сложную логику фильтрации с учетом:
-    - Приоритета block над allow
-    - Жесткой семантики mode=allow (default-deny)
-    - Наследования правил по цепочке узлов
+    Implements complex filtering logic considering:
+    - Block priority over allow
+    - Strict mode=allow semantics (default-deny)
+    - Rule inheritance across the node chain
     """
 
     @staticmethod
     def evaluate_include(chain: List[NodeInChain]) -> bool:
         """
-        Определяет, следует ли включить файл по пути.
+        Determines whether a file should be included by path.
 
-        Алгоритм:
-        1. Проходим по цепочке узлов от корня к листу
-        2. На каждом уровне:
-           - block всегда побеждает (немедленный отказ)
-           - Для mode=allow: ДОЛЖНО совпасть с локальным allow, иначе отказ
-           - Для mode=block: локальный allow даёт временное разрешение
-        3. Если решение не принято - fallback по mode самого глубокого узла
+        Algorithm:
+        1. Iterate through the node chain from root to leaf
+        2. At each level:
+           - block always wins (immediate rejection)
+           - For mode=allow: MUST match local allow, otherwise reject
+           - For mode=block: local allow gives temporary permission
+        3. If no decision is made - fallback to deepest node's mode
 
         Args:
-            chain: Цепочка узлов с подпутями
+            chain: Chain of nodes with subpaths
 
         Returns:
-            True если путь разрешен, False иначе
+            True if path is allowed, False otherwise
         """
         if not chain:
             return False
@@ -433,23 +433,23 @@ class PathEvaluator:
             node = item.node
             subpath = item.subpath
 
-            # 1. Block всегда побеждает
+            # 1. Block always wins
             if node.check_block(subpath):
                 return False
 
-            # 2. Жесткая семантика для mode=allow
+            # 2. Strict semantics for mode=allow
             if node.mode == "allow":
                 if not node.check_allow(subpath):
                     return False
-                # Попали под локальный allow - продолжаем проверку
+                # Matched local allow - continue checking
                 decision = True
                 continue
 
-            # 3. mode=block: default-allow, но локальный allow усиливает
+            # 3. mode=block: default-allow, but local allow strengthens
             if node.check_allow(subpath):
                 decision = True
 
-        # Fallback по mode самого глубокого узла
+        # Fallback to deepest node's mode
         if decision is not None:
             return decision
 
@@ -458,24 +458,24 @@ class PathEvaluator:
 
 class DirectoryPruner:
     """
-    Определяет, следует ли спускаться в поддерево директории.
+    Determines whether to descend into a directory subtree.
 
-    Используется для раннего отсечения директорий при обходе ФС,
-    чтобы не тратить время на сканирование заведомо ненужных веток.
+    Used for early directory pruning during filesystem traversal
+    to avoid scanning obviously unnecessary branches.
     """
 
     @staticmethod
     def may_descend(chain: List[NodeInChain]) -> bool:
         """
-        Проверяет, имеет ли смысл спускаться в директорию.
+        Checks if it makes sense to descend into a directory.
 
-        Консервативная проверка: False = точно бесполезно, True = возможно полезно.
+        Conservative check: False = definitely useless, True = potentially useful.
 
         Args:
-            chain: Цепочка узлов для директории
+            chain: Chain of nodes for the directory
 
         Returns:
-            True если спуск потенциально полезен
+            True if descent is potentially useful
         """
         if not chain:
             return True
@@ -487,11 +487,11 @@ class DirectoryPruner:
             node = item.node
             subpath = item.subpath
 
-            # 1. Блокирующее правило - спуск бесполезен
+            # 1. Blocking rule - descent is useless
             if DirectoryPruner._check_dir_blocked(node, subpath):
                 return False
 
-            # 2. Режим allow - проверяем возможность совпадений в глубине
+            # 2. Allow mode - check for possible matches in depth
             if node.mode == "allow":
                 if not node.patterns.allow_spec:
                     return False
@@ -501,19 +501,19 @@ class DirectoryPruner:
                 else:
                     return False
             else:
-                # 3. Режим block - спуск потенциально полезен
+                # 3. Block mode - descent is potentially useful
                 if DirectoryPruner._check_dir_allowed(node, subpath):
                     decision = True
 
         if decision is not None:
             return decision
 
-        # Fallback: в block-режиме можно спускаться
+        # Fallback: descent is possible in block-mode
         return deepest_node.mode == "block"
 
     @staticmethod
     def _check_dir_blocked(node: CompiledFilterNode, subpath: str) -> bool:
-        """Проверяет, блокируется ли директория."""
+        """Checks if a directory is blocked."""
         if not node.patterns.block_spec:
             return False
 
@@ -524,7 +524,7 @@ class DirectoryPruner:
 
     @staticmethod
     def _check_dir_allowed(node: CompiledFilterNode, subpath: str) -> bool:
-        """Проверяет, явно разрешена ли директория."""
+        """Checks if a directory is explicitly allowed."""
         if not node.patterns.allow_spec:
             return False
 
@@ -537,29 +537,29 @@ class DirectoryPruner:
     @staticmethod
     def _may_match_in_subtree(node: CompiledFilterNode, subpath: str) -> bool:
         """
-        Быстрая эвристика: может ли что-то совпасть в поддереве.
+        Fast heuristic: could something match in the subtree.
 
-        Проверяет сырые паттерны на предмет:
-        - Basename-паттернов без '/' (матчатся везде)
-        - Паттернов с '**' (матчатся в глубине)
-        - Паттернов, начинающихся с текущего пути
+        Checks raw patterns for:
+        - Basename patterns without '/' (match everywhere)
+        - Patterns with '**' (match in depth)
+        - Patterns starting with the current path
         """
         subpath_clean = subpath.lstrip("/")
 
         for pat in node.patterns.allow_raw:
-            # Паттерны с ** матчатся в глубине
+            # Patterns with ** match in depth
             if "**" in pat:
                 return True
 
-            # Basename-паттерны без / матчатся везде
+            # Basename patterns without / match everywhere
             if "/" not in pat:
                 return True
 
-            # Паттерны, начинающиеся с текущего пути
+            # Patterns starting with current path
             if pat.startswith(subpath_clean + "/") or pat.startswith("/" + subpath_clean + "/"):
                 return True
 
-        # Консервативная проверка через PathSpec
+        # Conservative check via PathSpec
         return (
             node.patterns.allow_spec.match_file(subpath) or
             node.patterns.allow_spec.match_file(subpath + "/") or
@@ -568,65 +568,65 @@ class DirectoryPruner:
 
 
 # ============================================================================
-# Основной движок фильтрации
+# Main filtering engine
 # ============================================================================
 
 class FilterEngine:
     """
-    Движок фильтрации путей файловой системы.
+    Filtering engine for filesystem paths.
 
-    Предоставляет два основных метода:
-    - includes(): решает, включать ли файл
-    - may_descend(): решает, спускаться ли в директорию (для pruning)
+    Provides two main methods:
+    - includes(): decides whether to include a file
+    - may_descend(): decides whether to descend into a directory (for pruning)
 
-    Использует скомпилированное дерево фильтров для эффективной проверки.
+    Uses a compiled filter tree for efficient checking.
     """
 
     def __init__(self, root: FilterNode):
         """
-        Инициализирует движок фильтрации.
+        Initializes the filtering engine.
 
         Args:
-            root: Корневой узел дерева фильтров
+            root: Root node of the filter tree
         """
         self._root = CompiledFilterNode.from_filter_node(root)
 
     def includes(self, rel_path: str) -> bool:
         """
-        Проверяет, следует ли включить файл по пути.
+        Checks whether to include a file by path.
 
         Args:
-            rel_path: Относительный путь файла (от корня репозитория)
+            rel_path: Relative path of the file (from repository root)
 
         Returns:
-            True если файл разрешен правилами фильтрации
+            True if the file is allowed by filtering rules
         """
         chain = NodeChainBuilder.build(self._root, rel_path)
         return PathEvaluator.evaluate_include(chain)
 
     def may_descend(self, rel_dir: str) -> bool:
         """
-        Проверяет, следует ли спускаться в директорию.
+        Checks whether to descend into a directory.
 
-        Используется для раннего отсечения директорий при обходе ФС.
-        Консервативная проверка: False = точно бесполезно, True = возможно полезно.
+        Used for early directory pruning during filesystem traversal.
+        Conservative check: False = definitely useless, True = potentially useful.
 
         Args:
-            rel_dir: Относительный путь директории (от корня репозитория)
+            rel_dir: Relative path of the directory (from repository root)
 
         Returns:
-            True если спуск в директорию потенциально полезен
+            True if descent into the directory is potentially useful
         """
         norm = rel_dir.strip("/").lower()
         if not norm:
-            return True  # Корень всегда доступен
+            return True  # Root is always accessible
 
         chain = NodeChainBuilder.build(self._root, norm)
         return DirectoryPruner.may_descend(chain)
 
 
 # ============================================================================
-# Публичный API
+# Public API
 # ============================================================================
 
 __all__ = [

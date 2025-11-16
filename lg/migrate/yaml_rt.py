@@ -8,16 +8,16 @@ from ruamel.yaml.comments import CommentedMap
 from ruamel.yaml.scalarstring import DoubleQuotedScalarString, SingleQuotedScalarString
 
 _YAML_RT = YAML(typ="rt")
-_YAML_RT.preserve_quotes = True       # сохраняем исходные кавычки
+_YAML_RT.preserve_quotes = True       # preserve original quotes
 _YAML_RT.indent(mapping=2, sequence=4, offset=2)
-# По желанию, чтобы ruamel не переформатировал строки переносами:
+# Optionally, to prevent ruamel from reformatting lines with wrapping:
 _YAML_RT.width = 1000000
 
 
 def load_yaml_rt(path: Path) -> CommentedMap:
     data = _YAML_RT.load(path.read_text(encoding="utf-8", errors="ignore")) or CommentedMap()
     if not isinstance(data, CommentedMap):
-        # Нормализуем к мапе — секционные файлы по контракту мапы
+        # Normalize to map — section files are maps by contract
         data = CommentedMap()
     return data
 
@@ -31,8 +31,8 @@ def dump_yaml_rt(path: Path, data: CommentedMap) -> None:
 
 def rewrite_yaml_rt(path: Path, transform: Callable[[CommentedMap], bool]) -> bool:
     """
-    Загружает YAML с round-trip, вызывает transform(map) → bool «изменено?»,
-    и если изменено — атомарно сохраняет.
+    Load YAML with round-trip, call transform(map) → bool "changed?",
+    and if changed — save atomically.
     """
     data = load_yaml_rt(path)
     changed = bool(transform(data))
@@ -41,11 +41,11 @@ def rewrite_yaml_rt(path: Path, transform: Callable[[CommentedMap], bool]) -> bo
     return changed
 
 def dq(s: str) -> DoubleQuotedScalarString:
-    """Принудительно обернуть строку в двойные кавычки при записи."""
+    """Force wrap string in double quotes when writing."""
     return DoubleQuotedScalarString(s)
 
 def sq(s: str) -> SingleQuotedScalarString:
-    """Принудительно обернуть строку в одинарные кавычки при записи."""
+    """Force wrap string in single quotes when writing."""
     return SingleQuotedScalarString(s)
 
 __all__ = ["load_yaml_rt", "dump_yaml_rt", "rewrite_yaml_rt", "dq", "sq"]

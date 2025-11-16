@@ -6,15 +6,15 @@ from typing import Tuple
 from .tokenizers import BaseTokenizer, create_tokenizer
 
 """
-Сервис подсчёта токенов.
+Token counting service.
 
-Создаётся один раз на старте пайплайна и предоставляет
-унифицированное API для работы с разными токенизаторами.
+Created once at the start of the pipeline and provides
+a unified API for working with different tokenizers.
 """
 
 class TokenService:
     """
-    Обёртка над BaseTokenizer с встроенным кешированием.
+    Wrapper around BaseTokenizer with built-in caching.
     """
 
     def __init__(
@@ -27,66 +27,66 @@ class TokenService:
     ):
         """
         Args:
-            root: Корень проекта
-            lib: Имя библиотеки (tiktoken, tokenizers, sentencepiece)
-            encoder: Имя энкодера/модели
-            cache: Кеш для токенов (опционально)
+            root: Project root
+            lib: Library name (tiktoken, tokenizers, sentencepiece)
+            encoder: Encoder/model name
+            cache: Cache for tokens (optional)
         """
         self.root = root
         self.lib = lib
         self.encoder = encoder
         self.cache = cache
-        
-        # Создаем токенизатор
+
+        # Create tokenizer
         self._tokenizer = create_tokenizer(lib, encoder, root)
 
     @property
     def tokenizer(self) -> BaseTokenizer:
-        """Возвращает базовый токенизатор."""
+        """Return the base tokenizer."""
         return self._tokenizer
 
     @property
     def encoder_name(self) -> str:
-        """Имя энкодера."""
+        """Encoder name."""
         return self.encoder
 
     def count_text(self, text: str) -> int:
-        """Подсчитать токены в тексте."""
+        """Count tokens in text."""
         return self._tokenizer.count_tokens(text)
     
     def count_text_cached(self, text: str) -> int:
         """
-        Подсчитать токены в тексте с использованием кеша.
-        
+        Count tokens in text using cache.
+
         Args:
-            text: Текст для подсчета токенов
-            
+            text: Text to count tokens for
+
         Returns:
-            Количество токенов
+            Number of tokens
         """
         if not text:
             return 0
-        
-        # Если нет кеша, просто считаем
+
+        # If no cache, just count
         if not self.cache:
             return self.count_text(text)
-        
-        # Пытаемся получить из кеша
-        # Ключ: lib:encoder
+
+        # Try to get from cache
+        # Key: lib:encoder
         cache_key = f"{self.lib}:{self.encoder}"
         cached_tokens = self.cache.get_text_tokens(text, cache_key)
         if cached_tokens is not None:
             return cached_tokens
-        
-        # Если нет в кеше, подсчитываем и сохраняем
+
+        # If not in cache, count and save
         token_count = self.count_text(text)
         self.cache.put_text_tokens(text, cache_key, token_count)
-        
+
         return token_count
 
     def compare_texts(self, original: str, replacement: str) -> Tuple[int, int, int, float]:
         """
-        Сравнить стоимость оригинала и замены.
+        Compare cost of original and replacement.
 
         Returns: (orig_tokens, repl_tokens, savings, ratio)
         ratio = savings / max(repl_tokens, 1)
@@ -100,11 +100,11 @@ class TokenService:
     def is_economical(self, original: str, replacement: str, *, min_ratio: float, replacement_is_none: bool,
                        min_abs_savings_if_none: int) -> bool:
         """
-        Проверка целесообразности замены.
+        Check if replacement is economical.
 
-        - Для обычных плейсхолдеров применяется только порог отношения savings/replacement ≥ min_ratio.
-        - Для "пустых" замен (replacement_is_none=True) дополнительно может применяться абсолютный порог
-          экономии токенов (min_abs_savings_if_none), чтобы избежать микроскопических удалений.
+        - For regular placeholders, only the threshold savings/replacement ≥ min_ratio is applied.
+        - For "empty" replacements (replacement_is_none=True), an absolute token savings threshold
+          (min_abs_savings_if_none) can additionally be applied to avoid microscopic deletions.
         """
         orig, repl, savings, ratio = self.compare_texts(original, replacement)
 
@@ -115,34 +115,34 @@ class TokenService:
 
     def truncate_to_tokens(self, text: str, max_tokens: int) -> str:
         """
-        Урезает текст до указанного количества токенов используя пропорциональное отношение.
-        
+        Truncate text to a specified number of tokens using proportional ratio.
+
         Args:
-            text: Исходный текст для урезания
-            max_tokens: Максимальное количество токенов
-            
+            text: Original text to truncate
+            max_tokens: Maximum number of tokens
+
         Returns:
-            Урезанный текст, который помещается в указанный лимит токенов
+            Truncated text that fits within the specified token limit
         """
         if not text:
             return ""
-        
+
         current_tokens = self.count_text(text)
         if current_tokens <= max_tokens:
             return text
-        
-        # Пропорциональное урезание по символам
+
+        # Proportional truncation by character count
         ratio = max_tokens / current_tokens
         target_length = int(len(text) * ratio)
-        
-        # Урезаем до целевой длины, но не меньше 1 символа
+
+        # Truncate to target length, but not less than 1 character
         target_length = max(1, target_length)
         trimmed = text[:target_length].rstrip()
-        
+
         return trimmed
 
 def default_tokenizer() -> TokenService:
-    """Быстрое создание сервиса токенизации (для тестов)."""
+    """Quick creation of tokenization service (for tests)."""
     return TokenService(
         root=None,
         lib="tiktoken",

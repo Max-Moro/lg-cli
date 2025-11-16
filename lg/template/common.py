@@ -1,7 +1,7 @@
 """
-Вспомогательные функции для загрузки шаблонов и контекстов.
+Helper functions for loading templates and contexts.
 
-Поддержка адресности и каскадных включений.
+Supports addressing and cascading includes.
 """
 
 from __future__ import annotations
@@ -10,79 +10,79 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import List, Tuple
 
-# Унифицированные суффиксы документов  
+# Unified document suffixes
 TPL_SUFFIX = ".tpl.md"
 CTX_SUFFIX = ".ctx.md"
 
 
 def merge_origins(base_origin: str | None, node_origin: str | None) -> str:
     """
-    Склеивает базовый origin из стека с origin из узла.
+    Merges base origin from stack with origin from node.
 
-    Логика:
-    - Игнорирует None, пустые строки и "self"
-    - Если оба игнорируются → "self"
-    - Если один игнорируется → возвращает другой
-    - Если оба валидны → склеивает через "/" (base_origin/node_origin)
+    Logic:
+    - Ignores None, empty strings, and "self"
+    - If both are ignored → "self"
+    - If one is ignored → returns the other
+    - If both are valid → merges with "/" (base_origin/node_origin)
 
     Args:
-        base_origin: Базовый origin из стека контекста
-        node_origin: Origin из узла AST
+        base_origin: Base origin from context stack
+        node_origin: Origin from AST node
 
     Returns:
-        Результирующий эффективный origin
+        Resulting effective origin
     """
     def _is_empty(origin: str | None) -> bool:
-        """Проверяет, является ли origin пустым или "self"."""
+        """Checks if origin is empty or 'self'."""
         return not origin or origin == "self"
 
-    # Нормализуем входные значения
+    # Normalize input values
     base = (base_origin or "").strip()
     node = (node_origin or "").strip()
 
-    # Оба пусты → self
+    # Both empty → self
     if _is_empty(base) and _is_empty(node):
         return "self"
 
-    # Только base валиден
+    # Only base is valid
     if _is_empty(node):
         return base if not _is_empty(base) else "self"
 
-    # Только node валиден
+    # Only node is valid
     if _is_empty(base):
         return node if not _is_empty(node) else "self"
 
-    # Оба валидны → склеиваем
+    # Both are valid → merge them
     return f"{base}/{node}"
 
 
 @dataclass(frozen=True)
 class Locator:
-    """Унифицированный локатор: kind + (origin, resource)."""
+    """Unified locator: kind + (origin, resource)."""
     kind: str         # "tpl" | "ctx"
-    origin: str       # "self" или repo-relative путь (POSIX, без "lg-cfg" в конце)
-    resource: str     # имя внутри lg-cfg (например "docs/guide" или "core-src")
+    origin: str       # "self" or repo-relative path (POSIX, no "lg-cfg" at end)
+    resource: str     # name inside lg-cfg (e.g., "docs/guide" or "core-src")
 
 
 def parse_locator(ph: str, expected_kind: str) -> Locator:
     """
-    Универсальный парсер локаторов для kind == expected_kind.
-    Поддерживаем три формы:
+    Universal locator parser for kind == expected_kind.
+    Supports three forms:
       • '{kind}:name'                 → origin=self
-      • '{kind}@origin:name'          → явный origin
-      • '{kind}@[origin]:name'        → скобочная origin с ':' внутри
+      • '{kind}@origin:name'          → explicit origin
+      • '{kind}@[origin]:name'        → bracketed origin with ':' inside
     """
     if not ph.startswith(expected_kind):
         raise RuntimeError(f"Not a {expected_kind} locator: {ph}")
 
-    # Локальная форма: '{kind}:name'
+    # Local form: '{kind}:name'
     if ph.startswith(f"{expected_kind}:"):
         resource = ph[len(expected_kind) + 1 :].strip()
         if not resource:
             raise RuntimeError(f"Invalid locator (empty resource): {ph}")
         return Locator(kind=expected_kind, origin="self", resource=resource)
 
-    # Скобочная форма: '{kind}@[origin]:name'  
+    # Bracketed form: '{kind}@[origin]:name'
     if ph.startswith(f"{expected_kind}@["):
         close_bracket = ph.find("]:")
         if close_bracket < 0:
@@ -95,7 +95,7 @@ def parse_locator(ph: str, expected_kind: str) -> Locator:
             raise RuntimeError(f"Invalid locator (empty resource): {ph}")
         return Locator(kind=expected_kind, origin=origin, resource=resource)
 
-    # Классическая адресная форма: '{kind}@origin:name'
+    # Classic addressing form: '{kind}@origin:name'
     if ph.startswith(f"{expected_kind}@"):
         colon_pos = ph.find(":", len(expected_kind) + 1)
         if colon_pos < 0:
@@ -113,8 +113,8 @@ def parse_locator(ph: str, expected_kind: str) -> Locator:
 
 def resolve_cfg_root(origin: str, *, current_cfg_root: Path, repo_root: Path) -> Path:
     """
-    Превращает origin → абсолютный путь к каталогу lg-cfg/.
-    origin == 'self' → текущий cfg_root, иначе '<repo_root>/<origin>/lg-cfg'.
+    Transforms origin → absolute path to lg-cfg/ directory.
+    origin == 'self' → current cfg_root, otherwise '<repo_root>/<origin>/lg-cfg'.
     """
     if origin == "self":
         cfg = current_cfg_root
@@ -127,7 +127,7 @@ def resolve_cfg_root(origin: str, *, current_cfg_root: Path, repo_root: Path) ->
 
 
 def _ensure_inside_repo(path: Path, repo_root: Path) -> None:
-    """Безопасность: путь обязан быть внутри репозитория."""
+    """Security: path must be inside the repository."""
     try:
         path.resolve().relative_to(repo_root.resolve())
     except Exception:
@@ -136,7 +136,7 @@ def _ensure_inside_repo(path: Path, repo_root: Path) -> None:
 
 def load_from_cfg(cfg_root: Path, resource: str, *, suffix: str) -> Tuple[Path, str]:
     """
-    Единая загрузка файла из lg-cfg/: <cfg_root>/<resource><suffix>.
+    Unified loading of file from lg-cfg/: <cfg_root>/<resource><suffix>.
     """
     from ..migrate import ensure_cfg_actual
     ensure_cfg_actual(cfg_root)
@@ -147,18 +147,18 @@ def load_from_cfg(cfg_root: Path, resource: str, *, suffix: str) -> Tuple[Path, 
 
 
 def load_context_from(cfg_root: Path, name: str) -> Tuple[Path, str]:
-    """Контекст: <cfg_root>/<name>.ctx.md"""
+    """Context: <cfg_root>/<name>.ctx.md"""
     return load_from_cfg(cfg_root, name, suffix=CTX_SUFFIX)
 
 
 def load_template_from(cfg_root: Path, name: str) -> Tuple[Path, str]:
-    """Шаблон: <cfg_root>/<name>.tpl.md"""
+    """Template: <cfg_root>/<name>.tpl.md"""
     return load_from_cfg(cfg_root, name, suffix=TPL_SUFFIX)
 
 
 def list_contexts(root: Path) -> List[str]:
     """
-    Перечислить доступные контексты (ТОЛЬКО *.ctx.md) относительно lg-cfg/.
+    List available contexts (ONLY *.ctx.md) relative to lg-cfg/.
     """
     from ..config.paths import cfg_root
     base = cfg_root(root)

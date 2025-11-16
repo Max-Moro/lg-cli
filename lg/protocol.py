@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-# Единая версия клиентского протокола JSON-ответов инструмента.
+# Single version of the client protocol for tool JSON responses.
 PROTOCOL_VERSION: int = 5
 
 __all__ = ["PROTOCOL_VERSION"]

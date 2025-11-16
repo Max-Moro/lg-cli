@@ -17,51 +17,51 @@ AdapterRawCfg = Mapping[str, Any]
 # -----------------------------
 @dataclass(frozen=True)
 class RunOptions:
-    # Параметры токенизации
+    # Tokenization parameters
     tokenizer_lib: str = "tiktoken"
     encoder: str = "cl100k_base"
     ctx_limit: int = 128000
-    # Адаптивные возможности
+    # Adaptive capabilities
     modes: Dict[str, str] = field(default_factory=dict)  # modeset -> mode
-    extra_tags: Set[str] = field(default_factory=set)  # дополнительные теги
+    extra_tags: Set[str] = field(default_factory=set)  # additional tags
     # Task context
-    task_text: Optional[str] = None  # текст текущей задачи из --task
+    task_text: Optional[str] = None  # current task text from --task
     # VCS context
-    target_branch: Optional[str] = None  # целевая ветка для режима branch-changes
+    target_branch: Optional[str] = None  # target branch for branch-changes mode
 
 
-# ---- Спецификация цели ----
+# ---- Target specification ----
 
 @dataclass(frozen=True)
 class TargetSpec:
     """
-    Спецификация цели обработки.
+    Processing target specification.
 
-    Описывает что именно нужно обработать:
-    контекст или отдельную секцию.
+    Describes what exactly needs to be processed:
+    context or individual section.
     """
     kind: Literal["context", "section"]
-    name: str  # "docs/arch" или "all"
+    name: str  # "docs/arch" or "all"
 
-    # Для контекстов - путь к файлу шаблона
+    # For contexts - path to template file
     template_path: Path
 
 
-# ---- Секции и ссылки ----
+# ---- Sections and references ----
 
 @dataclass(frozen=True)
 class SectionRef:
     """
-    Ссылка на секцию с информацией о разрешении.
+    Reference to section with resolution information.
     """
-    name: str  # Имя секции, используемое в шаблоне
-    scope_rel: str  # Путь к директории области (относительно корня репозитория)
-    scope_dir: Path  # Aбсолютный путь каталога-скоупа (cfg_root.parent)
+    name: str  # Section name used in template
+    scope_rel: str  # Path to scope directory (relative to repository root)
+    scope_dir: Path  # Absolute path of scope directory (cfg_root.parent)
 
     def canon_key(self) -> str:
         """
-        Возвращает канонический ключ для этой секции.
-        Используется для кэширования и дедупликации.
+        Return canonical key for this section.
+        Used for caching and deduplication.
         """
         if self.scope_rel:
             return f"sec@{self.scope_rel}:{self.name}"
@@ -69,67 +69,67 @@ class SectionRef:
             return f"sec:{self.name}"
 
 
-# ---- Файлы ----
+# ---- Files ----
 
 @dataclass(frozen=True)
 class FileEntry:
     """
-    Представляет файл для включения в секцию.
+    Represents file for inclusion in section.
 
-    Содержит всю информацию, необходимую для обработки файла
-    через языковые адаптеры.
+    Contains all information necessary for processing file
+    through language adapters.
     """
     abs_path: Path
-    rel_path: str  # Относительно корня репозитория
+    rel_path: str  # Relative to repository root
     language_hint: LangName
     adapter_overrides: Dict[str, Dict] = field(default_factory=dict)
-    size_bytes: int = 0  # Размер файла в байтах
+    size_bytes: int = 0  # File size in bytes
 
     def __post_init__(self):
-        """Вычисляет размер файла, если не указан."""
+        """Calculate file size if not specified."""
         if self.size_bytes == 0 and self.abs_path.exists():
             object.__setattr__(self, 'size_bytes', self.abs_path.stat().st_size)
 
-# ---- Манифесты и планы ----
+# ---- Manifests and plans ----
 
 @dataclass
 class SectionManifest:
     """
-    Манифест одной секции со всеми её файлами.
+    Manifest of a single section with all its files.
 
-    Содержит результат фильтрации файлов для конкретной секции
-    с учетом активных тегов и режимов.
+    Contains result of file filtering for specific section
+    considering active tags and modes.
     """
     ref: SectionRef
     files: List[FileEntry]
     path_labels: PathLabelMode
-    is_doc_only: bool  # True если секция содержит только markdown/plain text
+    is_doc_only: bool  # True if section contains only markdown/plain text
     adapters_cfg: Dict[str, Dict] = field(default_factory=dict)
 
 
 @dataclass
 class SectionPlan:
     """
-    План для рендеринга одной секции.
+    Plan for rendering a single section.
 
-    Содержит информацию о том, как отображать
-    файлы в итоговом документе.
+    Contains information about how to display
+    files in final document.
     """
     manifest: SectionManifest
     files: List[FileEntry]
-    use_fence: bool  # Использовать ли fenced-блоки
-    labels: Dict[str, str] = field(default_factory=dict)  # rel_path -> отображаемая метка
+    use_fence: bool  # Whether to use fenced blocks
+    labels: Dict[str, str] = field(default_factory=dict)  # rel_path -> display label
 
 
-# ---- Обработанные файлы ----
+# ---- Processed files ----
 
 @dataclass(frozen=True)
 class ProcessedFile:
     """
-    Обработанный файл, готовый для рендеринга.
+    Processed file ready for rendering.
 
-    Содержит результат работы языкового адаптера.
-    Статистические данные собираются отдельно через StatsCollector.
+    Contains result of language adapter work.
+    Statistical data is collected separately through StatsCollector.
     """
     abs_path: Path
     rel_path: str
@@ -139,38 +139,38 @@ class ProcessedFile:
     cache_key: str
 
 
-# ---- Отрендеренные секции ----
+# ---- Rendered sections ----
 
 @dataclass(frozen=True)
 class RenderBlock:
     """
-    Блок отрендеренного содержимого.
+    Block of rendered content.
 
-    Представляет один fenced-блок или секцию без fence.
+    Represents one fenced block or section without fence.
     """
     lang: LangName
-    text: str  # уже с маркерами файлов / fenced
-    file_paths: List[str]  # какие rel_paths попали в блок (для трассировки)
+    text: str  # already with file markers / fenced
+    file_paths: List[str]  # which rel_paths are in the block (for tracing)
 
 @dataclass
 class RenderedSection:
     """
-    Финальная отрендеренная секция.
+    Final rendered section.
 
-    Содержит итоговый текст секции и список обработанных файлов.
-    Статистика собирается отдельно через StatsCollector.
+    Contains final section text and list of processed files.
+    Statistics are collected separately through StatsCollector.
     """
     ref: SectionRef
     text: str
     files: List[ProcessedFile]
     blocks: List[RenderBlock] = field(default_factory=list)
 
-# ---- Статистика (используется StatsCollector) ----
+# ---- Statistics (used by StatsCollector) ----
 
 @dataclass
 class FileStats:
     """
-    Статистика по файлу для StatsCollector.
+    File statistics for StatsCollector.
     """
     path: str
     size_bytes: int
@@ -179,13 +179,13 @@ class FileStats:
     saved_tokens: int
     saved_pct: float
     meta: Dict[str, int | float | str | bool]
-    sections: List[str] = field(default_factory=list)  # список секций где использован файл
+    sections: List[str] = field(default_factory=list)  # list of sections where file is used
 
 
 @dataclass
 class SectionStats:
     """
-    Статистика по отрендеренной секции для StatsCollector.
+    Rendered section statistics for StatsCollector.
     """
     ref: SectionRef
     text: str

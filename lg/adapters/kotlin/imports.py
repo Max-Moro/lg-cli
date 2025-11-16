@@ -17,15 +17,15 @@ class KotlinImportClassifier(ImportClassifier):
 
     def __init__(self, external_patterns: List[str] | None = None):
         self.external_patterns = external_patterns if external_patterns is not None else []
-        
-        # Стандартные библиотеки JVM и Kotlin
+
+        # Standard JVM and Kotlin libraries
         self.standard_packages = {
             'java', 'javax', 'kotlin', 'kotlinx',
             'android', 'androidx',
             'org.junit', 'org.hamcrest', 'org.mockito',
         }
-        
-        # Паттерны для внешних библиотек
+
+        # Patterns for external libraries
         self.default_external_patterns = [
             r'^java\.',
             r'^javax\.',
@@ -34,62 +34,62 @@ class KotlinImportClassifier(ImportClassifier):
             r'^android\.',
             r'^androidx\.',
             r'^com\.google\.',
-            r'^io\.', 
+            r'^io\.',
             r'^org\.',
         ]
-    
+
     def is_external(self, module_name: str, project_root: Optional[Path] = None) -> bool:
         """Determine if a Kotlin import is external or local."""
         import re
-        
-        # Проверяем пользовательские паттерны
+
+        # Check custom patterns
         for pattern in self.external_patterns:
             if re.match(pattern, module_name):
                 return True
-        
-        # Проверяем стандартные пакеты
+
+        # Check standard packages
         package_prefix = module_name.split('.')[0]
         if package_prefix in self.standard_packages:
             return True
-        
-        # Проверяем встроенные паттерны
+
+        # Check built-in patterns
         for pattern in self.default_external_patterns:
             if re.match(pattern, module_name):
                 return True
-        
-        # Эвристики для локальных импортов
+
+        # Heuristics for local imports
         if self._is_local_import(module_name):
             return False
-        
-        # По умолчанию внешний
+
+        # External by default
         return True
-    
+
     @staticmethod
     def _is_local_import(module_name: str) -> bool:
         """Check if import looks like a local/project import."""
-        # Локальные паттерны (часто начинаются с имени проекта или специфичных префиксов)
+        # Local patterns (often start with project name or specific prefixes)
         local_indicators = ['app', 'src', 'main', 'test', 'internal', 'impl']
-        
+
         package_start = module_name.split('.')[0]
         if package_start in local_indicators:
             return True
-        
-        # Эвристика: если пакет начинается с com/org, но это НЕ известные внешние библиотеки,
-        # и имеет специфичную структуру (например, com.example.*), считаем локальным
+
+        # Heuristic: if package starts with com/org but is NOT a known external library
+        # and has specific structure (e.g., com.example.*), consider it local
         if package_start in ('com', 'org'):
             parts = module_name.split('.')
             if len(parts) >= 2:
                 second_part = parts[1]
-                # com.example.*, com.mycompany.*, org.myproject.* - локальные
-                # Но com.google.*, org.slf4j.* - внешние (проверяются в is_external)
-                # Если второй сегмент - это не известная библиотека, считаем локальным
+                # com.example.*, com.mycompany.*, org.myproject.* - local
+                # But com.google.*, org.slf4j.* - external (checked in is_external)
+                # If second segment is not a known library, consider it local
                 known_external_second_parts = {
                     'google', 'android', 'amazonaws', 'apache', 'eclipse',
                     'junit', 'hamcrest', 'mockito', 'slf4j', 'jetbrains'
                 }
                 if second_part not in known_external_second_parts:
                     return True
-        
+
         return False
 
 
@@ -101,44 +101,44 @@ class KotlinImportAnalyzer(TreeSitterImportAnalyzer):
         start_byte, end_byte = doc.get_node_range(node)
         start_line, end_line = doc.get_line_range(node)
         line_count = end_line - start_line + 1
-        
-        # В Kotlin импорты имеют структуру:
+
+        # In Kotlin imports have structure:
         # import qualified_identifier [. *] [as identifier]
-        
+
         module_name = ""
         imported_items = []
         aliases = {}
         alias_name = None
-        
-        # Ищем qualified_identifier для пути импорта
+
+        # Look for qualified_identifier for import path
         qualified_id = None
         for child in node.children:
             if child.type == "qualified_identifier":
                 qualified_id = child
                 break
-        
+
         if qualified_id:
-            # Извлекаем текст qualified_identifier
+            # Extract qualified_identifier text
             text = doc.get_node_text(qualified_id)
             if isinstance(text, bytes):
                 text = text.decode('utf-8')
             module_name = text
-        
-        # Проверяем наличие wildcard (. *)
+
+        # Check for wildcard (. *)
         has_wildcard_dot = False
         has_wildcard_star = False
         for child in node.children:
             if child.type == "." and not has_wildcard_dot:
-                # Проверяем, идет ли после точки звездочка
+                # Check if asterisk follows the dot
                 next_idx = node.children.index(child) + 1
                 if next_idx < len(node.children) and node.children[next_idx].type == "*":
                     has_wildcard_dot = True
             elif child.type == "*" and has_wildcard_dot:
                 has_wildcard_star = True
-        
+
         is_wildcard = has_wildcard_dot and has_wildcard_star
-        
-        # Ищем алиас (as identifier)
+
+        # Look for alias (as identifier)
         found_as = False
         for i, child in enumerate(node.children):
             if child.type == "as":
@@ -149,25 +149,25 @@ class KotlinImportAnalyzer(TreeSitterImportAnalyzer):
                     text = text.decode('utf-8')
                 alias_name = text
                 break
-        
-        # Формируем imported_items и aliases
+
+        # Form imported_items and aliases
         if is_wildcard:
             imported_items = ["*"]
         elif alias_name:
             imported_items = [alias_name]
-            # Последняя часть пути - это импортируемый элемент
+            # Last part of path is the imported element
             if module_name:
                 parts = module_name.split('.')
                 if parts:
                     actual_name = parts[-1]
                     aliases[actual_name] = alias_name
         else:
-            # Простой импорт без алиаса
+            # Simple import without alias
             if module_name:
                 parts = module_name.split('.')
                 if parts:
                     imported_items = [parts[-1]]
-        
+
         return ImportInfo(
             node=node,
             import_type="import",

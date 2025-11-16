@@ -1,5 +1,5 @@
 """
-Рендерер секций.
+Section renderer.
 """
 
 from __future__ import annotations
@@ -11,12 +11,12 @@ from ..types import LANG_NONE, ProcessedFile, RenderedSection, RenderBlock, Sect
 
 def render_section(plan: SectionPlan, processed_files: List[ProcessedFile]) -> RenderedSection:
     """
-    Генерирует финальный текст и блоки.
-    
-    Правила:
-    • use_fence=True → каждый файл в своем индивидуальном fenced-блоке ```{lang}:{path}
-    • use_fence=False (только для markdown) → просто конкатенация markdown/plain без fence-блоков
-    • Между блоками — один пустой абзац (двойной \n).
+    Generates final text and blocks.
+
+    Rules:
+    • use_fence=True → each file in its own fenced block ```{lang}:{path}
+    • use_fence=False (markdown only) → simple concatenation of markdown/plain without fence blocks
+    • Between blocks — one empty paragraph (double \n).
     """
     file_by_rel: Dict[str, ProcessedFile] = {f.rel_path: f for f in processed_files}
 
@@ -27,18 +27,18 @@ def render_section(plan: SectionPlan, processed_files: List[ProcessedFile]) -> R
         return RenderedSection(plan.manifest.ref, "", [], [])
 
     if plan.use_fence:
-        # Каждый файл в своем собственном fence-блоке
+        # Each file in its own fence block
         for file_entry in plan.files:
             pf = file_by_rel.get(file_entry.rel_path)
             if not pf:
-                # файл отфильтрован адаптером/пропал — пропускаем
+                # File filtered out by adapter/missing — skip
                 continue
-            
-            # Получаем метку файла
+
+            # Get file label
             label = plan.labels[file_entry.rel_path]
             lang = file_entry.language_hint
-            
-            # Создаем fence-блок с интегрированной меткой файла
+
+            # Create fence block with integrated file label
             block_text = "".join([
                 f"```{lang}:{label}\n",
                 pf.processed_text.rstrip("\n"),
@@ -46,12 +46,12 @@ def render_section(plan: SectionPlan, processed_files: List[ProcessedFile]) -> R
             ])
             blocks.append(RenderBlock(lang=lang, text=block_text, file_paths=[file_entry.rel_path]))
             out_lines.append(block_text)
-            out_lines.append("\n")  # раздел между блоками
+            out_lines.append("\n")  # section between blocks
     else:
-        # Markdown без fence-блоков: простая конкатенация
+        # Markdown without fence blocks: simple concatenation
         block_lines: List[str] = []
         file_paths: List[str] = []
-        
+
         for idx, file_entry in enumerate(plan.files):
             pf = file_by_rel.get(file_entry.rel_path)
             if not pf:
@@ -65,10 +65,10 @@ def render_section(plan: SectionPlan, processed_files: List[ProcessedFile]) -> R
         blocks.append(RenderBlock(lang=LANG_NONE, text=block_text, file_paths=file_paths))
         out_lines.append(block_text)
 
-    # финальный текст
+    # Final text
     text = "".join(out_lines).rstrip() + ("\n" if out_lines else "")
 
-    # Создаем RenderedSection
+    # Create RenderedSection
     rendered_section = RenderedSection(
         ref=plan.manifest.ref,
         text=text,

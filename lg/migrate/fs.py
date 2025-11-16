@@ -20,20 +20,20 @@ def _git(root: Path, args: list[str]) -> list[str]:
 
 class CfgFs:
     """
-    Мини-FS для миграций: операции ограничены пределами lg-cfg/.
+    Mini-FS for migrations: operations are limited to the scope of lg-cfg/.
     """
     def __init__(self, repo_root: Path, cfg_root: Path) -> None:
         self.repo_root = repo_root.resolve()
         self.cfg_root = cfg_root.resolve()
 
-    # ---------- чтение ----------
+    # ---------- reading ----------
     def exists(self, rel: str) -> bool:
         return (self.cfg_root / rel).exists()
 
     def read_text(self, rel: str, encoding: str = "utf-8") -> str:
         return (self.cfg_root / rel).read_text(encoding=encoding, errors="ignore")
 
-    # ---------- запись (атомарно) ----------
+    # ---------- writing (atomically) ----------
     def write_text_atomic(self, rel: str, content: str, encoding: str = "utf-8") -> None:
         path = self.cfg_root / rel
         path.parent.mkdir(parents=True, exist_ok=True)
@@ -46,7 +46,7 @@ class CfgFs:
         dst = self.cfg_root / dst_rel
         dst.parent.mkdir(parents=True, exist_ok=True)
         tmp = dst.with_suffix(dst.suffix + ".tmp-mv")
-        # В простоте — копируем содержимое текстом (файлы в lg-cfg/ текстовые по договору)
+        # For simplicity — copy content as text (files in lg-cfg/ are text by contract)
         text = src.read_text(encoding="utf-8", errors="ignore")
         tmp.write_text(text, encoding="utf-8")
         tmp.replace(dst)
@@ -61,11 +61,11 @@ class CfgFs:
         except Exception:
             pass
 
-    # ---------- директории ----------
+    # ---------- directories ----------
     def dir_has_files(self, rel: str) -> bool:
         """
-        True, если в каталоге (или его подкаталогах) есть хотя бы один файл.
-        Если каталога нет — False.
+        True if the directory (or its subdirectories) contains at least one file.
+        False if the directory does not exist.
         """
         p = self.cfg_root / rel
         if not p.exists() or not p.is_dir():
@@ -80,16 +80,16 @@ class CfgFs:
 
     def remove_dir_tree(self, rel: str) -> None:
         """
-        Удаляет пустой каталог и все его пустые подкаталоги (bottom-up).
-        Если внутри остались файлы — ничего не делает.
+        Removes an empty directory and all its empty subdirectories (bottom-up).
+        Does nothing if there are files inside.
         """
         p = self.cfg_root / rel
         if not p.exists() or not p.is_dir():
             return
-        # если есть файлы — выходим
+        # if there are files — exit
         if self.dir_has_files(rel):
             return
-        # идём снизу вверх и пытаемся rmdir
+        # walk from bottom to top and try rmdir
         items = sorted(p.rglob("*"), key=lambda x: len(x.as_posix().split("/")), reverse=True)
         for q in items:
             try:
@@ -102,11 +102,11 @@ class CfgFs:
         except Exception:
             pass
 
-    # ---------- поиск ----------
+    # ---------- search ----------
     def glob_rel(self, pattern: str) -> List[str]:
         """
-        Возвращает список относительных путей под lg-cfg/, соответствующих glob-паттерну.
-        Например: "*.sec.yaml", "**/*.sec.yaml"
+        Returns a list of relative paths under lg-cfg/ matching the glob pattern.
+        Example: "*.sec.yaml", "**/*.sec.yaml"
         """
         out: List[str] = []
         for p in self.cfg_root.rglob(pattern):
@@ -117,14 +117,14 @@ class CfgFs:
         out.sort()
         return out
 
-    # ---------- утилиты ----------
+    # ---------- utilities ----------
     def git_tracked_index(self) -> list[str]:
-        """`git ls-files -s lg-cfg` — стабильный индекс (mode, hash, path)."""
+        """`git ls-files -s lg-cfg` — stable index (mode, hash, path)."""
         rel = self.cfg_root.relative_to(self.repo_root).as_posix()
         return _git(self.repo_root, ["ls-files", "-s", rel])
 
     def git_untracked(self) -> list[str]:
-        """Список неотслеживаемых путей под lg-cfg/."""
+        """List of untracked paths under lg-cfg/."""
         rel = self.cfg_root.relative_to(self.repo_root).as_posix()
         return _git(self.repo_root, ["ls-files", "--others", "--exclude-standard", rel])
 

@@ -1,6 +1,6 @@
 """
-Централизованная система управления плейсхолдерами для языковых адаптеров.
-Предоставляет унифицированное API и умное коллапсирование плейсхолдеров.
+Centralized placeholder management system for language adapters.
+Provides unified API and intelligent placeholder collapsing.
 """
 
 from __future__ import annotations
@@ -14,28 +14,28 @@ from .tree_sitter_support import Node
 @dataclass
 class PlaceholderSpec:
     """
-    Спецификация плейсхолдера с метаданными.
-    Хранит структурированную информацию о плейсхолдере без привязки к конкретному формату.
+    Placeholder specification with metadata.
+    Stores structured placeholder information without binding to a specific format.
     """
-    # Позиция в файле
+    # Position in file
     start_char: int
     end_char: int
     start_line: int
     end_line: int
-    
-    # Тип плейсхолдера
+
+    # Placeholder type
     placeholder_type: str  # "function_body", "method_body", "import", "comment", "literal", etc.
 
-    # Выравнивание плейсхолдера (табуляция)
+    # Placeholder indentation (tabulation)
     placeholder_prefix: str = ""
-    
-    # Метрики
+
+    # Metrics
     lines_removed: int = 0
     chars_removed: int = 0
-    count: int = 1  # Количество элементов (для импортов, комментариев)
+    count: int = 1  # Number of elements (for imports, comments)
     
     def __post_init__(self):
-        # Вычисляем метрики если не переданы
+        # Calculate metrics if not passed
         if self.lines_removed == 0:
             self.lines_removed = max(0, self.end_line - self.start_line + 1)
         if self.chars_removed == 0:
@@ -43,83 +43,83 @@ class PlaceholderSpec:
     
     @property
     def width(self) -> int:
-        """Ширина плейсхолдера в символах."""
+        """Width of placeholder in characters."""
         return self.end_char - self.start_char
-    
+
     def overlaps(self, other: PlaceholderSpec) -> bool:
-        """Проверяет, перекрывается ли этот плейсхолдер с другим."""
+        """Check if this placeholder overlaps with another."""
         return not (self.end_char <= other.start_char or other.end_char <= self.start_char)
-    
+
     @property
     def position_key(self) -> Tuple[int, int]:
-        """Ключ для сортировки по позиции."""
+        """Key for sorting by position."""
         return self.start_line, self.start_char
     
     def can_merge_with(self, other: PlaceholderSpec, source_text: str) -> bool:
         """
-        Проверяет, можно ли объединить этот плейсхолдер с другим.
-        
-        Условия объединения:
-        - Одинаковый тип плейсхолдера
-        - Подходящие типы
-        - Отсутствие значимого контента между плейсхолдерами
+        Check if this placeholder can be merged with another.
+
+        Merge conditions:
+        - Same placeholder type
+        - Suitable types
+        - No significant content between placeholders
         """
         if self.placeholder_type != other.placeholder_type:
             return False
 
-        # Коллапсировать плейсхолдеры можно для импортов, комментариев, функций, методов, классов, интерфейсов и типов целиком.
-        # Нельзя коллапсировать плейсхолдеры для литералов, тел функций или методов, докстрингов.
+        # Can collapse placeholders for imports, comments, functions, methods, classes, interfaces and types.
+        # Cannot collapse placeholders for literals, function/method bodies, docstrings.
         if self.placeholder_type in ["function_body", "method_body", "docstring"]:
             return False
-        
-        # Проверяем содержимое между плейсхолдерами
+
+        # Check content between placeholders
         return not self._has_significant_content_between(other, source_text)
 
     def _has_significant_content_between(self, other: PlaceholderSpec, source_text: str) -> bool:
         """
-        Консервативная проверка значимого контента между плейсхолдерами.
-        
-        Использует строгий подход: плейсхолдеры объединяются только если между ними
-        действительно нет никакого кода - только пустые строки, пробелы и табуляции.
-        Также проверяет, что плейсхолдеры имеют одинаковое количество символов от начала строки.
+        Conservative check for significant content between placeholders.
+
+        Uses strict approach: placeholders are merged only if there is truly no code between them -
+        only empty lines, spaces and tabs. Also checks that placeholders have the same number
+        of characters from the line start.
 
         Args:
-            other: Другой плейсхолдер для сравнения
-            source_text: Исходный текст документа
+            other: Another placeholder for comparison
+            source_text: Source text of document
 
         Returns:
-            True если между плейсхолдерами есть любой код или разное количество символов от начала строки, False если только пустота и одинаковые отступы
+            True if there is any code between placeholders or different indentation, False if only whitespace and same indentation
         """
 
-        # Определяем диапазон между плейсхолдерами
+        # Determine range between placeholders
         if self.end_char <= other.start_char:
-            # self идет перед other
+            # self goes before other
             start_char = self.end_char
             end_char = other.start_char
         elif other.end_char <= self.start_char:
-            # other идет перед self
+            # other goes before self
             start_char = other.end_char
             end_char = self.start_char
         else:
-            # Плейсхолдеры пересекаются - можно объединять
+            # Placeholders overlap - can merge
             return False
 
-        # Получаем содержимое между плейсхолдерами в байтах
+        # Get content between placeholders
         if start_char >= end_char:
             return False
 
         try:
             content_between = source_text[start_char:end_char]
         except (UnicodeDecodeError, IndexError):
-            # При ошибках декодирования консервативно блокируем объединение
+            # On decoding errors, conservatively block merge
             return True
 
-        # Консервативный подход: любой непустой контент блокирует объединение
+        # Conservative approach: any non-empty content blocks merge
         stripped = content_between.strip()
         if stripped:
             return True
 
-        # Проверяем количество символов от начала строки для каждого плейсхолдера
+        # Check number of characters from line start for each placeholder
         self_chars_from_line_start = self._count_chars_from_line_start(self.start_char, source_text)
         other_chars_from_line_start = self._count_chars_from_line_start(other.start_char, source_text)
 
@@ -130,30 +130,30 @@ class PlaceholderSpec:
 
     def _count_chars_from_line_start(self, char_position: int, source_text: str) -> int:
         """
-        Считает количество символов от начала строки до указанной байтовой позиции.
+        Count number of characters from line start to given character position.
 
         Args:
-            char_position: Байтовая позиция в тексте
-            source_text: Исходный текст документа
+            char_position: Character position in text
+            source_text: Source text of document
 
         Returns:
-            Количество символов от ближайшего '\n' слева до позиции
+            Number of characters from nearest '\n' on the left to position
         """
-        # Идем влево от позиции и ищем ближайший '\n'
+        # Go left from position and search for nearest '\n'
         for i in range(char_position - 1, -1, -1):
             if i < len(source_text) and source_text[i] == '\n':
-                # Нашли '\n', считаем символы от него до позиции
+                # Found '\n', count characters from it to position
                 return char_position - i - 1
 
-        # Если '\n' не найден, значит мы в начале файла
+        # If '\n' not found, we're at the beginning of file
         return char_position
     
     def merge_with(self, other: PlaceholderSpec, source_text) -> PlaceholderSpec:
-        """Создает объединенный плейсхолдер."""
+        """Create merged placeholder."""
         if not self.can_merge_with(other, source_text):
             raise ValueError("Cannot merge incompatible placeholders")
-        
-        # Объединенные границы
+
+        # Merged boundaries
         start_char = min(self.start_char, other.start_char)
         end_char = max(self.end_char, other.end_char)
         start_line = min(self.start_line, other.start_line)
@@ -174,7 +174,7 @@ class PlaceholderSpec:
 
 @dataclass
 class CommentStyle:
-    """Стиль комментариев для языка."""
+    """Comment style for language."""
     single_line: str  # "#", "//", etc.
     multi_line_start: str  # "/*", '"""', etc.
     multi_line_end: str   # "*/", '"""', etc.
@@ -184,8 +184,8 @@ class CommentStyle:
 
 class PlaceholderManager:
     """
-    Центральный менеджер для управления плейсхолдерами.
-    Предоставляет унифицированное API и обрабатывает коллапсирование.
+    Central manager for placeholder management.
+    Provides unified API and handles collapsing.
     """
     
     def __init__(self, raw_text: str, comment_style: CommentStyle, placeholder_style: str):
@@ -194,11 +194,11 @@ class PlaceholderManager:
         self.placeholder_style = placeholder_style
         self.placeholders: List[PlaceholderSpec] = []
     
-    # ============= Простое API для добавления плейсхолдеров =============
-    
+    # ============= Simple API for adding placeholders =============
+
     def add_placeholder(self, placeholder_type: str, start_char: int, end_char: int, start_line: int, end_line: int,
                         placeholder_prefix: str = "", count: int = 1) -> None:
-        """Добавить кастомный плейсхолдер с явными координатами."""
+        """Add custom placeholder with explicit coordinates."""
         spec = PlaceholderSpec(
             start_char=start_char,
             end_char=end_char,
@@ -212,49 +212,49 @@ class PlaceholderManager:
         self._add_placeholder_with_priority(spec)
 
     def add_placeholder_for_node(self, placeholder_type: str, node: Node, doc, count: int = 1) -> None:
-        """Добавить плейсхолдер для узла."""
+        """Add placeholder for node."""
         spec = self._create_spec_from_node(node, doc, placeholder_type, count=count)
         self._add_placeholder_with_priority(spec)
-    
-    # ============= Внутренние методы =============
-    
+
+    # ============= Internal methods =============
+
     def _add_placeholder_with_priority(self, spec: PlaceholderSpec) -> None:
         """
-        Добавить плейсхолдер с применением политики приоритета более широких правок.
-        
+        Add placeholder applying priority policy for wider edits.
+
         Args:
-            spec: Спецификация плейсхолдера для добавления
+            spec: Placeholder specification to add
         """
-        # Новая политика: более широкие плейсхолдеры всегда побеждают
+        # New policy: wider placeholders always win
         new_width = spec.width
-        
-        # Проверяем все существующие плейсхолдеры
+
+        # Check all existing placeholders
         placeholders_to_remove = []
         for i, existing in enumerate(self.placeholders):
             if spec.overlaps(existing):
                 existing_width = existing.width
-                
+
                 if new_width > existing_width:
-                    # Новый плейсхолдер шире - удаляем существующий
+                    # New placeholder is wider - remove existing one
                     placeholders_to_remove.append(i)
                 elif new_width < existing_width:
-                    # Новый плейсхолдер уже - пропускаем его
+                    # New placeholder is narrower - skip it
                     return
                 else:
-                    # Одинаковая ширина - первая побеждает (пропускаем новую)
+                    # Same width - first wins (skip new one)
                     return
-        
-        # Удаляем поглощённые плейсхолдеры (в обратном порядке, чтобы индексы не сбились)
+
+        # Remove absorbed placeholders (in reverse order to avoid index shift)
         for i in reversed(placeholders_to_remove):
             del self.placeholders[i]
-        
+
         self.placeholders.append(spec)
     
     def _create_spec_from_node(self, node: Node, doc, placeholder_type: str, count: int = 1) -> PlaceholderSpec:
-        """Создать PlaceholderSpec из Tree-sitter узла."""
+        """Create PlaceholderSpec from Tree-sitter node."""
         start_char, end_char = doc.get_node_range(node)
         start_line, end_line = doc.get_line_range(node)
-        
+
         return PlaceholderSpec(
             start_char=start_char,
             end_char=end_char,
@@ -264,29 +264,29 @@ class PlaceholderManager:
             placeholder_prefix="",
             count=count,
         )
-    
+
     def _generate_placeholder_text(self, spec: PlaceholderSpec) -> str:
-        """Генерировать текст плейсхолдера на основе типа и стиля."""
+        """Generate placeholder text based on type and style."""
         content = self._get_placeholder_content(spec)
-        
-        # Для докстрингов всегда используем родное обрамление языка
+
+        # For docstrings always use native language wrapping
         if spec.placeholder_type == "docstring":
             return f"{spec.placeholder_prefix}{self.comment_style.docstring_start} {content} {self.comment_style.docstring_end}"
-        
-        # Стандартная логика для обычных комментариев
+
+        # Standard logic for regular comments
         if self.placeholder_style == "inline":
             return f"{spec.placeholder_prefix}{self.comment_style.single_line} {content}"
         else: # self.placeholder_style == "block"
             return f"{spec.placeholder_prefix}{self.comment_style.multi_line_start} {content} {self.comment_style.multi_line_end}"
-    
+
     def _get_placeholder_content(self, spec: PlaceholderSpec) -> str:
-        """Сгенерировать содержимое плейсхолдера на основе типа и метрик."""
+        """Generate placeholder content based on type and metrics."""
         ptype = spec.placeholder_type
         count = spec.count
         lines = spec.lines_removed
         _chars_removed = spec.chars_removed
-        
-        # Базовые шаблоны для разных типов
+
+        # Basic templates for different types
         if ptype == "function_body":
             if lines > 1:
                 return f"… function body omitted ({lines} lines)"
@@ -345,7 +345,7 @@ class PlaceholderManager:
                 return "… type omitted"
         
         else:
-            # Универсальный шаблон для неизвестных типов
+            # Generic template for unknown types
             if count > 1:
                 return f"… {count} {ptype}s omitted"
             elif lines > 1:
@@ -353,109 +353,109 @@ class PlaceholderManager:
             else:
                 return f"… {ptype} omitted"
     
-    # ============= Коллапсирование и финализация =============
+    # ============= Collapsing and finalization =============
 
     def raw_edits(self) -> List[PlaceholderSpec]:
         """
-        Возвращаем сырые правки для оценки в системе бюджета.
+        Return raw edits for evaluation in the budget system.
         """
         return self.placeholders
 
     def finalize_edits(self) -> Tuple[List[Tuple[PlaceholderSpec, str]], Dict[str, Any]]:
         """
-        Финализировать все правки с коллапсированием.
+        Finalize all edits with collapsing.
 
         Returns:
             (collapsed_edits, stats)
         """
-        # Выполняем коллапсирование плейсхолдеров
+        # Perform placeholder collapsing
         collapsed_specs = self._collapse_placeholders()
 
-        # Генерируем правки на основе коллапсированных плейсхолдеров
+        # Generate edits based on collapsed placeholders
         collapsed_edits = [
             (spec, self._generate_placeholder_text(spec) if self.placeholder_style != "none" else "")
             for spec in collapsed_specs
         ]
 
-        # Собираем статистику
+        # Collect statistics
         stats = self._calculate_stats(collapsed_specs)
 
         return collapsed_edits, stats
 
     def _collapse_placeholders(self) -> List[PlaceholderSpec]:
         """
-        Коллапсировать соседние плейсхолдеры одного типа.
-        Работает на уровне данных, без парсинга текста.
+        Collapse adjacent placeholders of the same type.
+        Works at data level, without text parsing.
         """
         if not self.placeholders:
             return []
 
-        # Сортируем по позиции
+        # Sort by position
         sorted_placeholders = sorted(self.placeholders, key=lambda p: p.position_key)
 
         collapsed = []
         current_group = [sorted_placeholders[0]]
 
         for placeholder in sorted_placeholders[1:]:
-            # Проверяем, можно ли объединить с текущей группой
+            # Check if can merge with current group
             if current_group and current_group[-1].can_merge_with(placeholder, self.raw_text):
                 current_group.append(placeholder)
             else:
-                # Финализируем текущую группу
+                # Finalize current group
                 collapsed.append(self._merge_group(current_group))
                 current_group = [placeholder]
 
-        # Не забываем последнюю группу
+        # Don't forget last group
         if current_group:
             collapsed.append(self._merge_group(current_group))
 
         return collapsed
 
     def _merge_group(self, group: List[PlaceholderSpec]) -> PlaceholderSpec:
-        """Объединить группу плейсхолдеров в один."""
+        """Merge group of placeholders into one."""
         if len(group) == 1:
             return group[0]
 
-        # Последовательно объединяем все плейсхолдеры в группе
+        # Sequentially merge all placeholders in group
         result = group[0]
         for placeholder in group[1:]:
             result = result.merge_with(placeholder, self.raw_text)
 
         return result
-    
+
     def _calculate_stats(self, specs: List[PlaceholderSpec]) -> Dict[str, Any]:
-        """Вычислить статистику плейсхолдеров."""
+        """Calculate placeholder statistics."""
         stats = {
             "placeholders_inserted": len(specs),
             "total_lines_removed": sum(spec.lines_removed for spec in specs),
             "total_chars_removed": sum(spec.chars_removed for spec in specs),
             "placeholders_by_type": {}
         }
-        
-        # Группируем по типам
+
+        # Group by types
         for spec in specs:
             ptype = spec.placeholder_type
             if ptype not in stats["placeholders_by_type"]:
                 stats["placeholders_by_type"][ptype] = 0
             stats["placeholders_by_type"][ptype] += spec.count
-        
+
         return stats
 
 
-# ============= Фабричные функции =============
+# ============= Factory functions =============
 
 def create_placeholder_manager(
-    raw_text: str, 
+    raw_text: str,
     comment_style_tuple: Tuple[str, Tuple[str, str], Tuple[str, str]],
     placeholder_style: str
 ) -> PlaceholderManager:
     """
-    Создать PlaceholderManager из кортежа стиля комментариев.
-    
+    Create PlaceholderManager from comment style tuple.
+
     Args:
-        raw_text: исходный текст документа
+        raw_text: source text of document
         comment_style_tuple: (single_line, (multi_start, multi_end), (docstring_start, docstring_end))
-        placeholder_style: Стиль плейсхолдеров
+        placeholder_style: Placeholder style
     """
     single_line, (multi_start, multi_end), (docstring_start, docstring_end) = comment_style_tuple
     

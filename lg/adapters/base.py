@@ -6,43 +6,43 @@ from ..stats import TokenService
 
 __all__ = ["BaseAdapter"]
 
-C = TypeVar("C")  # тип конфигурации конкретного адаптера
+C = TypeVar("C")  # config type for specific adapter
 A = TypeVar("A", bound="BaseAdapter[Any]")
 
 
 class BaseAdapter(Generic[C]):
-    """Базовый класс адаптера языка."""
-    #: Имя языка (python, java, …); для Base – 'base'
+    """Base class for language adapters."""
+    #: Language name (python, java, …); for Base – 'base'
     name: str = "base"
-    #: Набор поддерживаемых расширений
+    #: Set of supported file extensions
     extensions: Set[str] = set()
-    #: Храним связанный конфиг (может быть None для «безконфиговых» адаптеров)
+    #: Store associated config (may be None for config-less adapters)
     _cfg: Optional[C]
-    # Cервис подсчёта токенов
+    # Token counting service
     tokenizer: TokenService
 
-    # --- Generic-интроспекция параметра C -----
+    # --- Generic introspection of parameter C -----
     @classmethod
     def _resolve_cfg_type(cls) -> Type[C] | None:
         """
-        Пытается извлечь конкретный тип C из объявления наследника BaseAdapter[C].
-        Возвращает None, если адаптер не параметризован конфигом.
+        Attempts to extract the concrete type C from the BaseAdapter[C] subclass declaration.
+        Returns None if the adapter is not parameterized with a config.
         """
-        # Проходим по MRO и ищем первый конкретный тип конфигурации
+        # Walk through MRO and find the first concrete config type
         for kls in cls.__mro__:
             for base in getattr(kls, "__orig_bases__", ()) or ():
                 args = get_args(base) or ()
                 if args and not isinstance(args[0], TypeVar):
-                    # Нашли конкретный тип (не TypeVar), возвращаем его
+                    # Found a concrete type (not TypeVar), return it
                     return args[0]
         return None
 
-    # --- Конфигурирование адаптера -------------
+    # --- Adapter configuration -------------
     @classmethod
     def bind(cls: Type[A], raw_cfg: dict | None, tokenizer: TokenService) -> A:
         """
-        Фабрика «связанного» адаптера: создаёт инстанс и применяет cfg.
-        Внешний код не видит тип конфигурации — полная инкапсуляция.
+        Factory for a "bound" adapter: creates instance and applies config.
+        External code doesn't see the config type — full encapsulation.
         """
         inst = cls()
         inst._cfg = cls._load_cfg(raw_cfg)
@@ -52,69 +52,69 @@ class BaseAdapter(Generic[C]):
     @classmethod
     def _load_cfg(cls, raw_cfg: dict | None) -> C:
         """
-        Универсальный загрузчик конфигурации для адаптера.
-        Поведение по умолчанию:
-          • Если у типа конфигурации есть статический метод `from_dict(dict)`,
-            используем его (поддержка вложенных структур).
-          • Иначе пытаемся вызвать конструктор как **kwargs.
-        Адаптеры должны использовать дженерик подход, а не переопределять данный метод.
+        Universal config loader for an adapter.
+        Default behavior:
+          • If the config type has a static method `from_dict(dict)`,
+            use it (support for nested structures).
+          • Otherwise try to call the constructor as **kwargs.
+        Adapters should use the generic approach and not override this method.
         """
         cfg_type = cls._resolve_cfg_type()
         if cfg_type is None:
-            # У адаптера нет параметризованной конфигурации.
+            # Adapter has no parameterized configuration.
             return None
 
-        # Удаляем служебный ключ секции 'empty_policy' (не относится к языковым адаптерам)
+        # Remove the service key 'empty_policy' from section (not relevant to language adapters)
         cfg_input: dict[str, Any] = dict(raw_cfg or {})
         cfg_input.pop("empty_policy", None)
 
-        # Есть статический конструктор from_dict?
+        # Is there a static from_dict constructor?
         from_dict = getattr(cfg_type, "from_dict", None)
         if callable(from_dict):
             return from_dict(cfg_input)
 
-        # Падаем обратно на прямую инициализацию через **kwargs.
+        # Fall back to direct initialization via **kwargs.
         try:
             return cfg_type(**cfg_input)
         except TypeError as e:
-            # Подсказываем разработчику адаптера/конфига, что стоит реализовать from_dict()
+            # Suggest to adapter/config developer to implement from_dict()
             raise TypeError(
                 f"{cls.__name__}: cannot construct {cfg_type.__name__} from raw config keys "
                 f"{sorted(cfg_input.keys())}; consider implementing {cfg_type.__name__}.from_dict(). "
                 f"Original error: {e}"
             ) from e
 
-    # Типобезопасный доступ к конфигу для наследников, у которых config_cls задан.
-    # Для таких адаптеров self.cfg всегда C (а не Optional[C]).
+    # Type-safe access to config for subclasses where config_cls is set.
+    # For such adapters self.cfg is always C (not Optional[C]).
     @property
     def cfg(self) -> C:
         if getattr(self, "_cfg", None) is None:
-            # Для «безконфигового» адаптера или если bind() не вызывался.
+            # For a config-less adapter or if bind() was not called.
             raise AttributeError(f"{self.__class__.__name__} has no bound config")
         return self._cfg
 
-    # --- переопределяемая логика ------------------
+    # --- overridable logic ------------------
     def should_skip(self, lightweight_ctx: 'LightweightContext') -> bool:
         """
-        True → файл исключается (языковые эвристики).
-        
+        True → file is excluded (language heuristics).
+
         Args:
-            lightweight_ctx: Облегченный контекст с информацией о файле
-            
+            lightweight_ctx: Lightweight context with file information
+
         Returns:
-            True если файл должен быть пропущен
+            True if file should be skipped
         """
         return False
 
-    # --- единый API с метаданными ---
+    # --- unified API with metadata ---
     def process(self, lightweight_ctx: 'LightweightContext') -> tuple[str, dict]:
         """
-        Обрабатывает файл и возвращает (content, meta).
-        
+        Process file and return (content, meta).
+
         Args:
-            lightweight_ctx: Облегченный контекст с информацией о файле
-            
+            lightweight_ctx: Lightweight context with file information
+
         Returns:
-            Tuple из обработанного содержимого и метаданных
+            Tuple of processed content and metadata
         """
         return lightweight_ctx.raw_text, {}

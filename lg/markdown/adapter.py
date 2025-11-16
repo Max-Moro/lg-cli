@@ -12,12 +12,12 @@ from .transform import apply_intervals_with_placeholders
 
 def process_markdown(text: str, cfg: MarkdownCfg, file_label: str) -> Tuple[str, dict]:
     """
-    Пайплайн адаптера:
+    Adapter pipeline:
       1) parse_markdown → ParsedDoc
-      2) (если есть cfg.drop или cfg.keep) построить интервалы удаления (sections/frontmatter) и применить
-         с плейсхолдерами (только в drop режиме)
-      3) normalize_markdown (снятие H1 если strip_h1=True, max_heading_level)
-      4) meta агрегируем
+      2) (if cfg.drop or cfg.keep exists) build drop intervals (sections/frontmatter) and apply
+         with placeholders (drop mode only)
+      3) normalize_markdown (remove H1 if strip_h1=True, max_heading_level)
+      4) aggregate meta
     """
     max_lvl = cfg.max_heading_level
     strip_h1 = cfg.strip_h1
@@ -80,10 +80,10 @@ def process_markdown(text: str, cfg: MarkdownCfg, file_label: str) -> Tuple[str,
             current_text, ph_meta = apply_intervals_with_placeholders(doc.lines, intervals, ph_policy)
             meta.update(ph_meta)
         else:
-            # нет интервалов — не перепаковываем через split/join: сохраняем исходный текст как есть
+            # no intervals — don't repack via split/join: keep original text as is
             current_text = text
 
-    # 3) normalize (после вырезаний)
+    # 3) normalize (after cuts)
     norm_text, norm_meta = normalize_markdown(
         current_text,
         max_heading_level=max_lvl,
@@ -97,34 +97,34 @@ def process_markdown(text: str, cfg: MarkdownCfg, file_label: str) -> Tuple[str,
 
 def _validate_anchor_sections_found(doc: ParsedDoc, section_rules: List[SectionRule], _intervals: list) -> None:
     """
-    Валидирует что все якорные ссылки найдены в документе.
-    Для keep-режима проверяет что каждое правило нашло хотя бы один заголовок.
+    Validates that all anchor links are found in the document.
+    For keep-mode, checks that each rule found at least one heading.
 
     Args:
-        doc: Разобранный документ
-        section_rules: Список правил для поиска секций
-        intervals: Интервалы которые были найдены
+        doc: Parsed document
+        section_rules: List of rules for finding sections
+        intervals: Intervals that were found
 
     Raises:
-        RuntimeError: Если якорь не найден в документе
+        RuntimeError: If anchor is not found in document
     """
     if not section_rules:
         return
 
-    # Проверяем каждое правило индивидуально
+    # Check each rule individually
     for rule in section_rules:
-        # Проверяем есть ли правило с anchor-подсказкой в reason
+        # Check if rule has anchor hint in reason
         if rule.reason and "md placeholder anchor:" in rule.reason:
-            # Находим все интервалы которые создало это правило
+            # Find all intervals created by this rule
             rule_intervals = select_section_intervals(doc, [rule])
 
             if not rule_intervals:
-                # Извлекаем информацию об якоре из reason
+                # Extract anchor information from reason
                 import re
                 anchor_match = re.search(r'md placeholder anchor: #([^(]+)', rule.reason)
                 anchor_name = anchor_match.group(1).strip() if anchor_match else "unknown"
 
-                # Собираем список доступных заголовков для диагностики
+                # Collect list of available headings for diagnostics
                 available_headings = [h.title for h in doc.headings] if doc.headings else []
 
                 if available_headings:

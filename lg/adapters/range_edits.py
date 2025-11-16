@@ -37,8 +37,8 @@ class Edit:
     """Represents a single text edit operation using character positions."""
     range: TextRange
     replacement: str
-    type: Optional[str] # Тип для счетчика в метаинформации
-    is_insertion: bool = False  # True если это операция вставки (range.start_char == range.end_char)
+    type: Optional[str] # Type for counter in metadata
+    is_insertion: bool = False  # True if this is an insertion operation (range.start_char == range.end_char)
 
 
 class RangeEditor:
@@ -55,26 +55,26 @@ class RangeEditor:
         """Add an edit operation using character positions."""
         char_range = TextRange(start_char, end_char)
 
-        # Новая политика: более широкие правки всегда побеждают
+        # New policy: wider edits always win
         new_width = char_range.length
-        
-        # Проверяем все существующие правки
+
+        # Check all existing edits
         edits_to_remove = []
         for i, existing in enumerate(self.edits):
             if char_range.overlaps(existing.range):
                 existing_width = existing.range.length
-                
+
                 if new_width > existing_width:
-                    # Новая правка шире - удаляем существующую
+                    # New edit is wider - remove existing one
                     edits_to_remove.append(i)
                 elif new_width < existing_width:
-                    # Новая правка уже - пропускаем её
+                    # New edit is narrower - skip it
                     return
                 else:
-                    # Одинаковая ширина - первая побеждает (пропускаем новую)
+                    # Same width - first wins (skip new one)
                     return
-        
-        # Удаляем поглощённые правки (в обратном порядке, чтобы индексы не сбились)
+
+        # Remove absorbed edits (in reverse order to avoid index shift)
         for i in reversed(edits_to_remove):
             del self.edits[i]
 
@@ -92,41 +92,41 @@ class RangeEditor:
     def add_insertion(self, position_char: int, content: str, edit_type: Optional[str]) -> None:
         """
         Add an insertion operation after the specified character position.
-        
+
         Args:
             position_char: Character position after which to insert content
             content: Content to insert
             edit_type: Type for statistics tracking
         """
-        # Для вставки start_char == end_char (нулевая длина диапазона)
+        # For insertion start_char == end_char (zero-length range)
         char_range = TextRange(position_char, position_char)
-        
-        # Новая политика: более широкие правки всегда побеждают
-        # Вставка имеет нулевую ширину, поэтому любая не-вставка её поглотит
+
+        # New policy: wider edits always win
+        # Insertion has zero width, so any non-insertion will absorb it
         edits_to_remove = []
-        
+
         for i, existing in enumerate(self.edits):
             if existing.is_insertion:
-                # Две вставки в одной позиции - первая побеждает
+                # Two insertions at same position - first wins
                 if existing.range.start_char == position_char:
                     return
             else:
-                # Вставка перекрывается с заменой/удалением если позиция внутри диапазона
+                # Insertion overlaps with replacement/deletion if position is inside range
                 if existing.range.start_char < position_char < existing.range.end_char:
-                    # Любая не-вставка шире вставки (нулевая ширина) - поглощает её
+                    # Any non-insertion is wider than insertion (zero width) - absorbs it
                     return
-        
-        # Удаляем поглощённые правки (в обратном порядке, чтобы индексы не сбились)
+
+        # Remove absorbed edits (in reverse order to avoid index shift)
         for i in reversed(edits_to_remove):
             del self.edits[i]
-        
+
         edit = Edit(char_range, content, edit_type, is_insertion=True)
         self.edits.append(edit)
     
     def validate_edits(self) -> List[str]:
         """
         Validate that all edits are within bounds.
-        Overlap conflicts отфильтровываются на этапе add_edit (width-based policy).
+        Overlap conflicts are filtered at add_edit stage (width-based policy).
         """
         errors = []
 
@@ -142,7 +142,7 @@ class RangeEditor:
     def apply_edits(self) -> Tuple[str, Dict[str, Any]]:
         """
         Apply all edits and return the modified text and statistics.
-        
+
         Returns:
             Tuple of (modified_text, statistics)
         """
@@ -150,13 +150,13 @@ class RangeEditor:
         validation_errors = self.validate_edits()
         if validation_errors:
             raise ValueError(f"Edit validation failed: {'; '.join(validation_errors)}")
-        
+
         if not self.edits:
             return self.original_text, {"edits_applied": 0, "bytes_removed": 0, "bytes_added": 0}
-        
-        # Сортируем все правки по позиции (обратный порядок для безопасного применения)
+
+        # Sort all edits by position (reverse order for safe application)
         sorted_edits = sorted(self.edits, key=lambda e: e.range.start_char, reverse=True)
-        
+
         result_text = self.original_text
         stats = {
             "edits_applied": len(self.edits),
@@ -165,30 +165,30 @@ class RangeEditor:
             "lines_removed": 0,
             "placeholders_inserted": 0,
         }
-        
-        # Применяем все правки от конца к началу
+
+        # Apply all edits from end to beginning
         for edit in sorted_edits:
             if edit.is_insertion:
-                # Для вставки: вставляем контент после указанной позиции
+                # For insertion: insert content after specified position
                 result_text = result_text[:edit.range.start_char] + edit.replacement + result_text[edit.range.start_char:]
                 stats["bytes_added"] += len(edit.replacement.encode('utf-8'))
             else:
-                # Для замены/удаления: обычная логика
+                # For replacement/deletion: standard logic
                 original_chunk = result_text[edit.range.start_char:edit.range.end_char]
                 result_text = result_text[:edit.range.start_char] + edit.replacement + result_text[edit.range.end_char:]
-                
+
                 stats["bytes_removed"] += len(original_chunk.encode('utf-8'))
                 stats["bytes_added"] += len(edit.replacement.encode('utf-8'))
                 stats["lines_removed"] += original_chunk.count('\n')
-        
+
         # Calculate net change
         stats["bytes_saved"] = stats["bytes_removed"] - stats["bytes_added"]
-        
+
         return result_text, stats
     
     def get_edit_summary(self) -> Dict[str, Any]:
         """Get summary of planned edits without applying them."""
-        # Для вставок range.length = 0, поэтому bytes_removed = 0
+        # For insertions range.length = 0, so bytes_removed = 0
         total_bytes_removed = sum(len(self.original_text[edit.range.start_char:edit.range.end_char].encode('utf-8')) for edit in self.edits if not edit.is_insertion)
         total_bytes_added = sum(len(edit.replacement.encode('utf-8')) for edit in self.edits)
         

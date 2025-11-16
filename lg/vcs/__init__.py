@@ -8,22 +8,22 @@ from typing import Protocol, Set, Optional
 class VcsProvider(Protocol):
     def changed_files(self, root: Path) -> Set[str]:
         """
-        Вернуть множество относительных POSIX-путей, которые считаются изменёнными:
-        • staged + unstaged + untracked
+        Return a set of relative POSIX paths that are considered changed:
+        - staged + unstaged + untracked
         """
         ...
-    
+
     def branch_changed_files(self, root: Path, target_branch: Optional[str] = None) -> Set[str]:
         """
-        Вернуть множество относительных POSIX-путей, изменённых в текущей ветке
-        относительно целевой ветки (или ближайшей родительской).
+        Return a set of relative POSIX paths changed in the current branch
+        relative to the target branch (or nearest parent).
         """
         ...
 
 
 @dataclass(frozen=True)
 class NullVcs:
-    """Fallback-провайдер, если git недоступен."""
+    """Fallback provider if git is unavailable."""
     def changed_files(self, _root: Path) -> set[str]:
         return set()
 

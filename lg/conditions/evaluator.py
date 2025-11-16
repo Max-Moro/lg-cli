@@ -1,8 +1,8 @@
 """
-Вычислитель условных выражений.
+Evaluator for conditional expressions.
 
-Проходит по AST условий и вычисляет их значения в контексте активных тегов,
-наборов тегов и информации о скоупах.
+Traverses the AST of conditions and evaluates their values in the context of active tags,
+tag sets, and scope information.
 """
 
 from __future__ import annotations
@@ -25,38 +25,38 @@ from ..run_context import ConditionContext
 
 
 class EvaluationError(Exception):
-    """Ошибка при вычислении условного выражения."""
+    """Error during evaluation of a conditional expression."""
     pass
 
 
 class ConditionEvaluator:
     """
-    Вычислитель условных выражений.
-    
-    Принимает AST условия и контекст выполнения, возвращает булево значение.
+    Evaluator for conditional expressions.
+
+    Takes a condition AST and execution context, returns a boolean value.
     """
     
     def __init__(self, context: ConditionContext):
         """
-        Инициализирует вычислитель с контекстом.
+        Initialize the evaluator with a context.
 
         Args:
-            context: Контекст с информацией об активных тегах и скоупах
+            context: Context with information about active tags and scopes
         """
         self.context = context
 
     def evaluate(self, condition: Condition) -> bool:
         """
-        Вычисляет значение условия.
+        Evaluate the value of a condition.
 
         Args:
-            condition: Корневой узел AST условия
+            condition: Root node of the condition AST
 
         Returns:
-            Булево значение результата вычисления
+            Boolean value of the evaluation result
 
         Raises:
-            EvaluationError: При ошибке вычисления (например, неизвестный тип условия)
+            EvaluationError: On evaluation error (e.g., unknown condition type)
         """
         condition_type = condition.get_type()
 
@@ -81,96 +81,96 @@ class ConditionEvaluator:
 
     def _evaluate_tag(self, condition: TagCondition) -> bool:
         """
-        Вычисляет условие тега: tag:name
+        Evaluate a tag condition: tag:name
 
-        Истинно, если указанный тег активен в контексте.
+        True if the specified tag is active in the context.
         """
         return self.context.is_tag_active(condition.name)
 
     def _evaluate_tagset(self, condition: TagSetCondition) -> bool:
         """
-        Вычисляет условие набора тегов: TAGSET:set_name:tag_name
+        Evaluate a tag set condition: TAGSET:set_name:tag_name
 
-        Правила:
-        - Истинно, если ни один тег из набора не активен
-        - Истинно, если указанный тег активен
-        - Ложно во всех остальных случаях
+        Rules:
+        - True if no tags in the set are active
+        - True if the specified tag is active
+        - False in all other cases
         """
         return self.context.is_tagset_condition_met(condition.set_name, condition.tag_name)
 
     def _evaluate_scope(self, condition: ScopeCondition) -> bool:
         """
-        Вычисляет условие скоупа: scope:type
+        Evaluate a scope condition: scope:type
 
-        Зависит от текущего контекста выполнения (локальный/родительский скоуп).
+        Depends on the current execution context (local/parent scope).
         """
         return self.context.is_scope_condition_met(condition.scope_type)
 
     def _evaluate_task(self, _condition: TaskCondition) -> bool:
         """
-        Вычисляет условие task.
+        Evaluate a task condition.
 
-        Истинно, если задан непустой текст задачи.
+        True if a non-empty task text is provided.
         """
         return self.context.is_task_provided()
 
     def _evaluate_group(self, condition: GroupCondition) -> bool:
         """
-        Вычисляет группированное условие: (condition)
+        Evaluate a grouped condition: (condition)
 
-        Просто вычисляет вложенное условие.
+        Simply evaluates the nested condition.
         """
         return self.evaluate(condition.condition)
 
     def _evaluate_not(self, condition: NotCondition) -> bool:
         """
-        Вычисляет отрицание: NOT condition
+        Evaluate a negation: NOT condition
 
-        Инвертирует результат вычисления вложенного условия.
+        Inverts the evaluation result of the nested condition.
         """
         return not self.evaluate(condition.condition)
 
     def _evaluate_and(self, condition: BinaryCondition) -> bool:
         """
-        Вычисляет логическое И: left AND right
+        Evaluate a logical AND: left AND right
 
-        Истинно, если оба операнда истинны.
-        Использует короткое вычисление (short-circuit evaluation).
+        True if both operands are true.
+        Uses short-circuit evaluation.
         """
         left_result = self.evaluate(condition.left)
         if not left_result:
-            return False  # Короткое вычисление
+            return False  # Short-circuit evaluation
 
         return self.evaluate(condition.right)
 
     def _evaluate_or(self, condition: BinaryCondition) -> bool:
         """
-        Вычисляет логическое ИЛИ: left OR right
+        Evaluate a logical OR: left OR right
 
-        Истинно, если хотя бы один операнд истинен.
-        Использует короткое вычисление (short-circuit evaluation).
+        True if at least one operand is true.
+        Uses short-circuit evaluation.
         """
         left_result = self.evaluate(condition.left)
         if left_result:
-            return True  # Короткое вычисление
+            return True  # Short-circuit evaluation
 
         return self.evaluate(condition.right)
 
 
 def evaluate_condition_string(condition_str: str, context: ConditionContext) -> bool:
     """
-    Удобная функция для вычисления условия из строки.
-    
+    Convenience function to evaluate a condition from a string.
+
     Args:
-        condition_str: Строка условного выражения
-        context: Контекст выполнения
-        
+        condition_str: Condition expression string
+        context: Execution context
+
     Returns:
-        Результат вычисления условия
-        
+        Result of the condition evaluation
+
     Raises:
-        ValueError: При ошибке парсинга
-        EvaluationError: При ошибке вычисления
+        ValueError: On parsing error
+        EvaluationError: On evaluation error
     """
     from .parser import ConditionParser
     

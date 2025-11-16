@@ -1,8 +1,8 @@
 """
-Плагин для обработки базовых плейсхолдеров секций и шаблонов.
+Plugin for processing basic section and template placeholders.
 
-Регистрирует все необходимые токены, правила парсинга и обработчики
-для поддержки ${section}, ${tpl:name}, ${ctx:name} и адресных ссылок.
+Registers all necessary tokens, parsing rules, and handlers
+for supporting ${section}, ${tpl:name}, ${ctx:name} and addressed references.
 """
 
 from __future__ import annotations
@@ -20,50 +20,50 @@ from ...template import TemplateContext
 
 class CommonPlaceholdersPlugin(TemplatePlugin):
     """
-    Плагин для обработки базовых плейсхолдеров секций и шаблонов.
-    
-    Обеспечивает функциональность:
-    - ${section_name} - вставка секций
-    - ${tpl:template_name} - включение шаблонов
-    - ${ctx:context_name} - включение контекстов  
-    - Адресные ссылки @origin:name для межскоуповых включений
+    Plugin for processing basic section and template placeholders.
+
+    Provides functionality:
+    - ${section_name} - section insertion
+    - ${tpl:template_name} - template inclusion
+    - ${ctx:context_name} - context inclusion
+    - Addressed references @origin:name for cross-scope inclusions
     """
 
     def __init__(self, template_ctx: TemplateContext):
         """
-        Инициализирует плагин с контекстом шаблона.
+        Initializes plugin with template context.
 
         Args:
-            template_ctx: Контекст шаблона для управления состоянием
+            template_ctx: Template context for state management
         """
         super().__init__()
         self.template_ctx = template_ctx
-        # Резолвер будет создан один раз при инициализации
+        # Resolver will be created once during initialization
         self._resolver = None
 
     @property
     def name(self) -> str:
-        """Возвращает имя плагина."""
+        """Returns plugin name."""
         return "common_placeholders"
-    
+
     @property
     def priority(self) -> PluginPriority:
-        """Возвращает приоритет плагина."""
+        """Returns plugin priority."""
         return PluginPriority.PLACEHOLDER
-    
+
     def initialize(self) -> None:
-        """Инициализирует резолвер после установки всех зависимостей."""
+        """Initializes resolver after all dependencies are set."""
         from .resolver import CommonPlaceholdersResolver
         run_ctx = self.template_ctx.run_ctx
-        # Передаем template_ctx для управления origin через TemplateState
+        # Pass template_ctx for origin management through TemplateState
         self._resolver = CommonPlaceholdersResolver(run_ctx, self.handlers, self.registry)
     
     def register_tokens(self) -> List[TokenSpec]:
-        """Регистрирует токены для плейсхолдеров."""
+        """Registers tokens for placeholders."""
         return get_placeholder_token_specs()
 
     def register_token_contexts(self) -> List[TokenContext]:
-        """Регистрирует контексты токенов для плейсхолдеров."""
+        """Registers token contexts for placeholders."""
         return [TokenContext(
             name="placeholder",
             open_tokens={"PLACEHOLDER_START"},
@@ -75,56 +75,56 @@ class CommonPlaceholdersPlugin(TemplatePlugin):
         )]
 
     def register_parser_rules(self) -> List[ParsingRule]:
-        """Регистрирует правила парсинга плейсхолдеров."""
+        """Registers placeholder parsing rules."""
         return get_placeholder_parser_rules()
 
     def register_processors(self) -> List[ProcessorRule]:
         """
-        Регистрирует обработчики узлов AST.
-        
-        Создает замыкания над типизированными обработчиками для прямой обработки узлов.
+        Registers AST node handlers.
+
+        Creates closures over typed handlers for direct node processing.
         """
         def process_section_node(processing_context: ProcessingContext) -> str:
-            """Обрабатывает узел секции через типизированные обработчики."""
+            """Processes section node through typed handlers."""
             node = processing_context.get_node()
             if not isinstance(node, SectionNode):
                 raise RuntimeError(f"Expected SectionNode, got {type(node)}")
-            
-            # Проверяем, что узел был резолвлен
+
+            # Check that node was resolved
             if node.resolved_ref is None:
                 raise RuntimeError(f"Section node '{node.section_name}' not resolved")
-            
-            # Используем типизированный обработчик секций
+
+            # Use typed section handler
             return self.handlers.process_section_ref(node.resolved_ref)
-        
+
         def process_include_node(processing_context: ProcessingContext) -> str:
-            """Обрабатывает узел включения через типизированные обработчики."""
+            """Processes include node through typed handlers."""
             node = processing_context.get_node()
             if not isinstance(node, IncludeNode):
                 raise RuntimeError(f"Expected IncludeNode, got {type(node)}")
-            
-            # Проверяем, что включение было загружено
+
+            # Check that include was loaded
             if node.children is None:
                 raise RuntimeError(f"Include '{node.canon_key()}' not resolved")
-            
-            # Сохраняем и устанавливаем origin для вложенного контекста
+
+            # Save and set origin for nested context
             self.template_ctx.push_origin(node.origin)
-            
+
             try:
-                # Рендерим дочерние узлы с новым контекстом для вложенного AST
+                # Render child nodes with new context for nested AST
                 result_parts = []
                 for child_index, child_node in enumerate(node.children):
-                    # Создаем контекст для вложенного AST
+                    # Create context for nested AST
                     child_context = ProcessingContext(ast=node.children, node_index=child_index)
                     rendered = self.handlers.process_ast_node(child_context)
                     if rendered:
                         result_parts.append(rendered)
-                
+
                 return "".join(result_parts)
             finally:
-                # Всегда восстанавливаем предыдущий origin
+                # Always restore previous origin
                 self.template_ctx.pop_origin()
-        
+
         return [
             ProcessorRule(
                 node_type=SectionNode,
@@ -135,22 +135,22 @@ class CommonPlaceholdersPlugin(TemplatePlugin):
                 processor_func=process_include_node
             )
         ]
-    
+
     def register_resolvers(self) -> List[ResolverRule]:
         """
-        Регистрирует резолверы узлов AST для базовых плейсхолдеров.
+        Registers AST node resolvers for basic placeholders.
         """
         def resolve_section_or_include(node: TemplateNode, context: str) -> TemplateNode:
-            """Резолвит узлы SectionNode и IncludeNode."""
+            """Resolves SectionNode and IncludeNode."""
             if not isinstance(node, (SectionNode, IncludeNode)):
-                # Не наш узел
+                # Not our node
                 return node
-            
-            # Используем единственный экземпляр резолвера (с сохраненным стеком)
+
+            # Use singleton resolver instance (with saved stack)
             if self._resolver is None:
                 raise RuntimeError("Resolver not initialized. Call initialize() first.")
             return self._resolver.resolve_node(node, context)
-        
+
         return [
             ResolverRule(
                 node_type=SectionNode,

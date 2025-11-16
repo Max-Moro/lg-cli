@@ -1,8 +1,8 @@
 """
-Вычислитель условий для движка шаблонизации.
+Condition evaluator for template engine.
 
-Интерпретирует условные выражения в шаблонах с поддержкой тегов,
-наборов тегов, режимов и логических операций.
+Interprets conditional expressions in templates with support for tags,
+tag sets, modes, and logical operations.
 """
 
 from __future__ import annotations
@@ -14,54 +14,54 @@ from ..run_context import ConditionContext
 
 class TemplateConditionEvaluator:
     """
-    Оценщик условий для шаблонов.
+    Condition evaluator for templates.
 
-    Расширяет базовый ConditionEvaluator специфичной для шаблонов
-    логикой и интеграцией с контекстом рендеринга.
+    Extends base ConditionEvaluator with template-specific
+    logic and integration with rendering context.
     """
 
     def __init__(self, condition_context: ConditionContext):
         """
-        Инициализирует оценщик с контекстом условий.
+        Initializes evaluator with condition context.
 
         Args:
-            condition_context: Контекст с активными тегами, режимами и наборами тегов
+            condition_context: Context with active tags, modes, and tag sets
         """
         self.condition_context = condition_context
         self.base_evaluator = ConditionEvaluator(condition_context)
 
     def evaluate(self, condition: Condition) -> bool:
         """
-        Вычисляет условие в контексте шаблона.
+        Evaluates condition in template context.
 
         Args:
-            condition: AST условия для вычисления
+            condition: AST of condition to evaluate
 
         Returns:
-            Результат вычисления условия
+            Result of condition evaluation
 
         Raises:
-            EvaluationError: При ошибке вычисления условия
+            EvaluationError: If error during condition evaluation
         """
         try:
             return self.base_evaluator.evaluate(condition)
         except EvaluationError:
-            # Передаем ошибки дальше с дополнительным контекстом если нужно
+            # Pass errors further with additional context if needed
             raise
 
     def evaluate_condition_text(self, condition_text: str) -> bool:
         """
-        Вычисляет условие из текстового представления.
+        Evaluates condition from text representation.
 
         Args:
-            condition_text: Текстовое представление условия
+            condition_text: Text representation of condition
 
         Returns:
-            Результат вычисления условия
+            Result of condition evaluation
 
         Raises:
-            ValueError: При ошибке парсинга условия
-            EvaluationError: При ошибке вычисления условия
+            ValueError: If error parsing condition
+            EvaluationError: If error during condition evaluation
         """
         from ..conditions.parser import ConditionParser
 
@@ -72,13 +72,13 @@ class TemplateConditionEvaluator:
 
     def update_context(self, condition_context: ConditionContext) -> None:
         """
-        Обновляет контекст условий.
+        Updates condition context.
 
-        Используется при изменении активных тегов или режимов
-        внутри блоков {% mode %}.
+        Used when active tags or modes change
+        inside {% mode %} blocks.
 
         Args:
-            condition_context: Новый контекст условий
+            condition_context: New condition context
         """
         self.condition_context = condition_context
         self.base_evaluator = ConditionEvaluator(condition_context)

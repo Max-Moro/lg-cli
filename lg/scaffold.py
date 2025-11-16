@@ -6,16 +6,16 @@ from pathlib import Path
 from typing import Dict, List
 from typing import Tuple
 
-# Ресурсы лежат под пакетом lg._skeletons/<preset>/lg-cfg/...
+# Resources are located under the package lg._skeletons/<preset>/lg-cfg/...
 _SKELETONS_PKG = "lg._skeletons"
 
 
 def list_presets() -> List[str]:
     """
-    Перечислить доступные пресеты:
-      • только директории внутри lg/_skeletons/
-      • исключаем служебные ('.*', '_*', '__pycache__', '*.dist-info')
-      • требуем наличие подкаталога 'lg-cfg'
+    List available presets:
+      • only directories inside lg/_skeletons/
+      • exclude special ('.*', '_*', '__pycache__', '*.dist-info')
+      • require presence of 'lg-cfg' subdirectory
     """
     try:
         base = resources.files(_SKELETONS_PKG)
@@ -39,7 +39,7 @@ def list_presets() -> List[str]:
 
 
 def _iter_all_files(node):
-    """Рекурсивный обход Traversable-ресурсов (совместимо с .whl/zip)."""
+    """Recursive traversal of Traversable resources (compatible with .whl/zip)."""
     for entry in node.iterdir():
         if entry.is_dir():
             yield from _iter_all_files(entry)
@@ -49,8 +49,8 @@ def _iter_all_files(node):
 
 def _collect_skeleton_entries(preset: str) -> List[Tuple[str, bytes]]:
     """
-    Собирает пары (rel, data) для всех файлов из пресета.
-    Структура пресета: <preset>/lg-cfg/**/*
+    Collects (rel, data) pairs for all files from the preset.
+    Preset structure: <preset>/lg-cfg/**/*
     """
     base = resources.files(_SKELETONS_PKG) / preset
     if not base.exists():
@@ -65,7 +65,7 @@ def _collect_skeleton_entries(preset: str) -> List[Tuple[str, bytes]]:
         try:
             data = res.read_bytes()
         except Exception:
-            # На некоторых платформах read_bytes может отсутствовать — fallback через open()
+            # On some platforms read_bytes may be unavailable — fallback via open()
             with res.open("rb") as f:
                 data = f.read()
         out.append((rel, data))
@@ -80,18 +80,18 @@ def init_cfg(
     force: bool = False,
 ) -> Dict:
     """
-    Разворачивает пресет в <repo_root>/lg-cfg/.
-    Возвращает JSON-совместимый словарь с полями: ok, created, conflicts, preset.
+    Deploys a preset to <repo_root>/lg-cfg/.
+    Returns a JSON-compatible dict with fields: ok, created, conflicts, preset.
     """
     repo_root = repo_root.resolve()
     target = (repo_root / "lg-cfg").resolve()
 
-    # Составим план копирования
+    # Make a copy plan
     created: List[str] = []
     conflicts: List[str] = []
     plan: List[Tuple[str, bytes]] = []
 
-    # Собираем исходные файлы пресета
+    # Gather source files from preset
     try:
         src_entries = _collect_skeleton_entries(preset)
     except Exception as e:
@@ -104,7 +104,7 @@ def init_cfg(
             continue
         plan.append((rel, data))
 
-    # Если есть конфликты и не force — выходим/сообщаем
+    # If there are conflicts and not force — exit/report
     if conflicts and not force:
         return {
             "ok": False,
@@ -114,7 +114,7 @@ def init_cfg(
             "message": "Use --force to overwrite existing files.",
         }
 
-    # Выполняем запись
+    # Perform write
     for rel, data in plan:
         dst = (target / rel)
         dst.parent.mkdir(parents=True, exist_ok=True)
@@ -134,22 +134,22 @@ def init_cfg(
 
 def add_cli(subparsers) -> None:
     """
-    Регистрирует подкоманду 'init' и привязывает обработчик через set_defaults(func=...).
-    Это позволяет развивать CLI без правок в lg/cli.py.
+    Registers the 'init' subcommand and binds handler via set_defaults(func=...).
+    This allows developing CLI without changes to lg/cli.py.
     """
     sp = subparsers.add_parser(
         "init",
-        help="Инициализировать стартовую конфигурацию lg-cfg/ из упакованных пресетов",
+        help="Initialize initial lg-cfg/ configuration from packed presets",
     )
-    sp.add_argument("--preset", default="basic", help="имя пресета (см. --list-presets)")
-    sp.add_argument("--force", action="store_true", help="перезаписывать существующие файлы")
-    sp.add_argument("--list-presets", action="store_true", help="перечислить доступные пресеты и выйти")
-    # Хендлер — сюда придёт argparse.Namespace
+    sp.add_argument("--preset", default="basic", help="preset name (see --list-presets)")
+    sp.add_argument("--force", action="store_true", help="overwrite existing files")
+    sp.add_argument("--list-presets", action="store_true", help="list available presets and exit")
+    # Handler — receives argparse.Namespace here
     sp.set_defaults(func=_run_cli, cmd="init")
 
 
 def _run_cli(ns) -> int:
-    """Обработчик подкоманды `lg init`."""
+    """Handler for `lg init` subcommand."""
     from .jsonic import dumps as jdumps
     if bool(getattr(ns, "list_presets", False)):
         print(jdumps({"presets": list_presets()}))
