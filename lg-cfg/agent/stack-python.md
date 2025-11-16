@@ -1,14 +1,14 @@
-# Рекомендации в рамках технологического стека
+# Recommendations Within the Technology Stack
 
-Данный проект является CLI инструментом и разрабатывается на Python.
+This project is a CLI tool and is developed in Python.
 
-## Типизированный код
+## Typed Code
 
-Мы всегда пишем строго типизированный код. Поэтому не используем `TYPE_CHECKING`, не используем `from typing import Any` и не заврапливаем типы в апострофы.
+We always write strictly typed code. Therefore, we don't use `TYPE_CHECKING`, don't use `from typing import Any`, and don't wrap types in quotes.
 
-Проблемы циклических импортов должны решаться без понижения уровня строгости типизации. К примеру, использовать внутренние импорты или реструктуризировать модули (создавать дополнительные).
+Circular import problems should be solved without lowering the level of typing strictness. For example, use internal imports or restructure modules (create additional ones).
 <!-- lg:if tag:claude-code -->
-## Пути файлов
+## File Paths
 
-Данный проект работает на Windows. При использовании инструментов Read/Edit/Write всегда используй **обратные слеши** (`\`) в путях файлов.
+This project works on Windows. When using Read/Edit/Write tools, always use **backslashes** (`\`) in file paths.
 <!-- lg:endif -->

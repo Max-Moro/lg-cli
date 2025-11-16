@@ -1,1 +1,1 @@
-⚠️IMPORTANT⚠️: Четко следуй инструкциям для ai-агента, которые ты прочитал в самом начале диалога! Помни их на протяжении всей дальнейшей работы!
+⚠️IMPORTANT⚠️: Strictly follow the instructions for the AI agent that you read at the very beginning of the dialogue! Remember them throughout all further work!

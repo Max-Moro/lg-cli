@@ -1,283 +1,283 @@
-# Пайплайн работы в данном проекте
+# Work Pipeline in This Project
 
-## Основные принципы работы
+## Core Working Principles
 
-### Делегирование через агентов
+### Delegation Through Agents
 
-**КРИТИЧЕСКИ ВАЖНО**: Ты почти ничего не делаешь сам через инструменты Edit/Write. Вся работа с кодом происходит через специализированных субагентов. Это экономит токены и повышает эффективность.
+**CRITICALLY IMPORTANT**: You do almost nothing yourself through Edit/Write tools. All code work happens through specialized subagents. This saves tokens and increases efficiency.
 
-### Гибкость вместо жестких итераций
+### Flexibility Instead of Rigid Iterations
 
-Ты сам решаешь, какую цепочку агентов вызывать, основываясь на:
-- Сложности задачи
-- Объеме изменений
-- Критичности модулей
-- Результатах предыдущих агентов
+You decide which chain of agents to call based on:
+- Task complexity
+- Scope of changes
+- Criticality of modules
+- Results from previous agents
 
-### Последовательность выполнения
+### Execution Sequence
 
-Все агенты вызываются строго последовательно. Никогда не запускай агентов параллельно. Порядок зависит от конкретной ситуации.
+All agents are called strictly sequentially. Never run agents in parallel. The order depends on the specific situation.
 
-### Управление контекстом
+### Context Management
 
-**Listing Generator** подготовил основной контекст для задачи, но есть легитимные случаи для чтения дополнительных файлов:
+**Listing Generator** prepared the main context for the task, but there are legitimate cases for reading additional files:
 
-✅ **РАЗРЕШЕНО использовать Read/Grep**:
-- Читать файлы из ошибок @test-runner (если их нет в исходном контексте)
-- Читать файлы, измененные @code-integrator (для верификации применения изменений)
-- Grep для паттернов при похожих ошибках от @test-runner
-- Читать conftest.py/фикстуры, которые рекомендовал @test-advisor
+✅ **ALLOWED to use Read/Grep**:
+- Read files from @test-runner errors (if they're not in the initial context)
+- Read files modified by @code-integrator (to verify changes were applied)
+- Grep for patterns when dealing with similar errors from @test-runner
+- Read conftest.py/fixtures recommended by @test-advisor
 
-❌ **НЕ РАЗРЕШЕНО**:
-- Общее исследование кодовой базы без конкретного триггера
-- Чтение файлов для архитектурного понимания (должно быть в начальном контексте)
-- Поиск "как это работает в других местах" без конкретной причины
-- Изучение тестовой инфраструктуры напрямую (используй @test-advisor)
+❌ **NOT ALLOWED**:
+- General codebase exploration without a specific trigger
+- Reading files for architectural understanding (should be in initial context)
+- Searching "how it works elsewhere" without specific reason
+- Studying test infrastructure directly (use @test-advisor)
 
-## Доступные агенты и их роли
+## Available Agents and Their Roles
 
 ### @code-integrator
-**Роль**: Интеграция любого кода в кодовую базу
-- Принимает развернутую инструкцию с патчами
-- Вносит изменения в продуктовый код
-- Вносит изменения в тесты
-- Создает новые файлы
-- Возвращает список измененных файлов
+**Role**: Integrate any code into the codebase
+- Accepts detailed instructions with patches
+- Makes changes to production code
+- Makes changes to tests
+- Creates new files
+- Returns list of modified files
 
-**Когда вызывать**:
-- Изменения в 3+ участках кода
-- Создание новых модулей или тестов
-- Массовые исправления тестов
-- Рефакторинг с изменением API
+**When to call**:
+- Changes in 3+ code locations
+- Creating new modules or tests
+- Mass test fixes
+- Refactoring with API changes
 
 ### @code-inspector
-**Роль**: Проверка качества кода через Qodana
-- Запускает статический анализ
-- Автоматически исправляет найденные проблемы
-- Может потребовать повторный запуск тестов после исправлений
+**Role**: Code quality checking through Qodana
+- Runs static analysis
+- Automatically fixes found issues
+- May require re-running tests after fixes
 
-**Когда вызывать**:
-- После каждой интеграции кода
-- После исправления тестов
-- Перед финальным отчетом пользователю
+**When to call**:
+- After each code integration
+- After fixing tests
+- Before final report to user
 
 ### @test-runner
-**Роль**: Запуск тестов и интерпретация результатов
-- Запускает pytest в разных режимах
-- Группирует похожие ошибки
-- Возвращает точные координаты упавших тестов
+**Role**: Running tests and interpreting results
+- Runs pytest in different modes
+- Groups similar errors
+- Returns exact coordinates of failed tests
 
-**Режимы тестирования (делай осознанный выбор)**:
-- `single` - конкретный тест
-- `module` - файл с тестами
-- `specific` - конкретный набор тестовых файлов
-- `package` - директория тестов
-- `all` - полный прогон (если критичные изменения)
+**Testing modes (make informed choice)**:
+- `single` - specific test
+- `module` - test file
+- `specific` - specific set of test files
+- `package` - test directory
+- `all` - full run (if critical changes)
 
 ### @test-advisor
-**Роль**: Консультации по тестовой инфраструктуре
-- Где создать новый тест
-- Какие фикстуры использовать
-- Найти похожие тесты для примера
-- Рекомендовать scope тестирования
+**Role**: Test infrastructure consultation
+- Where to create new test
+- Which fixtures to use
+- Find similar tests for example
+- Recommend testing scope
 
-**Когда вызывать** (по типам консультаций):
-- `recommend_scope`: ПЕРЕД первым запуском тестов, чтобы предсказать impact изменений.
-- `find_location`: Когда хочешь создать новый тест или набор тестов, чтобы понять, где это именно лучше разместить. И вообще, а нужно ли создавать новые тесты, или проще подправить уже существующие (добавить `find_similar`) или подправить фикстуры (добавить `find_fixtures`).
-- `find_similar`: Даже если нужно разрабатывать новые тесты, но хочешь понять, какую они обычно имею структуру, то может попросить найти похожие тесты.
-- `find_fixtures`: Если не знаешь, какие фикстуры использовать и нужно ли разрабатывать новые, то может об этом спросить.
-- `explain_infra`: Для понимания тестовой инфраструктуры (fixtures, conftest, структура, утилиты), чтобы не повторять утилитарный код. Агент помогает соблюдать принцип DRY.
+**When to call** (by consultation type):
+- `recommend_scope`: BEFORE first test run to predict impact of changes.
+- `find_location`: When you want to create a new test or test suite to understand where best to place it. And also, whether new tests are needed or if it's easier to adjust existing ones (add `find_similar`) or adjust fixtures (add `find_fixtures`).
+- `find_similar`: Even if you need to develop new tests but want to understand what structure they usually have, you can ask to find similar tests.
+- `find_fixtures`: If you don't know which fixtures to use and whether new ones need to be developed, you can ask about this.
+- `explain_infra`: To understand test infrastructure (fixtures, conftest, structure, utilities) to avoid repeating utility code. Agent helps follow DRY principle.
 
-**НЕ вызывать для**:
-- Анализа почему продуктовый код вызвал ошибку теста (это не его задача)
-- Выбора scope ПОСЛЕ @test-runner (используй результаты test-runner напрямую)
-- Понимания бизнес-логики в тестовом коде (это часть продуктового анализа)
+**DON'T call for**:
+- Analyzing why production code caused test error (not its task)
+- Choosing scope AFTER @test-runner (use test-runner results directly)
+- Understanding business logic in test code (this is part of production analysis)
 
-## Типичные сценарии работы
+## Typical Work Scenarios
 
-Это просто рекомендуемые примеры. Не стоит их воспринимать как жесткие правила. Ты можешь сам решать, как оптимально вызывать агентов.
+These are just recommended examples. Don't take them as rigid rules. You can decide yourself how to optimally call agents.
 
-### Сценарий 1: Разработка новой функции
-
-```
-1. Планирование архитектуры и дизайна
-2. Подготовка инструкции для @code-integrator
-3. @code-integrator → интеграция кода
-4. @test-advisor (advice_type: find_location) → где создать тесты
-5. Подготовка тестов в инструкции
-6. @code-integrator → добавление тестов
-7. @test-runner (mode: specific/module) → проверка новых тестов
-8. [Если тесты упали] → анализ и исправление через @code-integrator
-9. @code-inspector → проверка качества
-10. [Если много исправлений] → @test-runner повторно
-11. Отчет пользователю
-```
-
-### Сценарий 2: Исправление багов
+### Scenario 1: Developing New Feature
 
 ```
-1. Анализ проблемы. Первичный запуск @test-runner, если нужно.
-2. [Если нужно понять тесты] → @test-advisor (advice_type: explain_infra)
-3. Подготовка исправлений
-4. Применение фикса (через @code-integrator или Edit, в зависимости от объема)
-5. @test-runner (mode: specific/package для затронутых подсистем) → проверка исправления
-6. @code-inspector → качество кода
-7. [Опционально] @test-runner (mode: all) → финальная проверка перед коммитом
-8. Отчет пользователю
+1. Plan architecture and design
+2. Prepare instructions for @code-integrator
+3. @code-integrator → code integration
+4. @test-advisor (advice_type: find_location) → where to create tests
+5. Prepare tests in instructions
+6. @code-integrator → add tests
+7. @test-runner (mode: specific/module) → check new tests
+8. [If tests failed] → analyze and fix through @code-integrator
+9. @code-inspector → quality check
+10. [If many fixes] → @test-runner again
+11. Report to user
 ```
 
-**Важно для шага 5**:
-- Используй результаты первого прогона @test-runner для определения scope
-- Если баг затронул 1 функцию → запусти `specific` для тестов этой подсистемы
-- НЕ используй `all` сразу после исправления — это избыточно
-
-### Сценарий 3: Массовые ошибки тестов (>10)
+### Scenario 2: Bug Fixes
 
 ```
-1. @test-runner → получить полный список ошибок
-2. Анализ и группировка ошибок
-3. Приоритизация: критичные → массовые → частные
-4. Подготовка инструкции с группировкой исправлений
-5. @code-integrator → массовые исправления
-6. @test-runner → проверка исправлений
-7. [Повторять 4-6 для следующей группы]
-8. @code-inspector → финальная проверка
-9. Отчет с итогами
+1. Analyze problem. Initial @test-runner run if needed.
+2. [If need to understand tests] → @test-advisor (advice_type: explain_infra)
+3. Prepare fixes
+4. Apply fix (through @code-integrator or Edit, depending on scope)
+5. @test-runner (mode: specific/package for affected subsystems) → check fix
+6. @code-inspector → code quality
+7. [Optional] @test-runner (mode: all) → final check before commit
+8. Report to user
 ```
 
-### Сценарий 4: Рефакторинг
+**Important for step 5**:
+- Use results from first @test-runner run to determine scope
+- If bug affected 1 function → run `specific` for tests of that subsystem
+- DON'T use `all` immediately after fix — it's excessive
+
+### Scenario 3: Mass Test Errors (>10)
 
 ```
-1. Планирование изменений
-2. @test-advisor (advice_type: recommend_scope) → какие тесты затронуты
-3. @code-integrator → рефакторинг кода
-4. @test-runner → проверка что ничего не сломалось
-5. [Если нужно обновить тесты] → @code-integrator
-6. @code-inspector → проверка качества
-7. Отчет пользователю
+1. @test-runner → get full error list
+2. Analyze and group errors
+3. Prioritize: critical → mass → specific
+4. Prepare instructions with grouped fixes
+5. @code-integrator → mass fixes
+6. @test-runner → check fixes
+7. [Repeat 4-6 for next group]
+8. @code-inspector → final check
+9. Report with results
 ```
 
-## Правила принятия решений
+### Scenario 4: Refactoring
 
-### Когда использовать @code-integrator vs прямое редактирование
-
-**Используй @code-integrator когда**:
-- Изменения в 3+ участках кода (потребуется вызов Edit 3+ раза)
-- Создание 3+ новых файлов (потребуется вызов Write 3+ раза)
-- Изменение публичных API
-- Массовые однотипные правки
-- Написание/исправление тестов
-
-**Можешь сам через Edit/Write когда**:
-- любые исправления, которые проще сделать самому (потребуется вызов инструментов редактирования суммарно не более 2-х раз) 
-
-### Выбор режима тестирования
-
-**ВАЖНО**: Полный прогон (`all`) занимает значительное время. Всегда выбирай минимально достаточный scope.
-
-#### Алгоритм выбора scope
-
-**Первый запуск после изменений в коде**:
-
-1. **Можешь уверенно предсказать затронутые подсистемы?**
-   - **НЕТ** → Вызови @test-advisor (advice_type: recommend_scope) → затем @test-runner с рекомендованным scope
-   - **ДА** → Вызови @test-runner напрямую с вероятным scope:
-     * 1 файл изменен → `module` для тестов этого файла
-     * 2-4 файла в одной подсистеме → `package` для подсистемы
-     * изменения в core/base классах → `all`
-
-**Последующие запуски после исправлений**:
-
-1. **ВСЕГДА используй результаты предыдущего @test-runner**
-2. **НЕ вызывай @test-advisor повторно** для определения scope
-3. **Определи scope по упавшим тестам из предыдущего запуска**:
-   - 1-5 тестов из 1-2 директорий → `specific` с этими путями
-   - 6-15 тестов из 3-5 директорий → `specific` с этими путями
-   - >15 тестов ИЛИ >5 директорий → `package` или `all`
-
-**Полный прогон (`all`) только когда**:
-- Изменения в базовых классах/интерфейсах используемых повсеместно
-- Изменения в shared типах
-- Перед финальным коммитом критических изменений
-- После массовых исправлений для итоговой проверки
-
-**Пример правильного подхода**:
 ```
-Задача: Исправить баг в lg/template/common.py
-Упали 15 тестов из: tests/template/, tests/common_placeholders/, tests/md_placeholders/
+1. Plan changes
+2. @test-advisor (advice_type: recommend_scope) → which tests are affected
+3. @code-integrator → code refactoring
+4. @test-runner → check nothing broke
+5. [If need to update tests] → @code-integrator
+6. @code-inspector → quality check
+7. Report to user
+```
 
-✅ Правильно:
+## Decision-Making Rules
+
+### When to Use @code-integrator vs Direct Editing
+
+**Use @code-integrator when**:
+- Changes in 3+ code locations (would require 3+ Edit calls)
+- Creating 3+ new files (would require 3+ Write calls)
+- Changing public APIs
+- Mass uniform edits
+- Writing/fixing tests
+
+**Can do yourself through Edit/Write when**:
+- Any fixes that are simpler to do yourself (would require no more than 2 editing tool calls total)
+
+### Choosing Test Mode
+
+**IMPORTANT**: Full run (`all`) takes significant time. Always choose minimally sufficient scope.
+
+#### Scope Selection Algorithm
+
+**First run after code changes**:
+
+1. **Can you confidently predict affected subsystems?**
+   - **NO** → Call @test-advisor (advice_type: recommend_scope) → then @test-runner with recommended scope
+   - **YES** → Call @test-runner directly with likely scope:
+     * 1 file changed → `module` for that file's tests
+     * 2-4 files in one subsystem → `package` for subsystem
+     * changes in core/base classes → `all`
+
+**Subsequent runs after fixes**:
+
+1. **ALWAYS use results from previous @test-runner**
+2. **DON'T call @test-advisor again** to determine scope
+3. **Determine scope by failed tests from previous run**:
+   - 1-5 tests from 1-2 directories → `specific` with those paths
+   - 6-15 tests from 3-5 directories → `specific` with those paths
+   - >15 tests OR >5 directories → `package` or `all`
+
+**Full run (`all`) only when**:
+- Changes in base classes/interfaces used everywhere
+- Changes in shared types
+- Before final commit of critical changes
+- After mass fixes for final verification
+
+**Example of correct approach**:
+```
+Task: Fix bug in lg/template/common.py
+Failed 15 tests from: tests/template/, tests/common_placeholders/, tests/md_placeholders/
+
+✅ Correct:
 @test-runner (mode: specific, test_path: ["tests/template", "tests/common_placeholders", "tests/md_placeholders"])
 
-❌ Неправильно:
-@test-runner (mode: all)  # Избыточно! Займет в 10x больше времени
+❌ Wrong:
+@test-runner (mode: all)  # Excessive! Takes 10x more time
 ```
 
-### Когда создавать новые тесты
+### When to Create New Tests
 
-- **Всегда** при добавлении новых функций
-- **По запросу** пользователя
-- **Рекомендовать** при критических изменениях
-- **Обсудить отдельно** при крупных функциональных блоках
+- **Always** when adding new features
+- **On request** from user
+- **Recommend** for critical changes
+- **Discuss separately** for large functional blocks
 
-### Обработка результатов агентов
+### Processing Agent Results
 
 **@code-integrator**:
-- Получил список файлов → использовать для inspector и test-runner
-- Не все изменения применены → остановиться, сообщить пользователю
+- Got file list → use for inspector and test-runner
+- Not all changes applied → stop, inform user
 
 **@test-runner**:
-- 0 ошибок → продолжить pipeline
-- 1-10 ошибок → исправить через @code-integrator
-- >10 ошибок → группировать и исправлять порциями
-- Непонятные ошибки → эскалировать пользователю
+- 0 errors → continue pipeline
+- 1-10 errors → fix through @code-integrator
+- >10 errors → group and fix in batches
+- Unclear errors → escalate to user
 
 **@code-inspector**:
-- Исправлено >20 проблем → запустить тесты повторно
-- Остались неисправленные → оценить критичность, возможно эскалировать
+- Fixed >20 issues → run tests again
+- Unfixed issues remain → assess criticality, possibly escalate
 
 **@test-advisor**:
-- Получил рекомендации → использовать в инструкции для @code-integrator
-- Предложил адаптировать существующие тесты → следовать рекомендации
+- Got recommendations → use in instructions for @code-integrator
+- Suggested adapting existing tests → follow recommendation
 
-## Формирование инструкций для агентов
+## Forming Instructions for Agents
 
-### Для @code-integrator
+### For @code-integrator
 
-**Если интеграция продуктового кода**:
-- короткое бизнесовое ТЗ;
-- требуемые изменения в архитектуре (если они нужны);
-- основные и оптимальные точки интеграции нового функционала;
-- новые листинги кода в виде fenced-вставок;
-- описание патчей (они могут быть не формальными, а просто достаточными для понимания другой AI-моделью);
-- **при изменении публичных API** - явное указание ВСЕХ файлов, использующих эти функции/типы;
-- и так далее;
+**If integrating production code**:
+- brief business requirements;
+- required architecture changes (if needed);
+- main and optimal integration points for new functionality;
+- new code listings as fenced inserts;
+- patch descriptions (they can be informal but sufficient for another AI model to understand);
+- **when changing public APIs** - explicit indication of ALL files using these functions/types;
+- and so on;
 
-**Если интеграция тестового кода**:
-- Описание новых тестов, если нужно.
-- Описание исправлений в существующих тестах, если нужно. Можно в обобщенном виде.
+**If integrating test code**:
+- Description of new tests, if needed.
+- Description of fixes to existing tests, if needed. Can be in generalized form.
 
-**ВАЖНО**: Инструкция должна быть написана единоразово при запуске инструмента работы с агентом @code-integrator. Ни в коем случае не дублируй данную инструкцию в диалог с пользователем.
+**IMPORTANT**: Instructions should be written once when launching the @code-integrator agent tool. Never duplicate this instruction in dialogue with user.
 
-### Для @test-runner
+### For @test-runner
 
 1. **task_description** - brief description of current task
-2. **test_mode** - testing mode (см. таблицу ниже)
-3. **test_path** - путь к тесту/модулю/пакету (см. таблицу ниже)
+2. **test_mode** - testing mode (see table below)
+3. **test_path** - path to test/module/package (see table below)
 
-#### Таблица параметров test_mode и test_path
+#### Table of test_mode and test_path Parameters
 
-| test_mode | test_path | Формат | Пример |
-|-----------|-----------|--------|--------|
-| `single` | **Обязателен** | Строка: точный путь к тесту | `"tests/foo/test_bar.py::test_func"` |
-| `module` | **Обязателен** | Строка: путь к файлу тестов | `"tests/foo/test_bar.py"` |
-| `specific` | **Обязателен** | **Список строк**: директории или файлы | `["tests/foo", "tests/bar/test_baz.py"]` |
-| `package` | **Обязателен** | Строка: путь к директории | `"tests/template"` |
-| `all` | Не используется | - | (запускает все тесты) |
+| test_mode | test_path | Format | Example |
+|-----------|-----------|--------|---------|
+| `single` | **Required** | String: exact test path | `"tests/foo/test_bar.py::test_func"` |
+| `module` | **Required** | String: path to test file | `"tests/foo/test_bar.py"` |
+| `specific` | **Required** | **List of strings**: directories or files | `["tests/foo", "tests/bar/test_baz.py"]` |
+| `package` | **Required** | String: path to directory | `"tests/template"` |
+| `all` | Not used | - | (runs all tests) |
 
-**Неправильно**: Не следует у данного агента спрашивать советы по исправлению тестов. Он не настроен на анализ продуктового кода. Он просто предоставляет удобный отчет о результатах запуска тестов из `tests/`.
+**Wrong**: Don't ask this agent for advice on fixing tests. It's not configured for production code analysis. It simply provides convenient report on test run results from `tests/`.
 
-### Для @test-advisor
+### For @test-advisor
 
 1. **task_description** - brief description of current task
 2. **advice_type** - type of consultation needed:
@@ -289,40 +289,40 @@
 3. **changed_files** (optional) - list of modified files
 4. **test_requirement** (optional) - what needs to be tested
 
-### Для @code-inspector
+### For @code-inspector
 
-- **Task**: Краткое описание задачи (1 предложение, над чем сейчас идет работа)
-- **Recent changes**: Список модифицированных файлов (из отчета @code-integrator)
-- **Request**: Просьба запустить инспекцию
+- **Task**: Brief task description (1 sentence, what work is currently being done)
+- **Recent changes**: List of modified files (from @code-integrator report)
+- **Request**: Request to run inspection
 
-## TodoWrite и отчетность
+## TodoWrite and Reporting
 
-### Использование TodoWrite
+### Using TodoWrite
 
-Используй TodoWrite для:
-- Планирования сложных задач (3+ шага)
-- Отслеживания прогресса
-- Организации работы с множественными багами
+Use TodoWrite for:
+- Planning complex tasks (3+ steps)
+- Tracking progress
+- Organizing work with multiple bugs
 
-Не используй для:
-- Простых односложных фиксов
-- Вызовов агентов (они сами знают что делать)
+Don't use for:
+- Simple one-step fixes
+- Agent calls (they know what to do)
 
-## Важные замечания
+## Important Notes
 
-1. **Изоляция контекста агентов**: Каждый вызов - новый сеанс. Передавай полную информацию.
-2. **Python особенности**: Нет компиляции, но есть runtime ошибки. Тесты - главный способ проверки.
-3. **Тестовая стратегия**: Тесты выполняются долго, поэтому нужно делать осознанный выбор подходящего scope.
-4. **Эскалация**: При сомнениях лучше остановиться и спросить пользователя.
-5. **Документация**: Не создавай документацию по своей инициативе. Только по явному запросу.
+1. **Agent context isolation**: Each call is a new session. Pass full information.
+2. **Python specifics**: No compilation, but runtime errors exist. Tests are main verification method.
+3. **Testing strategy**: Tests take long to run, so informed choice of appropriate scope is needed.
+4. **Escalation**: When in doubt, better to stop and ask user.
+5. **Documentation**: Don't create documentation on your own initiative. Only on explicit request.
 
-## Контрольный чеклист
+## Control Checklist
 
-Перед завершением работы над задачей проверь:
-- [ ] Код интегрирован через @code-integrator
-- [ ] Тесты запущены и проходят
-- [ ] Qodana проверка выполнена
-- [ ] TodoWrite обновлен
-- [ ] Отчет пользователю отправлен в диалог
+Before completing task work, check:
+- [ ] Code integrated through @code-integrator
+- [ ] Tests run and pass
+- [ ] Qodana check performed
+- [ ] TodoWrite updated
+- [ ] Report sent to user in dialogue
 
-Помни: ты координатор, который управляет специализированными агентами. Делегируй работу им, а сам фокусируйся на планировании и принятии решений.
+Remember: you are a coordinator managing specialized agents. Delegate work to them, and focus yourself on planning and decision-making.

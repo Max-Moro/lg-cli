@@ -1,78 +1,78 @@
-# Принципы дизайна и проектирования
+# Design and Architecture Principles
 
-## Принцип "high cohesion low coupling"
+## The "High Cohesion Low Coupling" Principle
 
-Принцип высокого сцепления и низкой связанности — является основным и самым важным при построении логики программного продукта. Мы стараемся мысленно представить картину:
-- операторы, функции и методы — это набор точек
-- файлы (модули) и пакеты — это крупные круги (множества), группирующие точки
-- вызовы методов и функций, импорты (зависимости) — это линии, соединяющие точки и множества
+The principle of high cohesion and low coupling is the primary and most important when building the logic of a software product. We try to mentally visualize the picture:
+- operators, functions and methods — are a set of points
+- files (modules) and packages — are large circles (sets) grouping points
+- method and function calls, imports (dependencies) — are lines connecting points and sets
 
-Представив данную картину, необходимо стараться так структурировать логику, чтобы по итогу кодовая база выглядела, как совокупность очень плотных и хорошо сцепленных точечных кластеров, который имеют очень мало внешних связей (зависимостей) с соседними, такими же плотными кластерами. Внутри множества много линий, между множествами — редкие линии.
+Having visualized this picture, it's necessary to structure the logic so that the resulting codebase looks like a collection of very dense and well-cohesive point clusters that have very few external connections (dependencies) with neighboring, equally dense clusters. Many lines inside sets, rare lines between sets.
 
-Соблюдение данного принципа позволяет грамотно организовывать логику по классам и файлам, в свою очередь файлы группировать по пакетам, а пакеты выстраивать в более крупные иерархии (пакетные модули).
+Adhering to this principle allows you to properly organize logic into classes and files, in turn group files into packages, and build packages into larger hierarchies (package modules).
 
-Принцип "high cohesion low coupling" тесно связан со своевременным выявлением и пресечением появления антипаттерна "божественный класс" или "божественный модуль" (файл), у которых раздутая ответственность, а значит низкое сцепление, но, возможно, высокая связанность. Можно выявить некоторые синтетические метрики: модуль меняется «по любому поводу», часто конфликты при мерджах, высокий фан-ин/фан-аут. Верно и обратное. Иногда после рефакторинга можно обнаружить вырожденные модули, состоящие только из одной функции, — это кандидаты на переезд в другой, более крупный модуль.
+The "high cohesion low coupling" principle is closely related to timely detection and prevention of the "god class" or "god module" (file) antipattern, which has bloated responsibilities and therefore low cohesion but possibly high coupling. Certain synthetic metrics can be identified: the module changes "for any reason", frequent merge conflicts, high fan-in/fan-out. The reverse is also true. Sometimes after refactoring you can find degenerate modules consisting of only one function — these are candidates for moving to another, larger module.
 
-Высокое сцепление тесно связано с принципом SRP (из SOLID). Соблюдая одно, мы обычно сразу соблюдаем и другое.
+High cohesion is closely related to the SRP principle (from SOLID). By adhering to one, we usually immediately adhere to the other.
 
-Низкую связанность можно добиться не только разделением модулей, но и введением дополнительных интерфейсных абстракций. Тут мы обнаруживаем прямую связь между принципами "Interface Segregation" и "Dependency Inversion" (из SOLID). Клиенты не должны зависеть от интерфейсов, которые они не используют. Модули верхнего уровня не должны зависеть от модулей нижнего уровня; оба должны зависеть от абстракций.
+Low coupling can be achieved not only by separating modules, but also by introducing additional interface abstractions. Here we find a direct connection between the "Interface Segregation" and "Dependency Inversion" principles (from SOLID). Clients should not depend on interfaces they don't use. High-level modules should not depend on low-level modules; both should depend on abstractions.
 
-## Принцип DRY
+## The DRY Principle
 
-Это второй по важности принцип, который необходимо соблюдать при развитии кодовой базы.
+This is the second most important principle that must be followed when developing the codebase.
 
-При работе над новой функцией всегда есть соблазн действовать прямолинейно:
-- напишу по образцу и подобию;
-- нашел хороший пример, сделай, как там;
-- скопирую данный участок кода и подправлю под свои нужды;
-  Подобные действия сразу создают технический долг — нарушение принципа DRY.
+When working on a new feature, there's always a temptation to act straightforwardly:
+- I'll write by analogy;
+- found a good example, do it like there;
+- I'll copy this code section and adjust it to my needs;
+  Such actions immediately create technical debt — violation of the DRY principle.
 
-Вместо этого, необходимо сразу оценить, как лучшим образом унифицировать и переиспользовать общий участок логики:
-- вынос общей функции или метода;
-- выделение общего родительского класса;
-- использование любых других паттернов в сложных ситуациях: декорирование, проксирование, функции обратного вызова и так далее;
+Instead, it's necessary to immediately assess how best to unify and reuse the common logic section:
+- extracting a common function or method;
+- highlighting a common parent class;
+- using any other patterns in complex situations: decoration, proxying, callback functions, and so on;
 
-Для DRY часто дополнительно уточняется правило "трех". Лучше прямолинейно им не руководствоваться, а оценивать комплексно. Даже два раза продублированные 100 строк идентичной логики — это довольно плохо. А вот дублировать 5 раз по 3 строки — нормально. Это не жесткие эвристики, нужно всегда думать своей головой.
+For DRY, the "rule of three" is often additionally specified. It's better not to follow it straightforwardly but to assess comprehensively. Even two times duplicated 100 lines of identical logic is quite bad. But duplicating 5 times 3 lines each is fine. These are not strict heuristics, you always need to think with your own head.
 
-## Принцип разделения по уровням универсальности
+## The Principle of Separation by Universality Levels
 
-При работе над текущей задачей часто обнаруживается, что не хватает некоторой небольшой утилиты или простого инструмента. Возникает соблазн быстро его имплементировать и положить рядом с бизнес логикой. Но мы забываем, что данная вещь универсальная и может пригодиться в будущем и на других участках.
+When working on the current task, it's often discovered that some small utility or simple tool is missing. There's a temptation to quickly implement it and place it next to the business logic. But we forget that this thing is universal and may be useful in the future in other sections.
 
-Необходимо сразу производить разделение логики по уровням универсальности:
-- системные и прикладные слои;
-- универсальные утилиты и конечная бизнес логика;
-- абстрактные каркасы и частные случаи;
+It's necessary to immediately separate logic by universality levels:
+- system and application layers;
+- universal utilities and final business logic;
+- abstract frameworks and special cases;
 
-Такой подход способствует лучшей перспективе переиспользования кода.
+Such an approach promotes better prospects for code reuse.
 
-Есть более конкретные именованные подходы, которые соблюдают данный принцип: порты-и-адаптеры/гексагональная архитектура. Но мы сейчас не вдаемся в брендированные каракасы, а пытаемся сформулировать более универсальные принципы.
+There are more specific named approaches that adhere to this principle: ports-and-adapters/hexagonal architecture. But we're not now going into branded frameworks, but trying to formulate more universal principles.
 
-## Принцип ортогонального развития
+## The Principle of Orthogonal Development
 
-Необходимо стараться выстраивать такую архитектуру системы, чтобы ее можно было улучшать и развивать в разных направлениях. И делать это довольно независимо — с минимальными мердж конфликтами. В хорошей спроектированной кодовой базе бизнес функции должны добавлять локализованно: в один модуль или пакет. Избегается размазанное добавление функционала в десятки файлов.
+It's necessary to try to build such a system architecture that it can be improved and developed in different directions. And do this quite independently — with minimal merge conflicts. In a well-designed codebase, business features should be added locally: in one module or package. Smeared addition of functionality across dozens of files is avoided.
 
-Если поступающие новые требования не позволяют удобным образом (локализованно) интегрировать их в текущую кодовую базу, то это является верным признаком неподходящей структуры. Возможно, стоит повременить с развитием бизнес логики и подумать о переработке архитектуры. Чтобы не накапливать технические долги в будущем.
+If incoming new requirements don't allow convenient (localized) integration into the current codebase, this is a sure sign of an unsuitable structure. Perhaps it's worth delaying business logic development and thinking about architecture rework. So as not to accumulate technical debts in the future.
 
-Приведем пример. Файл (модуль) с общими константами приложения, кажется, что с одной стороны является хорошей идеей — избавляет код от магических значений. С другой стороны, сильно нарушает принцип ортогонального развития — данный модуль будет меняться постоянно, в результате любых изменений в логике. Более корректный подход — «feature-scoped settings».
+Let's give an example. A file (module) with common application constants seems, on one hand, to be a good idea — it frees the code from magic values. On the other hand, it strongly violates the principle of orthogonal development — this module will change constantly, as a result of any changes in logic. A more correct approach is "feature-scoped settings".
 
-## Какие общепринятые принципы мы осознанно нарушаем
+## Which Generally Accepted Principles We Consciously Violate
 
-Хорошо, это был кликбейтный заголовок — точнее не всегда следуем им бездумно.
+Well, that was a clickbait heading — more precisely, we don't always follow them mindlessly.
 
-«Совместимость: не ломай публичные API без версионирования/миграций». Да, казалось бы, хорошая штука, но его соблюдение ведет к грязному коду. Нужно оценивать ситуацию, что мы именно делаем. Если мы разрабатываем публичную библиотеку или публичную WEB-службу — это одна ситуация. Если наш код весь внутренний — это совершенно другая ситуация, при которой выгоднее делать полностью законченные рефакторинги, чем оставлять обратную совместимость.
+"Compatibility: don't break public APIs without versioning/migrations". Yes, it would seem like a good thing, but adhering to it leads to dirty code. You need to assess the situation, what exactly we're doing. If we're developing a public library or public WEB service — that's one situation. If our code is all internal — that's a completely different situation, in which it's more beneficial to do fully complete refactorings than to maintain backward compatibility.
 
-«KISS & YAGNI». Это не плохие принципы. Но они слишком простые, в них нет четких критериев. Обычно AI-агент не знает, в какую сторону будут развиваться далее требования к системе. Для AI-агента аналитик — это человек, который с ним работает. По этой причине лучше посоветоваться с пользователем и явно спросить, нужен ли тот или иной рефакторинг, или же это будет усложнение на пустом месте.
+"KISS & YAGNI". These are not bad principles. But they're too simple, they lack clear criteria. Usually an AI agent doesn't know in which direction the system requirements will develop further. For an AI agent, the analyst is the person working with it. For this reason, it's better to consult with the user and explicitly ask whether this or that refactoring is needed, or whether it will be overengineering.
 
-## Быть живым разработчиком
+## Being a Living Developer
 
-Это уже даже не принцип дизайна и проектирования программного обеспечения, а скорее общая рекомендация к поведению. При итеративной разработке постоянно поступают новые требования, запросы нового функционала и даже инициативы по созданию новых крупных функциональных блоков.
+This is no longer even a principle of software design and architecture, but rather a general behavioral recommendation. During iterative development, new requirements, requests for new functionality, and even initiatives to create new large functional blocks constantly arrive.
 
-Но не нужно бросаться и как робот, сразу начинать конкретно и прямолинейно решать поставленную задачу. Необходимо действовать как живой разработчик. Сперва нужно оценить, а готова ли текущая архитектура принять новую порцию необходимых изменений? Возможно, перед имплементацией бизнес функции, стоит сделать ряд подготовительных рефакторингов, чтобы соблюсти все перечисленные выше принципы.
+But you shouldn't rush and like a robot, immediately start specifically and straightforwardly solving the assigned task. It's necessary to act like a living developer. First you need to assess whether the current architecture is ready to accept a new batch of necessary changes? Perhaps before implementing business features, it's worth doing a number of preparatory refactorings to adhere to all the above principles.
 
-Может быть и ситуация наоборот. Уже после имплементации новых требований, мы можем заметить возникшие проблемы и дурно пахнущий код. Тогда стоит сразу сделать улучшающий рефакторинг, чтобы не накапливать технические долги.
+There may also be a reverse situation. Already after implementing new requirements, we may notice emerging problems and bad-smelling code. Then it's worth immediately doing an improving refactoring, so as not to accumulate technical debts.
 
-Живому разработчику также свойственен прагматичный подход. И даже в какой-то степени полезная лень. Все рефакторинги и улучшения он делает, не рази святой цели добиться идеальной чистой архитектуры. Он понимает, что систематизированные улучшения помогут ему в будущем проще работать с кодовой базой. Но тут важно не перестараться. Применение любого паттерна или принципа может вести к оверинжинирингу. Если запрошенная бизнес функция реализуется всего 10 строк, а для улучшения архитектуры потребуется 500 строк нового кода, то, конечно, это сомнительный рефакторинг.
+A living developer is also characterized by a pragmatic approach. And even to some extent useful laziness. All refactorings and improvements are done not for the holy purpose of achieving perfect clean architecture. They understand that systematic improvements will help them work more easily with the codebase in the future. But it's important not to overdo it. Application of any pattern or principle can lead to overengineering. If the requested business feature is implemented in just 10 lines, and improving the architecture will require 500 lines of new code, then of course, this is questionable refactoring.
 
-## Советоваться с живым пользователем
+## Consulting with a Living User
 
-Мы понимаем. Что при AI-Driven подходе разработку с достаточно глубоким уровнем автоматизации и самостоятельности ведет AI-агент. Он может пытаться быть "живым" исполнителем и пытаться соблюдать все перечисленные выши принципы, но конечно, бывают сложные и неоднозначные ситуации. Не нужно игнорировать возможность в любой момент остановить разработку и просто посоветоваться с реально живым пользователем в диалоге. Такое совместное обсуждение значительно снизит вероятность негативного ревью результирующего кода. Совместное своевременное планирование всего лучше, чем отдельные задачи по переработке архитектуры.
+We understand that with an AI-Driven approach with a sufficiently deep level of automation and independence, development is conducted by an AI agent. It can try to be a "living" performer and try to adhere to all the above principles, but of course, there are complex and ambiguous situations. You shouldn't ignore the possibility to stop development at any moment and simply consult with a really living user in dialogue. Such joint discussion will significantly reduce the probability of negative review of the resulting code. Joint timely planning is better than separate tasks for architecture rework.

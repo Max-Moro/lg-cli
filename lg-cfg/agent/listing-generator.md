@@ -1,31 +1,31 @@
-# Содержимое контекстного окна
+# Context Window Contents
 
-Первичное содержимое твоего контекстного окна подготовлено **Listing Generator** — программный инструмент для сборки «плотных» контекстов из исходников в репозитории. Данный инструмент уже должен быть настроен, чтобы сразу передать тебе все необходимые данные для выполнения поставленной задачи. Обычно это означает, что тебе не нужно самостоятельно исследовать кодовую базу через инструменты чтения и поиска: Read, Edit, Glob, Grep и так далее.
+The initial contents of your context window were prepared by **Listing Generator** — a software tool for assembling "dense" contexts from sources in the repository. This tool should already be configured to immediately provide you with all necessary data to complete the assigned task. This usually means you don't need to independently explore the codebase through reading and search tools: Read, Edit, Glob, Grep, and so on.
 <!-- lg:if tag:claude-code -->
-Если после первичного анализа ты понимаешь, что контекст недостаточен для качественного выполнения задачи:
+If after initial analysis you understand that the context is insufficient for quality task completion:
 
-**Критерии недостаточности контекста**:
-- Отсутствует ключевая документация по подсистеме из задачи
-- Не виден код модулей, импортируемых в файлах задачи
-- Архитектура проекта неясна для принятия проектных решений
-- Контекст явно подготовлен для другого функционального блока
+**Criteria for insufficient context**:
+- Missing key documentation for the subsystem from the task
+- Can't see code of modules imported in task files
+- Project architecture is unclear for making design decisions
+- Context clearly prepared for a different functional block
 
-**Действия при недостаточном контексте**:
-- Сообщи пользователю о проблеме с **Listing Generator**
-- НЕ начинай самостоятельное исследование через Read/Grep без оснований
+**Actions with insufficient context**:
+- Inform user about problem with **Listing Generator**
+- DON'T start independent exploration through Read/Grep without grounds
 
-**Легитимные исключения** (см. подробно в agents-pipeline.md, секция "Управление контекстом"):
-- Файлы, упомянутые в ошибках от @test-runner или @code-inspector, но которых еще нет в контексте от **Listing Generator**
-- Верификация изменений, примененных @code-integrator
-- Фикстуры и conftest.py, рекомендованные @test-advisor
-- Grep для поиска паттернов при похожих ошибках
+**Legitimate exceptions** (see details in agents-pipeline.md, "Context Management" section):
+- Files mentioned in errors from @test-runner or @code-inspector that are not yet in context from **Listing Generator**
+- Verification of changes applied by @code-integrator
+- Fixtures and conftest.py recommended by @test-advisor
+- Grep for searching patterns in similar errors
 <!-- lg:else -->
-Если после первичного анализа ты понимаешь, что тебе явно не хватает данных для качественного выполнения задачи:
+If after initial analysis you understand that you clearly lack data for quality task completion:
 
-- не вся полезная документация по проекту загружена в контекст;
-- не весь связанный с задачей программный код виден сразу (на основе анализа импортов);
-- не понятна в целом архитектура проекта;
-- контекст подготовлен для другого функционального блока и отправлен тебе по ошибке;
+- not all useful project documentation is loaded in context;
+- not all task-related program code is visible immediately (based on import analysis);
+- project architecture is not clear overall;
+- context prepared for a different functional block and sent to you by mistake;
 
-, то в такой ситуации стоит сразу прекратить работу над задачей и сообщить пользователю о проблеме с инструментом **Listing Generator**.
+, then in such a situation it's worth immediately stopping work on the task and informing the user about the problem with the **Listing Generator** tool.
 <!-- lg:endif -->
