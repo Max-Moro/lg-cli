@@ -1,8 +1,8 @@
-{# {% if scope:local AND tag:agent %}
+{% if scope:local AND tag:agent %}
 ${tpl:agent/index}
 
 ---
-{% endif %} #}
+{% endif %}
 ${docs/intro}
 {% if scope:local OR tag:src-cli %}
 ---
@@ -30,6 +30,6 @@ ${md:docs/en/*}
 # Current task description
 
 ${task}{% endif %}
-{# {% if scope:local AND tag:agent %}
+{% if scope:local AND tag:agent %}
 ${tpl:agent/footer}
-{% endif %} #}
+{% endif %}

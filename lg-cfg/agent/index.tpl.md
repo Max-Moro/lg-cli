@@ -8,4 +8,6 @@ ${md@self:agent/agents-pipeline, if:tag:claude-code-subagents}
 
 ${md@self:agent/software-design}
 
-${md@self:agent/stack-python}
+${md@self:agent/stack-python-cli}
+
+${md@self:agent/workspace-and-personal}

@@ -54,6 +54,9 @@ def build_section_manifest(
     # Compute final adapter options considering conditions
     adapters_cfg = _compute_final_adapter_configs(section_config, template_ctx)
 
+    # Determine if section describes local files
+    is_local_files = _is_gitignored_section(section_config, root)
+
     # Preliminary check: determine if section is documentation-only
     # Collect files with vcs_mode: all to check section type
     preview_files = _collect_section_files(
@@ -63,7 +66,8 @@ def build_section_manifest(
         changed_files=set(),  # empty set = all files when vcs_mode == "all"
         vcs_mode="all",
         root=root,
-        adapters_cfg=adapters_cfg
+        adapters_cfg=adapters_cfg,
+        is_local_files=is_local_files
     )
 
     # Determine if section is documentation-only
@@ -92,7 +96,8 @@ def build_section_manifest(
             changed_files=changed,
             vcs_mode=effective_vcs_mode,
             root=root,
-            adapters_cfg=adapters_cfg
+            adapters_cfg=adapters_cfg,
+            is_local_files=is_local_files
         )
 
     # Create manifest
@@ -101,7 +106,8 @@ def build_section_manifest(
         files=files,
         path_labels=section_config.path_labels,
         adapters_cfg=adapters_cfg,
-        is_doc_only=is_doc_only
+        is_doc_only=is_doc_only,
+        is_local_files=is_local_files
     )
 
 
@@ -216,6 +222,35 @@ def _apply_conditional_filters_recursive(node: FilterNode, template_ctx: Templat
     return enhanced_node
 
 
+def _is_gitignored_section(section_cfg: SectionCfg, root: Path) -> bool:
+    """
+    Determines if section's allow patterns are covered by .gitignore.
+    """
+    root_filter = section_cfg.filters
+
+    # Must be in allow mode
+    if root_filter.mode != "allow":
+        return False
+
+    # Must have allow patterns
+    if not root_filter.allow:
+        return False
+
+    # Load .gitignore specification
+    spec_git = build_gitignore_spec(root)
+    if spec_git is None:
+        # No .gitignore - can't be gitignored section
+        return False
+
+    # Check if all allow patterns are covered by gitignore
+    for pattern in root_filter.allow:
+        pattern_normalized = pattern.lstrip('/')
+        if not spec_git.match_file(pattern_normalized):
+            return False
+
+    # All patterns are covered by gitignore
+    return True
+
 def _collect_section_files(
     section_ref: SectionRef,
     section_cfg: SectionCfg,
@@ -223,7 +258,8 @@ def _collect_section_files(
     changed_files: Set[str],
     vcs_mode: str,
     root: Path,
-    adapters_cfg: dict[str, dict]
+    adapters_cfg: dict[str, dict],
+    is_local_files: bool
 ) -> List[FileEntry]:
     """
     Collects files for a section with all filters applied.
@@ -245,8 +281,11 @@ def _collect_section_files(
     # File extensions
     extensions = {e.lower() for e in section_cfg.extensions}
 
-    # Gitignore specification
-    spec_git = build_gitignore_spec(root)
+    # Gitignore specification - skip for local files sections
+    # Local files sections (all patterns covered by .gitignore) represent
+    # deliberate inclusion of specific files (e.g., local configs, workspace docs)
+    # that should bypass .gitignore
+    spec_git = None if is_local_files else build_gitignore_spec(root)
 
     # Prepare target rules for targeted overrides
     target_specs = _prepare_target_specs(section_cfg)

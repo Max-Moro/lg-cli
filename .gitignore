@@ -22,18 +22,16 @@ htmlcov/
 .idea/
 .vscode/
 
+# Code inspection
+.qodana/
+
 # Build artefacts
 dist/
 build/
 
-# Docs
-site/
-
-# AI Chat
-.ai-chat/
-
 # Listing Generator
 .lg-cache/
+lg-cfg/agent/workspace-and-personal.md
 
 # Note: Golden test files (*.golden) are INTENTIONALLY tracked in git
 # They contain expected test outputs for regression testing
@@ -43,4 +41,3 @@ site/
 .claude/*.local.json
 CLAUDE.local.md
 .claude-session.lock
-.qodana/

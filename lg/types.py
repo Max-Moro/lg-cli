@@ -104,6 +104,7 @@ class SectionManifest:
     files: List[FileEntry]
     path_labels: PathLabelMode
     is_doc_only: bool  # True if section contains only markdown/plain text
+    is_local_files: bool = False
     adapters_cfg: Dict[str, Dict] = field(default_factory=dict)
 
 

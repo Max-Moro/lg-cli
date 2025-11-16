@@ -91,7 +91,7 @@ class SectionProcessor:
         )
 
         # For virtual sections (md-placeholders), check file existence
-        if virtual_section_config is not None and not manifest.files:
+        if virtual_section_config is not None and not manifest.files and not manifest.is_local_files:
             # This is our virtual section for md-placeholder
             # Try to recover placeholder information from filters
             if manifest.ref.scope_rel:
