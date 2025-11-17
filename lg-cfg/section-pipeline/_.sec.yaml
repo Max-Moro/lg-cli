@@ -16,7 +16,7 @@ src:
           - "/template/context.py"
           - "/section_processor.py"
           - "/config/"
-          - "/filtering/manifest.py" # Много важной логики, лучше добавлять всегда
+          - "/filtering/manifest.py" # Contains important logic, better to always include
         when:
           - condition: "TAGSET:section-pipeline:filtering"
             allow: ["/filtering/"]

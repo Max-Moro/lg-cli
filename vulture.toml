@@ -1,8 +1,8 @@
 [tool.vulture]
-# Исключаемые директории и файлы
+# Excluded directories and files
 exclude = [
     "tests/*",
-    "test_cache/*", 
+    "test_cache/*",
     "__pycache__/*",
     ".venv/*",
     "build/*",
@@ -12,14 +12,14 @@ exclude = [
     "lg-cfg/*"
 ]
 
-# Минимальная конфиденция для обнаружения мертвого кода (0-100)
+# Minimum confidence for dead code detection (0-100)
 min_confidence = 60
 
-# Игнорировать функции и классы, которые начинаются с подчеркивания
+# Ignore functions and classes starting with underscore
 ignore_decorators = ["@staticmethod", "@classmethod"]
 
-# Игнорировать файлы с определенными паттернами
+# Ignore files with specific patterns
 ignore_names = ["_*", "test_*", "*_test"]
 
-# Считать как используемые функции с определенными именами
+# Consider functions with specific names as used
 make_whitelist = true

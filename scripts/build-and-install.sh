@@ -1,11 +1,11 @@
 #!/bin/bash
-# build-and-install.sh - Автоматическая сборка wheel и установка через pipx
+# build-and-install.sh - Automatic wheel build and installation via pipx
 set -e
 
-cd "$(dirname "$0")/.."  # переходим в корень проекта cli/
+cd "$(dirname "$0")/.."  # navigate to project root cli/
 
 echo "🧹 Cleaning stale build artifacts..."
-# Удаляем build/ и *.egg-info для чистой сборки
+# Remove build/ and *.egg-info for clean build
 rm -rf build/ *.egg-info
 
 echo "🔨 Building wheel..."

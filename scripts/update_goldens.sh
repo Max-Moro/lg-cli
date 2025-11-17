@@ -120,7 +120,7 @@ list_languages() {
                 if [[ "$lang_name" != "__pycache__" && -f "$lang_dir/conftest.py" ]]; then
                     goldens_dir="$lang_dir/goldens"
                     if [[ -d "$goldens_dir" ]]; then
-                        # Подсчитываем файлы с языковыми расширениями во всех поддиректориях
+                        # Count files with language extensions in all subdirectories
                         golden_count=0
                         case "$lang_name" in
                             python)
@@ -133,7 +133,7 @@ list_languages() {
                                 golden_count=$(find "$goldens_dir" -name "*.js" -o -name "*.jsx" | wc -l)
                                 ;;
                             *)
-                                # Fallback: ищем файлы с расширением .golden (старый формат)
+                                # Fallback: search for files with .golden extension (old format)
                                 golden_count=$(find "$goldens_dir" -name "*.golden" | wc -l)
                                 ;;
                         esac
@@ -217,7 +217,7 @@ update_language() {
     fi
     
     if PYTEST_UPDATE_GOLDENS=1 $PYTHON_CMD -m pytest "$test_path" $PYTEST_ARGS; then
-        # Подсчитываем файлы с языковыми расширениями во всех поддиректориях
+        # Count files with language extensions in all subdirectories
         local golden_count=0
         case "$language" in
             python)
@@ -230,7 +230,7 @@ update_language() {
                 golden_count=$(find "$test_path/goldens" -name "*.js" -o -name "*.jsx" 2>/dev/null | wc -l)
                 ;;
             *)
-                # Fallback: ищем файлы с расширением .golden (старый формат)
+                # Fallback: search for files with .golden extension (old format)
                 golden_count=$(find "$test_path/goldens" -name "*.golden" 2>/dev/null | wc -l)
                 ;;
         esac

@@ -7,7 +7,7 @@ intro:
   markdown:
     drop:
       sections:
-        - match: { kind: text, pattern: "Быстрый старт" }
+        - match: { kind: text, pattern: "Quick Start" }
 
 quick-start:
   extensions: [".md"]
@@ -18,4 +18,4 @@ quick-start:
   markdown:
     keep:
       sections:
-        - match: { kind: text, pattern: "Быстрый старт" }
+        - match: { kind: text, pattern: "Quick Start" }

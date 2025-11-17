@@ -1,25 +1,25 @@
 #!/usr/bin/env python3
 """
-Проверяет доступность токенизаторов HuggingFace для анонимного скачивания.
+Checks availability of HuggingFace tokenizers for anonymous download.
 
-Использование:
+Usage:
     python scripts/check_tokenizer_availability.py
 """
 
 from huggingface_hub import list_repo_files, hf_hub_download
 import tempfile
 
-# Кандидаты для проверки
+# Candidates for checking
 TOKENIZERS_CANDIDATES = [
-    # Текущие рекомендуемые
+    # Current recommended
     "gpt2",
     "roberta-base",
     "bert-base-uncased",
     "bert-base-cased",
     "t5-base",
     "google/gemma-tokenizer",
-    
-    # Дополнительные кандидаты
+
+    # Additional candidates
     "facebook/opt-125m",
     "EleutherAI/gpt-neo-125m",
     "EleutherAI/gpt-j-6b",
@@ -30,11 +30,11 @@ TOKENIZERS_CANDIDATES = [
 ]
 
 SENTENCEPIECE_CANDIDATES = [
-    # Текущие рекомендуемые
+    # Current recommended
     "google/gemma-2-2b",
     "meta-llama/Llama-2-7b-hf",
-    
-    # Дополнительные кандидаты
+
+    # Additional candidates
     "t5-small",
     "t5-base",
     "google/flan-t5-base",
@@ -45,10 +45,10 @@ SENTENCEPIECE_CANDIDATES = [
 
 def check_tokenizer(repo_id: str, verbose: bool = True) -> dict:
     """
-    Проверяет доступность tokenizers модели.
-    
+    Checks availability of tokenizers model.
+
     Returns:
-        dict с полями:
+        dict with fields:
         - available: bool
         - has_tokenizer_json: bool
         - error: str | None
@@ -63,14 +63,14 @@ def check_tokenizer(repo_id: str, verbose: bool = True) -> dict:
     }
     
     try:
-        # Проверяем список файлов
+        # Check list of files
         files = list_repo_files(repo_id)
         result["files"] = [f for f in files if "tokenizer" in f.lower()]
-        
+
         if "tokenizer.json" in files:
             result["has_tokenizer_json"] = True
-            
-            # Пробуем скачать
+
+            # Try to download
             with tempfile.TemporaryDirectory() as tmpdir:
                 try:
                     _ = hf_hub_download(
@@ -102,12 +102,12 @@ def check_tokenizer(repo_id: str, verbose: bool = True) -> dict:
 
 def check_sentencepiece(repo_id: str, verbose: bool = True) -> dict:
     """
-    Проверяет доступность SentencePiece модели.
-    
+    Checks availability of SentencePiece model.
+
     Returns:
-        dict с полями:
+        dict with fields:
         - available: bool
-        - found_file: str | None (какой файл нашли)
+        - found_file: str | None (which file was found)
         - error: str | None
         - files: list[str] | None
     """
@@ -120,16 +120,16 @@ def check_sentencepiece(repo_id: str, verbose: bool = True) -> dict:
     }
     
     try:
-        # Проверяем список файлов
+        # Check list of files
         files = list_repo_files(repo_id)
         result["files"] = [f for f in files if f.endswith(('.model', '.spm'))]
-        
-        # Пробуем стандартные имена
+
+        # Try standard names
         filenames_to_try = ["tokenizer.model", "spiece.model", "sentencepiece.model"]
-        
+
         for filename in filenames_to_try:
             if filename in files:
-                # Пробуем скачать
+                # Try to download
                 with tempfile.TemporaryDirectory() as tmpdir:
                     try:
                         _ = hf_hub_download(

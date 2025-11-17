@@ -34,10 +34,10 @@ dev = [
     "vulture>=2.14",
 ]
 
-# Дополнительные языки для будущих итераций (M7)
+# Additional languages for future iterations (M7)
 extended-langs = [
     "tree-sitter-java",
-    "tree-sitter-cpp", 
+    "tree-sitter-cpp",
     "tree-sitter-c",
     "tree-sitter-scala",
 ]
@@ -47,7 +47,7 @@ include = ["lg*"]
 exclude = ["test_cache*", "tests*"]
 
 [tool.setuptools.package-data]
-# Включить все файлы пресетов и их вложения
+# Include all preset files and their nested contents
 "lg._skeletons" = ["**/*"]
 
 [tool.pytest.ini_options]
@@ -55,6 +55,6 @@ markers = [
     "slow: marks tests as slow (deselect with '-m \"not slow\"')",
 ]
 filterwarnings = [
-    # Подавляем предупреждения от SWIG биндингов в tree-sitter-languages
+    # Suppress warnings from SWIG bindings in tree-sitter-languages
     "ignore:builtin type.*has no __module__ attribute:DeprecationWarning",
 ]

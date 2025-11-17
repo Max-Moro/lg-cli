@@ -21,7 +21,7 @@ ${tests}
 {% endif %}{% endif %}{% if tag:docs %}
 ---
 
-# Расширенная документация
+# Extended documentation
 
 ${md:docs/en/*}
 {% endif %}{% if task AND scope:local %}

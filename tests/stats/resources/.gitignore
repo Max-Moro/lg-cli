@@ -1,5 +1,5 @@
-# Игнорируем скачанные модели токенизации
-# Эти файлы большие и должны скачиваться локально
+# Ignore downloaded tokenization models
+# These files are large and should be downloaded locally
 
 # HuggingFace tokenizers
 tokenizers/*/tokenizer.json
@@ -9,10 +9,10 @@ tokenizers/*/*.json
 sentencepiece/*/*.model
 sentencepiece/*/*.spm
 
-# Но сохраняем манифест и README
+# But keep manifest and README
 !models_manifest.json
 !README.md
 
-# Также игнорируем временные файлы HuggingFace
+# Also ignore HuggingFace temporary files
 **/.cache/
 **/downloads/
