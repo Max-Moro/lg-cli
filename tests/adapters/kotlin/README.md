@@ -1,136 +1,136 @@
 # Kotlin Adapter Tests
 
-Этот пакет содержит комплексный набор тестов для Kotlin языкового адаптера в Listing Generator.
+This package contains a comprehensive test suite for the Kotlin language adapter in Listing Generator.
 
-## Структура
+## Structure
 
 ```
 tests/adapters/kotlin/
-├── conftest.py                          # Фикстуры и утилиты для тестов
-├── goldens/                             # Golden файлы для тестов
-│   ├── do/                              # Исходные образцы Kotlin кода
-│   │   ├── function_bodies.kt           # Для тестирования удаления тел функций
-│   │   ├── comments.kt                  # Для тестирования обработки комментариев
-│   │   ├── literals.kt                  # Для тестирования оптимизации литералов
-│   │   ├── imports.kt                   # Для тестирования оптимизации импортов
-│   │   ├── public_api.kt                # Для тестирования фильтрации API
-│   │   └── budget_complex.kt            # Для тестирования системы бюджетирования
-│   ├── function_bodies/                 # Эталонные результаты для функций
-│   ├── comments/                        # Эталонные результаты для комментариев
-│   ├── literals/                        # Эталонные результаты для литералов
-│   ├── imports/                         # Эталонные результаты для импортов
-│   ├── public_api/                      # Эталонные результаты для API
-│   └── budget/                          # Эталонные результаты для бюджета
-├── test_function_bodies.py              # Тесты удаления тел функций
-├── test_comments.py                     # Тесты обработки комментариев
-├── test_literals.py                     # Тесты оптимизации литералов
-├── test_imports.py                      # Тесты оптимизации импортов
-├── test_public_api.py                   # Тесты фильтрации публичного API
-├── test_budget.py                       # Тесты системы бюджетирования
-├── test_literal_comment_context.py      # Тесты контекста комментариев
-└── test_literals_indentation.py         # Тесты отступов в литералах
+├── conftest.py                          # Fixtures and utilities for tests
+├── goldens/                             # Golden files for tests
+│   ├── do/                              # Original Kotlin code samples
+│   │   ├── function_bodies.kt           # For testing function body removal
+│   │   ├── comments.kt                  # For testing comment processing
+│   │   ├── literals.kt                  # For testing literal optimization
+│   │   ├── imports.kt                   # For testing import optimization
+│   │   ├── public_api.kt                # For testing API filtering
+│   │   └── budget_complex.kt            # For testing budgeting system
+│   ├── function_bodies/                 # Reference results for functions
+│   ├── comments/                        # Reference results for comments
+│   ├── literals/                        # Reference results for literals
+│   ├── imports/                         # Reference results for imports
+│   ├── public_api/                      # Reference results for API
+│   └── budget/                          # Reference results for budget
+├── test_function_bodies.py              # Function body removal tests
+├── test_comments.py                     # Comment processing tests
+├── test_literals.py                     # Literal optimization tests
+├── test_imports.py                      # Import optimization tests
+├── test_public_api.py                   # Public API filtering tests
+├── test_budget.py                       # Budgeting system tests
+├── test_literal_comment_context.py      # Comment context tests
+└── test_literals_indentation.py         # Literal indentation tests
 ```
 
-## Типы тестов
+## Test Types
 
 ### 1. Function Bodies Tests (`test_function_bodies.py`)
-Тестирует удаление тел функций и методов:
-- Базовое удаление тел функций и методов
-- Режим "large_only" (удаление только больших функций)
-- Обработка лямбда-функций
-- Сохранение структуры классов
-- Режим "public_only"
-- Сохранение KDoc при удалении тел
+Tests function and method body removal:
+- Basic function and method body removal
+- "large_only" mode (removing only large functions)
+- Lambda function handling
+- Class structure preservation
+- "public_only" mode
+- KDoc preservation during body removal
 
 ### 2. Comments Tests (`test_comments.py`)
-Тестирует политики обработки комментариев:
-- `keep_all` - сохранение всех комментариев
-- `strip_all` - удаление всех комментариев
-- `keep_doc` - сохранение только KDoc
-- `keep_first_sentence` - сохранение только первого предложения
-- Комплексные политики с кастомными настройками
+Tests comment processing policies:
+- `keep_all` - keep all comments
+- `strip_all` - remove all comments
+- `keep_doc` - keep only KDoc
+- `keep_first_sentence` - keep only first sentence
+- Complex policies with custom settings
 
 ### 3. Literals Tests (`test_literals.py`)
-Тестирует оптимизацию литералов (строк, массивов, объектов):
-- Обрезка длинных строковых литералов
-- Оптимизация больших списков
-- Оптимизация крупных map структур
-- Разные бюджеты токенов (10, 20 и т.д.)
+Tests literal optimization (strings, arrays, objects):
+- Trimming long string literals
+- Optimizing large lists
+- Optimizing large map structures
+- Different token budgets (10, 20, etc.)
 
 ### 4. Imports Tests (`test_imports.py`)
-Тестирует оптимизацию импортов:
-- `keep_all` - сохранение всех импортов
-- `strip_local` - удаление локальных импортов
-- `strip_external` - удаление внешних импортов
-- `strip_all` - удаление всех импортов
-- Свёртка длинных списков импортов
+Tests import optimization:
+- `keep_all` - keep all imports
+- `strip_local` - remove local imports
+- `strip_external` - remove external imports
+- `strip_all` - remove all imports
+- Collapsing long import lists
 
 ### 5. Public API Tests (`test_public_api.py`)
-Тестирует фильтрацию публичного API:
-- Удаление private функций, методов, классов
-- Сохранение публичных элементов
-- Обработка visibility модификаторов
-- Работа с data class и companion objects
-- Обработка аннотаций
+Tests public API filtering:
+- Removing private functions, methods, classes
+- Preserving public elements
+- Handling visibility modifiers
+- Working with data classes and companion objects
+- Annotation processing
 
 ### 6. Budget Tests (`test_budget.py`)
-Тестирует систему бюджетирования токенов:
-- Прогрессивное ужимание при уменьшении бюджета
-- Монотонное уменьшение размера результата
-- Применение различных стратегий оптимизации
+Tests token budgeting system:
+- Progressive compression with decreasing budget
+- Monotonic result size reduction
+- Applying various optimization strategies
 
 ### 7. Literal Comment Context Tests (`test_literal_comment_context.py`)
-Тестирует умное размещение комментариев при оптимизации литералов:
-- Выбор между `//` и `/* */` в зависимости от контекста
-- Предотвращение поломки синтаксиса
+Tests smart comment placement during literal optimization:
+- Choosing between `//` and `/* */` depending on context
+- Preventing syntax breakage
 
 ### 8. Literals Indentation Tests (`test_literals_indentation.py`)
-Тестирует сохранение корректных отступов при оптимизации литералов:
-- Отступы в map структурах
-- Отступы в списках
-- Отступы в вложенных структурах
+Tests preserving correct indentation during literal optimization:
+- Indentation in map structures
+- Indentation in lists
+- Indentation in nested structures
 
-## Запуск тестов
+## Running Tests
 
 ```bash
-# Все тесты Kotlin адаптера
+# All Kotlin adapter tests
 pytest tests/adapters/kotlin/
 
-# Конкретный набор тестов
+# Specific test suite
 pytest tests/adapters/kotlin/test_function_bodies.py
 pytest tests/adapters/kotlin/test_comments.py
 
-# С обновлением golden файлов
+# With golden file updates
 PYTEST_UPDATE_GOLDENS=1 pytest tests/adapters/kotlin/test_function_bodies.py
 ```
 
-## Golden файлы
+## Golden Files
 
-Golden файлы - это эталонные результаты для сравнения. Они находятся в директории `goldens/`:
+Golden files are reference results for comparison. They are located in the `goldens/` directory:
 
-- `goldens/do/` - исходные образцы кода
-- `goldens/*/` - эталонные результаты для различных оптимизаций
+- `goldens/do/` - original code samples
+- `goldens/*/` - reference results for various optimizations
 
-### Обновление golden файлов
+### Updating Golden Files
 
-Когда вы изменяете логику адаптера и хотите обновить эталоны:
+When you change adapter logic and want to update references:
 
 ```bash
 PYTEST_UPDATE_GOLDENS=1 pytest tests/adapters/kotlin/
 ```
 
-## Создание новых тестов
+## Creating New Tests
 
-1. Добавьте новый образец кода в `goldens/do/your_test.kt`
-2. Создайте тестовый файл `test_your_feature.py`
-3. Используйте фикстуры из `conftest.py`:
-   - `make_adapter(cfg)` - создание адаптера с заглушкой
-   - `make_adapter_real(cfg)` - создание адаптера с реальным токенизатором
-   - `lctx_kt(code)` - создание контекста для обработки
-   - `assert_golden_match()` - сравнение с эталоном
-   - `load_sample_code()` - загрузка образца кода
+1. Add new code sample to `goldens/do/your_test.kt`
+2. Create test file `test_your_feature.py`
+3. Use fixtures from `conftest.py`:
+   - `make_adapter(cfg)` - create adapter with stub
+   - `make_adapter_real(cfg)` - create adapter with real tokenizer
+   - `lctx_kt(code)` - create context for processing
+   - `assert_golden_match()` - compare with reference
+   - `load_sample_code()` - load code sample
 
-Пример:
+Example:
 ```python
 from .conftest import make_adapter, lctx_kt, assert_golden_match
 from lg.adapters.kotlin import KotlinCfg
@@ -138,23 +138,23 @@ from lg.adapters.kotlin import KotlinCfg
 def test_my_feature():
     cfg = KotlinCfg(my_option=True)
     adapter = make_adapter(cfg)
-    
+
     code = '''
     fun myFunction() {
         println("test")
     }
     '''
-    
+
     result, meta = adapter.process(lctx_kt(code))
-    
+
     assert "expected" in result
     assert_golden_match(result, "my_feature", "basic")
 ```
 
-## Замечания
+## Notes
 
-- Все тесты используют унифицированную инфраструктуру из `tests/infrastructure/`
-- Golden файлы автоматически определяют язык по расширению `.kt`
-- Тесты должны быть детерминированными и воспроизводимыми
-- При изменении формата вывода адаптера необходимо обновить golden файлы
+- All tests use unified infrastructure from `tests/infrastructure/`
+- Golden files automatically determine language by `.kt` extension
+- Tests must be deterministic and reproducible
+- When changing adapter output format, golden files must be updated
 

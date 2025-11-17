@@ -1,165 +1,163 @@
-# Тестовая инфраструктура для статистики и токенизации
+# Test Infrastructure for Statistics and Tokenization
 
-## Обзор
+## Overview
 
-Создана полная инфраструктура для тестирования подсистемы статистики 3. **Расширяемость**: легко добавить новые токенизаторы
-4. **CI-friendly**: работает как с моделями, так и без них
-5. **Отсутствие хардкода**: использование констант из infrastructureокенизации в Listing Generator. Инфраструктура позволяет:
+A complete infrastructure has been created for testing the statistics and tokenization subsystem in Listing Generator. The infrastructure allows:
 
-- Тестировать различные токенизаторы без скачивания моделей при каждом запуске
-- Проверять корректность кеширования моделей
-- Сравнивать точность разных токенизаторов
-- Проверять расчет статистики и оптимизации токенов
+- Testing various tokenizers without downloading models on each run
+- Verifying model caching correctness
+- Comparing accuracy of different tokenizers
+- Checking statistics calculation and token optimizations
 
-## Структура
+## Structure
 
 ```
 tests/
-└── stats/                           # Новый тестовый пакет
-    ├── __init__.py                  # Описание пакета
-    ├── conftest.py                  # Фикстуры и mock для HF Hub
-    ├── SETUP.md                     # Инструкции по настройке
-    ├── download_test_models.py      # Скрипт скачивания моделей
+└── stats/                           # New test package
+    ├── __init__.py                  # Package description
+    ├── conftest.py                  # Fixtures and mock for HF Hub
+    ├── SETUP.md                     # Setup instructions
+    ├── download_test_models.py      # Model download script
     │
-    ├── resources/                   # Предскачанные модели
-    │   ├── models_manifest.json     # Манифест моделей
+    ├── resources/                   # Pre-downloaded models
+    │   ├── models_manifest.json     # Models manifest
     │   ├── tokenizers/              # HuggingFace tokenizers
     │   │   └── gpt2/
-    │   │       └── tokenizer.json   # (скачивается отдельно)
-    │   └── sentencepiece/           # SentencePiece модели
+    │   │       └── tokenizer.json   # (downloaded separately)
+    │   └── sentencepiece/           # SentencePiece models
     │       └── t5-small/
-    │           └── tokenizer.model  # (скачивается отдельно)
+    │           └── tokenizer.model  # (downloaded separately)
     │
-    ├── test_model_cache.py          # Тесты кеширования моделей
-    ├── test_tokenizer_comparison.py # Сравнения токенизаторов
-    └── test_statistics.py           # Основные тесты статистики
+    ├── test_model_cache.py          # Model caching tests
+    ├── test_tokenizer_comparison.py # Tokenizer comparisons
+    └── test_statistics.py           # Main statistics tests
 ```
 
-## Ключевые компоненты
+## Key Components
 
-### 1. Mock для HuggingFace Hub (`conftest.py`)
+### 1. Mock for HuggingFace Hub (`conftest.py`)
 
-Фикстура `mock_hf_hub` подменяет `hf_hub_download` на версию, которая:
-- Использует предскачанные модели из `resources/`
-- Имитирует поведение реального HF Hub
-- Отслеживает количество "скачиваний" для тестов кеша
-- Автоматически активируется для всех тестов в пакете
+The `mock_hf_hub` fixture replaces `hf_hub_download` with a version that:
+- Uses pre-downloaded models from `resources/`
+- Mimics real HF Hub behavior
+- Tracks number of "downloads" for cache tests
+- Automatically activates for all tests in the package
 
-### 2. Фикстуры токенизаторов
+### 2. Tokenizer Fixtures
 
-- `tiktoken_service` - всегда доступен (встроенный)
-- `hf_tokenizer_service` - требует модели в resources/
-- `sp_tokenizer_service` - требует модели в resources/
-- `sample_texts` - набор тестовых текстов для сравнений
+- `tiktoken_service` - always available (built-in)
+- `hf_tokenizer_service` - requires models in resources/
+- `sp_tokenizer_service` - requires models in resources/
+- `sample_texts` - set of test texts for comparisons
 
-### 3. Тесты
+### 3. Tests
 
 #### `test_model_cache.py`
-Проверяет что `lg.stats.tokenizers.model_cache.ModelCache`:
-- Корректно создает структуру кеша
-- Безопасно обрабатывает имена с `/` (преобразует в `--`)
-- Правильно определяет наличие моделей в кеше
-- Список закешированных моделей корректен
-- Кеш переживает перезапуски программы
-- Адаптеры используют кеш и не скачивают модели повторно
+Verifies that `lg.stats.tokenizers.model_cache.ModelCache`:
+- Correctly creates cache structure
+- Safely handles names with `/` (converts to `--`)
+- Properly determines model presence in cache
+- List of cached models is correct
+- Cache survives program restarts
+- Adapters use cache and don't re-download models
 
 #### `test_tokenizer_comparison.py`
-Проверяет что:
-- Все токенизаторы корректно считают токены
-- Разные токенизаторы дают разные результаты
-- Результаты стабильны для одного текста
-- Токенизация эффективна для кода и смешанного контента
-- Специальные символы обрабатываются корректно
-- Разница между токенизаторами в разумных пределах
-- Кеширование токенов работает правильно
+Verifies that:
+- All tokenizers correctly count tokens
+- Different tokenizers give different results
+- Results are stable for the same text
+- Tokenization is efficient for code and mixed content
+- Special characters are handled correctly
+- Difference between tokenizers is within reasonable limits
+- Token caching works properly
 
 #### `test_statistics.py`
-Переписанные тесты из старого `test_stats.py`:
-- Markdown оптимизации (удаление H1, экономия токенов)
-- Оверхеды рендеринга (fences, file markers)
-- Оверхеды шаблонов контекстов
-- Распределение долей (shares) в промте
-- Агрегация метаданных
-- Статистика на уровне отдельных файлов
+Rewritten tests from old `test_stats.py`:
+- Markdown optimizations (H1 removal, token savings)
+- Rendering overheads (fences, file markers)
+- Context template overheads
+- Share distribution in prompt
+- Metadata aggregation
+- Statistics at individual file level
 
-## Использование
+## Usage
 
-### Быстрый старт (только tiktoken)
+### Quick Start (tiktoken only)
 
 ```bash
 pytest tests/stats/
 ```
 
-Тесты автоматически используют tiktoken (встроенный) когда HF/SP модели недоступны.
+Tests automatically use tiktoken (built-in) when HF/SP models are unavailable.
 
-### Полное окружение
+### Full Environment
 
 ```bash
-# 1. Установить зависимости
+# 1. Install dependencies
 pip install tokenizers sentencepiece huggingface-hub
 
-# 2. Скачать тестовые модели
+# 2. Download test models
 python tests/stats/download_test_models.py
 
-# 3. Запустить все тесты
+# 3. Run all tests
 pytest tests/stats/ -v
 ```
 
 ### CI/CD
 
-В CI окружении (без моделей):
-- Тесты используют только tiktoken
-- Тесты, требующие HF/SP, пропускаются
-- Базовая функциональность полностью тестируется
+In CI environment (without models):
+- Tests use only tiktoken
+- Tests requiring HF/SP are skipped
+- Basic functionality is fully tested
 
-Для полного тестирования:
-- Скачать модели один раз
-- Закешировать `tests/stats/resources/`
-- Переиспользовать в последующих запусках
+For complete testing:
+- Download models once
+- Cache `tests/stats/resources/`
+- Reuse in subsequent runs
 
-## Важные изменения
+## Important Changes
 
-### Удалено
-- `tests/test_stats.py` (старый файл, заменен на `tests/stats/test_statistics.py`)
+### Removed
+- `tests/test_stats.py` (old file, replaced by `tests/stats/test_statistics.py`)
 
-### Добавлено
-- `tests/stats/` - новый пакет тестов
-- Mock для HuggingFace Hub без реального скачивания
-- Скрипт автоматического скачивания моделей
-- Подробная документация по настройке
-- Использование констант из `cli_utils` для избежания хардкода
+### Added
+- `tests/stats/` - new test package
+- Mock for HuggingFace Hub without real downloading
+- Automatic model download script
+- Detailed setup documentation
+- Use of constants from `cli_utils` to avoid hardcoding
 
-### Обновлено
-- Старые тесты статистики полностью переписаны под новую инфраструктуру
-- Фикстуры используют дефолтные значения из инфраструктуры
+### Updated
+- Old statistics tests completely rewritten for new infrastructure
+- Fixtures use default values from infrastructure
 
-## Преимущества новой инфраструктуры
+## New Infrastructure Benefits
 
-1. **Быстрые тесты**: модели не скачиваются при каждом запуске
-2. **Офлайн работа**: тесты работают без интернета (после первичной настройки)
-3. **Детерминизм**: одни и те же модели в каждом запуске
-4. **Расширяемость**: легко добавить новые токенизаторы
-5. **CI-friendly**: работает как с моделями, так и без них
-6. **Переиспользование**: утилиты доступны во всех тестах
+1. **Fast tests**: models are not downloaded on each run
+2. **Offline operation**: tests work without internet (after initial setup)
+3. **Determinism**: same models in each run
+4. **Extensibility**: easy to add new tokenizers
+5. **CI-friendly**: works with and without models
+6. **Reusability**: utilities available to all tests
 
-## Следующие шаги
+## Next Steps
 
-Для завершения настройки:
+To complete setup:
 
-1. Скачать тестовые модели:
+1. Download test models:
    ```bash
    python tests/stats/download_test_models.py
    ```
 
-2. Запустить тесты для проверки:
+2. Run tests for verification:
    ```bash
    pytest tests/stats/ -v
    ```
 
-3. Убедиться что кеширование работает:
-   - Первый запуск: "скачивание" моделей
-   - Последующие запуски: "Loading from cache"
+3. Verify caching works:
+   - First run: models "downloading"
+   - Subsequent runs: "Loading from cache"
 
-4. (Опционально) Добавить в CI:
-   - Кеширование `tests/stats/resources/`
-   - Или использование только tiktoken тестов
+4. (Optional) Add to CI:
+   - Cache `tests/stats/resources/`
+   - Or use tiktoken-only tests
