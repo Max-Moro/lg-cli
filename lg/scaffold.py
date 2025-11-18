@@ -6,16 +6,15 @@ from pathlib import Path
 from typing import Dict, List
 from typing import Tuple
 
-# Resources are located under the package lg._skeletons/<preset>/lg-cfg/...
+# Resources are located under the package lg._skeletons/<preset>/...
 _SKELETONS_PKG = "lg._skeletons"
 
 
 def list_presets() -> List[str]:
     """
     List available presets:
-      • only directories inside lg/_skeletons/
-      • exclude special ('.*', '_*', '__pycache__', '*.dist-info')
-      • require presence of 'lg-cfg' subdirectory
+      • all directories inside lg/_skeletons/
+      • exclude Python artifacts ('__pycache__', '*.dist-info')
     """
     try:
         base = resources.files(_SKELETONS_PKG)
@@ -27,9 +26,7 @@ def list_presets() -> List[str]:
             name = entry.name
             if not entry.is_dir():
                 continue
-            if name.startswith(".") or name.startswith("_") or name == "__pycache__" or name.endswith(".dist-info"):
-                continue
-            if not (entry / "lg-cfg").exists() or not (entry / "lg-cfg").is_dir():
+            if name == "__pycache__" or name.endswith(".dist-info"):
                 continue
             out.append(name)
         except Exception:
@@ -50,14 +47,11 @@ def _iter_all_files(node):
 def _collect_skeleton_entries(preset: str) -> List[Tuple[str, bytes]]:
     """
     Collects (rel, data) pairs for all files from the preset.
-    Preset structure: <preset>/lg-cfg/**/*
+    Preset structure: <preset>/**/* (files stored directly without lg-cfg/ wrapper)
     """
-    base = resources.files(_SKELETONS_PKG) / preset
-    if not base.exists():
-        raise RuntimeError(f"Preset not found: {preset}")
-    root = base / "lg-cfg"
+    root = resources.files(_SKELETONS_PKG) / preset
     if not root.exists():
-        raise RuntimeError(f"Preset '{preset}' has no 'lg-cfg' directory")
+        raise RuntimeError(f"Preset not found: {preset}")
     out: List[Tuple[str, bytes]] = []
     for res in _iter_all_files(root):
         rel = res.relative_to(root).as_posix()
