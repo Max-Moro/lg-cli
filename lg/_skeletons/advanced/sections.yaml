@@ -3,3 +3,12 @@ src:
   extensions: [".py", ".toml"]
   filters:
     mode: block
+    block:
+      - "/tests/"
+
+tests:
+  extensions: [".py"]
+  filters:
+    mode: allow
+    allow:
+      - "/tests/"
