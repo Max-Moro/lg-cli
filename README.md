@@ -406,3 +406,10 @@ Nevertheless, **all selection/template logic lives in the repository** (`lg-cfg/
 * transferring successful prompts between projects — trivial,
 * same configuration works in CLI and IDE.
 <!-- lg:comment:end -->
+
+---
+
+## License
+
+Listing Generator is licensed under the Apache License, Version 2.0.  
+See the `LICENSE` file for the full license text.
