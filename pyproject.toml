@@ -6,7 +6,7 @@ build-backend = "setuptools.build_meta"
 name = "listing-generator"
 version = "0.3.0"
 description = "Plain-text source listing generator for AI context"
-authors = [{ name = "Your Team", email = "dev@example.com" }]
+authors = [{ name = "Maxim Morozov", email = "mmocentre@gmail.com" }]
 readme = "README.md"
 license = { file = "LICENSE" }
 classifiers = [
@@ -14,6 +14,7 @@ classifiers = [
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3.10",
 ]
+urls = { "Homepage" = "https://github.com/Max-Moro/lg-cli", "Source" = "https://github.com/Max-Moro/lg-cli", "Issues" = "https://github.com/Max-Moro/lg-cli/issues" }
 requires-python = ">=3.10"
 dependencies = [
     "ruamel.yaml>=0.18",
