@@ -39,6 +39,7 @@ dev = [
     "pytest>=8.0",
     "datamodel-code-generator>=0.25",
     "vulture>=2.14",
+    "tomli>=2.0; python_version < '3.11'",  # TOML parser for CI (Python 3.11+ has built-in tomllib)
 ]
 
 # Additional languages for future iterations (M7)
@@ -59,7 +60,7 @@ exclude = ["test_cache*", "tests*"]
 
 [tool.pytest.ini_options]
 markers = [
-    "slow: marks tests as slow (deselect with '-m \"not slow\"')",
+    "no_ci: marks tests that should not run in CI (e.g., require heavy models, licenses, etc.)",
 ]
 filterwarnings = [
     # Suppress warnings from SWIG bindings in tree-sitter-languages

@@ -10,6 +10,8 @@ Verify correct tokenization model caching:
 
 from pathlib import Path
 
+import pytest
+
 from lg.stats.tokenizers.model_cache import ModelCache
 
 
@@ -145,6 +147,7 @@ class TestModelCache:
 class TestModelCacheIntegration:
     """Integration tests for cache with real adapters."""
 
+    @pytest.mark.no_ci  # Requires pre-downloaded models for mock_hf_hub
     def test_tokenizers_adapter_uses_cache(self, tmp_path: Path, mock_hf_hub):
         """Verifies that HFAdapter uses cache on repeated requests."""
         from lg.stats.tokenizers.hf_adapter import HFAdapter
@@ -167,6 +170,7 @@ class TestModelCacheIntegration:
         assert tokens1 == tokens2
         assert tokens1 > 0
 
+    @pytest.mark.no_ci  # Requires pre-downloaded models for mock_hf_hub
     def test_sentencepiece_adapter_uses_cache(self, tmp_path: Path, mock_hf_hub):
         """Verifies that SPAdapter uses cache on repeated requests."""
         from lg.stats.tokenizers.sp_adapter import SPAdapter
@@ -189,6 +193,7 @@ class TestModelCacheIntegration:
         assert tokens1 == tokens2
         assert tokens1 > 0
 
+    @pytest.mark.no_ci  # Requires pre-downloaded models for mock_hf_hub
     def test_cache_persists_across_sessions(self, tmp_path: Path, mock_hf_hub):
         """Verifies that cache persists between 'sessions'."""
         from lg.stats.tokenizers.hf_adapter import HFAdapter

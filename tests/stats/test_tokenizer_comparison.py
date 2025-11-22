@@ -24,6 +24,7 @@ class TestTokenizerBasics:
         assert tokens > 0
         assert tokens < len(text)  # Fewer tokens than characters
 
+    @pytest.mark.no_ci  # Requires pre-downloaded HF models
     def test_hf_tokenizer_counts_tokens(self, hf_tokenizer_service):
         """Verifies that HF tokenizer correctly counts tokens."""
         text = "Hello, world!"
@@ -32,6 +33,7 @@ class TestTokenizerBasics:
         assert tokens > 0
         assert tokens < len(text)
 
+    @pytest.mark.no_ci  # Requires pre-downloaded SP models
     def test_sp_tokenizer_counts_tokens(self, sp_tokenizer_service):
         """Verifies that SentencePiece tokenizer correctly counts tokens."""
         text = "Hello, world!"
@@ -49,6 +51,7 @@ class TestTokenizerBasics:
 class TestTokenizerDifferences:
     """Tests for differences between tokenizers."""
 
+    @pytest.mark.no_ci  # Requires pre-downloaded HF models
     def test_different_tokenizers_different_results(
         self,
         tiktoken_service,
@@ -107,6 +110,7 @@ class TestTokenizerAccuracy:
         assert compression_ratio > 2.0, "Code should compress well with tokenization"
         assert compression_ratio < 10.0, "But not too much"
 
+    @pytest.mark.no_ci  # Requires pre-downloaded HF models
     def test_special_chars_tokenization(
         self,
         tiktoken_service,
@@ -153,6 +157,7 @@ class TestTokenizerComparison:
     is justified for specific models.
     """
 
+    @pytest.mark.no_ci  # Requires pre-downloaded HF/SP models
     @pytest.mark.parametrize("text_type", ["simple", "python_code", "mixed"])
     def test_all_tokenizers_reasonable(
         self,
@@ -183,6 +188,7 @@ class TestTokenizerComparison:
         assert hf_count < text_len
         assert sp_count < text_len
 
+    @pytest.mark.no_ci  # Requires pre-downloaded HF models
     def test_tokenizer_variance_acceptable(
         self,
         tiktoken_service,
@@ -214,6 +220,7 @@ class TestTokenizerComparison:
 class TestTokenizerCaching:
     """Tests for token caching."""
 
+    @pytest.mark.no_ci  # Requires pre-downloaded models for mock_hf_hub
     def test_cache_improves_performance(self, tmp_path: Path, mock_hf_hub):
         """
         Verifies that token caching speeds up repeated counts.

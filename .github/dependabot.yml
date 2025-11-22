@@ -1,0 +1,33 @@
+# Dependabot configuration for automatic dependency updates
+#
+# Updates:
+# - Python dependencies (pip) - weekly
+# - GitHub Actions - weekly
+
+version: 2
+updates:
+  # Python dependencies
+  - package-ecosystem: pip
+    directory: /
+    schedule:
+      interval: weekly
+    labels:
+      - dependencies
+      - python
+    groups:
+      # Group minor/patch updates together
+      minor-and-patch:
+        patterns:
+          - "*"
+        update-types:
+          - minor
+          - patch
+
+  # GitHub Actions
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    labels:
+      - dependencies
+      - github-actions

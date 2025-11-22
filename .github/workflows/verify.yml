@@ -1,0 +1,78 @@
+# GitHub Actions Workflow: Inspect and Test
+#
+# Triggered on:
+# - Every push to main, next-v*, v* branches
+# - Every pull request to those branches
+#
+# Jobs:
+# 1. Qodana - Code quality inspection (Python Community Edition)
+# 2. Test - Run pytest on matrix (Python 3.10/3.11/3.12 × Ubuntu/macOS/Windows)
+
+name: Verify
+
+on:
+  push:
+    branches:
+      - main
+      - 'next-v*'
+      - 'v*'
+  pull_request:
+    branches:
+      - main
+      - 'next-v*'
+      - 'v*'
+
+jobs:
+  # Job 1: Code Inspection with Qodana
+  # Uses qodana-python-community (free edition)
+  # Requires: qodana.yaml with bootstrap command for dependencies
+  qodana:
+    name: Qodana - Code Inspection
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+      checks: write
+    steps:
+      - name: Fetch Sources
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Required for Qodana
+
+      - name: Qodana Scan
+        uses: JetBrains/qodana-action@v2024.3.3
+        with:
+          pr-mode: false
+        env:
+          QODANA_TOKEN: ${{ secrets.QODANA_TOKEN }}
+
+  # Job 2: Test on matrix (Python versions × OS)
+  # Matrix: 3.10/3.11/3.12 × Ubuntu/macOS/Windows (9 combinations)
+  # Uses venv caching for faster dependency installation
+  test:
+    name: Test
+    needs: qodana
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+        python-version: ['3.10', '3.11', '3.12']
+    steps:
+      - name: Fetch Sources
+        uses: actions/checkout@v4
+
+      - name: Setup Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: 'pip'
+          cache-dependency-path: 'pyproject.toml'
+
+      - name: Install Dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e ".[dev]"
+
+      - name: Run Tests
+        run: pytest -m "not no_ci"
