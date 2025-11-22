@@ -1,13 +1,11 @@
-# GitHub Actions Workflow: Inspect and Test
+# GitHub Actions Workflow: Verify and Test
 #
 # Triggered on:
 # - Every push to main, next-v*, v* branches
 # - Every pull request to those branches
 #
 # Jobs:
-# 1. Qodana - Code quality inspection (Python Community Edition, native mode without Docker)
-# 2. Test - Run pytest on matrix (Python 3.10/3.11/3.12 × Ubuntu/macOS/Windows)
-# 3. Build - Verify package builds correctly (no artifacts saved)
+# Test - Run pytest on matrix (Python 3.10/3.11/3.12 × Ubuntu/macOS/Windows)
 
 name: Verify
 
@@ -24,34 +22,8 @@ on:
       - 'v*'
 
 jobs:
-  # Job 1: Code Inspection with Qodana
-  # Uses qodana-python-community (free edition) in native mode (no Docker)
-  # Linter specified via args parameter: --linter qodana-python-community --within-docker false
-  # Requires: qodana.yaml with bootstrap command for dependencies
-#  qodana:
-#    name: Qodana - Code Inspection
-#    runs-on: ubuntu-latest
-#    permissions:
-#      contents: write
-#      pull-requests: write
-#      checks: write
-#    steps:
-#      - name: Fetch Sources
-#        uses: actions/checkout@v4
-#        with:
-#          fetch-depth: 0  # Required for Qodana
-#
-#      - name: Qodana Scan
-#        uses: JetBrains/qodana-action@v2025.2
-#        with:
-#          pr-mode: false
-#          args: --within-docker,false
-#        env:
-#          QODANA_TOKEN: ${{ secrets.QODANA_TOKEN }}
-
-  # Job 2: Test on matrix (Python versions × OS)
+  # Test on matrix (Python versions × OS)
   # Matrix: 3.10/3.11/3.12 × Ubuntu/macOS/Windows (9 combinations)
-  # Uses venv caching for faster dependency installation
   test:
     name: Test
     runs-on: ${{ matrix.os }}
