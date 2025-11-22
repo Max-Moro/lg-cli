@@ -133,6 +133,7 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
+      id-token: write  # Required for Trusted Publishing
     steps:
       - name: Download Build Artifacts
         uses: actions/download-artifact@v6
@@ -142,9 +143,8 @@ jobs:
 
       - name: Publish to PyPI
         uses: pypa/gh-action-pypi-publish@release/v1
-        with:
-          password: ${{ secrets.PYPI_API_TOKEN }}
-          verbose: true
+        # Automatically uses Trusted Publishing (OIDC) via id-token permission
+        # No password needed - PyPI verifies via GitHub OIDC token
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
@@ -213,7 +213,7 @@ jobs:
       - name: Create Pull Request
         uses: peter-evans/create-pull-request@v7
         with:
-          token: ${{ secrets.GITHUB_TOKEN }}
+          token: ${{ secrets.GH_PAT }}
           branch: changelog-update-v${{ needs.build.outputs.version }}
           title: 'Changelog update - v${{ needs.build.outputs.version }}'
           body: |
