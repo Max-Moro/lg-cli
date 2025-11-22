@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.9.1] - 2025-11-22
+
 ### Added
 - Context generation from source code with filtering and normalization
 - Adaptive capabilities system (modes, tags, conditional logic)
