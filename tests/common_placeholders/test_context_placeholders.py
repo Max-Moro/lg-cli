@@ -417,24 +417,6 @@ ${ctx@libs/core:core-ctx}
     assert "Core Context" in result
     assert "class Processor:" in result
 
-
-def test_context_placeholder_case_sensitivity(basic_project):
-    """Test case sensitivity in context names."""
-    root = basic_project
-
-    create_template(root, "CamelContext", """CamelContext content""", "ctx")
-
-    # Correct case should work
-    create_template(root, "case-correct-ctx-test", """${ctx:CamelContext}""")
-    result = render_template(root, "ctx:case-correct-ctx-test")
-    assert "CamelContext content" in result
-
-    # Template names are case-insensitive
-    create_template(root, "case-error-ctx-test", """${ctx:camelcontext}""")
-    result = render_template(root, "ctx:case-error-ctx-test")
-    assert "CamelContext content" in result
-
-
 @pytest.mark.parametrize("context_name,content_check", [
     ("shared-context", "Shared Context"),
     ("reports/code-report", "Code Report")

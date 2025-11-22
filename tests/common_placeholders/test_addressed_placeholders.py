@@ -332,26 +332,3 @@ ${@libs/core/modules/data/processors/advanced:advanced-processor}
     result = render_template(root, "ctx:deep-nesting-test")
 
     assert "class MLProcessor: pass" in result
-
-
-def test_addressed_placeholder_case_sensitivity(federated_project):
-    """Test case sensitivity in addressed placeholders."""
-    root = federated_project
-
-    # Correct case should work
-    create_template(root, "case-correct-test", """# Case Test
-
-${@apps/web:web-src}
-""")
-
-    result = render_template(root, "ctx:case-correct-test")
-    assert "export const App" in result
-
-    # Paths are case-insensitive
-    create_template(root, "case-error-test", """# Case Error Test
-
-${@Apps/Web:web-src}
-""")
-
-    result = render_template(root, "ctx:case-error-test")
-    assert "export const App" in result

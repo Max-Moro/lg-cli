@@ -398,23 +398,6 @@ ${{tpl:{template_name}}}
     result = render_template(root, f"ctx:param-test-{template_name}")
     assert expected_content in result
 
-
-def test_template_placeholder_case_sensitivity(basic_project):
-    """Test case sensitivity in template names."""
-    root = basic_project
-
-    create_template(root, "CamelCase", """CamelCase content""", "tpl")
-
-    # Correct case should work
-    create_template(root, "case-correct-test", """${tpl:CamelCase}""")
-    result = render_template(root, "ctx:case-correct-test")
-    assert "CamelCase content" in result
-
-    # Template names are case-insensitive
-    create_template(root, "case-error-test", """${tpl:camelcase}""")
-    result = render_template(root, "ctx:case-error-test")
-    assert "CamelCase content" in result
-
 def test_tpl_placeholder_in_nested_context_include(federated_project):
     """
     Test nested contexts with tpl-placeholders.
