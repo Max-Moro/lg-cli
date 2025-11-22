@@ -40,7 +40,7 @@ jobs:
           fetch-depth: 0  # Required for Qodana
 
       - name: Qodana Scan
-        uses: JetBrains/qodana-action@v2024.3.3
+        uses: JetBrains/qodana-action@v2025.2.2
         with:
           pr-mode: false
         env:
