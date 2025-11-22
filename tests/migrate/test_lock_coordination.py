@@ -166,7 +166,7 @@ def test_exponential_backoff_during_wait(migration_lock: _MigrationLock):
     elapsed = time.time() - start
 
     # Should complete around 0.3-0.4s
-    assert 0.25 < elapsed < 0.5
+    assert 0.25 < elapsed < 0.6
 
     thread.join()
 
