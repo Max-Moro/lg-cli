@@ -1,11 +1,11 @@
-# GitHub Actions Workflow: Verify and Test
+# GitHub Actions Workflow: Verify and Test (Fast)
 #
 # Triggered on:
 # - Every push to main, next-v*, v* branches
 # - Every pull request to those branches
 #
-# Jobs:
-# Test - Run pytest on matrix (Python 3.10/3.11/3.12 × Ubuntu/macOS/Windows)
+# Runs tests only on Ubuntu for fast feedback.
+# For full cross-platform testing, use verify-full.yml (manual run).
 
 name: Verify
 
@@ -22,15 +22,14 @@ on:
       - 'v*'
 
 jobs:
-  # Test on matrix (Python versions × OS)
-  # Matrix: 3.10/3.11/3.12 × Ubuntu/macOS/Windows (9 combinations)
+  # Test on Ubuntu with Python version matrix
+  # Matrix: 3.10/3.11/3.12 × Ubuntu only (3 combinations)
   test:
-    name: Test
-    runs-on: ${{ matrix.os }}
+    name: Test (Python ${{ matrix.python-version }})
+    runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, macos-latest, windows-latest]
         python-version: ['3.10', '3.11', '3.12']
     steps:
       - name: Fetch Sources
