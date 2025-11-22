@@ -5,8 +5,9 @@
 # - Every pull request to those branches
 #
 # Jobs:
-# 1. Qodana - Code quality inspection (Python Community Edition)
+# 1. Qodana - Code quality inspection (Python Community Edition, native mode without Docker)
 # 2. Test - Run pytest on matrix (Python 3.10/3.11/3.12 × Ubuntu/macOS/Windows)
+# 3. Build - Verify package builds correctly (no artifacts saved)
 
 name: Verify
 
@@ -24,7 +25,8 @@ on:
 
 jobs:
   # Job 1: Code Inspection with Qodana
-  # Uses qodana-python-community (free edition)
+  # Uses qodana-python-community (free edition) in native mode (no Docker)
+  # Linter specified via args parameter: --linter qodana-python-community --within-docker false
   # Requires: qodana.yaml with bootstrap command for dependencies
   qodana:
     name: Qodana - Code Inspection
@@ -40,9 +42,10 @@ jobs:
           fetch-depth: 0  # Required for Qodana
 
       - name: Qodana Scan
-        uses: JetBrains/qodana-action@v2024.3.3
+        uses: JetBrains/qodana-action@v2025.2
         with:
           pr-mode: false
+          args: --within-docker,false
         env:
           QODANA_TOKEN: ${{ secrets.QODANA_TOKEN }}
 
