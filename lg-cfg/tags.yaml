@@ -64,14 +64,20 @@ tag-sets:
         title: "Python"
       typescript:
         title: "TypeScript"
-      javascript:
-        title: "JavaScript"
       kotlin:
         title: "Kotlin"
+      javascript:
+        title: "JavaScript"
       java:
         title: "Java"
+      c:
+        title: "C"
       cpp:
         title: "Cpp"
+      go:
+        title: "Go"
+      rust:
+        title: "Rust"
       scala:
         title: "Scala"
 
