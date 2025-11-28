@@ -14,7 +14,7 @@ Modules:
 # Core utilities that should be available everywhere
 from .file_utils import write, write_source_file, write_markdown
 from .rendering_utils import render_template, make_run_options, make_run_context, make_engine
-from .testing_utils import stub_tokenizer, TokenServiceStub, lctx, lctx_py, lctx_ts, lctx_md, lctx_kt
+from .testing_utils import stub_tokenizer, TokenServiceStub, lctx, lctx_py, lctx_ts, lctx_md, lctx_kt, lctx_js
 from .cli_utils import run_cli, jload, DEFAULT_TOKENIZER_LIB, DEFAULT_ENCODER, DEFAULT_CTX_LIMIT
 from .config_builders import (
     create_sections_yaml, create_section_fragment, create_modes_yaml, create_tags_yaml,
@@ -34,7 +34,7 @@ __all__ = [
     "render_template", "make_run_options", "make_run_context", "make_engine",
 
     # Testing utilities
-    "stub_tokenizer", "TokenServiceStub", "lctx", "lctx_py", "lctx_ts", "lctx_md", "lctx_kt",
+    "stub_tokenizer", "TokenServiceStub", "lctx", "lctx_py", "lctx_ts", "lctx_md", "lctx_kt", "lctx_js",
 
     # CLI utilities
     "run_cli", "jload",

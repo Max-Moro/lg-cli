@@ -69,6 +69,25 @@ def make_kotlin_adapter_real(cfg):
     return adapter
 
 
+# ===== JavaScript Adapter Utils =====
+
+def make_javascript_adapter(cfg):
+    """JavaScript adapter with a pre-configured TokenService stub."""
+    # Import locally to avoid circular dependencies
+    from lg.adapters.javascript import JavaScriptAdapter
+    adapter = JavaScriptAdapter().bind(None, stub_tokenizer())
+    adapter._cfg = cfg
+    return adapter
+
+
+def make_javascript_adapter_real(cfg):
+    """For tests that verify actual token mathematics."""
+    from lg.adapters.javascript import JavaScriptAdapter
+    adapter = JavaScriptAdapter().bind(None, default_tokenizer())
+    adapter._cfg = cfg
+    return adapter
+
+
 # ===== Markdown Adapter Utils =====
 
 def make_markdown_adapter(raw_cfg: Dict[str, Any]) -> MarkdownAdapter:
@@ -112,19 +131,22 @@ def create_temp_file(tmp_path: Path, filename: str, content: str) -> Path:
 __all__ = [
     # Python adapters
     "make_python_adapter", "make_python_adapter_real",
-    
-    # TypeScript adapters  
+
+    # TypeScript adapters
     "make_typescript_adapter", "make_typescript_adapter_real",
-    
+
     # Kotlin adapters
     "make_kotlin_adapter", "make_kotlin_adapter_real",
-    
+
+    # JavaScript adapters
+    "make_javascript_adapter", "make_javascript_adapter_real",
+
     # Markdown adapters
     "make_markdown_adapter",
-    
+
     # Tree-sitter utils
     "is_tree_sitter_available", "skip_if_no_tree_sitter",
-    
+
     # Legacy
     "create_temp_file"
 ]

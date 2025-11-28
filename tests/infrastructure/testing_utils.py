@@ -79,4 +79,9 @@ def lctx_kt(raw_text: str = "// Test Kotlin", group_size: int = 1) -> Lightweigh
     return lctx(raw_text=raw_text, filename="test.kt", group_size=group_size)
 
 
-__all__ = ["TokenServiceStub", "stub_tokenizer", "lctx", "lctx_py", "lctx_ts", "lctx_md", "lctx_kt"]
+def lctx_js(raw_text: str = "// Test JavaScript", group_size: int = 1) -> LightweightContext:
+    """Creates LightweightContext for a JavaScript file."""
+    return lctx(raw_text=raw_text, filename="test.js", group_size=group_size)
+
+
+__all__ = ["TokenServiceStub", "stub_tokenizer", "lctx", "lctx_py", "lctx_ts", "lctx_md", "lctx_kt", "lctx_js"]
