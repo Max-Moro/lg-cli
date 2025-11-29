@@ -129,17 +129,7 @@ tests:
         mode: allow
         allow:
           - "/adapters/"
-        when:
-          - condition: "tag:tests-infra"
-            allow:
-              - "/conftest.py"
-              - "/infrastructure/"
         children:
-          infrastructure:
-            mode: allow
-            allow:
-              - "/__init__.py"
-              - "/adapter_utils.py"
           adapters:
             mode: allow
             allow:
@@ -175,8 +165,7 @@ tests:
             children:
               python:
                 mode: allow
-                allow:
-                  - "/conftest.py"
+                allow: ["/conftest.py", "/utils.py"]
                 when:
                   - condition: "TAGSET:adapters-optimizations:function-bodies"
                     allow: ["/test_function_bodies.py", "/goldens/do/function_bodies.py"]
@@ -192,8 +181,7 @@ tests:
                     allow: ["/test_budget.py", "/goldens/do/budget_complex.py"]
               typescript:
                 mode: allow
-                allow:
-                  - "/conftest.py"
+                allow: ["/conftest.py", "/utils.py"]
                 when:
                   - condition: "TAGSET:adapters-optimizations:function-bodies"
                     allow: ["/test_function_bodies.py", "/goldens/do/function_bodies.ts"]
@@ -209,8 +197,7 @@ tests:
                     allow: ["/test_budget.py", "/goldens/do/budget_complex.ts"]
               kotlin:
                 mode: allow
-                allow:
-                  - "/conftest.py"
+                allow: ["/conftest.py", "/utils.py"]
                 when:
                   - condition: "TAGSET:adapters-optimizations:function-bodies"
                     allow: ["/test_function_bodies.py", "/goldens/do/function_bodies.kt"]
@@ -226,8 +213,7 @@ tests:
                     allow: ["/test_budget.py", "/goldens/do/budget_complex.kt"]
               javascript:
                 mode: allow
-                allow:
-                  - "/conftest.py"
+                allow: ["/conftest.py", "/utils.py"]
                 when:
                   - condition: "TAGSET:adapters-optimizations:function-bodies"
                     allow: ["/test_function_bodies.py", "/goldens/do/function_bodies.js"]
