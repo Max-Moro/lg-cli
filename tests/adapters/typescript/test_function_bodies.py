@@ -4,7 +4,8 @@ Tests for function body optimization in TypeScript adapter.
 
 from lg.adapters.typescript import TypeScriptCfg
 from lg.adapters.code_model import FunctionBodyConfig
-from .conftest import lctx_ts, do_function_bodies, assert_golden_match, make_adapter
+from .utils import lctx, make_adapter
+from ..golden_utils import assert_golden_match
 
 
 class TestTypeScriptFunctionBodyOptimization:
@@ -14,7 +15,7 @@ class TestTypeScriptFunctionBodyOptimization:
         """Test basic function body stripping."""
         adapter = make_adapter(TypeScriptCfg(strip_function_bodies=True))
         
-        result, meta = adapter.process(lctx_ts(do_function_bodies))
+        result, meta = adapter.process(lctx(do_function_bodies))
         
         # Check that functions were processed
         assert meta.get("typescript.removed.function_body", 0) == 6
@@ -34,7 +35,7 @@ class TestTypeScriptFunctionBodyOptimization:
             )
         ))
         
-        result, meta = adapter.process(lctx_ts(do_function_bodies))
+        result, meta = adapter.process(lctx(do_function_bodies))
         
         # Should have fewer removals than basic test
         assert_golden_match(result, "function_bodies", "large_only_strip")
@@ -60,7 +61,7 @@ const multiline = (users) => {
         
         adapter = make_adapter(TypeScriptCfg(strip_function_bodies=True))
         
-        result, meta = adapter.process(lctx_ts(arrow_code))
+        result, meta = adapter.process(lctx(arrow_code))
         
         # Should only strip multiline arrow functions (complex and multiline)
         assert 'const simple = () => "hello";' in result  # Single line preserved
@@ -103,7 +104,7 @@ export class Calculator {
         
         adapter = make_adapter(TypeScriptCfg(strip_function_bodies=True))
         
-        result, meta = adapter.process(lctx_ts(class_code))
+        result, meta = adapter.process(lctx(class_code))
         
         # Class structure should be preserved
         assert "export class Calculator {" in result
@@ -121,7 +122,7 @@ export class Calculator {
         
         adapter = make_adapter(TypeScriptCfg(strip_function_bodies=False))
         
-        result, meta = adapter.process(lctx_ts(code))
+        result, meta = adapter.process(lctx(code))
         
         # Should be nearly identical to original
         assert "return 42;" in result
@@ -148,7 +149,7 @@ export class Calculator {
         function_config = FunctionBodyConfig(mode="public_only")
         adapter = make_adapter(TypeScriptCfg(strip_function_bodies=function_config))
         
-        result, meta = adapter.process(lctx_ts(code))
+        result, meta = adapter.process(lctx(code))
         
         # Public method body should be stripped
         assert "public add(a: number, b: number): number" in result
@@ -176,7 +177,7 @@ function complex(): number {
         
         adapter = make_adapter(TypeScriptCfg(strip_function_bodies=True))
         
-        result, meta = adapter.process(lctx_ts(code))
+        result, meta = adapter.process(lctx(code))
         
         # Single-line function should not be stripped (important for simple functions)
         assert "function simple() { return 42; }" in result
@@ -200,7 +201,7 @@ function complex(): number {
         
         adapter = make_adapter(TypeScriptCfg(strip_function_bodies=True))
         
-        result, meta = adapter.process(lctx_ts(code))
+        result, meta = adapter.process(lctx(code))
         
         # Outer function body should be stripped
         assert "function outer(): string" in result
@@ -229,7 +230,7 @@ function processUser(user: User): UserResponse {
         
         adapter = make_adapter(TypeScriptCfg(strip_function_bodies=True))
         
-        result, meta = adapter.process(lctx_ts(code))
+        result, meta = adapter.process(lctx(code))
         
         # Interfaces and types should be preserved
         assert "interface User {" in result

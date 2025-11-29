@@ -4,7 +4,8 @@ Tests for literal trimming in Python adapter.
 
 from lg.adapters.python import PythonCfg
 from lg.adapters.code_model import LiteralConfig
-from .conftest import lctx_py, do_literals, assert_golden_match, make_adapter_real
+from .utils import lctx, make_adapter_real
+from ..golden_utils import assert_golden_match
 
 
 class TestPythonLiteralOptimizationGolden:
@@ -16,7 +17,7 @@ class TestPythonLiteralOptimizationGolden:
 
         adapter = make_adapter_real(PythonCfg(literals=literal_config))
 
-        result, meta = adapter.process(lctx_py(do_literals))
+        result, meta = adapter.process(lctx(do_literals))
 
         assert meta.get("python.removed.literal", 0) == 22
 
@@ -28,7 +29,7 @@ class TestPythonLiteralOptimizationGolden:
 
         adapter = make_adapter_real(PythonCfg(literals=literal_config))
 
-        result, meta = adapter.process(lctx_py(do_literals))
+        result, meta = adapter.process(lctx(do_literals))
 
         assert meta.get("python.removed.literal", 0) == 17
 

@@ -10,9 +10,8 @@ import pytest
 
 from lg.adapters.code_model import BudgetConfig
 from lg.adapters.kotlin import KotlinCfg
-from .conftest import make_adapter_real
+from .utils import make_adapter_real, lctx
 from ..golden_utils import assert_golden_match, load_sample_code
-from tests.infrastructure import lctx_kt
 
 
 # Budget steps for progression testing
@@ -28,7 +27,7 @@ def test_kotlin_budget_progression_golden(budget: int):
     cfg.placeholders.style = "none"
 
     adapter = make_adapter_real(cfg)
-    result, meta = adapter.process(lctx_kt(code))
+    result, meta = adapter.process(lctx(code))
 
     assert any(k.endswith(".budget.tokens_before") for k in meta.keys())
     assert any(k.endswith(".budget.tokens_after") for k in meta.keys())
@@ -51,7 +50,7 @@ def test_kotlin_budget_is_monotonic_shrink():
         cfg.budget = BudgetConfig(max_tokens_per_file=budget)
         cfg.placeholders.style = "none"
         adapter = make_adapter_real(cfg)
-        result, _ = adapter.process(lctx_kt(code))
+        result, _ = adapter.process(lctx(code))
         lengths.append(len(result))
 
     for i in range(1, len(lengths)):

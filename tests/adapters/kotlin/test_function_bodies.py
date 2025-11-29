@@ -4,7 +4,8 @@ Tests for function body optimization in Kotlin adapter.
 
 from lg.adapters.kotlin import KotlinCfg
 from lg.adapters.code_model import FunctionBodyConfig
-from .conftest import lctx_kt, do_function_bodies, assert_golden_match, make_adapter
+from .utils import lctx, make_adapter
+from ..golden_utils import assert_golden_match
 
 
 class TestKotlinFunctionBodyOptimization:
@@ -14,7 +15,7 @@ class TestKotlinFunctionBodyOptimization:
         """Test basic function body stripping."""
         adapter = make_adapter(KotlinCfg(strip_function_bodies=True))
         
-        result, meta = adapter.process(lctx_kt(do_function_bodies))
+        result, meta = adapter.process(lctx(do_function_bodies))
         
         # Check that functions were processed
         assert meta.get("kotlin.removed.function_body", 0) > 0
@@ -34,7 +35,7 @@ class TestKotlinFunctionBodyOptimization:
             )
         ))
         
-        result, meta = adapter.process(lctx_kt(do_function_bodies))
+        result, meta = adapter.process(lctx(do_function_bodies))
         
         # Should have fewer removals than basic test
         assert_golden_match(result, "function_bodies", "large_only_strip")
@@ -60,7 +61,7 @@ val multiline: (List<User>) -> List<String> = { users ->
         
         adapter = make_adapter(KotlinCfg(strip_function_bodies=True))
         
-        result, meta = adapter.process(lctx_kt(lambda_code))
+        result, meta = adapter.process(lctx(lambda_code))
         
         # Should only strip multiline lambda functions (complex and multiline)
         assert 'val simple = { "hello" }' in result  # Single line preserved
@@ -91,7 +92,7 @@ class Calculator(private val name: String) {
         
         adapter = make_adapter(KotlinCfg(strip_function_bodies=True))
         
-        result, meta = adapter.process(lctx_kt(class_code))
+        result, meta = adapter.process(lctx(class_code))
         
         # Class structure should be preserved
         assert "class Calculator" in result
@@ -109,7 +110,7 @@ class Calculator(private val name: String) {
         
         adapter = make_adapter(KotlinCfg(strip_function_bodies=False))
         
-        result, meta = adapter.process(lctx_kt(code))
+        result, meta = adapter.process(lctx(code))
         
         # Should be nearly identical to original
         assert "return 42" in result
@@ -136,7 +137,7 @@ class Calculator(private val name: String) {
         function_config = FunctionBodyConfig(mode="public_only")
         adapter = make_adapter(KotlinCfg(strip_function_bodies=function_config))
         
-        result, meta = adapter.process(lctx_kt(code))
+        result, meta = adapter.process(lctx(code))
         
         # Public method body should be stripped
         assert "fun add(a: Int, b: Int): Int" in result
@@ -164,7 +165,7 @@ fun complex(): Int {
         
         adapter = make_adapter(KotlinCfg(strip_function_bodies=True))
         
-        result, meta = adapter.process(lctx_kt(code))
+        result, meta = adapter.process(lctx(code))
         
         # Single-line function should not be stripped (important for simple functions)
         assert "fun simple() = 42" in result
@@ -188,7 +189,7 @@ fun complex(): Int {
         
         adapter = make_adapter(KotlinCfg(strip_function_bodies=True))
         
-        result, meta = adapter.process(lctx_kt(code))
+        result, meta = adapter.process(lctx(code))
         
         # Outer function body should be stripped
         assert "fun outer(): String" in result
@@ -214,7 +215,7 @@ fun processUser(user: User): User {
         
         adapter = make_adapter(KotlinCfg(strip_function_bodies=True))
         
-        result, meta = adapter.process(lctx_kt(code))
+        result, meta = adapter.process(lctx(code))
         
         # Data classes and interfaces should be preserved
         assert "data class User" in result
@@ -250,7 +251,7 @@ class TestKotlinDocstringPreservation:
         
         adapter = make_adapter(KotlinCfg(strip_function_bodies=True))
         
-        result, meta = adapter.process(lctx_kt(code))
+        result, meta = adapter.process(lctx(code))
         
         # Function signature should be preserved
         assert "fun calculateSum(a: Int, b: Int): Int" in result
@@ -286,7 +287,7 @@ class TestKotlinDocstringPreservation:
         
         adapter = make_adapter(KotlinCfg(strip_function_bodies=True))
         
-        result, meta = adapter.process(lctx_kt(code))
+        result, meta = adapter.process(lctx(code))
         
         # Method signature should be preserved
         assert "fun multiply(a: Int, b: Int): Int" in result
@@ -315,7 +316,7 @@ class TestKotlinDocstringPreservation:
         
         adapter = make_adapter(KotlinCfg(strip_function_bodies=True))
         
-        result, meta = adapter.process(lctx_kt(code))
+        result, meta = adapter.process(lctx(code))
         
         # Function signature should be preserved
         assert "fun simpleFunction(): Int" in result
@@ -350,7 +351,7 @@ fun undocumentedFunction(): String {
         
         adapter = make_adapter(KotlinCfg(strip_function_bodies=True))
         
-        result, meta = adapter.process(lctx_kt(code))
+        result, meta = adapter.process(lctx(code))
         
         # Both function signatures should be preserved
         assert "fun documentedFunction(): String" in result

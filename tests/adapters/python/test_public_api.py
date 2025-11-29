@@ -3,7 +3,8 @@ Tests for public API filtering in Python adapter.
 """
 
 from lg.adapters.python import PythonCfg
-from .conftest import lctx_py, do_public_api, assert_golden_match, make_adapter
+from .utils import lctx, make_adapter
+from ..golden_utils import assert_golden_match
 
 
 class TestPythonPublicApiFiltering:
@@ -13,7 +14,7 @@ class TestPythonPublicApiFiltering:
         """Test basic public API filtering."""
         adapter = make_adapter(PythonCfg(public_api_only=True))
         
-        result, meta = adapter.process(lctx_py(do_public_api))
+        result, meta = adapter.process(lctx(do_public_api))
         
         # Private elements should be removed
         assert meta.get("python.removed.function", 0) == 3
@@ -37,7 +38,7 @@ class TestPythonPublicApiFiltering:
         """Test that decorators are properly handled when removing private elements."""
         adapter = make_adapter(PythonCfg(public_api_only=True))
         
-        result, meta = adapter.process(lctx_py(do_public_api))
+        result, meta = adapter.process(lctx(do_public_api))
         
         # Check that decorators don't exist without their functions/classes
         lines = result.split('\n')
@@ -123,7 +124,7 @@ __PRIVATE_VAR = "private"
         
         adapter = make_adapter(PythonCfg(public_api_only=True))
         
-        result, meta = adapter.process(lctx_py(code))
+        result, meta = adapter.process(lctx(code))
         
         # Public elements should be preserved
         assert "def public_function():" in result
@@ -159,7 +160,7 @@ if __name__ == "__main__":
         
         adapter = make_adapter(PythonCfg(public_api_only=True))
         
-        result, meta = adapter.process(lctx_py(code))
+        result, meta = adapter.process(lctx(code))
         
         # Public function should be preserved
         assert "def public_function():" in result
@@ -200,7 +201,7 @@ def public_outer():
         
         adapter = make_adapter(PythonCfg(public_api_only=True))
         
-        result, meta = adapter.process(lctx_py(code))
+        result, meta = adapter.process(lctx(code))
         
         # Public outer elements should be preserved
         assert "class PublicOuter:" in result
@@ -246,7 +247,7 @@ class DataClass:
         
         adapter = make_adapter(PythonCfg(public_api_only=True))
         
-        result, meta = adapter.process(lctx_py(code))
+        result, meta = adapter.process(lctx(code))
         
         # Public properties and methods should be preserved
         assert "def public_property(self):" in result
@@ -292,7 +293,7 @@ class TestClass:
         
         adapter = make_adapter(PythonCfg(public_api_only=True))
         
-        result, meta = adapter.process(lctx_py(code))
+        result, meta = adapter.process(lctx(code))
         
         # No hanging decorators check
         lines = result.split('\n')

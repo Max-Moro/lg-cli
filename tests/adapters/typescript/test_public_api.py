@@ -3,7 +3,8 @@ Tests for public API filtering in TypeScript adapter.
 """
 
 from lg.adapters.typescript import TypeScriptCfg
-from .conftest import lctx_ts, do_public_api, assert_golden_match, make_adapter
+from .utils import lctx, make_adapter
+from ..golden_utils import assert_golden_match
 
 
 class TestTypeScriptPublicApiOptimization:
@@ -13,7 +14,7 @@ class TestTypeScriptPublicApiOptimization:
         """Test basic public API filtering."""
         adapter = make_adapter(TypeScriptCfg(public_api_only=True))
         
-        result, meta = adapter.process(lctx_ts(do_public_api))
+        result, meta = adapter.process(lctx(do_public_api))
         
         # Private elements should be removed
         assert meta.get("typescript.removed.function", 0) == 5
@@ -72,7 +73,7 @@ export default class DefaultClass {}
         
         adapter = make_adapter(TypeScriptCfg(public_api_only=True))
         
-        result, meta = adapter.process(lctx_ts(code))
+        result, meta = adapter.process(lctx(code))
         
         # Exported elements should remain
         assert "export class PublicClass" in result
@@ -118,7 +119,7 @@ namespace InternalUtils {
         
         adapter = make_adapter(TypeScriptCfg(public_api_only=True))
         
-        result, meta = adapter.process(lctx_ts(code))
+        result, meta = adapter.process(lctx(code))
         
         # Exported namespace should remain
         assert "export namespace Utils" in result
@@ -164,7 +165,7 @@ function useInternal(): InternalType {
         
         adapter = make_adapter(TypeScriptCfg(public_api_only=True))
         
-        result, meta = adapter.process(lctx_ts(code))
+        result, meta = adapter.process(lctx(code))
         
         # Re-exports should remain
         assert "export { default as Component }" in result
@@ -211,7 +212,7 @@ class PrivateClass {
         
         adapter = make_adapter(TypeScriptCfg(public_api_only=True))
 
-        result, meta = adapter.process(lctx_ts(code))
+        result, meta = adapter.process(lctx(code))
         
         # Public class should remain with public members
         assert "export class PublicClass" in result
@@ -272,7 +273,7 @@ enum InternalPriority {
         
         adapter = make_adapter(TypeScriptCfg(public_api_only=True))
         
-        result, meta = adapter.process(lctx_ts(code))
+        result, meta = adapter.process(lctx(code))
         
         # Exported types should remain
         assert "export interface UserProfile" in result

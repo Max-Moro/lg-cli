@@ -4,9 +4,7 @@ Ensures comments don't break code structure when placed inline.
 """
 
 from lg.adapters.javascript import JavaScriptCfg
-from .conftest import make_adapter
-from tests.infrastructure import lctx_js
-
+from .utils import lctx, make_adapter
 
 class TestLiteralCommentContext:
     """Test smart comment placement for literal optimization."""
@@ -19,7 +17,7 @@ class TestLiteralCommentContext:
         cfg.literals.max_tokens = 5  # Force trimming
         adapter = make_adapter(cfg)
 
-        result, _ = adapter.process(lctx_js(code))
+        result, _ = adapter.process(lctx(code))
 
         # Should place single-line comment after semicolon
         assert '; //' in result
@@ -34,7 +32,7 @@ class TestLiteralCommentContext:
         cfg.literals.max_tokens = 5  # Force trimming
         adapter = make_adapter(cfg)
 
-        result, _ = adapter.process(lctx_js(code))
+        result, _ = adapter.process(lctx(code))
 
         # Should place comment after semicolon with block comment to avoid commenting out the return statement
         assert '"; /* literal string' in result
@@ -49,7 +47,7 @@ class TestLiteralCommentContext:
         cfg.literals.max_tokens = 5  # Force trimming
         adapter = make_adapter(cfg)
 
-        result, _ = adapter.process(lctx_js(code))
+        result, _ = adapter.process(lctx(code))
 
         # Should use single-line comment since nothing follows on same line
         assert '//' in result
@@ -64,7 +62,7 @@ class TestLiteralCommentContext:
         cfg.literals.max_tokens = 5  # Force trimming
         adapter = make_adapter(cfg)
 
-        result, _ = adapter.process(lctx_js(code))
+        result, _ = adapter.process(lctx(code))
 
         # Should use block comment since there's code (closing brace) after semicolon
         assert '/* literal string' in result
@@ -79,7 +77,7 @@ class TestLiteralCommentContext:
         cfg.literals.max_tokens = 5  # Force trimming
         adapter = make_adapter(cfg)
 
-        result, _ = adapter.process(lctx_js(code))
+        result, _ = adapter.process(lctx(code))
 
         # Should place comment after semicolon with block comment to avoid commenting out following code
         assert '"; /* literal string' in result
@@ -94,7 +92,7 @@ class TestLiteralCommentContext:
         cfg.literals.max_tokens = 5  # Force trimming
         adapter = make_adapter(cfg)
 
-        result, _ = adapter.process(lctx_js(code))
+        result, _ = adapter.process(lctx(code))
 
         # Should place single-line comment after semicolon since no more code follows
         assert '; //' in result
@@ -112,7 +110,7 @@ class TestLiteralCommentContext:
         cfg.literals.max_tokens = 5  # Force trimming
         adapter = make_adapter(cfg)
 
-        result, _ = adapter.process(lctx_js(code))
+        result, _ = adapter.process(lctx(code))
 
         # Should place comment after closing brackets
         assert ']) // literal array' in result
@@ -127,7 +125,7 @@ class TestLiteralCommentContext:
         cfg.literals.max_tokens = 5  # Force trimming
         adapter = make_adapter(cfg)
 
-        result, _ = adapter.process(lctx_js(code))
+        result, _ = adapter.process(lctx(code))
 
         # Should place comment after semicolon with single-line comment since no code follows
         assert '; // literal string' in result
@@ -142,7 +140,7 @@ class TestLiteralCommentContext:
         cfg.literals.max_tokens = 5  # Force trimming
         adapter = make_adapter(cfg)
 
-        result, _ = adapter.process(lctx_js(code))
+        result, _ = adapter.process(lctx(code))
 
         # Should place comment after semicolon with single-line comment since no code follows
         assert '; // literal string' in result
@@ -160,7 +158,7 @@ class TestLiteralCommentContext:
         cfg.literals.max_tokens = 5  # Force trimming
         adapter = make_adapter(cfg)
 
-        result, _ = adapter.process(lctx_js(code))
+        result, _ = adapter.process(lctx(code))
 
         # Should place single-line comment after semicolon
         assert '; //' in result
@@ -175,7 +173,7 @@ class TestLiteralCommentContext:
         cfg.literals.max_tokens = 5  # Force trimming
         adapter = make_adapter(cfg)
 
-        result, _ = adapter.process(lctx_js(code))
+        result, _ = adapter.process(lctx(code))
 
         # Should place single-line comment after semicolon
         assert '; //' in result
@@ -193,7 +191,7 @@ class TestLiteralCommentContext:
         cfg.literals.max_tokens = 5  # Force trimming
         adapter = make_adapter(cfg)
 
-        result, _ = adapter.process(lctx_js(code))
+        result, _ = adapter.process(lctx(code))
 
         # Should place comment appropriately without breaking object syntax
         assert 'literal string' in result or 'literal' in result

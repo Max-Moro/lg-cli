@@ -4,7 +4,8 @@ Tests for comment policy implementation in TypeScript adapter.
 
 from lg.adapters.typescript import TypeScriptCfg
 from lg.adapters.code_model import CommentConfig
-from .conftest import lctx_ts, do_comments, assert_golden_match, make_adapter
+from .utils import lctx, make_adapter
+from ..golden_utils import assert_golden_match
 
 
 class TestTypeScriptCommentOptimization:
@@ -14,7 +15,7 @@ class TestTypeScriptCommentOptimization:
         """Test keeping all comments (default policy)."""
         adapter = make_adapter(TypeScriptCfg(comment_policy="keep_all"))
         
-        result, meta = adapter.process(lctx_ts(do_comments))
+        result, meta = adapter.process(lctx(do_comments))
         
         # No comments should be removed
         assert meta.get("typescript.removed.comment", 0) == 0
@@ -28,7 +29,7 @@ class TestTypeScriptCommentOptimization:
         """Test stripping all comments."""
         adapter = make_adapter(TypeScriptCfg(comment_policy="strip_all"))
         
-        result, meta = adapter.process(lctx_ts(do_comments))
+        result, meta = adapter.process(lctx(do_comments))
         
         # Comments should be removed
         assert meta.get("typescript.removed.comment", 0) == 67
@@ -40,7 +41,7 @@ class TestTypeScriptCommentOptimization:
         """Test keeping only JSDoc documentation comments."""
         adapter = make_adapter(TypeScriptCfg(comment_policy="keep_doc"))
         
-        result, meta = adapter.process(lctx_ts(do_comments))
+        result, meta = adapter.process(lctx(do_comments))
         
         # Regular comments should be removed, JSDoc preserved
         assert meta.get("typescript.removed.comment", 0) == 67
@@ -55,7 +56,7 @@ class TestTypeScriptCommentOptimization:
         """Test keeping only first sentence of JSDoc comments."""
         adapter = make_adapter(TypeScriptCfg(comment_policy="keep_first_sentence"))
         
-        result, meta = adapter.process(lctx_ts(do_comments))
+        result, meta = adapter.process(lctx(do_comments))
         
         # JSDoc should be truncated to first sentence
         assert meta.get("typescript.removed.comment", 0) == 67
@@ -81,7 +82,7 @@ function processData(data: string): void {
         
         adapter = make_adapter(TypeScriptCfg(comment_policy="keep_doc"))
         
-        result, meta = adapter.process(lctx_ts(code))
+        result, meta = adapter.process(lctx(code))
         
         # JSDoc should be preserved
         assert "/**" in result and "This is a JSDoc comment" in result
@@ -102,7 +103,7 @@ function processData(data: string): void {
         
         adapter = make_adapter(TypeScriptCfg(comment_policy=comment_config))
         
-        result, meta = adapter.process(lctx_ts(do_comments))
+        result, meta = adapter.process(lctx(do_comments))
         
         # Should keep JSDoc and annotation comments
         assert "TODO:" in result
@@ -135,7 +136,7 @@ const config: Config = {
         
         adapter = make_adapter(TypeScriptCfg(comment_policy="strip_all"))
         
-        result, meta = adapter.process(lctx_ts(code))
+        result, meta = adapter.process(lctx(code))
         
         # Inline comments should be processed
         assert "// Connection timeout in milliseconds" not in result
@@ -170,7 +171,7 @@ async function processItems<T>(
         
         adapter = make_adapter(TypeScriptCfg(comment_policy="keep_first_sentence"))
         
-        result, meta = adapter.process(lctx_ts(code))
+        result, meta = adapter.process(lctx(code))
         
         # Should keep only first sentence
         assert "Complex function with detailed JSDoc." in result
@@ -198,7 +199,7 @@ interface User {
         
         adapter = make_adapter(TypeScriptCfg(comment_policy="keep_doc"))
         
-        result, meta = adapter.process(lctx_ts(code))
+        result, meta = adapter.process(lctx(code))
         
         # Interface JSDoc should be preserved
         assert "/**" in result and "User interface definition" in result
@@ -229,7 +230,7 @@ function singleLineMulti() {}
         
         adapter = make_adapter(TypeScriptCfg(comment_policy="keep_doc"))
         
-        result, meta = adapter.process(lctx_ts(code))
+        result, meta = adapter.process(lctx(code))
         
         # Only JSDoc comments should be preserved
         assert "/**" in result and "JSDoc style comment" in result
@@ -256,7 +257,7 @@ type UserResponse = ApiResponse<User>;
         
         adapter = make_adapter(TypeScriptCfg(comment_policy="keep_doc"))
         
-        result, meta = adapter.process(lctx_ts(code))
+        result, meta = adapter.process(lctx(code))
         
         # JSDoc should be preserved
         assert "/**" in result and "Generic utility type" in result

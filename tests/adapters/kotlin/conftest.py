@@ -1,25 +1,10 @@
 """
-Shared fixtures and utilities for Kotlin adapter tests.
+Shared fixtures for Kotlin adapter tests.
 """
 
 import pytest
+from ..golden_utils import load_sample_code
 
-from lg.adapters.kotlin import KotlinCfg
-from tests.infrastructure import lctx, lctx_kt  # noqa: F401
-from ..golden_utils import assert_golden_match, load_sample_code  # noqa: F401
-
-# Imports from unified infrastructure
-from tests.infrastructure.adapter_utils import make_kotlin_adapter, make_kotlin_adapter_real
-
-
-# For backward compatibility
-def make_adapter(cfg: KotlinCfg):
-    """Kotlin adapter with preset TokenService stub."""
-    return make_kotlin_adapter(cfg)
-
-def make_adapter_real(cfg: KotlinCfg):
-    """If tests check real token mathematics."""
-    return make_kotlin_adapter_real(cfg)
 
 @pytest.fixture
 def do_function_bodies():
@@ -55,4 +40,3 @@ def do_public_api():
 def do_complex():
     """Sample Kotlin code for testing complex combined optimization."""
     return load_sample_code("complex")
-

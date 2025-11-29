@@ -3,8 +3,7 @@ Test literal trimming with correct indentation handling for Kotlin.
 """
 
 from lg.adapters.kotlin import KotlinCfg
-from tests.adapters.kotlin.conftest import make_adapter
-from tests.infrastructure import lctx_kt
+from .utils import make_adapter, lctx
 
 
 def test_kotlin_map_literal_indentation():
@@ -39,7 +38,7 @@ def test_kotlin_map_literal_indentation():
 
     adapter = make_adapter(cfg)
 
-    context = lctx_kt(code)
+    context = lctx(code)
     result, _ = adapter.process(context)
 
     # Check that indentation is correct
@@ -90,8 +89,7 @@ class DataContainer {
     cfg.literals.max_tokens = 30  # Force trimming
     adapter = make_adapter(cfg)
 
-    lctx = lctx_kt(code)
-    result, meta = adapter.process(lctx)
+    result, meta = adapter.process(lctx(code))
 
     # Check that indentation is preserved correctly
     lines = result.split('\n')
@@ -140,8 +138,7 @@ class ConfigManager {
     cfg.literals.max_tokens = 50  # Force trimming of the large nested structure
     adapter = make_adapter(cfg)
 
-    lctx = lctx_kt(code)
-    result, meta = adapter.process(lctx)
+    result, meta = adapter.process(lctx(code))
 
     # The nested structure should be trimmed but maintain proper indentation
     lines = result.split('\n')
@@ -172,8 +169,7 @@ val LARGE_CONFIG = mapOf(
     cfg.literals.max_tokens = 25  # Force trimming
     adapter = make_adapter(cfg)
 
-    lctx = lctx_kt(code)
-    result, meta = adapter.process(lctx)
+    result, meta = adapter.process(lctx(code))
 
     # Check that structure is preserved
     assert "val LARGE_CONFIG" in result

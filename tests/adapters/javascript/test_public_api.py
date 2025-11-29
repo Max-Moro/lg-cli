@@ -3,17 +3,18 @@ Tests for public API filtering in JavaScript adapter.
 """
 
 from lg.adapters.javascript import JavaScriptCfg
-from .conftest import lctx_js, do_public_api, assert_golden_match, make_adapter
+from .utils import lctx, make_adapter
+from ..golden_utils import assert_golden_match
 
 
 class TestJavaScriptPublicApiOptimization:
     """Test public API filtering for JavaScript code."""
 
-    def test_public_api_only_basic(self, do_public_api, lctx_js):
+    def test_public_api_only_basic(self, do_public_api):
         """Test basic public API filtering."""
         adapter = make_adapter(JavaScriptCfg(public_api_only=True))
 
-        result, meta = adapter.process(lctx_js(do_public_api))
+        result, meta = adapter.process(lctx(do_public_api))
 
         # Private elements should be removed
         assert meta.get("javascript.removed.function", 0) > 0
@@ -29,7 +30,7 @@ class TestJavaScriptPublicApiOptimization:
 
         assert_golden_match(result, "public_api", "basic")
 
-    def test_export_detection(self, lctx_js):
+    def test_export_detection(self):
         """Test detection of exported elements."""
         code = '''
 // Exported elements (public API)
@@ -57,7 +58,7 @@ export default class DefaultClass {}
 
         adapter = make_adapter(JavaScriptCfg(public_api_only=True))
 
-        result, meta = adapter.process(lctx_js(code))
+        result, meta = adapter.process(lctx(code))
 
         # Exported elements should remain
         assert "export class PublicClass" in result
@@ -69,7 +70,7 @@ export default class DefaultClass {}
         assert "class PrivateClass" not in result
         assert "function privateFunction" not in result
 
-    def test_class_member_visibility(self, lctx_js):
+    def test_class_member_visibility(self):
         """Test class member visibility in public API."""
         code = '''
 export class PublicClass {
@@ -97,7 +98,7 @@ class PrivateClass {
 
         adapter = make_adapter(JavaScriptCfg(public_api_only=True))
 
-        result, meta = adapter.process(lctx_js(code))
+        result, meta = adapter.process(lctx(code))
 
         # Public class should remain with public members
         assert "export class PublicClass" in result
@@ -111,7 +112,7 @@ class PrivateClass {
         # Private class should be removed
         assert "class PrivateClass" not in result
 
-    def test_re_exports(self, lctx_js):
+    def test_re_exports(self):
         """Test re-export statements."""
         code = '''
 // Re-exports (public API)
@@ -136,7 +137,7 @@ function useInternal() {
 
         adapter = make_adapter(JavaScriptCfg(public_api_only=True))
 
-        result, meta = adapter.process(lctx_js(code))
+        result, meta = adapter.process(lctx(code))
 
         # Re-exports should remain
         assert "export { default as Component }" in result
@@ -146,7 +147,7 @@ function useInternal() {
         # Private imports should be removed or summarized
         assert "InternalHelper" not in result
 
-    def test_namespace_like_exports(self, lctx_js):
+    def test_namespace_like_exports(self):
         """Test namespace-like object exports."""
         code = '''
 export const Utils = {
@@ -168,7 +169,7 @@ const InternalUtils = {
 
         adapter = make_adapter(JavaScriptCfg(public_api_only=True))
 
-        result, meta = adapter.process(lctx_js(code))
+        result, meta = adapter.process(lctx(code))
 
         # Exported namespace should remain
         assert "export const Utils" in result
@@ -177,7 +178,7 @@ const InternalUtils = {
         # Private namespace should be removed
         assert "InternalUtils" not in result
 
-    def test_default_export_preservation(self, lctx_js):
+    def test_default_export_preservation(self):
         """Test that default exports are preserved."""
         code = '''
 class UserManager {
@@ -190,7 +191,7 @@ export default UserManager;
 
         adapter = make_adapter(JavaScriptCfg(public_api_only=True))
 
-        result, meta = adapter.process(lctx_js(code))
+        result, meta = adapter.process(lctx(code))
 
         # Class and default export should remain
         assert "class UserManager" in result

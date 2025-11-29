@@ -10,9 +10,8 @@ import pytest
 
 from lg.adapters.code_model import BudgetConfig
 from lg.adapters.typescript import TypeScriptCfg
-from .conftest import make_adapter_real
+from .utils import make_adapter_real, lctx
 from ..golden_utils import assert_golden_match, load_sample_code
-from tests.infrastructure import lctx_ts
 
 
 BUDGET_STEPS = [642, 608, 513, 444, 423, 383, 358, 262, 185]
@@ -27,7 +26,7 @@ def test_typescript_budget_progression_golden(budget: int):
     cfg.placeholders.style = "none"
 
     adapter = make_adapter_real(cfg)
-    result, meta = adapter.process(lctx_ts(code))
+    result, meta = adapter.process(lctx(code))
 
     assert any(k.endswith(".budget.tokens_before") for k in meta.keys())
     assert any(k.endswith(".budget.tokens_after") for k in meta.keys())
@@ -49,7 +48,7 @@ def test_typescript_budget_is_monotonic_shrink():
         cfg.budget = BudgetConfig(max_tokens_per_file=budget)
         cfg.placeholders.style = "none"
         adapter = make_adapter_real(cfg)
-        result, _ = adapter.process(lctx_ts(code))
+        result, _ = adapter.process(lctx(code))
         lengths.append(len(result))
 
     for i in range(1, len(lengths)):

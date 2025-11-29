@@ -5,8 +5,7 @@ Ensures set literals are correctly identified and trimmed with proper bracket ty
 
 from lg.adapters.code_model import LiteralConfig
 from lg.adapters.python import PythonCfg
-from tests.adapters.python.conftest import make_adapter
-from tests.infrastructure import lctx_py
+from .utils import make_adapter, lctx
 
 
 class TestPythonSetLiterals:
@@ -25,8 +24,7 @@ TAGS = {
 }
 '''
         
-        lctx = lctx_py(code.strip())
-        result, meta = adapter.process(lctx)
+        result, meta = adapter.process(lctx(code.strip()))
         
         # Verify set boundaries are preserved
         assert "TAGS = {" in result
@@ -61,8 +59,8 @@ CONFIG = {
 }
 '''
         
-        set_result, _ = adapter.process(lctx_py(set_code.strip()))
-        dict_result, _ = adapter.process(lctx_py(dict_code.strip()))
+        set_result, _ = adapter.process(lctx(set_code.strip()))
+        dict_result, _ = adapter.process(lctx(dict_code.strip()))
         
         # Set should be identified as set
         assert "literal set" in set_result
@@ -82,8 +80,7 @@ EMPTY_SET = set()
 EMPTY_LITERAL_SET = {}  # This is actually an empty dict in Python
 '''
         
-        lctx = lctx_py(code.strip())
-        result, meta = adapter.process(lctx)
+        result, meta = adapter.process(lctx(code.strip()))
         
         # Empty dict literal should remain unchanged or be handled as object
         # set() constructor call is not a literal, so should be unchanged
@@ -103,8 +100,7 @@ class Config:
     }
 '''
         
-        lctx = lctx_py(code.strip())
-        result, meta = adapter.process(lctx)
+        result, meta = adapter.process(lctx(code.strip()))
         
         # Check that set boundaries are correct
         assert "SUPPORTED_LANGS = {" in result
@@ -133,8 +129,7 @@ LANGUAGES = {
 }
 '''
         
-        lctx = lctx_py(code.strip())
-        result, meta = adapter.process(lctx)
+        result, meta = adapter.process(lctx(code.strip()))
         
         # Should correctly identify as set and use {} brackets
         assert "LANGUAGES = {" in result
@@ -156,8 +151,7 @@ COMPLEX_SET = {
 }
 '''
         
-        lctx = lctx_py(code.strip())
-        result, meta = adapter.process(lctx)
+        result, meta = adapter.process(lctx(code.strip()))
         
         # Should preserve set boundaries
         assert "COMPLEX_SET = {" in result
@@ -175,8 +169,7 @@ BIG_SET = {
 }
 '''
         
-        lctx = lctx_py(code.strip())
-        result, meta = adapter.process(lctx)
+        result, meta = adapter.process(lctx(code.strip()))
         
         # Check that literal removal is recorded in metrics
         assert meta.get("python.removed.literal", 0) >= 1

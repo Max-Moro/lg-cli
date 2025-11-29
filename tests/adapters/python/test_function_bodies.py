@@ -4,7 +4,8 @@ Tests for function body optimization in Python adapter.
 
 from lg.adapters.python import PythonCfg
 from lg.adapters.code_model import FunctionBodyConfig
-from .conftest import lctx_py, do_function_bodies, assert_golden_match, make_adapter
+from .utils import lctx, make_adapter
+from ..golden_utils import assert_golden_match
 
 
 class TestPythonFunctionBodyOptimization:
@@ -14,7 +15,7 @@ class TestPythonFunctionBodyOptimization:
         """Test basic function body stripping."""
         adapter = make_adapter(PythonCfg(strip_function_bodies=True))
         
-        result, meta = adapter.process(lctx_py(do_function_bodies))
+        result, meta = adapter.process(lctx(do_function_bodies))
         
         # Check that functions were processed
         assert meta.get("python.removed.function_body", 0) == 1
@@ -34,7 +35,7 @@ class TestPythonFunctionBodyOptimization:
             )
         ))
         
-        result, meta = adapter.process(lctx_py(do_function_bodies))
+        result, meta = adapter.process(lctx(do_function_bodies))
         
         # Should have fewer removals than basic test
         assert_golden_match(result, "function_bodies", "large_only_strip")
@@ -43,7 +44,7 @@ class TestPythonFunctionBodyOptimization:
         """Test with stripping disabled."""
         adapter = make_adapter(PythonCfg(strip_function_bodies=False))
         
-        result, meta = adapter.process(lctx_py(do_function_bodies))
+        result, meta = adapter.process(lctx(do_function_bodies))
         
         # No functions should be removed
         assert meta.get("python.removed.function_body", 0) == 0
@@ -70,7 +71,7 @@ def _private_function():
         function_config = FunctionBodyConfig(mode="public_only")
         adapter = make_adapter(PythonCfg(strip_function_bodies=function_config))
         
-        result, meta = adapter.process(lctx_py(code))
+        result, meta = adapter.process(lctx(code))
         
         # Public function body should be stripped
         assert "def public_function():" in result
@@ -101,7 +102,7 @@ def _private_function():
         function_config = FunctionBodyConfig(mode="non_public")
         adapter = make_adapter(PythonCfg(strip_function_bodies=function_config))
         
-        result, meta = adapter.process(lctx_py(code))
+        result, meta = adapter.process(lctx(code))
         
         # Public function body should be preserved
         assert "def public_function():" in result
@@ -130,7 +131,7 @@ def complex():
         
         adapter = make_adapter(PythonCfg(strip_function_bodies=True))
         
-        result, meta = adapter.process(lctx_py(code))
+        result, meta = adapter.process(lctx(code))
         
         # Single-line function should not be stripped (important for arrow-like functions)
         assert "def simple(): return 42" in result
@@ -154,7 +155,7 @@ def complex():
         
         adapter = make_adapter(PythonCfg(strip_function_bodies=True))
         
-        result, meta = adapter.process(lctx_py(code))
+        result, meta = adapter.process(lctx(code))
         
         # Outer function should be preserved with docstring
         assert "def outer():" in result
@@ -193,7 +194,7 @@ def complex():
         
         adapter = make_adapter(PythonCfg(strip_function_bodies=True))
         
-        result, meta = adapter.process(lctx_py(code))
+        result, meta = adapter.process(lctx(code))
         
         # All method bodies should be stripped
         assert "def __init__(self):" in result
@@ -232,7 +233,7 @@ class TestPythonDocstringPreservation:
         
         adapter = make_adapter(PythonCfg(strip_function_bodies=True))
         
-        result, meta = adapter.process(lctx_py(code))
+        result, meta = adapter.process(lctx(code))
         
         # Function signature should be preserved
         assert "def calculate_sum(a, b):" in result
@@ -268,7 +269,7 @@ class TestPythonDocstringPreservation:
         
         adapter = make_adapter(PythonCfg(strip_function_bodies=True))
         
-        result, meta = adapter.process(lctx_py(code))
+        result, meta = adapter.process(lctx(code))
         
         # Method signature should be preserved
         assert "def multiply(self, a, b):" in result
@@ -299,7 +300,7 @@ class TestPythonDocstringPreservation:
         
         adapter = make_adapter(PythonCfg(strip_function_bodies=True))
         
-        result, meta = adapter.process(lctx_py(code))
+        result, meta = adapter.process(lctx(code))
         
         # Function signature should be preserved
         assert "def simple_function():" in result
@@ -334,7 +335,7 @@ def func3():
         
         adapter = make_adapter(PythonCfg(strip_function_bodies=True))
         
-        result, meta = adapter.process(lctx_py(code))
+        result, meta = adapter.process(lctx(code))
         
         # All function signatures should be preserved
         assert "def func1():" in result
@@ -370,7 +371,7 @@ def undocumented_function():
         
         adapter = make_adapter(PythonCfg(strip_function_bodies=True))
         
-        result, meta = adapter.process(lctx_py(code))
+        result, meta = adapter.process(lctx(code))
         
         # Both function signatures should be preserved
         assert "def documented_function():" in result
@@ -400,7 +401,7 @@ def undocumented_function():
         
         adapter = make_adapter(PythonCfg(strip_function_bodies=True))
         
-        result, meta = adapter.process(lctx_py(code))
+        result, meta = adapter.process(lctx(code))
         
         # Function should be preserved
         assert "def docstring_only():" in result

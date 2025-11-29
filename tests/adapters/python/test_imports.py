@@ -6,7 +6,8 @@ from lg.adapters.python import PythonCfg
 from lg.adapters.python.imports import PythonImportClassifier, PythonImportAnalyzer
 from lg.adapters.python.adapter import PythonDocument
 from lg.adapters.code_model import ImportConfig
-from .conftest import lctx_py, do_imports, assert_golden_match, make_adapter
+from .utils import lctx, make_adapter
+from ..golden_utils import assert_golden_match
 
 
 class TestPythonImportClassification:
@@ -117,7 +118,7 @@ class TestPythonImportOptimization:
         """Test keeping all imports (default policy)."""
         adapter = make_adapter(PythonCfg())  # Default imports policy is keep_all
         
-        result, meta = adapter.process(lctx_py(do_imports))
+        result, meta = adapter.process(lctx(do_imports))
         
         # No imports should be removed
         assert meta.get("python.removed.import", 0) == 0
@@ -133,7 +134,7 @@ class TestPythonImportOptimization:
         
         adapter = make_adapter(PythonCfg(imports=import_config))
         
-        result, meta = adapter.process(lctx_py(do_imports))
+        result, meta = adapter.process(lctx(do_imports))
         
         # Local imports should be removed
         assert meta.get("python.removed.import", 0) == 24
@@ -154,7 +155,7 @@ class TestPythonImportOptimization:
         
         adapter = make_adapter(PythonCfg(imports=import_config))
         
-        result, meta = adapter.process(lctx_py(do_imports))
+        result, meta = adapter.process(lctx(do_imports))
         
         # External imports should be removed
         assert meta.get("python.removed.import", 0) == 58
@@ -177,7 +178,7 @@ class TestPythonImportOptimization:
         
         adapter = make_adapter(PythonCfg(imports=import_config))
         
-        result, meta = adapter.process(lctx_py(do_imports))
+        result, meta = adapter.process(lctx(do_imports))
         
         # All imports should be removed
         assert meta.get("python.removed.import", 0) == 82
@@ -199,7 +200,7 @@ class TestPythonImportOptimization:
         
         adapter = make_adapter(PythonCfg(imports=import_config))
         
-        result, meta = adapter.process(lctx_py(do_imports))
+        result, meta = adapter.process(lctx(do_imports))
         
         # Long import lists should be summarized
         assert meta.get("python.removed.import", 0) == 29
@@ -222,7 +223,7 @@ from .local import function  # Relative import
         
         adapter = make_adapter(PythonCfg(imports=import_config))
         
-        result, meta = adapter.process(lctx_py(code))
+        result, meta = adapter.process(lctx(code))
         
         # External imports should be preserved
         assert "import os" in result
@@ -248,7 +249,7 @@ from collections import defaultdict, Counter, deque
         
         adapter = make_adapter(PythonCfg(imports=import_config))
         
-        result, meta = adapter.process(lctx_py(code))
+        result, meta = adapter.process(lctx(code))
         
         # Long from-import lists should be summarized
         assert meta.get("python.removed.import", 0) == 5
@@ -270,7 +271,7 @@ if TYPE_CHECKING:
         
         adapter = make_adapter(PythonCfg(imports=import_config))
         
-        result, meta = adapter.process(lctx_py(code))
+        result, meta = adapter.process(lctx(code))
         
         # Conditional imports should be handled appropriately
         # The exact behavior may depend on implementation
@@ -292,7 +293,7 @@ from typing import *
         
         adapter = make_adapter(PythonCfg(imports=import_config))
         
-        result, meta = adapter.process(lctx_py(code))
+        result, meta = adapter.process(lctx(code))
         
         # External star imports should be preserved
         assert "from os import *" in result
@@ -314,7 +315,7 @@ from .helpers import process_data as process
         
         adapter = make_adapter(PythonCfg(imports=import_config))
         
-        result, meta = adapter.process(lctx_py(code))
+        result, meta = adapter.process(lctx(code))
         
         # External aliased imports should be preserved
         assert "import numpy as np" in result
@@ -335,7 +336,7 @@ import external.library.with.deep.structure
         
         adapter = make_adapter(PythonCfg(imports=import_config))
         
-        result, meta = adapter.process(lctx_py(code))
+        result, meta = adapter.process(lctx(code))
         
         # Classification should work for deeply nested modules
         # Exact behavior depends on implementation heuristics
@@ -366,7 +367,7 @@ from rest_framework.decorators import (
         
         adapter = make_adapter(PythonCfg(imports=import_config))
         
-        result, meta = adapter.process(lctx_py(code))
+        result, meta = adapter.process(lctx(code))
         
         # Long import groups should be summarized
         assert meta.get("python.removed.import", 0) == 13
@@ -393,7 +394,7 @@ from .models import Model1, Model2, Model3
         
         adapter = make_adapter(PythonCfg(imports=import_config))
         
-        result, meta = adapter.process(lctx_py(code))
+        result, meta = adapter.process(lctx(code))
         
         # Local imports should be stripped regardless of length
         assert "from .utils import" not in result

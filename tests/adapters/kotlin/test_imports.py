@@ -4,7 +4,8 @@ Tests for import optimization in Kotlin adapter.
 
 from lg.adapters.kotlin import KotlinCfg
 from lg.adapters.code_model import ImportConfig
-from .conftest import lctx_kt, do_imports, assert_golden_match, make_adapter
+from .utils import lctx, make_adapter
+from ..golden_utils import assert_golden_match
 
 
 class TestKotlinImportOptimization:
@@ -14,7 +15,7 @@ class TestKotlinImportOptimization:
         """Test keeping all imports (default policy)."""
         adapter = make_adapter(KotlinCfg())  # Default imports policy is keep_all
         
-        result, meta = adapter.process(lctx_kt(do_imports))
+        result, meta = adapter.process(lctx(do_imports))
         
         # No imports should be removed
         assert meta.get("kotlin.removed.imports", 0) == 0
@@ -29,7 +30,7 @@ class TestKotlinImportOptimization:
         
         adapter = make_adapter(KotlinCfg(imports=import_config))
         
-        result, meta = adapter.process(lctx_kt(do_imports))
+        result, meta = adapter.process(lctx(do_imports))
         
         # Local imports should be removed
         assert meta.get("kotlin.removed.import", 0) > 0
@@ -50,7 +51,7 @@ class TestKotlinImportOptimization:
         
         adapter = make_adapter(KotlinCfg(imports=import_config))
         
-        result, meta = adapter.process(lctx_kt(do_imports))
+        result, meta = adapter.process(lctx(do_imports))
         
         # External imports should be removed
         assert meta.get("kotlin.removed.import", 0) > 0
@@ -69,7 +70,7 @@ class TestKotlinImportOptimization:
         
         adapter = make_adapter(KotlinCfg(imports=import_config))
         
-        result, meta = adapter.process(lctx_kt(do_imports))
+        result, meta = adapter.process(lctx(do_imports))
         
         # All imports should be removed
         assert meta.get("kotlin.removed.import", 0) > 0
@@ -92,7 +93,7 @@ class TestKotlinImportOptimization:
         
         adapter = make_adapter(KotlinCfg(imports=import_config))
         
-        result, meta = adapter.process(lctx_kt(do_imports))
+        result, meta = adapter.process(lctx(do_imports))
         
         # Long import lists should be summarized
         assert meta.get("kotlin.removed.import", 0) > 0

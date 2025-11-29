@@ -3,9 +3,7 @@ Test literal trimming with correct indentation handling for JavaScript.
 """
 
 from lg.adapters.javascript import JavaScriptCfg
-from tests.adapters.javascript.conftest import make_adapter
-from tests.infrastructure import lctx_js
-
+from .utils import lctx, make_adapter
 
 def test_javascript_object_literal_indentation():
     """Test indentation in JavaScript objects."""
@@ -45,7 +43,7 @@ def test_javascript_object_literal_indentation():
 
     adapter = make_adapter(cfg)
 
-    context = lctx_js(code)
+    context = lctx(code)
     result, _ = adapter.process(context)
 
     # Check that indentation is correct
@@ -92,7 +90,7 @@ export class LiteralDataManager {
     cfg.literals.max_tokens = 30  # Force trimming
     adapter = make_adapter(cfg)
 
-    result, meta = adapter.process(lctx_js(code))
+    result, meta = adapter.process(lctx(code))
 
     lines = result.split('\n')
 
@@ -140,7 +138,7 @@ export const LARGE_CONSTANTS = {
     cfg.literals.max_tokens = 35  # Force trimming
     adapter = make_adapter(cfg)
 
-    result, meta = adapter.process(lctx_js(code))
+    result, meta = adapter.process(lctx(code))
 
     lines = result.split('\n')
 
@@ -195,7 +193,7 @@ class ConfigManager {
     cfg.literals.max_tokens = 50  # Force trimming of the large nested structure
     adapter = make_adapter(cfg)
 
-    result, meta = adapter.process(lctx_js(code))
+    result, meta = adapter.process(lctx(code))
 
     # The nested object should be trimmed but maintain proper indentation
     lines = result.split('\n')
@@ -242,7 +240,7 @@ function processData() {
 
     adapter = make_adapter(cfg)
 
-    context = lctx_js(code)
+    context = lctx(code)
     result, _ = adapter.process(context)
 
     # Check that indentation is correct

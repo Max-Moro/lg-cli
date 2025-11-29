@@ -3,7 +3,8 @@ Tests for public API filtering in Kotlin adapter.
 """
 
 from lg.adapters.kotlin import KotlinCfg
-from .conftest import lctx_kt, do_public_api, assert_golden_match, make_adapter
+from .utils import lctx, make_adapter
+from ..golden_utils import assert_golden_match
 
 
 class TestKotlinPublicApiOptimization:
@@ -13,7 +14,7 @@ class TestKotlinPublicApiOptimization:
         """Test basic public API filtering."""
         adapter = make_adapter(KotlinCfg(public_api_only=True))
         
-        result, meta = adapter.process(lctx_kt(do_public_api))
+        result, meta = adapter.process(lctx(do_public_api))
         
         # Private elements should be removed
         assert meta.get("kotlin.removed.method", 0) == 14
@@ -52,7 +53,7 @@ private const val PRIVATE_CONSTANT = "value"
         
         adapter = make_adapter(KotlinCfg(public_api_only=True))
         
-        result, meta = adapter.process(lctx_kt(code))
+        result, meta = adapter.process(lctx(code))
         
         # Public elements should remain
         assert "class PublicClass" in result
@@ -85,7 +86,7 @@ private data class InternalData(val value: String)
         
         adapter = make_adapter(KotlinCfg(public_api_only=True))
         
-        result, meta = adapter.process(lctx_kt(code))
+        result, meta = adapter.process(lctx(code))
         
         # Public data class should remain
         assert "data class User" in result
@@ -120,7 +121,7 @@ private class PrivateClass {
         
         adapter = make_adapter(KotlinCfg(public_api_only=True))
         
-        result, meta = adapter.process(lctx_kt(code))
+        result, meta = adapter.process(lctx(code))
         
         # Public annotated elements should preserve annotations
         assert "@Logged" in result

@@ -3,8 +3,7 @@ Test literal trimming with correct indentation handling.
 """
 
 from lg.adapters.python import PythonCfg
-from tests.adapters.python.conftest import make_adapter
-from tests.infrastructure import lctx_py
+from .utils import make_adapter, lctx
 
 
 def test_python_object_literal_indentation():
@@ -39,7 +38,7 @@ def test_python_object_literal_indentation():
 
     adapter = make_adapter(cfg)
 
-    context = lctx_py(code)
+    context = lctx(code)
     result, _ = adapter.process(context)
 
     # Check that indentation is correct
@@ -96,8 +95,7 @@ class DataContainer:
     cfg.literals.max_tokens = 30  # Force trimming
     adapter = make_adapter(cfg)
 
-    lctx = lctx_py(code)
-    result, meta = adapter.process(lctx)
+    result, meta = adapter.process(lctx(code))
 
     # Check that indentation is preserved correctly
     lines = result.split('\n')
@@ -158,8 +156,7 @@ def process_data():
     cfg.literals.max_tokens = 40  # Force trimming
     adapter = make_adapter(cfg)
 
-    lctx = lctx_py(code)
-    result, meta = adapter.process(lctx)
+    result, meta = adapter.process(lctx(code))
 
     # Check that indentation is preserved correctly
     lines = result.split('\n')
@@ -218,8 +215,7 @@ LARGE_CONFIG = {
     cfg.literals.max_tokens = 25  # Force trimming
     adapter = make_adapter(cfg)
 
-    lctx = lctx_py(code)
-    result, meta = adapter.process(lctx)
+    result, meta = adapter.process(lctx(code))
 
     # Check that indentation is preserved correctly
     lines = result.split('\n')
@@ -266,8 +262,7 @@ def simple_data():
     cfg.literals.max_tokens = 100  # Don't force trimming
     adapter = make_adapter(cfg)
 
-    lctx = lctx_py(code)
-    result, meta = adapter.process(lctx)
+    result, meta = adapter.process(lctx(code))
 
     # Single-line literals should remain unchanged
     assert "small_list = [1, 2, 3]" in result

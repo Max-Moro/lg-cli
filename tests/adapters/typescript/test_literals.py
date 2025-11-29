@@ -4,7 +4,8 @@ Tests for literal trimming in TypeScript adapter.
 
 from lg.adapters.typescript import TypeScriptCfg
 from lg.adapters.code_model import LiteralConfig
-from .conftest import lctx_ts, do_literals, assert_golden_match, make_adapter_real
+from .utils import lctx, make_adapter_real
+from ..golden_utils import assert_golden_match
 
 
 class TestTypeScriptLiteralOptimizationGolden:
@@ -16,7 +17,7 @@ class TestTypeScriptLiteralOptimizationGolden:
 
         adapter = make_adapter_real(TypeScriptCfg(literals=literal_config))
 
-        result, meta = adapter.process(lctx_ts(do_literals))
+        result, meta = adapter.process(lctx(do_literals))
 
         assert meta.get("typescript.removed.literal", 0) == 40
 
@@ -28,7 +29,7 @@ class TestTypeScriptLiteralOptimizationGolden:
 
         adapter = make_adapter_real(TypeScriptCfg(literals=literal_config))
 
-        result, meta = adapter.process(lctx_ts(do_literals))
+        result, meta = adapter.process(lctx(do_literals))
 
         assert meta.get("typescript.removed.literal", 0) == 24
 

@@ -4,17 +4,18 @@ Tests for comment policy implementation in JavaScript adapter.
 
 from lg.adapters.javascript import JavaScriptCfg
 from lg.adapters.code_model import CommentConfig
-from .conftest import lctx_js, do_comments, assert_golden_match, make_adapter
+from .utils import lctx, make_adapter
+from ..golden_utils import assert_golden_match
 
 
 class TestJavaScriptCommentOptimization:
     """Test comment processing for JavaScript code."""
 
-    def test_keep_all_comments(self, do_comments, lctx_js):
+    def test_keep_all_comments(self, do_comments):
         """Test keeping all comments (default policy)."""
         adapter = make_adapter(JavaScriptCfg(comment_policy="keep_all"))
 
-        result, meta = adapter.process(lctx_js(do_comments))
+        result, meta = adapter.process(lctx(do_comments))
 
         # No comments should be removed
         assert meta.get("javascript.removed.comment", 0) == 0
@@ -24,11 +25,11 @@ class TestJavaScriptCommentOptimization:
 
         assert_golden_match(result, "comments", "keep_all")
 
-    def test_strip_all_comments(self, do_comments, lctx_js):
+    def test_strip_all_comments(self, do_comments):
         """Test stripping all comments."""
         adapter = make_adapter(JavaScriptCfg(comment_policy="strip_all"))
 
-        result, meta = adapter.process(lctx_js(do_comments))
+        result, meta = adapter.process(lctx(do_comments))
 
         # Comments should be removed
         assert meta.get("javascript.removed.comment", 0) > 0
@@ -36,11 +37,11 @@ class TestJavaScriptCommentOptimization:
 
         assert_golden_match(result, "comments", "strip_all")
 
-    def test_keep_doc_comments(self, do_comments, lctx_js):
+    def test_keep_doc_comments(self, do_comments):
         """Test keeping only JSDoc documentation comments."""
         adapter = make_adapter(JavaScriptCfg(comment_policy="keep_doc"))
 
-        result, meta = adapter.process(lctx_js(do_comments))
+        result, meta = adapter.process(lctx(do_comments))
 
         # Regular comments should be removed, JSDoc preserved
         assert meta.get("javascript.removed.comment", 0) > 0
@@ -51,11 +52,11 @@ class TestJavaScriptCommentOptimization:
 
         assert_golden_match(result, "comments", "keep_doc")
 
-    def test_keep_first_sentence_policy(self, do_comments, lctx_js):
+    def test_keep_first_sentence_policy(self, do_comments):
         """Test keeping only first sentence of JSDoc comments."""
         adapter = make_adapter(JavaScriptCfg(comment_policy="keep_first_sentence"))
 
-        result, meta = adapter.process(lctx_js(do_comments))
+        result, meta = adapter.process(lctx(do_comments))
 
         # JSDoc should be truncated to first sentence
         assert meta.get("javascript.removed.comment", 0) > 0
@@ -65,7 +66,7 @@ class TestJavaScriptCommentOptimization:
 
         assert_golden_match(result, "comments", "keep_first_sentence")
 
-    def test_jsdoc_detection(self, lctx_js):
+    def test_jsdoc_detection(self):
         """Test proper JSDoc comment detection."""
         code = '''
 /**
@@ -81,7 +82,7 @@ function processData(data) {
 
         adapter = make_adapter(JavaScriptCfg(comment_policy="keep_doc"))
 
-        result, meta = adapter.process(lctx_js(code))
+        result, meta = adapter.process(lctx(code))
 
         # JSDoc should be preserved
         assert "/**" in result and "This is a JSDoc comment" in result
@@ -91,7 +92,7 @@ function processData(data) {
         assert "/* This is a regular multi-line comment */" not in result
         assert "// This is a single-line comment" not in result
 
-    def test_complex_comment_policy(self, do_comments, lctx_js):
+    def test_complex_comment_policy(self, do_comments):
         """Test complex comment policy with custom configuration."""
         comment_config = CommentConfig(
             policy="keep_doc",
@@ -102,7 +103,7 @@ function processData(data) {
 
         adapter = make_adapter(JavaScriptCfg(comment_policy=comment_config))
 
-        result, meta = adapter.process(lctx_js(do_comments))
+        result, meta = adapter.process(lctx(do_comments))
 
         # Should keep JSDoc and annotation comments
         assert "TODO:" in result
@@ -117,7 +118,7 @@ function processData(data) {
 class TestJavaScriptCommentEdgeCases:
     """Test edge cases for JavaScript comment optimization."""
 
-    def test_inline_comments_with_code(self, lctx_js):
+    def test_inline_comments_with_code(self):
         """Test handling of inline comments."""
         code = '''
 const config = {
@@ -129,14 +130,14 @@ const config = {
 
         adapter = make_adapter(JavaScriptCfg(comment_policy="strip_all"))
 
-        result, meta = adapter.process(lctx_js(code))
+        result, meta = adapter.process(lctx(code))
 
         # Inline comments should be processed
         assert "// Connection timeout in milliseconds" not in result
         assert "// Number of retry attempts" not in result
         assert meta.get("javascript.removed.comment", 0) > 0
 
-    def test_nested_jsdoc_tags(self, lctx_js):
+    def test_nested_jsdoc_tags(self):
         """Test handling of complex JSDoc with nested tags."""
         code = '''
 /**
@@ -159,7 +160,7 @@ async function processItems(items, options) {
 
         adapter = make_adapter(JavaScriptCfg(comment_policy="keep_first_sentence"))
 
-        result, meta = adapter.process(lctx_js(code))
+        result, meta = adapter.process(lctx(code))
 
         # Should keep only first sentence
         assert "Complex function with detailed JSDoc." in result
@@ -167,7 +168,7 @@ async function processItems(items, options) {
         assert "@template T The type parameter" not in result
         assert "@param {T[]} items" not in result
 
-    def test_multiline_comment_styles(self, lctx_js):
+    def test_multiline_comment_styles(self):
         """Test different multiline comment styles."""
         code = '''
 /*
@@ -188,7 +189,7 @@ function singleLineMulti() {}
 
         adapter = make_adapter(JavaScriptCfg(comment_policy="keep_doc"))
 
-        result, meta = adapter.process(lctx_js(code))
+        result, meta = adapter.process(lctx(code))
 
         # Only JSDoc comments should be preserved
         assert "/**" in result and "JSDoc style comment" in result
@@ -197,7 +198,7 @@ function singleLineMulti() {}
         assert "Standard multiline comment" not in result
         assert "Single line multiline comment" not in result
 
-    def test_comment_in_object_literals(self, lctx_js):
+    def test_comment_in_object_literals(self):
         """Test comments in object literals."""
         code = '''
 const config = {
@@ -216,7 +217,7 @@ const config = {
 
         adapter = make_adapter(JavaScriptCfg(comment_policy="keep_doc"))
 
-        result, meta = adapter.process(lctx_js(code))
+        result, meta = adapter.process(lctx(code))
 
         # Regular comments should be removed
         assert "// Database settings" not in result

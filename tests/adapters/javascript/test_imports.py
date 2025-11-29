@@ -4,17 +4,18 @@ Tests for import optimization in JavaScript adapter.
 
 from lg.adapters.javascript import JavaScriptCfg
 from lg.adapters.code_model import ImportConfig
-from .conftest import lctx_js, do_imports, assert_golden_match, make_adapter
+from .utils import lctx, make_adapter
+from ..golden_utils import assert_golden_match
 
 
 class TestJavaScriptImportOptimization:
     """Test JavaScript import optimization policies."""
 
-    def test_keep_all_imports(self, do_imports, lctx_js):
+    def test_keep_all_imports(self, do_imports):
         """Test keeping all imports (default policy)."""
         adapter = make_adapter(JavaScriptCfg())  # Default imports policy is keep_all
 
-        result, meta = adapter.process(lctx_js(do_imports))
+        result, meta = adapter.process(lctx(do_imports))
 
         # No imports should be removed
         assert meta.get("javascript.removed.imports", 0) == 0
@@ -24,13 +25,13 @@ class TestJavaScriptImportOptimization:
 
         assert_golden_match(result, "imports", "keep_all")
 
-    def test_strip_local_imports(self, do_imports, lctx_js):
+    def test_strip_local_imports(self, do_imports):
         """Test stripping local imports (keeping external)."""
         import_config = ImportConfig(policy="strip_local")
 
         adapter = make_adapter(JavaScriptCfg(imports=import_config))
 
-        result, meta = adapter.process(lctx_js(do_imports))
+        result, meta = adapter.process(lctx(do_imports))
 
         # Local imports should be removed
         assert meta.get("javascript.removed.import", 0) > 0
@@ -45,13 +46,13 @@ class TestJavaScriptImportOptimization:
 
         assert_golden_match(result, "imports", "strip_local")
 
-    def test_strip_external_imports(self, do_imports, lctx_js):
+    def test_strip_external_imports(self, do_imports):
         """Test stripping external imports (keeping local)."""
         import_config = ImportConfig(policy="strip_external")
 
         adapter = make_adapter(JavaScriptCfg(imports=import_config))
 
-        result, meta = adapter.process(lctx_js(do_imports))
+        result, meta = adapter.process(lctx(do_imports))
 
         # External imports should be removed
         assert meta.get("javascript.removed.import", 0) > 0
@@ -66,13 +67,13 @@ class TestJavaScriptImportOptimization:
 
         assert_golden_match(result, "imports", "strip_external")
 
-    def test_strip_all_imports(self, do_imports, lctx_js):
+    def test_strip_all_imports(self, do_imports):
         """Test stripping all imports."""
         import_config = ImportConfig(policy="strip_all")
 
         adapter = make_adapter(JavaScriptCfg(imports=import_config))
 
-        result, meta = adapter.process(lctx_js(do_imports))
+        result, meta = adapter.process(lctx(do_imports))
 
         # All imports should be removed
         assert meta.get("javascript.removed.import", 0) > 0
@@ -84,7 +85,7 @@ class TestJavaScriptImportOptimization:
 
         assert_golden_match(result, "imports", "strip_all")
 
-    def test_summarize_long_imports(self, do_imports, lctx_js):
+    def test_summarize_long_imports(self, do_imports):
         """Test summarizing long import lists."""
         import_config = ImportConfig(
             policy="keep_all",
@@ -94,7 +95,7 @@ class TestJavaScriptImportOptimization:
 
         adapter = make_adapter(JavaScriptCfg(imports=import_config))
 
-        result, meta = adapter.process(lctx_js(do_imports))
+        result, meta = adapter.process(lctx(do_imports))
 
         # Long import lists should be summarized
         assert meta.get("javascript.removed.import", 0) > 0
@@ -106,7 +107,7 @@ class TestJavaScriptImportOptimization:
 class TestJavaScriptImportEdgeCases:
     """Test edge cases for JavaScript import optimization."""
 
-    def test_dynamic_imports(self, lctx_js):
+    def test_dynamic_imports(self):
         """Test handling of dynamic imports."""
         code = '''
 const dynamicModule = async () => {
@@ -119,12 +120,12 @@ const dynamicModule = async () => {
 
         adapter = make_adapter(JavaScriptCfg(imports=import_config))
 
-        result, meta = adapter.process(lctx_js(code))
+        result, meta = adapter.process(lctx(code))
 
         # Dynamic imports should be preserved as-is
         assert "await import('chalk')" in result
 
-    def test_require_imports(self, lctx_js):
+    def test_require_imports(self):
         """Test handling of CommonJS require imports."""
         code = '''
 let csvParser;
@@ -139,12 +140,12 @@ try {
 
         adapter = make_adapter(JavaScriptCfg(imports=import_config))
 
-        result, meta = adapter.process(lctx_js(code))
+        result, meta = adapter.process(lctx(code))
 
         # require() calls should be processed
         assert "require('csv-parser')" not in result
 
-    def test_side_effect_imports(self, lctx_js):
+    def test_side_effect_imports(self):
         """Test handling of side-effect imports."""
         code = '''
 import 'reflect-metadata';
@@ -158,7 +159,7 @@ import { Component } from './Component.js';
 
         adapter = make_adapter(JavaScriptCfg(imports=import_config))
 
-        result, meta = adapter.process(lctx_js(code))
+        result, meta = adapter.process(lctx(code))
 
         # External side-effect imports should be preserved
         assert "import 'reflect-metadata'" in result

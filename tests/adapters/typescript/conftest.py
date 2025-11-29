@@ -1,25 +1,10 @@
 """
-Shared fixtures and utilities for TypeScript adapter tests.
+Shared fixtures for TypeScript adapter tests.
 """
 
 import pytest
+from ..golden_utils import load_sample_code
 
-from lg.adapters.typescript import TypeScriptCfg
-from tests.infrastructure import lctx_ts, lctx  # noqa: F401
-from ..golden_utils import assert_golden_match, load_sample_code  # noqa: F401
-
-# Imports from unified infrastructure
-from tests.infrastructure.adapter_utils import make_typescript_adapter, make_typescript_adapter_real
-
-
-# For backward compatibility
-def make_adapter(cfg: TypeScriptCfg):
-    """TypeScript adapter with preset TokenService stub."""
-    return make_typescript_adapter(cfg)
-
-def make_adapter_real(cfg: TypeScriptCfg):
-    """If tests check real token mathematics."""
-    return make_typescript_adapter_real(cfg)
 
 @pytest.fixture
 def do_function_bodies():

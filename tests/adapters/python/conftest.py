@@ -1,25 +1,10 @@
 """
-Shared fixtures and utilities for Python adapter tests.
+Shared fixtures for Python adapter tests.
 """
 
 import pytest
+from ..golden_utils import load_sample_code
 
-from lg.adapters.python import PythonCfg
-from tests.infrastructure import lctx_py, lctx  # noqa: F401
-from ..golden_utils import assert_golden_match, load_sample_code  # noqa: F401
-
-# Imports from unified infrastructure
-from tests.infrastructure.adapter_utils import make_python_adapter, make_python_adapter_real
-
-
-# For backward compatibility
-def make_adapter(cfg: PythonCfg):
-    """Python adapter with preset TokenService stub."""
-    return make_python_adapter(cfg)
-
-def make_adapter_real(cfg: PythonCfg):
-    """If tests check real token mathematics."""
-    return make_python_adapter_real(cfg)
 
 @pytest.fixture
 def do_function_bodies():

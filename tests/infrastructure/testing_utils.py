@@ -30,58 +30,19 @@ def stub_tokenizer() -> TokenService:
     )
 
 
-def lctx(
-        raw_text: str = "# Test content",
-        filename: str = "test.py",
-        group_size: int = 1,
-        file_label: str = None
-) -> LightweightContext:
+def lctx_md(raw_text: str = "# Test Markdown", group_size: int = 1) -> LightweightContext:
     """
-    Creates a stub LightweightContext for tests.
+    Creates LightweightContext for a Markdown file.
 
-    Args:
-        raw_text: File content
-        filename: File name
-        group_size: Group size
-        file_label: File label for rendering
-
-    Returns:
-        LightweightContext for use in tests
+    Note: Used by tests/markdown/. For adapter tests, use local utils.
     """
-    test_path = Path(filename)
-    if file_label is None:
-        file_label = filename
+    test_path = Path("test.md")
     return LightweightContext(
         file_path=test_path,
         raw_text=raw_text,
         group_size=group_size,
-        file_label=file_label
+        file_label="test.md"
     )
 
 
-def lctx_py(raw_text: str = "# Test Python", group_size: int = 1) -> LightweightContext:
-    """Creates LightweightContext for a Python file."""
-    return lctx(raw_text=raw_text, filename="test.py", group_size=group_size)
-
-
-def lctx_ts(raw_text: str = "// Test TypeScript", group_size: int = 1) -> LightweightContext:
-    """Creates LightweightContext for a TypeScript file."""
-    return lctx(raw_text=raw_text, filename="test.ts", group_size=group_size)
-
-
-def lctx_md(raw_text: str = "# Test Markdown", group_size: int = 1) -> LightweightContext:
-    """Creates LightweightContext for a Markdown file."""
-    return lctx(raw_text=raw_text, filename="test.md", group_size=group_size)
-
-
-def lctx_kt(raw_text: str = "// Test Kotlin", group_size: int = 1) -> LightweightContext:
-    """Creates LightweightContext for a Kotlin file."""
-    return lctx(raw_text=raw_text, filename="test.kt", group_size=group_size)
-
-
-def lctx_js(raw_text: str = "// Test JavaScript", group_size: int = 1) -> LightweightContext:
-    """Creates LightweightContext for a JavaScript file."""
-    return lctx(raw_text=raw_text, filename="test.js", group_size=group_size)
-
-
-__all__ = ["TokenServiceStub", "stub_tokenizer", "lctx", "lctx_py", "lctx_ts", "lctx_md", "lctx_kt", "lctx_js"]
+__all__ = ["TokenServiceStub", "stub_tokenizer", "lctx_md"]

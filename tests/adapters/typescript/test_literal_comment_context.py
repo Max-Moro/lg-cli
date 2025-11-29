@@ -4,7 +4,7 @@ Ensures comments don't break code structure when placed inline.
 """
 
 from lg.adapters.typescript import TypeScriptCfg
-from .conftest import make_adapter
+from .utils import make_adapter
 
 
 class TestLiteralCommentContext:
@@ -150,5 +150,5 @@ class TestLiteralCommentContext:
     
     def _make_context(self, code: str):
         """Helper to create LightweightContext for testing."""
-        from tests.infrastructure import lctx_ts
-        return lctx_ts(code)
+        from .utils import lctx
+        return lctx(code)

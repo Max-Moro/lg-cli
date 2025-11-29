@@ -4,7 +4,8 @@ Tests for comment policy implementation in Kotlin adapter.
 
 from lg.adapters.kotlin import KotlinCfg
 from lg.adapters.code_model import CommentConfig
-from .conftest import lctx_kt, do_comments, assert_golden_match, make_adapter
+from .utils import lctx, make_adapter
+from ..golden_utils import assert_golden_match
 
 
 class TestKotlinCommentOptimization:
@@ -14,7 +15,7 @@ class TestKotlinCommentOptimization:
         """Test keeping all comments (default policy)."""
         adapter = make_adapter(KotlinCfg(comment_policy="keep_all"))
         
-        result, meta = adapter.process(lctx_kt(do_comments))
+        result, meta = adapter.process(lctx(do_comments))
         
         # No comments should be removed
         assert meta.get("kotlin.removed.comment", 0) == 0
@@ -28,7 +29,7 @@ class TestKotlinCommentOptimization:
         """Test stripping all comments."""
         adapter = make_adapter(KotlinCfg(comment_policy="strip_all"))
         
-        result, meta = adapter.process(lctx_kt(do_comments))
+        result, meta = adapter.process(lctx(do_comments))
         
         # Comments should be removed
         assert meta.get("kotlin.removed.comment", 0) > 0
@@ -40,7 +41,7 @@ class TestKotlinCommentOptimization:
         """Test keeping only KDoc documentation comments."""
         adapter = make_adapter(KotlinCfg(comment_policy="keep_doc"))
         
-        result, meta = adapter.process(lctx_kt(do_comments))
+        result, meta = adapter.process(lctx(do_comments))
         
         # Regular comments should be removed, KDoc preserved
         assert meta.get("kotlin.removed.comment", 0) > 0
@@ -54,7 +55,7 @@ class TestKotlinCommentOptimization:
         """Test keeping only first sentence of KDoc comments."""
         adapter = make_adapter(KotlinCfg(comment_policy="keep_first_sentence"))
         
-        result, meta = adapter.process(lctx_kt(do_comments))
+        result, meta = adapter.process(lctx(do_comments))
         
         # KDoc should be truncated to first sentence
         assert meta.get("kotlin.removed.comment", 0) > 0
@@ -72,7 +73,7 @@ class TestKotlinCommentOptimization:
         
         adapter = make_adapter(KotlinCfg(comment_policy=comment_config))
         
-        result, meta = adapter.process(lctx_kt(do_comments))
+        result, meta = adapter.process(lctx(do_comments))
         
         # Should keep KDoc and annotation comments
         assert "TODO:" in result
@@ -105,7 +106,7 @@ val config = Config(
         
         adapter = make_adapter(KotlinCfg(comment_policy="strip_all"))
         
-        result, meta = adapter.process(lctx_kt(code))
+        result, meta = adapter.process(lctx(code))
         
         # Inline comments should be processed
         assert "// Connection timeout in milliseconds" not in result
@@ -128,7 +129,7 @@ fun processData(data: String) {
         
         adapter = make_adapter(KotlinCfg(comment_policy="keep_doc"))
         
-        result, meta = adapter.process(lctx_kt(code))
+        result, meta = adapter.process(lctx(code))
         
         # KDoc should be preserved
         assert "/**" in result and "This is a KDoc comment" in result

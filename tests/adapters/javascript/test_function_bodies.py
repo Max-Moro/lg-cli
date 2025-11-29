@@ -4,17 +4,18 @@ Tests for function body optimization in JavaScript adapter.
 
 from lg.adapters.javascript import JavaScriptCfg
 from lg.adapters.code_model import FunctionBodyConfig
-from .conftest import lctx_js, do_function_bodies, assert_golden_match, make_adapter
+from .utils import lctx, make_adapter
+from ..golden_utils import assert_golden_match
 
 
 class TestJavaScriptFunctionBodyOptimization:
     """Test function body stripping for JavaScript code."""
 
-    def test_basic_function_stripping(self, do_function_bodies, lctx_js):
+    def test_basic_function_stripping(self, do_function_bodies):
         """Test basic function body stripping."""
         adapter = make_adapter(JavaScriptCfg(strip_function_bodies=True))
 
-        result, meta = adapter.process(lctx_js(do_function_bodies))
+        result, meta = adapter.process(lctx(do_function_bodies))
 
         # Check that functions were processed
         assert meta.get("javascript.removed.function_body", 0) > 0
@@ -25,7 +26,7 @@ class TestJavaScriptFunctionBodyOptimization:
         # Golden file test
         assert_golden_match(result, "function_bodies", "basic_strip")
 
-    def test_large_only_method_stripping(self, do_function_bodies, lctx_js):
+    def test_large_only_method_stripping(self, do_function_bodies):
         """Test stripping only large methods."""
         adapter = make_adapter(JavaScriptCfg(
             strip_function_bodies=FunctionBodyConfig(
@@ -34,12 +35,12 @@ class TestJavaScriptFunctionBodyOptimization:
             )
         ))
 
-        result, meta = adapter.process(lctx_js(do_function_bodies))
+        result, meta = adapter.process(lctx(do_function_bodies))
 
         # Should have fewer removals than basic test
         assert_golden_match(result, "function_bodies", "large_only_strip")
 
-    def test_arrow_function_handling(self, lctx_js):
+    def test_arrow_function_handling(self):
         """Test handling of arrow functions."""
         arrow_code = '''
 const simple = () => "simple";
@@ -63,7 +64,7 @@ const multiline = (users) => {
 
         adapter = make_adapter(JavaScriptCfg(strip_function_bodies=True))
 
-        result, meta = adapter.process(lctx_js(arrow_code))
+        result, meta = adapter.process(lctx(arrow_code))
 
         # Should only strip multiline arrow functions
         assert 'const simple = () => "simple";' in result  # Single line preserved
@@ -74,7 +75,7 @@ const multiline = (users) => {
 
         assert_golden_match(result, "function_bodies", "arrow_functions")
 
-    def test_class_method_preservation(self, lctx_js):
+    def test_class_method_preservation(self):
         """Test that class structure is preserved while stripping method bodies."""
         class_code = '''
 export class Calculator {
@@ -97,7 +98,7 @@ export class Calculator {
 
         adapter = make_adapter(JavaScriptCfg(strip_function_bodies=True))
 
-        result, meta = adapter.process(lctx_js(class_code))
+        result, meta = adapter.process(lctx(class_code))
 
         # Class structure should be preserved
         assert "export class Calculator {" in result
@@ -108,20 +109,20 @@ export class Calculator {
 
         assert_golden_match(result, "function_bodies", "class_methods")
 
-    def test_no_stripping_preserves_original(self, lctx_js):
+    def test_no_stripping_preserves_original(self):
         """Test that disabling stripping preserves original code."""
         code = "function test() { return 42; }"
 
         adapter = make_adapter(JavaScriptCfg(strip_function_bodies=False))
 
-        result, meta = adapter.process(lctx_js(code))
+        result, meta = adapter.process(lctx(code))
 
         # Should be nearly identical to original
         assert "return 42;" in result
         assert meta.get("javascript.removed.function_body", 0) == 0
         assert meta.get("javascript.removed.method_bodies", 0) == 0
 
-    def test_public_only_method_stripping(self, lctx_js):
+    def test_public_only_method_stripping(self):
         """Test public_only mode for JavaScript method body stripping."""
         code = '''export class Calculator {
     add(a, b) {
@@ -141,7 +142,7 @@ export class Calculator {
         function_config = FunctionBodyConfig(mode="public_only")
         adapter = make_adapter(JavaScriptCfg(strip_function_bodies=function_config))
 
-        result, meta = adapter.process(lctx_js(code))
+        result, meta = adapter.process(lctx(code))
 
         # Public method body should be stripped
         assert "add(a, b)" in result
@@ -156,7 +157,7 @@ export class Calculator {
 class TestJavaScriptFunctionBodyEdgeCases:
     """Test edge cases for JavaScript function body optimization."""
 
-    def test_single_line_functions(self, lctx_js):
+    def test_single_line_functions(self):
         """Test that single-line functions are handled correctly."""
         code = '''function simple() { return 42; }
 
@@ -169,7 +170,7 @@ function complex() {
 
         adapter = make_adapter(JavaScriptCfg(strip_function_bodies=True))
 
-        result, meta = adapter.process(lctx_js(code))
+        result, meta = adapter.process(lctx(code))
 
         # Single-line function should not be stripped
         assert "function simple() { return 42; }" in result
@@ -179,7 +180,7 @@ function complex() {
         assert "// … function body omitted" in result
         assert "const x = 1;" not in result
 
-    def test_nested_functions(self, lctx_js):
+    def test_nested_functions(self):
         """Test handling of nested functions."""
         code = '''function outer() {
     function inner() {
@@ -193,7 +194,7 @@ function complex() {
 
         adapter = make_adapter(JavaScriptCfg(strip_function_bodies=True))
 
-        result, meta = adapter.process(lctx_js(code))
+        result, meta = adapter.process(lctx(code))
 
         # Outer function body should be stripped
         assert "function outer()" in result
@@ -204,7 +205,7 @@ function complex() {
 class TestJavaScriptJSDocPreservation:
     """Test preservation of JSDoc when stripping function bodies."""
 
-    def test_function_with_jsdoc_preserved(self, lctx_js):
+    def test_function_with_jsdoc_preserved(self):
         """Test that function JSDoc is preserved when bodies are stripped."""
         code = '''/**
  * Calculate the sum of two numbers.
@@ -223,7 +224,7 @@ function calculateSum(a, b) {
 
         adapter = make_adapter(JavaScriptCfg(strip_function_bodies=True))
 
-        result, meta = adapter.process(lctx_js(code))
+        result, meta = adapter.process(lctx(code))
 
         # Function signature should be preserved
         assert "function calculateSum(a, b)" in result
@@ -241,7 +242,7 @@ function calculateSum(a, b) {
         # Should have placeholder for removed body
         assert "// … function body omitted" in result
 
-    def test_method_with_jsdoc_preserved(self, lctx_js):
+    def test_method_with_jsdoc_preserved(self):
         """Test that method JSDoc is preserved when bodies are stripped."""
         code = '''class Calculator {
     /**
@@ -259,7 +260,7 @@ function calculateSum(a, b) {
 
         adapter = make_adapter(JavaScriptCfg(strip_function_bodies=True))
 
-        result, meta = adapter.process(lctx_js(code))
+        result, meta = adapter.process(lctx(code))
 
         # Method signature should be preserved
         assert "multiply(a, b)" in result
@@ -276,7 +277,7 @@ function calculateSum(a, b) {
         # Should have placeholder for removed body
         assert "// … method body omitted" in result
 
-    def test_function_without_jsdoc_full_removal(self, lctx_js):
+    def test_function_without_jsdoc_full_removal(self):
         """Test that functions without JSDoc have bodies fully removed."""
         code = '''function simpleFunction() {
     // Just a comment, no JSDoc
@@ -288,7 +289,7 @@ function calculateSum(a, b) {
 
         adapter = make_adapter(JavaScriptCfg(strip_function_bodies=True))
 
-        result, meta = adapter.process(lctx_js(code))
+        result, meta = adapter.process(lctx(code))
 
         # Function signature should be preserved
         assert "function simpleFunction()" in result
@@ -301,7 +302,7 @@ function calculateSum(a, b) {
         # Should have placeholder
         assert "// … function body omitted" in result
 
-    def test_mixed_functions_with_without_jsdoc(self, lctx_js):
+    def test_mixed_functions_with_without_jsdoc(self):
         """Test mixed functions - some with JSDoc, some without."""
         code = '''/**
  * This function has documentation.
@@ -323,7 +324,7 @@ function undocumentedFunction() {
 
         adapter = make_adapter(JavaScriptCfg(strip_function_bodies=True))
 
-        result, meta = adapter.process(lctx_js(code))
+        result, meta = adapter.process(lctx(code))
 
         # Both function signatures should be preserved
         assert "function documentedFunction()" in result

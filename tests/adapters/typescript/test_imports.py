@@ -6,7 +6,8 @@ from lg.adapters.typescript import TypeScriptCfg
 from lg.adapters.typescript.imports import TypeScriptImportClassifier, TypeScriptImportAnalyzer
 from lg.adapters.typescript.adapter import TypeScriptDocument
 from lg.adapters.code_model import ImportConfig
-from .conftest import lctx_ts, do_imports, assert_golden_match, make_adapter
+from .utils import lctx, make_adapter
+from ..golden_utils import assert_golden_match
 
 
 class TestTypeScriptImportClassification:
@@ -122,7 +123,7 @@ class TestTypeScriptImportOptimization:
         """Test keeping all imports (default policy)."""
         adapter = make_adapter(TypeScriptCfg())  # Default imports policy is keep_all
         
-        result, meta = adapter.process(lctx_ts(do_imports))
+        result, meta = adapter.process(lctx(do_imports))
         
         # No imports should be removed
         assert meta.get("typescript.removed.imports", 0) == 0
@@ -138,7 +139,7 @@ class TestTypeScriptImportOptimization:
         
         adapter = make_adapter(TypeScriptCfg(imports=import_config))
         
-        result, meta = adapter.process(lctx_ts(do_imports))
+        result, meta = adapter.process(lctx(do_imports))
         
         # Local imports should be removed
         assert meta.get("typescript.removed.import", 0) == 45
@@ -160,7 +161,7 @@ class TestTypeScriptImportOptimization:
         
         adapter = make_adapter(TypeScriptCfg(imports=import_config))
         
-        result, meta = adapter.process(lctx_ts(do_imports))
+        result, meta = adapter.process(lctx(do_imports))
         
         # External imports should be removed
         assert meta.get("typescript.removed.import", 0) == 87
@@ -183,7 +184,7 @@ class TestTypeScriptImportOptimization:
         
         adapter = make_adapter(TypeScriptCfg(imports=import_config))
         
-        result, meta = adapter.process(lctx_ts(do_imports))
+        result, meta = adapter.process(lctx(do_imports))
         
         # All imports should be removed
         assert meta.get("typescript.removed.import", 0) == 132
@@ -205,7 +206,7 @@ class TestTypeScriptImportOptimization:
         
         adapter = make_adapter(TypeScriptCfg(imports=import_config))
         
-        result, meta = adapter.process(lctx_ts(do_imports))
+        result, meta = adapter.process(lctx(do_imports))
         
         # Long import lists should be summarized
         assert meta.get("typescript.removed.import", 0) == 76
@@ -228,7 +229,7 @@ import { LocalFunction } from './local';  // Relative import
         
         adapter = make_adapter(TypeScriptCfg(imports=import_config))
         
-        result, meta = adapter.process(lctx_ts(code))
+        result, meta = adapter.process(lctx(code))
         
         # External imports should be preserved
         assert "import React from 'react'" in result
@@ -258,7 +259,7 @@ import { Observable, Subject, map, filter } from 'rxjs';
         
         adapter = make_adapter(TypeScriptCfg(imports=import_config))
         
-        result, meta = adapter.process(lctx_ts(code))
+        result, meta = adapter.process(lctx(code))
         
         # Long named import lists should be summarized
         assert meta.get("typescript.removed.imports", 0) >= 0
@@ -274,7 +275,7 @@ import { type Settings, normalFunction } from './config';
         
         adapter = make_adapter(TypeScriptCfg(imports=import_config))
         
-        result, meta = adapter.process(lctx_ts(code))
+        result, meta = adapter.process(lctx(code))
         
         # External type imports should be preserved
         assert "import type { Config } from 'external-config'" in result
@@ -296,7 +297,7 @@ import * as API from '../api';
         
         adapter = make_adapter(TypeScriptCfg(imports=import_config))
         
-        result, meta = adapter.process(lctx_ts(code))
+        result, meta = adapter.process(lctx(code))
         
         # External namespace imports should be preserved
         assert "import * as React from 'react'" in result
@@ -321,7 +322,7 @@ import { Component } from './Component';
         
         adapter = make_adapter(TypeScriptCfg(imports=import_config))
         
-        result, meta = adapter.process(lctx_ts(code))
+        result, meta = adapter.process(lctx(code))
         
         # External side-effect imports should be preserved
         assert "import 'reflect-metadata'" in result
@@ -343,7 +344,7 @@ import { LocalService } from './services/local';
         
         adapter = make_adapter(TypeScriptCfg(imports=import_config))
         
-        result, meta = adapter.process(lctx_ts(code))
+        result, meta = adapter.process(lctx(code))
         
         # Scoped packages should be treated as external
         assert "import { Controller } from '@nestjs/common'" in result
@@ -370,7 +371,7 @@ import { helper1, helper2, helper3, helper4, helper5, helper6 } from './utils/he
         
         adapter = make_adapter(TypeScriptCfg(imports=import_config))
         
-        result, meta = adapter.process(lctx_ts(code))
+        result, meta = adapter.process(lctx(code))
         
         # External imports should be stripped regardless of length
         assert "import React from 'react'" not in result

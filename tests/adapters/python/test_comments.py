@@ -4,7 +4,8 @@ Tests for comment policy implementation in Python adapter.
 
 from lg.adapters.python import PythonCfg
 from lg.adapters.code_model import CommentConfig
-from .conftest import lctx_py, do_comments, assert_golden_match, make_adapter
+from .utils import lctx, make_adapter
+from ..golden_utils import assert_golden_match
 
 
 class TestPythonCommentOptimization:
@@ -14,7 +15,7 @@ class TestPythonCommentOptimization:
         """Test keeping all comments (default policy)."""
         adapter = make_adapter(PythonCfg(comment_policy="keep_all"))
         
-        result, meta = adapter.process(lctx_py(do_comments))
+        result, meta = adapter.process(lctx(do_comments))
         
         # No comments should be removed
         assert meta.get("python.removed.comment", 0) == 0
@@ -28,7 +29,7 @@ class TestPythonCommentOptimization:
         """Test stripping all comments."""
         adapter = make_adapter(PythonCfg(comment_policy="strip_all"))
         
-        result, meta = adapter.process(lctx_py(do_comments))
+        result, meta = adapter.process(lctx(do_comments))
         
         # Comments should be removed
         assert meta.get("python.removed.comment", 0) == 28
@@ -40,7 +41,7 @@ class TestPythonCommentOptimization:
         """Test keeping only documentation comments."""
         adapter = make_adapter(PythonCfg(comment_policy="keep_doc"))
         
-        result, meta = adapter.process(lctx_py(do_comments))
+        result, meta = adapter.process(lctx(do_comments))
         
         # Regular comments should be removed, docstrings preserved
         assert meta.get("python.removed.comment", 0) == 28
@@ -55,7 +56,7 @@ class TestPythonCommentOptimization:
         """Test keeping only first sentence of documentation."""
         adapter = make_adapter(PythonCfg(comment_policy="keep_first_sentence"))
         
-        result, meta = adapter.process(lctx_py(do_comments))
+        result, meta = adapter.process(lctx(do_comments))
         
         # Docstrings should be truncated to first sentence
         assert meta.get("python.removed.comment", 0) == 28
@@ -76,7 +77,7 @@ class TestPythonCommentOptimization:
         
         adapter = make_adapter(PythonCfg(comment_policy=comment_config))
         
-        result, meta = adapter.process(lctx_py(do_comments))
+        result, meta = adapter.process(lctx(do_comments))
         
         # Should keep docstrings and TODO/FIXME comments
         assert "TODO:" in result
@@ -101,7 +102,7 @@ class TestPythonCommentOptimization:
         
         adapter = make_adapter(PythonCfg(comment_policy=comment_config))
         
-        result, meta = adapter.process(lctx_py(code))
+        result, meta = adapter.process(lctx(code))
         
         # Long docstring should be truncated
         assert "This is a very long docstring that exceeds the maximum length limit" in result
@@ -127,7 +128,7 @@ class TestPythonCommentOptimization:
         
         adapter = make_adapter(PythonCfg(comment_policy=comment_config))
         
-        result, meta = adapter.process(lctx_py(code))
+        result, meta = adapter.process(lctx(code))
         
         # TODO and FIXME should be preserved
         assert "TODO: Implement better error handling" in result
@@ -148,7 +149,7 @@ another = "test"  # Another inline comment
         
         adapter = make_adapter(PythonCfg(comment_policy="strip_all"))
         
-        result, meta = adapter.process(lctx_py(code))
+        result, meta = adapter.process(lctx(code))
         
         # Inline comments should be processed
         assert "# This is an inline comment" not in result
@@ -174,7 +175,7 @@ another = "test"  # Another inline comment
         
         adapter = make_adapter(PythonCfg(comment_policy="keep_first_sentence"))
         
-        result, meta = adapter.process(lctx_py(code))
+        result, meta = adapter.process(lctx(code))
         
         # Should keep only first sentence
         assert "This is a multiline docstring." in result
@@ -198,7 +199,7 @@ another = "test"  # Another inline comment
         
         adapter = make_adapter(PythonCfg(comment_policy="keep_doc"))
         
-        result, meta = adapter.process(lctx_py(code))
+        result, meta = adapter.process(lctx(code))
         
         # Docstrings should be preserved
         assert '"""Class docstring."""' in result
