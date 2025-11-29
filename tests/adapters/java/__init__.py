@@ -1,0 +1,3 @@
+"""
+Java adapter tests.
+"""
