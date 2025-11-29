@@ -52,7 +52,7 @@ def test_javascript_object_literal_indentation():
     # Look for line with placeholder in largeConfig
     placeholder_line = None
     for i, line in enumerate(lines):
-        if '"…"' in line or 'literal' in line:
+        if '"…"' in line:
             # Check context - should be inside largeConfig
             if i > 5:  # Skip initial lines
                 placeholder_line = i

@@ -194,4 +194,4 @@ class TestLiteralCommentContext:
         result, _ = adapter.process(lctx(code))
 
         # Should place comment appropriately without breaking object syntax
-        assert 'literal string' in result or 'literal' in result
+        assert 'literal string' in result

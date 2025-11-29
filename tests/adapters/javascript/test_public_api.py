@@ -25,7 +25,7 @@ class TestJavaScriptPublicApiOptimization:
         assert "export class UserManager" in result
         assert "export function createUserManager" in result
 
-        # Private elements should be removed or placeholdered
+        # Private elements should be removed and placeholdered
         assert "#private" not in result
 
         assert_golden_match(result, "public_api", "basic")
@@ -144,7 +144,7 @@ function useInternal() {
         assert "export { Utils }" in result
         assert "export * from './types.js'" in result
 
-        # Private imports should be removed or summarized
+        # Private imports should be removed
         assert "InternalHelper" not in result
 
     def test_namespace_like_exports(self):
