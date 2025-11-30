@@ -263,3 +263,22 @@ tests:
                     allow: ["/test_public_api.py", "/goldens/do/public_api.c"]
                   - condition: "TAGSET:adapters-optimizations:budget"
                     allow: ["/test_budget.py", "/goldens/do/budget_complex.c"]
+              cpp:
+                mode: allow
+                allow:
+                  - "/conftest.py"
+                  - "/utils.py"
+                  - "/test_header_vs_impl.py"
+                when:
+                  - condition: "TAGSET:adapters-optimizations:function-bodies"
+                    allow: ["/test_function_bodies.py", "/goldens/do/function_bodies.cpp"]
+                  - condition: "TAGSET:adapters-optimizations:comments"
+                    allow: ["/test_comments.py", "/goldens/do/comments.cpp"]
+                  - condition: "TAGSET:adapters-optimizations:literals"
+                    allow: ["/test_literals.py", "/goldens/do/literals.cpp"]
+                  - condition: "TAGSET:adapters-optimizations:imports"
+                    allow: ["/test_imports.py", "/goldens/do/imports.cpp"]
+                  - condition: "TAGSET:adapters-optimizations:public-api"
+                    allow: ["/test_public_api.py", "/goldens/do/public_api.cpp"]
+                  - condition: "TAGSET:adapters-optimizations:budget"
+                    allow: ["/test_budget.py", "/goldens/do/budget_complex.cpp"]
