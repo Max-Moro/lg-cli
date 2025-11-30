@@ -119,7 +119,7 @@ src:
 #                    allow: ["/code_analysis.py"]
 
 tests:
-  extensions: [".py", ".ts", ".kt", ".js", ".java",
+  extensions: [".py", ".ts", ".kt", ".js", ".java", ".go", ".rs", ".scala",
                ".c", ".h", ".cpp", ".hpp", ".cc", ".hh", ".hxx", ".cxx"]
   filters:
     mode: allow
@@ -282,3 +282,21 @@ tests:
                     allow: ["/test_public_api.py", "/goldens/do/public_api.cpp"]
                   - condition: "TAGSET:adapters-optimizations:budget"
                     allow: ["/test_budget.py", "/goldens/do/budget_complex.cpp"]
+              go:
+                mode: allow
+                allow:
+                  - "/conftest.py"
+                  - "/utils.py"
+                when:
+                  - condition: "TAGSET:adapters-optimizations:function-bodies"
+                    allow: ["/test_function_bodies.py", "/goldens/do/function_bodies.go"]
+                  - condition: "TAGSET:adapters-optimizations:comments"
+                    allow: ["/test_comments.py", "/goldens/do/comments.go"]
+                  - condition: "TAGSET:adapters-optimizations:literals"
+                    allow: ["/test_literals.py", "/goldens/do/literals.go"]
+                  - condition: "TAGSET:adapters-optimizations:imports"
+                    allow: ["/test_imports.py", "/goldens/do/imports.go"]
+                  - condition: "TAGSET:adapters-optimizations:public-api"
+                    allow: ["/test_public_api.py", "/goldens/do/public_api.go"]
+                  - condition: "TAGSET:adapters-optimizations:budget"
+                    allow: ["/test_budget.py", "/goldens/do/budget_complex.go"]
