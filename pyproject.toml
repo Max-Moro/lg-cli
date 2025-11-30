@@ -32,7 +32,7 @@ dependencies = [
 ]
 
 [project.scripts]
-listing-generator = "lg.cli:main"
+lg = "lg.cli:main"
 
 [project.optional-dependencies]
 dev = [
