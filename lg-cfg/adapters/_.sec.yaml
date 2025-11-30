@@ -85,7 +85,7 @@ src:
                   - "/__init__.py"
                   - "/adapter.py"
                   - "/queries.py"
-                  - "/file_heuristics.py"
+#                  - "/file_heuristics.py"
                 when:
                   - condition: "TAGSET:adapters-optimizations:function-bodies"
                     allow: ["/function_bodies.py", "/code_analysis.py"]
@@ -101,7 +101,7 @@ src:
                   - "/__init__.py"
                   - "/adapter.py"
                   - "/queries.py"
-                  - "/file_heuristics.py"
+#                  - "/file_heuristics.py"
                 when:
                   - condition: "TAGSET:adapters-optimizations:function-bodies"
                     allow: ["/code_analysis.py"]
@@ -115,7 +115,6 @@ src:
                   - "/__init__.py"
                   - "/adapter.py"
                   - "/queries.py"
-                  - "/file_heuristics.py"
                 when:
                   - condition: "TAGSET:adapters-optimizations:function-bodies"
                     allow: ["/code_analysis.py"]
