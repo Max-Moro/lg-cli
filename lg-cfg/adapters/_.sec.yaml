@@ -318,3 +318,21 @@ tests:
                     allow: ["/test_public_api.py", "/goldens/do/public_api.rs"]
                   - condition: "TAGSET:adapters-optimizations:budget"
                     allow: ["/test_budget.py", "/goldens/do/budget_complex.rs"]
+              scala:
+                mode: allow
+                allow:
+                  - "/conftest.py"
+                  - "/utils.py"
+                when:
+                  - condition: "TAGSET:adapters-optimizations:function-bodies"
+                    allow: ["/test_function_bodies.py", "/goldens/do/function_bodies.scala"]
+                  - condition: "TAGSET:adapters-optimizations:comments"
+                    allow: ["/test_comments.py", "/goldens/do/comments.scala"]
+                  - condition: "TAGSET:adapters-optimizations:literals"
+                    allow: ["/test_literals.py", "/goldens/do/literals.scala"]
+                  - condition: "TAGSET:adapters-optimizations:imports"
+                    allow: ["/test_imports.py", "/goldens/do/imports.scala"]
+                  - condition: "TAGSET:adapters-optimizations:public-api"
+                    allow: ["/test_public_api.py", "/goldens/do/public_api.scala"]
+                  - condition: "TAGSET:adapters-optimizations:budget"
+                    allow: ["/test_budget.py", "/goldens/do/budget_complex.scala"]

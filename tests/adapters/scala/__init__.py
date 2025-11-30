@@ -1,0 +1,1 @@
+# Scala adapter tests
