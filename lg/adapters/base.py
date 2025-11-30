@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from typing import Any, Generic, Optional, Set, Type, TypeVar, get_args
 
+from .context import LightweightContext
 from ..stats import TokenService
 
 __all__ = ["BaseAdapter"]
@@ -94,7 +95,7 @@ class BaseAdapter(Generic[C]):
         return self._cfg
 
     # --- overridable logic ------------------
-    def should_skip(self, lightweight_ctx: 'LightweightContext') -> bool:
+    def should_skip(self, lightweight_ctx: LightweightContext) -> bool:
         """
         True → file is excluded (language heuristics).
 
@@ -107,7 +108,7 @@ class BaseAdapter(Generic[C]):
         return False
 
     # --- unified API with metadata ---
-    def process(self, lightweight_ctx: 'LightweightContext') -> tuple[str, dict]:
+    def process(self, lightweight_ctx: LightweightContext) -> tuple[str, dict]:
         """
         Process file and return (content, meta).
 

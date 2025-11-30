@@ -11,7 +11,7 @@ from tree_sitter import Language
 
 from ..code_base import CodeAdapter
 from ..code_model import CodeCfg
-from ..context import LightweightContext, ProcessingContext
+from ..context import ProcessingContext
 from ..optimizations import ImportClassifier, TreeSitterImportAnalyzer
 from ..tree_sitter_support import TreeSitterDocument
 
@@ -67,26 +67,7 @@ class KotlinAdapter(CodeAdapter[KotlinCfg]):
         from .code_analysis import KotlinCodeAnalyzer
         return KotlinCodeAnalyzer(doc)
 
-    def should_skip(self, lightweight_ctx: LightweightContext) -> bool:
-        """
-        Kotlin-specific file skipping heuristics.
-        """
-        # Can add heuristics for generated files, etc.
-        return False
-
     # == Hooks used by Kotlin adapter ==
-
-    def get_comment_style(self) -> tuple[str, tuple[str, str], tuple[str, str]]:
-        # Kotlin uses Java-style comments
-        return "//", ("/*", "*/"), ("/**", "*/")
-
-    def is_documentation_comment(self, comment_text: str) -> bool:
-        """Check if comment is KDoc documentation."""
-        return comment_text.strip().startswith('/**')
-
-    def is_docstring_node(self, node, doc: TreeSitterDocument) -> bool:
-        """Kotlin has no docstring like Python, only KDoc comments."""
-        return False
 
     def hook__remove_function_body(self, *args, **kwargs) -> None:
         """Kotlin-specific function body removal with KDoc preservation."""
@@ -97,4 +78,3 @@ class KotlinAdapter(CodeAdapter[KotlinCfg]):
         """Process Kotlin-specific literals (collections listOf/mapOf/setOf)."""
         from .literals import process_kotlin_literals
         process_kotlin_literals(context, max_tokens)
-

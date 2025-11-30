@@ -33,90 +33,90 @@ src:
               - "/context.py"
               - "/code_model.py"
               - "/code_base.py"
-#              - "/optimizations/"
-#            when:
-#              - condition: "TAGSET:adapters-optimizations:core"
-#                allow:
-#                  - "/tree_sitter_support.py"
-#                  - "/range_edits.py"
+              - "/optimizations/"
+            when:
+              - condition: "TAGSET:adapters-optimizations:core"
+                allow:
+                  - "/tree_sitter_support.py"
+                  - "/range_edits.py"
 #                  - "/placeholders.py"
 #                  - "/metrics.py"
-#              - condition: "TAGSET:adapters-optimizations:budget"
-#                allow: ["/budget.py"]
-#              - condition: "TAGSET:adapters-optimizations:function-bodies OR TAGSET:adapters-optimizations:public-api"
-#                allow: ["/code_analysis.py"]
-#              - condition: "TAGSET:language:python"
-#                allow: ["/python/"]
-#              - condition: "TAGSET:language:kotlin"
-#                allow: ["/kotlin/"]
-#              - condition: "TAGSET:language:typescript"
-#                allow: ["/typescript/"]
-#              - condition: "TAGSET:language:javascript"
-#                allow: ["/javascript.py"]
-#              - condition: "TAGSET:language:java"
-#                allow: ["/java.py"]
-#              - condition: "TAGSET:language:cpp"
-#                allow: ["/cpp.py"]
-#              - condition: "TAGSET:language:scala"
-#                allow: ["/scala.py"]
-#            children:
-#              optimizations:
-#                mode: allow
-#                when:
-#                  - condition: "TAGSET:adapters-optimizations:function-bodies"
-#                    allow: ["/function_bodies.py"]
-#                  - condition: "TAGSET:adapters-optimizations:comments"
-#                    allow: ["/comments.py"]
-#                  - condition: "TAGSET:adapters-optimizations:literals"
-#                    allow: ["/literals.py"]
-#                  - condition: "TAGSET:adapters-optimizations:imports"
-#                    allow: ["/imports.py"]
-#                  - condition: "TAGSET:adapters-optimizations:public-api"
-#                    allow: ["/public_api.py"]
-#              python:
-#                mode: allow
-#                allow:
-#                  - "/__init__.py"
-#                  - "/adapter.py"
-#                  - "/queries.py"
-#                  - "/file_heuristics.py"
-#                when:
-#                  - condition: "TAGSET:adapters-optimizations:function-bodies"
-#                    allow: ["/function_bodies.py", "/code_analysis.py"]
-#                  - condition: "TAGSET:adapters-optimizations:comments"
-#                    allow: ["/comments.py"]
-#                  - condition: "TAGSET:adapters-optimizations:imports"
-#                    allow: ["/imports.py"]
-#                  - condition: "TAGSET:adapters-optimizations:public-api"
-#                    allow: ["/code_analysis.py"]
-#              typescript:
-#                mode: allow
-#                allow:
-#                  - "/__init__.py"
-#                  - "/adapter.py"
-#                  - "/queries.py"
-#                  - "/file_heuristics.py"
-#                when:
-#                  - condition: "TAGSET:adapters-optimizations:function-bodies"
-#                    allow: ["/code_analysis.py"]
-#                  - condition: "TAGSET:adapters-optimizations:imports"
-#                    allow: ["/imports.py"]
-#                  - condition: "TAGSET:adapters-optimizations:public-api"
-#                    allow: ["/code_analysis.py"]
-#              kotlin:
-#                mode: allow
-#                allow:
-#                  - "/__init__.py"
-#                  - "/adapter.py"
-#                  - "/queries.py"
-#                  - "/file_heuristics.py"
-#                when:
-#                  - condition: "TAGSET:adapters-optimizations:function-bodies"
-#                    allow: ["/code_analysis.py"]
-#                  - condition: "TAGSET:adapters-optimizations:imports"
-#                    allow: ["/imports.py"]
-#                  - condition: "TAGSET:adapters-optimizations:public-api"
-#                    allow: ["/code_analysis.py"]
+              - condition: "TAGSET:adapters-optimizations:budget"
+                allow: ["/budget.py"]
+              - condition: "TAGSET:adapters-optimizations:function-bodies OR TAGSET:adapters-optimizations:public-api"
+                allow: ["/code_analysis.py"]
+              - condition: "TAGSET:language:python"
+                allow: ["/python/"]
+              - condition: "TAGSET:language:kotlin"
+                allow: ["/kotlin/"]
+              - condition: "TAGSET:language:typescript"
+                allow: ["/typescript/"]
+              - condition: "TAGSET:language:javascript"
+                allow: ["/javascript.py"]
+              - condition: "TAGSET:language:java"
+                allow: ["/java.py"]
+              - condition: "TAGSET:language:cpp"
+                allow: ["/cpp.py"]
+              - condition: "TAGSET:language:scala"
+                allow: ["/scala.py"]
+            children:
+              optimizations:
+                mode: allow
+                when:
+                  - condition: "TAGSET:adapters-optimizations:function-bodies"
+                    allow: ["/function_bodies.py"]
+                  - condition: "TAGSET:adapters-optimizations:comments"
+                    allow: ["/comments.py"]
+                  - condition: "TAGSET:adapters-optimizations:literals"
+                    allow: ["/literals.py"]
+                  - condition: "TAGSET:adapters-optimizations:imports"
+                    allow: ["/imports.py"]
+                  - condition: "TAGSET:adapters-optimizations:public-api"
+                    allow: ["/public_api.py"]
+              python:
+                mode: allow
+                allow:
+                  - "/__init__.py"
+                  - "/adapter.py"
+                  - "/queries.py"
+                  - "/file_heuristics.py"
+                when:
+                  - condition: "TAGSET:adapters-optimizations:function-bodies"
+                    allow: ["/function_bodies.py", "/code_analysis.py"]
+                  - condition: "TAGSET:adapters-optimizations:comments"
+                    allow: ["/comments.py"]
+                  - condition: "TAGSET:adapters-optimizations:imports"
+                    allow: ["/imports.py"]
+                  - condition: "TAGSET:adapters-optimizations:public-api"
+                    allow: ["/code_analysis.py"]
+              typescript:
+                mode: allow
+                allow:
+                  - "/__init__.py"
+                  - "/adapter.py"
+                  - "/queries.py"
+                  - "/file_heuristics.py"
+                when:
+                  - condition: "TAGSET:adapters-optimizations:function-bodies"
+                    allow: ["/code_analysis.py"]
+                  - condition: "TAGSET:adapters-optimizations:imports"
+                    allow: ["/imports.py"]
+                  - condition: "TAGSET:adapters-optimizations:public-api"
+                    allow: ["/code_analysis.py"]
+              kotlin:
+                mode: allow
+                allow:
+                  - "/__init__.py"
+                  - "/adapter.py"
+                  - "/queries.py"
+                  - "/file_heuristics.py"
+                when:
+                  - condition: "TAGSET:adapters-optimizations:function-bodies"
+                    allow: ["/code_analysis.py"]
+                  - condition: "TAGSET:adapters-optimizations:imports"
+                    allow: ["/imports.py"]
+                  - condition: "TAGSET:adapters-optimizations:public-api"
+                    allow: ["/code_analysis.py"]
 
 tests:
   extensions: [".py", ".ts", ".kt", ".js", ".java", ".go", ".rs", ".scala",
@@ -139,10 +139,10 @@ tests:
               - condition: "tag:tests-infra"
                 allow:
                   - "/golden_utils.py"
-#              - condition: "TAGSET:adapters-optimizations:core"
-#                allow:
-#                  - "/test_placeholders.py"
-#                  - "/test_tree_sitter_document.py"
+              - condition: "TAGSET:adapters-optimizations:core"
+                allow:
+                  - "/test_placeholders.py"
+                  - "/test_tree_sitter_document.py"
               - condition: "TAGSET:language:python"
                 allow: ["/python/"]
               - condition: "TAGSET:language:typescript"

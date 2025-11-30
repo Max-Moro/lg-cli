@@ -16,12 +16,13 @@ __all__ = ["process_files", "get_adapter_for_path", "register_lazy"]
 register_lazy(module=".python", class_name="PythonAdapter", extensions=[".py"])
 register_lazy(module=".typescript", class_name="TypeScriptAdapter", extensions=[".ts", ".tsx"])
 register_lazy(module=".kotlin", class_name="KotlinAdapter", extensions=[".kt", ".kts"])
+register_lazy(module=".javascript", class_name="JavaScriptAdapter", extensions=[".js", ".jsx", ".mjs", ".cjs"])
+register_lazy(module=".java", class_name="JavaAdapter", extensions=[".java"])
+register_lazy(module=".cpp", class_name="CppAdapter", extensions=[".cpp", ".hpp", ".cc", ".hh", ".cxx", ".hxx"])
+register_lazy(module=".c", class_name="CAdapter", extensions=[".c", ".h"])
+register_lazy(module=".scala", class_name="ScalaAdapter", extensions=[".scala", ".sc"])
+register_lazy(module=".go", class_name="GoAdapter", extensions=[".go"])
+register_lazy(module=".rust", class_name="RustAdapter", extensions=[".rs"])
 
 # Markdown adapter
 register_lazy(module=".markdown", class_name="MarkdownAdapter", extensions=[".md", ".markdown"])
-
-# Stub adapters for future languages
-# register_lazy(module=".javascript", class_name="JavaScriptAdapter", extensions=[".js", ".jsx"])
-# register_lazy(module=".java", class_name="JavaAdapter", extensions=[".java"])
-# register_lazy(module=".cpp", class_name="CppAdapter", extensions=[".cpp", ".cxx", ".cc", ".c", ".h", ".hpp", ".hxx"])
-# register_lazy(module=".scala", class_name="ScalaAdapter", extensions=[".scala"])

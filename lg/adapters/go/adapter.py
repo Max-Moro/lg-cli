@@ -1,0 +1,74 @@
+"""
+Go adapter core: configuration, document and adapter classes.
+"""
+
+from __future__ import annotations
+
+from dataclasses import dataclass
+from typing import Dict, Any, List, Optional
+
+from tree_sitter import Language
+
+from ..code_base import CodeAdapter
+from ..code_model import CodeCfg
+from ..optimizations import ImportClassifier, TreeSitterImportAnalyzer
+from ..tree_sitter_support import TreeSitterDocument
+
+
+@dataclass
+class GoCfg(CodeCfg):
+    """Configuration for Go adapter."""
+
+    @staticmethod
+    def from_dict(d: Optional[Dict[str, Any]]) -> GoCfg:
+        """Load configuration from YAML dictionary."""
+        if not d:
+            return GoCfg()
+
+        cfg = GoCfg()
+        cfg.general_load(d)
+
+        # Go-specific settings (currently none)
+
+        return cfg
+
+
+class GoDocument(TreeSitterDocument):
+
+    def get_language(self) -> Language:
+        import tree_sitter_go as tsgo
+        return Language(tsgo.language())
+
+    def get_query_definitions(self) -> Dict[str, str]:
+        from .queries import QUERIES
+        return QUERIES
+
+
+class GoAdapter(CodeAdapter[GoCfg]):
+
+    name = "go"
+    extensions = {".go"}
+
+    def create_document(self, text: str, ext: str) -> TreeSitterDocument:
+        return GoDocument(text, ext)
+
+    def create_import_classifier(self, external_patterns: List[str]) -> ImportClassifier:
+        """Create Go-specific import classifier."""
+        from .imports import GoImportClassifier
+        return GoImportClassifier(external_patterns)
+
+    def create_import_analyzer(self, classifier: ImportClassifier) -> TreeSitterImportAnalyzer:
+        """Create Go-specific import analyzer."""
+        from .imports import GoImportAnalyzer
+        return GoImportAnalyzer(classifier)
+
+    def create_code_analyzer(self, doc: TreeSitterDocument):
+        """Create Go-specific unified code analyzer."""
+        from .code_analysis import GoCodeAnalyzer
+        return GoCodeAnalyzer(doc)
+
+    def is_documentation_comment(self, comment_text: str) -> bool:
+        """Check if comment is Go documentation."""
+        stripped = comment_text.strip()
+        # Go uses single-line comments starting with // for documentation
+        return stripped.startswith('//')
