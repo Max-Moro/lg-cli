@@ -250,7 +250,7 @@ class KotlinCodeAnalyzer(CodeAnalyzer):
 
         return annotations
 
-    def collect_function_like_elements(self, captures: List[Tuple[Node, str]]) -> Dict[Node, FunctionGroup]:
+    def _group_function_captures(self, captures: List[Tuple[Node, str]]) -> Dict[Node, FunctionGroup]:
         """
         Kotlin-specific grouping of functions and lambdas.
 
@@ -301,6 +301,16 @@ class KotlinCodeAnalyzer(CodeAnalyzer):
                     )
 
         return function_groups
+
+    def collect_function_like_elements(self) -> Dict[Node, FunctionGroup]:
+        """
+        Collect all functions and lambdas from document.
+
+        Returns:
+            Dictionary: function_node -> FunctionGroup with function information
+        """
+        functions = self.doc.query("functions")
+        return self._group_function_captures(functions)
     
     def collect_language_specific_private_elements(self) -> List[ElementInfo]:
         """

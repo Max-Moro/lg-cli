@@ -35,12 +35,9 @@ class FunctionBodyOptimizer:
         
         # Get language-specific unified code analyzer
         analyzer = self.adapter.create_code_analyzer(context.doc)
-        
-        # Find all function bodies and strip them using language-specific analysis
-        functions = context.doc.query("functions")
-        
-        # Group function-like captures using language-specific utilities
-        function_groups = analyzer.collect_function_like_elements(functions)
+
+        # Collect all function and method groups
+        function_groups = analyzer.collect_function_like_elements()
 
         # Process each function group
         for func_def, func_group in function_groups.items():

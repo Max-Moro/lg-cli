@@ -34,6 +34,32 @@ QUERIES = {
       body: (compound_statement) @lambda_body) @function_definition
     """,
 
+    # Class/struct methods (member functions)
+    "class_methods": """
+    (field_declaration_list
+      (function_definition
+        declarator: (function_declarator
+          declarator: (field_identifier) @function_name
+          parameters: (parameter_list) @function_params)
+        body: (compound_statement) @function_body) @function_definition)
+
+    (field_declaration_list
+      (function_definition
+        declarator: (function_declarator
+          declarator: (qualified_identifier
+            name: (field_identifier) @function_name)
+          parameters: (parameter_list) @function_params)
+        body: (compound_statement) @function_body) @function_definition)
+
+    (field_declaration_list
+      (function_definition
+        declarator: (pointer_declarator
+          declarator: (function_declarator
+            declarator: (field_identifier) @function_name
+            parameters: (parameter_list) @function_params))
+        body: (compound_statement) @function_body) @function_definition)
+    """,
+
     # Comments
     "comments": """
     (comment) @comment

@@ -5,9 +5,9 @@ Combines structure analysis and visibility analysis functionality for C++.
 
 from __future__ import annotations
 
-from typing import List, Optional, Set
+from typing import List, Optional, Set, Dict
 
-from ..code_analysis import CodeAnalyzer, Visibility, ExportStatus, ElementInfo
+from ..code_analysis import CodeAnalyzer, Visibility, ExportStatus, ElementInfo, FunctionGroup
 from ..tree_sitter_support import Node
 
 
@@ -200,6 +200,26 @@ class CppCodeAnalyzer(CodeAnalyzer):
             Empty set
         """
         return set()
+
+    def collect_function_like_elements(self) -> Dict[Node, FunctionGroup]:
+        """
+        Collect functions and class methods for C++.
+
+        Overrides base method to also include class methods from separate query.
+
+        Returns:
+            Dictionary: function_node -> FunctionGroup
+        """
+        # Collect free functions using base implementation
+        function_groups = super().collect_function_like_elements()
+
+        # Also collect class methods from separate query
+        if self.doc.has_query("class_methods"):
+            class_methods = self.doc.query("class_methods")
+            method_groups = self._group_function_captures(class_methods)
+            function_groups.update(method_groups)
+
+        return function_groups
 
     def collect_language_specific_private_elements(self) -> List[ElementInfo]:
         """

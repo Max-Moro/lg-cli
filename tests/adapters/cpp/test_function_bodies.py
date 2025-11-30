@@ -62,7 +62,7 @@ public:
         assert "class Calculator" in result
         assert "int add(int x)" in result
         assert "int get() const" in result
-        assert "// … function body omitted" in result
+        assert "// … method body omitted" in result
 
         assert_golden_match(result, "function_bodies", "member_functions")
 

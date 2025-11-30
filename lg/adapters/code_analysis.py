@@ -127,7 +127,7 @@ class CodeAnalyzer(ABC):
         private_elements = []
 
         # 1. Analyze functions and methods
-        self._collect_functions_and_methods(private_elements)
+        self._collect_private_functions_and_methods(private_elements)
 
         # 2. Analyze classes
         self._collect_classes(private_elements)
@@ -143,18 +143,15 @@ class CodeAnalyzer(ABC):
 
     # ============= Helper methods for collecting private elements =============
 
-    def _collect_functions_and_methods(self, private_elements: List[ElementInfo]) -> None:
+    def _collect_private_functions_and_methods(self, private_elements: List[ElementInfo]) -> None:
         """
         Collects private functions and methods for removal in public API mode.
 
         Args:
             private_elements: List for adding found private elements
         """
-        # Find all functions and methods using language-specific queries
-        functions = self.doc.query("functions")
-
-        # Group function-like captures using language-specific utilities
-        function_groups = self.collect_function_like_elements(functions)
+        # Get all functions and methods using self-sufficient method
+        function_groups = self.collect_function_like_elements()
 
         for func_def, func_group in function_groups.items():
             element_info = func_group.element_info
@@ -224,7 +221,7 @@ class CodeAnalyzer(ABC):
 
     # ============= Structural analysis =============
 
-    def collect_function_like_elements(self, captures: List[Tuple[Node, str]]) -> Dict[Node, FunctionGroup]:
+    def _group_function_captures(self, captures: List[Tuple[Node, str]]) -> Dict[Node, FunctionGroup]:
         """
         Groups Tree-sitter captures by functions/methods.
 
@@ -282,6 +279,16 @@ class CodeAnalyzer(ABC):
                     )
 
         return function_groups
+
+    def collect_function_like_elements(self) -> Dict[Node, FunctionGroup]:
+        """
+        Collect all functions and methods from document.
+
+        Returns:
+            Dictionary: function_node -> FunctionGroup with function information
+        """
+        functions = self.doc.query("functions")
+        return self._group_function_captures(functions)
 
     def find_decorators_for_element(self, node: Node) -> List[Node]:
         """

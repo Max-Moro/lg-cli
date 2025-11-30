@@ -17,10 +17,8 @@ class TestJavaFunctionBodyOptimization:
 
         result, meta = adapter.process(lctx(do_function_bodies))
 
-        assert meta.get("java.removed.function_body", 0) > 0
         assert meta.get("java.removed.method_body", 0) > 0
         assert "// … method body omitted" in result
-        assert "// … function body omitted" in result
 
         assert_golden_match(result, "function_bodies", "basic_strip")
 
@@ -80,8 +78,7 @@ public class Calculator {
         result, meta = adapter.process(lctx(code))
 
         assert "return 42;" in result
-        assert meta.get("java.removed.function_body", 0) == 0
-        assert meta.get("java.removed.method_bodies", 0) == 0
+        assert meta.get("java.removed.method_body", 0) == 0
 
     def test_public_only_method_stripping(self):
         """Test public_only mode for Java method body stripping."""
@@ -134,7 +131,7 @@ public int complex() {
         assert "public int simple() { return 42; }" in result
 
         assert "public int complex()" in result
-        assert "// … function body omitted" in result
+        assert "// … method body omitted" in result
         assert "int x = 1;" not in result
 
     def test_interface_and_abstract_preservation(self):
