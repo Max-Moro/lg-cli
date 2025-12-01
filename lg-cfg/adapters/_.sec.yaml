@@ -216,11 +216,16 @@ src:
 
 tests:
   extensions: [".py", ".ts", ".kt", ".js", ".java", ".go", ".rs", ".scala",
-               ".c", ".h", ".cpp", ".hpp", ".cc", ".hh", ".hxx", ".cxx"]
+               ".c", ".h", ".cpp", ".hpp", ".cc", ".hh", ".hxx", ".cxx",
+               ".sh"]
   filters:
     mode: allow
     allow:
       - "/tests/"
+    when:
+      - condition: "tag:tests-infra"
+        allow:
+          - "/scripts/test_adapters.sh"
     children:
       tests:
         mode: allow
