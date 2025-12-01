@@ -146,4 +146,23 @@ QUERIES = {
         body: (statement_block) @setter_body)
       (#match? @property_name "^set[A-Z]"))
     """,
+
+    # Class members (fields and methods)
+    "class_members": """
+    (class_body
+      (field_definition
+        property: (property_identifier) @field_name)) @field_definition
+
+    (class_body
+      (field_definition
+        property: (private_property_identifier) @private_field_name)) @field_definition
+
+    (class_body
+      (method_definition
+        name: (property_identifier) @method_name)) @method_definition
+
+    (class_body
+      (method_definition
+        name: (private_property_identifier) @private_method_name)) @method_definition
+    """,
 }

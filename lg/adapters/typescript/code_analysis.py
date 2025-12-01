@@ -237,6 +237,7 @@ class TypeScriptCodeAnalyzer(CodeAnalyzer):
 
         # TypeScript-specific elements
         self._collect_namespaces(private_elements)
+        self._collect_namespace_members(private_elements)
         self._collect_enums(private_elements)
         self._collect_class_members(private_elements)
         self._collect_imports(private_elements)
@@ -254,6 +255,51 @@ class TypeScriptCodeAnalyzer(CodeAnalyzer):
                     element_info = self.analyze_element(namespace_def)
                     if not element_info.in_public_api:
                         private_elements.append(element_info)
+
+    def _collect_namespace_members(self, private_elements: List[ElementInfo]) -> None:
+        """Collect non-exported members inside exported namespaces."""
+        namespaces = self.doc.query_opt("namespaces")
+        for node, capture_name in namespaces:
+            if capture_name == "namespace_name":
+                namespace_def = node.parent
+                if namespace_def:
+                    namespace_info = self.analyze_element(namespace_def)
+                    # Only process members of EXPORTED namespaces
+                    if namespace_info.is_exported:
+                        # Find functions and variables inside this namespace
+                        self._collect_non_exported_namespace_members(namespace_def, private_elements)
+
+    def _collect_non_exported_namespace_members(self, namespace_node: Node, private_elements: List[ElementInfo]) -> None:
+        """Collect non-exported members of a namespace."""
+        # Find statement_block body of namespace
+        namespace_body = None
+        for child in namespace_node.children:
+            if child.type == "statement_block":
+                namespace_body = child
+                break
+
+        if not namespace_body:
+            return
+
+        # Iterate through children of namespace body
+        for child in namespace_body.children:
+            # Check for function_declaration
+            if child.type == "function_declaration":
+                # Check if it's exported (has 'export' modifier)
+                if not self._has_export_keyword(child):
+                    element_info = self.analyze_element(child)
+                    private_elements.append(element_info)
+            # Check for variable_declaration (const/let/var)
+            elif child.type == "variable_declaration":
+                if not self._has_export_keyword(child):
+                    element_info = self.analyze_element(child)
+                    private_elements.append(element_info)
+            # For export statements, their children are exported - skip
+
+    def _has_export_keyword(self, node: Node) -> bool:
+        """Check if node text starts with 'export'."""
+        node_text = self.doc.get_node_text(node).strip()
+        return node_text.startswith("export ")
 
     def _collect_enums(self, private_elements: List[ElementInfo]) -> None:
         """Collect non-exported enums."""

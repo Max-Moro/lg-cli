@@ -37,6 +37,8 @@ class JavaScriptCodeAnalyzer(CodeAnalyzer):
             return "method"
         elif node_type == "variable_declaration":
             return "variable"
+        elif node_type == "import_statement":
+            return "import"
         else:
             # Fallback: try to determine from parent context
             if self.is_method_context(node):
@@ -65,7 +67,7 @@ class JavaScriptCodeAnalyzer(CodeAnalyzer):
 
         # Search for child node with name
         for child in node.children:
-            if child.type in ("identifier", "property_identifier"):
+            if child.type in ("identifier", "property_identifier", "private_property_identifier"):
                 return self.doc.get_node_text(child)
 
         # For some node types, name may be in the name field
@@ -110,7 +112,9 @@ class JavaScriptCodeAnalyzer(CodeAnalyzer):
         Determine export status of JavaScript element.
 
         Rules:
+        - Methods inside exported object literals (namespace-like exports) are exported
         - Methods inside classes are NOT exported directly
+        - Elements referenced in default exports are exported
         - Top-level functions, classes, variables are exported if they have export keyword
         - Private elements are never exported
 
@@ -120,9 +124,26 @@ class JavaScriptCodeAnalyzer(CodeAnalyzer):
         Returns:
             Export status of element
         """
-        # Methods are never directly exported
+        # Special case: methods in exported object literals (namespace exports)
+        # e.g., export const Utils = { formatName() {} }
         if node.type == "method_definition":
-            return ExportStatus.NOT_EXPORTED
+            if self._is_in_exported_object_literal(node):
+                # Still respect privacy conventions (methods starting with _)
+                visibility = self.determine_visibility(node)
+                if visibility == Visibility.PRIVATE:
+                    return ExportStatus.NOT_EXPORTED
+                else:
+                    return ExportStatus.EXPORTED
+            else:
+                # Regular class methods are not exported directly
+                return ExportStatus.NOT_EXPORTED
+
+        # Check if this element is a default export
+        element_name = self.extract_element_name(node)
+        if element_name:
+            default_exports = self._find_default_exports()
+            if element_name in default_exports:
+                return ExportStatus.EXPORTED
 
         # Check if this is a top-level element with export
         node_text = self.doc.get_node_text(node)
@@ -207,7 +228,7 @@ class JavaScriptCodeAnalyzer(CodeAnalyzer):
         """
         Collect JavaScript-specific private elements.
 
-        Includes class members, variables, and exports.
+        Includes class members, variables, classes, and non-re-exported imports.
 
         Returns:
             List of JavaScript-specific private elements
@@ -217,6 +238,8 @@ class JavaScriptCodeAnalyzer(CodeAnalyzer):
         # JavaScript-specific elements
         self._collect_variables(private_elements)
         self._collect_class_members(private_elements)
+        self._collect_classes(private_elements)
+        self._collect_imports(private_elements)
 
         return private_elements
 
@@ -237,9 +260,42 @@ class JavaScriptCodeAnalyzer(CodeAnalyzer):
 
     def _collect_class_members(self, private_elements: List[ElementInfo]) -> None:
         """Collect private class members (by convention or ES2022+ private fields)."""
-        # Note: Tree-sitter may not have specific queries for class members
-        # This is a simplified implementation
-        pass
+        class_members = self.doc.query_opt("class_members")
+        for node, capture_name in class_members:
+            # Check field definitions
+            if capture_name in ("field_name", "private_field_name"):
+                field_def = node.parent  # property_identifier -> field_definition
+                if field_def:
+                    element_info = self.analyze_element(field_def)
+                    if not element_info.in_public_api:
+                        private_elements.append(element_info)
+            # Check method definitions
+            elif capture_name in ("method_name", "private_method_name"):
+                method_def = node.parent  # property_identifier -> method_definition
+                if method_def:
+                    element_info = self.analyze_element(method_def)
+                    if not element_info.in_public_api:
+                        private_elements.append(element_info)
+
+    def _collect_classes(self, private_elements: List[ElementInfo]) -> None:
+        """Collect non-exported classes."""
+        classes = self.doc.query_opt("classes")
+        for node, capture_name in classes:
+            if capture_name == "class_name":
+                class_def = node.parent
+                if class_def:
+                    element_info = self.analyze_element(class_def)
+                    if not element_info.in_public_api:
+                        private_elements.append(element_info)
+
+    def _collect_imports(self, private_elements: List[ElementInfo]) -> None:
+        """Collect non-exported imports."""
+        imports = self.doc.query_opt("imports")
+        for node, capture_name in imports:
+            if capture_name == "import":
+                element_info = self.analyze_element(node)
+                if not element_info.in_public_api:
+                    private_elements.append(element_info)
 
     def _check_export_in_source_line(self, node: Node) -> bool:
         """
@@ -259,6 +315,82 @@ class JavaScriptCodeAnalyzer(CodeAnalyzer):
             line_text = lines[start_line].strip()
             if line_text.startswith('export '):
                 return True
+
+        return False
+
+    def _find_default_exports(self) -> Set[str]:
+        """
+        Find all default export identifiers in the file.
+
+        For cases like:
+            class UserManager {}
+            export default UserManager;
+
+        Returns:
+            Set of identifiers that are default exported
+        """
+        default_exports = set()
+
+        # Query for all export statements
+        exports = self.doc.query_opt("exports")
+        for node, capture_name in exports:
+            if node.type == "export_statement":
+                # Check if this is a default export
+                has_default = False
+                identifier = None
+
+                for child in node.children:
+                    if child.type == "default":
+                        has_default = True
+                    elif child.type == "identifier":
+                        identifier = self.doc.get_node_text(child)
+
+                if has_default and identifier:
+                    default_exports.add(identifier)
+
+        return default_exports
+
+    def _is_in_exported_object_literal(self, node: Node) -> bool:
+        """
+        Check if a node (typically method_definition) is inside an object literal
+        that is the value of an exported variable.
+
+        Example:
+            export const Utils = {
+                formatName() {}  <- this method should be considered exported
+            };
+
+        Args:
+            node: Tree-sitter node to check
+
+        Returns:
+            True if node is inside an exported object literal
+        """
+        # Walk up to find if we're inside an object
+        current = node.parent
+        object_node = None
+
+        while current:
+            if current.type == "object":
+                object_node = current
+                break
+            # Don't go past program level
+            if current.type in ("program", "source_file"):
+                break
+            current = current.parent
+
+        if not object_node:
+            return False
+
+        # Now check if this object is the value of an exported variable
+        # Tree: export_statement -> lexical_declaration -> variable_declarator -> object
+        current = object_node.parent
+        if current and current.type == "variable_declarator":
+            current = current.parent  # variable_declarator -> lexical_declaration
+            if current and current.type in ("lexical_declaration", "variable_declaration"):
+                current = current.parent  # lexical_declaration -> export_statement
+                if current and current.type == "export_statement":
+                    return True
 
         return False
 

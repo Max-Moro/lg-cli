@@ -138,6 +138,19 @@ QUERIES = {
       body: (enumerator_list) @enum_body)
     """,
 
+    # Class fields (member variables)
+    "class_fields": """
+    (field_declaration_list
+      (field_declaration) @field_declaration)
+    """,
+
+    # Struct definitions (for collecting structs in anonymous namespaces)
+    "structs": """
+    (struct_specifier
+      name: (type_identifier) @struct_name
+      body: (field_declaration_list) @struct_body)
+    """,
+
     # Constructors and destructors
     "constructors": """
     (function_definition
@@ -200,6 +213,11 @@ QUERIES = {
         declarator: (function_declarator
           declarator: (identifier) @function_name
           parameters: (parameter_list) @function_params))) @function_declaration
+    """,
+
+    # Variable declarations
+    "variable_declarations": """
+    (declaration) @variable_declaration
     """,
 
     # Preprocessor defines (macros)

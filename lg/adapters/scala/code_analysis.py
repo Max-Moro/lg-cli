@@ -63,6 +63,12 @@ class ScalaCodeAnalyzer(CodeAnalyzer):
         Returns:
             Element name or None if not found
         """
+        # Special handling for val/var definitions - name is in pattern field
+        if node.type in ("val_definition", "var_definition", "val_declaration", "var_declaration"):
+            pattern_node = node.child_by_field_name("pattern")
+            if pattern_node and pattern_node.type == "identifier":
+                return self.doc.get_node_text(pattern_node)
+
         # Search for child node with name
         for child in node.children:
             if child.type == "identifier":
@@ -196,7 +202,7 @@ class ScalaCodeAnalyzer(CodeAnalyzer):
         """
         Collect Scala-specific private elements.
 
-        Includes objects, traits, case classes, and members.
+        Includes objects, traits, case classes, classes, class members, type aliases, and variables.
 
         Returns:
             List of Scala-specific private elements
@@ -207,6 +213,8 @@ class ScalaCodeAnalyzer(CodeAnalyzer):
         self._collect_objects(private_elements)
         self._collect_traits(private_elements)
         self._collect_case_classes(private_elements)
+        self._collect_classes(private_elements)
+        self._collect_class_members(private_elements)
         self._collect_type_aliases(private_elements)
         self._collect_variables(private_elements)
 
@@ -264,9 +272,29 @@ class ScalaCodeAnalyzer(CodeAnalyzer):
                 # Navigate to val_definition or var_definition
                 var_def = node.parent
                 if var_def:
-                    var_def = var_def.parent  # pattern -> definition
-                if var_def:
                     element_info = self.analyze_element(var_def)
+                    if not element_info.in_public_api:
+                        private_elements.append(element_info)
+
+    def _collect_classes(self, private_elements: List[ElementInfo]) -> None:
+        """Collect non-public classes."""
+        classes = self.doc.query_opt("classes")
+        for node, capture_name in classes:
+            if capture_name == "class_name":
+                class_def = node.parent
+                if class_def:
+                    element_info = self.analyze_element(class_def)
+                    if not element_info.in_public_api:
+                        private_elements.append(element_info)
+
+    def _collect_class_members(self, private_elements: List[ElementInfo]) -> None:
+        """Collect private class members (fields and methods)."""
+        class_members = self.doc.query_opt("class_members")
+        for node, capture_name in class_members:
+            if capture_name in ("method_name", "field_name"):
+                member_def = node.parent  # identifier -> definition
+                if member_def:
+                    element_info = self.analyze_element(member_def)
                     if not element_info.in_public_api:
                         private_elements.append(element_info)
 

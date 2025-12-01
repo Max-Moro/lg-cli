@@ -11,7 +11,11 @@ QUERIES = {
     (function_item
       name: (identifier) @function_name
       parameters: (parameters) @function_params
-      body: (block) @function_body) @function_definition
+      body: (block)? @function_body) @function_definition
+
+    (function_signature_item
+      name: (identifier) @function_name
+      parameters: (parameters) @function_params) @function_definition
 
     (closure_expression
       parameters: (closure_parameters) @lambda_params
@@ -54,6 +58,9 @@ QUERIES = {
       name: (type_identifier) @struct_name
       body: (field_declaration_list) @struct_body)
 
+    (struct_item
+      name: (type_identifier) @struct_name)
+
     (enum_item
       name: (type_identifier) @enum_name
       body: (enum_variant_list) @enum_body)
@@ -61,6 +68,14 @@ QUERIES = {
     (union_item
       name: (type_identifier) @union_name
       body: (field_declaration_list) @union_body)
+    """,
+
+    # Struct fields
+    "struct_fields": """
+    (field_declaration
+      (visibility_modifier)? @field_visibility
+      name: (field_identifier) @field_name
+      type: (_) @field_type)
     """,
 
     # Trait definitions

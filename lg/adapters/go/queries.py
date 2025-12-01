@@ -54,19 +54,30 @@ QUERIES = {
           (field_declaration_list) @struct_body)))
     """,
 
+    # Struct fields
+    "struct_fields": """
+    (field_declaration
+      name: (field_identifier) @field_name
+      type: (_) @field_type)
+    """,
+
     # Interface definitions
     "interfaces": """
     (type_declaration
       (type_spec
         name: (type_identifier) @interface_name
-        type: (interface_type
-          (method_spec_list) @interface_body)))
+        type: (interface_type) @interface_body))
     """,
 
     # Type definitions and aliases
     "type_aliases": """
     (type_declaration
       (type_spec
+        name: (type_identifier) @type_name
+        type: (_) @type_value))
+
+    (type_declaration
+      (type_alias
         name: (type_identifier) @type_name
         type: (_) @type_value))
     """,

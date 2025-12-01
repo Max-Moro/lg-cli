@@ -20,6 +20,23 @@ QUERIES = {
           declarator: (identifier) @function_name
           parameters: (parameter_list) @function_params))
       body: (compound_statement) @function_body) @function_definition
+
+    (function_definition
+      declarator: (pointer_declarator
+        declarator: (pointer_declarator
+          declarator: (function_declarator
+            declarator: (identifier) @function_name
+            parameters: (parameter_list) @function_params)))
+      body: (compound_statement) @function_body) @function_definition
+
+    (function_definition
+      declarator: (pointer_declarator
+        declarator: (pointer_declarator
+          declarator: (pointer_declarator
+            declarator: (function_declarator
+              declarator: (identifier) @function_name
+              parameters: (parameter_list) @function_params))))
+      body: (compound_statement) @function_body) @function_definition
     """,
 
     # Comments
@@ -89,6 +106,26 @@ QUERIES = {
         declarator: (function_declarator
           declarator: (identifier) @function_name
           parameters: (parameter_list) @function_params))) @function_declaration
+
+    (declaration
+      declarator: (pointer_declarator
+        declarator: (pointer_declarator
+          declarator: (function_declarator
+            declarator: (identifier) @function_name
+            parameters: (parameter_list) @function_params)))) @function_declaration
+
+    (declaration
+      declarator: (pointer_declarator
+        declarator: (pointer_declarator
+          declarator: (pointer_declarator
+            declarator: (function_declarator
+              declarator: (identifier) @function_name
+              parameters: (parameter_list) @function_params))))) @function_declaration
+    """,
+
+    # All declarations (function declarations and variable declarations)
+    "declarations": """
+    (declaration) @declaration
     """,
 
     # Literals for trimming

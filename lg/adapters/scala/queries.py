@@ -56,15 +56,31 @@ QUERIES = {
     (trait_definition
       name: (identifier) @trait_name
       body: (template_body) @trait_body)
+
+    (trait_definition
+      name: (identifier) @trait_name)
     """,
 
     # Case class definitions
     "case_classes": """
     (class_definition
-      (modifiers
-        "case")
       name: (identifier) @case_class_name
-      parameters: (class_parameters) @case_class_params)
+      parameters: (class_parameters)? @case_class_params) @class_definition
+    """,
+
+    # Class members (fields and methods)
+    "class_members": """
+    (template_body
+      (function_definition
+        name: (identifier) @method_name)) @method_definition
+
+    (template_body
+      (val_definition
+        pattern: (identifier) @field_name)) @field_definition
+
+    (template_body
+      (var_definition
+        pattern: (identifier) @field_name)) @field_definition
     """,
 
     # Enum definitions

@@ -163,9 +163,7 @@ export namespace UserUtils {
     }
     
     // Private namespace member (should be filtered out)
-    function internalFormatting(text: string): string {
-        return text.toLowerCase().replace(/\s+/g, '_');
-    }
+    // … function omitted
 }
 
 // Private namespace (not exported, should be filtered out)

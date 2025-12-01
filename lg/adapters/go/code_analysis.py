@@ -22,7 +22,7 @@ class GoCodeAnalyzer(CodeAnalyzer):
             node: Tree-sitter node
 
         Returns:
-            String with element type: "function", "method", "struct", "interface", "type", "const", "var"
+            String with element type: "function", "method", "struct", "interface", "type", "const", "var", "field"
         """
         node_type = node.type
 
@@ -40,6 +40,8 @@ class GoCodeAnalyzer(CodeAnalyzer):
             return "var"
         elif node_type == "short_var_declaration":
             return "var"
+        elif node_type == "field_declaration":
+            return "field"
         else:
             return "function"
 
@@ -53,10 +55,10 @@ class GoCodeAnalyzer(CodeAnalyzer):
         Returns:
             Element name or None if not found
         """
-        # For type declarations, look inside type_spec
+        # For type declarations, look inside type_spec or type_alias
         if node.type == "type_declaration":
             for child in node.children:
-                if child.type == "type_spec":
+                if child.type in ("type_spec", "type_alias"):
                     for grandchild in child.children:
                         if grandchild.type == "type_identifier":
                             return self.doc.get_node_text(grandchild)
@@ -202,7 +204,7 @@ class GoCodeAnalyzer(CodeAnalyzer):
         """
         Collect Go-specific private elements.
 
-        Includes unexported types, variables, and constants.
+        Includes unexported types, variables, constants, and private struct fields.
 
         Returns:
             List of Go-specific private elements
@@ -212,6 +214,7 @@ class GoCodeAnalyzer(CodeAnalyzer):
         # Go-specific elements
         self._collect_type_aliases(private_elements)
         self._collect_variables(private_elements)
+        self._collect_struct_fields(private_elements)
 
         return private_elements
 
@@ -220,16 +223,16 @@ class GoCodeAnalyzer(CodeAnalyzer):
         type_aliases = self.doc.query_opt("type_aliases")
         for node, capture_name in type_aliases:
             if capture_name == "type_name":
-                # Navigate to type_spec -> type_declaration
-                type_spec = node.parent
-                if type_spec and type_spec.parent:
-                    type_decl = type_spec.parent
+                # Navigate to type_spec/type_alias -> type_declaration
+                parent = node.parent
+                if parent and parent.parent:
+                    type_decl = parent.parent
                     element_info = self.analyze_element(type_decl)
                     if not element_info.in_public_api:
                         private_elements.append(element_info)
 
     def _collect_variables(self, private_elements: List[ElementInfo]) -> None:
-        """Collect unexported variables and constants."""
+        """Collect unexported module-level variables and constants."""
         # Collect var declarations
         variables = self.doc.query_opt("variables")
         for node, capture_name in variables:
@@ -238,9 +241,83 @@ class GoCodeAnalyzer(CodeAnalyzer):
                 var_spec = node.parent
                 if var_spec and var_spec.parent:
                     var_decl = var_spec.parent
+
+                    # Skip variable declarations inside function bodies
+                    # Only collect module-level variables
+                    if self._is_inside_function_body(var_decl):
+                        continue
+
                     element_info = self.analyze_element(var_decl)
                     if not element_info.in_public_api:
                         private_elements.append(element_info)
+
+    def _collect_struct_fields(self, private_elements: List[ElementInfo]) -> None:
+        """
+        Collect unexported (private) fields from exported (public) structs.
+
+        In Go, even exported structs can have unexported fields (lowercase names).
+        These fields should be removed in public API mode.
+        """
+        struct_fields = self.doc.query_opt("struct_fields")
+        for node, capture_name in struct_fields:
+            if capture_name == "field_name":
+                field_decl = node.parent
+                if field_decl and field_decl.type == "field_declaration":
+                    # Analyze the field
+                    element_info = self.analyze_element(field_decl)
+
+                    # Only collect if field is private (lowercase name)
+                    # AND it's in a public (exported) struct
+                    if not element_info.is_public and self._is_in_exported_struct(field_decl):
+                        private_elements.append(element_info)
+
+    def _is_in_exported_struct(self, node: Node) -> bool:
+        """
+        Check if node is inside an exported struct type.
+
+        Args:
+            node: Tree-sitter node to check
+
+        Returns:
+            True if inside exported struct
+        """
+        current = node.parent
+        while current:
+            if current.type == "type_spec":
+                # Find the struct name
+                for child in current.children:
+                    if child.type == "type_identifier":
+                        name = self.doc.get_node_text(child)
+                        # Exported if starts with uppercase
+                        return name[0].isupper() if name else False
+            if current.type == "source_file":
+                break
+            current = current.parent
+        return False
+
+    def _is_inside_function_body(self, node: Node) -> bool:
+        """
+        Check if node is inside a function body.
+
+        Args:
+            node: Tree-sitter node to check
+
+        Returns:
+            True if node is inside a function body
+        """
+        current = node.parent
+        while current:
+            if current.type == "block":
+                # Check if this block is a function body
+                if current.parent and current.parent.type == "function_declaration":
+                    return True
+                if current.parent and current.parent.type == "method_declaration":
+                    return True
+            # Stop at source_file (module level)
+            if current.type == "source_file":
+                return False
+            current = current.parent
+        return False
 
     def _determine_type_declaration_kind(self, node: Node) -> str:
         """

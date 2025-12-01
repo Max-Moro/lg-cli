@@ -60,6 +60,8 @@ tag-sets:
   language:
     title: "Programming Languages"
     tags:
+      none:
+        title: "None"
       python:
         title: "Python"
       typescript:

@@ -63,9 +63,18 @@ class ElementInfo:
     @property
     def in_public_api(self) -> bool:
         """Should the element be included in the public API."""
-        if self.is_method:
+        # Member types (methods, fields, properties, constructors) use visibility
+        # Top-level types (classes, functions, interfaces) use export status
+        member_types = {
+            "method", "field", "property", "val", "var", "constructor",
+            "getter", "setter"
+        }
+
+        if self.element_type in member_types:
+            # For class/struct members, check visibility (public/private/protected)
             return self.is_public
         else:
+            # For top-level declarations, check export status
             return self.is_exported
 
 

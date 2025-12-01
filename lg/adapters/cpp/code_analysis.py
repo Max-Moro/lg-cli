@@ -22,7 +22,7 @@ class CppCodeAnalyzer(CodeAnalyzer):
             node: Tree-sitter node
 
         Returns:
-            String with element type: "function", "method", "class", "struct", "namespace", "template", "enum"
+            String with element type: "function", "method", "class", "struct", "namespace", "template", "enum", "field", "variable"
         """
         node_type = node.type
 
@@ -41,6 +41,10 @@ class CppCodeAnalyzer(CodeAnalyzer):
             return "template"
         elif node_type == "function_definition":
             return "method" if self.is_method_context(node) else "function"
+        elif node_type == "field_declaration":
+            return "field"
+        elif node_type == "declaration":
+            return "variable"
         else:
             # Fallback: determine from parent context
             if self.is_method_context(node):
@@ -225,7 +229,7 @@ class CppCodeAnalyzer(CodeAnalyzer):
         """
         Collect C++-specific private elements.
 
-        Includes namespaces, templates, enums, and class members.
+        Includes namespaces, templates, enums, class members, structs, and static declarations.
 
         Returns:
             List of C++-specific private elements
@@ -235,6 +239,10 @@ class CppCodeAnalyzer(CodeAnalyzer):
         # C++-specific elements
         self._collect_namespaces(private_elements)
         self._collect_enums(private_elements)
+        self._collect_class_members(private_elements)
+        self._collect_structs(private_elements)
+        self._collect_static_declarations(private_elements)
+        self._collect_static_variables(private_elements)
 
         return private_elements
 
@@ -261,9 +269,60 @@ class CppCodeAnalyzer(CodeAnalyzer):
                     if not element_info.in_public_api:
                         private_elements.append(element_info)
 
+    def _collect_class_members(self, private_elements: List[ElementInfo]) -> None:
+        """Collect private/protected class fields and methods."""
+        # Collect fields
+        class_fields = self.doc.query_opt("class_fields")
+        for node, capture_name in class_fields:
+            if capture_name == "field_declaration":
+                element_info = self.analyze_element(node)
+                # Remove if not public
+                if not element_info.in_public_api:
+                    private_elements.append(element_info)
+
+    def _collect_structs(self, private_elements: List[ElementInfo]) -> None:
+        """Collect structs in anonymous namespaces."""
+        structs = self.doc.query_opt("structs")
+        for node, capture_name in structs:
+            if capture_name == "struct_name":
+                struct_def = node.parent
+                if struct_def:
+                    # Check if struct is in anonymous namespace
+                    if self._in_anonymous_namespace(struct_def):
+                        element_info = self.analyze_element(struct_def)
+                        private_elements.append(element_info)
+
+    def _collect_static_declarations(self, private_elements: List[ElementInfo]) -> None:
+        """Collect static function declarations (not definitions)."""
+        declarations = self.doc.query_opt("function_declarations")
+        for node, capture_name in declarations:
+            if capture_name == "function_declaration":
+                # Check if it has static specifier
+                if self._has_static_specifier(node):
+                    element_info = self.analyze_element(node)
+                    if not element_info.in_public_api:
+                        private_elements.append(element_info)
+
+    def _collect_static_variables(self, private_elements: List[ElementInfo]) -> None:
+        """Collect static variable declarations."""
+        declarations = self.doc.query_opt("variable_declarations")
+        for node, capture_name in declarations:
+            if capture_name == "variable_declaration":
+                # Check if it has static specifier
+                if self._has_static_specifier(node):
+                    element_info = self.analyze_element(node)
+                    if not element_info.in_public_api:
+                        private_elements.append(element_info)
+
     def _find_access_specifier(self, node: Node) -> Optional[Visibility]:
         """
         Find the access specifier for a class member by looking at preceding siblings.
+
+        For nested classes, the structure is:
+          field_declaration_list
+            public:
+            field_declaration
+              class_specifier  <- node is here
 
         Args:
             node: Node to find access specifier for
@@ -271,15 +330,33 @@ class CppCodeAnalyzer(CodeAnalyzer):
         Returns:
             Visibility or None if not found
         """
+        # For nested classes inside field_declaration, check parent's siblings
+        if node.parent and node.parent.type == "field_declaration":
+            if node.parent.parent and node.parent.parent.type == "field_declaration_list":
+                # This is a nested class - check siblings of field_declaration
+                return self._search_access_specifier(node.parent, node.parent.parent.children)
+
+        # For regular class members, check current parent's children
         if not node.parent:
             return None
 
-        # Look backwards through siblings to find access specifier
-        siblings = node.parent.children
+        return self._search_access_specifier(node, node.parent.children)
+
+    def _search_access_specifier(self, target_node: Node, siblings: list) -> Optional[Visibility]:
+        """
+        Search for access specifier among siblings before target node.
+
+        Args:
+            target_node: The node we're looking for access specifier for
+            siblings: List of sibling nodes to search
+
+        Returns:
+            Visibility or None if not found
+        """
         current_access = None
 
         for sibling in siblings:
-            if sibling == node:
+            if sibling == target_node:
                 return current_access
 
             if sibling.type == "access_specifier":

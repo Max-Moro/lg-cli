@@ -22,7 +22,7 @@ class RustCodeAnalyzer(CodeAnalyzer):
             node: Tree-sitter node
 
         Returns:
-            String with element type: "function", "method", "struct", "enum", "trait", "impl", "mod", "const", "static"
+            String with element type: "function", "method", "struct", "enum", "trait", "impl", "mod", "const", "static", "field"
         """
         node_type = node.type
 
@@ -47,6 +47,10 @@ class RustCodeAnalyzer(CodeAnalyzer):
             return "type"
         elif node_type == "union_item":
             return "union"
+        elif node_type == "field_declaration":
+            return "field"
+        elif node_type == "macro_invocation":
+            return "macro"
         else:
             # Fallback: determine from parent context
             if self.is_method_context(node):
@@ -83,9 +87,9 @@ class RustCodeAnalyzer(CodeAnalyzer):
         Rust rules:
         - pub - public
         - pub(crate) - crate-level (internal)
-        - pub(super) - parent module
+        - pub(super) - parent module (protected)
         - pub(self) - current module (effectively private)
-        - No modifier - private
+        - No modifier - private (except for trait impl methods and trait methods)
 
         Args:
             node: Tree-sitter node of element
@@ -93,6 +97,17 @@ class RustCodeAnalyzer(CodeAnalyzer):
         Returns:
             Visibility level of element
         """
+        # Special case: methods in trait implementations are always public
+        # (they implement the trait contract)
+        if node.type == "function_item" and self._is_in_trait_impl(node):
+            return Visibility.PUBLIC
+
+        # Special case: methods in trait definitions inherit visibility from the trait
+        if node.type in ("function_item", "function_signature_item") and self._is_in_trait(node):
+            trait_node = self._find_parent_trait(node)
+            if trait_node:
+                return self.determine_visibility(trait_node)
+
         # Search for visibility_modifier
         for child in node.children:
             if child.type == "visibility_modifier":
@@ -120,7 +135,7 @@ class RustCodeAnalyzer(CodeAnalyzer):
 
         Rust rules:
         - Methods inside impl blocks are NOT exported directly
-        - Top-level pub items are exported
+        - Top-level pub items are exported (including pub(crate) and pub(super))
         - Private items are not exported
 
         Args:
@@ -136,8 +151,9 @@ class RustCodeAnalyzer(CodeAnalyzer):
         # For top-level elements, check visibility
         visibility = self.determine_visibility(node)
 
-        # Only truly public items are exported
-        if visibility == Visibility.PUBLIC:
+        # pub, pub(crate), and pub(super) are all considered exported
+        # Only truly private items are not exported
+        if visibility in (Visibility.PUBLIC, Visibility.INTERNAL, Visibility.PROTECTED):
             return ExportStatus.EXPORTED
         else:
             return ExportStatus.NOT_EXPORTED
@@ -167,6 +183,69 @@ class RustCodeAnalyzer(CodeAnalyzer):
                 break
             current = current.parent
         return False
+
+    def _is_in_trait_impl(self, node: Node) -> bool:
+        """
+        Check if node is inside a trait implementation block.
+
+        Trait impl: impl Trait for Type { ... }
+        Regular impl: impl Type { ... }
+
+        Args:
+            node: Tree-sitter node to check
+
+        Returns:
+            True if node is inside a trait impl block
+        """
+        # Walk up to find impl_item
+        current = node
+        while current:
+            if current.type == "impl_item":
+                # Check if this impl has a 'for' keyword (trait impl)
+                for child in current.children:
+                    if child.type == "for":
+                        return True
+                return False
+            current = current.parent
+        return False
+
+    def _is_in_trait(self, node: Node) -> bool:
+        """
+        Check if node is inside a trait definition.
+
+        Args:
+            node: Tree-sitter node to check
+
+        Returns:
+            True if node is inside a trait definition
+        """
+        current = node.parent
+        while current:
+            if current.type == "trait_item":
+                return True
+            if current.type in ("source_file", "mod_item"):
+                break
+            current = current.parent
+        return False
+
+    def _find_parent_trait(self, node: Node) -> Optional[Node]:
+        """
+        Find parent trait_item node.
+
+        Args:
+            node: Tree-sitter node to find parent trait for
+
+        Returns:
+            Parent trait_item node or None if not found
+        """
+        current = node.parent
+        while current:
+            if current.type == "trait_item":
+                return current
+            if current.type in ("source_file", "mod_item"):
+                break
+            current = current.parent
+        return None
 
     def find_function_definition_in_parents(self, node: Node) -> Optional[Node]:
         """
@@ -212,7 +291,8 @@ class RustCodeAnalyzer(CodeAnalyzer):
         """
         Collect Rust-specific private elements.
 
-        Includes traits, impl blocks, modules, and type aliases.
+        Includes structs, enums, traits, modules, type aliases, variables, struct fields, macro invocations,
+        and impl blocks that contain only private methods.
 
         Returns:
             List of Rust-specific private elements
@@ -220,11 +300,15 @@ class RustCodeAnalyzer(CodeAnalyzer):
         private_elements = []
 
         # Rust-specific elements
+        self._collect_structs(private_elements)
+        self._collect_enums(private_elements)
         self._collect_traits(private_elements)
-        self._collect_impl_blocks(private_elements)
         self._collect_modules(private_elements)
         self._collect_type_aliases(private_elements)
         self._collect_variables(private_elements)
+        self._collect_struct_fields(private_elements)
+        self._collect_empty_impl_blocks(private_elements)
+        self._collect_macro_invocations(private_elements)
 
         return private_elements
 
@@ -283,6 +367,187 @@ class RustCodeAnalyzer(CodeAnalyzer):
                     element_info = self.analyze_element(var_def)
                     if not element_info.in_public_api:
                         private_elements.append(element_info)
+
+    def _collect_macro_invocations(self, private_elements: List[ElementInfo]) -> None:
+        """
+        Collect macro invocations that contain only private items.
+
+        This handles macros like lazy_static! where static items are defined
+        inside the macro invocation's token tree.
+        """
+        macros = self.doc.query_opt("macros")
+        for node, capture_name in macros:
+            if capture_name == "macro_call":
+                # Get the full text of the macro invocation
+                macro_text = self.doc.get_node_text(node)
+
+                # Check if this looks like a lazy_static! or similar macro with static items
+                # If it contains "static ref" but NOT "pub static ref", it's private
+                if "static ref" in macro_text or "static mut" in macro_text:
+                    # Check if any of the static declarations are public
+                    has_public = "pub static" in macro_text
+
+                    if not has_public:
+                        # All static items in this macro are private, so remove the macro
+                        # Note: Simply add the element - it contains only private items
+                        private_elements.append(self.analyze_element(node))
+
+    def _collect_structs(self, private_elements: List[ElementInfo]) -> None:
+        """Collect non-public structs and their associated impl blocks."""
+        classes = self.doc.query_opt("classes")
+        for node, capture_name in classes:
+            if capture_name == "struct_name":
+                struct_def = node.parent
+                if struct_def:
+                    element_info = self.analyze_element(struct_def)
+                    if not element_info.in_public_api:
+                        # Add the private struct
+                        private_elements.append(element_info)
+
+                        # Also find and add all impl blocks for this struct
+                        if element_info.name:
+                            impl_blocks = self._find_impl_blocks_for_type(element_info.name)
+                            for impl_block in impl_blocks:
+                                impl_element_info = self.analyze_element(impl_block)
+                                private_elements.append(impl_element_info)
+
+    def _collect_enums(self, private_elements: List[ElementInfo]) -> None:
+        """Collect non-public enums and their associated impl blocks."""
+        classes = self.doc.query_opt("classes")
+        for node, capture_name in classes:
+            if capture_name == "enum_name":
+                enum_def = node.parent
+                if enum_def:
+                    element_info = self.analyze_element(enum_def)
+                    if not element_info.in_public_api:
+                        # Add the private enum
+                        private_elements.append(element_info)
+
+                        # Also find and add all impl blocks for this enum
+                        if element_info.name:
+                            impl_blocks = self._find_impl_blocks_for_type(element_info.name)
+                            for impl_block in impl_blocks:
+                                impl_element_info = self.analyze_element(impl_block)
+                                private_elements.append(impl_element_info)
+
+    def _collect_struct_fields(self, private_elements: List[ElementInfo]) -> None:
+        """
+        Collect non-pub (private) fields from pub structs.
+
+        In Rust, even pub structs can have private fields (without pub modifier).
+        These fields should be removed in public API mode.
+        """
+        struct_fields = self.doc.query_opt("struct_fields")
+        for node, capture_name in struct_fields:
+            if capture_name == "field_name":
+                field_decl = node.parent
+                if field_decl and field_decl.type == "field_declaration":
+                    # Analyze the field
+                    element_info = self.analyze_element(field_decl)
+
+                    # Only collect if field is private (no pub modifier)
+                    # AND it's in a pub struct
+                    if not element_info.is_public and self._is_in_pub_struct(field_decl):
+                        private_elements.append(element_info)
+
+    def _is_in_pub_struct(self, node: Node) -> bool:
+        """
+        Check if node is inside a pub struct.
+
+        Args:
+            node: Tree-sitter node to check
+
+        Returns:
+            True if inside pub struct
+        """
+        current = node.parent
+        while current:
+            if current.type == "struct_item":
+                # Check if this struct has pub visibility
+                for child in current.children:
+                    if child.type == "visibility_modifier":
+                        modifier_text = self.doc.get_node_text(child)
+                        # pub, pub(crate), pub(super) - all count as public structs
+                        return "pub" in modifier_text
+                # No pub modifier found on struct
+                return False
+            if current.type == "source_file":
+                break
+            current = current.parent
+        return False
+
+    def _find_impl_blocks_for_type(self, type_name: str) -> List[Node]:
+        """
+        Find all impl blocks for a given type name.
+
+        Args:
+            type_name: Name of the type to find impl blocks for
+
+        Returns:
+            List of impl_item nodes for this type
+        """
+        impl_blocks = []
+        impls = self.doc.query_opt("impls")
+
+        for node, capture_name in impls:
+            if capture_name == "impl_type":
+                # Check if this impl is for our type
+                impl_type_text = self.doc.get_node_text(node)
+                if impl_type_text == type_name:
+                    # Navigate to parent impl_item
+                    impl_item = node.parent
+                    while impl_item and impl_item.type != "impl_item":
+                        impl_item = impl_item.parent
+                    if impl_item and impl_item.type == "impl_item":
+                        impl_blocks.append(impl_item)
+
+        return impl_blocks
+
+    def _collect_empty_impl_blocks(self, private_elements: List[ElementInfo]) -> None:
+        """
+        Collect impl blocks that contain only private/non-pub methods.
+
+        Such impl blocks are pointless in public API and should be completely removed.
+        """
+        impls = self.doc.query_opt("impls")
+        for node, capture_name in impls:
+            if capture_name in ("impl_block", "trait_impl"):
+                # Check if this impl block has any public methods
+                has_public_methods = self._impl_has_public_methods(node)
+
+                if not has_public_methods:
+                    # No public methods - mark entire impl block for removal
+                    element_info = self.analyze_element(node)
+                    private_elements.append(element_info)
+
+    def _impl_has_public_methods(self, impl_node: Node) -> bool:
+        """
+        Check if an impl block contains any public methods.
+
+        Args:
+            impl_node: impl_item node
+
+        Returns:
+            True if impl block has at least one public method
+        """
+        # Find the declaration_list (body) of the impl
+        body_node = None
+        for child in impl_node.children:
+            if child.type == "declaration_list":
+                body_node = child
+                break
+
+        if not body_node:
+            return False
+
+        # Check each function in the impl block
+        for child in body_node.children:
+            if child.type == "function_item":
+                element_info = self.analyze_element(child)
+                if element_info.is_public:
+                    return True
+
+        return False
 
     def _is_whitespace_or_comment(self, node: Node) -> bool:
         """

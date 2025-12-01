@@ -109,6 +109,7 @@ class CCodeAnalyzer(CodeAnalyzer):
         - static functions/variables are not exported
         - Functions/variables without static are exported
         - Structs/enums/typedefs are considered exported if they have external linkage
+        - Types with Internal* or _* prefix are considered internal (not exported)
 
         Args:
             node: Tree-sitter node of element
@@ -119,6 +120,12 @@ class CCodeAnalyzer(CodeAnalyzer):
         # Static elements are not exported
         if self._has_static_specifier(node):
             return ExportStatus.NOT_EXPORTED
+
+        # Check naming convention for typedef and type definitions
+        if node.type in ("type_definition", "struct_specifier", "enum_specifier", "union_specifier"):
+            element_name = self.extract_element_name(node)
+            if self._is_internal_by_naming(element_name):
+                return ExportStatus.NOT_EXPORTED
 
         # Functions and top-level declarations are exported
         if node.type in ("function_definition", "declaration"):
@@ -186,7 +193,8 @@ class CCodeAnalyzer(CodeAnalyzer):
         """
         Collect C-specific private elements.
 
-        Includes static functions and variables.
+        Includes static functions, static declarations, named structs/unions,
+        typedefs, and enums.
 
         Returns:
             List of C-specific private elements
@@ -195,7 +203,10 @@ class CCodeAnalyzer(CodeAnalyzer):
 
         # C-specific: collect static functions and declarations
         self._collect_static_functions(private_elements)
+        self._collect_static_declarations(private_elements)
         self._collect_enums(private_elements)
+        self._collect_structs(private_elements)
+        self._collect_unions(private_elements)
         self._collect_typedefs(private_elements)
 
         return private_elements
@@ -208,6 +219,17 @@ class CCodeAnalyzer(CodeAnalyzer):
                 element_info = self.analyze_element(node)
                 if not element_info.in_public_api:
                     private_elements.append(element_info)
+
+    def _collect_static_declarations(self, private_elements: List[ElementInfo]) -> None:
+        """Collect static function declarations and static variable declarations."""
+        declarations = self.doc.query_opt("declarations")
+        for node, capture_name in declarations:
+            if capture_name == "declaration":
+                # Only collect if it has static specifier and is not in public API
+                if self._has_static_specifier(node):
+                    element_info = self.analyze_element(node)
+                    if not element_info.in_public_api:
+                        private_elements.append(element_info)
 
     def _collect_enums(self, private_elements: List[ElementInfo]) -> None:
         """Collect private enums."""
@@ -228,6 +250,28 @@ class CCodeAnalyzer(CodeAnalyzer):
                 typedef_def = node.parent
                 if typedef_def:
                     element_info = self.analyze_element(typedef_def)
+                    if not element_info.in_public_api:
+                        private_elements.append(element_info)
+
+    def _collect_structs(self, private_elements: List[ElementInfo]) -> None:
+        """Collect private named struct declarations."""
+        structs = self.doc.query_opt("classes")
+        for node, capture_name in structs:
+            if capture_name == "struct_name":
+                struct_def = node.parent
+                if struct_def:
+                    element_info = self.analyze_element(struct_def)
+                    if not element_info.in_public_api:
+                        private_elements.append(element_info)
+
+    def _collect_unions(self, private_elements: List[ElementInfo]) -> None:
+        """Collect private named union declarations."""
+        unions = self.doc.query_opt("classes")  # unions are in "classes" query
+        for node, capture_name in unions:
+            if capture_name == "union_name":
+                union_def = node.parent
+                if union_def:
+                    element_info = self.analyze_element(union_def)
                     if not element_info.in_public_api:
                         private_elements.append(element_info)
 
@@ -270,3 +314,21 @@ class CCodeAnalyzer(CodeAnalyzer):
             True if node is whitespace or comment
         """
         return node.type in ("comment", "newline", "\n", " ", "\t")
+
+    def _is_internal_by_naming(self, name: Optional[str]) -> bool:
+        """
+        Check if name follows internal naming convention.
+
+        Convention:
+        - Names starting with 'Internal' are considered internal
+        - Names starting with '_' are considered internal
+
+        Args:
+            name: Element name to check
+
+        Returns:
+            True if name follows internal convention
+        """
+        if not name:
+            return False
+        return name.startswith('Internal') or name.startswith('_')

@@ -34,21 +34,7 @@ int calculator_add(Calculator* calc, int a, int b) // … function body omitted 
 
 int calculator_multiply(Calculator* calc, int a, int b) // … function body omitted (18 lines)
 
-char** calculator_get_history(Calculator* calc, int* count) {
-    if (!calc || !count) {
-        if (count) *count = 0;
-        return NULL;
-    }
-
-    *count = calc->history_count;
-    char** copy = (char**)malloc(calc->history_count * sizeof(char*));
-
-    for (int i = 0; i < calc->history_count; i++) {
-        copy[i] = strdup(calc->history[i]);
-    }
-
-    return copy;
-}
+char** calculator_get_history(Calculator* calc, int* count) // … function body omitted (15 lines)
 
 static int validate_input(int value) // … function body omitted (18 lines)
 
@@ -58,18 +44,6 @@ void free_processing_result(ProcessingResult* result) // … function body omitt
 
 typedef void (*ItemProcessor)(void* item);
 
-void** process_array(void** items, int count, ItemProcessor processor) {
-    void** result = (void**)malloc(count * sizeof(void*));
-    int result_count = 0;
-
-    for (int i = 0; i < count; i++) {
-        if (processor) {
-            processor(items[i]);
-            result[result_count++] = items[i];
-        }
-    }
-
-    return result;
-}
+void** process_array(void** items, int count, ItemProcessor processor) // … function body omitted (13 lines)
 
 int main(void) // … function body omitted (23 lines)

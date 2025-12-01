@@ -11,7 +11,7 @@ QUERIES = {
     (method_declaration
       name: (identifier) @function_name
       parameters: (formal_parameters) @function_params
-      body: (block) @function_body) @function_definition
+      body: (block)? @function_body) @function_definition
 
     (constructor_declaration
       name: (identifier) @constructor_name
@@ -56,6 +56,13 @@ QUERIES = {
       body: (enum_body) @enum_body)
     """,
 
+    # Annotation type declarations
+    "annotation_types": """
+    (annotation_type_declaration
+      name: (identifier) @annotation_name
+      body: (annotation_type_body) @annotation_body)
+    """,
+
     # Annotations
     "annotations": """
     (annotation
@@ -73,6 +80,13 @@ QUERIES = {
     (field_declaration
       declarator: (variable_declarator
         name: (identifier) @field_name))
+    """,
+
+    # Local variable declarations (top-level fields)
+    "local_variables": """
+    (local_variable_declaration
+      declarator: (variable_declarator
+        name: (identifier) @variable_name))
     """,
 
     # Literals for trimming

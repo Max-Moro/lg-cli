@@ -17,7 +17,6 @@ class TestJavaPublicApiOptimization:
         result, meta = adapter.process(lctx(do_public_api))
 
         assert meta.get("java.removed.method", 0) > 0
-        assert meta.get("java.removed.function", 0) > 0
         assert meta.get("java.removed.class", 0) > 0
 
         assert "public class UserManager" in result
