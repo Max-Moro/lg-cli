@@ -27,6 +27,11 @@ QUERIES = {
       parameters: (formal_parameters) @method_params
       body: (statement_block) @method_body) @method_definition
 
+    (method_definition
+      name: (private_property_identifier) @method_name
+      parameters: (formal_parameters) @method_params
+      body: (statement_block) @method_body) @method_definition
+
     (generator_function
       name: (identifier) @function_name
       parameters: (formal_parameters) @function_params

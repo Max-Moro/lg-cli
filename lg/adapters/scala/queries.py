@@ -10,7 +10,7 @@ QUERIES = {
     "functions": """
     (function_definition
       name: (identifier) @function_name
-      parameters: (parameters) @function_params
+      parameters: (parameters)? @function_params
       body: (_) @function_body) @function_definition
 
     (function_declaration
@@ -20,6 +20,12 @@ QUERIES = {
     (lambda_expression
       parameters: (bindings) @lambda_params
       body: (_) @lambda_body) @function_definition
+
+    (template_body
+      (function_definition
+        name: (identifier) @method_name
+        parameters: (parameters)? @method_params
+        body: (_) @method_body)) @method_definition
     """,
 
     # Comments

@@ -11,17 +11,7 @@ class Calculator {
 
     getHistory() // … method body omitted (3 lines)
 
-    #validateInput(value) {
-        if (typeof value !== 'number') {
-            throw new Error('Input must be a number');
-        }
-
-        if (!isFinite(value)) {
-            throw new Error('Input must be finite');
-        }
-
-        return true;
-    }
+    #validateInput(value) // … method body omitted (11 lines)
 }
 
 export function processUserData(users) // … function body omitted (13 lines)

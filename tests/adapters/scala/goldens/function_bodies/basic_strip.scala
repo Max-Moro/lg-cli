@@ -41,25 +41,11 @@ object UserProcessor {
 def processValue(value: Any): String = // … function body omitted (6 lines)
 
 // Higher-order function
-def processArray[T](items: List[T])(processor: T => T): List[T] = {
-  items.map { item =>
-    try {
-      processor(item)
-    } catch {
-      case e: Exception =>
-        println(s"Processing failed for item: $item")
-        item
-    }
-  }
-}
+def processArray[T](items: List[T])(processor: T => T): List[T] = // … function body omitted (11 lines)
 
 // Implicit class (extension method)
 implicit class StringOps(val s: String) extends AnyVal {
-  def toTitleCase: String = {
-    s.split(" ")
-      .map(_.toLowerCase.capitalize)
-      .mkString(" ")
-  }
+  def toTitleCase: String = // … method body omitted (5 lines)
 }
 
 // Object with apply method
