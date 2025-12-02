@@ -6,12 +6,13 @@
 const SHORT_MESSAGE = "Hello, World!";
 
 // Long string literal (candidate for trimming)
-const LONG_MESSAGE = `This is an extremely long message that conta…`; // literal string (−62 tokens)
+const LONG_MESSAGE = `This is an extremely long message that contains a substa…`; // literal string (−59 tokens)
 
 // Multi-line template literal with embedded expressions
 const TEMPLATE_WITH_DATA = `
 User Information:
-- Name: getU…`; // literal string (−56 tokens)
+- Name: getUserName()
+- Email: ${…`; // literal string (−51 tokens)
 
 interface DataContainer {
     // Small array (should be preserved)
@@ -81,7 +82,7 @@ export class LiteralDataManager {
         // Very long SQL-like query string
         return `
             SELECT 
-                use…`; // literal string (−181 tokens)
+                users.id, user…`; // literal string (−178 tokens)
     }
     
     // Properties with literal data

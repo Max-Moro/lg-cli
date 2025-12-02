@@ -6,14 +6,14 @@
 const SHORT_MESSAGE = "Hello, World!";
 
 // Long string literal (candidate for trimming)
-const LONG_MESSAGE = `This is an extremely long message that contains a substantial amount of text content which might be conside…`; // literal string (−51 tokens)
+const LONG_MESSAGE = `This is an extremely long message that contains a substantial amount of text content which might be considered for trim…`; // literal string (−50 tokens)
 
 // Multi-line template literal with embedded expressions
 const TEMPLATE_WITH_DATA = `
 User Information:
 - Name: getUserName()
 - Email: ${getUserEmail()}
-- Regis…`; // literal string (−45 tokens)
+- Registration D…`; // literal string (−45 tokens)
 
 interface DataContainer {
     // Small array (should be preserved)

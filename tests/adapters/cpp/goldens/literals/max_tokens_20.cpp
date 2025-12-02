@@ -42,7 +42,9 @@ private:
         {"verbose", false}
     };
 
-    std::map<std::string, std::map<std::string, int>> largeConfig = {{"database", {, "…"}; // literal array (−212 tokens)
+    std::map<std::string, std::map<std::string, int>> largeConfig = {
+        {"database", {}},
+    }; // literal array (−212 tokens)
 
     std::vector<std::string> supportedLanguages;
     std::vector<std::string> allowedExtensions;
@@ -80,7 +82,7 @@ public:
             "…",
         }; // literal array (−134 tokens)
 
-        std::map<std::string, std::vector<std::map<std::string, std::string>>> nestedData = {{"level1", {, "…"}; // literal array (−102 tokens)
+        std::map<std::string, std::vector<std::map<std::string, std::string>>> nestedData = {{}}; // literal array (−110 tokens)
 
         DataContainer container;
         container.tags = smallArray;

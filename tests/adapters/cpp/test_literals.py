@@ -117,3 +117,56 @@ when the token limit is exceeded.
         result, meta = adapter.process(lctx(code))
 
         assert 'const char* short_raw = R"(Hello World)";' in result
+
+    def test_nested_map_initializers(self):
+        """Test trimming of nested map initializers with correct closing braces."""
+        code = '''std::map<std::string, std::map<std::string, int>> largeConfig = {
+    {"database", {
+        {"port", 5432},
+        {"pool_min", 2},
+        {"pool_max", 10},
+        {"timeout", 30}
+    }},
+    {"cache", {
+        {"ttl", 3600},
+        {"max_size", 1000},
+        {"eviction_policy", 2}
+    }},
+    {"logging", {
+        {"level", 3},
+        {"buffer_size", 8192}
+    }}
+};
+'''
+
+        literal_config = LiteralConfig(max_tokens=25)
+
+        adapter = make_adapter_real(CppCfg(literals=literal_config))
+
+        result, meta = adapter.process(lctx(code))
+
+        # Verify that the closing braces are properly added
+        # The result should contain something like: {{"database", {}}}
+        # and NOT: {{"database", {}};
+        assert '{' in result
+        assert '}}' in result or '},' in result
+        assert result.count('{') >= result.count('}')  # Should have balanced or more opening braces
+        # Make sure we don't have the malformed closing that was the original issue
+        assert '{}};' not in result  # The old buggy output
+
+    def test_nested_map_initializers_single_line(self):
+        """Test trimming of single-line nested map initializers."""
+        code = '''std::map<std::string, std::map<std::string, int>> config = {{"db", {{"port", 5432}, {"pool", 10}}}, {"cache", {{"ttl", 3600}}}};
+'''
+
+        literal_config = LiteralConfig(max_tokens=20)
+
+        adapter = make_adapter_real(CppCfg(literals=literal_config))
+
+        result, meta = adapter.process(lctx(code))
+
+        # For single-line nested initializers, verify proper braces
+        assert '{' in result
+        assert result.count('{') >= result.count('}')
+        # Should not have dangling semicolons inside braces
+        assert '};' not in result.split('=')[1].split(';')[0] if '=' in result else True

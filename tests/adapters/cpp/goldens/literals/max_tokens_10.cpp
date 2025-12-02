@@ -37,11 +37,11 @@ private:
     // Class properties with various literal types
     std::map<std::string, bool> smallConfig = {
         {"debug", true},
-        {"verbose", false},
-        "…",
-    }; // literal array (−-4 tokens)
+    }; // literal array (−6 tokens)
 
-    std::map<std::string, std::map<std::string, int>> largeConfig = {{, "…"}; // literal array (−216 tokens)
+    std::map<std::string, std::map<std::string, int>> largeConfig = {
+        {"database", {}},
+    }; // literal array (−212 tokens)
 
     std::vector<std::string> supportedLanguages;
     std::vector<std::string> allowedExtensions;
@@ -75,12 +75,12 @@ public:
             "…",
         }; // literal array (−140 tokens)
 
-        std::map<std::string, std::vector<std::map<std::string, std::string>>> nestedData = {{, "…"}; // literal array (−107 tokens)
+        std::map<std::string, std::vector<std::map<std::string, std::string>>> nestedData = {{}}; // literal array (−110 tokens)
 
         DataContainer container;
         container.tags = smallArray;
         container.items = largeArray;
-        container.metadata = {{"type", "test"}, "…"}; // literal array (−3 tokens)
+        container.metadata = {{"type", "test"}}; // literal array (−6 tokens)
 
         return container;
     }

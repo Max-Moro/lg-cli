@@ -9,10 +9,10 @@ const SHORT_MESSAGE: &str = "Hello, World!";
 const LONG_MESSAGE: &str = "This is an extremely long message that contains a substantial amount of text content which might be considered…"; // literal string (−53 tokens)
 
 // Multi-line string with formatting
-const TEMPLATE_WITH_DATA: &str = "r#"User Information:
+const TEMPLATE_WITH_DATA: &str = r#"User Information:
 - Name: {}
 - Email: {}
-- Registration Date: {…"; // literal string (−22 tokens)
+- Registration Date:…"#; // literal string (−23 tokens)
 
 #[derive(Debug)]
 struct DataContainer {
@@ -137,10 +137,10 @@ impl LiteralDataManager {
     }
 
     fn get_long_query(&self) -> &str {
-        "r#"
+        r#"
 SELECT
     users.id, users.username, users.email, users.created_at,
-    profiles.f…" // literal string (−157 tokens)
+    prof…"# // literal string (−158 tokens)
     }
 }
 

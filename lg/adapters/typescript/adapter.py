@@ -12,7 +12,8 @@ from tree_sitter import Language
 from ..code_base import CodeAdapter
 from ..code_model import CodeCfg
 from ..context import LightweightContext
-from ..optimizations import ImportClassifier, TreeSitterImportAnalyzer
+from ..optimizations import ImportClassifier, TreeSitterImportAnalyzer, LiteralOptimizer
+from ..optimizations.literals import LiteralHandler
 from ..tree_sitter_support import TreeSitterDocument
 
 
@@ -83,3 +84,10 @@ class TypeScriptAdapter(CodeAdapter[TypeScriptCfg]):
         """
         from .file_heuristics import should_skip_typescript_file
         return should_skip_typescript_file(lightweight_ctx, self.cfg.skip_barrel_files, self, self.tokenizer)
+
+    def hook__get_literal_handler(
+        self, root_optimizer: LiteralOptimizer
+    ) -> LiteralHandler:
+        """Provide TypeScript literal handler for template literals."""
+        from .literals import TypeScriptLiteralHandler
+        return TypeScriptLiteralHandler()

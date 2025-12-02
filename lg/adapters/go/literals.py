@@ -6,7 +6,7 @@ Handles composite_literal properly to preserve type information.
 from __future__ import annotations
 
 from ..context import ProcessingContext
-from ..tree_sitter_support import Node, TreeSitterDocument
+from ..tree_sitter_support import Node
 
 
 def get_literal_value_node(composite_node: Node) -> Node | None:
@@ -290,13 +290,11 @@ def _add_savings_comment(
     end_char = node.end_byte
     text_after = context.raw_text[end_char:min(end_char + 100, len(context.raw_text))]
 
-    insertion_offset = 0
+    insertion_offset = min(20, len(text_after))
     for i, char in enumerate(text_after):
         if char in ('\n', '\r'):
             insertion_offset = i
             break
-    else:
-        insertion_offset = min(20, len(text_after))
 
     insertion_pos = end_char + insertion_offset
 

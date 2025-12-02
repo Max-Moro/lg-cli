@@ -5,8 +5,39 @@ Includes support for vec! macro literals.
 
 from __future__ import annotations
 
+import re
+from typing import Optional
+
 from ..context import ProcessingContext
+from ..optimizations.literals import DefaultLiteralHandler, LiteralInfo
 from ..tree_sitter_support import Node, TreeSitterDocument
+
+
+class RustLiteralHandler(DefaultLiteralHandler):
+    """Handler for Rust-specific literal processing."""
+
+    def analyze_literal_structure(
+        self, stripped: str, is_multiline: bool, language: str
+    ) -> Optional[LiteralInfo]:
+        """Analyze Rust raw string literals (r#"..."#, r##"..."##, etc.)."""
+        if not stripped.startswith('r'):
+            return None  # Not a raw string, use generic logic
+
+        match = re.match(r'^(r#+)"', stripped)
+        if not match:
+            return None  # Not a valid raw string format
+
+        opening = match.group(0)  # e.g., r#"
+        hash_count = len(match.group(1)) - 1  # subtract 'r' from r#
+        closing = '"' + '#' * hash_count  # e.g., "#
+
+        start_pos = len(opening)
+        end_pos = stripped.rfind(closing)
+        if end_pos > start_pos:
+            content = stripped[start_pos:end_pos]
+            return LiteralInfo("string", opening, closing, content, is_multiline, language)
+
+        return None  # Failed to parse, fallback to generic
 
 
 def is_vec_macro(node: Node, doc: TreeSitterDocument) -> bool:
@@ -203,7 +234,7 @@ def _add_savings_comment(
     text_after = context.raw_text[end_char:min(end_char + 100, len(context.raw_text))]
 
     # Look for end of line or semicolon
-    insertion_offset = 0
+    insertion_offset = min(20, len(text_after))
     for i, char in enumerate(text_after):
         if char in ('\n', '\r'):
             insertion_offset = i
@@ -211,8 +242,6 @@ def _add_savings_comment(
         elif char == ';':
             insertion_offset = i + 1
             break
-    else:
-        insertion_offset = min(20, len(text_after))
 
     insertion_pos = end_char + insertion_offset
 

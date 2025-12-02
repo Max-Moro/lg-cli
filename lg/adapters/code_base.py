@@ -6,7 +6,7 @@ Provides common functionality for code processing and optimization orchestration
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from typing import Dict, List, Tuple, Any, TypeVar, Optional, cast
+from typing import Dict, List, Tuple, TypeVar, Optional, cast
 
 from .base import BaseAdapter
 from .code_analysis import CodeAnalyzer
@@ -21,6 +21,7 @@ from .optimizations import (
     TreeSitterImportAnalyzer,
     ImportClassifier
 )
+from .optimizations.literals import LiteralHandler
 from .tree_sitter_support import TreeSitterDocument, Node
 
 C = TypeVar("C", bound=CodeCfg)
@@ -95,6 +96,23 @@ class CodeAdapter(BaseAdapter[C], ABC):
         """
         pass
 
+    def hook__get_literal_handler(
+        self, root_optimizer: LiteralOptimizer
+    ) -> Optional[LiteralHandler]:
+        """
+        Hook for providing custom literal processing handler.
+
+        Language adapters can override this to provide custom handlers that
+        implement the LiteralHandler protocol for language-specific literal
+        processing (e.g., Rust raw strings, template literals, C++ nested initializers).
+
+        Args:
+            root_optimizer: The LiteralOptimizer instance for access to utilities
+
+        Returns:
+            LiteralHandler instance for custom processing, or None to use generic logic
+        """
+        return None  # Default: use generic logic
 
     # ============= Main pipeline for language optimizer operations ===========
 

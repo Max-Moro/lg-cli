@@ -11,7 +11,8 @@ from tree_sitter import Language
 
 from ..code_base import CodeAdapter
 from ..code_model import CodeCfg
-from ..optimizations import ImportClassifier, TreeSitterImportAnalyzer
+from ..optimizations import ImportClassifier, TreeSitterImportAnalyzer, LiteralOptimizer
+from ..optimizations.literals import LiteralHandler
 from ..tree_sitter_support import TreeSitterDocument
 
 
@@ -66,3 +67,10 @@ class JavaScriptAdapter(CodeAdapter[JavaScriptCfg]):
         """Create JavaScript-specific unified code analyzer."""
         from .code_analysis import JavaScriptCodeAnalyzer
         return JavaScriptCodeAnalyzer(doc)
+
+    def hook__get_literal_handler(
+        self, root_optimizer: LiteralOptimizer
+    ) -> LiteralHandler:
+        """Provide JavaScript literal handler for template literals."""
+        from .literals import JSLiteralHandler
+        return JSLiteralHandler()

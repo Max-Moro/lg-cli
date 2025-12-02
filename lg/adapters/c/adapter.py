@@ -11,7 +11,8 @@ from tree_sitter import Language
 
 from ..code_base import CodeAdapter
 from ..code_model import CodeCfg
-from ..optimizations import ImportClassifier, TreeSitterImportAnalyzer
+from ..optimizations import ImportClassifier, TreeSitterImportAnalyzer, LiteralOptimizer
+from ..optimizations.literals import LiteralHandler
 from ..tree_sitter_support import TreeSitterDocument
 
 
@@ -71,3 +72,10 @@ class CAdapter(CodeAdapter[CCfg]):
         """Check if comment is Doxygen documentation."""
         stripped = comment_text.strip()
         return stripped.startswith('/**') or stripped.startswith('///')
+
+    def hook__get_literal_handler(
+        self, root_optimizer: LiteralOptimizer
+    ) -> LiteralHandler:
+        """Provide C literal handler for struct arrays."""
+        from .literals import CLiteralHandler
+        return CLiteralHandler(root_optimizer)

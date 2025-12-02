@@ -50,8 +50,8 @@ static struct {
     const void* value;
 } large_config[] = {
     {"database.host", "localhost"},
-    "…",
-}; // literal array (−314 tokens)
+    {"database.port", (void*)5432},
+}; // literal array (−307 tokens)
 
 LiteralDataManager* literal_data_manager_new(void) {
     LiteralDataManager* manager = (LiteralDataManager*)malloc(sizeof(LiteralDataManager));

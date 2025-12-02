@@ -6,11 +6,95 @@ Processes and trims literal data (strings, arrays, objects) with simplified logi
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import cast, List
+from typing import List, Optional, Protocol
 
 from ..code_model import LiteralConfig
 from ..context import ProcessingContext
 from ..tree_sitter_support import Node, TreeSitterDocument
+
+
+class LiteralHandler(Protocol):
+    """Protocol for customizing literal processing operations."""
+
+    def analyze_literal_structure(
+        self,
+        stripped: str,
+        is_multiline: bool,
+        language: str
+    ) -> Optional[LiteralInfo]:
+        """
+        Analyze literal structure for special formats (e.g., Rust raw strings, template literals).
+
+        Args:
+            stripped: Stripped literal text
+            is_multiline: Whether literal spans multiple lines
+            language: Language identifier
+
+        Returns:
+            LiteralInfo if custom analysis applied, None to use generic logic
+        """
+        ...
+
+    def trim_string_content(
+        self,
+        context: ProcessingContext,
+        literal_info: LiteralInfo,
+        max_tokens: int
+    ) -> Optional[str]:
+        """
+        Trim string literal content with language-specific logic.
+
+        Args:
+            context: Processing context
+            literal_info: Analyzed literal information
+            max_tokens: Token budget
+
+        Returns:
+            Trimmed string if custom logic applied, None to use generic logic
+        """
+        ...
+
+    def trim_array_content(
+        self,
+        context: ProcessingContext,
+        literal_info: LiteralInfo,
+        max_tokens: int,
+        node: Node
+    ) -> Optional[str]:
+        """
+        Trim array literal content with language-specific logic.
+
+        Args:
+            context: Processing context
+            literal_info: Analyzed literal information
+            max_tokens: Token budget
+            node: Tree-sitter node
+
+        Returns:
+            Trimmed array if custom logic applied, None to use generic logic
+        """
+        ...
+
+    def trim_object_content(
+        self,
+        context: ProcessingContext,
+        literal_info: LiteralInfo,
+        max_tokens: int,
+        node: Node
+    ) -> Optional[str]:
+        """
+        Trim object literal content with language-specific logic.
+
+        Args:
+            context: Processing context
+            literal_info: Analyzed literal information
+            max_tokens: Token budget
+            node: Tree-sitter node
+
+        Returns:
+            Trimmed object if custom logic applied, None to use generic logic
+        """
+        ...
 
 
 @dataclass
@@ -31,14 +115,43 @@ class CommentPlacement:
     text: str
 
 
+class DefaultLiteralHandler:
+    """Default handler that delegates all operations to generic logic."""
+
+    def analyze_literal_structure(
+        self, stripped: str, is_multiline: bool, language: str
+    ) -> Optional[LiteralInfo]:
+        """Default: use generic analysis logic."""
+        return None
+
+    def trim_string_content(
+        self, context: ProcessingContext, literal_info: LiteralInfo, max_tokens: int
+    ) -> Optional[str]:
+        """Default: use generic string trimming logic."""
+        return None
+
+    def trim_array_content(
+        self, context: ProcessingContext, literal_info: LiteralInfo, max_tokens: int, node: Node
+    ) -> Optional[str]:
+        """Default: use generic array trimming logic."""
+        return None
+
+    def trim_object_content(
+        self, context: ProcessingContext, literal_info: LiteralInfo, max_tokens: int, node: Node
+    ) -> Optional[str]:
+        """Default: use generic object trimming logic."""
+        return None
+
+
 class LiteralOptimizer:
     """Handles literal data processing optimization with simplified logic."""
 
     def __init__(self, cfg: LiteralConfig, adapter):
         """Initialize with parent adapter for language-specific checks."""
         self.cfg = cfg
-        from ..code_base import CodeAdapter
-        self.adapter = cast(CodeAdapter, adapter)
+        self.adapter = adapter
+        # Get custom handler or use default
+        self._handler = adapter.hook__get_literal_handler(root_optimizer=self) or DefaultLiteralHandler()
 
     def apply(self, context: ProcessingContext) -> None:
         """Apply literal processing based on configuration."""
@@ -125,6 +238,11 @@ class LiteralOptimizer:
 
     def _analyze_string_literal(self, stripped: str, is_multiline: bool, language: str) -> LiteralInfo:
         """Analyze string literals."""
+        # Try handler first for custom literal formats
+        custom_info = self._handler.analyze_literal_structure(stripped, is_multiline, language)
+        if custom_info is not None:
+            return custom_info
+
         if stripped.startswith('"""') or stripped.startswith("'''"):
             # Python triple quotes
             quote = stripped[:3]
@@ -201,6 +319,11 @@ class LiteralOptimizer:
 
     def _trim_string_content(self, context: ProcessingContext, literal_info: LiteralInfo, max_tokens: int) -> str:
         """Trim string literals."""
+        # Try handler first for custom string trimming
+        custom_result = self._handler.trim_string_content(context, literal_info, max_tokens)
+        if custom_result is not None:
+            return custom_result
+
         content = literal_info.content
 
         # Reserve space for boundaries and trim character
@@ -214,6 +337,11 @@ class LiteralOptimizer:
 
     def _trim_array_content(self, context: ProcessingContext, literal_info: LiteralInfo, max_tokens: int, node: Node) -> str:
         """Trim arrays/lists with correct placeholder element."""
+        # Try handler first for custom array trimming
+        custom_result = self._handler.trim_array_content(context, literal_info, max_tokens, node)
+        if custom_result is not None:
+            return custom_result
+
         content = literal_info.content.strip()
 
         # Reserve space for boundaries and placeholder
@@ -248,6 +376,11 @@ class LiteralOptimizer:
 
     def _trim_object_content(self, context: ProcessingContext, literal_info: LiteralInfo, max_tokens: int, node: Node) -> str:
         """Trim objects/dictionaries with correct placeholder."""
+        # Try handler first for custom object trimming
+        custom_result = self._handler.trim_object_content(context, literal_info, max_tokens, node)
+        if custom_result is not None:
+            return custom_result
+
         content = literal_info.content.strip()
 
         # Reserve space for boundaries and placeholder
@@ -431,7 +564,7 @@ class LiteralOptimizer:
                 block_open, block_close = self.adapter.get_comment_style()[1]
                 comment = f" {block_open} {comment_text} {block_close}"
             else:
-                # No code - use single-line
+                # No code - use single-line (without extra semicolon)
                 comment = f" {single_comment} {comment_text}"
             return CommentPlacement(insertion_pos, comment)
 
@@ -445,7 +578,7 @@ class LiteralOptimizer:
                 block_open, block_close = self.adapter.get_comment_style()[1]
                 comment = f" {block_open} {comment_text} {block_close}"
             else:
-                # No code - use single-line
+                # No code - use single-line (don't add extra semicolon)
                 comment = f" {single_comment} {comment_text}"
             return CommentPlacement(insertion_pos, comment)
 
