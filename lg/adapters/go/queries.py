@@ -31,18 +31,7 @@ QUERIES = {
 
     # Import declarations
     "imports": """
-    (import_declaration) @import
-
-    (import_spec
-      path: (interpreted_string_literal) @import_path)
-
-    (import_spec
-      name: (package_identifier) @import_alias
-      path: (interpreted_string_literal) @import_path)
-
-    (import_spec
-      name: (dot) @import_dot
-      path: (interpreted_string_literal) @import_path)
+    (import_spec) @import
     """,
 
     # Struct definitions (class equivalent)

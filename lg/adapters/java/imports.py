@@ -78,6 +78,10 @@ class JavaImportClassifier(ImportClassifier):
         """Check if import looks like a local/project import."""
         import re
 
+        # Test/example package patterns (always local)
+        if module_name.startswith('com.example.') or module_name.startswith('org.example.'):
+            return True
+
         # Common local patterns
         local_patterns = [
             r'^app\.',

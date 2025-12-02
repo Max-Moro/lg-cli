@@ -54,6 +54,9 @@ QUERIES = {
 
     (import_statement
       source: (string) @import_source)
+
+    (export_statement
+      source: (string) @export_from_source) @import
     """,
 
     # Export statements

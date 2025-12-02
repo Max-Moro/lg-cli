@@ -2,6 +2,8 @@
 Tests for include optimization in C adapter.
 """
 
+import re
+
 from lg.adapters.c import CCfg
 from lg.adapters.code_model import ImportConfig
 from .utils import lctx, make_adapter
@@ -17,7 +19,7 @@ class TestCImportOptimization:
 
         result, meta = adapter.process(lctx(do_imports))
 
-        assert meta.get("c.removed.imports", 0) == 0
+        assert meta.get("c.removed.import", 0) == 0
         assert "#include <stdio.h>" in result
         assert "#include <stdlib.h>" in result
 
@@ -37,7 +39,7 @@ class TestCImportOptimization:
         assert "#include <curl/curl.h>" in result
 
         assert '"services/user_service.h"' not in result
-        assert "// … imports omitted" in result
+        assert re.search(r'// … (\d+ )?imports? omitted', result)
 
         assert_golden_match(result, "imports", "strip_local")
 
@@ -53,7 +55,7 @@ class TestCImportOptimization:
 
         assert '"services/user_service.h"' in result
 
-        assert "// …" in result and "omitted" in result
+        assert re.search(r'// … (\d+ )?imports? omitted', result)
 
         assert_golden_match(result, "imports", "strip_external")
 
@@ -86,7 +88,7 @@ class TestCImportOptimization:
         result, meta = adapter.process(lctx(do_imports))
 
         assert meta.get("c.removed.import", 0) > 0
-        assert "// … " in result and "imports omitted" in result
+        assert re.search(r'// … (\d+ )?imports? omitted', result)
 
         assert_golden_match(result, "imports", "summarize_long")
 

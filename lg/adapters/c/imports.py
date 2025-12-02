@@ -62,21 +62,25 @@ class CImportClassifier(ImportClassifier):
         if base_header in self.c_stdlib:
             return True
 
-        # Heuristics for local imports
-        if self._is_local_import(module_name):
-            return False
-
-        # Check default external patterns
+        # Check default external patterns (before local import check)
         for pattern in self.default_external_patterns:
             if re.match(pattern, module_name):
                 return True
 
-        # System-style includes (in angle brackets, no path) are usually external
+        # Check heuristics for local imports
+        if self._is_local_import(module_name):
+            return False
+
+        # System headers without path (e.g., <stdio.h>, <windows.h>, <pthread.h>)
         if '/' not in module_name:
             return True
 
-        # Includes with paths are usually local
-        return False
+        # If has path and .h extension, likely local
+        if module_name.endswith('.h'):
+            return False
+
+        # Default to external
+        return True
 
     @staticmethod
     def _is_local_import(module_name: str) -> bool:
@@ -118,30 +122,43 @@ class CImportAnalyzer(TreeSitterImportAnalyzer):
         line_count = end_line - start_line + 1
 
         module_name = ""
+        is_external_by_syntax = None
 
         # In C includes have structure:
         # #include <header.h> or #include "header.h"
         # Look for path in children
         for child in node.children:
             if child.type == "string_literal":
-                # #include "local/header.h"
+                # #include "local/header.h" - quoted style indicates LOCAL by C convention
                 text = doc.get_node_text(child)
                 if isinstance(text, bytes):
                     text = text.decode('utf-8')
                 # Remove quotes
                 module_name = text.strip('"')
+                is_external_by_syntax = False  # Quotes → local
                 break
             elif child.type == "system_lib_string":
-                # #include <system/header.h>
+                # #include <system/header.h> - angle brackets indicate EXTERNAL by C convention
                 text = doc.get_node_text(child)
                 if isinstance(text, bytes):
                     text = text.decode('utf-8')
                 # Remove angle brackets
                 module_name = text.strip('<>')
+                is_external_by_syntax = True  # Angle brackets → external
                 break
 
         if not module_name:
             return None
+
+        # Determine if external: use C syntax convention first, then classifier
+        # C convention: <...> is external, "..." is local
+        # But allow classifier to override via external_patterns config
+        if is_external_by_syntax is not None:
+            # Respect C syntax convention
+            is_external = is_external_by_syntax
+        else:
+            # Fallback to classifier
+            is_external = self.classifier.is_external(module_name)
 
         # C includes don't have explicit imported items
         # We treat the header name as the imported item
@@ -152,7 +169,7 @@ class CImportAnalyzer(TreeSitterImportAnalyzer):
             import_type="include",
             module_name=module_name,
             imported_items=imported_items,
-            is_external=self.classifier.is_external(module_name),
+            is_external=is_external,
             is_wildcard=False,  # C includes always include everything
             aliases={},
             start_byte=start_byte,

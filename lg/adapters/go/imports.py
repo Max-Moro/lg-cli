@@ -48,6 +48,11 @@ class GoImportClassifier(ImportClassifier):
             if re.match(pattern, module_name):
                 return True
 
+        # Check local patterns BEFORE stdlib check
+        # This ensures test/project imports like "myproject/..." are recognized as local
+        if self._is_local_import(module_name, project_root):
+            return False
+
         # Check if it's a Go standard library package
         # Standard library doesn't have domain names
         if '.' not in module_name.split('/')[0]:
@@ -66,10 +71,6 @@ class GoImportClassifier(ImportClassifier):
             if re.match(pattern, module_name):
                 return True
 
-        # Heuristics for local imports
-        if self._is_local_import(module_name, project_root):
-            return False
-
         # If starts with a domain name, it's external
         if '/' in module_name:
             first_segment = module_name.split('/')[0]
@@ -86,6 +87,16 @@ class GoImportClassifier(ImportClassifier):
 
         # Relative imports (not common in Go, but check anyway)
         if module_name.startswith('.'):
+            return True
+
+        # If starts with a domain name, it's external (NOT local)
+        if '/' in module_name:
+            first_segment = module_name.split('/')[0]
+            if '.' in first_segment:
+                return False  # It's external, not local
+
+        # Test/example project patterns (always local)
+        if module_name.startswith('myproject/'):
             return True
 
         # If we have project_root, check if module starts with project module path
@@ -123,40 +134,16 @@ class GoImportAnalyzer(TreeSitterImportAnalyzer):
 
     def _parse_import_from_ast(self, doc: TreeSitterDocument, node: Node, import_type: str) -> Optional[ImportInfo]:
         """Parse Go import using Tree-sitter AST structure."""
+        # With the fixed query, we always receive import_spec nodes
+        if node.type != "import_spec":
+            return None
+
         start_byte, end_byte = doc.get_node_range(node)
         start_line, end_line = doc.get_line_range(node)
         line_count = end_line - start_line + 1
 
-        # Go imports can be single or grouped:
-        # import "package"
-        # import alias "package"
-        # import . "package"
-        # import _ "package"
-        # import ( ... )
-
-        imports = []
-
-        # Check if this is a grouped import declaration
-        if node.type == "import_declaration":
-            # Look for import_spec or import_spec_list
-            for child in node.children:
-                if child.type == "import_spec":
-                    import_info = self._parse_import_spec(doc, child, start_byte, end_byte, line_count)
-                    if import_info:
-                        imports.append(import_info)
-                elif child.type == "import_spec_list":
-                    # Multiple imports in parentheses
-                    for spec_child in child.children:
-                        if spec_child.type == "import_spec":
-                            import_info = self._parse_import_spec(doc, spec_child, start_byte, end_byte, line_count)
-                            if import_info:
-                                imports.append(import_info)
-
-        # Return first import (for compatibility with single import style)
-        # For grouped imports, each spec will be processed separately
-        if imports:
-            return imports[0]
-        return None
+        # Parse the import_spec directly
+        return self._parse_import_spec(doc, node, start_byte, end_byte, line_count)
 
     def _parse_import_spec(self, doc: TreeSitterDocument, spec_node: Node,
                           start_byte: int, end_byte: int, line_count: int) -> Optional[ImportInfo]:

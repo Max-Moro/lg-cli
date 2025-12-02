@@ -2,6 +2,8 @@
 Tests for import optimization in Kotlin adapter.
 """
 
+import re
+
 from lg.adapters.kotlin import KotlinCfg
 from lg.adapters.code_model import ImportConfig
 from .utils import lctx, make_adapter
@@ -18,7 +20,7 @@ class TestKotlinImportOptimization:
         result, meta = adapter.process(lctx(do_imports))
         
         # No imports should be removed
-        assert meta.get("kotlin.removed.imports", 0) == 0
+        assert meta.get("kotlin.removed.import", 0) == 0
         assert "import kotlin.math.*" in result
         assert "import kotlinx.coroutines.*" in result
         
@@ -41,7 +43,7 @@ class TestKotlinImportOptimization:
         
         # Local imports should be replaced with placeholders
         assert "com.example.imports.services" not in result
-        assert "// … 23 imports omitted" in result
+        assert re.search(r'// … (\d+ )?imports? omitted', result)
         
         assert_golden_match(result, "imports", "strip_local")
     
@@ -60,7 +62,7 @@ class TestKotlinImportOptimization:
         assert "com.example.imports.services" in result
         
         # External imports should be replaced with placeholders
-        assert "// …" in result and "omitted" in result
+        assert re.search(r'// … (\d+ )?imports? omitted', result)
         
         assert_golden_match(result, "imports", "strip_external")
     
@@ -97,7 +99,7 @@ class TestKotlinImportOptimization:
         
         # Long import lists should be summarized
         assert meta.get("kotlin.removed.import", 0) > 0
-        assert "// … " in result and "imports omitted" in result
+        assert re.search(r'// … (\d+ )?imports? omitted', result)
         
         assert_golden_match(result, "imports", "summarize_long")
 

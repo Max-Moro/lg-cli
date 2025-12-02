@@ -39,17 +39,7 @@ QUERIES = {
     "imports": """
     (use_declaration) @import
 
-    (use_declaration
-      argument: (use_wildcard) @import_wildcard)
-
-    (use_declaration
-      argument: (scoped_identifier) @import_path)
-
-    (use_declaration
-      argument: (identifier) @import_name)
-
-    (extern_crate_declaration
-      name: (identifier) @extern_crate_name) @import
+    (extern_crate_declaration) @import
     """,
 
     # Struct definitions (class equivalent)

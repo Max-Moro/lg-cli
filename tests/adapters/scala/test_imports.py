@@ -2,6 +2,8 @@
 Tests for import optimization in Scala adapter.
 """
 
+import re
+
 from lg.adapters.scala import ScalaCfg
 from lg.adapters.code_model import ImportConfig
 from .utils import lctx, make_adapter
@@ -17,7 +19,7 @@ class TestScalaImportOptimization:
 
         result, meta = adapter.process(lctx(do_imports))
 
-        assert meta.get("scala.removed.imports", 0) == 0
+        assert meta.get("scala.removed.import", 0) == 0
         assert "import scala.collection.mutable" in result
         assert "import scala.concurrent._" in result
 
@@ -37,7 +39,7 @@ class TestScalaImportOptimization:
         assert "import scala.concurrent._" in result
 
         assert "com.example.imports.services" not in result
-        assert "// … imports omitted" in result
+        assert re.search(r'// … (\d+ )?imports? omitted', result)
 
         assert_golden_match(result, "imports", "strip_local")
 
@@ -53,7 +55,7 @@ class TestScalaImportOptimization:
 
         assert "com.example.imports.services" in result
 
-        assert "// …" in result and "omitted" in result
+        assert re.search(r'// … (\d+ )?imports? omitted', result)
 
         assert_golden_match(result, "imports", "strip_external")
 
@@ -86,6 +88,6 @@ class TestScalaImportOptimization:
         result, meta = adapter.process(lctx(do_imports))
 
         assert meta.get("scala.removed.import", 0) > 0
-        assert "// … " in result and "imports omitted" in result
+        assert re.search(r'// … (\d+ )?imports? omitted', result)
 
         assert_golden_match(result, "imports", "summarize_long")

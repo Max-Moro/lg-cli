@@ -2,6 +2,8 @@
 Tests for import optimization in Rust adapter.
 """
 
+import re
+
 from lg.adapters.rust import RustCfg
 from lg.adapters.code_model import ImportConfig
 from .utils import lctx, make_adapter
@@ -17,9 +19,9 @@ class TestRustImportOptimization:
 
         result, meta = adapter.process(lctx(do_imports))
 
-        assert meta.get("rust.removed.imports", 0) == 0
-        assert "use std::io;" in result
-        assert "use std::collections::HashMap;" in result
+        assert meta.get("rust.removed.import", 0) == 0
+        assert "use std::io" in result
+        assert "use std::collections" in result and "HashMap" in result
 
         assert_golden_match(result, "imports", "keep_all", language="rust")
 
@@ -33,11 +35,11 @@ class TestRustImportOptimization:
 
         assert meta.get("rust.removed.import", 0) > 0
 
-        assert "use std::io;" in result
+        assert "use std::io" in result
         assert "use serde::" in result
 
-        assert "use crate::models::User;" not in result
-        assert "// … imports omitted" in result
+        assert "use crate::models::User" not in result
+        assert re.search(r'// … (\d+ )?imports? omitted', result)
 
         assert_golden_match(result, "imports", "strip_local", language="rust")
 
@@ -51,9 +53,9 @@ class TestRustImportOptimization:
 
         assert meta.get("rust.removed.import", 0) > 0
 
-        assert "use crate::models::User;" in result
+        assert "use crate::models::User" in result
 
-        assert "// … " in result and "omitted" in result
+        assert re.search(r'// … (\d+ )?imports? omitted', result)
 
         assert_golden_match(result, "imports", "strip_external", language="rust")
 
@@ -86,7 +88,7 @@ class TestRustImportOptimization:
         result, meta = adapter.process(lctx(do_imports))
 
         assert meta.get("rust.removed.import", 0) > 0
-        assert "// … " in result and "imports omitted" in result
+        assert re.search(r'// … (\d+ )?imports? omitted', result)
 
         assert_golden_match(result, "imports", "summarize_long", language="rust")
 
@@ -114,12 +116,12 @@ use crate::services::UserService;
 
         result, meta = adapter.process(lctx(code))
 
-        assert "use std::io::{self, Read, Write};" in result
-        assert "use serde::{Deserialize, Serialize};" in result
-        assert "use tokio::runtime::Runtime;" in result
+        assert "use std::io::{self, Read, Write}" in result
+        assert "use serde::{Deserialize, Serialize}" in result
+        assert "use tokio::runtime::Runtime" in result
 
-        assert "use crate::models::User;" not in result
-        assert "use crate::services::UserService;" not in result
+        assert "use crate::models::User" not in result
+        assert "use crate::services::UserService" not in result
 
     def test_import_aliases(self):
         """Test handling of import aliases."""
@@ -138,11 +140,11 @@ use super::helpers::format_name;
 
         result, meta = adapter.process(lctx(code))
 
-        assert "use std::collections::HashMap as Map;" in result
-        assert "use chrono::DateTime as ChronoDateTime;" in result
+        assert "use std::collections::HashMap as Map" in result
+        assert "use chrono::DateTime as ChronoDateTime" in result
 
-        assert "use crate::models::User as UserModel;" not in result
-        assert "use super::helpers::format_name;" not in result
+        assert "use crate::models::User as UserModel" not in result
+        assert "use super::helpers::format_name" not in result
 
     def test_glob_imports(self):
         """Test handling of glob imports."""
@@ -161,11 +163,11 @@ use super::*;
 
         result, meta = adapter.process(lctx(code))
 
-        assert "use std::io::prelude::*;" in result
-        assert "use serde::*;" in result
+        assert "use std::io::prelude::*" in result
+        assert "use serde::*" in result
 
-        assert "use crate::models::*;" not in result
-        assert "use super::*;" not in result
+        assert "use crate::models::*" not in result
+        assert "use super::*" not in result
 
     def test_nested_imports(self):
         """Test handling of nested imports."""
@@ -209,7 +211,7 @@ pub use super::helpers::format_name;
 
         result, meta = adapter.process(lctx(code))
 
-        assert "pub use std::collections::HashMap;" in result
-        assert "pub use serde::{Deserialize, Serialize};" in result
+        assert "pub use std::collections::HashMap" in result
+        assert "pub use serde::{Deserialize, Serialize}" in result
 
-        assert "pub use crate::models::User;" not in result
+        assert "pub use crate::models::User" not in result

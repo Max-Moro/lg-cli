@@ -125,11 +125,16 @@ class JavaScriptImportAnalyzer(TreeSitterImportAnalyzer):
     """JavaScript-specific Tree-sitter import analyzer."""
 
     def _parse_import_from_ast(self, doc: TreeSitterDocument, node: Node, import_type: str) -> Optional[ImportInfo]:
-        """Parse JavaScript import using Tree-sitter AST structure."""
+        """Parse JavaScript import or re-export using Tree-sitter AST structure."""
         start_byte, end_byte = doc.get_node_range(node)
         start_line, end_line = doc.get_line_range(node)
         line_count = end_line - start_line + 1
 
+        # Handle both import_statement and export_statement (for re-exports)
+        if node.type == "export_statement":
+            return self._parse_export_from(doc, node, start_byte, end_byte, line_count)
+
+        # Regular import statement
         # Find source module
         module_name = ""
         import_clause_node = None
@@ -168,6 +173,63 @@ class JavaScriptImportAnalyzer(TreeSitterImportAnalyzer):
             import_type="import",
             module_name=module_name,
             imported_items=imported_items,
+            is_external=self.classifier.is_external(module_name),
+            is_wildcard=is_wildcard,
+            aliases=aliases,
+            start_byte=start_byte,
+            end_byte=end_byte,
+            line_count=line_count
+        )
+
+    def _parse_export_from(self, doc: TreeSitterDocument, node: Node,
+                          start_byte: int, end_byte: int, line_count: int) -> Optional[ImportInfo]:
+        """Parse export...from statement (re-export)."""
+        # export { Foo, Bar } from './module'
+        # export * from './module'
+        # export * as ns from './module'
+
+        module_name = ""
+        exported_items = []
+        aliases = {}
+        is_wildcard = False
+
+        for child in node.children:
+            if child.type == 'string':
+                # Source module
+                source_text = doc.get_node_text(child)
+                module_name = source_text.strip('\'"')
+
+            elif child.type == 'export_clause':
+                # Named exports: { Foo, Bar as Baz }
+                named_items, named_aliases = self._parse_named_imports(doc, child)
+                exported_items.extend(named_items)
+                aliases.update(named_aliases)
+
+            elif child.type == 'namespace_export':
+                # export * as ns from
+                is_wildcard = True
+                for grandchild in child.children:
+                    if grandchild.type == 'identifier':
+                        ns_name = doc.get_node_text(grandchild)
+                        exported_items.append(ns_name)
+                        aliases['*'] = ns_name
+
+        # Check for wildcard export without namespace
+        node_text = doc.get_node_text(node)
+        if isinstance(node_text, bytes):
+            node_text = node_text.decode('utf-8')
+        if 'export *' in node_text and 'as' not in node_text:
+            is_wildcard = True
+            exported_items = ['*']
+
+        if not module_name:
+            return None
+
+        return ImportInfo(
+            node=node,
+            import_type="export_from",
+            module_name=module_name,
+            imported_items=exported_items,
             is_external=self.classifier.is_external(module_name),
             is_wildcard=is_wildcard,
             aliases=aliases,

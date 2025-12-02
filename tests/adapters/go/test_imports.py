@@ -2,6 +2,8 @@
 Tests for import optimization in Go adapter.
 """
 
+import re
+
 from lg.adapters.go import GoCfg
 from lg.adapters.code_model import ImportConfig
 from .utils import lctx, make_adapter
@@ -17,9 +19,9 @@ class TestGoImportOptimization:
 
         result, meta = adapter.process(lctx(do_imports))
 
-        assert meta.get("go.removed.imports", 0) == 0
-        assert 'import "fmt"' in result
-        assert 'import "os"' in result
+        assert meta.get("go.removed.import", 0) == 0
+        assert '"fmt"' in result
+        assert '"os"' in result
 
         assert_golden_match(result, "imports", "keep_all", language="go")
 
@@ -33,11 +35,11 @@ class TestGoImportOptimization:
 
         assert meta.get("go.removed.import", 0) > 0
 
-        assert 'import "fmt"' in result
+        assert '"fmt"' in result
         assert '"github.com/pkg/errors"' in result
 
         assert '"myproject/internal/utils"' not in result
-        assert "// … imports omitted" in result
+        assert re.search(r'// … (\d+ )?imports? omitted', result)
 
         assert_golden_match(result, "imports", "strip_local", language="go")
 
@@ -51,9 +53,9 @@ class TestGoImportOptimization:
 
         assert meta.get("go.removed.import", 0) > 0
 
-        assert '"myproject/internal/utils"' in result
+        assert '"myproject/pkg/utils"' in result
 
-        assert "// … " in result and "omitted" in result
+        assert re.search(r'// … (\d+ )?imports? omitted', result)
 
         assert_golden_match(result, "imports", "strip_external", language="go")
 
@@ -86,7 +88,7 @@ class TestGoImportOptimization:
         result, meta = adapter.process(lctx(do_imports))
 
         assert meta.get("go.removed.import", 0) > 0
-        assert "// … " in result and "imports omitted" in result
+        assert re.search(r'// … (\d+ )?imports? omitted', result)
 
         assert_golden_match(result, "imports", "summarize_long", language="go")
 

@@ -207,11 +207,22 @@ class ImportOptimizer:
             if not imp.module_name:
                 continue
 
-            # Determine base module (first 2 segments)
-            parts = imp.module_name.split('.')
-            if len(parts) >= 2:
-                base = '.'.join(parts[:2])
+            # Determine base module based on separator type
+            # Path-based languages (C++, C, Go): use first directory segment
+            # Package-based languages (Java, Kotlin, Scala): use first 2 package segments
+            if '/' in imp.module_name:
+                # Path-based: "validation/email_validator.hpp" -> "validation"
+                parts = imp.module_name.split('/')
+                base = parts[0] if parts else imp.module_name
+            elif '.' in imp.module_name:
+                # Package-based: "com.example.foo.Bar" -> "com.example"
+                parts = imp.module_name.split('.')
+                if len(parts) >= 2:
+                    base = '.'.join(parts[:2])
+                else:
+                    base = imp.module_name
             else:
+                # No separator: use full name
                 base = imp.module_name
 
             # Check for sequence break

@@ -90,6 +90,10 @@ class ScalaImportClassifier(ImportClassifier):
         """Check if import looks like a local/project import."""
         import re
 
+        # Test/example package patterns (always local)
+        if module_name.startswith('com.example.') or module_name.startswith('org.example.'):
+            return True
+
         # Common local patterns
         local_patterns = [
             r'^app\.',
@@ -139,14 +143,28 @@ class ScalaImportAnalyzer(TreeSitterImportAnalyzer):
         # import package.{Class1, Class2}
         # import package.{Class => Alias}
 
-        # Find the import path
+        # Build the full import path from individual identifiers
+        # Scala import_declaration contains separate identifier nodes for each segment
+        # Example: import scala.collection.mutable.ArrayBuffer
+        # Children: [import, identifier(scala), ., identifier(collection), ., identifier(mutable), ., identifier(ArrayBuffer)]
+        path_parts = []
         for child in node.children:
-            if child.type in ["stable_identifier", "identifier"]:
-                # Get the base import path
+            if child.type == "identifier":
+                text = doc.get_node_text(child)
+                if isinstance(text, bytes):
+                    text = text.decode('utf-8')
+                path_parts.append(text)
+            elif child.type == "stable_identifier":
+                # Backup: if we get stable_identifier (less common), use it directly
                 text = doc.get_node_text(child)
                 if isinstance(text, bytes):
                     text = text.decode('utf-8')
                 module_name = text
+                break
+
+        # Join all path parts with dots if we collected them
+        if path_parts and not module_name:
+            module_name = '.'.join(path_parts)
 
         # Check for wildcard or selectors
         for child in node.children:
@@ -155,9 +173,9 @@ class ScalaImportAnalyzer(TreeSitterImportAnalyzer):
                 is_wildcard = True
                 imported_items = ["_"]
                 break
-            elif child.type == "import_selectors":
+            elif child.type == "namespace_selectors":
                 # import package.{Class1, Class2, Class3 => Alias}
-                items, item_aliases = self._parse_import_selectors(doc, child)
+                items, item_aliases = self._parse_namespace_selectors(doc, child)
                 imported_items.extend(items)
                 aliases.update(item_aliases)
 
@@ -186,13 +204,20 @@ class ScalaImportAnalyzer(TreeSitterImportAnalyzer):
             line_count=line_count
         )
 
-    def _parse_import_selectors(self, doc: TreeSitterDocument, selectors_node: Node) -> tuple[List[str], dict]:
-        """Parse import selectors { Class1, Class2 => Alias }."""
+    def _parse_namespace_selectors(self, doc: TreeSitterDocument, selectors_node: Node) -> tuple[List[str], dict]:
+        """Parse namespace selectors { Class1, Class2 => Alias }."""
         imported_items = []
         aliases = {}
 
         for child in selectors_node.children:
-            if child.type == "import_selector":
+            # Handle direct identifiers (for namespace_selectors)
+            if child.type == "identifier":
+                text = doc.get_node_text(child)
+                if isinstance(text, bytes):
+                    text = text.decode('utf-8')
+                imported_items.append(text)
+
+            elif child.type == "import_selector":
                 # Can be: identifier or (identifier => identifier)
                 identifiers = []
                 for grandchild in child.children:

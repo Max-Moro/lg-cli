@@ -76,11 +76,11 @@ class RustImportClassifier(ImportClassifier):
 
         # If starts with 'crate::', it's local
         if module_name.startswith('crate::'):
-            return True
+            return False
 
         # If starts with 'super::' or 'self::', it's local
         if module_name.startswith(('super::', 'self::')):
-            return True
+            return False
 
         # If we have project_root, check Cargo.toml
         if project_root:
@@ -95,7 +95,7 @@ class RustImportClassifier(ImportClassifier):
                             # Replace hyphens with underscores (Rust convention)
                             package_name = package_name.replace('-', '_')
                             if module_name.startswith(package_name):
-                                return True
+                                return False  # It's our local project package
                 except Exception:
                     pass
 
@@ -109,8 +109,16 @@ class RustImportClassifier(ImportClassifier):
     @staticmethod
     def _is_local_import(module_name: str, project_root: Optional[Path] = None) -> bool:
         """Check if import looks like a local/project import."""
-        # Relative imports
+        # Relative imports - check both with :: and exact match
         if module_name.startswith(('crate::', 'super::', 'self::')):
+            return True
+
+        # Exact match for bare keywords (for nested imports like "use crate::{...}")
+        if module_name in ('crate', 'super', 'self'):
+            return True
+
+        # Test/example project patterns
+        if module_name.startswith('myproject::'):
             return True
 
         # Common local patterns
@@ -168,17 +176,57 @@ class RustImportAnalyzer(TreeSitterImportAnalyzer):
                 imported_items = [text]
 
             elif child.type == "use_wildcard":
-                # use std::io::*
+                # use std::io::*, use crate::*, use super::*
                 is_wildcard = True
-                # Get the module path before ::*
-                for subchild in node.children:
+                # Get the module path from use_wildcard children
+                for subchild in child.children:
                     if subchild.type == "scoped_identifier":
                         text = doc.get_node_text(subchild)
                         if isinstance(text, bytes):
                             text = text.decode('utf-8')
                         module_name = text
                         break
+                    elif subchild.type in ["crate", "super", "self"]:
+                        # Handle bare keywords (use crate::*, use super::*, use self::*)
+                        text = doc.get_node_text(subchild)
+                        if isinstance(text, bytes):
+                            text = text.decode('utf-8')
+                        module_name = text
+                        break
                 imported_items = ["*"]
+
+            elif child.type == "scoped_use_list":
+                # use std::io::{Read, Write} or use crate::{models::User, ...}
+                # Structure: scoped_use_list contains scoped_identifier/identifier + use_list
+
+                module_path = ""
+                items = []
+                item_aliases = {}
+
+                # Extract module path and use_list from scoped_use_list children
+                for subchild in child.children:
+                    if subchild.type == "scoped_identifier":
+                        # Module path: std::io or crate::models
+                        text = doc.get_node_text(subchild)
+                        if isinstance(text, bytes):
+                            text = text.decode('utf-8')
+                        module_path = text
+
+                    elif subchild.type in ["identifier", "crate", "super", "self"]:
+                        # Module path for cases like "use crate::{...}" without scoped_identifier
+                        text = doc.get_node_text(subchild)
+                        if isinstance(text, bytes):
+                            text = text.decode('utf-8')
+                        module_path = text
+
+                    elif subchild.type == "use_list":
+                        # Parse the list of imported items
+                        items, item_aliases = self._parse_use_list(doc, subchild)
+
+                if module_path:
+                    module_name = module_path
+                    imported_items.extend(items)
+                    aliases.update(item_aliases)
 
             elif child.type == "use_list":
                 # use std::io::{Read, Write}
