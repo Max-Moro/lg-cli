@@ -11,6 +11,7 @@ from tree_sitter import Language
 
 from ..code_base import CodeAdapter
 from ..code_model import CodeCfg
+from ..context import ProcessingContext
 from ..optimizations import ImportClassifier, TreeSitterImportAnalyzer
 from ..tree_sitter_support import TreeSitterDocument
 
@@ -72,3 +73,8 @@ class GoAdapter(CodeAdapter[GoCfg]):
         stripped = comment_text.strip()
         # Go uses single-line comments starting with // for documentation
         return stripped.startswith('//')
+
+    def hook__process_additional_literals(self, context, max_tokens: Optional[int]) -> None:
+        """Process Go-specific literals (composite_literal with type preservation)."""
+        from .literals import process_go_literals
+        process_go_literals(context, max_tokens)

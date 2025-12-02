@@ -93,8 +93,6 @@ QUERIES = {
     "literals": """
     (string_literal) @string
 
-    (multiline_string_literal) @string
-
     (decimal_integer_literal) @number
 
     (hex_integer_literal) @number

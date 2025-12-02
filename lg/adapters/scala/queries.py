@@ -181,8 +181,6 @@ QUERIES = {
 
     (interpolated_string_expression) @string
 
-    (symbol_literal) @string
-
     (character_literal) @string
 
     (integer_literal) @number

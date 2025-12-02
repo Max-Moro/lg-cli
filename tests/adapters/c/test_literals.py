@@ -52,7 +52,7 @@ const char* long_msg = "This is a very long message that should be trimmed becau
         result, meta = adapter.process(lctx(code))
 
         assert 'const char* short_msg = "Hello";' in result
-        assert "// … literal string" in result or "/* literal string" in result
+        assert "// literal string" in result or "/* literal string" in result
 
     def test_array_literal_trimming(self):
         """Test trimming of array initializers."""
@@ -72,7 +72,7 @@ int large_array[] = {
         result, meta = adapter.process(lctx(code))
 
         assert "int small_array[] = {1, 2, 3};" in result
-        assert "// … literal array" in result or "/* literal array" in result
+        assert "// literal array" in result or "/* literal array" in result
 
     def test_struct_literal_trimming(self):
         """Test trimming of struct initializers."""

@@ -155,7 +155,11 @@ class LiteralOptimizer:
             return LiteralInfo("tuple", "(", ")", content, is_multiline, language)
         elif stripped.startswith('{') and stripped.endswith('}'):
             content = self._extract_content(literal_text, "{", "}")
-            return LiteralInfo("object", "{", "}", content, is_multiline, language)
+            # In C/C++, {} is used for array/vector initialization, not objects
+            if language in ("cpp", "c"):
+                return LiteralInfo("array", "{", "}", content, is_multiline, language)
+            else:
+                return LiteralInfo("object", "{", "}", content, is_multiline, language)
         else:
             # Fallback to array
             content = self._extract_content(literal_text, "[", "]")

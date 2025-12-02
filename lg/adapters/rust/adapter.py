@@ -11,6 +11,7 @@ from tree_sitter import Language
 
 from ..code_base import CodeAdapter
 from ..code_model import CodeCfg
+from ..context import ProcessingContext
 from ..optimizations import ImportClassifier, TreeSitterImportAnalyzer
 from ..tree_sitter_support import TreeSitterDocument
 
@@ -72,3 +73,8 @@ class RustAdapter(CodeAdapter[RustCfg]):
         stripped = comment_text.strip()
         # Rust uses /// and //! for documentation
         return stripped.startswith('///') or stripped.startswith('//!')
+
+    def hook__process_additional_literals(self, context: ProcessingContext, max_tokens: Optional[int]) -> None:
+        """Process Rust-specific literals (vec! macros)."""
+        from .literals import process_rust_literals
+        process_rust_literals(context, max_tokens)

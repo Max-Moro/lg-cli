@@ -116,12 +116,6 @@ QUERIES = {
     (float_literal) @number
 
     (imaginary_literal) @number
-
-    (composite_literal) @array
-
-    (slice_literal) @array
-
-    (map_literal) @object
     """,
 
     # Package clause
