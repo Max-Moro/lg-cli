@@ -11,8 +11,7 @@ const LONG_MESSAGE = `This is an extremely long message that contains a substa�
 // Multi-line template literal with embedded expressions
 const TEMPLATE_WITH_DATA = `
 User Information:
-- Name: getUserName()
-- Email: ${…`; // literal string (−51 tokens)
+- Name: ${…`; // literal string (−58 tokens)
 
 interface DataContainer {
     // Small array (should be preserved)
@@ -105,5 +104,5 @@ function getUserName(): string { return "John Doe"; }
 function getUserEmail(): string { return "john.doe@example.com"; }
 function getAccountStatus(): string { return "active"; }
 function getPermissions(): string[] { return ["read", "write", "admin"]; }
-function getLastLogin(): string { date = "2024-01-15T1…"; /* literal string (−5 tokens) */ return date; }
+function getLastLogin(): string { const date = "2024-01-15T1…"; /* literal string (−5 tokens) */ return date; }
 function getProfileCompleteness(): number { return 85; }

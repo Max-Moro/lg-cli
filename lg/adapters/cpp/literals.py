@@ -25,7 +25,7 @@ class CppLiteralHandler(DefaultLiteralHandler):
         max_tokens: int,
         node: Node
     ) -> Optional[str]:
-        """Trim arrays, suppressing placeholder for struct arrays."""
+        """Trim arrays, suppressing placeholder for struct arrays and numeric arrays."""
         # Get content from node
         content = context.doc.get_node_text(node)[1:-1]  # Remove outer brackets
 
@@ -35,8 +35,34 @@ class CppLiteralHandler(DefaultLiteralHandler):
         # Check if struct array (first element starts with {)
         is_struct_array = elements and elements[0].strip().startswith('{')
 
-        if not is_struct_array:
+        # Check if numeric array (all elements are numbers)
+        is_numeric_array = all(elem.strip().rstrip(',').replace('-', '').replace('.', '').isdigit()
+                               for elem in elements if elem.strip())
+
+        if not is_struct_array and not is_numeric_array:
             return None  # Use generic logic for regular arrays
+
+        # For numeric arrays, suppress placeholder completely
+        if is_numeric_array:
+            # Just trim without adding string placeholder
+            overhead_text = f"{literal_info.opening}{literal_info.closing}"
+            overhead_tokens = context.tokenizer.count_text(overhead_text)
+            content_budget = max(1, max_tokens - overhead_tokens)
+
+            included_elements = self.optimizer._select_elements_within_budget(context, elements, content_budget)  # noinspection PyProtectedMemberInspection
+
+            if not included_elements:
+                return ""  # Empty array content
+
+            # Form result without placeholder for numeric arrays
+            if literal_info.is_multiline:
+                element_indent, base_indent = self.optimizer._get_base_indentations(context.doc, node, context.raw_text)  # noinspection PyProtectedMemberInspection
+                indented_elements = [f"{element_indent}{element}" for element in included_elements]
+                joined = f",\n".join(indented_elements)
+                return f"\n{joined},\n{base_indent}"
+            else:
+                joined = ", ".join(included_elements)
+                return joined
 
         # Custom trimming without placeholder for struct arrays
         overhead_text = f"{literal_info.opening}{literal_info.closing}"

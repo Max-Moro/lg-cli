@@ -50,7 +50,11 @@ type LiteralDataManager struct {
 // NewLiteralDataManager creates a new manager instance
 func NewLiteralDataManager() *LiteralDataManager {
 	return &LiteralDataManager{
-	} // literal array (−619 tokens)
+		smallConfig: map[string]interface{}{
+			"debug":   true,
+			"version": "1.0.0",
+		},
+	} // literal array (−587 tokens)
 }
 
 // ProcessData creates a data container with various literals
@@ -64,7 +68,26 @@ func (m *LiteralDataManager) ProcessData() *DataContainer {
 	} // literal array (−143 tokens)
 
 	nestedData := map[string]interface{}{
-	} // literal array (−206 tokens)
+		"level1": map[string]interface{}{
+			"level2": map[string]interface{}{
+				"level3": map[string]interface{}{
+					"data": []map[string]interface{}{
+						{"id": 1, "name": "First", "active": true},
+						{"id": 2, "name": "Second", "active": false},
+						{"id": 3, "name": "Third", "active": true},
+						{"id": 4, "name": "Fourth", "active": true},
+						{"id": 5, "name": "Fifth", "active": false},
+					},
+					"metadata": map[string]interface{}{
+						"created":  "2024-01-01",
+						"updated":  "2024-01-15",
+						"version":  3,
+						"checksum": "abcdef123456",
+					},
+				},
+			},
+		},
+	}
 
 	return &DataContainer{
 		Tags:          smallSlice,
@@ -93,7 +116,8 @@ var HTTPStatusCodes = map[string]int{
 } // literal array (−397 tokens)
 
 var ErrorMessages = map[string]string{
-} // literal array (−128 tokens)
+	"VALIDATION_FAILED":      "Input validation failed. Please check your data and try again.",
+} // literal array (−108 tokens)
 
 func main() {
 	manager := NewLiteralDataManager()

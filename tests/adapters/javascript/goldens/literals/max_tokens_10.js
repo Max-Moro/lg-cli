@@ -11,7 +11,7 @@ const LONG_MESSAGE = `This is an extremely long message that contains a substa�
 // Multi-line template literal with embedded expressions
 const TEMPLATE_WITH_DATA = `
 User Information:
-- Name: ${getUserNam…`; // literal string (−56 tokens)
+- Name: ${…`; // literal string (−58 tokens)
 
 export class LiteralDataManager {
     // Class properties with various literal types

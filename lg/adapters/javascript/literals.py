@@ -43,5 +43,10 @@ class JSLiteralHandler(DefaultLiteralHandler):
         # If truncation cut into or before interpolation, extend to keep "${" visible
         if len(trimmed) < min_keep_length <= len(content):
             trimmed = content[:min_keep_length]
+        elif len(trimmed) >= min_keep_length:
+            # If we cut after interpolation started, ensure we show at least "${"
+            if first_interp.start() < len(trimmed) < first_interp.end():
+                # Cut happened inside interpolation - extend to show the opening
+                trimmed = content[:min(first_interp.start() + 2, len(content))]
 
         return f"{trimmed}…"

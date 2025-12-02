@@ -130,13 +130,27 @@ def process_go_composite_literal(
         # For struct literals, DON'T add placeholder element - just truncate
         # Struct literals need field names, can't use "…" placeholder
         if not included_elements:
-            # No elements fit - show just type with empty body
-            if is_multiline:
-                base_indent = _get_line_indent_at_position(context.raw_text, composite_node.start_byte)
-                replacement = f'{type_text}{{\n{base_indent}}}'
+            # No elements fit - try to include first element even if over budget
+            if elements:
+                first_elem = elements[0]
+                # Include first element regardless of budget
+                included_elements = [first_elem]
             else:
-                replacement = f'{type_text}{{}}'
-        else:
+                # Truly empty - show empty body
+                if is_multiline:
+                    base_indent = _get_line_indent_at_position(context.raw_text, composite_node.start_byte)
+                    replacement = f'{type_text}{{\n{base_indent}}}'
+                else:
+                    replacement = f'{type_text}{{}}'
+                # Apply and return early
+                start_char, end_char = context.doc.get_node_range(composite_node)
+                context.editor.add_replacement(start_char, end_char, replacement, edit_type="literal_trimmed")
+                _add_savings_comment(context, composite_node, full_text, replacement)
+                context.metrics.mark_element_removed("literal")
+                context.metrics.add_chars_saved(len(full_text) - len(replacement))
+                return
+
+        if included_elements:
             # Show included elements without placeholder
             if is_multiline:
                 base_indent = _get_line_indent_at_position(context.raw_text, composite_node.start_byte)
@@ -156,14 +170,28 @@ def process_go_composite_literal(
     else:
         # For slice/map literals, add "…" placeholder element
         if not included_elements:
-            # Only placeholder
-            if is_multiline:
-                base_indent = _get_line_indent_at_position(context.raw_text, composite_node.start_byte)
-                element_indent = base_indent + "\t"
-                replacement = f'{type_text}{{\n{element_indent}"…",\n{base_indent}}}'
+            # No elements fit - try to include first element even if over budget
+            if elements:
+                first_elem = elements[0]
+                # Include first element regardless of budget
+                included_elements = [first_elem]
             else:
-                replacement = f'{type_text}{{"…"}}'
-        else:
+                # Truly empty - show only placeholder
+                if is_multiline:
+                    base_indent = _get_line_indent_at_position(context.raw_text, composite_node.start_byte)
+                    element_indent = base_indent + "\t"
+                    replacement = f'{type_text}{{\n{element_indent}"…",\n{base_indent}}}'
+                else:
+                    replacement = f'{type_text}{{"…"}}'
+                # Apply and return early
+                start_char, end_char = context.doc.get_node_range(composite_node)
+                context.editor.add_replacement(start_char, end_char, replacement, edit_type="literal_trimmed")
+                _add_savings_comment(context, composite_node, full_text, replacement)
+                context.metrics.mark_element_removed("literal")
+                context.metrics.add_chars_saved(len(full_text) - len(replacement))
+                return
+
+        if included_elements:
             # Included elements + placeholder
             if is_multiline:
                 base_indent = _get_line_indent_at_position(context.raw_text, composite_node.start_byte)

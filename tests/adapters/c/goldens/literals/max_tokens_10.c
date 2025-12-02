@@ -164,9 +164,7 @@ struct {
     101,
     200,
     201,
-    202,
-    "…",
-}; // literal array (−104 tokens)
+}; // literal array (−112 tokens)
 
 struct {
     const char* VALIDATION_FAILED;

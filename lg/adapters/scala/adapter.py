@@ -11,7 +11,8 @@ from tree_sitter import Language
 
 from ..code_base import CodeAdapter
 from ..code_model import CodeCfg
-from ..optimizations import ImportClassifier, TreeSitterImportAnalyzer
+from ..optimizations import ImportClassifier, TreeSitterImportAnalyzer, LiteralOptimizer
+from ..optimizations.literals import LiteralHandler
 from ..tree_sitter_support import TreeSitterDocument
 
 
@@ -66,3 +67,10 @@ class ScalaAdapter(CodeAdapter[ScalaCfg]):
         """Create Scala-specific unified code analyzer."""
         from .code_analysis import ScalaCodeAnalyzer
         return ScalaCodeAnalyzer(doc)
+
+    def hook__get_literal_handler(
+        self, root_optimizer: LiteralOptimizer
+    ) -> LiteralHandler:
+        """Provide Scala-specific literal handler for interpolated strings."""
+        from .literals import ScalaLiteralHandler
+        return ScalaLiteralHandler()

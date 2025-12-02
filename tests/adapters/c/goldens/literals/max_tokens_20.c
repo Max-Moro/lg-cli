@@ -172,7 +172,7 @@ struct {
     203,
     204,
     205,
-    "…",
+    206,
 }; // literal array (−92 tokens)
 
 struct {

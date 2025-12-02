@@ -19,10 +19,10 @@ object Constants {
   def getLastLogin(): String = "2024-01-15T10:30:00Z"
   def getProfileCompleteness(): Int = 85
 
-  val TEMPLATE_WITH_DATA = "s"""
+  val TEMPLATE_WITH_DATA = s"""
 User Information:
 - Name: ${getUserName()}
-- Email: ${getUserEmail()}…" // literal string (−52 tokens)
+- Email: ${getUserEmai…""" // literal string (−51 tokens)
 }
 
 case class DataContainer(
