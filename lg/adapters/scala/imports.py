@@ -44,7 +44,6 @@ class ScalaImportClassifier(ImportClassifier):
             r'^slick\.',
             r'^org\.scalatest\.',
             r'^org\.scalactic\.',
-            r'^org\.apache\.',
             r'^com\.typesafe\.',
         ]
 
@@ -57,12 +56,12 @@ class ScalaImportClassifier(ImportClassifier):
             if re.match(pattern, module_name):
                 return True
 
-        # Check if it's a Scala/Java standard library package
+        # Check if it's Scala/Java standard library
         package_prefix = module_name.split('.')[0]
         if package_prefix in ['scala', 'java', 'javax']:
             return True
 
-        # Check two-segment prefix for standard libs
+        # Check two-segment prefix
         if '.' in module_name:
             two_segment = '.'.join(module_name.split('.')[:2])
             if two_segment in self.scala_stdlib or two_segment in self.java_stdlib:
@@ -73,53 +72,25 @@ class ScalaImportClassifier(ImportClassifier):
             if re.match(pattern, module_name):
                 return True
 
-        # Heuristics for local imports
-        if self._is_local_import(module_name):
-            return False
-
-        # If starts with common third-party prefixes, it's external
-        if module_name.startswith(('org.', 'com.', 'net.', 'io.', 'akka.', 'cats.', 'zio.')):
-            if not self._is_local_import(module_name):
-                return True
-
-        # Default to local for unknown packages
-        return False
-
-    @staticmethod
-    def _is_local_import(module_name: str) -> bool:
-        """Check if import looks like a local/project import."""
-        import re
-
-        # Test/example package patterns (always local)
-        if module_name.startswith('com.example.') or module_name.startswith('org.example.'):
+        # Scala-specific popular libraries
+        if module_name.startswith(('akka.', 'cats.', 'zio.')):
             return True
 
-        # Common local patterns
-        local_patterns = [
-            r'^app\.',
-            r'^main\.',
-            r'^src\.',
-            r'^internal\.',
-            r'^impl\.',
-            r'^models?\.',
-            r'^controllers?\.',
-            r'^services?\.',
-            r'^utils?\.',
-        ]
-
-        for pattern in local_patterns:
-            if re.match(pattern, module_name):
-                return True
-
-        # Project-specific patterns (heuristic)
-        if module_name.count('.') >= 3:
+        # Check if it starts with common organizational prefixes
+        if module_name.startswith(('org.', 'com.', 'net.', 'io.')):
             parts = module_name.split('.')
-            if len(parts) >= 3:
-                third_segment = parts[2]
-                local_indicators = ['app', 'application', 'service', 'api', 'core', 'model', 'controller']
-                if third_segment in local_indicators:
+            if len(parts) >= 2:
+                second_segment = parts[1]
+                # Known external organizations in JVM ecosystem
+                known_external_orgs = {
+                    'google', 'android', 'amazonaws', 'apache', 'eclipse',
+                    'junit', 'hamcrest', 'mockito', 'slf4j', 'jetbrains',
+                    'fasterxml', 'springframework', 'hibernate',
+                }
+                if second_segment in known_external_orgs:
                     return True
 
+        # Default: assume local
         return False
 
 

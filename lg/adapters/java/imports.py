@@ -32,13 +32,6 @@ class JavaImportClassifier(ImportClassifier):
         self.default_external_patterns = [
             r'^java\.',
             r'^javax\.',
-            r'^org\.junit\.',
-            r'^org\.mockito\.',
-            r'^org\.springframework\.',
-            r'^org\.apache\.',
-            r'^com\.google\.',
-            r'^org\.slf4j\.',
-            r'^org\.hibernate\.',
         ]
 
     def is_external(self, module_name: str, project_root: Optional[Path] = None) -> bool:
@@ -60,53 +53,21 @@ class JavaImportClassifier(ImportClassifier):
             if re.match(pattern, module_name):
                 return True
 
-        # Heuristics for local imports
-        if self._is_local_import(module_name):
-            return False
-
-        # If starts with common third-party prefixes, it's external
+        # Check if it starts with common organizational prefixes
         if module_name.startswith(('org.', 'com.', 'net.', 'io.')):
-            # But check if it's not a known local pattern
-            if not self._is_local_import(module_name):
-                return True
-
-        # Default to local for unknown packages
-        return False
-
-    @staticmethod
-    def _is_local_import(module_name: str) -> bool:
-        """Check if import looks like a local/project import."""
-        import re
-
-        # Test/example package patterns (always local)
-        if module_name.startswith('com.example.') or module_name.startswith('org.example.'):
-            return True
-
-        # Common local patterns
-        local_patterns = [
-            r'^app\.',
-            r'^main\.',
-            r'^src\.',
-            r'^internal\.',
-            r'^impl\.',
-        ]
-
-        for pattern in local_patterns:
-            if re.match(pattern, module_name):
-                return True
-
-        # Project-specific patterns (heuristic)
-        # If package has specific structure like com.mycompany.myapp
-        if module_name.count('.') >= 3:
             parts = module_name.split('.')
-            # Check for common company/project indicators
-            if len(parts) >= 3:
-                third_segment = parts[2]
-                # If third segment looks like a project name (not a library)
-                local_indicators = ['app', 'application', 'service', 'api', 'core', 'model', 'entity']
-                if third_segment in local_indicators:
+            if len(parts) >= 2:
+                second_segment = parts[1]
+                # Known external organizations in JVM ecosystem
+                known_external_orgs = {
+                    'google', 'android', 'amazonaws', 'apache', 'eclipse',
+                    'junit', 'hamcrest', 'mockito', 'slf4j', 'jetbrains',
+                    'fasterxml', 'springframework', 'hibernate',
+                }
+                if second_segment in known_external_orgs:
                     return True
 
+        # Default: assume local
         return False
 
 

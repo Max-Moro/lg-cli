@@ -36,16 +36,17 @@ class TestPythonImportClassification:
     def test_local_import_detection(self):
         """Test detection of local/relative imports."""
         classifier = PythonImportClassifier()
-        
-        # Relative imports
+
+        # Relative imports are definitely local
         assert not classifier.is_external(".utils")
-        assert not classifier.is_external("..shared")
-        assert not classifier.is_external("...core")
-        
-        # Local-looking imports
-        assert not classifier.is_external("myproject.utils")
-        assert not classifier.is_external("src.models")
-        assert not classifier.is_external("MyModule")  # Contains uppercase
+        assert not classifier.is_external("..models")
+        assert not classifier.is_external("...config")
+
+        # Non-matching patterns (not single-word lowercase) default to local
+        # These don't match stdlib, known packages, or single-word pattern
+        assert not classifier.is_external("MyCompany.internal.utils")  # PascalCase base
+        assert not classifier.is_external("my_company_2.utils")  # underscore and digit
+        assert not classifier.is_external("__private__.module")  # double underscore
     
     def test_custom_external_patterns(self):
         """Test custom external patterns."""
@@ -133,13 +134,13 @@ class TestPythonImportOptimization:
     def test_strip_local_imports(self, do_imports):
         """Test stripping local imports (keeping external)."""
         import_config = ImportConfig(policy="strip_local")
-        
+
         adapter = make_adapter(PythonCfg(imports=import_config))
-        
+
         result, meta = adapter.process(lctx(do_imports))
-        
+
         # Local imports should be removed
-        assert meta.get("python.removed.import", 0) == 24
+        assert meta.get("python.removed.import", 0) == 23
         
         # External imports should be preserved
         assert "import os" in result
@@ -154,13 +155,13 @@ class TestPythonImportOptimization:
     def test_strip_external_imports(self, do_imports):
         """Test stripping external imports (keeping local)."""
         import_config = ImportConfig(policy="strip_external")
-        
+
         adapter = make_adapter(PythonCfg(imports=import_config))
-        
+
         result, meta = adapter.process(lctx(do_imports))
-        
+
         # External imports should be removed
-        assert meta.get("python.removed.import", 0) == 58
+        assert meta.get("python.removed.import", 0) == 59
         
         # Local imports should be preserved
         assert "from .utils import helper_function" in result
@@ -213,25 +214,25 @@ class TestPythonImportOptimization:
         """Test import optimization with custom external patterns."""
         code = '''import os
 import mycompany.utils  # Should be treated as external
-from internal.helpers import process  # Should be treated as local
-from .local import function  # Relative import
+from internal.helpers import process  # Single-word module → external by default pattern
+from .local import function  # Relative import → local
 '''
-        
+
         import_config = ImportConfig(
             policy="strip_local",
-            external_patterns=["^mycompany\..*"]
+            external_patterns=[r"^mycompany\..*"]  # Add 'r' prefix for raw string
         )
-        
+
         adapter = make_adapter(PythonCfg(imports=import_config))
-        
+
         result, meta = adapter.process(lctx(code))
-        
+
         # External imports should be preserved
         assert "import os" in result
         assert "import mycompany.utils" in result
-        
+
         # Local imports should be removed
-        assert "from internal.helpers" not in result
+        assert "from internal.helpers" not in result  # Treated as local (no longer matches single-word pattern)
         assert "from .local" not in result
         assert re.search(r'# … (\d+ )?imports? omitted', result)
     

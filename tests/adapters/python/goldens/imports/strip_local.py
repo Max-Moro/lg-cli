@@ -31,7 +31,7 @@ from datetime import datetime, timedelta, timezone
 import matplotlib.pyplot as plt
 import tensorflow as tf
 from sklearn.model_selection import train_test_split as tts
-# … import omitted
+from django.contrib.auth import authenticate as auth
 
 # Conditional imports
 try:

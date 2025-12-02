@@ -57,58 +57,21 @@ class CImportClassifier(ImportClassifier):
         if module_name in self.c_stdlib:
             return True
 
-        # Extract base name for checking
+        # Check base header name
         base_header = module_name.split('/')[-1]
         if base_header in self.c_stdlib:
             return True
 
-        # Check default external patterns (before local import check)
+        # Check default external patterns
         for pattern in self.default_external_patterns:
             if re.match(pattern, module_name):
                 return True
 
-        # Check heuristics for local imports
-        if self._is_local_import(module_name):
-            return False
-
-        # System headers without path (e.g., <stdio.h>, <windows.h>, <pthread.h>)
+        # System headers without path
         if '/' not in module_name:
             return True
 
-        # If has path and .h extension, likely local
-        if module_name.endswith('.h'):
-            return False
-
-        # Default to external
-        return True
-
-    @staticmethod
-    def _is_local_import(module_name: str) -> bool:
-        """Check if include looks like a local/project include."""
-        import re
-
-        # Relative includes
-        if module_name.startswith('.'):
-            return True
-
-        # Common local patterns
-        local_patterns = [
-            r'^src/',
-            r'^include/',
-            r'^lib/',
-            r'^utils/',
-            r'^core/',
-            r'^internal/',
-        ]
-
-        for pattern in local_patterns:
-            if re.match(pattern, module_name):
-                return True
-
-        # Contains path separators suggests project structure
-        if '/' in module_name:
-            return True
-
+        # Default: assume local (headers with paths are usually project files)
         return False
 
 

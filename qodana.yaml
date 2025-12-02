@@ -39,3 +39,8 @@ exclude:
 
   # PyBroadExceptionInspection: Sometimes reasonable, but too many false positives
   - name: PyBroadExceptionInspection
+
+  # PyPep8NamingInspection: Migration classes intentionally use underscore prefix for privacy
+  - name: PyPep8NamingInspection
+    paths:
+      - lg/migrate/migrations

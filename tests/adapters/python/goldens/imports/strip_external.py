@@ -17,8 +17,7 @@ from ...core.exceptions import ValidationError, DatabaseError
 # … 6 imports omitted
 
 # Import with alias
-# … 3 imports omitted
-from django.contrib.auth import authenticate as auth
+# … 4 imports omitted
 
 # Conditional imports
 try:

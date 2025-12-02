@@ -59,62 +59,22 @@ class CppImportClassifier(ImportClassifier):
                 return True
 
         # Check if it's a C++ standard library header
-        # Remove path separators to get base header name
         base_header = module_name.split('/')[-1]
         base_header = base_header.replace('.h', '').replace('.hpp', '')
 
         if base_header in self.cpp_stdlib:
             return True
 
-        # Check default external patterns (before local import check)
+        # Check default external patterns
         for pattern in self.default_external_patterns:
             if re.match(pattern, module_name):
                 return True
-
-        # Check heuristics for local imports
-        if self._is_local_import(module_name):
-            return False
 
         # System headers without path (e.g., <stdio.h>, <windows.h>)
         if '/' not in module_name:
             return True
 
-        # If has path and modern C++ extension, likely local
-        if module_name.endswith(('.hpp', '.hxx', '.hh', '.h++')):
-            return False
-
-        # Default to external for ambiguous cases
-        return True
-
-    @staticmethod
-    def _is_local_import(module_name: str) -> bool:
-        """Check if include looks like a local/project include."""
-        import re
-
-        # Relative includes
-        if module_name.startswith('.'):
-            return True
-
-        # Common local patterns
-        local_patterns = [
-            r'^src/',
-            r'^include/',
-            r'^lib/',
-            r'^utils/',
-            r'^core/',
-            r'^internal/',
-            r'^detail/',
-            r'^impl/',
-        ]
-
-        for pattern in local_patterns:
-            if re.match(pattern, module_name):
-                return True
-
-        # Modern C++ extensions suggest project files
-        if module_name.endswith(('.hpp', '.hxx', '.hh', '.h++')):
-            return True
-
+        # Default: assume local
         return False
 
 

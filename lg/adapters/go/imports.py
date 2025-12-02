@@ -48,11 +48,6 @@ class GoImportClassifier(ImportClassifier):
             if re.match(pattern, module_name):
                 return True
 
-        # Check local patterns BEFORE stdlib check
-        # This ensures test/project imports like "myproject/..." are recognized as local
-        if self._is_local_import(module_name, project_root):
-            return False
-
         # Check if it's a Go standard library package
         # Standard library doesn't have domain names
         if '.' not in module_name.split('/')[0]:
@@ -63,69 +58,24 @@ class GoImportClassifier(ImportClassifier):
             for stdlib_pkg in self.go_stdlib:
                 if module_name.startswith(stdlib_pkg + '/'):
                     return True
-            # Without dots in first segment, likely stdlib
-            return True
+            # We couldn't figure it out exactly, so we consider it local
+            return False
+
+        # Test/example domains (used in documentation and tests) are treated as local
+        # Check this BEFORE default external patterns to prevent false positives
+        if module_name.startswith(('example.com/', 'github.com/example/', 'golang.org/x/example/')):
+            return False
 
         # Check default external patterns
         for pattern in self.default_external_patterns:
             if re.match(pattern, module_name):
                 return True
 
-        # If starts with a domain name, it's external
-        if '/' in module_name:
-            first_segment = module_name.split('/')[0]
-            if '.' in first_segment:
-                return True
-
-        # Default to external for unknown packages
-        return True
-
-    @staticmethod
-    def _is_local_import(module_name: str, project_root: Optional[Path] = None) -> bool:
-        """Check if import looks like a local/project import."""
-        import re
-
-        # Relative imports (not common in Go, but check anyway)
-        if module_name.startswith('.'):
+        # If first segment contains dot - it's a domain, likely external
+        if '.' in module_name.split('/')[0]:
             return True
 
-        # If starts with a domain name, it's external (NOT local)
-        if '/' in module_name:
-            first_segment = module_name.split('/')[0]
-            if '.' in first_segment:
-                return False  # It's external, not local
-
-        # Test/example project patterns (always local)
-        if module_name.startswith('myproject/'):
-            return True
-
-        # If we have project_root, check if module starts with project module path
-        if project_root:
-            # Try to read go.mod to get module name
-            go_mod = project_root / "go.mod"
-            if go_mod.exists():
-                try:
-                    content = go_mod.read_text(encoding='utf-8')
-                    for line in content.split('\n'):
-                        if line.strip().startswith('module '):
-                            project_module = line.strip().split()[1]
-                            if module_name.startswith(project_module):
-                                return True
-                except Exception:
-                    pass
-
-        # Common local patterns (internal packages)
-        local_patterns = [
-            r'/internal/',
-            r'/pkg/',
-            r'^internal/',
-            r'^pkg/',
-        ]
-
-        for pattern in local_patterns:
-            if re.search(pattern, module_name):
-                return True
-
+        # Default: assume local
         return False
 
 
@@ -181,8 +131,7 @@ class GoImportAnalyzer(TreeSitterImportAnalyzer):
         if not module_name:
             return None
 
-        # Determine imported items
-        imported_items = []
+        # Determine imported items and aliases
         aliases = {}
 
         if is_blank_import:

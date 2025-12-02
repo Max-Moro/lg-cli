@@ -33,63 +33,42 @@ class KotlinImportClassifier(ImportClassifier):
             r'^kotlinx\.',
             r'^android\.',
             r'^androidx\.',
-            r'^com\.google\.',
-            r'^io\.',
-            r'^org\.',
         ]
 
     def is_external(self, module_name: str, project_root: Optional[Path] = None) -> bool:
         """Determine if a Kotlin import is external or local."""
         import re
 
-        # Check custom patterns
+        # Check user-defined patterns first
         for pattern in self.external_patterns:
             if re.match(pattern, module_name):
                 return True
 
-        # Check standard packages
+        # Check if it's standard library
         package_prefix = module_name.split('.')[0]
         if package_prefix in self.standard_packages:
             return True
 
-        # Check built-in patterns
+        # Check default external patterns
         for pattern in self.default_external_patterns:
             if re.match(pattern, module_name):
                 return True
 
-        # Heuristics for local imports
-        if self._is_local_import(module_name):
-            return False
-
-        # External by default
-        return True
-
-    @staticmethod
-    def _is_local_import(module_name: str) -> bool:
-        """Check if import looks like a local/project import."""
-        # Local patterns (often start with project name or specific prefixes)
-        local_indicators = ['app', 'src', 'main', 'test', 'internal', 'impl']
-
-        package_start = module_name.split('.')[0]
-        if package_start in local_indicators:
-            return True
-
-        # Heuristic: if package starts with com/org but is NOT a known external library
-        # and has specific structure (e.g., com.example.*), consider it local
-        if package_start in ('com', 'org'):
+        # Check if it starts with common organizational prefixes
+        if module_name.startswith(('org.', 'com.', 'net.', 'io.')):
             parts = module_name.split('.')
             if len(parts) >= 2:
-                second_part = parts[1]
-                # com.example.*, com.mycompany.*, org.myproject.* - local
-                # But com.google.*, org.slf4j.* - external (checked in is_external)
-                # If second segment is not a known library, consider it local
-                known_external_second_parts = {
+                second_segment = parts[1]
+                # Known external organizations in JVM ecosystem
+                known_external_orgs = {
                     'google', 'android', 'amazonaws', 'apache', 'eclipse',
-                    'junit', 'hamcrest', 'mockito', 'slf4j', 'jetbrains'
+                    'junit', 'hamcrest', 'mockito', 'slf4j', 'jetbrains',
+                    'fasterxml', 'springframework', 'hibernate', 'koin', 'ktor',
                 }
-                if second_part not in known_external_second_parts:
+                if second_segment in known_external_orgs:
                     return True
 
+        # Default: assume local
         return False
 
 

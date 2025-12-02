@@ -26,24 +26,44 @@ class RustImportClassifier(ImportClassifier):
             'std::time', 'std::path', 'std::env',
         }
 
-        # Common external patterns for Rust
+        # Common external patterns for Rust (popular crates)
         self.default_external_patterns = [
             r'^std::',
             r'^core::',
             r'^alloc::',
+            # Serialization
             r'^serde',
+            # Async runtimes
             r'^tokio',
             r'^async_std',
             r'^futures',
+            # Logging
             r'^log',
             r'^env_logger',
+            r'^tracing',
+            # CLI
             r'^clap',
+            # Data structures & utilities
             r'^regex',
             r'^rand',
             r'^chrono',
+            r'^itertools',
+            # HTTP & networking
             r'^reqwest',
             r'^hyper',
+            r'^http',
+            # Web frameworks
             r'^actix',
+            r'^axum',
+            r'^warp',
+            r'^rocket',
+            # Databases
+            r'^diesel',
+            r'^sqlx',
+            r'^redis',
+            # Error handling
+            r'^anyhow',
+            r'^thiserror',
         ]
 
     def is_external(self, module_name: str, project_root: Optional[Path] = None) -> bool:
@@ -55,79 +75,29 @@ class RustImportClassifier(ImportClassifier):
             if re.match(pattern, module_name):
                 return True
 
-        # Check if it's a Rust standard library crate/module
+        # Check if it's Rust standard library
         root_crate = module_name.split('::')[0]
         if root_crate in ['std', 'core', 'alloc', 'proc_macro', 'test']:
             return True
 
-        # Check against known stdlib modules
-        for stdlib_module in self.rust_stdlib:
-            if module_name.startswith(stdlib_module):
-                return True
+        # Explicit local keywords
+        if module_name.startswith(('crate::', 'super::', 'self::')):
+            return False
+
+        # Also check bare keywords (from use super::*, use crate::{}, etc.)
+        if module_name in ('crate', 'super', 'self'):
+            return False
 
         # Check default external patterns
         for pattern in self.default_external_patterns:
             if re.match(pattern, module_name):
                 return True
 
-        # Heuristics for local imports
-        if self._is_local_import(module_name, project_root):
-            return False
-
-        # If starts with 'crate::', it's local
-        if module_name.startswith('crate::'):
-            return False
-
-        # If starts with 'super::' or 'self::', it's local
-        if module_name.startswith(('super::', 'self::')):
-            return False
-
-        # If we have project_root, check Cargo.toml
-        if project_root:
-            cargo_toml = project_root / "Cargo.toml"
-            if cargo_toml.exists():
-                try:
-                    content = cargo_toml.read_text(encoding='utf-8')
-                    # Check if module name matches package name
-                    for line in content.split('\n'):
-                        if line.strip().startswith('name ='):
-                            package_name = line.split('=')[1].strip().strip('"\'')
-                            # Replace hyphens with underscores (Rust convention)
-                            package_name = package_name.replace('-', '_')
-                            if module_name.startswith(package_name):
-                                return False  # It's our local project package
-                except Exception:
-                    pass
-
-        # Single identifier without :: is likely external crate
+        # Single identifier without :: - likely external crate
         if '::' not in module_name:
             return True
 
-        # Default to external for unknown packages
-        return True
-
-    @staticmethod
-    def _is_local_import(module_name: str, project_root: Optional[Path] = None) -> bool:
-        """Check if import looks like a local/project import."""
-        # Relative imports - check both with :: and exact match
-        if module_name.startswith(('crate::', 'super::', 'self::')):
-            return True
-
-        # Exact match for bare keywords (for nested imports like "use crate::{...}")
-        if module_name in ('crate', 'super', 'self'):
-            return True
-
-        # Test/example project patterns
-        if module_name.startswith('myproject::'):
-            return True
-
-        # Common local patterns
-        if '::' in module_name:
-            parts = module_name.split('::')
-            # Internal modules
-            if 'internal' in parts or 'private' in parts:
-                return True
-
+        # Default: assume local
         return False
 
 

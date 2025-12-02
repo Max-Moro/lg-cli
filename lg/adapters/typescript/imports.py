@@ -49,80 +49,31 @@ class TypeScriptImportClassifier(ImportClassifier):
     def is_external(self, module_name: str, project_root: Optional[Path] = None) -> bool:
         """Determine if a TS/JS module is external or local."""
         import re
-        
+
         # Check user-defined patterns first
         for pattern in self.external_patterns:
             if re.match(pattern, module_name):
                 return True
-        
+
         # Check if it's a Node.js built-in module
         base_module = module_name.split('/')[0]
         if base_module in self.nodejs_builtins:
             return True
-        
-        # Heuristics for local imports
-        if self._is_local_import(module_name):
+
+        # Relative imports are always local
+        if module_name.startswith('.'):
             return False
-        
+
+        # Scoped packages are external
+        if module_name.startswith('@'):
+            return True
+
         # Check default external patterns
         for pattern in self.default_external_patterns:
             if re.match(pattern, module_name):
                 return True
-        
-        # If we can't determine, assume external for unknown packages
-        return not self._looks_like_local(module_name)
-    
-    @staticmethod
-    def _is_local_import(module_name: str) -> bool:
-        """Check if import looks like a local/relative import."""
-        import re
-        
-        # Relative imports
-        if module_name.startswith('.'):
-            return True
-        
-        # Common local patterns (both dot and slash notation)
-        local_patterns = [
-            r'^src[/.]',
-            r'^lib[/.]',
-            r'^utils[/.]',
-            r'^components[/.]',
-            r'^pages[/.]',
-            r'^services[/.]',
-            r'^models[/.]',
-            r'^config[/.]',
-            r'^tests?[/.]',
-            r'^app[/.]',
-            r'^internal[/.]',
-        ]
-        
-        for pattern in local_patterns:
-            if re.match(pattern, module_name):
-                return True
-        
-        # Also check exact matches for common local directories
-        if module_name in ['src', 'lib', 'utils', 'components', 'services', 'models', 'app']:
-            return True
-        
-        return False
-    
-    @staticmethod
-    def _looks_like_local(module_name: str) -> bool:
-        """Heuristics to identify local modules."""
-        # Contains uppercase (PascalCase, common in local modules)
-        if any(c.isupper() for c in module_name):
-            return True
-        
-        # Multiple slashes often indicate deep local structure
-        if module_name.count('/') >= 2:
-            return True
-        
-        # Common local module patterns
-        local_indicators = ['app', 'src', 'lib', 'utils', 'components', 'services']
-        for indicator in local_indicators:
-            if module_name.startswith(indicator + '/') or module_name == indicator:
-                return True
-        
+
+        # Default: assume local
         return False
 
 
