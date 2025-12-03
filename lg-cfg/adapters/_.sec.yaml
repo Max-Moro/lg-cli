@@ -95,6 +95,8 @@ src:
                     allow: ["/imports.py"]
                   - condition: "TAGSET:adapters-optimizations:public-api"
                     allow: ["/code_analysis.py"]
+                  - condition: "TAGSET:adapters-optimizations:literals"
+                    allow: ["/literals.py"]
               typescript:
                 mode: allow
                 allow:
@@ -109,6 +111,8 @@ src:
                     allow: ["/imports.py"]
                   - condition: "TAGSET:adapters-optimizations:public-api"
                     allow: ["/code_analysis.py"]
+                  - condition: "TAGSET:adapters-optimizations:literals"
+                    allow: ["/literals.py"]
               kotlin:
                 mode: allow
                 allow:
@@ -122,6 +126,8 @@ src:
                     allow: ["/imports.py"]
                   - condition: "TAGSET:adapters-optimizations:public-api"
                     allow: ["/code_analysis.py"]
+                  - condition: "TAGSET:adapters-optimizations:literals"
+                    allow: ["/literals.py"]
               javascript:
                 mode: allow
                 allow:
@@ -135,6 +141,8 @@ src:
                     allow: ["/imports.py"]
                   - condition: "TAGSET:adapters-optimizations:public-api"
                     allow: ["/code_analysis.py"]
+                  - condition: "TAGSET:adapters-optimizations:literals"
+                    allow: ["/literals.py"]
               java:
                 mode: allow
                 allow:
@@ -148,6 +156,8 @@ src:
                     allow: ["/imports.py"]
                   - condition: "TAGSET:adapters-optimizations:public-api"
                     allow: ["/code_analysis.py"]
+                  - condition: "TAGSET:adapters-optimizations:literals"
+                    allow: ["/literals.py"]
               c:
                 mode: allow
                 allow:
@@ -161,6 +171,8 @@ src:
                     allow: ["/imports.py"]
                   - condition: "TAGSET:adapters-optimizations:public-api"
                     allow: ["/code_analysis.py"]
+                  - condition: "TAGSET:adapters-optimizations:literals"
+                    allow: ["/literals.py"]
               cpp:
                 mode: allow
                 allow:
@@ -174,6 +186,8 @@ src:
                     allow: ["/imports.py"]
                   - condition: "TAGSET:adapters-optimizations:public-api"
                     allow: ["/code_analysis.py"]
+                  - condition: "TAGSET:adapters-optimizations:literals"
+                    allow: ["/literals.py"]
               go:
                 mode: allow
                 allow:
@@ -187,6 +201,8 @@ src:
                     allow: ["/imports.py"]
                   - condition: "TAGSET:adapters-optimizations:public-api"
                     allow: ["/code_analysis.py"]
+                  - condition: "TAGSET:adapters-optimizations:literals"
+                    allow: ["/literals.py"]
               rust:
                 mode: allow
                 allow:
@@ -200,6 +216,8 @@ src:
                     allow: ["/imports.py"]
                   - condition: "TAGSET:adapters-optimizations:public-api"
                     allow: ["/code_analysis.py"]
+                  - condition: "TAGSET:adapters-optimizations:literals"
+                    allow: ["/literals.py"]
               scala:
                 mode: allow
                 allow:
@@ -213,6 +231,8 @@ src:
                     allow: ["/imports.py"]
                   - condition: "TAGSET:adapters-optimizations:public-api"
                     allow: ["/code_analysis.py"]
+                  - condition: "TAGSET:adapters-optimizations:literals"
+                    allow: ["/literals.py"]
 
 tests:
   extensions: [".py", ".ts", ".kt", ".js", ".java", ".go", ".rs", ".scala",
