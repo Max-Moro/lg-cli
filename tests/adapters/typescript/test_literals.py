@@ -19,7 +19,7 @@ class TestTypeScriptLiteralOptimizationGolden:
 
         result, meta = adapter.process(lctx(do_literals))
 
-        assert meta.get("typescript.removed.literal", 0) == 40
+        assert meta.get("typescript.removed.literal", 0) == 30
 
         assert_golden_match(result, "literals", "max_tokens_10")
 

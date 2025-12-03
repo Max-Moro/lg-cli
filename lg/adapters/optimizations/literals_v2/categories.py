@@ -75,6 +75,15 @@ class LiteralPattern:
     # Used for "literal {name}" comments
     comment_name: Optional[str] = None
 
+    # String interpolation markers for safe truncation
+    # List of (prefix, opening, closing) tuples:
+    #   ("$", "{", "}") - JS/TS/Kotlin ${...}
+    #   ("$", "", "")   - Kotlin/Scala $identifier
+    #   ("#", "{", "}") - Ruby #{...}
+    #   ("", "{", "}")  - Rust/Python {...}
+    # Empty list means no interpolation (safe to cut anywhere)
+    interpolation_markers: List[tuple] = field(default_factory=list)
+
     def get_opening(self, text: str) -> str:
         """Get opening delimiter for given text."""
         if callable(self.opening):

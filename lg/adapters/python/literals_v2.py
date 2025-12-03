@@ -79,6 +79,9 @@ PYTHON_STRING = LiteralPattern(
     closing=_detect_string_closing,
     placeholder_position=PlaceholderPosition.INLINE,
     placeholder_template="…",
+    # f-strings use {...} for interpolation
+    # Apply to all strings - safe even for non-f-strings
+    interpolation_markers=[("", "{", "}")],
 )
 
 PYTHON_LIST = LiteralPattern(

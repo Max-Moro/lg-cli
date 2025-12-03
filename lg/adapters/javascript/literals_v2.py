@@ -72,6 +72,8 @@ JS_TEMPLATE_STRING = LiteralPattern(
     preserve_whitespace=True,
     # Higher priority to match before generic string
     priority=10,
+    # Template strings support ${...} interpolation
+    interpolation_markers=[("$", "{", "}")],
 )
 
 JS_REGEX = LiteralPattern(

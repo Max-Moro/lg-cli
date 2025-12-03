@@ -101,52 +101,52 @@ class TestLiteralCommentContext:
         assert '/* ' not in result  # Should not use block comment
     
     def test_literal_with_closing_brackets(self):
-        """Test literal with closing brackets (array/object) - should place comment after brackets."""
+        """Test literal with closing brackets (array/object) - should place comment after semicolon."""
         code = '''this.allowedExtensions = new Set([
     '.js', '.ts', '.jsx', '.tsx', '.vue', '.svelte',
     '.py', '.java', '.c', '.cpp', '.cs', '.go', '.rs'
 ]);'''
-        
+
         cfg = TypeScriptCfg()
         cfg.literals.max_tokens = 5  # Force trimming
         adapter = make_adapter(cfg)
-        
+
         result, _ = adapter.process(self._make_context(code))
-        
-        # Should place comment after closing brackets
-        assert ']) // literal array' in result
+
+        # Should place comment after semicolon (context-aware)
+        assert ']); // literal array' in result
         assert 'literal array' in result
         assert '/* ' not in result  # Should not use block comment
     
     def test_multiple_statements_same_line(self):
-        """Test literal in complex single-line statement - should place comment after semicolon with single-line comment."""
+        """Test literal in complex single-line statement - should use block comment when code follows."""
         code = 'let a = "very long string that needs trimming", b = 42, c = true;'
-        
+
         cfg = TypeScriptCfg()
         cfg.literals.max_tokens = 5  # Force trimming
         adapter = make_adapter(cfg)
-        
+
         result, _ = adapter.process(self._make_context(code))
-        
-        # Should place comment after semicolon with single-line comment since no code follows
-        assert '; // literal string' in result
+
+        # Should use block comment since code follows after literal (", b = 42, c = true")
+        assert '/* literal string' in result
         assert 'literal string' in result
-        assert '/* ' not in result  # Should not use block comment
-    
+        assert 'b = 42' in result  # Code preserved after comment
+
     def test_literal_in_function_call(self):
-        """Test literal inside function call - should place comment after semicolon with single-line comment."""
+        """Test literal inside function call - should use block comment when code follows."""
         code = 'console.log("this is a very long message that should be trimmed", otherParam);'
-        
+
         cfg = TypeScriptCfg()
         cfg.literals.max_tokens = 5  # Force trimming
         adapter = make_adapter(cfg)
-        
+
         result, _ = adapter.process(self._make_context(code))
-        
-        # Should place comment after semicolon with single-line comment since no code follows
-        assert '; // literal string' in result
+
+        # Should use block comment since code follows after literal (", otherParam")
+        assert '/* literal string' in result
         assert 'literal string' in result
-        assert '/* ' not in result  # Should not use block comment
+        assert 'otherParam' in result  # Code preserved after comment
     
     def _make_context(self, code: str):
         """Helper to create LightweightContext for testing."""
