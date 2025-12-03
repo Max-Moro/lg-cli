@@ -37,6 +37,7 @@ class LanguageLiteralHandler:
 
     def __init__(
         self,
+        language: str,
         descriptor: LanguageLiteralDescriptor,
         tokenizer: TokenService,
         comment_style: tuple[str, tuple[str, str]] = ("//", ("/*", "*/")),
@@ -50,7 +51,7 @@ class LanguageLiteralHandler:
             comment_style: Comment syntax for this language
         """
         self.descriptor = descriptor
-        self.language = descriptor.language
+        self.language = language
         self.tokenizer = tokenizer
 
         # Store comment style for context-aware formatting

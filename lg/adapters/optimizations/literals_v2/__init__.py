@@ -17,7 +17,7 @@ from .selector import BudgetSelector, Selection
 from .formatter import ResultFormatter, FormattedResult
 from .descriptor import LanguageLiteralDescriptor
 from .handler import LanguageLiteralHandler
-from .core import LiteralOptimizerV2, create_optimizer
+from .core import LiteralOptimizerV2
 
 __all__ = [
     # Categories and types
@@ -41,5 +41,4 @@ __all__ = [
     "LanguageLiteralHandler",
     # Main optimizer
     "LiteralOptimizerV2",
-    "create_optimizer",
 ]

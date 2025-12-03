@@ -119,19 +119,11 @@ def create_javascript_descriptor() -> LanguageLiteralDescriptor:
         Configured LanguageLiteralDescriptor for JavaScript
     """
     return LanguageLiteralDescriptor(
-        language="javascript",
         patterns=[
             JS_TEMPLATE_STRING,  # Higher priority - check first
             JS_STRING,
             JS_REGEX,
             JS_ARRAY,
             JS_OBJECT,
-        ],
-        preserve_comments=True,
-        respect_strings=True,
-        min_literal_tokens=20,
+        ]
     )
-
-
-# Convenience: pre-built descriptor instance
-JAVASCRIPT_DESCRIPTOR = create_javascript_descriptor()

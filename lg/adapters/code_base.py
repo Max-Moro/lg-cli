@@ -6,7 +6,7 @@ Provides common functionality for code processing and optimization orchestration
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from typing import Dict, List, Tuple, TypeVar, Optional, cast
+from typing import Dict, List, Tuple, Any, TypeVar, Optional, cast
 
 from .base import BaseAdapter
 from .code_analysis import CodeAnalyzer
@@ -21,6 +21,7 @@ from .optimizations import (
     TreeSitterImportAnalyzer,
     ImportClassifier
 )
+from .optimizations.literals_v2 import LanguageLiteralDescriptor
 from .tree_sitter_support import TreeSitterDocument, Node
 
 C = TypeVar("C", bound=CodeCfg)
@@ -50,6 +51,18 @@ class CodeAdapter(BaseAdapter[C], ABC):
     def create_code_analyzer(self, doc: TreeSitterDocument) -> CodeAnalyzer:
         """Create language-specific unified code analyzer."""
         pass
+
+    def create_literal_descriptor(self) -> LanguageLiteralDescriptor:
+        """
+        Create language-specific literal descriptor for v2 optimizer.
+
+        Override in language adapters that support literal optimization v2.
+        Returns None for languages not yet migrated to v2.
+
+        Returns:
+            LanguageLiteralDescriptor or None
+        """
+        return None
 
     # ============= HOOKS for injecting into optimization process ===========
 
@@ -139,8 +152,8 @@ class CodeAdapter(BaseAdapter[C], ABC):
         import_optimizer.apply(context)
 
         # Process literals
-        literal_optimizer = LiteralOptimizer(self.tokenizer)
-        literal_optimizer.apply(context, self)
+        literal_optimizer = LiteralOptimizer(code_cfg.literals, self)
+        literal_optimizer.apply(context)
 
     def _finalize_placeholders(self, context: ProcessingContext, ph_cfg: PlaceholderConfig) -> Tuple[str, Dict[str, Any]]:
         """

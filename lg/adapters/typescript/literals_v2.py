@@ -43,7 +43,6 @@ def create_typescript_descriptor() -> LanguageLiteralDescriptor:
         Configured LanguageLiteralDescriptor for TypeScript
     """
     return LanguageLiteralDescriptor(
-        language="typescript",
         patterns=[
             JS_TEMPLATE_STRING,  # Higher priority - check first
             JS_STRING,
@@ -51,12 +50,5 @@ def create_typescript_descriptor() -> LanguageLiteralDescriptor:
             JS_ARRAY,
             TS_OBJECT_TYPE,  # TypeScript-specific
             JS_OBJECT,
-        ],
-        preserve_comments=True,
-        respect_strings=True,
-        min_literal_tokens=20,
+        ]
     )
-
-
-# Convenience: pre-built descriptor instance
-TYPESCRIPT_DESCRIPTOR = create_typescript_descriptor()

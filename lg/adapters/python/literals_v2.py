@@ -142,19 +142,11 @@ def create_python_descriptor() -> LanguageLiteralDescriptor:
         Configured LanguageLiteralDescriptor for Python
     """
     return LanguageLiteralDescriptor(
-        language="python",
         patterns=[
             PYTHON_STRING,
             PYTHON_LIST,
             PYTHON_TUPLE,
             PYTHON_DICT,
             PYTHON_SET,
-        ],
-        preserve_comments=True,
-        respect_strings=True,
-        min_literal_tokens=20,
+        ]
     )
-
-
-# Convenience: pre-built descriptor instance
-PYTHON_DESCRIPTOR = create_python_descriptor()

@@ -20,16 +20,9 @@ class LanguageLiteralDescriptor:
     Languages provide this descriptor to define how their literals
     should be recognized and processed.
     """
-    # Language name (e.g., "python", "typescript", "kotlin")
-    language: str
 
     # List of literal patterns in priority order
     patterns: List[LiteralPattern]
-
-    # Options for this language
-    preserve_comments: bool = True
-    respect_strings: bool = True
-    min_literal_tokens: int = 20  # Don't trim literals smaller than this
 
     def get_pattern_for(self, tree_sitter_type: str) -> LiteralPattern:
         """

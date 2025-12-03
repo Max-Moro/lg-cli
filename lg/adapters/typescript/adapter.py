@@ -14,6 +14,7 @@ from ..code_model import CodeCfg
 from ..context import LightweightContext
 from ..optimizations import ImportClassifier, TreeSitterImportAnalyzer, LiteralOptimizer
 from ..optimizations.literals import LiteralHandler
+from ..optimizations.literals_v2 import LanguageLiteralDescriptor
 from ..tree_sitter_support import TreeSitterDocument
 
 
@@ -77,6 +78,11 @@ class TypeScriptAdapter(CodeAdapter[TypeScriptCfg]):
         """Create TypeScript-specific unified code analyzer."""
         from .code_analysis import TypeScriptCodeAnalyzer
         return TypeScriptCodeAnalyzer(doc)
+
+    def create_literal_descriptor(self) -> LanguageLiteralDescriptor:
+        """Create TypeScript literal descriptor for v2 optimizer."""
+        from .literals_v2 import create_typescript_descriptor
+        return create_typescript_descriptor()
 
     def should_skip(self, lightweight_ctx: LightweightContext) -> bool:
         """

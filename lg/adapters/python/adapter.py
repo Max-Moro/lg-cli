@@ -13,6 +13,7 @@ from ..code_base import CodeAdapter
 from ..code_model import CodeCfg
 from ..context import LightweightContext
 from ..optimizations import ImportClassifier, TreeSitterImportAnalyzer, CommentOptimizer
+from ..optimizations.literals_v2 import LanguageLiteralDescriptor
 from ..tree_sitter_support import TreeSitterDocument
 
 
@@ -69,6 +70,11 @@ class PythonAdapter(CodeAdapter[PythonCfg]):
         """Create Python-specific unified code analyzer."""
         from .code_analysis import PythonCodeAnalyzer
         return PythonCodeAnalyzer(doc)
+
+    def create_literal_descriptor(self) -> LanguageLiteralDescriptor:
+        """Create Python literal descriptor for v2 optimizer."""
+        from .literals_v2 import create_python_descriptor
+        return create_python_descriptor()
 
     def should_skip(self, lightweight_ctx: LightweightContext) -> bool:
         """
