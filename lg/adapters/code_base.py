@@ -85,17 +85,6 @@ class CodeAdapter(BaseAdapter[C], ABC):
         """Hook for correctly closing multi-line comments and docstrings after truncation."""
         return root_optimizer.smart_truncate_comment(comment_text, max_tokens, tokenizer)
 
-    def hook__process_additional_literals(self, context: ProcessingContext, max_tokens: Optional[int]) -> None:
-        """
-        Hook for processing language-specific literals.
-        By default does nothing - languages can override for their constructs.
-
-        Args:
-            context: Processing context
-            max_tokens: Maximum number of tokens for literal
-        """
-        pass
-
     def hook__get_literal_handler(
         self, root_optimizer: LiteralOptimizer
     ) -> Optional[LiteralHandler]:

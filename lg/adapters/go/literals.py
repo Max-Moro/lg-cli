@@ -1,370 +1,325 @@
-"""
-Go-specific literal handling.
-Handles composite_literal properly to preserve type information.
-"""
+"""Go-specific literal handling using early hook."""
 
 from __future__ import annotations
 
+from typing import Optional
+
 from ..context import ProcessingContext
+from ..optimizations.literals import DefaultLiteralHandler
 from ..tree_sitter_support import Node
 
 
-def get_literal_value_node(composite_node: Node) -> Node | None:
+class GoLiteralHandler(DefaultLiteralHandler):
     """
-    Get literal_value child from composite_literal node.
+    Handler for Go composite literals.
 
-    Args:
-        composite_node: composite_literal node
-
-    Returns:
-        literal_value node or None
+    Uses early hook (try_process_literal) for full control.
+    Handles:
+    - Struct literals: Type{field1: value1, field2: value2} - preserves ALL field names
+    - Slice literals: []Type{elem1, elem2} - can trim elements
+    - Map literals: map[K]V{key1: val1, key2: val2} - can trim pairs
     """
-    for child in composite_node.children:
-        if child.type == "literal_value":
-            return child
-    return None
 
+    def try_process_literal(
+        self,
+        context: ProcessingContext,
+        node: Node,
+        capture_name: str,
+        literal_text: str,
+        max_tokens: int
+    ) -> Optional[str]:
+        """
+        Process Go composite literals with full control.
 
-def get_type_node(composite_node: Node) -> Node | None:
-    """
-    Get type child from composite_literal node.
+        Returns trimmed result if this is a composite_literal, None otherwise.
+        """
+        # Only process @array captures (tree-sitter marks composite literals as arrays)
+        if capture_name != "array":
+            return None
 
-    Args:
-        composite_node: composite_literal node
+        # Verify this is actually a composite_literal node
+        if node.type != "composite_literal":
+            return None
 
-    Returns:
-        Type node (slice_type, map_type, etc.) or None
-    """
-    for child in composite_node.children:
-        if child.type in ("slice_type", "map_type", "struct_type", "type_identifier", "qualified_type"):
-            return child
-    return None
+        # Get type and literal_value nodes
+        type_node = self._get_type_node(node)
+        literal_value_node = self._get_literal_value_node(node)
 
+        if not type_node or not literal_value_node:
+            return None
 
-def has_keyed_elements(literal_value_node: Node) -> bool:
-    """
-    Check if literal_value contains keyed_element nodes (struct literals).
+        # Determine if this is a struct literal vs map/slice literal
+        # Both use keyed_element, but struct has type_identifier/pointer_type, map has map_type
+        is_struct = type_node.type in ("type_identifier", "pointer_type", "struct_type", "qualified_type")
 
-    Args:
-        literal_value_node: literal_value node
-
-    Returns:
-        True if contains keyed_element (struct literal), False otherwise (slice/map)
-    """
-    for child in literal_value_node.children:
-        if child.type == "keyed_element":
-            return True
-    return False
-
-
-def process_go_composite_literal(
-    context: ProcessingContext,
-    composite_node: Node,
-    max_tokens: int
-) -> None:
-    """
-    Process Go composite_literal properly.
-
-    Only processes the literal_value part, preserving type information.
-
-    Args:
-        context: Processing context
-        composite_node: composite_literal node
-        max_tokens: Maximum number of tokens
-    """
-    # Get full composite text
-    full_text = context.doc.get_node_text(composite_node)
-    token_count = context.tokenizer.count_text(full_text)
-
-    # If does not exceed limit - skip
-    if token_count <= max_tokens:
-        return
-
-    # Get type and literal_value nodes
-    type_node = get_type_node(composite_node)
-    literal_value_node = get_literal_value_node(composite_node)
-
-    if not type_node or not literal_value_node:
-        return
-
-    # Determine if this is a struct literal (has keyed_element)
-    is_struct_literal = has_keyed_elements(literal_value_node)
-
-    # Get texts
-    type_text = context.doc.get_node_text(type_node)
-    literal_value_text = context.doc.get_node_text(literal_value_node)
-
-    # Determine if this is multiline
-    is_multiline = '\n' in literal_value_text
-
-    # Parse elements from literal_value (skip opening and closing braces)
-    inner_content = literal_value_text.strip()
-    if inner_content.startswith('{') and inner_content.endswith('}'):
-        inner_content = inner_content[1:-1].strip()
-
-    # Parse elements
-    elements = _parse_elements(inner_content)
-
-    if not elements:
-        return
-
-    # Calculate budget
-    overhead = context.tokenizer.count_text(f'{type_text}{{"…"}}')
-    content_budget = max(10, max_tokens - overhead)
-
-    # Select elements that fit
-    included_elements = []
-    current_tokens = 0
-
-    for elem in elements:
-        elem_tokens = context.tokenizer.count_text(elem + ", ")
-
-        if current_tokens + elem_tokens <= content_budget:
-            included_elements.append(elem)
-            current_tokens += elem_tokens
+        if is_struct:
+            return self._trim_struct_literal(context, node, type_node, literal_value_node, max_tokens)
         else:
-            break
+            # Map or slice literal - can trim elements
+            return self._trim_collection_literal(context, node, type_node, literal_value_node, max_tokens)
 
-    # Build replacement
-    replacement = ""
-    if is_struct_literal:
-        # For struct literals, DON'T add placeholder element - just truncate
-        # Struct literals need field names, can't use "…" placeholder
-        if not included_elements:
-            # No elements fit - try to include first element even if over budget
-            if elements:
-                first_elem = elements[0]
-                # Include first element regardless of budget
-                included_elements = [first_elem]
+    def _trim_struct_literal(
+        self,
+        context: ProcessingContext,
+        node: Node,
+        type_node: Node,
+        literal_value_node: Node,
+        max_tokens: int
+    ) -> str:
+        """
+        Trim Go struct literals while preserving ALL field names.
+
+        CRITICAL: Struct initialization requires all fields or explicit zero values.
+        We preserve field names and trim only their values.
+        """
+        type_text = context.doc.get_node_text(type_node)
+        literal_value_text = context.doc.get_node_text(literal_value_node)
+        is_multiline = '\n' in literal_value_text
+
+        # Parse keyed elements (field: value pairs)
+        keyed_elements = self._get_keyed_elements(literal_value_node, context)
+
+        if not keyed_elements:
+            # Empty struct
+            return f"{type_text}{{}}"
+
+        # Reserve space for struct wrapper
+        overhead = context.tokenizer.count_text(f"{type_text}{{}}")
+        content_budget = max(10, max_tokens - overhead)
+
+        # Process fields with budget-aware accumulation
+        # For struct literals: ALWAYS preserve all field names (critical for Go semantics)
+        processed_fields = []
+        accumulated_tokens = 0
+
+        for field_name, field_value in keyed_elements:
+            # Calculate tokens for this field (include comma and space for multiline)
+            field_text = f"{field_name}: {field_value}"
+            field_with_separator = field_text + ", "
+            field_tokens = context.tokenizer.count_text(field_with_separator)
+
+            if accumulated_tokens + field_tokens <= content_budget:
+                # Field fits completely within budget
+                processed_fields.append(field_text)
+                accumulated_tokens += field_tokens
             else:
-                # Truly empty - show empty body
-                if is_multiline:
-                    base_indent = _get_line_indent_at_position(context.raw_text, composite_node.start_byte)
-                    replacement = f'{type_text}{{\n{base_indent}}}'
-                else:
-                    replacement = f'{type_text}{{}}'
-                # Apply and return early
-                start_char, end_char = context.doc.get_node_range(composite_node)
-                context.editor.add_replacement(start_char, end_char, replacement, edit_type="literal_trimmed")
-                _add_savings_comment(context, composite_node, full_text, replacement)
-                context.metrics.mark_element_removed("literal")
-                context.metrics.add_chars_saved(len(full_text) - len(replacement))
-                return
+                # Field doesn't fit - use placeholder value
+                # IMPORTANT: For Go structs, we MUST include all fields to preserve structure
+                placeholder = self._get_field_placeholder(field_value)
+                placeholder_text = f"{field_name}: {placeholder}"
+                processed_fields.append(placeholder_text)
 
-        if included_elements:
-            # Show included elements without placeholder
-            if is_multiline:
-                base_indent = _get_line_indent_at_position(context.raw_text, composite_node.start_byte)
-                element_indent = base_indent + "\t"
+                # Update accumulated tokens (may exceed budget, but structure is more important)
+                placeholder_with_separator = placeholder_text + ", "
+                accumulated_tokens += context.tokenizer.count_text(placeholder_with_separator)
 
-                result_lines = [f'{type_text}{{']
-                for elem in included_elements:
-                    # Ensure comma
-                    if not elem.strip().endswith(','):
-                        elem = elem + ','
-                    result_lines.append(f'{element_indent}{elem}')
-                result_lines.append(f'{base_indent}}}')
-                replacement = '\n'.join(result_lines)
-            else:
-                joined = ", ".join(included_elements)
-                replacement = f'{type_text}{{{joined}}}'
-    else:
-        # For slice/map literals, add "…" placeholder element
-        if not included_elements:
-            # No elements fit - try to include first element even if over budget
-            if elements:
-                first_elem = elements[0]
-                # Include first element regardless of budget
-                included_elements = [first_elem]
-            else:
-                # Truly empty - show only placeholder
-                if is_multiline:
-                    base_indent = _get_line_indent_at_position(context.raw_text, composite_node.start_byte)
-                    element_indent = base_indent + "\t"
-                    replacement = f'{type_text}{{\n{element_indent}"…",\n{base_indent}}}'
-                else:
-                    replacement = f'{type_text}{{"…"}}'
-                # Apply and return early
-                start_char, end_char = context.doc.get_node_range(composite_node)
-                context.editor.add_replacement(start_char, end_char, replacement, edit_type="literal_trimmed")
-                _add_savings_comment(context, composite_node, full_text, replacement)
-                context.metrics.mark_element_removed("literal")
-                context.metrics.add_chars_saved(len(full_text) - len(replacement))
-                return
+        # Format result
+        if is_multiline:
+            base_indent = self._get_line_indent(context.raw_text, node.start_byte)
+            element_indent = base_indent + "\t"
 
-        if included_elements:
-            # Included elements + placeholder
-            if is_multiline:
-                base_indent = _get_line_indent_at_position(context.raw_text, composite_node.start_byte)
-                element_indent = base_indent + "\t"
-
-                result_lines = [f'{type_text}{{']
-                for elem in included_elements:
-                    # Ensure comma
-                    if not elem.strip().endswith(','):
-                        elem = elem + ','
-                    result_lines.append(f'{element_indent}{elem}')
-                result_lines.append(f'{element_indent}"…",')
-                result_lines.append(f'{base_indent}}}')
-                replacement = '\n'.join(result_lines)
-            else:
-                joined = ", ".join(included_elements)
-                replacement = f'{type_text}{{{joined}, "…"}}'
-
-    # Apply replacement
-    start_char, end_char = context.doc.get_node_range(composite_node)
-    context.editor.add_replacement(
-        start_char, end_char, replacement,
-        edit_type="literal_trimmed"
-    )
-
-    # Add savings comment
-    _add_savings_comment(context, composite_node, full_text, replacement)
-
-    # Update metrics
-    context.metrics.mark_element_removed("literal")
-    context.metrics.add_chars_saved(len(full_text) - len(replacement))
-
-
-def _parse_elements(content: str) -> list[str]:
-    """
-    Parse elements from literal content.
-    Simple comma-separated parsing with nesting awareness.
-    """
-    if not content.strip():
-        return []
-
-    elements = []
-    current_element = ""
-    depth = 0
-    in_string = False
-    string_char = None
-
-    i = 0
-    while i < len(content):
-        char = content[i]
-
-        # Handle strings
-        if char in ('"', '`') and not in_string:
-            in_string = True
-            string_char = char
-            current_element += char
-        elif char == string_char and in_string:
-            # Check for escaping
-            if i > 0 and content[i-1] != '\\':
-                in_string = False
-                string_char = None
-            current_element += char
-        elif in_string:
-            current_element += char
-        # Handle nesting outside strings
-        elif char in ('{', '[', '('):
-            depth += 1
-            current_element += char
-        elif char in ('}', ']', ')'):
-            depth -= 1
-            current_element += char
-        elif char == ',' and depth == 0:
-            # Found top-level separator
-            if current_element.strip():
-                elements.append(current_element.strip())
-            current_element = ""
+            result_lines = [f"{type_text}{{"]
+            for field in processed_fields:
+                if not field.endswith(','):
+                    field = field + ','
+                result_lines.append(f"{element_indent}{field}")
+            result_lines.append(f"{base_indent}}}")
+            return '\n'.join(result_lines)
         else:
-            current_element += char
+            joined = ", ".join(processed_fields)
+            return f"{type_text}{{{joined}}}"
 
-        i += 1
+    def _trim_collection_literal(
+        self,
+        context: ProcessingContext,
+        node: Node,
+        type_node: Node,
+        literal_value_node: Node,
+        max_tokens: int
+    ) -> str:
+        """Trim Go slice/map literals (can remove elements)."""
+        type_text = context.doc.get_node_text(type_node)
+        literal_value_text = context.doc.get_node_text(literal_value_node)
+        is_multiline = '\n' in literal_value_text
 
-    # Add last element
-    if current_element.strip():
-        elements.append(current_element.strip())
+        # Parse elements
+        inner_content = literal_value_text.strip()
+        if inner_content.startswith('{') and inner_content.endswith('}'):
+            inner_content = inner_content[1:-1].strip()
 
-    return elements
+        elements = self._parse_elements(inner_content)
 
+        if not elements:
+            return f'{type_text}{{"…"}}'
 
-def _get_line_indent_at_position(text: str, byte_pos: int) -> str:
-    """Get indentation of line where byte position is located."""
-    line_start = text.rfind('\n', 0, byte_pos)
-    if line_start == -1:
-        line_start = 0
-    else:
-        line_start += 1
+        # Reserve space
+        overhead = context.tokenizer.count_text(f'{type_text}{{"…"}}')
+        content_budget = max(10, max_tokens - overhead)
 
-    indent = ""
-    for i in range(line_start, len(text)):
-        if text[i] in ' \t':
-            indent += text[i]
+        # Select elements within budget
+        included = []
+        current_tokens = 0
+
+        for elem in elements:
+            elem_tokens = context.tokenizer.count_text(elem + ", ")
+            if current_tokens + elem_tokens <= content_budget:
+                included.append(elem)
+                current_tokens += elem_tokens
+            else:
+                break
+
+        if not included:
+            # No elements fit - show only placeholder
+            return f'{type_text}{{"…"}}'
+
+        # Check if we included all elements (no trimming needed)
+        all_included = len(included) == len(elements)
+
+        # Format result
+        if is_multiline:
+            base_indent = self._get_line_indent(context.raw_text, node.start_byte)
+            element_indent = base_indent + "\t"
+
+            result_lines = [f"{type_text}{{"]
+            for elem in included:
+                if not elem.endswith(','):
+                    elem = elem + ','
+                result_lines.append(f"{element_indent}{elem}")
+
+            # Add comment placeholder if content was trimmed
+            if not all_included:
+                result_lines.append(f"{element_indent}// …")
+
+            result_lines.append(f"{base_indent}}}")
+            return '\n'.join(result_lines)
         else:
-            break
+            joined = ", ".join(included)
+            # Add comment placeholder if content was trimmed
+            if not all_included:
+                return f'{type_text}{{{joined}, /* … */}}'
+            else:
+                return f'{type_text}{{{joined}}}'
 
-    return indent
+    def _get_field_placeholder(self, field_value: str) -> str:
+        """Determine appropriate placeholder for field value based on its type."""
+        value = field_value.strip()
 
+        # Map literal
+        if value.startswith('map['):
+            return 'map[string]interface{}{"…": "…"}'
 
-def _add_savings_comment(
-    context: ProcessingContext,
-    node: Node,
-    original_text: str,
-    replacement: str
-) -> None:
-    """Add token savings comment after literal."""
+        # Slice literal
+        if value.startswith('[]'):
+            return '[]string{"…"}'
 
-    original_tokens = context.tokenizer.count_text(original_text)
-    replacement_tokens = context.tokenizer.count_text(replacement)
-    saved_tokens = original_tokens - replacement_tokens
+        # Numeric
+        if value.isdigit() or (value.startswith('-') and value[1:].isdigit()):
+            return '0'
 
-    if saved_tokens <= 0:
-        return
+        # Boolean
+        if value in ('true', 'false'):
+            return 'false'
 
-    comment_text = f" // literal array (−{saved_tokens} tokens)"
+        # Default: string
+        return '"…"'
 
-    end_char = node.end_byte
-    text_after = context.raw_text[end_char:min(end_char + 100, len(context.raw_text))]
+    def _get_keyed_elements(self, literal_value_node: Node, context: ProcessingContext) -> list[tuple[str, str]]:
+        """Extract field name and value pairs from struct literal."""
+        keyed_elements = []
 
-    insertion_offset = min(20, len(text_after))
-    for i, char in enumerate(text_after):
-        if char in ('\n', '\r'):
-            insertion_offset = i
-            break
+        for child in literal_value_node.children:
+            if child.type == "keyed_element":
+                # keyed_element structure: literal_element : literal_element
+                # First literal_element is the field name, second is the value
+                elements = [c for c in child.children if c.type == "literal_element"]
 
-    insertion_pos = end_char + insertion_offset
+                if len(elements) >= 2:
+                    field_name = context.doc.get_node_text(elements[0])
+                    field_value = context.doc.get_node_text(elements[1])
+                    keyed_elements.append((field_name, field_value))
 
-    context.editor.add_insertion(
-        insertion_pos,
-        comment_text,
-        edit_type="literal_comment"
-    )
+        return keyed_elements
 
+    def _get_type_node(self, composite_node: Node) -> Optional[Node]:
+        """Get type child from composite_literal node."""
+        for child in composite_node.children:
+            if child.type in ("slice_type", "map_type", "struct_type", "type_identifier", "qualified_type", "pointer_type"):
+                return child
+        return None
 
-def process_go_literals(context: ProcessingContext, max_tokens: int | None) -> None:
-    """
-    Process Go-specific literals (composite_literal).
+    def _get_literal_value_node(self, composite_node: Node) -> Optional[Node]:
+        """Get literal_value child from composite_literal node."""
+        for child in composite_node.children:
+            if child.type == "literal_value":
+                return child
+        return None
 
-    This method is called via hook from base LiteralOptimizer
-    to process Go-specific constructs.
+    def _has_keyed_elements(self, literal_value_node: Node) -> bool:
+        """Check if literal_value contains keyed_element nodes (struct literals)."""
+        for child in literal_value_node.children:
+            if child.type == "keyed_element":
+                return True
+        return False
 
-    Args:
-        context: Processing context
-        max_tokens: Maximum number of tokens for literal
-    """
-    if max_tokens is None:
-        return
+    def _parse_elements(self, content: str) -> list[str]:
+        """Parse elements from literal content."""
+        if not content.strip():
+            return []
 
-    # Find all composite_literal nodes
-    def find_composite_literals(node: Node):
-        """Find all composite_literal nodes recursively."""
-        literals = []
+        elements = []
+        current_element = ""
+        depth = 0
+        in_string = False
+        string_char = None
 
-        if node.type == "composite_literal":
-            literals.append(node)
+        i = 0
+        while i < len(content):
+            char = content[i]
 
-        # Recursively walk children
-        for child in node.children:
-            literals.extend(find_composite_literals(child))
+            if char in ('"', '`') and not in_string:
+                in_string = True
+                string_char = char
+                current_element += char
+            elif char == string_char and in_string:
+                if i > 0 and content[i-1] != '\\':
+                    in_string = False
+                    string_char = None
+                current_element += char
+            elif in_string:
+                current_element += char
+            elif char in ('{', '[', '('):
+                depth += 1
+                current_element += char
+            elif char in ('}', ']', ')'):
+                depth -= 1
+                current_element += char
+            elif char == ',' and depth == 0:
+                if current_element.strip():
+                    elements.append(current_element.strip())
+                current_element = ""
+            else:
+                current_element += char
 
-        return literals
+            i += 1
 
-    # Find all composite literals
-    composite_literals = find_composite_literals(context.doc.root_node)
+        if current_element.strip():
+            elements.append(current_element.strip())
 
-    # Process each literal
-    for lit_node in composite_literals:
-        process_go_composite_literal(context, lit_node, max_tokens)
+        return elements
+
+    def _get_line_indent(self, text: str, byte_pos: int) -> str:
+        """Get indentation of line where byte position is located."""
+        line_start = text.rfind('\n', 0, byte_pos)
+        if line_start == -1:
+            line_start = 0
+        else:
+            line_start += 1
+
+        indent = ""
+        for i in range(line_start, len(text)):
+            if text[i] in ' \t':
+                indent += text[i]
+            else:
+                break
+
+        return indent

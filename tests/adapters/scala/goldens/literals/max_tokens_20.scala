@@ -41,23 +41,35 @@ case class DataContainer(
 
 class LiteralDataManager {
   // Class properties with various literal types
-  private val smallConfig = Map("debug" -> true, "…") // literal array (−13 tokens)
+  private val smallConfig = Map(
+    "debug" -> true,
+    "…" -> "…") // literal array (−7 tokens)
 
-  private val largeConfig = Map("database" -> Map(
-      "host" ->, "…") // literal array (−320 tokens)
+  private val largeConfig = Map("…" -> "…") // literal array (−329 tokens)
 
-  private val supportedLanguages: List[String] = List("english", "spanish", "french", "…") // literal array (−91 tokens)
+  private val supportedLanguages: List[String] = List(
+    "english",
+    "spanish",
+    "french",
+    "…") // literal array (−86 tokens)
 
-  private val allowedExtensions: Set[String] = Set(".scala", ".sc", ".java", ".kt", "…") // literal array (−47 tokens)
+  private val allowedExtensions: Set[String] = Set(
+    ".scala",
+    ".sc",
+    ".java",
+    ".kt",
+    "…") // literal array (−41 tokens)
 
   def processData(): DataContainer = {
     // Function with various literal data
     val smallArray = List("one", "two", "three")
 
-    val largeArray = List("item_001", "item_002", "…") // literal array (−146 tokens)
+    val largeArray = List(
+      "item_001",
+      "item_002",
+      "…") // literal array (−142 tokens)
 
-    val nestedData = Map("level1" -> Map(
-        "level2" ->, "…") // literal array (−189 tokens)
+    val nestedData = Map("…" -> "…") // literal array (−200 tokens)
 
     DataContainer(
       tags = smallArray,
@@ -77,11 +89,15 @@ class LiteralDataManager {
 
 // Module-level constants with different sizes
 object SmallConstants {
-  val VALUES = Map("API_VERSION" -> "v1", "…") // literal array (−10 tokens)
+  val VALUES = Map(
+    "API_VERSION" -> "v1",
+    "…" -> "…") // literal array (−4 tokens)
 }
 
 object LargeConstants {
-  val HTTP_STATUS_CODES = Map("CONTINUE" -> 100, "…") // literal array (−402 tokens)
+  val HTTP_STATUS_CODES = Map(
+    "CONTINUE" -> 100,
+    "…" -> "…") // literal array (−396 tokens)
 
-  val ERROR_MESSAGES = Map("VALIDATION_FAILED" -> "Input validation failed. P, "…") // literal array (−117 tokens)
+  val ERROR_MESSAGES = Map("…" -> "…") // literal array (−127 tokens)
 }

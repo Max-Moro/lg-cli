@@ -11,8 +11,8 @@ from tree_sitter import Language
 
 from ..code_base import CodeAdapter
 from ..code_model import CodeCfg
-from ..context import ProcessingContext
-from ..optimizations import ImportClassifier, TreeSitterImportAnalyzer
+from ..optimizations import ImportClassifier, TreeSitterImportAnalyzer, LiteralOptimizer
+from ..optimizations.literals import LiteralHandler
 from ..tree_sitter_support import TreeSitterDocument
 
 
@@ -74,7 +74,9 @@ class KotlinAdapter(CodeAdapter[KotlinCfg]):
         from .function_bodies import remove_function_body_with_kdoc
         remove_function_body_with_kdoc(*args, **kwargs)
 
-    def hook__process_additional_literals(self, context: ProcessingContext, max_tokens: Optional[int]) -> None:
-        """Process Kotlin-specific literals (collections listOf/mapOf/setOf)."""
-        from .literals import process_kotlin_literals
-        process_kotlin_literals(context, max_tokens)
+    def hook__get_literal_handler(
+        self, root_optimizer: LiteralOptimizer
+    ) -> Optional[LiteralHandler]:
+        """Provide custom Kotlin literal handler for collection factory methods."""
+        from .literals import KotlinLiteralHandler
+        return KotlinLiteralHandler()

@@ -1,392 +1,322 @@
-"""
-Kotlin-specific literal handling.
-Includes support for collections (listOf, mapOf, setOf) and string templates.
-"""
+"""Kotlin-specific literal optimization using early hook."""
 
 from __future__ import annotations
 
+from typing import Optional
+
 from ..context import ProcessingContext
-from ..tree_sitter_support import Node, TreeSitterDocument
-
-# Kotlin collection functions that create literal data
-KOTLIN_COLLECTION_FUNCTIONS = {
-    "listOf", "mutableListOf", "arrayListOf",
-    "setOf", "mutableSetOf", "hashSetOf", "linkedSetOf",
-    "mapOf", "mutableMapOf", "hashMapOf", "linkedMapOf",
-}
+from ..optimizations.literals import DefaultLiteralHandler
+from ..tree_sitter_support import Node
 
 
-def is_collection_literal(node: Node, doc: TreeSitterDocument) -> bool:
+class KotlinLiteralHandler(DefaultLiteralHandler):
     """
-    Check if node is a Kotlin collection function call.
+    Handler for Kotlin collection factory calls.
 
-    Args:
-        node: Node to check
-        doc: Tree-sitter document
-
-    Returns:
-        True if this is a listOf/mapOf/setOf call, etc.
+    Uses early hook (try_process_literal) for full control.
+    Handles:
+    - Map(...) - "to" keyword pairs (key to value)
+    - List/Set(...) - simple element lists
     """
-    if node.type != "call_expression":
-        return False
 
-    # Look for function name (first child identifier)
-    for child in node.children:
-        if child.type == "identifier":
-            func_name = doc.get_node_text(child)
-            return func_name in KOTLIN_COLLECTION_FUNCTIONS
+    def try_process_literal(
+        self,
+        context: ProcessingContext,
+        node: Node,
+        capture_name: str,
+        literal_text: str,
+        max_tokens: int
+    ) -> Optional[str]:
+        """
+        Process Kotlin collection factory calls with full control.
 
-    return False
+        Returns trimmed result if recognized pattern, None otherwise.
+        """
+        # Only process collection captures (array, set, object)
+        if capture_name not in ("array", "set", "object"):
+            return None
 
+        stripped = literal_text.strip()
 
-def get_collection_type(node: Node, doc: TreeSitterDocument) -> str:
-    """
-    Determine collection type (list, map, set).
+        # Check for collection factory call pattern: functionName(...)
+        if not ('(' in stripped and stripped[0].islower()):
+            return None
 
-    Args:
-        node: Collection call node
-        doc: Tree-sitter document
+        # Find function name and arguments
+        paren_start = stripped.find('(')
+        function_name = stripped[:paren_start]
 
-    Returns:
-        Collection type ("list", "map", "set") or "collection"
-    """
-    for child in node.children:
-        if child.type == "identifier":
-            func_name = doc.get_node_text(child)
-            if "list" in func_name.lower():
-                return "list"
-            elif "map" in func_name.lower():
-                return "map"
-            elif "set" in func_name.lower():
-                return "set"
+        # Route to appropriate handler
+        if function_name in ("mapOf", "mutableMapOf", "hashMapOf", "linkedMapOf"):
+            return self._trim_map_factory(context, stripped, max_tokens, node)
+        elif function_name in ("listOf", "mutableListOf", "arrayListOf", "setOf", "mutableSetOf", "hashSetOf", "linkedSetOf"):
+            return self._trim_simple_factory(context, function_name, stripped, max_tokens, node)
 
-    return "collection"
+        # Not a recognized factory
+        return None
 
+    def _trim_map_factory(
+        self,
+        context: ProcessingContext,
+        node_text: str,
+        max_tokens: int,
+        node: Node
+    ) -> str:
+        """
+        Trim Kotlin Map(...) factory calls with to operators.
 
-def get_value_arguments_node(node: Node) -> Node | None:
-    """
-    Find value_arguments node in function call.
+        CRITICAL: to pairs (key to value) must be kept atomic.
+        """
+        # Extract arguments
+        paren_start = node_text.find('(')
+        paren_end = node_text.rfind(')')
 
-    Args:
-        node: call_expression node
+        if paren_start == -1 or paren_end == -1:
+            return node_text
 
-    Returns:
-        value_arguments node or None
-    """
-    for child in node.children:
-        if child.type == "value_arguments":
-            return child
-    return None
+        factory_call = node_text[:paren_start + 1]  # "mapOf("
+        closing = node_text[paren_end:]  # ")"
+        args_text = node_text[paren_start + 1:paren_end]
 
+        is_multiline = '\n' in args_text
 
-def process_kotlin_collection_literal(
-    context: ProcessingContext,
-    node: Node,
-    max_tokens: int
-) -> None:
-    """
-    Process Kotlin collection literal (listOf/mapOf/setOf).
+        # Reserve space for placeholder
+        placeholder_pair = '"…" to "…"'
+        overhead = context.tokenizer.count_text(f"{factory_call}{placeholder_pair}{closing}")
+        content_budget = max(10, max_tokens - overhead)
 
-    Apply smart content trimming while preserving structure.
+        # Parse to pairs (CRITICAL: keep key to value together)
+        pairs = self._parse_to_pairs(args_text)
 
-    Args:
-        context: Processing context
-        node: call_expression node
-        max_tokens: Maximum number of tokens
-    """
-    # Get full call text
-    full_text = context.doc.get_node_text(node)
-    token_count = context.tokenizer.count_text(full_text)
+        if not pairs:
+            return f"{factory_call}{placeholder_pair}{closing}"
 
-    # If does not exceed limit - skip
-    if token_count <= max_tokens:
-        return
+        # Select pairs within budget
+        included_pairs = self._select_within_budget(context, pairs, content_budget)
 
-    # Determine collection type
-    collection_type = get_collection_type(node, context.doc)
+        if not included_pairs:
+            # No complete pairs fit - show only placeholder
+            if is_multiline:
+                element_indent, base_indent = self._get_indentations(context, node)
+                return f"{factory_call}\n{element_indent}{placeholder_pair}\n{base_indent}{closing}"
+            else:
+                return f"{factory_call}{placeholder_pair}{closing}"
 
-    # Find arguments
-    value_args = get_value_arguments_node(node)
-    if not value_args:
-        return
-
-    # Get all value_argument nodes
-    arguments = [child for child in value_args.children if child.type == "value_argument"]
-
-    if not arguments:
-        return
-
-    # Calculate how many arguments we can keep
-    # Reserve tokens for function name, brackets and placeholder
-    func_name_text = full_text.split('(')[0]
-    overhead = context.tokenizer.count_text(func_name_text + '("…")')
-    content_budget = max(10, max_tokens - overhead)
-
-    # Determine if this is multiline call (before argument selection)
-    is_multiline = '\n' in full_text
-
-    # Select arguments that fit in budget
-    included_args = []
-    current_tokens = 0
-
-    for arg in arguments:
-        arg_text = context.doc.get_node_text(arg)
-        arg_tokens = context.tokenizer.count_text(arg_text + ", ")
-
-        if current_tokens + arg_tokens <= content_budget:
-            included_args.append(arg)
-            current_tokens += arg_tokens
-        else:
-            break
-
-    # If we cannot include any argument - use only placeholder
-    if not included_args:
-        start_char, end_char = context.doc.get_node_range(node)
-
-        # Form minimal replacement - placeholder only
+        # Format result
         if is_multiline:
-            # Multiline format
-            base_indent = _get_line_indent_at_position(context.raw_text, start_char)
-            element_indent = base_indent + "    "
-            placeholder = '"…"' if collection_type in ("list", "set") else '"…" to "…"'
-            replacement = f'{func_name_text}(\n{element_indent}{placeholder}\n{base_indent})'
+            element_indent, base_indent = self._get_indentations(context, node)
+            indented = [f"{element_indent}{pair}" for pair in included_pairs]
+            joined = ",\n".join(indented)
+            return f"{factory_call}\n{joined},\n{element_indent}{placeholder_pair}\n{base_indent}{closing}"
         else:
-            # Single-line format
-            placeholder = '"…"' if collection_type in ("list", "set") else '"…" to "…"'
-            replacement = f'{func_name_text}({placeholder})'
+            joined = ", ".join(included_pairs)
+            return f"{factory_call}{joined}, {placeholder_pair}{closing}"
 
-        context.editor.add_replacement(
-            start_char, end_char, replacement,
-            edit_type="literal_trimmed"
-        )
+    def _trim_simple_factory(
+        self,
+        context: ProcessingContext,
+        function_name: str,
+        node_text: str,
+        max_tokens: int,
+        node: Node
+    ) -> str:
+        """Trim simple collection factories (listOf, setOf, etc.)."""
+        # Extract arguments
+        paren_start = node_text.find('(')
+        paren_end = node_text.rfind(')')
 
-        _add_savings_comment(context, node, full_text, replacement, collection_type)
+        if paren_start == -1 or paren_end == -1:
+            return node_text
 
-        # Update metrics
-        context.metrics.mark_element_removed("literal")
-        context.metrics.add_chars_saved(len(full_text) - len(replacement))
-        return
+        factory_call = node_text[:paren_start + 1]  # "listOf("
+        closing = node_text[paren_end:]  # ")"
+        args_text = node_text[paren_start + 1:paren_end]
 
-    # Form replacement with included arguments and placeholder
-    start_char, end_char = context.doc.get_node_range(node)
+        is_multiline = '\n' in args_text
 
-    if is_multiline:
-        # Multiline format
-        replacement = _build_multiline_replacement(
-            context, node, func_name_text, included_args, collection_type
-        )
-    else:
-        # Single-line format
-        replacement = _build_inline_replacement(
-            context, included_args, func_name_text, collection_type
-        )
+        # Reserve space
+        placeholder = '"…"'
+        overhead = context.tokenizer.count_text(f"{factory_call}{placeholder}{closing}")
+        content_budget = max(10, max_tokens - overhead)
 
-    # Apply replacement
-    context.editor.add_replacement(
-        start_char, end_char, replacement,
-        edit_type="literal_trimmed"
-    )
+        # Parse arguments
+        args = self._parse_arguments(args_text)
 
-    # Add savings comment
-    _add_savings_comment(context, node, full_text, replacement, collection_type)
+        if not args:
+            return f"{factory_call}{placeholder}{closing}"
 
-    # Update metrics
-    context.metrics.mark_element_removed("literal")
-    context.metrics.add_chars_saved(len(full_text) - len(replacement))
+        # Select arguments within budget
+        included = self._select_within_budget(context, args, content_budget)
 
+        if not included:
+            # No complete arguments fit - show only placeholder
+            if is_multiline:
+                element_indent, base_indent = self._get_indentations(context, node)
+                return f"{factory_call}\n{element_indent}{placeholder}\n{base_indent}{closing}"
+            else:
+                return f"{factory_call}{placeholder}{closing}"
 
-def _build_inline_replacement(
-    context: ProcessingContext,
-    included_args: list[Node],
-    func_name: str,
-    collection_type: str
-) -> str:
-    """Build single-line replacement for collection."""
-    args_texts = []
-    for arg in included_args:
-        arg_text = context.doc.get_node_text(arg)
-        args_texts.append(arg_text)
-
-    # Add placeholder
-    placeholder = '"…"' if collection_type in ("list", "set") else '"…" to "…"'
-    args_texts.append(placeholder)
-
-    return f'{func_name}({", ".join(args_texts)})'
-
-
-def _build_multiline_replacement(
-    context: ProcessingContext,
-    node: Node,
-    func_name: str,
-    included_args: list[Node],
-    collection_type: str
-) -> str:
-    """Build multiline replacement for collection with proper indentation."""
-    # Base indentation (indentation of line where call starts)
-    start_byte = node.start_byte
-    base_indent = _get_line_indent_at_position(context.raw_text, start_byte)
-
-    # Element indentation (determine from first argument or add 4 spaces)
-    if included_args:
-        element_indent = _detect_element_indent(context, included_args[0])
-    else:
-        element_indent = base_indent + "    "
-
-    # Form lines
-    result_lines = [f'{func_name}(']
-
-    for i, arg in enumerate(included_args):
-        arg_text = context.doc.get_node_text(arg)
-        # Ensure each element has a comma
-        if not arg_text.strip().endswith(','):
-            arg_text = arg_text + ','
-        result_lines.append(f'{element_indent}{arg_text}')
-
-    # Add placeholder (no trailing comma - Kotlin trailing comma is optional)
-    placeholder = '"…"' if collection_type in ("list", "set") else '"…" to "…"'
-    result_lines.append(f'{element_indent}{placeholder}')
-    result_lines.append(f'{base_indent})')
-
-    return '\n'.join(result_lines)
-
-
-def _get_line_indent_at_position(text: str, byte_pos: int) -> str:
-    """
-    Get indentation of line where byte position is located.
-
-    Args:
-        text: Source text
-        byte_pos: Byte position
-
-    Returns:
-        String with indentation (spaces/tabs)
-    """
-    # Find line start
-    line_start = text.rfind('\n', 0, byte_pos)
-    if line_start == -1:
-        line_start = 0
-    else:
-        line_start += 1  # Skip the \n character itself
-
-    # Collect indentation
-    indent = ""
-    for i in range(line_start, len(text)):
-        if text[i] in ' \t':
-            indent += text[i]
+        # Format result
+        if is_multiline:
+            element_indent, base_indent = self._get_indentations(context, node)
+            indented = [f"{element_indent}{arg}" for arg in included]
+            joined = ",\n".join(indented)
+            return f"{factory_call}\n{joined},\n{element_indent}{placeholder}\n{base_indent}{closing}"
         else:
-            break
+            joined = ", ".join(included)
+            return f"{factory_call}{joined}, {placeholder}{closing}"
 
-    return indent
-
-
-def _detect_element_indent(context: ProcessingContext, arg_node: Node) -> str:
-    """Determine element indentation from argument position."""
-    return _get_line_indent_at_position(context.raw_text, arg_node.start_byte)
-
-
-def _add_savings_comment(
-    context: ProcessingContext,
-    node: Node,
-    original_text: str,
-    replacement: str,
-    collection_type: str
-) -> None:
-    """Add token savings comment after literal."""
-
-    # Calculate token savings
-    original_tokens = context.tokenizer.count_text(original_text)
-    replacement_tokens = context.tokenizer.count_text(replacement)
-    saved_tokens = original_tokens - replacement_tokens
-
-    # If no savings - don't add comment
-    if saved_tokens <= 0:
-        return
-
-    # Determine literal type for comment
-    literal_type_name = {
-        "list": "array",
-        "set": "set",
-        "map": "object",
-        "collection": "collection"
-    }.get(collection_type, "literal")
-
-    # Form comment text
-    comment_text = f" // literal {literal_type_name} (−{saved_tokens} tokens)"
-
-    # Find end of literal and place for comment insertion
-    end_char = node.end_byte
-
-    # Check what comes after literal
-    text_after = context.raw_text[end_char:min(end_char + 100, len(context.raw_text))]
-
-    # Look for end of line or semicolon
-    # If closing bracket or comma after literal, insert after it
-    for i, char in enumerate(text_after):
-        if char in ('\n', '\r'):
-            insertion_offset = i
-            break
-        elif char == ';':
-            insertion_offset = i + 1
-            break
-        elif char == ',':
-            insertion_offset = i + 1
-            break
-        elif char == ')':
-            _ = i + 1  # Continue scanning for ; or , after )
-            continue
-    else:
-        # If not found newline in first 100 characters, insert immediately
-        insertion_offset = min(20, len(text_after))
-
-    insertion_pos = end_char + insertion_offset
-
-    # Add comment
-    context.editor.add_insertion(
-        insertion_pos,
-        comment_text,
-        edit_type="literal_comment"
-    )
-
-
-def process_kotlin_literals(context: ProcessingContext, max_tokens: int | None) -> None:
-    """
-    Process Kotlin-specific literals (collections).
-
-    This method is called via hook from base LiteralOptimizer
-    to process Kotlin-specific constructs.
-
-    Args:
-        context: Processing context
-        max_tokens: Maximum number of tokens for literal
-    """
-    if max_tokens is None:
-        return
-
-    # Find all function calls, excluding nested ones
-    def find_top_level_collection_calls(node: Node, inside_collection: bool = False):
+    def _parse_to_pairs(self, args_text: str) -> list[str]:
         """
-        Find only top-level collection function calls.
-        Does not recurse inside found collections to avoid double processing.
+        Parse Kotlin Map arguments as to pairs.
+
+        CRITICAL: Each pair "key to value" is treated as atomic unit.
+        Comma separates pairs, not individual elements.
         """
-        calls = []
+        if not args_text.strip():
+            return []
 
-        # If this is a collection
-        if is_collection_literal(node, context.doc):
-            # If we are NOT inside another collection - add it
-            if not inside_collection:
-                calls.append(node)
-                # Now mark that we are inside collection for children
-                inside_collection = True
+        pairs = []
+        current_pair = ""
+        depth = 0
+        in_string = False
+        string_char = None
 
-        # Recursively walk children
-        for child in node.children:
-            calls.extend(find_top_level_collection_calls(child, inside_collection))
+        for i, char in enumerate(args_text):
+            # Handle strings
+            if char in ('"', "'") and not in_string:
+                in_string = True
+                string_char = char
+                current_pair += char
+            elif char == string_char and in_string:
+                if i > 0 and args_text[i-1] != '\\':
+                    in_string = False
+                    string_char = None
+                current_pair += char
+            elif in_string:
+                current_pair += char
+            # Handle nesting outside strings
+            elif char in ('(', '[', '{'):
+                depth += 1
+                current_pair += char
+            elif char in (')', ']', '}'):
+                depth -= 1
+                current_pair += char
+            elif char == ',' and depth == 0:
+                # Found pair separator
+                stripped_pair = current_pair.strip()
+                # Validate that pair contains to operator
+                if stripped_pair and ' to ' in stripped_pair:
+                    pairs.append(stripped_pair)
+                elif stripped_pair:
+                    # Not a valid to pair - might be malformed
+                    # Include anyway to preserve structure
+                    pairs.append(stripped_pair)
+                current_pair = ""
+            else:
+                current_pair += char
 
-        return calls
+        # Add last pair
+        stripped_pair = current_pair.strip()
+        if stripped_pair and ' to ' in stripped_pair:
+            pairs.append(stripped_pair)
+        elif stripped_pair:
+            pairs.append(stripped_pair)
 
-    # Find only top-level collection literals
-    collection_calls = find_top_level_collection_calls(context.doc.root_node)
+        return pairs
 
-    # Process each call
-    for call_node in collection_calls:
-        process_kotlin_collection_literal(context, call_node, max_tokens)
+    def _parse_arguments(self, args_text: str) -> list[str]:
+        """Parse simple argument list (for listOf, setOf, etc.)."""
+        if not args_text.strip():
+            return []
+
+        arguments = []
+        current_arg = ""
+        depth = 0
+        in_string = False
+        string_char = None
+
+        for i, char in enumerate(args_text):
+            if char in ('"', "'") and not in_string:
+                in_string = True
+                string_char = char
+                current_arg += char
+            elif char == string_char and in_string:
+                if i > 0 and args_text[i-1] != '\\':
+                    in_string = False
+                    string_char = None
+                current_arg += char
+            elif in_string:
+                current_arg += char
+            elif char in ('(', '[', '{'):
+                depth += 1
+                current_arg += char
+            elif char in (')', ']', '}'):
+                depth -= 1
+                current_arg += char
+            elif char == ',' and depth == 0:
+                if current_arg.strip():
+                    arguments.append(current_arg.strip())
+                current_arg = ""
+            else:
+                current_arg += char
+
+        if current_arg.strip():
+            arguments.append(current_arg.strip())
+
+        return arguments
+
+    def _select_within_budget(
+        self,
+        context: ProcessingContext,
+        elements: list[str],
+        budget: int
+    ) -> list[str]:
+        """Select elements that fit within token budget."""
+        included = []
+        current_tokens = 0
+
+        for elem in elements:
+            elem_tokens = context.tokenizer.count_text(elem + ", ")
+            if current_tokens + elem_tokens <= budget:
+                included.append(elem)
+                current_tokens += elem_tokens
+            else:
+                break
+
+        return included
+
+    def _get_indentations(self, context: ProcessingContext, node: Node) -> tuple[str, str]:
+        """Determine element and base indentation from node."""
+        full_text = context.doc.get_node_text(node)
+        start_char = node.start_byte
+
+        # Base indent
+        start_line = context.doc.get_line_number(start_char)
+        lines = context.raw_text.split('\n')
+        base_indent = ""
+        if start_line < len(lines):
+            line = lines[start_line]
+            for char in line:
+                if char in ' \t':
+                    base_indent += char
+                else:
+                    break
+
+        # Element indent (from first element or default)
+        element_indent = base_indent + "    "  # Kotlin convention: 4 spaces
+        full_lines = full_text.split('\n')
+        if len(full_lines) > 1:
+            for line in full_lines[1:]:
+                if line.strip() and not line.strip().startswith(')'):
+                    detected_indent = ""
+                    for char in line:
+                        if char in ' \t':
+                            detected_indent += char
+                        else:
+                            break
+                    if detected_indent:
+                        element_indent = detected_indent
+                        break
+
+        return element_indent, base_indent

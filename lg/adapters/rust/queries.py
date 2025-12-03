@@ -187,6 +187,22 @@ QUERIES = {
     (array_expression) @array
 
     (tuple_expression) @array
+
+    ; Rust vec! macro
+    (macro_invocation
+      macro: (identifier) @macro_name
+      (#eq? @macro_name "vec")
+      (token_tree)) @array
+
+    ; Rust lazy_static! macro with HashMap
+    (macro_invocation
+      macro: (identifier) @macro_name
+      (#eq? @macro_name "lazy_static")
+      (token_tree)) @object
+
+    ; HashMap initialization blocks (block as let_declaration value)
+    (let_declaration
+      value: (block) @array)
     """,
 
     # Variable declarations

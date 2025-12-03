@@ -11,7 +11,6 @@ from tree_sitter import Language
 
 from ..code_base import CodeAdapter
 from ..code_model import CodeCfg
-from ..context import ProcessingContext
 from ..optimizations import ImportClassifier, TreeSitterImportAnalyzer, LiteralOptimizer
 from ..optimizations.literals import LiteralHandler
 from ..tree_sitter_support import TreeSitterDocument
@@ -75,14 +74,9 @@ class RustAdapter(CodeAdapter[RustCfg]):
         # Rust uses /// and //! for documentation
         return stripped.startswith('///') or stripped.startswith('//!')
 
-    def hook__process_additional_literals(self, context: ProcessingContext, max_tokens: Optional[int]) -> None:
-        """Process Rust-specific literals (vec! macros)."""
-        from .literals import process_rust_literals
-        process_rust_literals(context, max_tokens)
-
     def hook__get_literal_handler(
         self, root_optimizer: LiteralOptimizer
     ) -> LiteralHandler:
-        """Provide Rust-specific literal handler for raw strings."""
+        """Provide Rust literal handler for vec!, lazy_static!, and raw strings."""
         from .literals import RustLiteralHandler
         return RustLiteralHandler()

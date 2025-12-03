@@ -116,6 +116,9 @@ QUERIES = {
     (float_literal) @number
 
     (imaginary_literal) @number
+
+    ; Composite literals (slices, maps, structs)
+    (composite_literal) @array
     """,
 
     # Package clause

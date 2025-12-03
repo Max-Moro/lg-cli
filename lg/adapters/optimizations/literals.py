@@ -16,6 +16,32 @@ from ..tree_sitter_support import Node, TreeSitterDocument
 class LiteralHandler(Protocol):
     """Protocol for customizing literal processing operations."""
 
+    def try_process_literal(
+        self,
+        context: ProcessingContext,
+        node: Node,
+        capture_name: str,
+        literal_text: str,
+        max_tokens: int
+    ) -> Optional[str]:
+        """
+        Early hook for FULL control over literal processing.
+
+        Called BEFORE any analyze/trim logic. If returns non-None,
+        that result is used and standard processing is skipped.
+
+        Args:
+            context: Processing context
+            node: Tree-sitter node
+            capture_name: Query capture name (@array, @string, etc.)
+            literal_text: Original literal text
+            max_tokens: Token budget
+
+        Returns:
+            Trimmed content if handler processes completely, None to continue standard path
+        """
+        ...
+
     def analyze_literal_structure(
         self,
         stripped: str,
@@ -118,6 +144,17 @@ class CommentPlacement:
 class DefaultLiteralHandler:
     """Default handler that delegates all operations to generic logic."""
 
+    def try_process_literal(
+        self,
+        context: ProcessingContext,
+        node: Node,
+        capture_name: str,
+        literal_text: str,
+        max_tokens: int
+    ) -> Optional[str]:
+        """Default: continue with standard processing path."""
+        return None
+
     def analyze_literal_structure(
         self, stripped: str, is_multiline: bool, language: str
     ) -> Optional[LiteralInfo]:
@@ -173,9 +210,6 @@ class LiteralOptimizer:
             if token_count > max_tokens:
                 self._trim_literal(context, node, capture_name, literal_text, max_tokens)
 
-        # Hook for language-specific literals (e.g., collections in Kotlin)
-        self.adapter.hook__process_additional_literals(context, max_tokens)
-
     def _trim_literal(
         self,
         context: ProcessingContext,
@@ -185,6 +219,43 @@ class LiteralOptimizer:
         max_tokens: int
     ) -> None:
         """Smart trim literal while preserving AST validity."""
+        # ===== EARLY HOOK: Full control for complex cases =====
+        custom_result = self._handler.try_process_literal(
+            context, node, capture_name, literal_text, max_tokens
+        )
+
+        if custom_result is not None:
+            # Handler processed completely - apply result and return
+            start_char, end_char = context.doc.get_node_range(node)
+
+            # Calculate savings
+            original_tokens = context.tokenizer.count_text(literal_text)
+            saved_tokens = original_tokens - context.tokenizer.count_text(custom_result)
+
+            # Apply replacement
+            context.editor.add_replacement(
+                start_char, end_char, custom_result,
+                edit_type="literal_trimmed"
+            )
+
+            # Check placeholder style and add comment if needed
+            placeholder_style = self.adapter.cfg.placeholders.style
+            if placeholder_style != "none" and saved_tokens > 0:
+                # Extract type from capture_name for comment
+                comment_type = capture_name if capture_name in ("string", "array", "object", "set", "tuple") else "literal"
+                comment_text = f"literal {comment_type} (−{saved_tokens} tokens)"
+                placement = self._find_comment_placement(context.raw_text, end_char, comment_text, self.adapter.get_comment_style()[0])
+                context.editor.add_insertion(
+                    placement.char_offset, placement.text,
+                    edit_type="literal_comment"
+                )
+
+            # Update metrics
+            context.metrics.mark_element_removed("literal")
+            context.metrics.add_chars_saved(len(literal_text) - len(custom_result))
+            return
+
+        # ===== STANDARD PATH: Continue with analyze + trim =====
         # Analyze literal structure
         literal_info = self._analyze_literal_structure(literal_text, capture_name, self.adapter.name)
 

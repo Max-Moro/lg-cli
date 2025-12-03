@@ -48,47 +48,30 @@ type LiteralDataManager struct {
 // NewLiteralDataManager creates a new manager instance
 func NewLiteralDataManager() *LiteralDataManager {
 	return &LiteralDataManager{
-		smallConfig: map[string]interface{}{
-			"debug":   true,
-			"version": "1.0.0",
-		},
-	} // literal array (−587 tokens)
+		smallConfig: map[string]interface{}{"…": "…"},
+		largeConfig: map[string]interface{}{"…": "…"},
+		supportedLanguages: []string{"…"},
+		allowedExtensions: []string{"…"},
+	} // literal array (−569 tokens)
 }
 
 // ProcessData creates a data container with various literals
 func (m *LiteralDataManager) ProcessData() *DataContainer {
-	smallSlice := []string{"one", "two", "…"}
+	smallSlice := []string{"one", "two", /* … */}
 
 	largeSlice := []string{
 		"item_001",
-		"…",
+		// …
 	} // literal array (−150 tokens)
 
-	nestedData := map[string]interface{}{
-		"level1": map[string]interface{}{
-			"level2": map[string]interface{}{
-				"level3": map[string]interface{}{
-					"data": []map[string]interface{}{
-						{"id": 1, "name": "First", "active": true},
-						{"id": 2, "name": "Second", "active": false},
-						{"id": 3, "name": "Third", "active": true},
-						{"id": 4, "name": "Fourth", "active": true},
-						{"id": 5, "name": "Fifth", "active": false},
-					},
-					"metadata": map[string]interface{}{
-						"created":  "2024-01-01",
-						"updated":  "2024-01-15",
-						"version":  3,
-						"checksum": "abcdef123456",
-					},
-				},
-			},
-		},
-	}
+	nestedData := map[string]interface{}{"…"} // literal array (−205 tokens)
 
 	return &DataContainer{
-		Tags:          smallSlice,
-	} // literal array (−38 tokens)
+		Tags: smallSlice,
+		Items: "…",
+		Metadata: map[string]interface{}{"…": "…"},
+		Configuration: "…",
+	} // literal array (−11 tokens)
 }
 
 // GetLongQuery returns a very long SQL-like query string
@@ -103,16 +86,16 @@ var SmallConstants = struct {
 	APIVersion   string
 	DefaultLimit int
 }{
-	APIVersion:   "v1",
-} // literal array (−6 tokens)
+	APIVersion: "v1",
+	DefaultLimit: 0,
+} // literal array (−1 tokens)
 
 var HTTPStatusCodes = map[string]int{
 	"CONTINUE":                      100,
-} // literal array (−397 tokens)
+	// …
+} // literal array (−393 tokens)
 
-var ErrorMessages = map[string]string{
-	"VALIDATION_FAILED":      "Input validation failed. Please check your data and try again.",
-} // literal array (−108 tokens)
+var ErrorMessages = map[string]string{"…"} // literal array (−127 tokens)
 
 func main() {
 	manager := NewLiteralDataManager()
