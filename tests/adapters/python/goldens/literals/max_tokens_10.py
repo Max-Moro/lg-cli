@@ -6,12 +6,12 @@ import json
 SHORT_STRING = "hello"
 
 # Long string literal (candidate for trimming)
-LONG_STRING = """This is a very long string that contains…""" # literal string (−52 tokens)
+LONG_STRING = """This is a very long string that contains…""" # literal string (−55 tokens)
 
 # Multi-line string with data
 DATA_STRING = """
 {
-    "users": […""" # literal string (−114 tokens)
+    "user…""" # literal string (−117 tokens)
 
 class DataContainer:
     """Class with various literal types."""
@@ -25,16 +25,17 @@ class DataContainer:
             "item_1",
             "item_2",
             "…",
-        ] # literal array (−114 tokens)
+        ] # literal array (−115 tokens)
         
         # Small dictionary (should be preserved)
-        self.small_dict = {"name": "test", "value": 42, "…": "…"} # literal object (−-6 tokens)
+        self.small_dict = {"name": "test", "value": 42}
         
         # Large dictionary (candidate for trimming)
         self.large_dict = {
             "user_id": 12345,
-            "…": "…",
-        } # literal object (−229 tokens)
+            "is_active": True,
+            # … (12 more, −216 tokens)
+        }
 
 def process_data():
     """Function with various literal data."""
@@ -44,15 +45,24 @@ def process_data():
         "Science",
         "Health",
         "…",
-    ] # literal array (−37 tokens)
+    ] # literal array (−41 tokens)
     
     # Nested data structure
     config = {
-        "…": "…",
-    } # literal object (−156 tokens)
+        "database": {
+            "host": "localhost",
+            "port": 5432,
+            "name": "myapp",
+            "credentials": {
+                "username": "admin",
+                "password": "super_secret_password_123456789"
+            }
+        },
+        # … (2 more, −104 tokens)
+    }
     
     # Very long single-line string
-    sql_query = "SELECT users.id, users.username, users.e…" # literal string (−65 tokens)
+    sql_query = "SELECT users.id, users.username, users.e…" # literal string (−67 tokens)
     
     return categories, config, sql_query
 
@@ -62,10 +72,10 @@ TAGS = {
     "javascript",
     "typescript",
     "…",
-} # literal set (−35 tokens)
+} # literal set (−36 tokens)
 
 # Tuple with many elements
 COORDINATES = (
     (0, 0),
     "…",
-) # literal tuple (−63 tokens)
+) # literal tuple (−66 tokens)

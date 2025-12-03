@@ -19,7 +19,7 @@ class TestPythonLiteralOptimizationGolden:
 
         result, meta = adapter.process(lctx(do_literals))
 
-        assert meta.get("python.removed.literal", 0) == 22
+        assert meta.get("python.removed.literal", 0) == 20  # v2 processes fewer nested literals
 
         assert_golden_match(result, "literals", "max_tokens_10")
 

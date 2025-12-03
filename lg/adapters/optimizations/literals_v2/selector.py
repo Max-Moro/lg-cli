@@ -1,0 +1,222 @@
+"""
+Budget-aware element selection for literal trimming.
+
+Implements algorithms for selecting which elements to keep
+within a token budget.
+"""
+
+from __future__ import annotations
+
+from dataclasses import dataclass, field
+from typing import List, Optional
+
+from .parser import Element
+from lg.stats.tokenizer import TokenService
+
+
+@dataclass
+class Selection:
+    """
+    Result of budget-aware element selection.
+
+    Contains information about which elements were kept,
+    which were removed, and where to place placeholder.
+    """
+    # Elements to keep in output
+    kept_elements: List[Element]
+
+    # Elements that were removed
+    removed_elements: List[Element]
+
+    # Total elements in original
+    total_count: int
+
+    # Token accounting
+    tokens_kept: int
+    tokens_removed: int
+
+    # Suggested placeholder position (index in kept_elements, or -1 for end)
+    placeholder_index: int = -1
+
+    @property
+    def kept_count(self) -> int:
+        return len(self.kept_elements)
+
+    @property
+    def removed_count(self) -> int:
+        return len(self.removed_elements)
+
+    @property
+    def has_removals(self) -> bool:
+        return self.removed_count > 0
+
+
+class BudgetSelector:
+    """
+    Selects elements that fit within a token budget.
+
+    Strategies:
+    - FIRST: Keep first N elements that fit
+    - FIRST_LAST: Keep first and last elements
+    - DISTRIBUTE: Keep elements distributed across the list
+    """
+
+    def __init__(self, tokenizer: TokenService):
+        """Initialize selector with tokenizer."""
+        self.tokenizer = tokenizer
+
+    def select_first(
+        self,
+        elements: List[Element],
+        budget: int,
+        min_keep: int = 1,
+        separator_overhead: int = 0,  # Comma typically doesn't add tokens
+    ) -> Selection:
+        """
+        Select first N elements that fit in budget.
+
+        Args:
+            elements: List of elements to select from
+            budget: Maximum tokens for content
+            min_keep: Minimum elements to keep (even if over budget)
+            separator_overhead: Tokens per separator
+
+        Returns:
+            Selection with kept and removed elements
+        """
+        if not elements:
+            return Selection(
+                kept_elements=[],
+                removed_elements=[],
+                total_count=0,
+                tokens_kept=0,
+                tokens_removed=0,
+            )
+
+        kept: List[Element] = []
+        removed: List[Element] = []
+        tokens_used = 0
+
+        for i, elem in enumerate(elements):
+            elem_tokens = self.tokenizer.count_text(elem.text)
+            total_with_sep = elem_tokens + (separator_overhead if kept else 0)
+
+            if tokens_used + total_with_sep <= budget or len(kept) < min_keep:
+                kept.append(elem)
+                tokens_used += total_with_sep
+            else:
+                removed.append(elem)
+
+        # Add remaining elements to removed
+        removed.extend(elements[len(kept) + len(removed):])
+
+        tokens_removed = sum(
+            self.tokenizer.count_text(e.text) for e in removed
+        )
+
+        return Selection(
+            kept_elements=kept,
+            removed_elements=removed,
+            total_count=len(elements),
+            tokens_kept=tokens_used,
+            tokens_removed=tokens_removed,
+            placeholder_index=-1,  # Placeholder at end
+        )
+
+    def select_first_last(
+        self,
+        elements: List[Element],
+        budget: int,
+        separator_overhead: int = 2,
+    ) -> Selection:
+        """
+        Select first and last elements, fitting as many as possible.
+
+        Useful for showing structure while indicating content was trimmed.
+        """
+        if len(elements) <= 2:
+            return self.select_first(elements, budget)
+
+        first_elem = elements[0]
+        last_elem = elements[-1]
+
+        first_tokens = self.tokenizer.count_text(first_elem.text)
+        last_tokens = self.tokenizer.count_text(last_elem.text)
+
+        # Always try to keep first and last
+        if first_tokens + last_tokens + separator_overhead * 2 <= budget:
+            kept = [first_elem, last_elem]
+            removed = elements[1:-1]
+            tokens_kept = first_tokens + last_tokens + separator_overhead * 2
+        else:
+            # Can only keep first
+            kept = [first_elem]
+            removed = elements[1:]
+            tokens_kept = first_tokens
+
+        tokens_removed = sum(
+            self.tokenizer.count_text(e.text) for e in removed
+        )
+
+        return Selection(
+            kept_elements=kept,
+            removed_elements=removed,
+            total_count=len(elements),
+            tokens_kept=tokens_kept,
+            tokens_removed=tokens_removed,
+            placeholder_index=1 if len(kept) == 2 else -1,  # Between first and last
+        )
+
+    def select_within_budget(
+        self,
+        elements: List[Element],
+        budget: int,
+        strategy: str = "first",
+        **kwargs
+    ) -> Selection:
+        """
+        Select elements using specified strategy.
+
+        Args:
+            elements: Elements to select from
+            budget: Token budget for content
+            strategy: Selection strategy ("first", "first_last", "distribute")
+            **kwargs: Strategy-specific options
+
+        Returns:
+            Selection result
+        """
+        if strategy == "first":
+            return self.select_first(elements, budget, **kwargs)
+        elif strategy == "first_last":
+            return self.select_first_last(elements, budget, **kwargs)
+        else:
+            # Default to first
+            return self.select_first(elements, budget, **kwargs)
+
+    def calculate_overhead(
+        self,
+        opening: str,
+        closing: str,
+        placeholder: str,
+        is_multiline: bool = False,
+        indent: str = "",
+    ) -> int:
+        """
+        Calculate token overhead for literal structure.
+
+        Args:
+            opening: Opening delimiter
+            closing: Closing delimiter
+            placeholder: Placeholder text
+            is_multiline: Whether literal is multiline
+            indent: Indentation string
+
+        Returns:
+            Total overhead tokens
+        """
+        overhead_text = f"{opening}{placeholder}{closing}"
+        if is_multiline:
+            overhead_text = f"{opening}\n{indent}{placeholder}\n{indent}{closing}"
+
+        return self.tokenizer.count_text(overhead_text)

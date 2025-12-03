@@ -82,8 +82,8 @@ src:
               python:
                 mode: allow
                 allow:
-                  - "/__init__.py"
-                  - "/adapter.py"
+#                  - "/__init__.py"
+#                  - "/adapter.py"
                   - "/queries.py"
 #                  - "/file_heuristics.py"
                 when:
@@ -100,8 +100,8 @@ src:
               typescript:
                 mode: allow
                 allow:
-                  - "/__init__.py"
-                  - "/adapter.py"
+#                  - "/__init__.py"
+#                  - "/adapter.py"
                   - "/queries.py"
 #                  - "/file_heuristics.py"
                 when:
@@ -116,8 +116,8 @@ src:
               kotlin:
                 mode: allow
                 allow:
-                  - "/__init__.py"
-                  - "/adapter.py"
+#                  - "/__init__.py"
+#                  - "/adapter.py"
                   - "/queries.py"
                 when:
                   - condition: "TAGSET:adapters-optimizations:function-bodies"
@@ -131,8 +131,8 @@ src:
               javascript:
                 mode: allow
                 allow:
-                  - "/__init__.py"
-                  - "/adapter.py"
+#                  - "/__init__.py"
+#                  - "/adapter.py"
                   - "/queries.py"
                 when:
                   - condition: "TAGSET:adapters-optimizations:function-bodies"
@@ -146,8 +146,8 @@ src:
               java:
                 mode: allow
                 allow:
-                  - "/__init__.py"
-                  - "/adapter.py"
+#                  - "/__init__.py"
+#                  - "/adapter.py"
                   - "/queries.py"
                 when:
                   - condition: "TAGSET:adapters-optimizations:function-bodies"
@@ -161,8 +161,8 @@ src:
               c:
                 mode: allow
                 allow:
-                  - "/__init__.py"
-                  - "/adapter.py"
+#                  - "/__init__.py"
+#                  - "/adapter.py"
                   - "/queries.py"
                 when:
                   - condition: "TAGSET:adapters-optimizations:function-bodies"
@@ -176,8 +176,8 @@ src:
               cpp:
                 mode: allow
                 allow:
-                  - "/__init__.py"
-                  - "/adapter.py"
+#                  - "/__init__.py"
+#                  - "/adapter.py"
                   - "/queries.py"
                 when:
                   - condition: "TAGSET:adapters-optimizations:function-bodies"
@@ -191,8 +191,8 @@ src:
               go:
                 mode: allow
                 allow:
-                  - "/__init__.py"
-                  - "/adapter.py"
+#                  - "/__init__.py"
+#                  - "/adapter.py"
                   - "/queries.py"
                 when:
                   - condition: "TAGSET:adapters-optimizations:function-bodies"
@@ -206,8 +206,8 @@ src:
               rust:
                 mode: allow
                 allow:
-                  - "/__init__.py"
-                  - "/adapter.py"
+#                  - "/__init__.py"
+#                  - "/adapter.py"
                   - "/queries.py"
                 when:
                   - condition: "TAGSET:adapters-optimizations:function-bodies"
@@ -221,8 +221,8 @@ src:
               scala:
                 mode: allow
                 allow:
-                  - "/__init__.py"
-                  - "/adapter.py"
+#                  - "/__init__.py"
+#                  - "/adapter.py"
                   - "/queries.py"
                 when:
                   - condition: "TAGSET:adapters-optimizations:function-bodies"

@@ -6,13 +6,13 @@ import json
 SHORT_STRING = "hello"
 
 # Long string literal (candidate for trimming)
-LONG_STRING = """This is a very long string that contains a lot of text and might be a candidate for trimming when op…""" # literal string (−39 tokens)
+LONG_STRING = """This is a very long string that contains a lot of text and might be a candidate for trimming when op…""" # literal string (−42 tokens)
 
 # Multi-line string with data
 DATA_STRING = """
 {
     "users": [
-        {"id": 1, "name": "Alice",…""" # literal string (−100 tokens)
+        {"id": 1, "name":…""" # literal string (−105 tokens)
 
 class DataContainer:
     """Class with various literal types."""
@@ -25,9 +25,8 @@ class DataContainer:
         self.large_list = [
             "item_1",
             "item_2",
-            "item_3",
             "…",
-        ] # literal array (−108 tokens)
+        ] # literal array (−115 tokens)
         
         # Small dictionary (should be preserved)
         self.small_dict = {"name": "test", "value": 42}
@@ -35,8 +34,9 @@ class DataContainer:
         # Large dictionary (candidate for trimming)
         self.large_dict = {
             "user_id": 12345,
-            "…": "…",
-        } # literal object (−229 tokens)
+            "is_active": True,
+            # … (12 more, −216 tokens)
+        }
 
 def process_data():
     """Function with various literal data."""
@@ -46,17 +46,25 @@ def process_data():
         "Science",
         "Health",
         "Education",
-        "Entertainment",
         "…",
-    ] # literal array (−28 tokens)
+    ] # literal array (−38 tokens)
     
     # Nested data structure
     config = {
-        "…": "…",
-    } # literal object (−156 tokens)
+        "database": {
+            "host": "localhost",
+            "port": 5432,
+            "name": "myapp",
+            "credentials": {
+                "username": "admin",
+                "password": "super_secret_password_123456789"
+            }
+        },
+        # … (2 more, −104 tokens)
+    }
     
     # Very long single-line string
-    sql_query = "SELECT users.id, users.username, users.email, profiles.first_name, profiles.last_name, pro…" # literal string (−55 tokens)
+    sql_query = "SELECT users.id, users.username, users.email, profiles.first_name, profiles.last_name, pro…" # literal string (−57 tokens)
     
     return categories, config, sql_query
 
@@ -66,13 +74,12 @@ TAGS = {
     "javascript",
     "typescript",
     "java",
-    "csharp",
     "…",
-} # literal set (−26 tokens)
+} # literal set (−33 tokens)
 
 # Tuple with many elements
 COORDINATES = (
     (0, 0),
     (1, 1),
     "…",
-) # literal tuple (−56 tokens)
+) # literal tuple (−60 tokens)

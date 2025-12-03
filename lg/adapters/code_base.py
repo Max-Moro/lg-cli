@@ -21,7 +21,6 @@ from .optimizations import (
     TreeSitterImportAnalyzer,
     ImportClassifier
 )
-from .optimizations.literals import LiteralHandler
 from .tree_sitter_support import TreeSitterDocument, Node
 
 C = TypeVar("C", bound=CodeCfg)
@@ -85,24 +84,6 @@ class CodeAdapter(BaseAdapter[C], ABC):
         """Hook for correctly closing multi-line comments and docstrings after truncation."""
         return root_optimizer.smart_truncate_comment(comment_text, max_tokens, tokenizer)
 
-    def hook__get_literal_handler(
-        self, root_optimizer: LiteralOptimizer
-    ) -> Optional[LiteralHandler]:
-        """
-        Hook for providing custom literal processing handler.
-
-        Language adapters can override this to provide custom handlers that
-        implement the LiteralHandler protocol for language-specific literal
-        processing (e.g., Rust raw strings, template literals, C++ nested initializers).
-
-        Args:
-            root_optimizer: The LiteralOptimizer instance for access to utilities
-
-        Returns:
-            LiteralHandler instance for custom processing, or None to use generic logic
-        """
-        return None  # Default: use generic logic
-
     # ============= Main pipeline for language optimizer operations ===========
 
     def process(self, lightweight_ctx: LightweightContext) -> Tuple[str, Dict[str, Any]]:
@@ -158,8 +139,8 @@ class CodeAdapter(BaseAdapter[C], ABC):
         import_optimizer.apply(context)
 
         # Process literals
-        literal_optimizer = LiteralOptimizer(code_cfg.literals, self)
-        literal_optimizer.apply(context)
+        literal_optimizer = LiteralOptimizer(self.tokenizer)
+        literal_optimizer.apply(context, self)
 
     def _finalize_placeholders(self, context: ProcessingContext, ph_cfg: PlaceholderConfig) -> Tuple[str, Dict[str, Any]]:
         """

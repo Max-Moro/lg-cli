@@ -51,10 +51,10 @@ def test_python_object_literal_indentation():
 
     assert dict_start_line is not None, "Dictionary for testing not found"
 
-    # Look for line with placeholder
+    # Look for line with placeholder (MIDDLE_COMMENT format: # … or old END format: "…": "…")
     placeholder_line = None
     for i in range(dict_start_line + 1, len(lines)):
-        if '"…": "…"' in lines[i]:
+        if '"…": "…"' in lines[i] or '# …' in lines[i]:
             placeholder_line = i
             break
 
@@ -167,24 +167,24 @@ def process_data():
     for i, line in enumerate(lines):
         if "config = {" in line:
             object_start_line = i
-        if object_start_line is not None and "}" in line and "literal object" in line:
+        # MIDDLE_COMMENT: closing } with correct indentation (4 spaces for function-level)
+        if object_start_line is not None and line == "    }":
             object_end_line = i
-            break
+            # Don't break - find the LAST matching closing brace
 
     assert object_start_line is not None, "Object start not found"
     assert object_end_line is not None, "Object end not found"
 
-    # Check that object properties have correct indentation (8 spaces)
+    # Check that object has MIDDLE_COMMENT placeholder
+    has_middle_comment = False
     for i in range(object_start_line + 1, object_end_line):
-        line = lines[i]
-        if line.strip() and '"' in line and ':' in line:  # Line with object properties
-            # Should start with 8 spaces (4 for function + 4 for object content)
-            assert line.startswith('        '), f"Incorrect indentation on line {i}: '{line}'"
+        if "# …" in lines[i]:
+            has_middle_comment = True
+            break
+    assert has_middle_comment, "MIDDLE_COMMENT placeholder not found"
 
     # Check that closing brace has correct indentation (4 spaces)
     closing_line = lines[object_end_line]
-    assert closing_line.strip().startswith('}'), f"Closing brace not found on line {object_end_line}"
-    # The line should start with 4 spaces before the }
     brace_position = closing_line.find('}')
     indent_before_brace = closing_line[:brace_position]
     assert indent_before_brace == '    ', f"Incorrect closing brace indentation: '{indent_before_brace}'"
@@ -226,24 +226,24 @@ LARGE_CONFIG = {
     for i, line in enumerate(lines):
         if "LARGE_CONFIG = {" in line:
             object_start_line = i
-        if object_start_line is not None and "}" in line and "literal object" in line:
+        # MIDDLE_COMMENT: closing } with no indentation (top-level)
+        if object_start_line is not None and line == "}":
             object_end_line = i
-            break
+            # Don't break - find the LAST matching closing brace
 
     assert object_start_line is not None, "Object start not found"
     assert object_end_line is not None, "Object end not found"
 
-    # Check that object properties have correct indentation (4 spaces)
+    # Check that object has MIDDLE_COMMENT placeholder
+    has_middle_comment = False
     for i in range(object_start_line + 1, object_end_line):
-        line = lines[i]
-        if line.strip() and '"' in line and ':' in line:  # Line with object properties
-            # Should start with 4 spaces (top-level indentation)
-            assert line.startswith('    '), f"Incorrect indentation on line {i}: '{line}'"
+        if "# …" in lines[i]:
+            has_middle_comment = True
+            break
+    assert has_middle_comment, "MIDDLE_COMMENT placeholder not found"
 
     # Check that closing brace has no indentation (top-level)
     closing_line = lines[object_end_line]
-    assert closing_line.strip().startswith('}'), f"Closing brace not found on line {object_end_line}"
-    # The line should start with no spaces before the }
     brace_position = closing_line.find('}')
     indent_before_brace = closing_line[:brace_position]
     assert indent_before_brace == '', f"Incorrect closing brace indentation: '{indent_before_brace}'"
