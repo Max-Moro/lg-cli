@@ -51,47 +51,9 @@ impl LiteralDataManager {
 
         let large_config = {
             let mut config = HashMap::new();
-
-            let mut database = HashMap::new();
-            database.insert("host".to_string(), json!("localhost"));
-            database.insert("port".to_string(), json!(5432));
-            database.insert("name".to_string(), json!("application_db"));
-            database.insert("ssl".to_string(), json!(false));
-            database.insert("pool_min".to_string(), json!(2));
-            database.insert("pool_max".to_string(), json!(10));
-            database.insert("idle_timeout".to_string(), json!(30000));
-            database.insert("connection_timeout".to_string(), json!(2000));
-            database.insert("retry_attempts".to_string(), json!(3));
-            database.insert("retry_delay".to_string(), json!(1000));
-            config.insert("database".to_string(), database);
-
-            let mut cache = HashMap::new();
-            cache.insert("redis_port".to_string(), json!(6379));
-            cache.insert("redis_db".to_string(), json!(0));
-            cache.insert("redis_ttl".to_string(), json!(3600));
-            cache.insert("memory_max_size".to_string(), json!(1000));
-            cache.insert("memory_ttl".to_string(), json!(1800));
-            config.insert("cache".to_string(), cache);
-
-            let mut api = HashMap::new();
-            api.insert("timeout".to_string(), json!(30000));
-            api.insert("retries".to_string(), json!(3));
-            api.insert("rate_limit_requests".to_string(), json!(100));
-            api.insert("rate_limit_window".to_string(), json!(60000));
-            config.insert("api".to_string(), api);
-
-            let mut features = HashMap::new();
-            features.insert("authentication".to_string(), json!(true));
-            features.insert("authorization".to_string(), json!(true));
-            features.insert("logging".to_string(), json!(true));
-            features.insert("monitoring".to_string(), json!(true));
-            features.insert("analytics".to_string(), json!(false));
-            features.insert("caching".to_string(), json!(true));
-            features.insert("compression".to_string(), json!(true));
-            config.insert("features".to_string(), features);
-
+            // …
             config
-        };
+        }; // literal array (−444 tokens)
 
         let supported_languages = vec![
             "english",
@@ -154,41 +116,18 @@ impl SmallConstants {
 lazy_static! {
     static ref HTTP_STATUS_CODES: HashMap<&'static str, i32> = {
         let mut m = HashMap::new();
-        m.insert("CONTINUE", 100);
-        m.insert("SWITCHING_PROTOCOLS", 101);
-        m.insert("OK", 200);
-        m.insert("CREATED", 201);
-        m.insert("ACCEPTED", 202);
-        m.insert("NO_CONTENT", 204);
-        m.insert("MOVED_PERMANENTLY", 301);
-        m.insert("FOUND", 302);
-        m.insert("NOT_MODIFIED", 304);
-        m.insert("BAD_REQUEST", 400);
-        m.insert("UNAUTHORIZED", 401);
-        m.insert("FORBIDDEN", 403);
-        m.insert("NOT_FOUND", 404);
-        m.insert("METHOD_NOT_ALLOWED", 405);
-        m.insert("CONFLICT", 409);
-        m.insert("INTERNAL_SERVER_ERROR", 500);
-        m.insert("NOT_IMPLEMENTED", 501);
-        m.insert("BAD_GATEWAY", 502);
-        m.insert("SERVICE_UNAVAILABLE", 503);
+        // …
         m
     };
-}
+} // literal object (−196 tokens)
 
 lazy_static! {
     static ref ERROR_MESSAGES: HashMap<&'static str, &'static str> = {
         let mut m = HashMap::new();
-        m.insert("VALIDATION_FAILED", "Input validation failed. Please check your data and try again.");
-        m.insert("AUTHENTICATION_REQUIRED", "Authentication is required to access this resource.");
-        m.insert("AUTHORIZATION_FAILED", "You do not have permission to perform this action.");
-        m.insert("RESOURCE_NOT_FOUND", "The requested resource could not be found on the server.");
-        m.insert("INTERNAL_ERROR", "An internal server error occurred. Please try again later.");
-        m.insert("RATE_LIMIT_EXCEEDED", "Rate limit exceeded. Please wait before making another request.");
+        // …
         m
     };
-}
+} // literal object (−113 tokens)
 
 fn main() {
     let manager = LiteralDataManager::new();

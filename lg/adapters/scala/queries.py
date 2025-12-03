@@ -188,6 +188,29 @@ QUERIES = {
     (floating_point_literal) @number
 
     (boolean_literal) @boolean
+
+    ; Scala collection apply calls (factory methods)
+    (call_expression
+      function: (identifier) @collection_name
+      (#any-of? @collection_name "List" "Vector" "Seq" "Array" "Set" "Map")
+      arguments: (arguments) @collection_args) @array
+
+    ; Qualified collection calls (scala.collection.immutable.List)
+    (call_expression
+      function: (field_expression
+        value: (_)
+        field: (identifier) @collection_name
+        (#any-of? @collection_name "List" "Vector" "Seq" "Set" "Map"))
+      arguments: (arguments) @args) @array
+
+    ; Map with arrow syntax Map("key" -> "value")
+    (call_expression
+      function: (identifier) @map_name
+      (#eq? @map_name "Map")
+      arguments: (arguments
+        (infix_expression
+          operator: (operator_identifier) @arrow
+          (#eq? @arrow "->")))) @object
     """,
 
     # Pattern matching

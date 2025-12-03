@@ -126,6 +126,7 @@ def process_go_composite_literal(
             break
 
     # Build replacement
+    replacement = ""
     if is_struct_literal:
         # For struct literals, DON'T add placeholder element - just truncate
         # Struct literals need field names, can't use "…" placeholder

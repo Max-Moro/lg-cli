@@ -11,6 +11,7 @@ from ..optimizations.literals import (
 )
 
 
+# noinspection PyProtectedMember
 class CppLiteralHandler(DefaultLiteralHandler):
     """Handler for C++ struct arrays and nested initializers."""
 
@@ -49,14 +50,14 @@ class CppLiteralHandler(DefaultLiteralHandler):
             overhead_tokens = context.tokenizer.count_text(overhead_text)
             content_budget = max(1, max_tokens - overhead_tokens)
 
-            included_elements = self.optimizer._select_elements_within_budget(context, elements, content_budget)  # noinspection PyProtectedMemberInspection
+            included_elements = self.optimizer._select_elements_within_budget(context, elements, content_budget)
 
             if not included_elements:
                 return ""  # Empty array content
 
             # Form result without placeholder for numeric arrays
             if literal_info.is_multiline:
-                element_indent, base_indent = self.optimizer._get_base_indentations(context.doc, node, context.raw_text)  # noinspection PyProtectedMemberInspection
+                element_indent, base_indent = self.optimizer._get_base_indentations(context.doc, node, context.raw_text)
                 indented_elements = [f"{element_indent}{element}" for element in included_elements]
                 joined = f",\n".join(indented_elements)
                 return f"\n{joined},\n{base_indent}"
@@ -70,7 +71,7 @@ class CppLiteralHandler(DefaultLiteralHandler):
         content_budget = max(1, max_tokens - overhead_tokens)
 
         # Select elements within budget (delegation pattern)
-        included_elements = self.optimizer._select_elements_within_budget(context, elements, content_budget)  # noinspection PyProtectedMemberInspection
+        included_elements = self.optimizer._select_elements_within_budget(context, elements, content_budget)
 
         if not included_elements:
             # No elements fit - try to include first element with nested content trimmed
@@ -83,7 +84,7 @@ class CppLiteralHandler(DefaultLiteralHandler):
                 # Try to create a version with empty nested content
                 # Pattern: {"key", {...}} -> {"key", {}}
                 # Find the nested structure and replace with {}
-                trimmed = re.sub(r'\{[^{}]*(?:\{[^{}]*\}[^{}]*)*\}', '{}', first_element, count=1)
+                trimmed = re.sub(r'\{[^{}]*(?:\{[^{}]*}[^{}]*)*}', '{}', first_element, count=1)
                 trimmed_tokens = context.tokenizer.count_text(trimmed)
 
                 if trimmed_tokens <= content_budget:
@@ -99,7 +100,7 @@ class CppLiteralHandler(DefaultLiteralHandler):
 
         # Form result without placeholder
         if literal_info.is_multiline:
-            element_indent, base_indent = self.optimizer._get_base_indentations(context.doc, node, context.raw_text)  # noinspection PyProtectedMemberInspection
+            element_indent, base_indent = self.optimizer._get_base_indentations(context.doc, node, context.raw_text)
             indented_elements = [f"{element_indent}{element}" for element in included_elements]
             joined = f",\n".join(indented_elements)
             return f"\n{joined},\n{base_indent}"
@@ -118,7 +119,7 @@ class CppLiteralHandler(DefaultLiteralHandler):
         content = literal_info.content.strip()
 
         # Parse key-value pairs
-        pairs = self.optimizer._parse_elements(content)  # noinspection PyProtectedMemberInspection
+        pairs = self.optimizer._parse_elements(content)
 
         # Check if nested initializer (has nested braces)
         is_nested_initializer = pairs and any('{' in pair or '[' in pair for pair in pairs)
@@ -133,20 +134,20 @@ class CppLiteralHandler(DefaultLiteralHandler):
         content_budget = max(10, max_tokens - overhead_tokens)
 
         # Find pairs that fit in budget
-        included_pairs = self.optimizer._select_elements_within_budget(context, pairs, content_budget)  # noinspection PyProtectedMemberInspection
+        included_pairs = self.optimizer._select_elements_within_budget(context, pairs, content_budget)
 
         if not included_pairs:
             # No pairs fit - for nested initializers, return empty nested structure
             # This will be wrapped in outer braces to form {{}}
             if literal_info.is_multiline:
-                element_indent, base_indent = self.optimizer._get_base_indentations(context.doc, node, context.raw_text)  # noinspection PyProtectedMemberInspection
+                element_indent, base_indent = self.optimizer._get_base_indentations(context.doc, node, context.raw_text)
                 result = f"\n{element_indent}{{}}\n{base_indent}"
             else:
                 result = "{}"
         else:
             # Form result without placeholder
             if literal_info.is_multiline:
-                element_indent, base_indent = self.optimizer._get_base_indentations(context.doc, node, context.raw_text)  # noinspection PyProtectedMemberInspection
+                element_indent, base_indent = self.optimizer._get_base_indentations(context.doc, node, context.raw_text)
                 indented_pairs = [f"{element_indent}{pair}" for pair in included_pairs]
                 joined = f",\n".join(indented_pairs)
                 result = f"\n{joined},\n{base_indent}"
