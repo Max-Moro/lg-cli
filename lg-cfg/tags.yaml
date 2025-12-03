@@ -94,8 +94,6 @@ tag-sets:
         title: "Comment optimization"
       literals:
         title: "Literal optimization"
-      literals-v2:
-        title: "Literal optimization v2 refactoring"
       imports:
         title: "Import optimization"
       public-api:

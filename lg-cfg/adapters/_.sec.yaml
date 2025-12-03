@@ -74,7 +74,7 @@ src:
                   - condition: "TAGSET:adapters-optimizations:comments"
                     allow: ["/comments.py"]
                   - condition: "TAGSET:adapters-optimizations:literals"
-                    allow: ["/literals.py"]
+                    allow: ["/literals.py", "/literals_v2/"]
                   - condition: "TAGSET:adapters-optimizations:imports"
                     allow: ["/imports.py"]
                   - condition: "TAGSET:adapters-optimizations:public-api"
@@ -82,8 +82,8 @@ src:
               python:
                 mode: allow
                 allow:
-#                  - "/__init__.py"
-#                  - "/adapter.py"
+                  - "/__init__.py"
+                  - "/adapter.py"
                   - "/queries.py"
 #                  - "/file_heuristics.py"
                 when:
@@ -96,12 +96,12 @@ src:
                   - condition: "TAGSET:adapters-optimizations:public-api"
                     allow: ["/code_analysis.py"]
                   - condition: "TAGSET:adapters-optimizations:literals"
-                    allow: ["/literals.py"]
+                    allow: ["/literals.py", "/literals_v2.py"]
               typescript:
                 mode: allow
                 allow:
-#                  - "/__init__.py"
-#                  - "/adapter.py"
+                  - "/__init__.py"
+                  - "/adapter.py"
                   - "/queries.py"
 #                  - "/file_heuristics.py"
                 when:
@@ -112,12 +112,12 @@ src:
                   - condition: "TAGSET:adapters-optimizations:public-api"
                     allow: ["/code_analysis.py"]
                   - condition: "TAGSET:adapters-optimizations:literals"
-                    allow: ["/literals.py"]
+                    allow: ["/literals.py", "/literals_v2.py"]
               kotlin:
                 mode: allow
                 allow:
-#                  - "/__init__.py"
-#                  - "/adapter.py"
+                  - "/__init__.py"
+                  - "/adapter.py"
                   - "/queries.py"
                 when:
                   - condition: "TAGSET:adapters-optimizations:function-bodies"
@@ -127,12 +127,12 @@ src:
                   - condition: "TAGSET:adapters-optimizations:public-api"
                     allow: ["/code_analysis.py"]
                   - condition: "TAGSET:adapters-optimizations:literals"
-                    allow: ["/literals.py"]
+                    allow: ["/literals.py", "/literals_v2.py"]
               javascript:
                 mode: allow
                 allow:
-#                  - "/__init__.py"
-#                  - "/adapter.py"
+                  - "/__init__.py"
+                  - "/adapter.py"
                   - "/queries.py"
                 when:
                   - condition: "TAGSET:adapters-optimizations:function-bodies"
@@ -142,12 +142,12 @@ src:
                   - condition: "TAGSET:adapters-optimizations:public-api"
                     allow: ["/code_analysis.py"]
                   - condition: "TAGSET:adapters-optimizations:literals"
-                    allow: ["/literals.py"]
+                    allow: ["/literals.py", "/literals_v2.py"]
               java:
                 mode: allow
                 allow:
-#                  - "/__init__.py"
-#                  - "/adapter.py"
+                  - "/__init__.py"
+                  - "/adapter.py"
                   - "/queries.py"
                 when:
                   - condition: "TAGSET:adapters-optimizations:function-bodies"
@@ -157,12 +157,12 @@ src:
                   - condition: "TAGSET:adapters-optimizations:public-api"
                     allow: ["/code_analysis.py"]
                   - condition: "TAGSET:adapters-optimizations:literals"
-                    allow: ["/literals.py"]
+                    allow: ["/literals.py", "/literals_v2.py"]
               c:
                 mode: allow
                 allow:
-#                  - "/__init__.py"
-#                  - "/adapter.py"
+                  - "/__init__.py"
+                  - "/adapter.py"
                   - "/queries.py"
                 when:
                   - condition: "TAGSET:adapters-optimizations:function-bodies"
@@ -172,12 +172,12 @@ src:
                   - condition: "TAGSET:adapters-optimizations:public-api"
                     allow: ["/code_analysis.py"]
                   - condition: "TAGSET:adapters-optimizations:literals"
-                    allow: ["/literals.py"]
+                    allow: ["/literals.py", "/literals_v2.py"]
               cpp:
                 mode: allow
                 allow:
-#                  - "/__init__.py"
-#                  - "/adapter.py"
+                  - "/__init__.py"
+                  - "/adapter.py"
                   - "/queries.py"
                 when:
                   - condition: "TAGSET:adapters-optimizations:function-bodies"
@@ -187,12 +187,12 @@ src:
                   - condition: "TAGSET:adapters-optimizations:public-api"
                     allow: ["/code_analysis.py"]
                   - condition: "TAGSET:adapters-optimizations:literals"
-                    allow: ["/literals.py"]
+                    allow: ["/literals.py", "/literals_v2.py"]
               go:
                 mode: allow
                 allow:
-#                  - "/__init__.py"
-#                  - "/adapter.py"
+                  - "/__init__.py"
+                  - "/adapter.py"
                   - "/queries.py"
                 when:
                   - condition: "TAGSET:adapters-optimizations:function-bodies"
@@ -202,12 +202,12 @@ src:
                   - condition: "TAGSET:adapters-optimizations:public-api"
                     allow: ["/code_analysis.py"]
                   - condition: "TAGSET:adapters-optimizations:literals"
-                    allow: ["/literals.py"]
+                    allow: ["/literals.py", "/literals_v2.py"]
               rust:
                 mode: allow
                 allow:
-#                  - "/__init__.py"
-#                  - "/adapter.py"
+                  - "/__init__.py"
+                  - "/adapter.py"
                   - "/queries.py"
                 when:
                   - condition: "TAGSET:adapters-optimizations:function-bodies"
@@ -217,12 +217,12 @@ src:
                   - condition: "TAGSET:adapters-optimizations:public-api"
                     allow: ["/code_analysis.py"]
                   - condition: "TAGSET:adapters-optimizations:literals"
-                    allow: ["/literals.py"]
+                    allow: ["/literals.py", "/literals_v2.py"]
               scala:
                 mode: allow
                 allow:
-#                  - "/__init__.py"
-#                  - "/adapter.py"
+                  - "/__init__.py"
+                  - "/adapter.py"
                   - "/queries.py"
                 when:
                   - condition: "TAGSET:adapters-optimizations:function-bodies"
@@ -232,7 +232,7 @@ src:
                   - condition: "TAGSET:adapters-optimizations:public-api"
                     allow: ["/code_analysis.py"]
                   - condition: "TAGSET:adapters-optimizations:literals"
-                    allow: ["/literals.py"]
+                    allow: ["/literals.py", "/literals_v2.py"]
 
 tests:
   extensions: [".py", ".ts", ".kt", ".js", ".java", ".go", ".rs", ".scala",
