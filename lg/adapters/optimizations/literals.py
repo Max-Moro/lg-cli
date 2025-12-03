@@ -264,6 +264,11 @@ class LiteralOptimizer:
 
     def _analyze_array_literal(self, stripped: str, literal_text: str, is_multiline: bool, language: str) -> LiteralInfo:
         """Analyze arrays/lists."""
+        # Try handler first for custom literal formats (like Map.of(), List.of())
+        custom_info = self._handler.analyze_literal_structure(stripped, is_multiline, language)
+        if custom_info is not None:
+            return custom_info
+
         if stripped.startswith('[') and stripped.endswith(']'):
             content = self._extract_content(literal_text, "[", "]")
             return LiteralInfo("array", "[", "]", content, is_multiline, language)

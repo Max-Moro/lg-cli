@@ -40,26 +40,26 @@ case class DataContainer(
 
 class LiteralDataManager {
   // Class properties with various literal types
-  private val smallConfig = [M, "…"] // literal array (−18 tokens)
+  private val smallConfig = Map("debug" -> true, "…") // literal array (−13 tokens)
 
-  private val largeConfig = [M, "…"] // literal array (−331 tokens)
+  private val largeConfig = Map("database" -> M, "…") // literal array (−326 tokens)
 
-  private val supportedLanguages: List[String] = [L, "…"] // literal array (−101 tokens)
+  private val supportedLanguages: List[String] = List("english", "spanish", "…") // literal array (−95 tokens)
 
-  private val allowedExtensions: Set[String] = [S, "…"] // literal array (−58 tokens)
+  private val allowedExtensions: Set[String] = Set(".scala", ".sc", "…") // literal array (−53 tokens)
 
   def processData(): DataContainer = {
     // Function with various literal data
     val smallArray = List("one", "two", "three")
 
-    val largeArray = [L, "…"] // literal array (−155 tokens)
+    val largeArray = List("item_001", "…") // literal array (−151 tokens)
 
-    val nestedData = [M, "…"] // literal array (−202 tokens)
+    val nestedData = Map("level1" -> Map(, "…") // literal array (−195 tokens)
 
     DataContainer(
       tags = smallArray,
       items = largeArray,
-      metadata = [M, "…"], // literal array (−11 tokens)
+      metadata = Map("type" -> "test", "…"), // literal array (−5 tokens)
       configuration = nestedData
     )
   }
@@ -74,11 +74,11 @@ class LiteralDataManager {
 
 // Module-level constants with different sizes
 object SmallConstants {
-  val VALUES = [M, "…"] // literal array (−18 tokens)
+  val VALUES = Map("API_VERSION" -> "v1", "…") // literal array (−10 tokens)
 }
 
 object LargeConstants {
-  val HTTP_STATUS_CODES = [M, "…"] // literal array (−409 tokens)
+  val HTTP_STATUS_CODES = Map("CONTINUE" -> 100, "…") // literal array (−402 tokens)
 
-  val ERROR_MESSAGES = [M, "…"] // literal array (−129 tokens)
+  val ERROR_MESSAGES = Map("VALIDATION_FAILED" ->, "…") // literal array (−123 tokens)
 }

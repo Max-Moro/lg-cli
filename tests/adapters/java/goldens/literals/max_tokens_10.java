@@ -29,7 +29,7 @@ class Constants {
     private static String getUserName() { return "John Doe"; }
     private static String getUserEmail() { return "john.doe@example.com"; }
     private static String getAccountStatus() { return "active"; }
-    private static List<String> getPermissions() { return [L, "…"]; /* literal array (−6 tokens) */ }
+    private static List<String> getPermissions() { return List.of("read", "write", "…"); /* literal array (−0 tokens) */ }
     private static String getLastLogin() { return "2024-01-15T1…"; /* literal string (−5 tokens) */ }
     private static int getProfileCompleteness() { return 85; }
 }
@@ -63,33 +63,33 @@ class DataContainer {
 
 public class LiteralDataManager {
     // Class properties with various literal types
-    private final Map<String, Object> smallConfig = [M, "…"]; // literal array (−17 tokens)
+    private final Map<String, Object> smallConfig = Map.of("debug", true, "…"); // literal array (−12 tokens)
 
-    private final Map<String, Object> largeConfig = [M, "…"]; // literal array (−389 tokens)
+    private final Map<String, Object> largeConfig = Map.ofEntries(Map.entry("database",, "…"); // literal array (−382 tokens)
 
     private final List<String> supportedLanguages;
     private final Set<String> allowedExtensions;
 
     public LiteralDataManager() {
         // Array with many elements (trimming candidate)
-        this.supportedLanguages = [L, "…"]; // literal array (−102 tokens)
+        this.supportedLanguages = List.of("english", "spanish", "…"); // literal array (−95 tokens)
 
         // Set with many elements
-        this.allowedExtensions = [S, "…"]; // literal array (−60 tokens)
+        this.allowedExtensions = Set.of(".java", ".kt", "…"); // literal array (−54 tokens)
     }
 
     public DataContainer processData() {
         // Function with various literal data
-        List<String> smallArray = [L, "…"]; // literal array (−6 tokens)
+        List<String> smallArray = List.of("one", "two", "…"); // literal array (−0 tokens)
 
-        List<String> largeArray = [L, "…"]; // literal array (−156 tokens)
+        List<String> largeArray = List.of("item_001", "…"); // literal array (−151 tokens)
 
-        Map<String, Object> nestedData = [M, "…"]; // literal array (−203 tokens)
+        Map<String, Object> nestedData = Map.of("level1", "…"); // literal array (−199 tokens)
 
         return new DataContainer(
             smallArray,
             largeArray,
-            [M, "…"], // literal array (−10 tokens)
+            Map.of("type", "test", "…"), // literal array (−4 tokens)
             nestedData
         );
     }
@@ -107,11 +107,11 @@ public class LiteralDataManager {
 
 // Module-level constants with different sizes
 class SmallConstants {
-    public static final Map<String, Object> VALUES = [M, "…"]; // literal array (−17 tokens)
+    public static final Map<String, Object> VALUES = Map.of("API_VERSION", "v1", "…"); // literal array (−9 tokens)
 }
 
 class LargeConstants {
-    public static final Map<String, Object> HTTP_STATUS_CODES = [M, "…"]; // literal array (−452 tokens)
+    public static final Map<String, Object> HTTP_STATUS_CODES = Map.ofEntries(Map.entry("CONTINUE", 100), "…"); // literal array (−442 tokens)
 
-    public static final Map<String, String> ERROR_MESSAGES = [M, "…"]; // literal array (−138 tokens)
+    public static final Map<String, String> ERROR_MESSAGES = Map.ofEntries(Map.entry("VALIDATION_FA, "…"); // literal array (−130 tokens)
 }

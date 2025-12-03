@@ -41,27 +41,23 @@ case class DataContainer(
 
 class LiteralDataManager {
   // Class properties with various literal types
-  private val smallConfig = [Map(
-    "debu, "…"] // literal array (−12 tokens)
+  private val smallConfig = Map("debug" -> true, "…") // literal array (−13 tokens)
 
-  private val largeConfig = [Map(
-    "database", "…"] // literal array (−326 tokens)
+  private val largeConfig = Map("database" -> Map(
+      "host" ->, "…") // literal array (−320 tokens)
 
-  private val supportedLanguages: List[String] = [List(
-    "engli, "…"] // literal array (−96 tokens)
+  private val supportedLanguages: List[String] = List("english", "spanish", "french", "…") // literal array (−91 tokens)
 
-  private val allowedExtensions: Set[String] = [Set(
-    ".scal, "…"] // literal array (−53 tokens)
+  private val allowedExtensions: Set[String] = Set(".scala", ".sc", ".java", ".kt", "…") // literal array (−47 tokens)
 
   def processData(): DataContainer = {
     // Function with various literal data
     val smallArray = List("one", "two", "three")
 
-    val largeArray = [List(
-      "it, "…"] // literal array (−151 tokens)
+    val largeArray = List("item_001", "item_002", "…") // literal array (−146 tokens)
 
-    val nestedData = [Map(
-      "level1", "…"] // literal array (−196 tokens)
+    val nestedData = Map("level1" -> Map(
+        "level2" ->, "…") // literal array (−189 tokens)
 
     DataContainer(
       tags = smallArray,
@@ -81,14 +77,11 @@ class LiteralDataManager {
 
 // Module-level constants with different sizes
 object SmallConstants {
-  val VALUES = [Map(
-    "API_V, "…"] // literal array (−12 tokens)
+  val VALUES = Map("API_VERSION" -> "v1", "…") // literal array (−10 tokens)
 }
 
 object LargeConstants {
-  val HTTP_STATUS_CODES = [Map(
-    "CONTINU, "…"] // literal array (−403 tokens)
+  val HTTP_STATUS_CODES = Map("CONTINUE" -> 100, "…") // literal array (−402 tokens)
 
-  val ERROR_MESSAGES = [Map(
-    "VALIDATION_FAILED", "…"] // literal array (−122 tokens)
+  val ERROR_MESSAGES = Map("VALIDATION_FAILED" -> "Input validation failed. P, "…") // literal array (−117 tokens)
 }

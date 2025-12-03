@@ -19,6 +19,58 @@ class CppLiteralHandler(DefaultLiteralHandler):
         """Initialize handler with reference to root optimizer."""
         self.optimizer = optimizer
 
+    def analyze_literal_structure(
+        self,
+        stripped: str,
+        is_multiline: bool,
+        language: str
+    ) -> Optional[LiteralInfo]:
+        """
+        Analyze C++ raw string literals.
+
+        C++ supports raw string literals with syntax:
+        - R"(content)"  - basic raw string
+        - R"delimiter(content)delimiter"  - raw string with custom delimiter
+
+        Args:
+            stripped: Stripped literal text
+            is_multiline: Whether literal spans multiple lines
+            language: Language identifier
+
+        Returns:
+            LiteralInfo if this is a raw string, None otherwise
+        """
+        # Check for C++ raw string pattern: R"delimiter(...)"
+        # Pattern can be:
+        #   R"(...)"                    - no delimiter
+        #   R"xxx(...)"                 - with delimiter "xxx"
+        match = re.match(r'^R"([^(]*)\((.*)', stripped, re.DOTALL)
+
+        if not match:
+            return None  # Not a raw string
+
+        delimiter = match.group(1)  # Could be empty
+        # The closing is )delimiter"
+        closing = f'){delimiter}"'
+
+        # Check if the string ends with the correct closing
+        if not stripped.endswith(closing):
+            return None  # Malformed raw string
+
+        # Extract content
+        opening = f'R"{delimiter}('
+        content_start = len(opening)
+        content_end = stripped.rfind(closing)
+
+        if content_end > content_start:
+            content = stripped[content_start:content_end]
+        elif content_end == content_start:
+            content = ""
+        else:
+            return None  # Malformed
+
+        return LiteralInfo("string", opening, closing, content, is_multiline, language)
+
     def trim_array_content(
         self,
         context: ProcessingContext,

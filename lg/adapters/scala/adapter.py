@@ -70,7 +70,7 @@ class ScalaAdapter(CodeAdapter[ScalaCfg]):
 
     def hook__get_literal_handler(
         self, root_optimizer: LiteralOptimizer
-    ) -> LiteralHandler:
+    ) -> Optional[LiteralHandler]:
         """Provide Scala-specific literal handler for interpolated strings."""
         from .literals import ScalaLiteralHandler
         return ScalaLiteralHandler()

@@ -11,7 +11,8 @@ from tree_sitter import Language
 
 from ..code_base import CodeAdapter
 from ..code_model import CodeCfg
-from ..optimizations import ImportClassifier, TreeSitterImportAnalyzer
+from ..optimizations import ImportClassifier, TreeSitterImportAnalyzer, LiteralOptimizer
+from ..optimizations.literals import LiteralHandler
 from ..tree_sitter_support import TreeSitterDocument
 
 
@@ -66,3 +67,10 @@ class JavaAdapter(CodeAdapter[JavaCfg]):
         """Create Java-specific unified code analyzer."""
         from .code_analysis import JavaCodeAnalyzer
         return JavaCodeAnalyzer(doc)
+
+    def hook__get_literal_handler(
+        self, root_optimizer: LiteralOptimizer
+    ) -> Optional[LiteralHandler]:
+        """Provide custom Java literal handler for collection factory methods."""
+        from .literals import JavaLiteralHandler
+        return JavaLiteralHandler()

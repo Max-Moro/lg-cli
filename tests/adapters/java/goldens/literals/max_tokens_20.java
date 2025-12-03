@@ -65,31 +65,28 @@ class DataContainer {
 
 public class LiteralDataManager {
     // Class properties with various literal types
-    private final Map<String, Object> smallConfig = [Map.of(
-        ", "…"]; // literal array (−13 tokens)
+    private final Map<String, Object> smallConfig = Map.of("debug", true, "version", "…"); // literal array (−9 tokens)
 
-    private final Map<String, Object> largeConfig = [Map.ofEntries(
-        Map., "…"]; // literal array (−383 tokens)
+    private final Map<String, Object> largeConfig = Map.ofEntries(Map.entry("database", Map.ofEntries(, "…"); // literal array (−378 tokens)
 
     private final List<String> supportedLanguages;
     private final Set<String> allowedExtensions;
 
     public LiteralDataManager() {
         // Array with many elements (trimming candidate)
-        this.supportedLanguages = [List.of(, "…"]; // literal array (−100 tokens)
+        this.supportedLanguages = List.of("english", "spanish", "french", "…"); // literal array (−91 tokens)
 
         // Set with many elements
-        this.allowedExtensions = [Set.of(, "…"]; // literal array (−57 tokens)
+        this.allowedExtensions = Set.of(".java", ".kt", ".scala", "…"); // literal array (−51 tokens)
     }
 
     public DataContainer processData() {
         // Function with various literal data
         List<String> smallArray = List.of("one", "two", "three");
 
-        List<String> largeArray = [List.of(, "…"]; // literal array (−154 tokens)
+        List<String> largeArray = List.of("item_001", "item_002", "…"); // literal array (−146 tokens)
 
-        Map<String, Object> nestedData = [Map.of(
-            "level1", "…"]; // literal array (−196 tokens)
+        Map<String, Object> nestedData = Map.of("level1", "…"); // literal array (−199 tokens)
 
         return new DataContainer(
             smallArray,
@@ -112,13 +109,11 @@ public class LiteralDataManager {
 
 // Module-level constants with different sizes
 class SmallConstants {
-    public static final Map<String, Object> VALUES = [Map.of(
-        "AP, "…"]; // literal array (−11 tokens)
+    public static final Map<String, Object> VALUES = Map.of("API_VERSION", "v1", "DEFAULT_LIMIT", "…"); // literal array (−5 tokens)
 }
 
 class LargeConstants {
-    public static final Map<String, Object> HTTP_STATUS_CODES = [Map.ofEntries(, "…"]; // literal array (−448 tokens)
+    public static final Map<String, Object> HTTP_STATUS_CODES = Map.ofEntries(Map.entry("CONTINUE", 100), "…"); // literal array (−442 tokens)
 
-    public static final Map<String, String> ERROR_MESSAGES = [Map.ofEntries(
-        Map.entr, "…"]; // literal array (−130 tokens)
+    public static final Map<String, String> ERROR_MESSAGES = Map.ofEntries(Map.entry("VALIDATION_FAILED", "Input valid, "…"); // literal array (−126 tokens)
 }
