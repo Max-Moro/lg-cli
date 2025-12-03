@@ -92,6 +92,7 @@ JS_ARRAY = LiteralPattern(
     placeholder_position=PlaceholderPosition.END,
     placeholder_template='"…"',
     min_elements=1,
+    comment_name="array",
 )
 
 JS_OBJECT = LiteralPattern(
@@ -101,9 +102,10 @@ JS_OBJECT = LiteralPattern(
     closing="}",
     separator=",",
     kv_separator=":",
-    placeholder_position=PlaceholderPosition.END,
+    placeholder_position=PlaceholderPosition.MIDDLE_COMMENT,
     placeholder_template='"…": "…"',
     min_elements=1,
+    comment_name="object",
 )
 
 

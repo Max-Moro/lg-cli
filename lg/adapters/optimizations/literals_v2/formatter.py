@@ -11,7 +11,7 @@ Handles formatting of trimmed results with proper:
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import List, Optional
+from typing import List, Optional, TYPE_CHECKING
 
 from .categories import (
     LiteralCategory,
@@ -19,8 +19,11 @@ from .categories import (
     ParsedLiteral,
     TrimResult,
 )
-from .selector import Selection
+from .selector import Selection, DFSSelection
 from lg.stats.tokenizer import TokenService
+
+if TYPE_CHECKING:
+    from .parser import ElementParser
 
 
 @dataclass
@@ -105,6 +108,320 @@ class ResultFormatter:
             comment=comment,
             comment_byte=comment_byte,
         )
+
+    def format_dfs(
+        self,
+        parsed: ParsedLiteral,
+        selection: DFSSelection,
+        parser: "ElementParser",
+        placeholder_text: Optional[str] = None,
+    ) -> FormattedResult:
+        """
+        Format trimmed literal with DFS-aware nested handling.
+
+        Args:
+            parsed: ParsedLiteral with structure info
+            selection: DFSSelection with recursive nested selections
+            parser: ElementParser for parsing nested content
+            placeholder_text: Custom placeholder (or use pattern default)
+
+        Returns:
+            FormattedResult ready for insertion
+        """
+        pattern = parsed.pattern
+        placeholder = placeholder_text or pattern.placeholder_template
+
+        # Format based on category and layout
+        if parsed.is_multiline:
+            text = self._format_multiline_dfs(parsed, selection, parser, placeholder)
+        else:
+            text = self._format_single_line_dfs(parsed, selection, parser, placeholder)
+
+        # Generate comment if needed
+        comment, comment_byte = self._generate_comment_dfs(
+            parsed, selection, pattern.placeholder_position
+        )
+
+        return FormattedResult(
+            text=text,
+            start_byte=parsed.start_byte,
+            end_byte=parsed.end_byte,
+            comment=comment,
+            comment_byte=comment_byte,
+        )
+
+    def _format_single_line_dfs(
+        self,
+        parsed: ParsedLiteral,
+        selection: DFSSelection,
+        parser: "ElementParser",
+        placeholder: str,
+    ) -> str:
+        """Format as single line with DFS nested handling."""
+        pattern = parsed.pattern
+        elements_text = []
+
+        # Process kept elements with nested handling
+        for i, elem in enumerate(selection.kept_elements):
+            if i in selection.nested_selections:
+                # Reconstruct with nested formatting
+                elem_text = self._reconstruct_element_with_nested(
+                    elem, selection.nested_selections[i], parser, placeholder,
+                    is_multiline=False
+                )
+            else:
+                elem_text = elem.text
+            elements_text.append(elem_text)
+
+        # Handle string literals (inline placeholder)
+        if parsed.category == LiteralCategory.STRING:
+            return self._format_string(parsed, selection, placeholder)
+
+        # Handle collections with separator
+        separator = pattern.separator
+
+        # Build elements part
+        if not elements_text:
+            content = placeholder
+        elif pattern.placeholder_position == PlaceholderPosition.END:
+            if selection.has_removals:
+                elements_text.append(placeholder)
+            content = f"{separator} ".join(elements_text)
+        elif pattern.placeholder_position == PlaceholderPosition.MIDDLE_COMMENT:
+            # Insert block comment with full info
+            if selection.has_removals and len(elements_text) >= 1:
+                tokens_saved = selection.total_tokens_removed
+                removed_count = selection.removed_count
+                comment_text = f"… ({removed_count} more, −{tokens_saved} tokens)"
+                comment_placeholder = f"{self.block_comment[0]} {comment_text} {self.block_comment[1]}"
+                elements_text.append(comment_placeholder)
+            content = f"{separator} ".join(elements_text)
+        else:
+            if selection.has_removals:
+                elements_text.append(placeholder)
+            content = f"{separator} ".join(elements_text)
+
+        # Add wrapper for factory calls
+        if parsed.wrapper:
+            return f"{parsed.wrapper}{parsed.opening}{content}{parsed.closing}"
+
+        return f"{parsed.opening}{content}{parsed.closing}"
+
+    def _format_multiline_dfs(
+        self,
+        parsed: ParsedLiteral,
+        selection: DFSSelection,
+        parser: "ElementParser",
+        placeholder: str,
+    ) -> str:
+        """Format as multiline with DFS nested handling and proper indentation."""
+        pattern = parsed.pattern
+        elements = selection.kept_elements
+
+        # Handle string literals
+        if parsed.category == LiteralCategory.STRING:
+            return self._format_string(parsed, selection, placeholder)
+
+        base_indent = parsed.base_indent
+        elem_indent = parsed.element_indent or (base_indent + "    ")
+        separator = pattern.separator
+
+        lines = []
+
+        # Opening
+        if parsed.wrapper:
+            lines.append(f"{parsed.wrapper}{parsed.opening}")
+        else:
+            lines.append(parsed.opening)
+
+        # Elements
+        for i, elem in enumerate(elements):
+            if i in selection.nested_selections:
+                # Reconstruct with nested formatting
+                elem_text = self._reconstruct_element_with_nested(
+                    elem, selection.nested_selections[i], parser, placeholder,
+                    is_multiline=True,
+                    base_indent=elem_indent,
+                    elem_indent=elem_indent + "    "
+                )
+            else:
+                elem_text = elem.text
+            lines.append(f"{elem_indent}{elem_text}{separator}")
+
+        # Placeholder based on position
+        if selection.has_removals:
+            if pattern.placeholder_position == PlaceholderPosition.END:
+                lines.append(f"{elem_indent}{placeholder}{separator}")
+            elif pattern.placeholder_position == PlaceholderPosition.MIDDLE_COMMENT:
+                # Build inline comment with full info (no separate comment needed)
+                tokens_saved = selection.total_tokens_removed
+                removed_count = selection.removed_count
+                comment_text = f"… ({removed_count} more, −{tokens_saved} tokens)"
+                lines.append(f"{elem_indent}{self.single_comment} {comment_text}")
+
+        # Closing
+        lines.append(f"{base_indent}{parsed.closing}")
+
+        return "\n".join(lines)
+
+    def _should_use_inline_nested(
+        self,
+        nested_sel: DFSSelection,
+        elements_text: list,
+        parent_is_multiline: bool,
+        max_inline_length: int = 60,
+    ) -> bool:
+        """
+        Determine if nested structure should stay inline even in multiline parent.
+
+        Key insight:
+        - If structure was trimmed (has_removals=True) → originally large → multiline
+        - If structure is complete (has_removals=False) and short → can stay inline
+
+        Example: (0, 0) should stay as (0, 0), not expand to multiline.
+
+        Args:
+            nested_sel: DFSSelection for nested content
+            elements_text: Formatted element texts
+            parent_is_multiline: Whether parent is multiline
+            max_inline_length: Maximum total length for inline format
+
+        Returns:
+            True if should use inline format
+        """
+        if not parent_is_multiline:
+            return True  # Already inline
+
+        # If structure was trimmed, it was large enough to need trimming → multiline
+        if nested_sel.has_removals:
+            return False
+
+        # If has deeper nesting that was trimmed, use multiline
+        if nested_sel.nested_selections:
+            return False
+
+        # Complete leaf structure - use inline if short enough
+        total_length = sum(len(t) for t in elements_text)
+        total_length += (len(elements_text) - 1) * 2  # ", " separators
+
+        return total_length <= max_inline_length
+
+    def _reconstruct_element_with_nested(
+        self,
+        elem,  # Element
+        nested_sel: DFSSelection,
+        parser: "ElementParser",
+        placeholder: str,
+        is_multiline: bool = False,
+        base_indent: str = "",
+        elem_indent: str = "",
+    ) -> str:
+        """
+        Reconstruct element with nested content formatted.
+
+        Args:
+            elem: Element with potentially nested structure
+            nested_sel: DFSSelection for the nested content
+            parser: ElementParser for formatting nested
+            placeholder: Placeholder text
+            is_multiline: Whether to format nested content as multiline
+            base_indent: Base indentation for nested content
+            elem_indent: Indentation for nested elements
+
+        Returns:
+            Reconstructed element text with formatted nested content
+        """
+        if not elem.has_nested_structure:
+            return elem.text
+
+        # Format the nested selection
+        nested_elements_text = []
+        for i, nested_elem in enumerate(nested_sel.kept_elements):
+            if i in nested_sel.nested_selections:
+                # Recursively handle deeper nesting
+                nested_elem_text = self._reconstruct_element_with_nested(
+                    nested_elem, nested_sel.nested_selections[i],
+                    parser, placeholder, is_multiline=is_multiline,
+                    base_indent=elem_indent,  # Closing bracket at current element level
+                    elem_indent=elem_indent + "    "  # Nested elements go deeper
+                )
+            else:
+                nested_elem_text = nested_elem.text
+            nested_elements_text.append(nested_elem_text)
+
+        # Get separator from pattern (use comma as default)
+        separator = ","
+
+        # Determine if this nested level should stay inline even in multiline parent
+        # Leaf structures (no deeper nesting) that are short should stay compact
+        use_inline = self._should_use_inline_nested(
+            nested_sel, nested_elements_text, is_multiline
+        )
+
+        # Build nested content
+        if not nested_elements_text:
+            nested_formatted = placeholder
+        elif is_multiline and not use_inline:
+            # Multiline nested formatting
+            lines = []
+            for nested_elem_text in nested_elements_text:
+                lines.append(f"{elem_indent}{nested_elem_text}{separator}")
+
+            # Add placeholder comment if has removals
+            if nested_sel.has_removals:
+                tokens_saved = nested_sel.total_tokens_removed
+                removed_count = nested_sel.removed_count
+                comment_text = f"… ({removed_count} more, −{tokens_saved} tokens)"
+                lines.append(f"{elem_indent}{self.single_comment} {comment_text}")
+
+            # Join with newlines, add opening/closing
+            inner = "\n".join(lines)
+            nested_formatted = f"\n{inner}\n{base_indent}"
+        else:
+            # Single-line nested formatting
+            nested_formatted = f"{separator} ".join(nested_elements_text)
+            if nested_sel.has_removals:
+                tokens_saved = nested_sel.total_tokens_removed
+                removed_count = nested_sel.removed_count
+                comment_text = f"… ({removed_count} more, −{tokens_saved} tokens)"
+                nested_formatted = f"{nested_formatted}, {self.block_comment[0]} {comment_text} {self.block_comment[1]}"
+
+        # Reconstruct element with key prefix if it's a key-value pair
+        if elem.key is not None:
+            # Key-value pair: "key": value or key: value
+            return f"{elem.key}: {elem.nested_opening}{nested_formatted}{elem.nested_closing}"
+        else:
+            # Simple nested element
+            return f"{elem.nested_opening}{nested_formatted}{elem.nested_closing}"
+
+    def _generate_comment_dfs(
+        self,
+        parsed: ParsedLiteral,
+        selection: DFSSelection,
+        position: PlaceholderPosition,
+    ) -> tuple[Optional[str], Optional[int]]:
+        """
+        Generate comment with trimming info for DFS selection.
+
+        Returns:
+            (comment_text, byte_position) or (None, None)
+        """
+        if not selection.has_removals:
+            return None, None
+
+        if position == PlaceholderPosition.NONE:
+            return None, None
+
+        # For MIDDLE_COMMENT, comment is embedded in the text itself
+        if position == PlaceholderPosition.MIDDLE_COMMENT:
+            return None, None
+
+        saved = selection.total_tokens_removed
+        # Use pattern's comment_name if set, otherwise category value
+        category_name = parsed.pattern.comment_name or parsed.category.value
+        # Return raw content - formatting is done by handler based on context
+        comment_content = f"literal {category_name} (−{saved} tokens)"
+        return comment_content, parsed.end_byte
 
     def _format_single_line(
         self,
@@ -242,7 +559,6 @@ class ResultFormatter:
         # Generate comment for all positions that have removals
         # INLINE: truncation is inside the text, but still need a comment
         # END: placeholder at end, comment after closing bracket
-        # AFTER_CLOSING: comment after closing bracket
         # MIDDLE_COMMENT: has embedded comment, no separate comment needed
         if position == PlaceholderPosition.MIDDLE_COMMENT:
             # Comment is embedded in the text itself

@@ -23,9 +23,8 @@ class DataContainer:
         # Large array (candidate for trimming)
         self.large_list = [
             "item_1",
-            "item_2",
             "…",
-        ] # literal array (−115 tokens)
+        ] # literal array (−120 tokens)
         
         # Small dictionary (should be preserved)
         self.small_dict = {"name": "test", "value": 42}
@@ -33,8 +32,7 @@ class DataContainer:
         # Large dictionary (candidate for trimming)
         self.large_dict = {
             "user_id": 12345,
-            "is_active": True,
-            # … (12 more, −216 tokens)
+            # … (13 more, −220 tokens)
         }
 
 def process_data():
@@ -43,22 +41,16 @@ def process_data():
     categories = [
         "Technology",
         "Science",
-        "Health",
         "…",
-    ] # literal array (−41 tokens)
+    ] # literal array (−44 tokens)
     
     # Nested data structure
     config = {
         "database": {
             "host": "localhost",
-            "port": 5432,
-            "name": "myapp",
-            "credentials": {
-                "username": "admin",
-                "password": "super_secret_password_123456789"
-            }
+            # … (3 more, −38 tokens)
         },
-        # … (2 more, −104 tokens)
+        # … (2 more, −142 tokens)
     }
     
     # Very long single-line string
@@ -70,9 +62,8 @@ def process_data():
 TAGS = {
     "python",
     "javascript",
-    "typescript",
     "…",
-} # literal set (−36 tokens)
+} # literal set (−39 tokens)
 
 # Tuple with many elements
 COORDINATES = (

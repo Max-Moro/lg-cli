@@ -47,11 +47,19 @@ class Element:
 
     # For nested structures
     is_nested: bool = False
+    nested_opening: Optional[str] = None    # Opening bracket: {, [, (
+    nested_closing: Optional[str] = None    # Closing bracket: }, ], )
+    nested_content: Optional[str] = None    # Content inside brackets
 
     @property
     def is_kv_pair(self) -> bool:
         """Check if this is a key-value pair."""
         return self.key is not None
+
+    @property
+    def has_nested_structure(self) -> bool:
+        """Check if this element has a parseable nested structure."""
+        return self.is_nested and self.nested_content is not None
 
 
 class ElementParser:
@@ -189,14 +197,26 @@ class ElementParser:
         start: int,
         end: int
     ) -> Element:
-        """Create an Element, detecting key-value pairs if configured."""
+        """Create an Element, detecting key-value pairs and nested structures."""
         key = None
         value = None
-        is_nested = any(c in text for c in "([{")
+        is_nested = False
+        nested_opening = None
+        nested_closing = None
+        nested_content = None
 
         # Try to split key-value if separator is configured
         if self.config.kv_separator:
             key, value = self._split_kv(text, self.config.kv_separator)
+
+        # Determine what to analyze for nesting: value (if kv pair) or whole text
+        check_text = value if value is not None else text
+
+        # Extract nested structure info
+        nested_info = self._extract_nested_info(check_text)
+        if nested_info:
+            is_nested = True
+            nested_opening, nested_closing, nested_content = nested_info
 
         return Element(
             text=text,
@@ -206,7 +226,49 @@ class ElementParser:
             key=key,
             value=value,
             is_nested=is_nested,
+            nested_opening=nested_opening,
+            nested_closing=nested_closing,
+            nested_content=nested_content,
         )
+
+    def _extract_nested_info(
+        self,
+        text: str
+    ) -> Optional[Tuple[str, str, str]]:
+        """
+        Extract nested structure info from text.
+
+        Returns:
+            Tuple of (opening, closing, content) or None if not nested
+        """
+        text = text.strip()
+
+        # Check for each bracket type
+        bracket_pairs = [("{", "}"), ("[", "]"), ("(", ")")]
+
+        for opening, closing in bracket_pairs:
+            if text.startswith(opening) and text.endswith(closing):
+                # Extract content between brackets
+                content = text[len(opening):-len(closing)]
+                return opening, closing, content
+
+        # Check if text contains a nested structure (not at boundaries)
+        # e.g., for factory calls like "List.of(...)"
+        for opening, closing in bracket_pairs:
+            open_pos = text.find(opening)
+            if open_pos != -1:
+                # Find matching closing bracket
+                depth = 0
+                for i in range(open_pos, len(text)):
+                    if text[i] == opening:
+                        depth += 1
+                    elif text[i] == closing:
+                        depth -= 1
+                        if depth == 0:
+                            content = text[open_pos + 1:i]
+                            return opening, closing, content
+
+        return None
 
     def _split_kv(
         self,
@@ -273,3 +335,19 @@ class ElementParser:
             elem.end_offset += base_offset
 
         return elements
+
+    def parse_nested(self, element: Element) -> Optional[List[Element]]:
+        """
+        Recursively parse nested content of an element.
+
+        Args:
+            element: Element with nested structure
+
+        Returns:
+            List of nested elements, or None if not nested
+        """
+        if not element.has_nested_structure:
+            return None
+
+        # Parse the nested content
+        return self.parse(element.nested_content)

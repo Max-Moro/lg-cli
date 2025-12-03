@@ -2,16 +2,19 @@
 Budget-aware element selection for literal trimming.
 
 Implements algorithms for selecting which elements to keep
-within a token budget.
+within a token budget, including DFS selection for nested structures.
 """
 
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import List, Optional
+from typing import List, Optional, Dict, TYPE_CHECKING
 
-from .parser import Element
+from .parser import Element, ElementParser, ParseConfig
 from lg.stats.tokenizer import TokenService
+
+if TYPE_CHECKING:
+    from .parser import Element
 
 
 @dataclass
@@ -49,6 +52,58 @@ class Selection:
     @property
     def has_removals(self) -> bool:
         return self.removed_count > 0
+
+
+@dataclass
+class DFSSelection:
+    """
+    Result of DFS (depth-first) element selection for nested structures.
+
+    Extends Selection with recursive nested selections.
+    """
+    # Elements to keep at this level
+    kept_elements: List[Element]
+
+    # Elements that were removed at this level
+    removed_elements: List[Element]
+
+    # Total elements at this level
+    total_count: int
+
+    # Token accounting for this level (not including nested)
+    tokens_kept: int
+    tokens_removed: int
+
+    # Nested selections: element index -> DFSSelection for that element's content
+    nested_selections: Dict[int, "DFSSelection"] = field(default_factory=dict)
+
+    # Budget remaining after this level's processing
+    remaining_budget: int = 0
+
+    # Whether budget was exhausted at this level or below
+    budget_exhausted: bool = False
+
+    @property
+    def kept_count(self) -> int:
+        return len(self.kept_elements)
+
+    @property
+    def removed_count(self) -> int:
+        return len(self.removed_elements)
+
+    @property
+    def has_removals(self) -> bool:
+        return self.removed_count > 0 or any(
+            ns.has_removals for ns in self.nested_selections.values()
+        )
+
+    @property
+    def total_tokens_removed(self) -> int:
+        """Total tokens removed including nested levels."""
+        total = self.tokens_removed
+        for ns in self.nested_selections.values():
+            total += ns.total_tokens_removed
+        return total
 
 
 class BudgetSelector:
@@ -220,3 +275,104 @@ class BudgetSelector:
             overhead_text = f"{opening}\n{indent}{placeholder}\n{indent}{closing}"
 
         return self.tokenizer.count_text(overhead_text)
+
+    def select_dfs(
+        self,
+        elements: List[Element],
+        budget: int,
+        parser: ElementParser,
+        min_keep: int = 1,
+    ) -> DFSSelection:
+        """
+        Select elements using depth-first strategy for nested structures.
+
+        Greedy DFS with cascading finalization:
+        1. Always descend into first element of each structure
+        2. Pass remaining budget down to child level
+        3. Continue until leaf (atomic value) or budget exhausted
+        4. On budget exhaustion, complete first-element chain to deepest level
+        5. Unwind recursion, inserting placeholders at each level
+        6. Truncate remaining siblings at each level
+
+        Args:
+            elements: List of elements at current level
+            budget: Token budget for this level and all nested levels
+            parser: Parser for recursively parsing nested content
+            min_keep: Minimum elements to keep at each level
+
+        Returns:
+            DFSSelection with kept/removed elements and nested selections
+        """
+        if not elements:
+            return DFSSelection(
+                kept_elements=[],
+                removed_elements=[],
+                total_count=0,
+                tokens_kept=0,
+                tokens_removed=0,
+                remaining_budget=budget,
+                budget_exhausted=False,
+            )
+
+        kept: List[Element] = []
+        removed: List[Element] = []
+        tokens_used = 0
+        remaining_budget = budget
+        budget_exhausted = False
+        nested_selections: Dict[int, DFSSelection] = {}
+
+        for i, elem in enumerate(elements):
+            # Count tokens for this element
+            elem_tokens = self.tokenizer.count_text(elem.text)
+
+            # Check if we can afford this element or must keep it due to min_keep
+            can_afford = tokens_used + elem_tokens <= remaining_budget
+            must_keep = len(kept) < min_keep
+
+            if can_afford or must_keep:
+                # Keep this element
+                kept.append(elem)
+                tokens_used += elem_tokens
+                remaining_budget -= elem_tokens
+
+                # If this element has nested structure, recursively process it
+                if elem.has_nested_structure:
+                    nested_sel = self.select_dfs(
+                        parser.parse(elem.nested_content),
+                        remaining_budget,
+                        parser,
+                        min_keep=min_keep,
+                    )
+                    nested_selections[i] = nested_sel
+                    remaining_budget = nested_sel.remaining_budget
+                    budget_exhausted = nested_sel.budget_exhausted
+
+                    # If budget exhausted in nested level, stop processing siblings
+                    if budget_exhausted:
+                        # Add remaining elements as removed
+                        removed.extend(elements[i + 1:])
+                        break
+            else:
+                # Budget exhausted, cannot afford this element
+                budget_exhausted = True
+                removed.append(elem)
+
+        # Add any remaining elements to removed
+        if not budget_exhausted:
+            removed.extend(elements[len(kept):])
+
+        # Calculate tokens removed
+        tokens_removed = sum(
+            self.tokenizer.count_text(e.text) for e in removed
+        )
+
+        return DFSSelection(
+            kept_elements=kept,
+            removed_elements=removed,
+            total_count=len(elements),
+            tokens_kept=tokens_used,
+            tokens_removed=tokens_removed,
+            nested_selections=nested_selections,
+            remaining_budget=remaining_budget,
+            budget_exhausted=budget_exhausted,
+        )

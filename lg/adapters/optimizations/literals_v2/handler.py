@@ -17,7 +17,7 @@ from .categories import (
 )
 from .descriptor import LanguageLiteralDescriptor
 from .parser import ElementParser, ParseConfig, Element
-from .selector import BudgetSelector, Selection
+from .selector import BudgetSelector, Selection, DFSSelection
 from .formatter import ResultFormatter
 from lg.stats.tokenizer import TokenService
 
@@ -224,7 +224,7 @@ class LanguageLiteralHandler:
         if parsed.category == LiteralCategory.STRING:
             return self._process_string(parsed, token_budget)
         else:
-            return self._process_collection(parsed, token_budget)
+            return self._process_collection_dfs(parsed, token_budget)
 
     def _process_string(
         self,
@@ -312,6 +312,69 @@ class LanguageLiteralHandler:
         formatted = self.formatter.format(parsed, selection)
 
         return self.formatter.create_trim_result(parsed, selection, formatted)
+
+    def _process_collection_dfs(
+        self,
+        parsed: ParsedLiteral,
+        token_budget: int
+    ) -> Optional[TrimResult]:
+        """Process collection literal with DFS for nested structures."""
+        pattern = parsed.pattern
+
+        # Get parser for this pattern
+        parser = self.get_parser(pattern)
+
+        # Parse elements
+        elements = parser.parse(parsed.content)
+
+        if not elements:
+            return None
+
+        # Calculate overhead
+        placeholder = pattern.placeholder_template
+        overhead = self.selector.calculate_overhead(
+            parsed.opening, parsed.closing, placeholder,
+            parsed.is_multiline, parsed.element_indent
+        )
+
+        content_budget = max(10, token_budget - overhead)
+
+        # Select elements with DFS (budget-aware nested selection)
+        selection = self.selector.select_dfs(
+            elements, content_budget,
+            parser=parser,
+            min_keep=pattern.min_elements,
+        )
+
+        if not selection.has_removals:
+            return None  # No trimming needed
+
+        # Format result with DFS
+        formatted = self.formatter.format_dfs(parsed, selection, parser)
+
+        return self._create_trim_result_dfs(parsed, selection, formatted)
+
+    def _create_trim_result_dfs(
+        self,
+        parsed: ParsedLiteral,
+        selection: DFSSelection,
+        formatted,  # FormattedResult
+    ) -> TrimResult:
+        """Create TrimResult from DFS formatting data."""
+        from .formatter import FormattedResult
+
+        trimmed_tokens = self.tokenizer.count_text(formatted.text)
+
+        return TrimResult(
+            trimmed_text=formatted.text,
+            original_tokens=parsed.original_tokens,
+            trimmed_tokens=trimmed_tokens,
+            saved_tokens=parsed.original_tokens - trimmed_tokens,
+            elements_kept=selection.kept_count,
+            elements_removed=selection.removed_count,
+            comment_text=formatted.comment,
+            comment_position=formatted.comment_byte,
+        )
 
     # ========== Context-aware comment formatting ==========
 

@@ -6,40 +6,41 @@
 const SHORT_MESSAGE = "Hello, World!";
 
 // Long string literal (candidate for trimming)
-const LONG_MESSAGE = `This is an extremely long message that contains a substa…`; // literal string (−59 tokens)
+const LONG_MESSAGE = `This is an extremely long message that conta…`; // literal string (−65 tokens)
 
 // Multi-line template literal with embedded expressions
 const TEMPLATE_WITH_DATA = `
-User Information:
-- Name: ${…`; // literal string (−58 tokens)
+User Information…`; // literal string (−65 tokens)
 
 export class LiteralDataManager {
     // Class properties with various literal types
     #smallConfig = {
         debug: true,
-        "…": "…",
-    }; // literal object (−3 tokens)
+        version: "1.0.0"
+    };
 
     #largeConfig = {
-        "…": "…",
-    }; // literal object (−235 tokens)
+        database: {
+            host: "localhost",
+            // … (5 more, −75 tokens)
+        },
+        // … (3 more, −220 tokens)
+    };
 
     constructor() {
         // Array with many elements (trimming candidate)
         this.supportedLanguages = [
             "english",
             "spanish",
-            "french",
             "…",
-        ]; // literal array (−84 tokens)
+        ]; // literal array (−85 tokens)
 
         // Set with many elements
         this.allowedExtensions = new Set([
             ".js",
             ".jsx",
-            ".ts",
             "…",
-        ]) // literal array (−46 tokens);
+        ]); // literal array (−53 tokens)
     }
 
     processData() {
@@ -48,43 +49,60 @@ export class LiteralDataManager {
 
         const largeArray = [
             "item_001",
-            "item_002",
             "…",
-        ]; // literal array (−140 tokens)
+        ]; // literal array (−145 tokens)
 
         const nestedData = {
-            "…": "…",
-        }; // literal object (−143 tokens)
+            level1: {
+                level2: {
+                    level3: {
+                        data: [
+                            {
+                                id: 1,
+                                // … (2 more, −8 tokens)
+                            },
+                            // … (4 more, −69 tokens)
+                        ],
+                        // … (1 more, −110 tokens)
+                    },
+                    // … (0 more, −110 tokens)
+                },
+                // … (0 more, −110 tokens)
+            },
+            // … (0 more, −110 tokens)
+        };
 
         return {
             tags: smallArray,
-            items: largeArray,
-            "…": "…",
-        }; // literal object (−14 tokens)
+            // … (3 more, −22 tokens)
+        };
     }
 
     getLongQuery() {
         // Very long SQL-like query string
         return `
-            SELECT
-                users.id, users…`; // literal string (−177 tokens)
+            SELECT…`; // literal string (−185 tokens)
     }
 }
 
 // Module-level constants with different sizes
 export const SMALL_CONSTANTS = {
     API_VERSION: "v1",
-    "…": "…",
-}; // literal object (−0 tokens)
+    DEFAULT_LIMIT: 50
+};
 
 export const LARGE_CONSTANTS = {
-    "…": "…",
-}; // literal object (−450 tokens)
+    HTTP_STATUS_CODES: {
+        CONTINUE: 100,
+        // … (40 more, −241 tokens)
+    },
+    // … (1 more, −363 tokens)
+};
 
 // Helper functions that use literal data
 function getUserName() { return "John Doe"; }
 function getUserEmail() { return "john.doe@example.com"; }
 function getAccountStatus() { return "active"; }
 function getPermissions() { return ["read", "write", "admin"]; }
-function getLastLogin() { return "2024-01-15T1…"; /* literal string (−5 tokens) */ }
+function getLastLogin() { return "2024-01-15T1…"; /* literal string (−7 tokens) */ }
 function getProfileCompleteness() { return 85; }

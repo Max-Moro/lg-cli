@@ -23,10 +23,9 @@ class LiteralCategory(Enum):
 
 class PlaceholderPosition(Enum):
     """Where to place the trimming placeholder."""
-    END = "end"                     # Before closing: [..., "…"]
-    MIDDLE_COMMENT = "middle"       # As comment in middle: [..., // …, ]
-    INLINE = "inline"               # Inside string: "text…"
-    AFTER_CLOSING = "after"         # Comment after: ] // …
+    END = "end"                     # Before closing: [..., "…"] // comment
+    MIDDLE_COMMENT = "middle"       # As comment in middle: [..., /* … comment */, ]
+    INLINE = "inline"               # Inside string: "text…" // comment
     NONE = "none"                   # No placeholder (silent trim)
 
 

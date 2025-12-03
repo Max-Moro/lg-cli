@@ -6,14 +6,13 @@
 const SHORT_MESSAGE = "Hello, World!";
 
 // Long string literal (candidate for trimming)
-const LONG_MESSAGE = `This is an extremely long message that contains a substantial amount of text content which might be considered for trim…`; // literal string (−50 tokens)
+const LONG_MESSAGE = `This is an extremely long message that contains a substantial amount of text content which might be conside…`; // literal string (−54 tokens)
 
 // Multi-line template literal with embedded expressions
 const TEMPLATE_WITH_DATA = `
 User Information:
 - Name: ${getUserName()}
-- Email: ${getUserEmail()}
-- Registrati…`; // literal string (−45 tokens)
+- Email: ${getUse…`; // literal string (−51 tokens)
 
 export class LiteralDataManager {
     // Class properties with various literal types
@@ -23,28 +22,27 @@ export class LiteralDataManager {
     };
 
     #largeConfig = {
-        "…": "…",
-    }; // literal object (−235 tokens)
+        database: {
+            host: "localhost",
+            // … (5 more, −75 tokens)
+        },
+        // … (3 more, −220 tokens)
+    };
 
     constructor() {
         // Array with many elements (trimming candidate)
         this.supportedLanguages = [
             "english",
             "spanish",
-            "french",
-            "german",
             "…",
-        ]; // literal array (−79 tokens)
+        ]; // literal array (−85 tokens)
 
         // Set with many elements
         this.allowedExtensions = new Set([
             ".js",
             ".jsx",
-            ".ts",
-            ".tsx",
-            ".vue",
             "…",
-        ]) // literal array (−38 tokens);
+        ]); // literal array (−53 tokens)
     }
 
     processData() {
@@ -53,27 +51,40 @@ export class LiteralDataManager {
 
         const largeArray = [
             "item_001",
-            "item_002",
-            "item_003",
             "…",
-        ]; // literal array (−134 tokens)
+        ]; // literal array (−145 tokens)
 
         const nestedData = {
-            "…": "…",
-        }; // literal object (−143 tokens)
+            level1: {
+                level2: {
+                    level3: {
+                        data: [
+                            {
+                                id: 1,
+                                // … (2 more, −8 tokens)
+                            },
+                            // … (4 more, −69 tokens)
+                        ],
+                        // … (1 more, −110 tokens)
+                    },
+                    // … (0 more, −110 tokens)
+                },
+                // … (0 more, −110 tokens)
+            },
+            // … (0 more, −110 tokens)
+        };
 
         return {
             tags: smallArray,
-            items: largeArray,
-            "…": "…",
-        }; // literal object (−14 tokens)
+            // … (3 more, −22 tokens)
+        };
     }
 
     getLongQuery() {
         // Very long SQL-like query string
         return `
             SELECT
-                users.id, users.username, users.email, users.created_at,…`; // literal string (−169 tokens)
+                users.id, users.username, users.email, user…`; // literal string (−173 tokens)
     }
 }
 
@@ -84,8 +95,12 @@ export const SMALL_CONSTANTS = {
 };
 
 export const LARGE_CONSTANTS = {
-    "…": "…",
-}; // literal object (−450 tokens)
+    HTTP_STATUS_CODES: {
+        CONTINUE: 100,
+        // … (40 more, −241 tokens)
+    },
+    // … (1 more, −363 tokens)
+};
 
 // Helper functions that use literal data
 function getUserName() { return "John Doe"; }
