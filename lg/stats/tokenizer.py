@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from collections import OrderedDict
 from pathlib import Path
 from typing import Tuple
 
@@ -12,9 +13,16 @@ Created once at the start of the pipeline and provides
 a unified API for working with different tokenizers.
 """
 
+# Heuristics for two-level cache
+SMALL_TEXT_THRESHOLD = 200  # chars - use only in-memory cache
+MEMORY_CACHE_SIZE = 10000   # max entries in LRU cache (~1-2 MB)
+
+
 class TokenService:
     """
-    Wrapper around BaseTokenizer with built-in caching.
+    Wrapper around BaseTokenizer with two-level caching:
+    - L1 (memory): Fast LRU cache for small strings and hot data
+    - L2 (file): Persistent cache for large strings across runs
     """
 
     def __init__(
@@ -30,7 +38,7 @@ class TokenService:
             root: Project root
             lib: Library name (tiktoken, tokenizers, sentencepiece)
             encoder: Encoder/model name
-            cache: Cache for tokens (optional)
+            cache: File cache for tokens (optional)
         """
         self.root = root
         self.lib = lib
@@ -39,6 +47,9 @@ class TokenService:
 
         # Create tokenizer
         self._tokenizer = create_tokenizer(lib, encoder, root)
+
+        # L1 cache: in-memory LRU for fast access
+        self._memory_cache: OrderedDict[str, int] = OrderedDict()
 
     @property
     def tokenizer(self) -> BaseTokenizer:
@@ -53,10 +64,32 @@ class TokenService:
     def count_text(self, text: str) -> int:
         """Count tokens in text."""
         return self._tokenizer.count_tokens(text)
-    
+
+    def _get_from_memory_cache(self, text: str) -> int | None:
+        """Get token count from in-memory LRU cache."""
+        if text in self._memory_cache:
+            # Move to end (mark as recently used)
+            self._memory_cache.move_to_end(text)
+            return self._memory_cache[text]
+        return None
+
+    def _put_to_memory_cache(self, text: str, count: int) -> None:
+        """Put token count to in-memory LRU cache."""
+        # Add to cache
+        self._memory_cache[text] = count
+        self._memory_cache.move_to_end(text)
+
+        # Evict oldest if over limit
+        while len(self._memory_cache) > MEMORY_CACHE_SIZE:
+            self._memory_cache.popitem(last=False)
+
     def count_text_cached(self, text: str) -> int:
         """
-        Count tokens in text using cache.
+        Count tokens in text using two-level cache:
+        - Small strings (<200 chars): L1 (memory) only - fast, no disk I/O
+        - Large strings (>=200 chars): L1 (memory) + L2 (file) - persistence
+
+        This avoids expensive file operations for high-frequency small string access.
 
         Args:
             text: Text to count tokens for
@@ -67,19 +100,31 @@ class TokenService:
         if not text:
             return 0
 
-        # If no cache, just count
-        if not self.cache:
-            return self.count_text(text)
+        # Check L1 (memory) cache first for all strings
+        cached = self._get_from_memory_cache(text)
+        if cached is not None:
+            return cached
 
-        # Try to get from cache
-        # Key: lib:encoder
+        # For small strings, skip file cache (avoid disk I/O overhead)
+        is_small = len(text) < SMALL_TEXT_THRESHOLD
+
+        if is_small or not self.cache:
+            # Count directly and cache in memory only
+            token_count = self.count_text(text)
+            self._put_to_memory_cache(text, token_count)
+            return token_count
+
+        # For large strings, check L2 (file) cache
         cache_key = f"{self.lib}:{self.encoder}"
         cached_tokens = self.cache.get_text_tokens(text, cache_key)
         if cached_tokens is not None:
+            # Found in file cache - add to memory cache too
+            self._put_to_memory_cache(text, cached_tokens)
             return cached_tokens
 
-        # If not in cache, count and save
+        # Not in any cache - count and save to both levels
         token_count = self.count_text(text)
+        self._put_to_memory_cache(text, token_count)
         self.cache.put_text_tokens(text, cache_key, token_count)
 
         return token_count
