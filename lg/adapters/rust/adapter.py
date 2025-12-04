@@ -75,7 +75,7 @@ class RustAdapter(CodeAdapter[RustCfg]):
         return stripped.startswith('///') or stripped.startswith('//!')
 
     def hook__get_literal_handler(
-        self, root_optimizer: LiteralOptimizer
+        self, root_optimizer: LiteralOptimizer  # noqa: F841
     ) -> LiteralHandler:
         """Provide Rust literal handler for vec!, lazy_static!, and raw strings."""
         from .literals import RustLiteralHandler

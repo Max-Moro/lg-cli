@@ -173,7 +173,7 @@ class ResultFormatter:
 
         # Handle string literals (inline placeholder)
         if parsed.category == LiteralCategory.STRING:
-            return self._format_string(parsed, selection, placeholder)
+            return self._format_string(parsed, selection)
 
         # Handle collections with separator
         separator = pattern.separator
@@ -218,7 +218,7 @@ class ResultFormatter:
 
         # Handle string literals
         if parsed.category == LiteralCategory.STRING:
-            return self._format_string(parsed, selection, placeholder)
+            return self._format_string(parsed, selection)
 
         base_indent = parsed.base_indent
         elem_indent = parsed.element_indent or (base_indent + "    ")
@@ -452,7 +452,7 @@ class ResultFormatter:
 
         # Handle string literals (inline placeholder)
         if parsed.category == LiteralCategory.STRING:
-            return self._format_string(parsed, selection, placeholder)
+            return self._format_string(parsed, selection)
 
         # Handle collections with separator
         separator = pattern.separator
@@ -496,7 +496,7 @@ class ResultFormatter:
 
         # Handle string literals
         if parsed.category == LiteralCategory.STRING:
-            return self._format_string(parsed, selection, placeholder)
+            return self._format_string(parsed, selection)
 
         base_indent = parsed.base_indent
         elem_indent = parsed.element_indent or (base_indent + "    ")
@@ -545,12 +545,9 @@ class ResultFormatter:
     def _format_string(
         self,
         parsed: ParsedLiteral,
-        selection: Selection,
-        placeholder: str,
+        selection: Selection
     ) -> str:
         """Format string literal with inline truncation marker."""
-        content = parsed.content
-
         if not selection.has_removals:
             # No trimming needed
             return parsed.original_text

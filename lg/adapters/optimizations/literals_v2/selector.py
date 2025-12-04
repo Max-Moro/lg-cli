@@ -72,7 +72,7 @@ class DFSSelection:
     tokens_removed: int
 
     # Nested selections: element index -> DFSSelection for that element's content
-    nested_selections: Dict[int, "DFSSelection"] = field(default_factory=dict)
+    nested_selections: Dict[int, DFSSelection] = field(default_factory=dict)
 
     # Budget remaining after this level's processing
     remaining_budget: int = 0
@@ -491,9 +491,7 @@ class BudgetSelector:
 
         for tuple_idx, tpl in enumerate(tuples):
             # Process each element in tuple with DFS if nested
-            tuple_original_tokens = 0
             tuple_optimized_tokens = 0
-            tuple_has_nested = False
 
             # First pass: calculate original size and process nested structures
             for elem_offset, elem in enumerate(tpl):
@@ -502,7 +500,6 @@ class BudgetSelector:
 
                 # If element has multiline nested structure, recursively process it
                 if elem.is_multiline_nested:
-                    tuple_has_nested = True
                     # Pass full remaining budget to recursion (not reduced by previous tuple elements)
                     nested_sel = self.select_dfs(
                         parser.parse(elem.nested_content),

@@ -7,7 +7,6 @@ Defines patterns for Python literals: strings, lists, tuples, dicts, sets.
 from __future__ import annotations
 
 import re
-from typing import Optional
 
 from ..optimizations.literals_v2 import (
     LiteralCategory,

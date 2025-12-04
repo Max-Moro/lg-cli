@@ -75,7 +75,7 @@ class GoAdapter(CodeAdapter[GoCfg]):
         return stripped.startswith('//')
 
     def hook__get_literal_handler(
-        self, root_optimizer: LiteralOptimizer
+        self, root_optimizer: LiteralOptimizer  # noqa: F841
     ) -> Optional[LiteralHandler]:
         """Provide custom Go literal handler for composite literals."""
         from .literals import GoLiteralHandler

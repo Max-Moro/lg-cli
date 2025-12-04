@@ -400,8 +400,6 @@ class LanguageLiteralHandler:
         formatted,  # FormattedResult
     ) -> TrimResult:
         """Create TrimResult from DFS formatting data."""
-        from .formatter import FormattedResult
-
         trimmed_tokens = self.tokenizer.count_text(formatted.text)
 
         return TrimResult(

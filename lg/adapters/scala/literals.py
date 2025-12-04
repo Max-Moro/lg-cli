@@ -112,7 +112,7 @@ class ScalaLiteralHandler(DefaultLiteralHandler):
     def _trim_simple_factory(
         self,
         context: ProcessingContext,
-        collection_name: str,
+        _collection_name: str,
         node_text: str,
         max_tokens: int,
         node: Node

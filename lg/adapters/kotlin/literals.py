@@ -115,7 +115,7 @@ class KotlinLiteralHandler(DefaultLiteralHandler):
     def _trim_simple_factory(
         self,
         context: ProcessingContext,
-        function_name: str,
+        _function_name: str,
         node_text: str,
         max_tokens: int,
         node: Node

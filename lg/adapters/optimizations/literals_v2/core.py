@@ -13,6 +13,7 @@ from .categories import TrimResult
 from .handler import LanguageLiteralHandler
 from ...code_model import LiteralConfig
 from ...context import ProcessingContext
+from tree_sitter import Node
 
 
 class LiteralOptimizerV2:
@@ -127,7 +128,6 @@ class LiteralOptimizerV2:
                     top_level.append((node, capture_name))
 
         for node, capture_name in top_level:
-            start_byte, end_byte = context.doc.get_node_range(node)
             literal_text = context.doc.get_node_text(node)
             token_count = self.adapter.tokenizer.count_text(literal_text)
 
@@ -146,7 +146,7 @@ class LiteralOptimizerV2:
     def _apply_trim_result(
         self,
         context: ProcessingContext,
-        node: "Node",
+        node: Node,
         result: TrimResult,
         original_text: str
     ) -> None:
@@ -184,7 +184,7 @@ class LiteralOptimizerV2:
     def _apply_trim_result_composing(
         self,
         context: ProcessingContext,
-        node: "Node",
+        node: Node,
         result: TrimResult,
         original_text: str
     ) -> None:
@@ -228,7 +228,7 @@ class LiteralOptimizerV2:
     def _process_node(
         self,
         context: ProcessingContext,
-        node: "Node",
+        node: Node,
         max_tokens: int,
     ) -> Optional[TrimResult]:
         """

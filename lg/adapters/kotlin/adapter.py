@@ -75,7 +75,7 @@ class KotlinAdapter(CodeAdapter[KotlinCfg]):
         remove_function_body_with_kdoc(*args, **kwargs)
 
     def hook__get_literal_handler(
-        self, root_optimizer: LiteralOptimizer
+        self, root_optimizer: LiteralOptimizer  # noqa: F841
     ) -> Optional[LiteralHandler]:
         """Provide custom Kotlin literal handler for collection factory methods."""
         from .literals import KotlinLiteralHandler
