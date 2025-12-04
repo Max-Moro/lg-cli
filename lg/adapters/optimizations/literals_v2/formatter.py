@@ -95,7 +95,7 @@ class ResultFormatter:
             text = self._format_single_line(parsed, selection, placeholder)
 
         # Generate comment if needed
-        comment, comment_byte = self._generate_comment(
+        comment, comment_byte = self._generate_comment_impl(
             parsed, selection, pattern.placeholder_position
         )
 
@@ -131,12 +131,12 @@ class ResultFormatter:
 
         # Format based on category and layout
         if parsed.is_multiline:
-            text = self._format_multiline_dfs(parsed, selection, parser, placeholder)
+            text = self._format_multiline_impl(parsed, selection, placeholder, parser)
         else:
-            text = self._format_single_line_dfs(parsed, selection, parser, placeholder)
+            text = self._format_single_line_impl(parsed, selection, placeholder, parser)
 
         # Generate comment if needed
-        comment, comment_byte = self._generate_comment_dfs(
+        comment, comment_byte = self._generate_comment_impl(
             parsed, selection, pattern.placeholder_position
         )
 
@@ -147,136 +147,6 @@ class ResultFormatter:
             comment=comment,
             comment_byte=comment_byte,
         )
-
-    def _format_single_line_dfs(
-        self,
-        parsed: ParsedLiteral,
-        selection: DFSSelection,
-        parser: ElementParser,
-        placeholder: str,
-    ) -> str:
-        """Format as single line with DFS nested handling."""
-        pattern = parsed.pattern
-        elements_text = []
-
-        # Process kept elements with nested handling
-        for i, elem in enumerate(selection.kept_elements):
-            if i in selection.nested_selections:
-                # Reconstruct with nested formatting
-                elem_text = self._reconstruct_element_with_nested(
-                    elem, selection.nested_selections[i], parser, placeholder,
-                    is_multiline=False
-                )
-            else:
-                elem_text = elem.text
-            elements_text.append(elem_text)
-
-        # Handle string literals (inline placeholder)
-        if parsed.category == LiteralCategory.STRING:
-            return self._format_string(parsed, selection)
-
-        # Handle collections with separator
-        separator = pattern.separator
-
-        # Build elements part
-        if not elements_text:
-            content = placeholder
-        elif pattern.placeholder_position == PlaceholderPosition.END:
-            if selection.has_removals:
-                elements_text.append(placeholder)
-            content = f"{separator} ".join(elements_text)
-        elif pattern.placeholder_position == PlaceholderPosition.MIDDLE_COMMENT:
-            # Insert block comment with full info
-            if selection.has_removals and len(elements_text) >= 1:
-                tokens_saved = selection.total_tokens_removed
-                removed_count = selection.removed_count
-                comment_text = f"… ({removed_count} more, −{tokens_saved} tokens)"
-                comment_placeholder = f"{self.block_comment[0]} {comment_text} {self.block_comment[1]}"
-                elements_text.append(comment_placeholder)
-            content = f"{separator} ".join(elements_text)
-        else:
-            if selection.has_removals:
-                elements_text.append(placeholder)
-            content = f"{separator} ".join(elements_text)
-
-        # Add wrapper for factory calls
-        if parsed.wrapper:
-            return f"{parsed.wrapper}{parsed.opening}{content}{parsed.closing}"
-
-        return f"{parsed.opening}{content}{parsed.closing}"
-
-    def _format_multiline_dfs(
-        self,
-        parsed: ParsedLiteral,
-        selection: DFSSelection,
-        parser: ElementParser,
-        placeholder: str,
-    ) -> str:
-        """Format as multiline with DFS nested handling and proper indentation."""
-        pattern = parsed.pattern
-        elements = selection.kept_elements
-
-        # Handle string literals
-        if parsed.category == LiteralCategory.STRING:
-            return self._format_string(parsed, selection)
-
-        base_indent = parsed.base_indent
-        elem_indent = parsed.element_indent or (base_indent + "    ")
-        separator = pattern.separator
-
-        lines = []
-
-        # Opening
-        if parsed.wrapper:
-            lines.append(f"{parsed.wrapper}{parsed.opening}")
-        else:
-            lines.append(parsed.opening)
-
-        # Elements - group by tuple_size if specified
-        tuple_size = pattern.tuple_size
-        is_last_line = not selection.has_removals or pattern.placeholder_position != PlaceholderPosition.END
-        allow_trailing = parsed.category != LiteralCategory.FACTORY_CALL
-
-        for i in range(0, len(elements), tuple_size):
-            group = elements[i:i + tuple_size]
-            group_texts = []
-            for elem_idx, elem in enumerate(group):
-                global_idx = i + elem_idx
-                if global_idx in selection.nested_selections:
-                    # Reconstruct with nested formatting
-                    elem_text = self._reconstruct_element_with_nested(
-                        elem, selection.nested_selections[global_idx], parser, placeholder,
-                        is_multiline=True,
-                        base_indent=elem_indent,
-                        elem_indent=elem_indent + "    "
-                    )
-                else:
-                    elem_text = elem.text
-                group_texts.append(elem_text)
-            group_text = f"{separator} ".join(group_texts)
-
-            # Check if this is the last group
-            is_last_group = (i + tuple_size >= len(elements)) and is_last_line
-            trailing_sep = separator if (allow_trailing or not is_last_group) else ""
-            lines.append(f"{elem_indent}{group_text}{trailing_sep}")
-
-        # Placeholder based on position
-        if selection.has_removals:
-            if pattern.placeholder_position == PlaceholderPosition.END:
-                # Placeholder is last, so it gets no trailing separator for factory calls
-                trailing_sep = "" if parsed.category == LiteralCategory.FACTORY_CALL else separator
-                lines.append(f"{elem_indent}{placeholder}{trailing_sep}")
-            elif pattern.placeholder_position == PlaceholderPosition.MIDDLE_COMMENT:
-                # Build inline comment with full info (no separate comment needed)
-                tokens_saved = selection.total_tokens_removed
-                removed_count = selection.removed_count
-                comment_text = f"… ({removed_count} more, −{tokens_saved} tokens)"
-                lines.append(f"{elem_indent}{self.single_comment} {comment_text}")
-
-        # Closing
-        lines.append(f"{base_indent}{parsed.closing}")
-
-        return "\n".join(lines)
 
     def _should_use_inline_nested(
         self,
@@ -411,14 +281,16 @@ class ResultFormatter:
             # Simple nested element
             return f"{wrapper_prefix}{elem.nested_opening}{nested_formatted}{elem.nested_closing}"
 
-    def _generate_comment_dfs(
+    def _generate_comment_impl(
         self,
         parsed: ParsedLiteral,
-        selection: DFSSelection,
+        selection,  # Selection or DFSSelection
         position: PlaceholderPosition,
     ) -> tuple[Optional[str], Optional[int]]:
         """
-        Generate comment with trimming info for DFS selection.
+        Unified comment generation implementation.
+
+        Handles both flat Selection and DFS selection.
 
         Returns:
             (comment_text, byte_position) or (None, None)
@@ -433,7 +305,10 @@ class ResultFormatter:
         if position == PlaceholderPosition.MIDDLE_COMMENT:
             return None, None
 
-        saved = selection.total_tokens_removed
+        # Get tokens saved (different for Selection vs DFSSelection)
+        is_dfs = isinstance(selection, DFSSelection)
+        saved = selection.total_tokens_removed if is_dfs else selection.tokens_removed
+
         # Use pattern's comment_name if set, otherwise category value
         category_name = parsed.pattern.comment_name or parsed.category.value
         # Return raw content - formatting is done by handler based on context
@@ -446,9 +321,45 @@ class ResultFormatter:
         selection: Selection,
         placeholder: str,
     ) -> str:
-        """Format as single line."""
+        """Format as single line (wrapper for flat selection)."""
+        return self._format_single_line_impl(parsed, selection, placeholder, parser=None)
+
+    def _format_multiline(
+        self,
+        parsed: ParsedLiteral,
+        selection: Selection,
+        placeholder: str,
+    ) -> str:
+        """Format as multiline (wrapper for flat selection)."""
+        return self._format_multiline_impl(parsed, selection, placeholder, parser=None)
+
+    def _format_single_line_impl(
+        self,
+        parsed: ParsedLiteral,
+        selection,  # Selection or DFSSelection
+        placeholder: str,
+        parser: Optional[ElementParser] = None,
+    ) -> str:
+        """
+        Unified single-line formatting implementation.
+
+        Handles both flat Selection and DFS selection with nested structures.
+        """
         pattern = parsed.pattern
-        elements_text = [e.text for e in selection.kept_elements]
+        elements_text = []
+
+        # Process kept elements (with optional nested handling for DFS)
+        is_dfs = isinstance(selection, DFSSelection)
+        for i, elem in enumerate(selection.kept_elements):
+            if is_dfs and i in selection.nested_selections:
+                # Reconstruct with nested formatting (DFS only)
+                elem_text = self._reconstruct_element_with_nested(
+                    elem, selection.nested_selections[i], parser, placeholder,
+                    is_multiline=False
+                )
+            else:
+                elem_text = elem.text
+            elements_text.append(elem_text)
 
         # Handle string literals (inline placeholder)
         if parsed.category == LiteralCategory.STRING:
@@ -456,6 +367,9 @@ class ResultFormatter:
 
         # Handle collections with separator
         separator = pattern.separator
+
+        # Get tokens saved (different for Selection vs DFSSelection)
+        tokens_saved = selection.total_tokens_removed if is_dfs else selection.tokens_removed
 
         # Build elements part
         if not elements_text:
@@ -468,7 +382,6 @@ class ResultFormatter:
             # Insert block comment with full info
             if selection.has_removals and len(elements_text) >= 1:
                 removed_count = selection.removed_count
-                tokens_saved = selection.tokens_removed
                 comment_text = f"… ({removed_count} more, −{tokens_saved} tokens)"
                 comment_placeholder = f"{self.block_comment[0]} {comment_text} {self.block_comment[1]}"
                 elements_text.append(comment_placeholder)
@@ -484,13 +397,18 @@ class ResultFormatter:
 
         return f"{parsed.opening}{content}{parsed.closing}"
 
-    def _format_multiline(
+    def _format_multiline_impl(
         self,
         parsed: ParsedLiteral,
-        selection: Selection,
+        selection,  # Selection or DFSSelection
         placeholder: str,
+        parser: Optional[ElementParser] = None,
     ) -> str:
-        """Format as multiline with proper indentation."""
+        """
+        Unified multiline formatting implementation.
+
+        Handles both flat Selection and DFS selection with nested structures.
+        """
         pattern = parsed.pattern
         elements = selection.kept_elements
 
@@ -515,14 +433,34 @@ class ResultFormatter:
         is_last_line = not selection.has_removals or pattern.placeholder_position != PlaceholderPosition.END
         allow_trailing = parsed.category != LiteralCategory.FACTORY_CALL
 
+        # Determine if this is DFS selection
+        is_dfs = isinstance(selection, DFSSelection)
+
         for i in range(0, len(elements), tuple_size):
             group = elements[i:i + tuple_size]
-            group_text = f"{separator} ".join(e.text for e in group)
+            group_texts = []
+            for elem_idx, elem in enumerate(group):
+                global_idx = i + elem_idx
+                if is_dfs and global_idx in selection.nested_selections:
+                    # Reconstruct with nested formatting (DFS only)
+                    elem_text = self._reconstruct_element_with_nested(
+                        elem, selection.nested_selections[global_idx], parser, placeholder,
+                        is_multiline=True,
+                        base_indent=elem_indent,
+                        elem_indent=elem_indent + "    "
+                    )
+                else:
+                    elem_text = elem.text
+                group_texts.append(elem_text)
+            group_text = f"{separator} ".join(group_texts)
 
             # Check if this is the last group
             is_last_group = (i + tuple_size >= len(elements)) and is_last_line
             trailing_sep = separator if (allow_trailing or not is_last_group) else ""
             lines.append(f"{elem_indent}{group_text}{trailing_sep}")
+
+        # Get tokens saved (different for Selection vs DFSSelection)
+        tokens_saved = selection.total_tokens_removed if is_dfs else selection.tokens_removed
 
         # Placeholder based on position
         if selection.has_removals:
@@ -533,7 +471,6 @@ class ResultFormatter:
             elif pattern.placeholder_position == PlaceholderPosition.MIDDLE_COMMENT:
                 # Build inline comment with full info (no separate comment needed)
                 removed_count = selection.removed_count
-                tokens_saved = selection.tokens_removed
                 comment_text = f"… ({removed_count} more, −{tokens_saved} tokens)"
                 lines.append(f"{elem_indent}{self.single_comment} {comment_text}")
 
@@ -563,39 +500,6 @@ class ResultFormatter:
         truncated = f"{kept_content}…"
 
         return f"{parsed.opening}{truncated}{parsed.closing}"
-
-    def _generate_comment(
-        self,
-        parsed: ParsedLiteral,
-        selection: Selection,
-        position: PlaceholderPosition,
-    ) -> tuple[Optional[str], Optional[int]]:
-        """
-        Generate comment with trimming info if needed.
-
-        Returns:
-            (comment_text, byte_position) or (None, None)
-        """
-        if not selection.has_removals:
-            return None, None
-
-        if position == PlaceholderPosition.NONE:
-            return None, None
-
-        # Generate comment for all positions that have removals
-        # INLINE: truncation is inside the text, but still need a comment
-        # END: placeholder at end, comment after closing bracket
-        # MIDDLE_COMMENT: has embedded comment, no separate comment needed
-        if position == PlaceholderPosition.MIDDLE_COMMENT:
-            # Comment is embedded in the text itself
-            return None, None
-
-        saved = selection.tokens_removed
-        # Use pattern's comment_name if set, otherwise category value
-        category_name = parsed.pattern.comment_name or parsed.category.value
-        # Return raw content - formatting is done by handler based on context
-        comment_content = f"literal {category_name} (−{saved} tokens)"
-        return comment_content, parsed.end_byte
 
     def create_trim_result(
         self,
