@@ -205,7 +205,7 @@ class LiteralOptimizer:
                 continue
 
             literal_text = context.doc.get_node_text(node)
-            token_count = context.tokenizer.count_text(literal_text)
+            token_count = context.tokenizer.count_text_cached(literal_text)
 
             if token_count > max_tokens:
                 self._trim_literal(context, node, capture_name, literal_text, max_tokens)
@@ -229,8 +229,8 @@ class LiteralOptimizer:
             start_char, end_char = context.doc.get_node_range(node)
 
             # Calculate savings
-            original_tokens = context.tokenizer.count_text(literal_text)
-            saved_tokens = original_tokens - context.tokenizer.count_text(custom_result)
+            original_tokens = context.tokenizer.count_text_cached(literal_text)
+            saved_tokens = original_tokens - context.tokenizer.count_text_cached(custom_result)
 
             # Apply replacement
             context.editor.add_replacement(
@@ -266,8 +266,8 @@ class LiteralOptimizer:
         replacement = f"{literal_info.opening}{trimmed_content}{literal_info.closing}"
 
         # Calculate token savings
-        original_tokens = context.tokenizer.count_text(literal_text)
-        saved_tokens = original_tokens - context.tokenizer.count_text(replacement)
+        original_tokens = context.tokenizer.count_text_cached(literal_text)
+        saved_tokens = original_tokens - context.tokenizer.count_text_cached(replacement)
 
         # Apply literal replacement
         start_char, end_char = context.doc.get_node_range(node)
@@ -404,7 +404,7 @@ class LiteralOptimizer:
 
         # Reserve space for boundaries and trim character
         overhead_text = f"{literal_info.opening}…{literal_info.closing}"
-        overhead_tokens = context.tokenizer.count_text(overhead_text)
+        overhead_tokens = context.tokenizer.count_text_cached(overhead_text)
         content_budget = max(1, max_tokens - overhead_tokens)
 
         # Trim content to budget
@@ -423,7 +423,7 @@ class LiteralOptimizer:
         # Reserve space for boundaries and placeholder
         placeholder_element = '"…"'
         overhead = f"{literal_info.opening}{placeholder_element},{literal_info.closing}"
-        overhead_tokens = context.tokenizer.count_text(overhead)
+        overhead_tokens = context.tokenizer.count_text_cached(overhead)
         content_budget = max(10, max_tokens - overhead_tokens)
 
         # Parse elements
@@ -462,7 +462,7 @@ class LiteralOptimizer:
         # Reserve space for boundaries and placeholder
         placeholder_pair = '"…": "…"'
         overhead = f"{literal_info.opening}{placeholder_pair},{literal_info.closing}"
-        overhead_tokens = context.tokenizer.count_text(overhead)
+        overhead_tokens = context.tokenizer.count_text_cached(overhead)
         content_budget = max(10, max_tokens - overhead_tokens)
 
         # Parse key-value pairs
@@ -498,7 +498,7 @@ class LiteralOptimizer:
         current_tokens = 0
 
         for element in elements:
-            element_tokens = context.tokenizer.count_text(element + ",")
+            element_tokens = context.tokenizer.count_text_cached(element + ",")
             if current_tokens + element_tokens <= budget:
                 included_elements.append(element)
                 current_tokens += element_tokens

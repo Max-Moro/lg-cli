@@ -614,7 +614,7 @@ class ResultFormatter:
         Returns:
             Complete TrimResult
         """
-        trimmed_tokens = self.tokenizer.count_text(formatted.text)
+        trimmed_tokens = self.tokenizer.count_text_cached(formatted.text)
 
         return TrimResult(
             trimmed_text=formatted.text,

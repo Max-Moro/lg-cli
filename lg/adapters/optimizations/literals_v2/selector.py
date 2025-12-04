@@ -157,7 +157,7 @@ class BudgetSelector:
         tokens_used = 0
 
         for i, elem in enumerate(elements):
-            elem_tokens = self.tokenizer.count_text(elem.text)
+            elem_tokens = self.tokenizer.count_text_cached(elem.text)
             total_with_sep = elem_tokens + (separator_overhead if kept else 0)
 
             if tokens_used + total_with_sep <= budget or len(kept) < min_keep:
@@ -170,7 +170,7 @@ class BudgetSelector:
         removed.extend(elements[len(kept) + len(removed):])
 
         tokens_removed = sum(
-            self.tokenizer.count_text(e.text) for e in removed
+            self.tokenizer.count_text_cached(e.text) for e in removed
         )
 
         return Selection(
@@ -209,7 +209,7 @@ class BudgetSelector:
         for tpl in tuples:
             # Calculate tokens for entire tuple
             tuple_text = ", ".join(e.text for e in tpl)
-            tuple_tokens = self.tokenizer.count_text(tuple_text)
+            tuple_tokens = self.tokenizer.count_text_cached(tuple_text)
             total_with_sep = tuple_tokens + (separator_overhead if kept_elements else 0)
 
             if tokens_used + total_with_sep <= budget or tuples_kept < min_keep:
@@ -220,7 +220,7 @@ class BudgetSelector:
                 removed_elements.extend(tpl)
 
         tokens_removed = sum(
-            self.tokenizer.count_text(e.text) for e in removed_elements
+            self.tokenizer.count_text_cached(e.text) for e in removed_elements
         )
 
         # Total count is number of tuples, not individual elements
@@ -252,8 +252,8 @@ class BudgetSelector:
         first_elem = elements[0]
         last_elem = elements[-1]
 
-        first_tokens = self.tokenizer.count_text(first_elem.text)
-        last_tokens = self.tokenizer.count_text(last_elem.text)
+        first_tokens = self.tokenizer.count_text_cached(first_elem.text)
+        last_tokens = self.tokenizer.count_text_cached(last_elem.text)
 
         # Always try to keep first and last
         if first_tokens + last_tokens + separator_overhead * 2 <= budget:
@@ -267,7 +267,7 @@ class BudgetSelector:
             tokens_kept = first_tokens
 
         tokens_removed = sum(
-            self.tokenizer.count_text(e.text) for e in removed
+            self.tokenizer.count_text_cached(e.text) for e in removed
         )
 
         return Selection(
@@ -331,7 +331,7 @@ class BudgetSelector:
         if is_multiline:
             overhead_text = f"{opening}\n{indent}{placeholder}\n{indent}{closing}"
 
-        return self.tokenizer.count_text(overhead_text)
+        return self.tokenizer.count_text_cached(overhead_text)
 
     def select_dfs(
         self,
@@ -388,7 +388,7 @@ class BudgetSelector:
 
         for i, elem in enumerate(elements):
             # Count original tokens for this element
-            elem_original_tokens = self.tokenizer.count_text(elem.text)
+            elem_original_tokens = self.tokenizer.count_text_cached(elem.text)
 
             # Check if we can afford this element or must keep it due to min_keep
             can_afford = tokens_used + elem_original_tokens <= remaining_budget
@@ -439,7 +439,7 @@ class BudgetSelector:
 
         # Calculate tokens removed
         tokens_removed = sum(
-            self.tokenizer.count_text(e.text) for e in removed
+            self.tokenizer.count_text_cached(e.text) for e in removed
         )
 
         return DFSSelection(
@@ -496,7 +496,7 @@ class BudgetSelector:
             # First pass: calculate original size and process nested structures
             for elem_offset, elem in enumerate(tpl):
                 elem_idx = tuple_idx * tuple_size + elem_offset
-                elem_original_tokens = self.tokenizer.count_text(elem.text)
+                elem_original_tokens = self.tokenizer.count_text_cached(elem.text)
 
                 # If element has multiline nested structure, recursively process it
                 if elem.is_multiline_nested:
@@ -539,7 +539,7 @@ class BudgetSelector:
 
         # Calculate tokens removed
         tokens_removed = sum(
-            self.tokenizer.count_text(e.text) for e in removed
+            self.tokenizer.count_text_cached(e.text) for e in removed
         )
 
         return DFSSelection(

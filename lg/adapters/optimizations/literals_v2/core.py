@@ -90,7 +90,7 @@ class LiteralOptimizerV2:
 
             # Get node info
             literal_text = context.doc.get_node_text(node)
-            token_count = self.adapter.tokenizer.count_text(literal_text)
+            token_count = self.adapter.tokenizer.count_text_cached(literal_text)
 
             # Skip if within budget
             if token_count <= max_tokens:
@@ -129,7 +129,7 @@ class LiteralOptimizerV2:
 
         for node, capture_name in top_level:
             literal_text = context.doc.get_node_text(node)
-            token_count = self.adapter.tokenizer.count_text(literal_text)
+            token_count = self.adapter.tokenizer.count_text_cached(literal_text)
 
             # Skip if within budget
             if token_count <= max_tokens:

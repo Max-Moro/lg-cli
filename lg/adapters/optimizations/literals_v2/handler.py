@@ -172,7 +172,7 @@ class LanguageLiteralHandler:
         is_multiline = "\n" in text
 
         # Count tokens
-        original_tokens = self.tokenizer.count_text(text)
+        original_tokens = self.tokenizer.count_text_cached(text)
 
         return ParsedLiteral(
             original_text=text,
@@ -297,8 +297,8 @@ class LanguageLiteralHandler:
             kept_elements=[kept_element],
             removed_elements=[],  # Conceptually removed
             total_count=1,
-            tokens_kept=self.tokenizer.count_text(truncated),
-            tokens_removed=parsed.original_tokens - self.tokenizer.count_text(truncated),
+            tokens_kept=self.tokenizer.count_text_cached(truncated),
+            tokens_removed=parsed.original_tokens - self.tokenizer.count_text_cached(truncated),
         )
         # Mark as having removals for formatting
         selection.removed_elements = [Element(
@@ -400,7 +400,7 @@ class LanguageLiteralHandler:
         formatted,  # FormattedResult
     ) -> TrimResult:
         """Create TrimResult from DFS formatting data."""
-        trimmed_tokens = self.tokenizer.count_text(formatted.text)
+        trimmed_tokens = self.tokenizer.count_text_cached(formatted.text)
 
         return TrimResult(
             trimmed_text=formatted.text,

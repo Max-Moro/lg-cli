@@ -168,7 +168,7 @@ class CommentOptimizer:
             try:
                 if re.search(pattern, comment_text, re.IGNORECASE):
                     # Check max_tokens for preserved comments
-                    if complex_cfg.max_tokens is not None and context.tokenizer.count_text(comment_text) > complex_cfg.max_tokens:
+                    if complex_cfg.max_tokens is not None and context.tokenizer.count_text_cached(comment_text) > complex_cfg.max_tokens:
                         # Truncate comment with proper closing
                         truncated = self.adapter.hook__smart_truncate_comment(self, comment_text, complex_cfg.max_tokens, context.tokenizer)
                         return True, truncated
@@ -181,7 +181,7 @@ class CommentOptimizer:
         base_policy = complex_cfg.policy
         if base_policy == "keep_all":
             # Check max_tokens even for keep_all
-            if complex_cfg.max_tokens is not None and context.tokenizer.count_text(comment_text) > complex_cfg.max_tokens:
+            if complex_cfg.max_tokens is not None and context.tokenizer.count_text_cached(comment_text) > complex_cfg.max_tokens:
                 truncated = self.adapter.hook__smart_truncate_comment(self, comment_text, complex_cfg.max_tokens, context.tokenizer)
                 return True, truncated
             return False, ""
@@ -193,7 +193,7 @@ class CommentOptimizer:
             if capture_name == "comment" and not self.adapter.is_documentation_comment(comment_text):
                 return True, None  # Use default placeholder
             else:  # docstring
-                if complex_cfg.max_tokens is not None and context.tokenizer.count_text(comment_text) > complex_cfg.max_tokens:
+                if complex_cfg.max_tokens is not None and context.tokenizer.count_text_cached(comment_text) > complex_cfg.max_tokens:
                     truncated = self.adapter.hook__smart_truncate_comment(self, comment_text, complex_cfg.max_tokens, context.tokenizer)
                     return True, truncated
                 return False, ""
@@ -202,7 +202,7 @@ class CommentOptimizer:
             if capture_name == "docstring" or self.adapter.is_documentation_comment(comment_text):
                 first_sentence = self.adapter.hook__extract_first_sentence(self, comment_text)
                 # Apply max_tokens to extracted sentence
-                if complex_cfg.max_tokens is not None and context.tokenizer.count_text(first_sentence) > complex_cfg.max_tokens:
+                if complex_cfg.max_tokens is not None and context.tokenizer.count_text_cached(first_sentence) > complex_cfg.max_tokens:
                     first_sentence = self.adapter.hook__smart_truncate_comment(self, first_sentence, complex_cfg.max_tokens, context.tokenizer)
                 if first_sentence != comment_text:
                     return True, first_sentence
@@ -295,7 +295,7 @@ class CommentOptimizer:
         Returns:
             Properly truncated comment with correct closing tags
         """
-        if tokenizer.count_text(comment_text) <= max_tokens:
+        if tokenizer.count_text_cached(comment_text) <= max_tokens:
             return comment_text
 
         # JSDoc/TypeScript style comments (/** ... */)
@@ -311,8 +311,8 @@ class CommentOptimizer:
 
             # Reserve space for closing with proper indentation
             closing = f'\n{base_indent}*/'
-            closing_tokens = tokenizer.count_text(closing)
-            ellipsis_tokens = tokenizer.count_text('…')
+            closing_tokens = tokenizer.count_text_cached(closing)
+            ellipsis_tokens = tokenizer.count_text_cached('…')
             content_budget = max(1, max_tokens - closing_tokens - ellipsis_tokens)
 
             if content_budget < 1:
@@ -326,7 +326,7 @@ class CommentOptimizer:
         elif comment_text.startswith('/*') and comment_text.rstrip().endswith('*/'):
             # Reserve space for ' … */'
             closing = ' … */'
-            closing_tokens = tokenizer.count_text(closing)
+            closing_tokens = tokenizer.count_text_cached(closing)
             content_budget = max(1, max_tokens - closing_tokens)
             
             if content_budget < 1:
@@ -339,7 +339,7 @@ class CommentOptimizer:
         # Single line comments
         elif comment_text.startswith('//'):
             # Simple truncation with ellipsis
-            ellipsis_tokens = tokenizer.count_text('…')
+            ellipsis_tokens = tokenizer.count_text_cached('…')
             content_budget = max(1, max_tokens - ellipsis_tokens)
             
             if content_budget < 1:
@@ -351,7 +351,7 @@ class CommentOptimizer:
         
         # Fallback: simple truncation
         else:
-            ellipsis_tokens = tokenizer.count_text('…')
+            ellipsis_tokens = tokenizer.count_text_cached('…')
             content_budget = max(1, max_tokens - ellipsis_tokens)
             
             if content_budget < 1:
