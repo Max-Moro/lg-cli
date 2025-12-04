@@ -286,6 +286,14 @@ class ElementParser:
         for opening, closing in bracket_pairs:
             open_pos = text.find(opening)
             if open_pos != -1:
+                # Skip empty bracket pairs that are part of type/wrapper syntax
+                # (e.g., empty braces in composite type declarations)
+                if text[open_pos:open_pos+2] == opening + closing:
+                    # Look for next opening bracket after the empty pair
+                    open_pos = text.find(opening, open_pos + 2)
+                    if open_pos == -1:
+                        continue  # No more openings, try next bracket type
+
                 # Find matching closing bracket
                 depth = 0
                 for i in range(open_pos, len(text)):
@@ -295,7 +303,9 @@ class ElementParser:
                         depth -= 1
                         if depth == 0:
                             content = text[open_pos + 1:i]
-                            return opening, closing, content, None
+                            # Extract wrapper prefix before the opening bracket
+                            wrapper = text[:open_pos] if open_pos > 0 else None
+                            return opening, closing, content, wrapper
 
         return None
 

@@ -76,7 +76,7 @@ var largeSlice = []int{
         result, meta = adapter.process(lctx(code))
 
         assert "var smallSlice = []int{1, 2, 3}" in result
-        assert "// literal array" in result or "/* literal array" in result
+        assert "// literal slice" in result or "/* literal slice" in result
 
     def test_struct_literal_trimming(self):
         """Test trimming of struct literals."""

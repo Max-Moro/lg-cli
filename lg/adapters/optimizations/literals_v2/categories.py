@@ -102,6 +102,11 @@ class LiteralPattern:
     # Maximum character length for nested structures to stay inline (default: 60)
     nested_inline_threshold: int = 60
 
+    # For typed structures: preserve all keys/fields at top level
+    # When True: all top-level keys are kept, DFS applied to nested values
+    # Useful for struct literals where field names must be preserved
+    preserve_all_keys: bool = False
+
     def get_opening(self, text: str) -> str:
         """Get opening delimiter for given text."""
         if callable(self.opening):

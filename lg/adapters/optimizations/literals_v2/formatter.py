@@ -395,20 +395,22 @@ class ResultFormatter:
         if not elements_text:
             content = placeholder
         elif pattern.placeholder_position == PlaceholderPosition.END:
-            if selection.has_removals:
+            # Only add placeholder if elements were removed, not if values were just replaced
+            if selection.removed_count > 0:
                 elements_text.append(placeholder)
             content = f"{separator} ".join(elements_text)
         elif pattern.placeholder_position == PlaceholderPosition.MIDDLE_COMMENT:
             # Insert block comment with full info
             # Only if elements were actually removed at this level (not just in nested)
-            if selection.has_removals and len(elements_text) >= 1 and selection.removed_count > 0:
+            if selection.removed_count > 0 and len(elements_text) >= 1:
                 removed_count = selection.removed_count
                 comment_text = f"… ({removed_count} more, −{tokens_saved} tokens)"
                 comment_placeholder = f"{self.block_comment[0]} {comment_text} {self.block_comment[1]}"
                 elements_text.append(comment_placeholder)
             content = f"{separator} ".join(elements_text)
         else:
-            if selection.has_removals:
+            # Only add placeholder if elements were removed, not if values were just replaced
+            if selection.removed_count > 0:
                 elements_text.append(placeholder)
             content = f"{separator} ".join(elements_text)
 
@@ -489,7 +491,10 @@ class ResultFormatter:
             # Flat selection - no nested handling
             for i in range(0, len(elements), tuple_size):
                 group = elements[i:i + tuple_size]
-                group_text = f"{separator} ".join(elem.text for elem in group)
+                group_texts = []
+                for elem in group:
+                    group_texts.append(elem.text)
+                group_text = f"{separator} ".join(group_texts)
 
                 # Check if this is the last group
                 is_last_group = (i + tuple_size >= len(elements)) and is_last_line
@@ -500,7 +505,8 @@ class ResultFormatter:
         tokens_saved = selection.total_tokens_removed if isinstance(selection, DFSSelection) else selection.tokens_removed
 
         # Placeholder based on position
-        if selection.has_removals:
+        # Note: only add placeholder if elements were removed, not if values were just replaced
+        if selection.removed_count > 0:
             if pattern.placeholder_position == PlaceholderPosition.END:
                 # Placeholder is last, so it gets no trailing separator for factory calls
                 trailing_sep = "" if parsed.category == LiteralCategory.FACTORY_CALL else separator

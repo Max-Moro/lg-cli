@@ -11,8 +11,7 @@ from tree_sitter import Language
 
 from ..code_base import CodeAdapter
 from ..code_model import CodeCfg
-from ..optimizations import ImportClassifier, TreeSitterImportAnalyzer, LiteralOptimizer
-from ..optimizations.literals import LiteralHandler
+from ..optimizations import ImportClassifier, TreeSitterImportAnalyzer
 from ..tree_sitter_support import TreeSitterDocument
 
 
@@ -74,9 +73,7 @@ class GoAdapter(CodeAdapter[GoCfg]):
         # Go uses single-line comments starting with // for documentation
         return stripped.startswith('//')
 
-    def hook__get_literal_handler(
-        self, root_optimizer: LiteralOptimizer  # noqa: F841
-    ) -> Optional[LiteralHandler]:
-        """Provide custom Go literal handler for composite literals."""
-        from .literals import GoLiteralHandler
-        return GoLiteralHandler()
+    def create_literal_descriptor(self):
+        """Create Go literal descriptor for v2 optimizer."""
+        from .literals_v2 import create_go_descriptor
+        return create_go_descriptor()

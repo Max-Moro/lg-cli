@@ -328,6 +328,7 @@ class BudgetSelector:
         parser: ElementParser,
         min_keep: int = 1,
         tuple_size: int = 1,
+        preserve_top_level_keys: bool = False,
     ) -> DFSSelection:
         """
         Select elements using depth-first strategy for nested structures.
@@ -346,6 +347,7 @@ class BudgetSelector:
             parser: Parser for recursively parsing nested content
             min_keep: Minimum elements to keep at each level
             tuple_size: Group elements into tuples (e.g., 2 for k,v pairs)
+            preserve_top_level_keys: If True, keep all keys at top level (for typed structs)
 
         Returns:
             DFSSelection with kept/removed elements and nested selections
@@ -353,7 +355,7 @@ class BudgetSelector:
         # Handle tuple grouping for Map.of style patterns
         if tuple_size > 1:
             return self._select_dfs_tuples(
-                elements, budget, parser, min_keep, tuple_size
+                elements, budget, parser, min_keep, tuple_size, preserve_top_level_keys
             )
 
         if not elements:
@@ -381,8 +383,9 @@ class BudgetSelector:
             # Check if we can afford this element or must keep it due to min_keep
             can_afford = tokens_used + elem_original_tokens <= remaining_budget
             must_keep = len(kept) < min_keep
+            must_preserve = preserve_top_level_keys  # For typed structs: keep all fields
 
-            if can_afford or must_keep:
+            if can_afford or must_keep or must_preserve:
                 # Keep this element
                 kept.append(elem)
 
@@ -390,11 +393,14 @@ class BudgetSelector:
                 # Single-line nested structures are treated as leaf elements
                 if elem.is_multiline_nested:
                     # Recursively optimize nested structure with current remaining budget
+                    # Note: preserve_top_level_keys NOT passed to nested calls (only top level preserved)
+                    nested_elements = parser.parse(elem.nested_content)
                     nested_sel = self.select_dfs(
-                        parser.parse(elem.nested_content),
+                        nested_elements,
                         remaining_budget,
                         parser,
                         min_keep=min_keep,
+                        preserve_top_level_keys=False,  # Only preserve at top level
                     )
                     nested_selections[i] = nested_sel
 
@@ -408,7 +414,8 @@ class BudgetSelector:
                     budget_exhausted = nested_sel.budget_exhausted
 
                     # If budget exhausted in nested level, stop processing siblings
-                    if budget_exhausted:
+                    # UNLESS preserve_top_level_keys=True (must keep all top-level fields)
+                    if budget_exhausted and not preserve_top_level_keys:
                         # Add remaining elements as removed
                         removed.extend(elements[i + 1:])
                         break
@@ -430,6 +437,11 @@ class BudgetSelector:
             self.tokenizer.count_text_cached(e.text) for e in removed
         )
 
+        # Calculate total tokens removed including nested
+        total_tokens_removed_including_nested = tokens_removed
+        for nested_sel in nested_selections.values():
+            total_tokens_removed_including_nested += nested_sel.total_tokens_removed
+
         return DFSSelection(
             kept_elements=kept,
             removed_elements=removed,
@@ -448,6 +460,7 @@ class BudgetSelector:
         parser: ElementParser,
         min_keep: int,
         tuple_size: int,
+        preserve_top_level_keys: bool = False,
     ) -> DFSSelection:
         """
         DFS selection with tuple grouping (for Map.of style patterns).
@@ -489,11 +502,13 @@ class BudgetSelector:
                 # If element has multiline nested structure, recursively process it
                 if elem.is_multiline_nested:
                     # Pass full remaining budget to recursion (not reduced by previous tuple elements)
+                    # Note: preserve_top_level_keys NOT passed to nested calls
                     nested_sel = self.select_dfs(
                         parser.parse(elem.nested_content),
                         remaining_budget,
                         parser,
                         min_keep=min_keep,
+                        preserve_top_level_keys=False,  # Only preserve at top level
                     )
                     nested_selections[elem_idx] = nested_sel
 
@@ -510,8 +525,9 @@ class BudgetSelector:
 
             # Apply must_keep at all levels to preserve recursion chain
             must_keep = tuples_kept < min_keep
+            must_preserve = preserve_top_level_keys  # For typed structs: keep all fields
 
-            if can_afford or must_keep:
+            if can_afford or must_keep or must_preserve:
                 kept.extend(tpl)
                 tokens_used += tuple_optimized_tokens
                 remaining_budget -= tuple_optimized_tokens

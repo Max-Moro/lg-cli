@@ -115,30 +115,57 @@ class LanguageLiteralHandler:
 
     def detect_literal_type(self, tree_sitter_type: str, text: str = "") -> bool:
         """Check if a tree-sitter node type is a literal we handle."""
-        wrapper = self._detect_wrapper_from_text(text) if text else None
+        wrapper = self._detect_wrapper_from_text(text, tree_sitter_type) if text else None
         return self.descriptor.get_pattern_for(tree_sitter_type, wrapper) is not None
 
-    def _detect_wrapper_from_text(self, text: str) -> Optional[str]:
+    def _detect_wrapper_from_text(self, text: str, tree_sitter_type: str) -> Optional[str]:
         """
-        Detect wrapper prefix from literal text before pattern selection.
+        Detect wrapper prefix using opening delimiters from patterns.
 
-        For factory calls like "List.of(...)", extracts "List.of".
-        For regular literals that start with brackets, returns None.
+        Universal approach: tries all patterns for this tree-sitter type
+        and extracts wrapper based on their opening delimiters.
+
+        Examples:
+        - Java: "List.of(...)" -> "List.of" (opening: "(")
+        - Go: "[]string{...}" -> "[]string" (opening: "{")
+        - Kotlin: "mapOf(...)" -> "mapOf" (opening: "(")
+
+        Args:
+            text: Full literal text
+            tree_sitter_type: Tree-sitter node type
+
+        Returns:
+            Wrapper string or None
         """
         stripped = text.strip()
 
-        # If text starts with a bracket, it's a regular literal (not a factory call)
-        if stripped and stripped[0] in ("(", "[", "{"):
-            return None
+        # Get all patterns for this tree-sitter type
+        candidates = [
+            p for p in self.descriptor.patterns
+            if tree_sitter_type in p.tree_sitter_types
+        ]
 
-        # Look for opening bracket to find factory call wrapper
-        for bracket in ("(", "[", "{"):
-            pos = stripped.find(bracket)
+        # Try to extract wrapper using opening delimiter from each pattern
+        for pattern in candidates:
+            # Get opening and closing delimiters (may be callable)
+            opening = pattern.get_opening(text) if callable(pattern.opening) else pattern.opening
+            closing = pattern.get_closing(text) if callable(pattern.closing) else pattern.closing
+
+            # If text starts with opening delimiter, there's no wrapper
+            if stripped.startswith(opening):
+                continue
+
+            # Find position of opening delimiter
+            pos = stripped.find(opening)
             if pos > 0:
-                # Normalize whitespace in wrapper (e.g., "List  .  of" -> "List.of")
+                # Extract wrapper as-is (preserve formatting)
                 wrapper = stripped[:pos]
-                normalized = ''.join(wrapper.split())
-                return normalized
+
+                # Include empty bracket pairs that are part of type/wrapper syntax
+                if stripped[pos:pos+2] == opening + closing:
+                    wrapper += opening + closing
+
+                return wrapper
 
         return None
 
@@ -166,7 +193,7 @@ class LanguageLiteralHandler:
             ParsedLiteral or None if not recognized
         """
         # Detect wrapper first (needed for pattern selection)
-        wrapper = self._detect_wrapper_from_text(text)
+        wrapper = self._detect_wrapper_from_text(text, tree_sitter_type)
 
         # Get pattern with wrapper for filtering
         pattern = self.descriptor.get_pattern_for(tree_sitter_type, wrapper)
@@ -177,8 +204,8 @@ class LanguageLiteralHandler:
         opening = pattern.get_opening(text)
         closing = pattern.get_closing(text)
 
-        # Extract content
-        content = self._extract_content(text, opening, closing)
+        # Extract content (pass wrapper to skip past it when searching for opening)
+        content = self._extract_content(text, opening, closing, wrapper)
         if content is None:
             return None
 
@@ -208,15 +235,23 @@ class LanguageLiteralHandler:
         self,
         text: str,
         opening: str,
-        closing: str
+        closing: str,
+        wrapper: Optional[str] = None
     ) -> Optional[str]:
         """Extract content between opening and closing delimiters."""
         stripped = text.strip()
 
-        # Handle wrapper prefix (e.g., "vec!" in "vec![...]")
+        # Handle wrapper prefix (e.g., "vec!" in "vec![...]", type prefixes)
         if not stripped.startswith(opening):
+            # If wrapper is known, start search AFTER wrapper to avoid
+            # finding opening brackets that are part of wrapper itself
+            if wrapper:
+                search_from = len(wrapper)
+            else:
+                search_from = 0
+
             # Find opening position
-            open_pos = stripped.find(opening)
+            open_pos = stripped.find(opening, search_from)
             if open_pos == -1:
                 return None
             stripped = stripped[open_pos:]
@@ -324,47 +359,6 @@ class LanguageLiteralHandler:
 
         return self.formatter.create_trim_result(parsed, selection, formatted)
 
-    def _process_collection(
-        self,
-        parsed: ParsedLiteral,
-        token_budget: int
-    ) -> Optional[TrimResult]:
-        """Process collection literal (array, map, etc.)."""
-        pattern = parsed.pattern
-
-        # Get parser for this pattern
-        parser = self.get_parser(pattern)
-
-        # Parse elements
-        elements = parser.parse(parsed.content)
-
-        if not elements:
-            return None
-
-        # Calculate overhead
-        placeholder = pattern.placeholder_template
-        overhead = self.selector.calculate_overhead(
-            parsed.opening, parsed.closing, placeholder,
-            parsed.is_multiline, parsed.element_indent
-        )
-
-        content_budget = max(10, token_budget - overhead)
-
-        # Select elements within budget
-        selection = self.selector.select_first(
-            elements, content_budget,
-            min_keep=pattern.min_elements,
-            tuple_size=pattern.tuple_size,
-        )
-
-        if not selection.has_removals:
-            return None  # No trimming needed
-
-        # Format result
-        formatted = self.formatter.format(parsed, selection)
-
-        return self.formatter.create_trim_result(parsed, selection, formatted)
-
     def _process_collection_dfs(
         self,
         parsed: ParsedLiteral,
@@ -392,11 +386,13 @@ class LanguageLiteralHandler:
         content_budget = max(10, token_budget - overhead)
 
         # Select elements with DFS (budget-aware nested selection)
+        # For preserve_all_keys: keep all top-level keys, but apply DFS to nested values
         selection = self.selector.select_dfs(
             elements, content_budget,
             parser=parser,
             min_keep=pattern.min_elements,
             tuple_size=pattern.tuple_size,
+            preserve_top_level_keys=pattern.preserve_all_keys,
         )
 
         if not selection.has_removals:
@@ -404,7 +400,6 @@ class LanguageLiteralHandler:
 
         # Format result with DFS
         formatted = self.formatter.format_dfs(parsed, selection, parser)
-
         return self._create_trim_result_dfs(parsed, selection, formatted)
 
     def _create_trim_result_dfs(
