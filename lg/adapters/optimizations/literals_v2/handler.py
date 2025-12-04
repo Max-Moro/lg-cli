@@ -508,11 +508,12 @@ class LanguageLiteralHandler:
 
         Some markers only apply when the string has specific characteristics:
         - Python {}: only for f-strings (opening starts with f/F)
-        - Rust {}: only for format strings (we can't detect, apply always)
+        - Rust {}: only for format strings (we can't detect reliably)
         - JS ${}: for template strings (backticks)
 
         For markers with a prefix (like $), they're self-checking via the prefix.
-        For markers without prefix (like Python/Rust {}), we check the string type.
+        For markers without prefix, the pattern's interpolation_active callback
+        determines whether the marker applies to a specific string.
 
         Args:
             parsed: The parsed literal
@@ -524,8 +525,10 @@ class LanguageLiteralHandler:
         if not markers:
             return []
 
+        # Check if pattern has an activation callback
+        activation_callback = parsed.pattern.interpolation_active
+
         active_markers = []
-        opening_lower = parsed.opening.lower()
 
         for marker in markers:
             prefix, opening, closing = marker
@@ -534,19 +537,12 @@ class LanguageLiteralHandler:
             if prefix:
                 active_markers.append(marker)
             else:
-                # Empty prefix markers like ("", "{", "}") need string type check
-                # Python: only f-strings support {} interpolation
-                if self.language == "python":
-                    if 'f' in opening_lower:
+                # Empty prefix markers - use callback if available
+                if activation_callback is not None:
+                    if activation_callback(parsed.opening, parsed.content):
                         active_markers.append(marker)
-                # Rust: format strings use {}, but we can't detect them
-                # from tree-sitter alone, so we skip this marker for Rust
-                # (Rust strings are usually not long enough to warrant trimming)
-                elif self.language == "rust":
-                    # Skip - can't detect format strings reliably
-                    pass
                 else:
-                    # For other languages, assume the marker applies
+                    # No callback - assume marker is always active
                     active_markers.append(marker)
 
         return active_markers

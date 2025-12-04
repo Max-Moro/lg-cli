@@ -70,6 +70,20 @@ def _detect_string_closing(text: str) -> str:
     return '"'
 
 
+def _is_f_string(opening: str, content: str) -> bool:
+    """
+    Check if string is an f-string (supports {} interpolation).
+
+    Args:
+        opening: String opening delimiter with f/F prefix
+        content: String content (not used, signature required by pattern)
+
+    Returns:
+        True if the string is an f-string (opening contains f or F)
+    """
+    return 'f' in opening.lower() or 'F' in opening
+
+
 # Python literal patterns
 PYTHON_STRING = LiteralPattern(
     category=LiteralCategory.STRING,
@@ -79,8 +93,9 @@ PYTHON_STRING = LiteralPattern(
     placeholder_position=PlaceholderPosition.INLINE,
     placeholder_template="…",
     # f-strings use {...} for interpolation
-    # Apply to all strings - safe even for non-f-strings
+    # Callback checks if string is f-string before applying interpolation markers
     interpolation_markers=[("", "{", "}")],
+    interpolation_active=_is_f_string,
 )
 
 PYTHON_LIST = LiteralPattern(

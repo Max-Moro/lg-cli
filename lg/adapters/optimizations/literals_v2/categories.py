@@ -84,6 +84,12 @@ class LiteralPattern:
     # Empty list means no interpolation (safe to cut anywhere)
     interpolation_markers: List[tuple] = field(default_factory=list)
 
+    # Optional callback to check if interpolation markers are active for a specific string
+    # Signature: (opening: str, content: str) -> bool
+    # Used when markers need conditional activation (e.g., Python f-strings, Rust format strings)
+    # None means markers are always active
+    interpolation_active: Optional[Callable[[str, str], bool]] = None
+
     # For factory calls: regex pattern to match wrapper (e.g., r"List\.of")
     # Used to distinguish List.of from Map.of when both are method_invocation
     # None means no filtering (pattern matches any wrapper)
