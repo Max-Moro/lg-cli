@@ -245,12 +245,12 @@ class LiteralOptimizerV2:
         if self.handler is None:
             return None
 
-        # Check if this node type is a literal
-        if not self.handler.detect_literal_type(node.type):
-            return None
-
         # Get node text and position
         text = context.doc.get_node_text(node)
+
+        # Check if this node type is a literal (pass text for wrapper detection)
+        if not self.handler.detect_literal_type(node.type, text):
+            return None
         start_byte, end_byte = context.doc.get_node_range(node)
 
         # Detect indentation

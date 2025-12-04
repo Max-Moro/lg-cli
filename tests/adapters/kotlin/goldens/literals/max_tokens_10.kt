@@ -8,12 +8,11 @@ package com.example.literals
 const val SHORT_MESSAGE = "Hello, World!"
 
 // Long string literal (candidate for trimming)
-const val LONG_MESSAGE = """This is an extremely long message that cont…""" // literal string (−63 tokens)
+const val LONG_MESSAGE = """This is an extremely long message that cont…""" // literal string (−66 tokens)
 
 // Multi-line raw string with embedded expressions
 val TEMPLATE_WITH_DATA = """
-User Information:
-- Name: ${g…""" // literal string (−58 tokens)
+User Information…""" // literal string (−66 tokens)
 
 data class DataContainer(
     // Small array (should be preserved)
@@ -33,12 +32,16 @@ class LiteralDataManager {
     // Class properties with various literal types
     private val smallConfig = mapOf(
         "debug" to true,
-        "…" to "…"
-    ) // literal object (−5 tokens)
+        // … (1 more, −11 tokens)
+    )
     
     private val largeConfig = mapOf(
-        "…" to "…"
-    ) // literal object (−334 tokens)
+        "database" to mapOf(
+            "host" to "localhost",
+            // … (5 more, −103 tokens)
+        ),
+        // … (3 more, −312 tokens)
+    )
     
     private val supportedLanguages: List<String>
     private val allowedExtensions: Set<String>
@@ -47,35 +50,48 @@ class LiteralDataManager {
         // Array with many elements (trimming candidate)
         supportedLanguages = listOf(
             "english",
-            "spanish",
-            "…"
-        ) // literal array (−89 tokens)
+            "spanish"
+            // … (22 more, −85 tokens)
+        )
         
         // Set with many elements
         allowedExtensions = setOf(
             ".kt",
-            ".kts",
-            "…"
-        ) // literal set (−47 tokens)
+            ".kts"
+            // … (16 more, −49 tokens)
+        )
     }
     
     fun processData(): DataContainer {
         // Function with various literal data
-        val smallArray = listOf("one", "two", "…")
+        val smallArray = listOf("one", "two", "three")
         
         val largeArray = listOf(
-            "item_001",
-            "…"
-        ) // literal array (−146 tokens)
+            "item_001"
+            // … (29 more, −145 tokens)
+        )
         
         val nestedData = mapOf(
-            "…" to "…"
-        ) // literal object (−205 tokens)
+            "level1" to mapOf(
+                "level2" to mapOf(
+                    "level3" to mapOf(
+                        "data" to listOf(
+                            mapOf("id" to 1, "name" to "First", "active" to true),
+                            // … (4 more, −89 tokens)
+                        ),
+                        // … (1 more, −142 tokens)
+                    ),
+                    // … (0 more, −142 tokens)
+                ),
+                // … (0 more, −142 tokens)
+            ),
+            // … (0 more, −142 tokens)
+        )
         
         return DataContainer(
             tags = smallArray,
             items = largeArray,
-            metadata = mapOf("type" to "test", "…" to "…"), // literal object (−2 tokens)
+            metadata = mapOf("type" to "test", "count" to smallArray.size),
             configuration = nestedData
         )
     }
@@ -83,25 +99,28 @@ class LiteralDataManager {
     fun getLongQuery(): String {
         // Very long SQL-like query string
         return """
-            SELECT 
-                use…""" /* literal string (−181 tokens) */.trimIndent()
+            SELECT…""" /* literal string (−186 tokens) */.trimIndent()
     }
 }
 
 // Module-level constants with different sizes
 val SMALL_CONSTANTS = mapOf(
     "API_VERSION" to "v1",
-    "…" to "…"
-) // literal object (−2 tokens)
+    "DEFAULT_LIMIT" to 50
+)
 
 val LARGE_CONSTANTS = mapOf(
-    "…" to "…"
-) // literal object (−556 tokens)
+    "HTTP_STATUS_CODES" to mapOf(
+        "CONTINUE" to 100,
+        // … (40 more, −319 tokens)
+    ),
+    // … (1 more, −459 tokens)
+)
 
 // Helper functions that use literal data
 fun getUserName(): String = "John Doe"
 fun getUserEmail(): String = "john.doe@example.com"
 fun getAccountStatus(): String = "active"
-fun getPermissions(): List<String> = listOf("read", "write", "…")
-fun getLastLogin(): String = "2024-01-15T1…" // literal string (−5 tokens)
+fun getPermissions(): List<String> = listOf("read", "write", "admin")
+fun getLastLogin(): String = "2024-01-15T1…" // literal string (−7 tokens)
 fun getProfileCompleteness(): Int = 85

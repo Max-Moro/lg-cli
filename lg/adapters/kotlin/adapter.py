@@ -11,8 +11,8 @@ from tree_sitter import Language
 
 from ..code_base import CodeAdapter
 from ..code_model import CodeCfg
-from ..optimizations import ImportClassifier, TreeSitterImportAnalyzer, LiteralOptimizer
-from ..optimizations.literals import LiteralHandler
+from ..optimizations import ImportClassifier, TreeSitterImportAnalyzer
+from ..optimizations.literals_v2 import LanguageLiteralDescriptor
 from ..tree_sitter_support import TreeSitterDocument
 
 
@@ -74,9 +74,7 @@ class KotlinAdapter(CodeAdapter[KotlinCfg]):
         from .function_bodies import remove_function_body_with_kdoc
         remove_function_body_with_kdoc(*args, **kwargs)
 
-    def hook__get_literal_handler(
-        self, root_optimizer: LiteralOptimizer  # noqa: F841
-    ) -> Optional[LiteralHandler]:
-        """Provide custom Kotlin literal handler for collection factory methods."""
-        from .literals import KotlinLiteralHandler
-        return KotlinLiteralHandler()
+    def create_literal_descriptor(self) -> LanguageLiteralDescriptor:
+        """Create Kotlin literal descriptor for v2 optimizer."""
+        from .literals_v2 import create_kotlin_descriptor
+        return create_kotlin_descriptor()

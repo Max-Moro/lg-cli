@@ -1,7 +1,7 @@
 # Literal Optimization v2 Refactoring
 
 > Memory file for tracking the large-scale refactoring of the literal optimization subsystem.
-> **Last updated**: 2025-12-04 (Session 3: Java migration, two-pass optimization, range_edits composition)
+> **Last updated**: 2025-12-04 (Session 4: Kotlin migration, MAPPING category support, kv_separator handling)
 
 ---
 
@@ -387,6 +387,158 @@ Map<String, Object> nestedData = Map.of(
 );
 ```
 
+### Kotlin MAPPING Category Support ✅ IMPLEMENTED
+
+Kotlin uses the unique `to` operator for key-value pairs in factory methods, requiring new patterns and core fixes.
+
+#### The Problem
+
+Kotlin v1 completely failed to optimize nested structures:
+
+```kotlin
+// v1 output - no structure visibility
+val largeConfig = mapOf(
+    "…" to "…"
+) // literal object (−334 tokens)
+
+val nestedData = mapOf(
+    "…" to "…"
+) // literal object (−205 tokens)
+```
+
+Developers saw **zero structure** - just placeholders.
+
+#### Kotlin Syntax Uniqueness
+
+Unlike other languages, Kotlin uses the `to` operator for key-value pairs:
+
+```kotlin
+mapOf("key" to "value")           // Kotlin - infix operator
+{"key": "value"}                   // Python
+{key: "value"}                     // JavaScript
+Map.of("key", "value")            // Java - tuple arguments
+```
+
+This required treating `mapOf` as **both** a factory call (wrapper) **and** a mapping (key-value structure).
+
+#### Core Issues Discovered
+
+Kotlin migration revealed **4 bugs** in v2 core, all related to factory calls with custom `kv_separator`:
+
+**1. handler.py (lines 71-92): Regex wrapper parsing**
+- Problem: `wrapper_match=r"(mapOf|mutableMapOf)$"` was stored as-is
+- Parser looked for exact match `"mapOf"`, found `"(mapOf|mutableMapOf)"`
+- Result: Nested `mapOf(...)` not recognized as nested structures
+
+Fix: Parse regex alternatives:
+```python
+# Extract alternatives from "(mapOf|mutableMapOf)$"
+if regex.startswith("(") and regex.endswith(")"):
+    regex = regex[1:-1]
+alternatives = regex.split("|")  # ["mapOf", "mutableMapOf", ...]
+```
+
+**2. handler.py (line 75): MAPPING not in factory_wrappers**
+- Problem: Only `FACTORY_CALL` patterns added to `factory_wrappers`
+- `MAPPING` patterns ignored
+- Result: Parser didn't know `mapOf(...)` is nestable
+
+Fix: Include MAPPING category:
+```python
+if pattern.category in (LiteralCategory.FACTORY_CALL, LiteralCategory.MAPPING) and pattern.wrapper_match:
+```
+
+**3. formatter.py (lines 279-284): Hardcoded `:` separator**
+- Problem: Key-value reconstruction always used `:`
+- Kotlin needs ` to `
+- Result: `"database": mapOf(...)` instead of `"database" to mapOf(...)`
+
+Fix: Use parser's `kv_separator`:
+```python
+kv_sep = parser.config.kv_separator if parser.config.kv_separator else ":"
+space_after = "" if kv_sep.endswith(" ") else " "
+return f"{elem.key}{kv_sep}{space_after}{wrapper_prefix}..."
+```
+
+**4. formatter.py (line 457, 503): MAPPING trailing separator**
+- Problem: MAPPING treated like regular literals, got trailing comma
+- Result: `"…" to "…",` inside factory call (syntax error for some patterns)
+
+Fix: Keep MAPPING trailing behavior like regular mappings (allow trailing comma):
+```python
+# Only FACTORY_CALL gets no trailing comma
+allow_trailing = parsed.category != LiteralCategory.FACTORY_CALL
+```
+
+#### Kotlin Patterns Implemented
+
+**KOTLIN_MAP_OF:**
+```python
+KOTLIN_MAP_OF = LiteralPattern(
+    category=LiteralCategory.MAPPING,
+    tree_sitter_types=["call_expression"],
+    wrapper_match=r"(mapOf|mutableMapOf|hashMapOf|linkedMapOf)$",
+    opening="(",
+    closing=")",
+    separator=",",
+    kv_separator=" to ",  # Kotlin's to operator
+    placeholder_position=PlaceholderPosition.MIDDLE_COMMENT,
+    placeholder_template='"…" to "…"',
+    min_elements=1,
+    comment_name="object",
+    priority=20,
+)
+```
+
+**KOTLIN_LIST_OF** and **KOTLIN_SET_OF:**
+```python
+# Standard factory calls with MIDDLE_COMMENT
+category=LiteralCategory.FACTORY_CALL,
+wrapper_match=r"(listOf|mutableListOf|arrayListOf)$",
+placeholder_position=PlaceholderPosition.MIDDLE_COMMENT,
+```
+
+#### Result: Full Structure Visibility
+
+v2 now shows **complete nested structure** with DFS optimization:
+
+```kotlin
+// v2 output - full hierarchy visible
+val largeConfig = mapOf(
+    "database" to mapOf(
+        "host" to "localhost",
+        // … (5 more, −103 tokens)
+    ),
+    // … (3 more, −312 tokens)
+)
+
+val nestedData = mapOf(
+    "level1" to mapOf(
+        "level2" to mapOf(
+            "level3" to mapOf(
+                "data" to listOf(
+                    mapOf("id" to 1, "name" to "First", "active" to true),
+                    // … (4 more, −89 tokens)
+                ),
+                // … (1 more, −142 tokens)
+            ),
+            // … (0 more, −142 tokens)
+        ),
+        // … (0 more, −142 tokens)
+    ),
+    // … (0 more, −142 tokens)
+)
+```
+
+Developers now see **data structure hierarchy** at every level, not just placeholders.
+
+#### Lessons Learned
+
+1. **Custom kv_separator support is critical** - languages with non-`:` separators exist
+2. **MAPPING vs FACTORY_CALL distinction matters** - but both can have wrappers
+3. **Regex wrapper_match needs proper parsing** - don't assume simple string matching
+4. **Trailing comma semantics vary** - factory calls vs mappings behave differently
+
 ### Debugging Complex Issues: Lessons Learned
 
 #### Use Temporary Debug Scripts, Not Golden Tests
@@ -500,7 +652,7 @@ PYTHON_DICT = LiteralPattern(
 | JavaScript | ✅ DONE | 19 passed | MIDDLE_COMMENT for objects, `${}` interpolation, two-pass with composing |
 | TypeScript | ✅ DONE | 17 passed | Inherits JS patterns + TS object types, two-pass with composing |
 | Java | ✅ DONE | 4 passed | Factory calls (List.of, Map.of, Map.ofEntries), wrapper_match, tuple_size=2 for Map.of |
-| Kotlin | ⏸️ WAIT | - | Factory calls (listOf), `${}` and `$var` interpolation |
+| Kotlin | ✅ DONE | 10 passed | MAPPING category for mapOf with `to` operator, `${}` and `$var` interpolation, DFS nested optimization |
 | Scala | ⏸️ WAIT | - | Factory calls, `${}` and `$var` interpolation |
 | Go | ⏸️ WAIT | - | Composite literals, no interpolation |
 | Rust | ⏸️ WAIT | - | vec![], `{}` format strings (unreliable detection) |
@@ -509,7 +661,7 @@ PYTHON_DICT = LiteralPattern(
 
 ### Key Achievements So Far
 
-- **Two-pass optimization**: Independent string + collection optimization with composable edits (59 tests passing)
+- **Two-pass optimization**: Independent string + collection optimization with composable edits (69 tests passing)
 - **Range edits composition**: Nested edit preservation system for complex transformations (5 dedicated tests)
 - **DFS-trimming**: Recursive optimization of nested structures preserving multiline layout
 - **Java factory calls**: Full support for List.of, Map.of with wrapper_match and tuple_size
@@ -522,8 +674,7 @@ PYTHON_DICT = LiteralPattern(
 ### Next Steps
 
 1. **Continue language migration** with full DFS and two-pass support:
-   - Kotlin (factory calls: listOf, mapOf — needs `${}` and `$var` interpolation, similar to Java)
-   - Scala (factory calls — needs `${}` and `$var` interpolation)
+   - Scala (factory calls with `to` operator — similar to Kotlin, `${}` and `$var` interpolation)
    - Go (composite literals — no string interpolation)
    - Rust (vec![], macro calls — `{}` format strings unreliable to detect)
    - C, C++ (array/struct initializers — no string interpolation)
@@ -531,7 +682,7 @@ PYTHON_DICT = LiteralPattern(
 2. **Consider additional features** based on language needs:
    - Lazy evaluation for Scala (=> markers in pattern detection)
    - Macro detection improvements for Rust
-   - String interpolation for Kotlin/Scala (reuse Java wrapper_match patterns)
+   - Scala string interpolation (reuse Kotlin MAPPING patterns for `to` operator)
 
 ---
 

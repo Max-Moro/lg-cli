@@ -72,11 +72,24 @@ class LanguageLiteralHandler:
         """Collect all factory method wrappers from descriptor for nested detection."""
         wrappers = []
         for pattern in self.descriptor.patterns:
-            if pattern.category == LiteralCategory.FACTORY_CALL and pattern.wrapper_match:
-                # Extract wrapper from regex (e.g., "List\.of" -> "List.of")
-                wrapper = pattern.wrapper_match.replace("\\.", ".").rstrip("$")
-                if wrapper not in wrappers:
-                    wrappers.append(wrapper)
+            if pattern.category in (LiteralCategory.FACTORY_CALL, LiteralCategory.MAPPING) and pattern.wrapper_match:
+                # Extract wrapper names from regex
+                # Examples: "(mapOf|listOf)$" -> ["mapOf", "listOf"]
+                #           "List\.of$" -> ["List.of"]
+                regex = pattern.wrapper_match.rstrip("$")
+
+                # Remove grouping parentheses if present
+                if regex.startswith("(") and regex.endswith(")"):
+                    regex = regex[1:-1]
+
+                # Split by | to get alternatives
+                alternatives = regex.split("|")
+
+                # Clean each alternative and add to wrappers
+                for alt in alternatives:
+                    wrapper = alt.replace("\\.", ".")
+                    if wrapper and wrapper not in wrappers:
+                        wrappers.append(wrapper)
 
         # Add additional wrappers from descriptor
         for wrapper in self.descriptor.nested_factory_wrappers:

@@ -277,8 +277,11 @@ class ResultFormatter:
         wrapper_prefix = f"{elem.nested_wrapper}" if elem.nested_wrapper else ""
 
         if elem.key is not None:
-            # Key-value pair: "key": value or key: value
-            return f"{elem.key}: {wrapper_prefix}{elem.nested_opening}{nested_formatted}{elem.nested_closing}"
+            # Key-value pair: use parser's kv_separator (e.g., ":" or " to ")
+            kv_sep = parser.config.kv_separator if parser.config.kv_separator else ":"
+            # Add space after kv_sep only if it doesn't already have trailing space
+            space_after = "" if kv_sep.endswith(" ") else " "
+            return f"{elem.key}{kv_sep}{space_after}{wrapper_prefix}{elem.nested_opening}{nested_formatted}{elem.nested_closing}"
         else:
             # Simple nested element
             return f"{wrapper_prefix}{elem.nested_opening}{nested_formatted}{elem.nested_closing}"
