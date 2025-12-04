@@ -71,11 +71,24 @@ class LiteralOptimizerV2:
         # Two-pass approach for orthogonal string/collection processing.
 
         # Pass 0: Identify collections
-        collections = [
+        # Filter out underscore-prefixed captures (internal query helpers)
+        # and deduplicate by node coordinates
+        collections_raw = [
             (node, capture_name)
             for node, capture_name in literals
-            if capture_name != "string"
+            if capture_name != "string" and not capture_name.startswith("_")
         ]
+
+        # Deduplicate by (start_byte, end_byte) - tree-sitter queries may return
+        # the same node multiple times with different capture names
+        seen_coords = set()
+        collections = []
+        for node, capture_name in collections_raw:
+            coords = (node.start_byte, node.end_byte)
+            if coords not in seen_coords:
+                seen_coords.add(coords)
+                collections.append((node, capture_name))
+
 
         processed_strings = []  # Track (start, end, tokens_saved) for processed strings
 

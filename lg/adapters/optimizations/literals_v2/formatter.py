@@ -253,8 +253,9 @@ class ResultFormatter:
             for nested_elem_text in nested_elements_text:
                 lines.append(f"{elem_indent}{nested_elem_text}{separator}")
 
-            # Add placeholder comment if has removals
-            if nested_sel.has_removals:
+            # Add placeholder comment if has removals at this level
+            # (not just propagated from deeper nesting)
+            if nested_sel.has_removals and nested_sel.removed_count > 0:
                 tokens_saved = nested_sel.total_tokens_removed
                 removed_count = nested_sel.removed_count
                 comment_text = f"… ({removed_count} more, −{tokens_saved} tokens)"
@@ -266,7 +267,8 @@ class ResultFormatter:
         else:
             # Single-line nested formatting
             nested_formatted = f"{separator} ".join(nested_elements_text)
-            if nested_sel.has_removals:
+            # Only add comment if elements were removed at this level
+            if nested_sel.has_removals and nested_sel.removed_count > 0:
                 tokens_saved = nested_sel.total_tokens_removed
                 removed_count = nested_sel.removed_count
                 comment_text = f"… ({removed_count} more, −{tokens_saved} tokens)"
@@ -398,7 +400,8 @@ class ResultFormatter:
             content = f"{separator} ".join(elements_text)
         elif pattern.placeholder_position == PlaceholderPosition.MIDDLE_COMMENT:
             # Insert block comment with full info
-            if selection.has_removals and len(elements_text) >= 1:
+            # Only if elements were actually removed at this level (not just in nested)
+            if selection.has_removals and len(elements_text) >= 1 and selection.removed_count > 0:
                 removed_count = selection.removed_count
                 comment_text = f"… ({removed_count} more, −{tokens_saved} tokens)"
                 comment_placeholder = f"{self.block_comment[0]} {comment_text} {self.block_comment[1]}"
@@ -504,9 +507,11 @@ class ResultFormatter:
                 lines.append(f"{elem_indent}{placeholder}{trailing_sep}")
             elif pattern.placeholder_position == PlaceholderPosition.MIDDLE_COMMENT:
                 # Build inline comment with full info (no separate comment needed)
+                # Only if elements were actually removed at this level (not just in nested)
                 removed_count = selection.removed_count
-                comment_text = f"… ({removed_count} more, −{tokens_saved} tokens)"
-                lines.append(f"{elem_indent}{self.single_comment} {comment_text}")
+                if removed_count > 0:
+                    comment_text = f"… ({removed_count} more, −{tokens_saved} tokens)"
+                    lines.append(f"{elem_indent}{self.single_comment} {comment_text}")
 
         # Closing
         lines.append(f"{base_indent}{parsed.closing}")

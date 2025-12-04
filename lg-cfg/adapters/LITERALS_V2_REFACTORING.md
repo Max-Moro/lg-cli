@@ -539,6 +539,105 @@ Developers now see **data structure hierarchy** at every level, not just placeho
 3. **Regex wrapper_match needs proper parsing** - don't assume simple string matching
 4. **Trailing comma semantics vary** - factory calls vs mappings behave differently
 
+#### Scala Migration and Zero-Removal Placeholders Fix ✅ IMPLEMENTED
+
+Scala migration completed successfully, revealing and fixing a cosmetic issue with DFS placeholders.
+
+##### The Issue: Meaningless "0 more" Placeholders
+
+DFS formatter was generating placeholders like `// … (0 more, −137 tokens)` when:
+- No elements were removed at current level (removed_count = 0)
+- But tokens were saved in nested structures (total_tokens_removed = 137)
+
+Example of meaningless placeholder:
+```scala
+val nestedData = Map(
+    "level1" -> Map(
+        "level2" -> Map(
+            // ... nested content ...
+        ),
+        // … (0 more, −137 tokens)  ← MEANINGLESS!
+    )
+)
+```
+
+This literally says "0 elements removed" which provides no value.
+
+##### The Fix: Check removed_count Before Adding Placeholder
+
+Updated formatter.py in three places:
+1. `_format_single_line_impl()` - single-line MIDDLE_COMMENT
+2. `_format_multiline_impl()` - multiline MIDDLE_COMMENT
+3. `_reconstruct_element_with_nested()` - nested DFS reconstruction
+
+Change: Added `and selection.removed_count > 0` check before inserting comments:
+
+```python
+# Before
+if nested_sel.has_removals:
+    comment_text = f"… ({removed_count} more, −{tokens_saved} tokens)"
+    lines.append(f"{elem_indent}{self.single_comment} {comment_text}")
+
+# After
+if nested_sel.has_removals and nested_sel.removed_count > 0:
+    comment_text = f"… ({removed_count} more, −{tokens_saved} tokens)"
+    lines.append(f"{elem_indent}{self.single_comment} {comment_text}")
+```
+
+##### Result: Cleaner Output
+
+Now placeholders only appear when elements were actually removed at that level:
+```scala
+val nestedData = Map(
+    "level1" -> Map(
+        "level2" -> Map(
+            "level3" -> Map(
+                "data" -> List(
+                    Map("id" -> 1, "name" -> "First", "active" -> true),
+                    // … (4 more, −85 tokens)  ← MEANINGFUL!
+                ),
+                // … (1 more, −137 tokens)  ← MEANINGFUL!
+            ),
+        ),
+    ),
+)
+```
+
+Each placeholder now indicates actual removed elements, not just propagated token savings from nested levels.
+
+##### Scala-Specific Patterns Implemented
+
+**Scala uses arrow operator `->` for Map pairs:**
+```python
+SCALA_MAP = LiteralPattern(
+    category=LiteralCategory.MAPPING,
+    tree_sitter_types=["call_expression"],
+    wrapper_match=r"(Map|mutableMap|HashMap|LinkedHashMap)$",
+    kv_separator=" -> ",  # Arrow operator
+    placeholder_position=PlaceholderPosition.MIDDLE_COMMENT,
+)
+```
+
+**String interpolation support:**
+- s"...", f"...", raw"..." prefixes
+- Both `${expr}` and `$identifier` syntax
+- Conditional activation via `interpolation_active` callback
+
+**Query deduplication fix:**
+- Tree-sitter queries were returning same Map node twice (@array and @object)
+- Added coordinate-based deduplication in core.py
+- Filter out underscore-prefixed captures (query helpers)
+
+##### Impact on Other Languages
+
+This fix improves golden outputs for ALL migrated languages:
+- Python, JavaScript, TypeScript - cleaner nested dict/object output
+- Java - cleaner Map.of nested structures
+- Kotlin - cleaner mapOf nested structures
+- Scala - clean Map nested structures
+
+Golden files regenerated for all languages, tests passing (71 total).
+
 ### Debugging Complex Issues: Lessons Learned
 
 #### Use Temporary Debug Scripts, Not Golden Tests
@@ -653,7 +752,7 @@ PYTHON_DICT = LiteralPattern(
 | TypeScript | ✅ DONE | 17 passed | Inherits JS patterns + TS object types, two-pass with composing |
 | Java | ✅ DONE | 4 passed | Factory calls (List.of, Map.of, Map.ofEntries), wrapper_match, tuple_size=2 for Map.of |
 | Kotlin | ✅ DONE | 10 passed | MAPPING category for mapOf with `to` operator, `${}` and `$var` interpolation, DFS nested optimization |
-| Scala | ⏸️ WAIT | - | Factory calls, `${}` and `$var` interpolation |
+| Scala | ✅ DONE | 2 passed | MAPPING category for Map with `->` operator, `${}` and `$var` interpolation, DFS nested optimization |
 | Go | ⏸️ WAIT | - | Composite literals, no interpolation |
 | Rust | ⏸️ WAIT | - | vec![], `{}` format strings (unreliable detection) |
 | C | ⏸️ WAIT | - | Array initializers, no interpolation |
@@ -661,7 +760,7 @@ PYTHON_DICT = LiteralPattern(
 
 ### Key Achievements So Far
 
-- **Two-pass optimization**: Independent string + collection optimization with composable edits (69 tests passing)
+- **Two-pass optimization**: Independent string + collection optimization with composable edits (71 tests passing)
 - **Range edits composition**: Nested edit preservation system for complex transformations (5 dedicated tests)
 - **DFS-trimming**: Recursive optimization of nested structures preserving multiline layout
 - **Java factory calls**: Full support for List.of, Map.of with wrapper_match and tuple_size
@@ -674,15 +773,12 @@ PYTHON_DICT = LiteralPattern(
 ### Next Steps
 
 1. **Continue language migration** with full DFS and two-pass support:
-   - Scala (factory calls with `to` operator — similar to Kotlin, `${}` and `$var` interpolation)
    - Go (composite literals — no string interpolation)
    - Rust (vec![], macro calls — `{}` format strings unreliable to detect)
    - C, C++ (array/struct initializers — no string interpolation)
 
 2. **Consider additional features** based on language needs:
-   - Lazy evaluation for Scala (=> markers in pattern detection)
    - Macro detection improvements for Rust
-   - Scala string interpolation (reuse Kotlin MAPPING patterns for `to` operator)
 
 ---
 

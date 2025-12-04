@@ -83,11 +83,8 @@ class LiteralDataManager {
                         ),
                         // … (1 more, −142 tokens)
                     ),
-                    // … (0 more, −142 tokens)
                 ),
-                // … (0 more, −142 tokens)
             ),
-            // … (0 more, −142 tokens)
         )
         
         return DataContainer(

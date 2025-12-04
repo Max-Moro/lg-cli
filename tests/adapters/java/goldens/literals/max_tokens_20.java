@@ -110,7 +110,6 @@ public class LiteralDataManager {
                 "level2",
                 // … (1 more, −188 tokens)
             )
-            // … (0 more, −188 tokens)
         );
 
         return new DataContainer(

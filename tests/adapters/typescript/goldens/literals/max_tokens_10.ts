@@ -76,11 +76,8 @@ export class LiteralDataManager {
                         ],
                         // … (1 more, −102 tokens)
                     },
-                    // … (0 more, −102 tokens)
                 },
-                // … (0 more, −102 tokens)
             },
-            // … (0 more, −102 tokens)
         };
         
         return {

@@ -9,7 +9,7 @@ object Constants {
   val SHORT_MESSAGE = "Hello, World!"
 
   // Long string literal (candidate for trimming)
-  val LONG_MESSAGE = """This is an extremely long message that contains a substantial amount of text content which might be consi…""" // literal string (−51 tokens)
+  val LONG_MESSAGE = """This is an extremely long message that contains a substantial amount of text content which might be consi…""" // literal string (−54 tokens)
 
   // Multi-line string with interpolation
   def getUserName(): String = "John Doe"
@@ -22,7 +22,7 @@ object Constants {
   val TEMPLATE_WITH_DATA = s"""
 User Information:
 - Name: ${getUserName()}
-- Email: ${getUserEmai…""" // literal string (−51 tokens)
+- Email: ${getUserEmail()}…""" // literal string (−54 tokens)
 }
 
 case class DataContainer(
@@ -43,33 +43,51 @@ class LiteralDataManager {
   // Class properties with various literal types
   private val smallConfig = Map(
     "debug" -> true,
-    "…" -> "…") // literal array (−7 tokens)
+    // … (1 more, −11 tokens)
+  )
 
-  private val largeConfig = Map("…" -> "…") // literal array (−329 tokens)
+  private val largeConfig = Map(
+    "database" -> Map(
+        "host" -> "localhost",
+        // … (5 more, −101 tokens)
+    ),
+    // … (3 more, −304 tokens)
+  )
 
   private val supportedLanguages: List[String] = List(
     "english",
-    "spanish",
-    "french",
-    "…") // literal array (−86 tokens)
+    "spanish"
+    // … (22 more, −85 tokens)
+  )
 
   private val allowedExtensions: Set[String] = Set(
     ".scala",
-    ".sc",
-    ".java",
-    ".kt",
-    "…") // literal array (−41 tokens)
+    ".sc"
+    // … (16 more, −49 tokens)
+  )
 
   def processData(): DataContainer = {
     // Function with various literal data
     val smallArray = List("one", "two", "three")
 
     val largeArray = List(
-      "item_001",
-      "item_002",
-      "…") // literal array (−142 tokens)
+      "item_001"
+      // … (29 more, −145 tokens)
+    )
 
-    val nestedData = Map("…" -> "…") // literal array (−200 tokens)
+    val nestedData = Map(
+      "level1" -> Map(
+          "level2" -> Map(
+              "level3" -> Map(
+                  "data" -> List(
+                      Map("id" -> 1, "name" -> "First", "active" -> true),
+                      // … (4 more, −85 tokens)
+                  ),
+                  // … (1 more, −137 tokens)
+              ),
+          ),
+      ),
+    )
 
     DataContainer(
       tags = smallArray,
@@ -83,7 +101,7 @@ class LiteralDataManager {
     // Very long SQL-like query string
     """
       SELECT
-        users.id, users.username, users.email, users.created_at,…""" /* literal string (−169 tokens) */.stripMargin
+        users.id, users.username, users.email, users.cre…""" /* literal string (−171 tokens) */.stripMargin
   }
 }
 
@@ -91,13 +109,18 @@ class LiteralDataManager {
 object SmallConstants {
   val VALUES = Map(
     "API_VERSION" -> "v1",
-    "…" -> "…") // literal array (−4 tokens)
+    "DEFAULT_LIMIT" -> 50
+  )
 }
 
 object LargeConstants {
   val HTTP_STATUS_CODES = Map(
     "CONTINUE" -> 100,
-    "…" -> "…") // literal array (−396 tokens)
+    // … (40 more, −319 tokens)
+  )
 
-  val ERROR_MESSAGES = Map("…" -> "…") // literal array (−127 tokens)
+  val ERROR_MESSAGES = Map(
+    "VALIDATION_FAILED" -> "Input validation failed. Please check your data and try again.",
+    // … (6 more, −104 tokens)
+  )
 }
