@@ -88,7 +88,7 @@ class RustLiteralHandler(DefaultLiteralHandler):
     ) -> Optional[str]:
         """Handle vec! macro literal trimming (migrate from process_vec_macro_literal)."""
         full_text = literal_text
-        token_count = context.tokenizer.count_text(full_text)
+        token_count = context.tokenizer.count_text_cached(full_text)
 
         # If does not exceed limit - skip
         if token_count <= max_tokens:
@@ -115,7 +115,7 @@ class RustLiteralHandler(DefaultLiteralHandler):
             return None
 
         # Calculate how many elements we can keep
-        overhead = context.tokenizer.count_text('vec!["…"]')
+        overhead = context.tokenizer.count_text_cached('vec!["…"]')
         content_budget = max(10, max_tokens - overhead)
 
         # Determine if this is multiline
@@ -126,7 +126,7 @@ class RustLiteralHandler(DefaultLiteralHandler):
         current_tokens = 0
 
         for elem in elements:
-            elem_tokens = context.tokenizer.count_text(elem + ", ")
+            elem_tokens = context.tokenizer.count_text_cached(elem + ", ")
 
             if current_tokens + elem_tokens <= content_budget:
                 included_elements.append(elem)
@@ -166,7 +166,7 @@ class RustLiteralHandler(DefaultLiteralHandler):
     ) -> Optional[str]:
         """Handle lazy_static! macro with HashMap initialization (migrate from process_lazy_static_literal)."""
         full_text = literal_text
-        token_count = context.tokenizer.count_text(full_text)
+        token_count = context.tokenizer.count_text_cached(full_text)
 
         if token_count <= max_tokens:
             return None
@@ -240,7 +240,7 @@ class RustLiteralHandler(DefaultLiteralHandler):
     ) -> Optional[str]:
         """Handle HashMap initialization block trimming."""
         full_text = literal_text
-        token_count = context.tokenizer.count_text(full_text)
+        token_count = context.tokenizer.count_text_cached(full_text)
 
         if token_count <= max_tokens:
             return None

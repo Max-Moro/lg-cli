@@ -82,7 +82,7 @@ class KotlinLiteralHandler(DefaultLiteralHandler):
 
         # Reserve space for placeholder
         placeholder_pair = '"…" to "…"'
-        overhead = context.tokenizer.count_text(f"{factory_call}{placeholder_pair}{closing}")
+        overhead = context.tokenizer.count_text_cached(f"{factory_call}{placeholder_pair}{closing}")
         content_budget = max(10, max_tokens - overhead)
 
         # Parse to pairs (CRITICAL: keep key to value together)
@@ -136,7 +136,7 @@ class KotlinLiteralHandler(DefaultLiteralHandler):
 
         # Reserve space
         placeholder = '"…"'
-        overhead = context.tokenizer.count_text(f"{factory_call}{placeholder}{closing}")
+        overhead = context.tokenizer.count_text_cached(f"{factory_call}{placeholder}{closing}")
         content_budget = max(10, max_tokens - overhead)
 
         # Parse arguments
@@ -277,7 +277,7 @@ class KotlinLiteralHandler(DefaultLiteralHandler):
         current_tokens = 0
 
         for elem in elements:
-            elem_tokens = context.tokenizer.count_text(elem + ", ")
+            elem_tokens = context.tokenizer.count_text_cached(elem + ", ")
             if current_tokens + elem_tokens <= budget:
                 included.append(elem)
                 current_tokens += elem_tokens

@@ -84,7 +84,7 @@ class GoLiteralHandler(DefaultLiteralHandler):
             return f"{type_text}{{}}"
 
         # Reserve space for struct wrapper
-        overhead = context.tokenizer.count_text(f"{type_text}{{}}")
+        overhead = context.tokenizer.count_text_cached(f"{type_text}{{}}")
         content_budget = max(10, max_tokens - overhead)
 
         # Process fields with budget-aware accumulation
@@ -96,7 +96,7 @@ class GoLiteralHandler(DefaultLiteralHandler):
             # Calculate tokens for this field (include comma and space for multiline)
             field_text = f"{field_name}: {field_value}"
             field_with_separator = field_text + ", "
-            field_tokens = context.tokenizer.count_text(field_with_separator)
+            field_tokens = context.tokenizer.count_text_cached(field_with_separator)
 
             if accumulated_tokens + field_tokens <= content_budget:
                 # Field fits completely within budget
@@ -111,7 +111,7 @@ class GoLiteralHandler(DefaultLiteralHandler):
 
                 # Update accumulated tokens (may exceed budget, but structure is more important)
                 placeholder_with_separator = placeholder_text + ", "
-                accumulated_tokens += context.tokenizer.count_text(placeholder_with_separator)
+                accumulated_tokens += context.tokenizer.count_text_cached(placeholder_with_separator)
 
         # Format result
         if is_multiline:
@@ -153,7 +153,7 @@ class GoLiteralHandler(DefaultLiteralHandler):
             return f'{type_text}{{"…"}}'
 
         # Reserve space
-        overhead = context.tokenizer.count_text(f'{type_text}{{"…"}}')
+        overhead = context.tokenizer.count_text_cached(f'{type_text}{{"…"}}')
         content_budget = max(10, max_tokens - overhead)
 
         # Select elements within budget
@@ -161,7 +161,7 @@ class GoLiteralHandler(DefaultLiteralHandler):
         current_tokens = 0
 
         for elem in elements:
-            elem_tokens = context.tokenizer.count_text(elem + ", ")
+            elem_tokens = context.tokenizer.count_text_cached(elem + ", ")
             if current_tokens + elem_tokens <= content_budget:
                 included.append(elem)
                 current_tokens += elem_tokens

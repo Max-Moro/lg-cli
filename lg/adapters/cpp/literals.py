@@ -99,7 +99,7 @@ class CppLiteralHandler(DefaultLiteralHandler):
         if is_numeric_array:
             # Just trim without adding string placeholder
             overhead_text = f"{literal_info.opening}{literal_info.closing}"
-            overhead_tokens = context.tokenizer.count_text(overhead_text)
+            overhead_tokens = context.tokenizer.count_text_cached(overhead_text)
             content_budget = max(1, max_tokens - overhead_tokens)
 
             included_elements = self.optimizer._select_elements_within_budget(context, elements, content_budget)
@@ -119,7 +119,7 @@ class CppLiteralHandler(DefaultLiteralHandler):
 
         # Custom trimming without placeholder for struct arrays
         overhead_text = f"{literal_info.opening}{literal_info.closing}"
-        overhead_tokens = context.tokenizer.count_text(overhead_text)
+        overhead_tokens = context.tokenizer.count_text_cached(overhead_text)
         content_budget = max(1, max_tokens - overhead_tokens)
 
         # Select elements within budget (delegation pattern)
@@ -137,7 +137,7 @@ class CppLiteralHandler(DefaultLiteralHandler):
                 # Pattern: {"key", {...}} -> {"key", {}}
                 # Find the nested structure and replace with {}
                 trimmed = re.sub(r'\{[^{}]*(?:\{[^{}]*}[^{}]*)*}', '{}', first_element, count=1)
-                trimmed_tokens = context.tokenizer.count_text(trimmed)
+                trimmed_tokens = context.tokenizer.count_text_cached(trimmed)
 
                 if trimmed_tokens <= content_budget:
                     # Trimmed version fits!
@@ -182,7 +182,7 @@ class CppLiteralHandler(DefaultLiteralHandler):
         # Custom trimming for nested initializers (no placeholder, ensure closing braces)
         # Reserve space for boundaries (no placeholder for nested initializers)
         overhead = f"{literal_info.opening}{literal_info.closing}"
-        overhead_tokens = context.tokenizer.count_text(overhead)
+        overhead_tokens = context.tokenizer.count_text_cached(overhead)
         content_budget = max(10, max_tokens - overhead_tokens)
 
         # Find pairs that fit in budget

@@ -94,7 +94,7 @@ class JavaLiteralHandler(DefaultLiteralHandler):
 
         # Reserve space
         factory_call = f"{class_name}.{method_name}("
-        overhead = context.tokenizer.count_text(f"{factory_call}{placeholder})")
+        overhead = context.tokenizer.count_text_cached(f"{factory_call}{placeholder})")
         content_budget = max(10, max_tokens - overhead)
 
         # Parse arguments
@@ -135,7 +135,7 @@ class JavaLiteralHandler(DefaultLiteralHandler):
         # Reserve space
         factory_call = f"{class_name}.{method_name}("
         placeholder_pair = '"…", "…"'
-        overhead = context.tokenizer.count_text(f"{factory_call}{placeholder_pair})")
+        overhead = context.tokenizer.count_text_cached(f"{factory_call}{placeholder_pair})")
         content_budget = max(10, max_tokens - overhead)
 
         # Parse and group into pairs
@@ -180,7 +180,7 @@ class JavaLiteralHandler(DefaultLiteralHandler):
         # Reserve space
         factory_call = f"{class_name}.{method_name}("
         placeholder_entry = 'Map.entry("…", "…")'
-        overhead = context.tokenizer.count_text(f"{factory_call}{placeholder_entry})")
+        overhead = context.tokenizer.count_text_cached(f"{factory_call}{placeholder_entry})")
         content_budget = max(10, max_tokens - overhead)
 
         # Parse Map.entry() calls
@@ -258,7 +258,7 @@ class JavaLiteralHandler(DefaultLiteralHandler):
         current_tokens = 0
 
         for elem in elements:
-            elem_tokens = context.tokenizer.count_text(elem + ", ")
+            elem_tokens = context.tokenizer.count_text_cached(elem + ", ")
             if current_tokens + elem_tokens <= budget:
                 included.append(elem)
                 current_tokens += elem_tokens

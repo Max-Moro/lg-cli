@@ -83,14 +83,14 @@ def smart_truncate_comment(comment_text: str, max_tokens: int, tokenizer) -> str
     Returns:
         Properly truncated comment with correct closing tags
     """
-    if tokenizer.count_text(comment_text) <= max_tokens:
+    if tokenizer.count_text_cached(comment_text) <= max_tokens:
         return comment_text
 
     # Python docstring patterns (triple quotes)
     if comment_text.startswith('"""'):
         # Reserve space for closing quotes and ellipsis
         closing = '…"""'
-        closing_tokens = tokenizer.count_text(closing)
+        closing_tokens = tokenizer.count_text_cached(closing)
         content_budget = max(1, max_tokens - closing_tokens)
         
         if content_budget < 1:
@@ -103,7 +103,7 @@ def smart_truncate_comment(comment_text: str, max_tokens: int, tokenizer) -> str
     elif comment_text.startswith("'''"):
         # Single quote Python docstring
         closing = "…'''"
-        closing_tokens = tokenizer.count_text(closing)
+        closing_tokens = tokenizer.count_text_cached(closing)
         content_budget = max(1, max_tokens - closing_tokens)
         
         if content_budget < 1:
@@ -116,7 +116,7 @@ def smart_truncate_comment(comment_text: str, max_tokens: int, tokenizer) -> str
     # Single line comments
     elif comment_text.startswith('#'):
         # Simple truncation with ellipsis
-        ellipsis_tokens = tokenizer.count_text('…')
+        ellipsis_tokens = tokenizer.count_text_cached('…')
         content_budget = max(1, max_tokens - ellipsis_tokens)
         
         if content_budget < 1:
@@ -128,7 +128,7 @@ def smart_truncate_comment(comment_text: str, max_tokens: int, tokenizer) -> str
 
     # Fallback: simple truncation
     else:
-        ellipsis_tokens = tokenizer.count_text('…')
+        ellipsis_tokens = tokenizer.count_text_cached('…')
         content_budget = max(1, max_tokens - ellipsis_tokens)
         
         if content_budget < 1:

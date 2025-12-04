@@ -85,7 +85,7 @@ class BudgetController(Generic[Cc]):
             return base_cfg, metrics
 
         raw_text = lightweight_ctx.raw_text or ""
-        tokens_before = self.tokenizer.count_text(raw_text)
+        tokens_before = self.tokenizer.count_text_cached(raw_text)
         metrics[f"{lang_prefix}.budget.tokens_before"] = tokens_before
 
         if tokens_before <= limit:
@@ -99,7 +99,7 @@ class BudgetController(Generic[Cc]):
         text_current = raw_text
         text_current = self._apply_user_policies(lightweight_ctx, text_current, base_cfg)
 
-        tokens_after_user = self.tokenizer.count_text(text_current)
+        tokens_after_user = self.tokenizer.count_text_cached(text_current)
         if tokens_after_user <= limit:
             metrics[f"{lang_prefix}.budget.tokens_after"] = tokens_after_user
             # No need to escalate, return user's cfg as effective
@@ -131,7 +131,7 @@ class BudgetController(Generic[Cc]):
                 for lvl in levels:
                     candidate_text = self._apply_literals(lightweight_ctx, literals_baseline, max_tokens=lvl)
                     chosen_level = lvl
-                    if self.tokenizer.count_text(candidate_text) <= limit:
+                    if self.tokenizer.count_text_cached(candidate_text) <= limit:
                         break
                 # Commit candidate only after levels exploration
                 if candidate_text is not None:
@@ -183,7 +183,7 @@ class BudgetController(Generic[Cc]):
             text_current = step_after_text
 
             # Save step metrics
-            cur_tokens = self.tokenizer.count_text(text_current)
+            cur_tokens = self.tokenizer.count_text_cached(text_current)
             saved = max(0, last_tokens - cur_tokens)
             metrics[f"{lang_prefix}.budget.steps.{step}"] = saved
             last_tokens = cur_tokens

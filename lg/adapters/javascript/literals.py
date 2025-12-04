@@ -22,7 +22,7 @@ class JSLiteralHandler(DefaultLiteralHandler):
 
         content = literal_info.content
         overhead_text = f"{literal_info.opening}{literal_info.closing}"
-        overhead_tokens = context.tokenizer.count_text(overhead_text)
+        overhead_tokens = context.tokenizer.count_text_cached(overhead_text)
         content_budget = max(1, max_tokens - overhead_tokens)
 
         # Find interpolations ${...}

@@ -61,10 +61,6 @@ class TokenService:
         """Encoder name."""
         return self.encoder
 
-    def count_text(self, text: str) -> int:
-        """Count tokens in text."""
-        return self._tokenizer.count_tokens(text)
-
     def _get_from_memory_cache(self, text: str) -> int | None:
         """Get token count from in-memory LRU cache."""
         if text in self._memory_cache:
@@ -110,7 +106,7 @@ class TokenService:
 
         if is_small or not self.cache:
             # Count directly and cache in memory only
-            token_count = self.count_text(text)
+            token_count = self._tokenizer.count_tokens(text)
             self._put_to_memory_cache(text, token_count)
             return token_count
 
@@ -123,7 +119,7 @@ class TokenService:
             return cached_tokens
 
         # Not in any cache - count and save to both levels
-        token_count = self.count_text(text)
+        token_count = self._tokenizer.count_tokens(text)
         self._put_to_memory_cache(text, token_count)
         self.cache.put_text_tokens(text, cache_key, token_count)
 
@@ -136,8 +132,8 @@ class TokenService:
         Returns: (orig_tokens, repl_tokens, savings, ratio)
         ratio = savings / max(repl_tokens, 1)
         """
-        orig = self.count_text(original)
-        repl = self.count_text(replacement)
+        orig = self.count_text_cached(original)
+        repl = self.count_text_cached(replacement)
         savings = max(0, orig - repl)
         ratio = savings / float(max(repl, 1))
         return orig, repl, savings, ratio
@@ -172,7 +168,7 @@ class TokenService:
         if not text:
             return ""
 
-        current_tokens = self.count_text(text)
+        current_tokens = self.count_text_cached(text)
         if current_tokens <= max_tokens:
             return text
 
