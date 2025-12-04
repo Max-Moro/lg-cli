@@ -65,11 +65,26 @@ class LiteralOptimizerV2:
             return  # Optimization disabled
 
         # Query for all literals
-        literals = context.doc.query("literals")
+        literals = list(context.doc.query("literals"))
 
+        # Two-pass approach for orthogonal string/collection processing.
+
+        # Pass 0: Identify collections
+        collections = [
+            (node, capture_name)
+            for node, capture_name in literals
+            if capture_name != "string"
+        ]
+
+        processed_strings = []  # Track (start, end, tokens_saved) for processed strings
+
+        # Pass 1: Strings (all strings, processed independently)
         for node, capture_name in literals:
+            if capture_name != "string":
+                continue
+
             # Skip docstrings
-            if capture_name == "string" and self.adapter.is_docstring_node(node, context.doc):
+            if self.adapter.is_docstring_node(node, context.doc):
                 continue
 
             # Get node info
@@ -83,34 +98,132 @@ class LiteralOptimizerV2:
             # Process
             result = self._process_node(context, node, max_tokens)
             if result and result.saved_tokens > 0:
-                # Apply replacement
                 start_byte, end_byte = context.doc.get_node_range(node)
-                context.editor.add_replacement(
-                    start_byte, end_byte, result.trimmed_text,
-                    edit_type="literal_trimmed"
+                self._apply_trim_result(context, node, result, literal_text)
+                tokens_saved = result.saved_tokens
+                processed_strings.append((start_byte, end_byte, tokens_saved))
+
+        # Pass 2: Collections (arrays, objects, etc.)
+        # Process only top-level collections (not nested inside other collections)
+        # DFS will handle nested structures internally
+
+        # Find top-level collections (not contained by other collections)
+        top_level = []
+        for i, (node, capture_name) in enumerate(collections):
+            start_byte, end_byte = context.doc.get_node_range(node)
+            is_nested = any(
+                j != i and
+                collections[j][0].start_byte <= start_byte and
+                collections[j][0].end_byte >= end_byte
+                for j in range(len(collections))
+            )
+            if not is_nested:
+                # Skip if contained in a processed string range
+                contained_in_processed_string = any(
+                    s <= start_byte and end_byte <= e
+                    for s, e, _ in processed_strings
                 )
+                if not contained_in_processed_string:
+                    top_level.append((node, capture_name))
 
-                # Add comment if needed
-                placeholder_style = self.adapter.cfg.placeholders.style
-                if placeholder_style != "none" and result.comment_text:
-                    # Get text after literal for context-aware comment formatting
-                    text_after = context.raw_text[end_byte:]
+        for node, capture_name in top_level:
+            start_byte, end_byte = context.doc.get_node_range(node)
+            literal_text = context.doc.get_node_text(node)
+            token_count = self.adapter.tokenizer.count_text(literal_text)
 
-                    # Use handler to determine comment format and position
-                    formatted_comment, offset = self.handler.get_comment_for_context(
-                        text_after, result.comment_text
-                    )
+            # Skip if within budget
+            if token_count <= max_tokens:
+                continue
 
-                    # Insert at calculated position (end_byte + offset)
-                    context.editor.add_insertion(
-                        end_byte + offset,
-                        formatted_comment,
-                        edit_type="literal_comment"
-                    )
+            # Process with DFS (will handle nested structures internally)
+            result = self._process_node(context, node, max_tokens)
 
-                # Update metrics
-                context.metrics.mark_element_removed("literal")
-                context.metrics.add_chars_saved(len(literal_text) - len(result.trimmed_text))
+            # Apply if any tokens were saved (removals can be in nested levels only)
+            if result and result.saved_tokens > 0:
+                # Apply using composing method - this will preserve nested string edits
+                self._apply_trim_result_composing(context, node, result, literal_text)
+
+    def _apply_trim_result(
+        self,
+        context: ProcessingContext,
+        node: "Node",
+        result: TrimResult,
+        original_text: str
+    ) -> None:
+        """Apply trim result to context (replacement + comment + metrics)."""
+        start_byte, end_byte = context.doc.get_node_range(node)
+
+        # Apply replacement
+        context.editor.add_replacement(
+            start_byte, end_byte, result.trimmed_text,
+            edit_type="literal_trimmed"
+        )
+
+        # Add comment if needed
+        placeholder_style = self.adapter.cfg.placeholders.style
+        if placeholder_style != "none" and result.comment_text:
+            # Get text after literal for context-aware comment formatting
+            text_after = context.raw_text[end_byte:]
+
+            # Use handler to determine comment format and position
+            formatted_comment, offset = self.handler.get_comment_for_context(
+                text_after, result.comment_text
+            )
+
+            # Insert at calculated position (end_byte + offset)
+            context.editor.add_insertion(
+                end_byte + offset,
+                formatted_comment,
+                edit_type="literal_comment"
+            )
+
+        # Update metrics
+        context.metrics.mark_element_removed("literal")
+        context.metrics.add_chars_saved(len(original_text) - len(result.trimmed_text))
+
+    def _apply_trim_result_composing(
+        self,
+        context: ProcessingContext,
+        node: "Node",
+        result: TrimResult,
+        original_text: str
+    ) -> None:
+        """
+        Apply trim result using composing method.
+
+        This preserves nested narrow edits (from Pass 1) by composing them
+        with the wide edit (from Pass 2 DFS).
+        """
+        start_byte, end_byte = context.doc.get_node_range(node)
+
+        # Apply replacement using composing method
+        # This will find and preserve any nested string edits from Pass 1
+        context.editor.add_replacement_composing_nested(
+            start_byte, end_byte, result.trimmed_text,
+            edit_type="literal_trimmed"
+        )
+
+        # Add comment if needed
+        placeholder_style = self.adapter.cfg.placeholders.style
+        if placeholder_style != "none" and result.comment_text:
+            # Get text after literal for context-aware comment formatting
+            text_after = context.raw_text[end_byte:]
+
+            # Use handler to determine comment format and position
+            formatted_comment, offset = self.handler.get_comment_for_context(
+                text_after, result.comment_text
+            )
+
+            # Insert at calculated position (end_byte + offset)
+            context.editor.add_insertion(
+                end_byte + offset,
+                formatted_comment,
+                edit_type="literal_comment"
+            )
+
+        # Update metrics
+        context.metrics.mark_element_removed("literal")
+        context.metrics.add_chars_saved(len(original_text) - len(result.trimmed_text))
 
     def _process_node(
         self,

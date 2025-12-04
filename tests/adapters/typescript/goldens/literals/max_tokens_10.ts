@@ -71,19 +71,16 @@ export class LiteralDataManager {
                 level2: {
                     level3: {
                         data: [
-                            {
-                                id: 1,
-                                // … (2 more, −8 tokens)
-                            },
-                            // … (4 more, −69 tokens)
+                            { id: 1, name: "First", active: true },
+                            // … (4 more, −61 tokens)
                         ],
-                        // … (1 more, −110 tokens)
+                        // … (1 more, −102 tokens)
                     },
-                    // … (0 more, −110 tokens)
+                    // … (0 more, −102 tokens)
                 },
-                // … (0 more, −110 tokens)
+                // … (0 more, −102 tokens)
             },
-            // … (0 more, −110 tokens)
+            // … (0 more, −102 tokens)
         };
         
         return {

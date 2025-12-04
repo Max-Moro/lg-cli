@@ -28,6 +28,10 @@ class ParseConfig:
         default_factory=lambda: ['"', "'", "`", '"""', "'''", 'r#"']
     )
 
+    # Factory method wrappers (for detecting () as nested in factory calls)
+    # Examples: ["List.of", "Map.of", "Map.ofEntries", "Set.of"]
+    factory_wrappers: List[str] = field(default_factory=list)
+
 
 @dataclass
 class Element:
@@ -50,6 +54,8 @@ class Element:
     nested_opening: Optional[str] = None    # Opening bracket: {, [, (
     nested_closing: Optional[str] = None    # Closing bracket: }, ], )
     nested_content: Optional[str] = None    # Content inside brackets
+    nested_wrapper: Optional[str] = None    # Wrapper for factory calls: List.of, Map.ofEntries
+    is_multiline: bool = False              # Whether this element spans multiple lines
 
     @property
     def is_kv_pair(self) -> bool:
@@ -60,6 +66,11 @@ class Element:
     def has_nested_structure(self) -> bool:
         """Check if this element has a parseable nested structure."""
         return self.is_nested and self.nested_content is not None
+
+    @property
+    def is_multiline_nested(self) -> bool:
+        """Check if this is a multiline nested structure suitable for DFS."""
+        return self.has_nested_structure and self.is_multiline
 
 
 class ElementParser:
@@ -216,7 +227,12 @@ class ElementParser:
         nested_info = self._extract_nested_info(check_text)
         if nested_info:
             is_nested = True
-            nested_opening, nested_closing, nested_content = nested_info
+            nested_opening, nested_closing, nested_content, nested_wrapper = nested_info
+        else:
+            nested_wrapper = None
+
+        # Detect if this element is multiline (check actual element text, not whitespace between elements)
+        is_multiline = '\n' in text
 
         return Element(
             text=text,
@@ -229,31 +245,44 @@ class ElementParser:
             nested_opening=nested_opening,
             nested_closing=nested_closing,
             nested_content=nested_content,
+            nested_wrapper=nested_wrapper,
+            is_multiline=is_multiline,
         )
 
     def _extract_nested_info(
         self,
         text: str
-    ) -> Optional[Tuple[str, str, str]]:
+    ) -> Optional[Tuple[str, str, str, Optional[str]]]:
         """
         Extract nested structure info from text.
 
         Returns:
-            Tuple of (opening, closing, content) or None if not nested
+            Tuple of (opening, closing, content, wrapper) or None if not nested
+            wrapper is set for factory calls (e.g., "Map.ofEntries")
         """
         text = text.strip()
 
-        # Check for each bracket type
-        bracket_pairs = [("{", "}"), ("[", "]"), ("(", ")")]
+        # Check for factory method calls with () if configured
+        # This allows DFS to descend into nested factory calls like Map.ofEntries(...)
+        if self.config.factory_wrappers:
+            for wrapper in self.config.factory_wrappers:
+                if text.startswith(wrapper + "(") and text.endswith(")"):
+                    # Extract content between parentheses
+                    content = text[len(wrapper) + 1:-1]
+                    return "(", ")", content, wrapper
+
+        # Check for each bracket type (only { and [ for nested, not ())
+        # Parentheses () are typically function calls, not data structures
+        bracket_pairs = [("{", "}"), ("[", "]")]
 
         for opening, closing in bracket_pairs:
             if text.startswith(opening) and text.endswith(closing):
                 # Extract content between brackets
                 content = text[len(opening):-len(closing)]
-                return opening, closing, content
+                return opening, closing, content, None
 
         # Check if text contains a nested structure (not at boundaries)
-        # e.g., for factory calls like "List.of(...)"
+        # Only for { and [ - skip () as those are usually function calls
         for opening, closing in bracket_pairs:
             open_pos = text.find(opening)
             if open_pos != -1:
@@ -266,7 +295,7 @@ class ElementParser:
                         depth -= 1
                         if depth == 0:
                             content = text[open_pos + 1:i]
-                            return opening, closing, content
+                            return opening, closing, content, None
 
         return None
 

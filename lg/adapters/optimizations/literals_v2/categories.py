@@ -84,6 +84,15 @@ class LiteralPattern:
     # Empty list means no interpolation (safe to cut anywhere)
     interpolation_markers: List[tuple] = field(default_factory=list)
 
+    # For factory calls: regex pattern to match wrapper (e.g., r"List\.of")
+    # Used to distinguish List.of from Map.of when both are method_invocation
+    # None means no filtering (pattern matches any wrapper)
+    wrapper_match: Optional[str] = None
+
+    # Group elements into tuples of this size (for Map.of pair semantics)
+    # Default 1 = no grouping. Set to 2 for Map.of(k1, v1, k2, v2)
+    tuple_size: int = 1
+
     def get_opening(self, text: str) -> str:
         """Get opening delimiter for given text."""
         if callable(self.opening):

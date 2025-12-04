@@ -1,11 +1,11 @@
 # Literal Optimization v2 Refactoring
 
 > Memory file for tracking the large-scale refactoring of the literal optimization subsystem.
-> **Last updated**: 2025-12-03 (Session 2: Interpolation boundaries)
+> **Last updated**: 2025-12-04 (Session 3: Java migration, two-pass optimization, range_edits composition)
 
 ---
 
-## Part 1: Introduction and Motivation
+## Introduction and Motivation
 
 ### Why This Refactoring?
 
@@ -83,7 +83,7 @@ We have working test samples for all languages to guide the new implementation:
 
 ---
 
-## Part 2: Development Methodology
+## Development Methodology
 
 ### Testing Strategy
 
@@ -172,12 +172,12 @@ This logic lives in `handler.py`, not in core — keeping core language-agnostic
 
 ---
 
-## Part 3: Current Status and Roadmap
+## Current Status and Roadmap
 
 ### Current Status
 
-**Phase**: String interpolation boundaries DONE — Ready to continue language migration
-**Last commit**: `1be3e35` - DFS-trimming for nested literal structures
+**Phase**: Java migration DONE — Python, JS, TS, Java all fully migrated with two-pass optimization
+**Last work session**: 2025-12-04 — Java factory calls, two-pass optimization, range edits composition, critical bug fixes
 
 ### String Interpolation Boundaries ✅ IMPLEMENTED
 
@@ -227,6 +227,237 @@ config = {
 - `formatter.py` — `format_dfs()` + `_reconstruct_element_with_nested()` with multiline/single-line awareness
 - `handler.py` — `_process_collection_dfs()` integrates DFS into the pipeline
 
+### Two-Pass Optimization for String-Collection Independence ✅ IMPLEMENTED
+
+When a collection contains string literals, we want to optimize BOTH:
+1. Individual string literals (truncation with "…")
+2. The collection structure itself (removing elements)
+
+**Problem**: If we optimize strings first and save their edits, then optimize the collection (which replaces the entire range), the string edits are lost.
+
+**Solution**: Two-phase approach with composable edits:
+
+#### Pass 1: String Literals (Independent Processing)
+- Process ALL string literals independently of their context
+- Apply string truncation edits immediately
+- Track ranges of processed strings for Pass 2 coordination
+
+#### Pass 2: Collections with DFS (Composing with Pass 1)
+- Process top-level collections (not nested inside others)
+- DFS handles nested structures internally
+- **Use composable edits** to preserve string optimizations from Pass 1
+
+**Example result** (JavaScript object with nested string and structure optimization):
+```javascript
+const config = {
+    apiKey: "this is a very l…", // literal string
+    timeout: 5000
+};
+```
+
+**Implementation:**
+- `core.py` — `optimize()` method implements two-pass pipeline:
+  - Pass 0: Identify collections vs strings
+  - Pass 1: Process all strings independently
+  - Pass 2: Process top-level collections with DFS + composing
+- `handler.py` — `_apply_trim_result_composing()` uses composable edit method
+- Coordination via `processed_strings` list to avoid conflicts
+
+### Range Edits Composition System ✅ IMPLEMENTED
+
+Extended `lg/adapters/range_edits.py` to support **composable nested edits**.
+
+**Problem**: When wide edit (e.g., collection replacement) contains narrow edits (e.g., string truncations), the standard "wider edit wins" policy loses the narrow edits.
+
+**Solution**: New method `add_replacement_composing_nested()` that:
+1. Finds all nested edits inside the wide edit range
+2. Applies nested edits to the wide replacement text (with coordinate translation)
+3. Removes absorbed nested edits
+4. Adds the composed result as final replacement
+
+**Key implementation details:**
+- `add_replacement_composing_nested()` — Main composition method
+- `_apply_nested_edits_to_text()` — Coordinate translation logic
+  - Groups replacements with their following insertions
+  - Applies groups to wide text by finding original substrings
+  - Handles whitespace normalization for formatting mismatches
+- Comprehensive test suite: `tests/adapters/test_range_edits_nested.py` (5 tests)
+
+**Example** (from test suite):
+```python
+# Original
+obj = {"key": "this is a very long string value"}
+
+# Pass 1: String optimized
+obj = {"key": "this is a very l…"} // literal string
+
+# Pass 2: Object replaced (composing string edit)
+obj = {"key": "this is a very l…"} // literal string (preserved!)
+```
+
+### Java Factory Calls Support ✅ IMPLEMENTED
+
+Java uses factory methods like `List.of()`, `Map.of()` instead of literal syntax. This required new pattern features:
+
+#### New Pattern Features
+
+**1. `wrapper_match: Optional[str]`** (in `LiteralPattern`)
+- Regex pattern to match factory call wrapper
+- Example: `r"Map\.of"` matches `Map.of(...)` but not `List.of(...)`
+- Used when multiple factory patterns share same Tree-Sitter type (`method_invocation`)
+
+**2. `tuple_size: int`** (in `LiteralPattern`)
+- Groups elements into tuples for Map.of semantics
+- `Map.of(k1, v1, k2, v2)` → groups of 2 (key-value pairs)
+- DFS respects tuple boundaries when trimming
+- Default: 1 (no grouping)
+
+#### Java Patterns Implemented
+
+**List.of pattern:**
+```python
+JAVA_LIST_OF = LiteralPattern(
+    category=LiteralCategory.FACTORY_CALL,
+    tree_sitter_types=["method_invocation"],
+    opening="(",
+    closing=")",
+    separator=",",
+    wrapper_match=r"List\.of",
+    placeholder_position=PlaceholderPosition.END,
+    placeholder_template='"…"',
+    min_elements=1,
+)
+```
+
+**Map.of pattern:**
+```python
+JAVA_MAP_OF = LiteralPattern(
+    category=LiteralCategory.FACTORY_CALL,
+    tree_sitter_types=["method_invocation"],
+    opening="(",
+    closing=")",
+    separator=",",
+    wrapper_match=r"Map\.of",
+    placeholder_position=PlaceholderPosition.END,
+    placeholder_template='"…", "…"',
+    min_elements=1,
+    tuple_size=2,  # Key-value pairs
+)
+```
+
+**Map.ofEntries pattern:**
+```python
+JAVA_MAP_OF_ENTRIES = LiteralPattern(
+    category=LiteralCategory.FACTORY_CALL,
+    tree_sitter_types=["method_invocation"],
+    opening="(",
+    closing=")",
+    separator=",",
+    wrapper_match=r"Map\.ofEntries",
+    placeholder_position=PlaceholderPosition.END,
+    placeholder_template="Map.entry(…, …)",
+    min_elements=1,
+)
+```
+
+#### Implementation Details
+
+**Pattern matching with wrapper:**
+- `descriptor.py` — `get_pattern_for()` checks both `tree_sitter_type` AND `wrapper_match`
+- `handler.py` — `_detect_wrapper_from_text()` extracts wrapper from source text
+  - Fixed critical bug: Was returning everything before first `[` or `{` found ANYWHERE in text
+  - Now correctly detects factory calls by checking if text STARTS with bracket
+
+**Tuple grouping in DFS:**
+- `selector.py` — `_select_dfs_tuples()` groups elements by `tuple_size`
+- `selector.py` — `_group_into_tuples()` ensures balanced groups (pads if needed)
+- `formatter.py` — Respects tuple boundaries in multiline formatting
+
+**Example output** (Java Map.of with nested structure):
+```java
+Map<String, Object> nestedData = Map.of(
+    "level1", Map.of(
+        "level2", Map.of(
+            "level3", "value"
+            // … (1 more, −28 tokens)
+        )
+        // … (0 more, −28 tokens)
+    )
+    // … (0 more, −28 tokens)
+);
+```
+
+### Debugging Complex Issues: Lessons Learned
+
+#### Use Temporary Debug Scripts, Not Golden Tests
+
+When deep debugging is needed:
+
+✅ **Do**: Write standalone debug scripts
+```python
+# debug_issue.py
+from lg.adapters.python import PythonCfg
+from tests.adapters.python.utils import make_adapter, lctx
+
+code = '''... minimal reproduction ...'''
+cfg = PythonCfg()
+cfg.literals.max_tokens = 40
+adapter = make_adapter(cfg)
+result, meta = adapter.process(lctx(code))
+print(result)
+```
+
+❌ **Don't**: Repeatedly regenerate golden files for debugging
+- Golden tests are for **final verification**, not iterative debugging
+- Regenerating goldens repeatedly exhausts context window quickly
+- Hard to track intermediate states
+
+#### Add Recursion Depth Tracking for Nested Algorithms
+
+When debugging recursive formatters:
+
+```python
+# At module level
+_DEBUG_RECURSION_DEPTH = 0
+
+# In recursive function
+global _DEBUG_RECURSION_DEPTH
+depth_prefix = "  " * _DEBUG_RECURSION_DEPTH
+_DEBUG_RECURSION_DEPTH += 1
+try:
+    print(f"{depth_prefix}Entering function [depth={_DEBUG_RECURSION_DEPTH}]")
+    # ... function body ...
+finally:
+    _DEBUG_RECURSION_DEPTH -= 1
+```
+
+This prevents output from different recursion levels from being mixed/confused.
+
+#### Verify Object Identity When Strings Behave Strangely
+
+When a string appears to change size mysteriously:
+```python
+print(f"Type: {type(obj).__name__}, id: {id(obj)}, len: {len(obj)}")
+print(f"Is same object: {obj1 is obj2}")
+```
+
+In our case, this revealed that `parsed.wrapper` (which should be None or "Map.of") contained the entire unoptimized text due to the wrapper detection bug.
+
+#### Check Both Selector AND Formatter Output
+
+Don't assume formatter is correct if selector works:
+- Selector may correctly select elements: `kept=1/2, removed=1`
+- But formatter might still produce wrong output if it uses wrong data
+
+Add debug output at BOTH stages:
+```python
+# After selection
+print(f"Selection: kept={len(kept)}, removed={len(removed)}")
+
+# After formatting
+print(f"Formatted output: {len(result)} chars")
+```
+
 ### v2 Core Architecture
 
 ```
@@ -265,10 +496,10 @@ PYTHON_DICT = LiteralPattern(
 
 | Language | Status | Tests | Notes |
 |----------|--------|-------|-------|
-| Python | ✅ DONE | 19 passed, 2 skipped | MIDDLE_COMMENT for dicts, f-string interpolation |
-| JavaScript | ✅ DONE | 19 passed | MIDDLE_COMMENT for objects, `${}` interpolation |
-| TypeScript | ✅ DONE | 17 passed | Inherits JS patterns + TS object types |
-| Java | ⏸️ WAIT | - | Factory calls (List.of), no interpolation |
+| Python | ✅ DONE | 19 passed, 2 skipped | MIDDLE_COMMENT for dicts, f-string interpolation, two-pass with composing |
+| JavaScript | ✅ DONE | 19 passed | MIDDLE_COMMENT for objects, `${}` interpolation, two-pass with composing |
+| TypeScript | ✅ DONE | 17 passed | Inherits JS patterns + TS object types, two-pass with composing |
+| Java | ✅ DONE | 4 passed | Factory calls (List.of, Map.of, Map.ofEntries), wrapper_match, tuple_size=2 for Map.of |
 | Kotlin | ⏸️ WAIT | - | Factory calls (listOf), `${}` and `$var` interpolation |
 | Scala | ⏸️ WAIT | - | Factory calls, `${}` and `$var` interpolation |
 | Go | ⏸️ WAIT | - | Composite literals, no interpolation |
@@ -278,22 +509,29 @@ PYTHON_DICT = LiteralPattern(
 
 ### Key Achievements So Far
 
+- **Two-pass optimization**: Independent string + collection optimization with composable edits (59 tests passing)
+- **Range edits composition**: Nested edit preservation system for complex transformations (5 dedicated tests)
 - **DFS-trimming**: Recursive optimization of nested structures preserving multiline layout
+- **Java factory calls**: Full support for List.of, Map.of with wrapper_match and tuple_size
 - **MIDDLE_COMMENT**: Inline `# … (N more, −M tokens)` inside collections
 - **Context-aware comments**: Block vs single-line based on surrounding code
 - **String interpolation boundaries**: Safe truncation that respects `${...}`, `{...}` boundaries
-- **Declarative patterns**: ~60 lines for Python descriptor vs 300+ in old system
+- **Declarative patterns**: ~60 lines for Python descriptor, ~120 lines for Java vs 300+ in old system
 - **Clean separation**: Core knows nothing about specific languages
 
 ### Next Steps
 
-1. **Continue language migration** with full DFS support:
-   - Java (factory calls: List.of, Map.of — no string interpolation)
-   - Kotlin (factory calls: listOf, mapOf — needs `${}` and `$var` interpolation)
+1. **Continue language migration** with full DFS and two-pass support:
+   - Kotlin (factory calls: listOf, mapOf — needs `${}` and `$var` interpolation, similar to Java)
    - Scala (factory calls — needs `${}` and `$var` interpolation)
    - Go (composite literals — no string interpolation)
    - Rust (vec![], macro calls — `{}` format strings unreliable to detect)
    - C, C++ (array/struct initializers — no string interpolation)
+
+2. **Consider additional features** based on language needs:
+   - Lazy evaluation for Scala (=> markers in pattern detection)
+   - Macro detection improvements for Rust
+   - String interpolation for Kotlin/Scala (reuse Java wrapper_match patterns)
 
 ---
 

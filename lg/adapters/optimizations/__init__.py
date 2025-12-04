@@ -7,7 +7,9 @@ from .public_api import PublicApiOptimizer
 from .function_bodies import FunctionBodyOptimizer
 from .comments import CommentOptimizer
 from .imports import ImportOptimizer, TreeSitterImportAnalyzer, ImportClassifier
-from .literals_v2.core import LiteralOptimizerV2 as LiteralOptimizer
+from .literals import LiteralOptimizer
+from .literals_v2.core import LiteralOptimizerV2
+from .literals_v2.descriptor import LanguageLiteralDescriptor
 
 __all__ = [
     "PublicApiOptimizer",
@@ -15,6 +17,8 @@ __all__ = [
     "CommentOptimizer",
     "ImportOptimizer",
     "LiteralOptimizer",
+    "LiteralOptimizerV2",
+    "LanguageLiteralDescriptor",
     "TreeSitterImportAnalyzer",
     "ImportClassifier",
 ]

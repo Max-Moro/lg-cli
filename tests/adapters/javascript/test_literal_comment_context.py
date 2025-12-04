@@ -181,7 +181,7 @@ class TestLiteralCommentContext:
         assert '/* ' not in result  # Should not use block comment
 
     def test_literal_in_object_property(self):
-        """Test literal as object property value - should handle correctly."""
+        """Test literal as object property value - string is trimmed in Pass 1."""
         code = '''const config = {
     apiKey: "this is a very long API key string that should be trimmed for optimization purposes",
     timeout: 5000
@@ -193,6 +193,9 @@ class TestLiteralCommentContext:
 
         result, _ = adapter.process(lctx(code))
 
-        # String literal inside object is trimmed (not the object itself)
+        # Pass 1: String literal is trimmed with inline comment
         assert 'literal string' in result
-        assert 'timeout: 5000' in result  # Object structure preserved
+        assert '"this is a very l…"' in result
+
+        # Object structure is preserved (after string trimming, object fits in budget)
+        assert 'timeout: 5000' in result

@@ -122,7 +122,139 @@ class RangeEditor:
 
         edit = Edit(char_range, content, edit_type, is_insertion=True)
         self.edits.append(edit)
-    
+
+    def add_replacement_composing_nested(
+        self,
+        start_char: int,
+        end_char: int,
+        replacement: str,
+        edit_type: Optional[str]
+    ) -> bool:
+        """
+        Add a wide replacement that composes with nested narrower edits.
+
+        When narrow edits exist inside [start_char, end_char]:
+        1. Find all nested edits
+        2. Apply them to the replacement text (with coordinate translation)
+        3. Add the composed result as the final replacement
+        4. Remove the nested edits (they've been absorbed)
+
+        Args:
+            start_char: Start position of wide replacement
+            end_char: End position of wide replacement
+            replacement: New text for wide replacement
+            edit_type: Type for statistics tracking
+
+        Returns:
+            True if replacement was added, False if rejected
+        """
+        char_range = TextRange(start_char, end_char)
+
+        # Find all edits that are completely nested inside this range
+        nested_edits = []
+        for i, edit in enumerate(self.edits):
+            if char_range.contains(edit.range):
+                nested_edits.append((i, edit))
+
+        if not nested_edits:
+            # No nested edits - add replacement normally
+            self.add_edit(start_char, end_char, replacement, edit_type)
+            return True
+
+        # Apply nested edits to replacement text
+        composed_text = self._apply_nested_edits_to_text(replacement, nested_edits)
+
+        # Remove nested edits (in reverse order to avoid index shifts)
+        for i, _ in reversed(nested_edits):
+            del self.edits[i]
+
+        # Add the composed replacement
+        self.add_edit(start_char, end_char, composed_text, edit_type)
+        return True
+
+    def _apply_nested_edits_to_text(
+        self,
+        wide_text: str,
+        nested_edits: List[Tuple[int, Edit]]
+    ) -> str:
+        """
+        Apply nested edits to the wide replacement text.
+
+        Translates coordinates from original text to replacement text and applies edits.
+
+        Strategy:
+        1. For each nested edit, extract the original substring it replaces
+        2. Search for that substring in wide_text
+        3. Apply the edit at the found location
+
+        Args:
+            wide_text: The replacement text for the wide edit
+            nested_edits: List of (index, Edit) tuples for nested edits
+
+        Returns:
+            Text with nested edits applied
+        """
+        if not nested_edits:
+            return wide_text
+
+        # Group edits by their range start position
+        # For each replacement, collect insertions that immediately follow it
+        edit_groups = {}  # key: replacement range, value: (replacement_edit, [insertion_edits])
+
+        for i, edit in nested_edits:
+            if not edit.is_insertion:
+                # This is a replacement
+                key = (edit.range.start_char, edit.range.end_char)
+                if key not in edit_groups:
+                    edit_groups[key] = (edit, [])
+
+        # Add insertions to their corresponding replacements
+        for i, edit in nested_edits:
+            if edit.is_insertion:
+                ins_pos = edit.range.start_char
+                # Find replacement that this insertion follows
+                for (start, end), (repl_edit, ins_list) in edit_groups.items():
+                    # Insertion follows this replacement if positioned right after it
+                    if end <= ins_pos <= end + 10:  # Small tolerance for offset
+                        ins_list.append(edit)
+                        break
+
+        # Sort groups by position (reverse order)
+        sorted_groups = sorted(edit_groups.items(), key=lambda x: x[0][0], reverse=True)
+
+        result = wide_text
+
+        # Apply each group: replacement + its insertions
+        for (start, end), (repl_edit, ins_edits) in sorted_groups:
+            original_substr = self.original_text[start:end]
+
+            # Try exact match first
+            if original_substr in result:
+                pos = result.rfind(original_substr)
+
+                # Build replacement: replacement text + insertions
+                composed = repl_edit.replacement
+                for ins_edit in ins_edits:
+                    composed += ins_edit.replacement
+
+                result = result[:pos] + composed + result[pos + len(original_substr):]
+            else:
+                # Try trimming whitespace from original_substr
+                trimmed_substr = original_substr.strip()
+                if trimmed_substr and trimmed_substr in result:
+                    pos = result.rfind(trimmed_substr)
+                    after_pos = pos + len(trimmed_substr)
+
+                    # Build replacement: replacement text + insertions
+                    composed = repl_edit.replacement
+                    for ins_edit in ins_edits:
+                        composed += ins_edit.replacement
+
+                    result = result[:pos] + composed + result[after_pos:]
+            # If not found, element was removed by DFS - skip
+
+        return result
+
     def validate_edits(self) -> List[str]:
         """
         Validate that all edits are within bounds.

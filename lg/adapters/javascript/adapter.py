@@ -11,8 +11,7 @@ from tree_sitter import Language
 
 from ..code_base import CodeAdapter
 from ..code_model import CodeCfg
-from ..optimizations import ImportClassifier, TreeSitterImportAnalyzer, LiteralOptimizer
-from ..optimizations.literals import LiteralHandler
+from ..optimizations import ImportClassifier, TreeSitterImportAnalyzer
 from ..optimizations.literals_v2 import LanguageLiteralDescriptor
 from ..tree_sitter_support import TreeSitterDocument
 
@@ -73,10 +72,3 @@ class JavaScriptAdapter(CodeAdapter[JavaScriptCfg]):
         """Create JavaScript literal descriptor for v2 optimizer."""
         from .literals_v2 import create_javascript_descriptor
         return create_javascript_descriptor()
-
-    def hook__get_literal_handler(
-        self, root_optimizer: LiteralOptimizer
-    ) -> LiteralHandler:
-        """Provide JavaScript literal handler for template literals."""
-        from .literals import JSLiteralHandler
-        return JSLiteralHandler()

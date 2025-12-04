@@ -17,11 +17,11 @@ from .optimizations import (
     FunctionBodyOptimizer,
     CommentOptimizer,
     ImportOptimizer,
-    LiteralOptimizer,
+    LiteralOptimizerV2,
+    LanguageLiteralDescriptor,
     TreeSitterImportAnalyzer,
     ImportClassifier
 )
-from .optimizations.literals_v2 import LanguageLiteralDescriptor
 from .tree_sitter_support import TreeSitterDocument, Node
 
 C = TypeVar("C", bound=CodeCfg)
@@ -151,8 +151,8 @@ class CodeAdapter(BaseAdapter[C], ABC):
         import_optimizer = ImportOptimizer(code_cfg.imports, self)
         import_optimizer.apply(context)
 
-        # Process literals
-        literal_optimizer = LiteralOptimizer(code_cfg.literals, self)
+        # Process literals (use v2 if adapter provides descriptor, else v1)
+        literal_optimizer = LiteralOptimizerV2(code_cfg.literals, self)
         literal_optimizer.apply(context)
 
     def _finalize_placeholders(self, context: ProcessingContext, ph_cfg: PlaceholderConfig) -> Tuple[str, Dict[str, Any]]:

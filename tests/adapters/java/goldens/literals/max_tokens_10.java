@@ -12,11 +12,11 @@ class Constants {
     public static final String SHORT_MESSAGE = "Hello, World!";
 
     // Long string literal (candidate for trimming)
-    public static final String LONG_MESSAGE = "This is an extremely long message that contains a…"; // literal string (−62 tokens)
+    public static final String LONG_MESSAGE = "This is an extremely long message that contains a…"; // literal string (−63 tokens)
 
     // Multi-line string with embedded expressions (Java 15+ text blocks)
     public static final String TEMPLATE_WITH_DATA = String.format("""
-        User Information:…""", // literal string (−54 tokens)
+        User…""", // literal string (−58 tokens)
         getUserName(),
         getUserEmail(),
         Instant.now().toString(),
@@ -29,8 +29,8 @@ class Constants {
     private static String getUserName() { return "John Doe"; }
     private static String getUserEmail() { return "john.doe@example.com"; }
     private static String getAccountStatus() { return "active"; }
-    private static List<String> getPermissions() { return List.of("read", "write", "…"); }
-    private static String getLastLogin() { return "2024-01-15T1…"; /* literal string (−5 tokens) */ }
+    private static List<String> getPermissions() { return List.of("read", "write", "admin"); }
+    private static String getLastLogin() { return "2024-01-15T1…"; /* literal string (−7 tokens) */ }
     private static int getProfileCompleteness() { return 85; }
 }
 
@@ -65,10 +65,16 @@ public class LiteralDataManager {
     // Class properties with various literal types
     private final Map<String, Object> smallConfig = Map.of(
         "debug", true,
-        "…", "…"
-    ); // literal array (−4 tokens)
+        "version", "1.0.0"
+    );
 
-    private final Map<String, Object> largeConfig = Map.ofEntries(Map.entry("…", "…")); // literal array (−383 tokens)
+    private final Map<String, Object> largeConfig = Map.ofEntries(
+        Map.entry(
+            "database",
+            // … (1 more, −140 tokens)
+        )
+        // … (3 more, −379 tokens)
+    );
 
     private final List<String> supportedLanguages;
     private final Set<String> allowedExtensions;
@@ -77,33 +83,39 @@ public class LiteralDataManager {
         // Array with many elements (trimming candidate)
         this.supportedLanguages = List.of(
             "english",
-            "spanish",
-            "…"
-        ); // literal array (−89 tokens)
+            "spanish"
+            // … (22 more, −85 tokens)
+        );
 
         // Set with many elements
         this.allowedExtensions = Set.of(
             ".java",
-            ".kt",
-            "…"
-        ); // literal array (−48 tokens)
+            ".kt"
+            // … (16 more, −50 tokens)
+        );
     }
 
     public DataContainer processData() {
         // Function with various literal data
-        List<String> smallArray = List.of("one", "two", "…");
+        List<String> smallArray = List.of("one", "two", "three");
 
         List<String> largeArray = List.of(
-            "item_001",
-            "…"
-        ); // literal array (−146 tokens)
+            "item_001"
+            // … (29 more, −145 tokens)
+        );
 
-        Map<String, Object> nestedData = Map.of("…", "…"); // literal array (−200 tokens)
+        Map<String, Object> nestedData = Map.of(
+            "level1", Map.of(
+                "level2",
+                // … (1 more, −188 tokens)
+            )
+            // … (0 more, −188 tokens)
+        );
 
         return new DataContainer(
             smallArray,
             largeArray,
-            Map.of("type", "test", "…", "…"), // literal array (−1 tokens)
+            Map.of("type", "test", "count", smallArray.size()),
             nestedData
         );
     }
@@ -111,8 +123,7 @@ public class LiteralDataManager {
     public String getLongQuery() {
         // Very long SQL-like query string
         return """
-            SELECT
-                user…"""; // literal string (−180 tokens)
+            SELECT…"""; // literal string (−185 tokens)
     }
 
     public List<String> getSupportedLanguages() { return supportedLanguages; }
@@ -123,15 +134,18 @@ public class LiteralDataManager {
 class SmallConstants {
     public static final Map<String, Object> VALUES = Map.of(
         "API_VERSION", "v1",
-        "…", "…"
-    ); // literal array (−1 tokens)
+        "DEFAULT_LIMIT", 50
+    );
 }
 
 class LargeConstants {
     public static final Map<String, Object> HTTP_STATUS_CODES = Map.ofEntries(
-        Map.entry("CONTINUE", 100),
-        Map.entry("…", "…")
-    ); // literal array (−432 tokens)
+        Map.entry("CONTINUE", 100)
+        // … (40 more, −401 tokens)
+    );
 
-    public static final Map<String, String> ERROR_MESSAGES = Map.ofEntries(Map.entry("…", "…")); // literal array (−132 tokens)
+    public static final Map<String, String> ERROR_MESSAGES = Map.ofEntries(
+        Map.entry("VALIDATION_FAILED", "Input validation failed. Please check you…" // literal string (−6 tokens))
+        // … (6 more, −110 tokens)
+    );
 }

@@ -7,7 +7,7 @@ for a specific programming language.
 
 from __future__ import annotations
 
-from typing import Optional
+from typing import List, Optional
 
 from .categories import (
     LiteralCategory,
@@ -62,8 +62,30 @@ class LanguageLiteralHandler:
         self.selector = BudgetSelector(tokenizer)
         self.formatter = ResultFormatter(tokenizer, comment_style)
 
+        # Collect factory wrappers from all FACTORY_CALL patterns for nested detection
+        self._factory_wrappers = self._collect_factory_wrappers()
+
         # Cache parsers for different patterns
         self._parsers: dict[str, ElementParser] = {}
+
+    def _collect_factory_wrappers(self) -> List[str]:
+        """Collect all factory method wrappers from descriptor for nested detection."""
+        wrappers = []
+        for pattern in self.descriptor.patterns:
+            if pattern.category == LiteralCategory.FACTORY_CALL and pattern.wrapper_match:
+                # Extract wrapper from regex (e.g., "List\.of" -> "List.of")
+                wrapper = pattern.wrapper_match.replace("\\.", ".").rstrip("$")
+                if wrapper not in wrappers:
+                    wrappers.append(wrapper)
+
+        # Add additional wrappers for nested detection that aren't patterns themselves
+        # Map.entry is not optimized directly but needs detection for DFS into nested values
+        additional_wrappers = ["Map.entry"]
+        for wrapper in additional_wrappers:
+            if wrapper not in wrappers:
+                wrappers.append(wrapper)
+
+        return wrappers
 
     def get_parser(self, pattern: LiteralPattern) -> ElementParser:
         """Get or create parser for a pattern."""
@@ -74,14 +96,37 @@ class LanguageLiteralHandler:
                 separator=pattern.separator,
                 kv_separator=pattern.kv_separator,
                 preserve_whitespace=pattern.preserve_whitespace,
+                factory_wrappers=self._factory_wrappers,
             )
             self._parsers[key] = ElementParser(config)
 
         return self._parsers[key]
 
-    def detect_literal_type(self, tree_sitter_type: str) -> bool:
+    def detect_literal_type(self, tree_sitter_type: str, text: str = "") -> bool:
         """Check if a tree-sitter node type is a literal we handle."""
-        return self.descriptor.get_pattern_for(tree_sitter_type) is not None
+        wrapper = self._detect_wrapper_from_text(text) if text else None
+        return self.descriptor.get_pattern_for(tree_sitter_type, wrapper) is not None
+
+    def _detect_wrapper_from_text(self, text: str) -> Optional[str]:
+        """
+        Detect wrapper prefix from literal text before pattern selection.
+
+        For factory calls like "List.of(...)", extracts "List.of".
+        For regular literals that start with brackets, returns None.
+        """
+        stripped = text.strip()
+
+        # If text starts with a bracket, it's a regular literal (not a factory call)
+        if stripped and stripped[0] in ("(", "[", "{"):
+            return None
+
+        # Look for opening bracket to find factory call wrapper
+        for bracket in ("(", "[", "{"):
+            pos = stripped.find(bracket)
+            if pos > 0:
+                return stripped[:pos]
+
+        return None
 
     def parse_literal(
         self,
@@ -106,7 +151,11 @@ class LanguageLiteralHandler:
         Returns:
             ParsedLiteral or None if not recognized
         """
-        pattern = self.descriptor.get_pattern_for(tree_sitter_type)
+        # Detect wrapper first (needed for pattern selection)
+        wrapper = self._detect_wrapper_from_text(text)
+
+        # Get pattern with wrapper for filtering
+        pattern = self.descriptor.get_pattern_for(tree_sitter_type, wrapper)
         if not pattern:
             return None
 
@@ -124,9 +173,6 @@ class LanguageLiteralHandler:
 
         # Count tokens
         original_tokens = self.tokenizer.count_text(text)
-
-        # Detect wrapper for factory calls
-        wrapper = self._detect_wrapper(text, pattern)
 
         return ParsedLiteral(
             original_text=text,
@@ -165,24 +211,6 @@ class LanguageLiteralHandler:
             return None
 
         return stripped[len(opening):-len(closing)]
-
-    def _detect_wrapper(
-        self,
-        text: str,
-        pattern: LiteralPattern
-    ) -> Optional[str]:
-        """Detect wrapper prefix for factory calls."""
-        if pattern.category != LiteralCategory.FACTORY_CALL:
-            return None
-
-        stripped = text.strip()
-        opening = pattern.get_opening(text)
-
-        open_pos = stripped.find(opening)
-        if open_pos > 0:
-            return stripped[:open_pos]
-
-        return None
 
     def process_literal(
         self,
@@ -312,6 +340,7 @@ class LanguageLiteralHandler:
         selection = self.selector.select_first(
             elements, content_budget,
             min_keep=pattern.min_elements,
+            tuple_size=pattern.tuple_size,
         )
 
         if not selection.has_removals:
@@ -353,6 +382,7 @@ class LanguageLiteralHandler:
             elements, content_budget,
             parser=parser,
             min_keep=pattern.min_elements,
+            tuple_size=pattern.tuple_size,
         )
 
         if not selection.has_removals:

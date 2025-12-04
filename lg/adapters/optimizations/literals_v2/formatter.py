@@ -11,8 +11,9 @@ Handles formatting of trimmed results with proper:
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import List, Optional, TYPE_CHECKING
+from typing import Optional
 
+from lg.stats.tokenizer import TokenService
 from .categories import (
     LiteralCategory,
     PlaceholderPosition,
@@ -20,10 +21,7 @@ from .categories import (
     TrimResult,
 )
 from .selector import Selection, DFSSelection
-from lg.stats.tokenizer import TokenService
-
-if TYPE_CHECKING:
-    from .parser import ElementParser
+from .parser import ElementParser
 
 
 @dataclass
@@ -113,7 +111,7 @@ class ResultFormatter:
         self,
         parsed: ParsedLiteral,
         selection: DFSSelection,
-        parser: "ElementParser",
+        parser: ElementParser,
         placeholder_text: Optional[str] = None,
     ) -> FormattedResult:
         """
@@ -154,7 +152,7 @@ class ResultFormatter:
         self,
         parsed: ParsedLiteral,
         selection: DFSSelection,
-        parser: "ElementParser",
+        parser: ElementParser,
         placeholder: str,
     ) -> str:
         """Format as single line with DFS nested handling."""
@@ -211,7 +209,7 @@ class ResultFormatter:
         self,
         parsed: ParsedLiteral,
         selection: DFSSelection,
-        parser: "ElementParser",
+        parser: ElementParser,
         placeholder: str,
     ) -> str:
         """Format as multiline with DFS nested handling and proper indentation."""
@@ -234,24 +232,40 @@ class ResultFormatter:
         else:
             lines.append(parsed.opening)
 
-        # Elements
-        for i, elem in enumerate(elements):
-            if i in selection.nested_selections:
-                # Reconstruct with nested formatting
-                elem_text = self._reconstruct_element_with_nested(
-                    elem, selection.nested_selections[i], parser, placeholder,
-                    is_multiline=True,
-                    base_indent=elem_indent,
-                    elem_indent=elem_indent + "    "
-                )
-            else:
-                elem_text = elem.text
-            lines.append(f"{elem_indent}{elem_text}{separator}")
+        # Elements - group by tuple_size if specified
+        tuple_size = pattern.tuple_size
+        is_last_line = not selection.has_removals or pattern.placeholder_position != PlaceholderPosition.END
+        allow_trailing = parsed.category != LiteralCategory.FACTORY_CALL
+
+        for i in range(0, len(elements), tuple_size):
+            group = elements[i:i + tuple_size]
+            group_texts = []
+            for elem_idx, elem in enumerate(group):
+                global_idx = i + elem_idx
+                if global_idx in selection.nested_selections:
+                    # Reconstruct with nested formatting
+                    elem_text = self._reconstruct_element_with_nested(
+                        elem, selection.nested_selections[global_idx], parser, placeholder,
+                        is_multiline=True,
+                        base_indent=elem_indent,
+                        elem_indent=elem_indent + "    "
+                    )
+                else:
+                    elem_text = elem.text
+                group_texts.append(elem_text)
+            group_text = f"{separator} ".join(group_texts)
+
+            # Check if this is the last group
+            is_last_group = (i + tuple_size >= len(elements)) and is_last_line
+            trailing_sep = separator if (allow_trailing or not is_last_group) else ""
+            lines.append(f"{elem_indent}{group_text}{trailing_sep}")
 
         # Placeholder based on position
         if selection.has_removals:
             if pattern.placeholder_position == PlaceholderPosition.END:
-                lines.append(f"{elem_indent}{placeholder}{separator}")
+                # Placeholder is last, so it gets no trailing separator for factory calls
+                trailing_sep = "" if parsed.category == LiteralCategory.FACTORY_CALL else separator
+                lines.append(f"{elem_indent}{placeholder}{trailing_sep}")
             elif pattern.placeholder_position == PlaceholderPosition.MIDDLE_COMMENT:
                 # Build inline comment with full info (no separate comment needed)
                 tokens_saved = selection.total_tokens_removed
@@ -310,7 +324,7 @@ class ResultFormatter:
         self,
         elem,  # Element
         nested_sel: DFSSelection,
-        parser: "ElementParser",
+        parser: ElementParser,
         placeholder: str,
         is_multiline: bool = False,
         base_indent: str = "",
@@ -387,12 +401,15 @@ class ResultFormatter:
                 nested_formatted = f"{nested_formatted}, {self.block_comment[0]} {comment_text} {self.block_comment[1]}"
 
         # Reconstruct element with key prefix if it's a key-value pair
+        # Add wrapper for factory calls (e.g., Map.ofEntries)
+        wrapper_prefix = f"{elem.nested_wrapper}" if elem.nested_wrapper else ""
+
         if elem.key is not None:
             # Key-value pair: "key": value or key: value
-            return f"{elem.key}: {elem.nested_opening}{nested_formatted}{elem.nested_closing}"
+            return f"{elem.key}: {wrapper_prefix}{elem.nested_opening}{nested_formatted}{elem.nested_closing}"
         else:
             # Simple nested element
-            return f"{elem.nested_opening}{nested_formatted}{elem.nested_closing}"
+            return f"{wrapper_prefix}{elem.nested_opening}{nested_formatted}{elem.nested_closing}"
 
     def _generate_comment_dfs(
         self,
@@ -493,14 +510,26 @@ class ResultFormatter:
         else:
             lines.append(parsed.opening)
 
-        # Elements
-        for elem in elements:
-            lines.append(f"{elem_indent}{elem.text}{separator}")
+        # Elements - group by tuple_size if specified
+        tuple_size = pattern.tuple_size
+        is_last_line = not selection.has_removals or pattern.placeholder_position != PlaceholderPosition.END
+        allow_trailing = parsed.category != LiteralCategory.FACTORY_CALL
+
+        for i in range(0, len(elements), tuple_size):
+            group = elements[i:i + tuple_size]
+            group_text = f"{separator} ".join(e.text for e in group)
+
+            # Check if this is the last group
+            is_last_group = (i + tuple_size >= len(elements)) and is_last_line
+            trailing_sep = separator if (allow_trailing or not is_last_group) else ""
+            lines.append(f"{elem_indent}{group_text}{trailing_sep}")
 
         # Placeholder based on position
         if selection.has_removals:
             if pattern.placeholder_position == PlaceholderPosition.END:
-                lines.append(f"{elem_indent}{placeholder}{separator}")
+                # Placeholder is last, so it gets no trailing separator for factory calls
+                trailing_sep = "" if parsed.category == LiteralCategory.FACTORY_CALL else separator
+                lines.append(f"{elem_indent}{placeholder}{trailing_sep}")
             elif pattern.placeholder_position == PlaceholderPosition.MIDDLE_COMMENT:
                 # Build inline comment with full info (no separate comment needed)
                 removed_count = selection.removed_count
