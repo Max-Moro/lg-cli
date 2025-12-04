@@ -153,7 +153,7 @@ class ResultFormatter:
         nested_sel: DFSSelection,
         elements_text: list,
         parent_is_multiline: bool,
-        max_inline_length: int = 60,
+        max_inline_length: int,
     ) -> bool:
         """
         Determine if nested structure should stay inline even in multiline parent.
@@ -199,6 +199,7 @@ class ResultFormatter:
         is_multiline: bool = False,
         base_indent: str = "",
         elem_indent: str = "",
+        inline_threshold: int = 60,
     ) -> str:
         """
         Reconstruct element with nested content formatted.
@@ -227,7 +228,8 @@ class ResultFormatter:
                     nested_elem, nested_sel.nested_selections[i],
                     parser, placeholder, is_multiline=is_multiline,
                     base_indent=elem_indent,  # Closing bracket at current element level
-                    elem_indent=elem_indent + "    "  # Nested elements go deeper
+                    elem_indent=elem_indent + "    ",  # Nested elements go deeper
+                    inline_threshold=inline_threshold
                 )
             else:
                 nested_elem_text = nested_elem.text
@@ -239,7 +241,7 @@ class ResultFormatter:
         # Determine if this nested level should stay inline even in multiline parent
         # Leaf structures (no deeper nesting) that are short should stay compact
         use_inline = self._should_use_inline_nested(
-            nested_sel, nested_elements_text, is_multiline
+            nested_sel, nested_elements_text, is_multiline, inline_threshold
         )
 
         # Build nested content
@@ -352,12 +354,14 @@ class ResultFormatter:
 
         # Process kept elements (with optional nested handling for DFS)
         if isinstance(selection, DFSSelection):
+            inline_threshold = parsed.pattern.nested_inline_threshold
             for i, elem in enumerate(selection.kept_elements):
                 if i in selection.nested_selections:
                     # Reconstruct with nested formatting (DFS only)
                     elem_text = self._reconstruct_element_with_nested(
                         elem, selection.nested_selections[i], parser, placeholder,
-                        is_multiline=False
+                        is_multiline=False,
+                        inline_threshold=inline_threshold
                     )
                 else:
                     elem_text = elem.text
@@ -451,6 +455,7 @@ class ResultFormatter:
 
         # Process elements with type-aware nested handling
         if isinstance(selection, DFSSelection):
+            inline_threshold = parsed.pattern.nested_inline_threshold
             for i in range(0, len(elements), tuple_size):
                 group = elements[i:i + tuple_size]
                 group_texts = []
@@ -462,7 +467,8 @@ class ResultFormatter:
                             elem, selection.nested_selections[global_idx], parser, placeholder,
                             is_multiline=True,
                             base_indent=elem_indent,
-                            elem_indent=elem_indent + "    "
+                            elem_indent=elem_indent + "    ",
+                            inline_threshold=inline_threshold
                         )
                     else:
                         elem_text = elem.text

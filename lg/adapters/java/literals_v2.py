@@ -117,5 +117,6 @@ def create_java_descriptor() -> LanguageLiteralDescriptor:
             JAVA_SEQUENCE_FACTORY, # Catch-all for other factory methods
             JAVA_STRING,
             JAVA_ARRAY_INITIALIZER,
-        ]
+        ],
+        nested_factory_wrappers=["Map.entry"],  # Nested wrappers for DFS detection
     )

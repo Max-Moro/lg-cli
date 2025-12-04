@@ -99,6 +99,9 @@ class LiteralPattern:
     # Default 1 = no grouping. Set to 2 for Map.of(k1, v1, k2, v2)
     tuple_size: int = 1
 
+    # Maximum character length for nested structures to stay inline (default: 60)
+    nested_inline_threshold: int = 60
+
     def get_opening(self, text: str) -> str:
         """Get opening delimiter for given text."""
         if callable(self.opening):

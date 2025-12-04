@@ -78,10 +78,8 @@ class LanguageLiteralHandler:
                 if wrapper not in wrappers:
                     wrappers.append(wrapper)
 
-        # Add additional wrappers for nested detection that aren't patterns themselves
-        # Map.entry is not optimized directly but needs detection for DFS into nested values
-        additional_wrappers = ["Map.entry"]
-        for wrapper in additional_wrappers:
+        # Add additional wrappers from descriptor
+        for wrapper in self.descriptor.nested_factory_wrappers:
             if wrapper not in wrappers:
                 wrappers.append(wrapper)
 
@@ -124,7 +122,10 @@ class LanguageLiteralHandler:
         for bracket in ("(", "[", "{"):
             pos = stripped.find(bracket)
             if pos > 0:
-                return stripped[:pos]
+                # Normalize whitespace in wrapper (e.g., "List  .  of" -> "List.of")
+                wrapper = stripped[:pos]
+                normalized = ''.join(wrapper.split())
+                return normalized
 
         return None
 

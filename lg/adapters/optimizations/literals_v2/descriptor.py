@@ -7,7 +7,7 @@ Declarative definitions of literal patterns and behavior for each language.
 from __future__ import annotations
 
 import re
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import List, Optional
 
 from .categories import LiteralPattern
@@ -24,6 +24,10 @@ class LanguageLiteralDescriptor:
 
     # List of literal patterns in priority order
     patterns: List[LiteralPattern]
+
+    # Additional factory wrappers for nested detection (not patterns themselves)
+    # Example: ["Map.entry"] for Java - not optimized directly but needs DFS detection
+    nested_factory_wrappers: List[str] = field(default_factory=list)
 
     def get_pattern_for(
         self,
