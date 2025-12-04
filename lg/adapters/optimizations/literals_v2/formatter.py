@@ -11,7 +11,7 @@ Handles formatting of trimmed results with proper:
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Optional
+from typing import Optional, cast
 
 from lg.stats.tokenizer import TokenService
 from .categories import (
@@ -20,7 +20,7 @@ from .categories import (
     ParsedLiteral,
     TrimResult,
 )
-from .selector import Selection, DFSSelection
+from .selector import SelectionBase, Selection, DFSSelection
 from .parser import ElementParser
 
 
@@ -284,7 +284,7 @@ class ResultFormatter:
     def _generate_comment_impl(
         self,
         parsed: ParsedLiteral,
-        selection,  # Selection or DFSSelection
+        selection: SelectionBase,
         position: PlaceholderPosition,
     ) -> tuple[Optional[str], Optional[int]]:
         """
@@ -306,8 +306,10 @@ class ResultFormatter:
             return None, None
 
         # Get tokens saved (different for Selection vs DFSSelection)
-        is_dfs = isinstance(selection, DFSSelection)
-        saved = selection.total_tokens_removed if is_dfs else selection.tokens_removed
+        if isinstance(selection, DFSSelection):
+            saved = selection.total_tokens_removed
+        else:
+            saved = selection.tokens_removed
 
         # Use pattern's comment_name if set, otherwise category value
         category_name = parsed.pattern.comment_name or parsed.category.value
@@ -336,7 +338,7 @@ class ResultFormatter:
     def _format_single_line_impl(
         self,
         parsed: ParsedLiteral,
-        selection,  # Selection or DFSSelection
+        selection: SelectionBase,
         placeholder: str,
         parser: Optional[ElementParser] = None,
     ) -> str:
@@ -349,27 +351,36 @@ class ResultFormatter:
         elements_text = []
 
         # Process kept elements (with optional nested handling for DFS)
-        is_dfs = isinstance(selection, DFSSelection)
-        for i, elem in enumerate(selection.kept_elements):
-            if is_dfs and i in selection.nested_selections:
-                # Reconstruct with nested formatting (DFS only)
-                elem_text = self._reconstruct_element_with_nested(
-                    elem, selection.nested_selections[i], parser, placeholder,
-                    is_multiline=False
-                )
-            else:
-                elem_text = elem.text
-            elements_text.append(elem_text)
+        if isinstance(selection, DFSSelection):
+            for i, elem in enumerate(selection.kept_elements):
+                if i in selection.nested_selections:
+                    # Reconstruct with nested formatting (DFS only)
+                    elem_text = self._reconstruct_element_with_nested(
+                        elem, selection.nested_selections[i], parser, placeholder,
+                        is_multiline=False
+                    )
+                else:
+                    elem_text = elem.text
+                elements_text.append(elem_text)
+        else:
+            # Flat selection - no nested handling
+            for elem in selection.kept_elements:
+                elements_text.append(elem.text)
 
         # Handle string literals (inline placeholder)
         if parsed.category == LiteralCategory.STRING:
-            return self._format_string(parsed, selection)
+            if isinstance(selection, DFSSelection):
+                raise ValueError(
+                    f"String literals cannot use DFS selection. "
+                    f"Check language descriptor configuration for {parsed.pattern.tree_sitter_types}"
+                )
+            return self._format_string(parsed, cast(Selection, selection))
 
         # Handle collections with separator
         separator = pattern.separator
 
         # Get tokens saved (different for Selection vs DFSSelection)
-        tokens_saved = selection.total_tokens_removed if is_dfs else selection.tokens_removed
+        tokens_saved = selection.total_tokens_removed if isinstance(selection, DFSSelection) else selection.tokens_removed
 
         # Build elements part
         if not elements_text:
@@ -400,7 +411,7 @@ class ResultFormatter:
     def _format_multiline_impl(
         self,
         parsed: ParsedLiteral,
-        selection,  # Selection or DFSSelection
+        selection: SelectionBase,
         placeholder: str,
         parser: Optional[ElementParser] = None,
     ) -> str:
@@ -414,7 +425,12 @@ class ResultFormatter:
 
         # Handle string literals
         if parsed.category == LiteralCategory.STRING:
-            return self._format_string(parsed, selection)
+            if isinstance(selection, DFSSelection):
+                raise ValueError(
+                    f"String literals cannot use DFS selection. "
+                    f"Check language descriptor configuration for {parsed.pattern.tree_sitter_types}"
+                )
+            return self._format_string(parsed, cast(Selection, selection))
 
         base_indent = parsed.base_indent
         elem_indent = parsed.element_indent or (base_indent + "    ")
@@ -433,34 +449,43 @@ class ResultFormatter:
         is_last_line = not selection.has_removals or pattern.placeholder_position != PlaceholderPosition.END
         allow_trailing = parsed.category != LiteralCategory.FACTORY_CALL
 
-        # Determine if this is DFS selection
-        is_dfs = isinstance(selection, DFSSelection)
+        # Process elements with type-aware nested handling
+        if isinstance(selection, DFSSelection):
+            for i in range(0, len(elements), tuple_size):
+                group = elements[i:i + tuple_size]
+                group_texts = []
+                for elem_idx, elem in enumerate(group):
+                    global_idx = i + elem_idx
+                    if global_idx in selection.nested_selections:
+                        # Reconstruct with nested formatting (DFS only)
+                        elem_text = self._reconstruct_element_with_nested(
+                            elem, selection.nested_selections[global_idx], parser, placeholder,
+                            is_multiline=True,
+                            base_indent=elem_indent,
+                            elem_indent=elem_indent + "    "
+                        )
+                    else:
+                        elem_text = elem.text
+                    group_texts.append(elem_text)
+                group_text = f"{separator} ".join(group_texts)
 
-        for i in range(0, len(elements), tuple_size):
-            group = elements[i:i + tuple_size]
-            group_texts = []
-            for elem_idx, elem in enumerate(group):
-                global_idx = i + elem_idx
-                if is_dfs and global_idx in selection.nested_selections:
-                    # Reconstruct with nested formatting (DFS only)
-                    elem_text = self._reconstruct_element_with_nested(
-                        elem, selection.nested_selections[global_idx], parser, placeholder,
-                        is_multiline=True,
-                        base_indent=elem_indent,
-                        elem_indent=elem_indent + "    "
-                    )
-                else:
-                    elem_text = elem.text
-                group_texts.append(elem_text)
-            group_text = f"{separator} ".join(group_texts)
+                # Check if this is the last group
+                is_last_group = (i + tuple_size >= len(elements)) and is_last_line
+                trailing_sep = separator if (allow_trailing or not is_last_group) else ""
+                lines.append(f"{elem_indent}{group_text}{trailing_sep}")
+        else:
+            # Flat selection - no nested handling
+            for i in range(0, len(elements), tuple_size):
+                group = elements[i:i + tuple_size]
+                group_text = f"{separator} ".join(elem.text for elem in group)
 
-            # Check if this is the last group
-            is_last_group = (i + tuple_size >= len(elements)) and is_last_line
-            trailing_sep = separator if (allow_trailing or not is_last_group) else ""
-            lines.append(f"{elem_indent}{group_text}{trailing_sep}")
+                # Check if this is the last group
+                is_last_group = (i + tuple_size >= len(elements)) and is_last_line
+                trailing_sep = separator if (allow_trailing or not is_last_group) else ""
+                lines.append(f"{elem_indent}{group_text}{trailing_sep}")
 
         # Get tokens saved (different for Selection vs DFSSelection)
-        tokens_saved = selection.total_tokens_removed if is_dfs else selection.tokens_removed
+        tokens_saved = selection.total_tokens_removed if isinstance(selection, DFSSelection) else selection.tokens_removed
 
         # Placeholder based on position
         if selection.has_removals:

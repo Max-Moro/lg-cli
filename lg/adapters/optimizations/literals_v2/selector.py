@@ -15,12 +15,11 @@ from .parser import ElementParser, Element
 
 
 @dataclass
-class Selection:
+class SelectionBase:
     """
-    Result of budget-aware element selection.
+    Base class for element selection results.
 
-    Contains information about which elements were kept,
-    which were removed, and where to place placeholder.
+    Contains common fields shared by all selection types.
     """
     # Elements to keep in output
     kept_elements: List[Element]
@@ -34,9 +33,6 @@ class Selection:
     # Token accounting
     tokens_kept: int
     tokens_removed: int
-
-    # Suggested placeholder position (index in kept_elements, or -1 for end)
-    placeholder_index: int = -1
 
     @property
     def kept_count(self) -> int:
@@ -52,25 +48,24 @@ class Selection:
 
 
 @dataclass
-class DFSSelection:
+class Selection(SelectionBase):
+    """
+    Result of budget-aware element selection.
+
+    Contains information about which elements were kept,
+    which were removed, and where to place placeholder.
+    """
+    # Suggested placeholder position (index in kept_elements, or -1 for end)
+    placeholder_index: int = -1
+
+
+@dataclass
+class DFSSelection(SelectionBase):
     """
     Result of DFS (depth-first) element selection for nested structures.
 
-    Extends Selection with recursive nested selections.
+    Extends SelectionBase with recursive nested selections.
     """
-    # Elements to keep at this level
-    kept_elements: List[Element]
-
-    # Elements that were removed at this level
-    removed_elements: List[Element]
-
-    # Total elements at this level
-    total_count: int
-
-    # Token accounting for this level (not including nested)
-    tokens_kept: int
-    tokens_removed: int
-
     # Nested selections: element index -> DFSSelection for that element's content
     nested_selections: Dict[int, DFSSelection] = field(default_factory=dict)
 
@@ -81,15 +76,8 @@ class DFSSelection:
     budget_exhausted: bool = False
 
     @property
-    def kept_count(self) -> int:
-        return len(self.kept_elements)
-
-    @property
-    def removed_count(self) -> int:
-        return len(self.removed_elements)
-
-    @property
     def has_removals(self) -> bool:
+        """Override to check nested selections too."""
         return self.removed_count > 0 or any(
             ns.has_removals for ns in self.nested_selections.values()
         )

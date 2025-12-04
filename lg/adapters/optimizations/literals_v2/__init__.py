@@ -13,7 +13,7 @@ from .categories import (
     TrimResult,
 )
 from .parser import ElementParser, ParseConfig, Element
-from .selector import BudgetSelector, Selection
+from .selector import BudgetSelector, SelectionBase, Selection
 from .formatter import ResultFormatter, FormattedResult
 from .descriptor import LanguageLiteralDescriptor
 from .handler import LanguageLiteralHandler
@@ -32,6 +32,7 @@ __all__ = [
     "Element",
     # Selector
     "BudgetSelector",
+    "SelectionBase",
     "Selection",
     # Formatter
     "ResultFormatter",
