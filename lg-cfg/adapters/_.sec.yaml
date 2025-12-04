@@ -74,7 +74,7 @@ src:
                   - condition: "TAGSET:adapters-optimizations:comments"
                     allow: ["/comments.py"]
                   - condition: "TAGSET:adapters-optimizations:literals"
-                    allow: ["/literals.py", "/literals_v2/"]
+                    allow: ["/literals_v2/"]
                   - condition: "TAGSET:adapters-optimizations:imports"
                     allow: ["/imports.py"]
                   - condition: "TAGSET:adapters-optimizations:public-api"
