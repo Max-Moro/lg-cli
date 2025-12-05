@@ -19,6 +19,7 @@ from .descriptor import LanguageLiteralDescriptor
 from .parser import ElementParser, ParseConfig, Element
 from .selector import BudgetSelector, Selection, DFSSelection
 from .formatter import ResultFormatter
+from .block_init import BlockInitProcessor
 from lg.stats.tokenizer import TokenService
 
 
@@ -61,6 +62,7 @@ class LanguageLiteralHandler:
         # Create reusable components
         self.selector = BudgetSelector(tokenizer)
         self.formatter = ResultFormatter(tokenizer, comment_style)
+        self.block_init_processor = BlockInitProcessor(tokenizer, handler=self, comment_style=comment_style)
 
         # Collect factory wrappers from all FACTORY_CALL patterns for nested detection
         self._factory_wrappers = self._collect_factory_wrappers()
@@ -301,6 +303,13 @@ class LanguageLiteralHandler:
         # Handle based on category
         if parsed.category == LiteralCategory.STRING:
             return self._process_string(parsed, token_budget)
+        elif parsed.category == LiteralCategory.BLOCK_INIT:
+            # BLOCK_INIT requires special handling with node access
+            # This path should not be reached from process_literal
+            raise RuntimeError(
+                "BLOCK_INIT patterns must be processed via process_block_init_node, "
+                "not process_literal"
+            )
         else:
             return self._process_collection_dfs(parsed, token_budget)
 
@@ -421,6 +430,44 @@ class LanguageLiteralHandler:
             comment_text=formatted.comment,
             comment_position=formatted.comment_byte,
         )
+
+    def process_block_init_node(
+        self,
+        pattern: LiteralPattern,
+        node,  # tree_sitter Node
+        doc,  # TreeSitterDocument
+        token_budget: int,
+        base_indent: str = "",
+    ) -> Optional[TrimResult]:
+        """
+        Process BLOCK_INIT pattern with direct node access.
+
+        This is a separate entry point for BLOCK_INIT patterns
+        because they require AST navigation, not just text processing.
+
+        Args:
+            pattern: LiteralPattern with BLOCK_INIT category
+            node: Tree-sitter node to process (will be expanded to group for let_declarations)
+            doc: Tree-sitter document
+            token_budget: Token budget
+            base_indent: Base indentation
+
+        Returns:
+            (TrimResult, nodes_used) tuple if optimization applied, None otherwise
+            nodes_used is the list of nodes that should be replaced (expanded group for Rust)
+        """
+        # Delegate to BlockInitProcessor
+        # Returns (TrimResult, nodes_used) or None
+        result = self.block_init_processor.process(
+            pattern=pattern,
+            node=node,
+            doc=doc,
+            token_budget=token_budget,
+            base_indent=base_indent,
+        )
+
+        # Return as-is: (TrimResult, nodes_used) or None
+        return result
 
     # ========== Context-aware comment formatting ==========
 

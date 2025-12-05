@@ -200,9 +200,13 @@ QUERIES = {
       (#eq? @macro_name "lazy_static")
       (token_tree)) @object
 
-    ; HashMap initialization blocks (block as let_declaration value)
+    ; HashMap/Vec initialization pattern: let mut var = Collection::new(); var.insert(...);
+    ; Only capture let declarations with ::new() call
     (let_declaration
-      value: (block) @array)
+      value: (call_expression
+        function: (scoped_identifier
+          name: (identifier) @_method_name)
+        (#eq? @_method_name "new"))) @object
     """,
 
     # Variable declarations

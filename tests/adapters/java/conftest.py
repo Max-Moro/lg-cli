@@ -40,3 +40,9 @@ def do_public_api():
 def do_complex():
     """Sample Java code for testing complex combined optimization."""
     return load_sample_code("budget_complex", language="java")
+
+
+@pytest.fixture
+def do_literals_legacy():
+    """Sample Java legacy code with double-brace."""
+    return load_sample_code("literals_legacy", language="java")

@@ -6,11 +6,10 @@ use std::collections::HashMap;
 const SHORT_MESSAGE: &str = "Hello, World!";
 
 // Long string literal (candidate for trimming)
-const LONG_MESSAGE: &str = "This is an extremely long message that contains a…"; // literal string (−62 tokens)
+const LONG_MESSAGE: &str = "This is an extremely long message that contains a…"; // literal string (−63 tokens)
 
 // Multi-line string with formatting
-const TEMPLATE_WITH_DATA: &str = r#"User Information:
-- Nam…"#; // literal string (−33 tokens)
+const TEMPLATE_WITH_DATA: &str = r#"User In…"#; // literal string (−40 tokens)
 
 #[derive(Debug)]
 struct DataContainer {
@@ -49,21 +48,41 @@ impl LiteralDataManager {
 
         let large_config = {
             let mut config = HashMap::new();
-            // …
+
+            let mut database = HashMap::new();
+            database.insert("host".to_string(), json!("localhost"));
+            // … (9 more, −119 tokens)
+            config.insert("database".to_string(), database);
+
+            let mut cache = HashMap::new();
+            cache.insert("redis_port".to_string(), json!(6379));
+            // … (4 more, −56 tokens)
+            config.insert("cache".to_string(), cache);
+
+            let mut api = HashMap::new();
+            api.insert("timeout".to_string(), json!(30000));
+            // … (3 more, −42 tokens)
+            config.insert("api".to_string(), api);
+
+            let mut features = HashMap::new();
+            features.insert("authentication".to_string(), json!(true));
+            // … (6 more, −74 tokens)
+            config.insert("features".to_string(), features);
+
             config
-        }; // literal array (−444 tokens)
+        };
 
         let supported_languages = vec![
             "english",
             "spanish",
-            "…",
-        ].into_iter().map(String::from).collect(); // literal array (−89 tokens)
+            "…"
+        ] /* literal vec (−85 tokens) */.into_iter().map(String::from).collect();
 
         let allowed_extensions = vec![
             ".rs",
             ".py",
-            "…",
-        ].into_iter().map(String::from).collect(); // literal array (−62 tokens)
+            "…"
+        ] /* literal vec (−62 tokens) */.into_iter().map(String::from).collect();
 
         Self {
             small_config,
@@ -74,16 +93,16 @@ impl LiteralDataManager {
     }
 
     fn process_data(&self) -> DataContainer {
-        let small_vec = vec!["one".to_string(), "…"]; // literal array (−9 tokens)
+        let small_vec = vec!["one".to_string(), "…"]; // literal vec (−12 tokens)
 
         let large_vec = vec![
             "item_001",
-            "…",
-        ].into_iter().map(String::from).collect(); // literal array (−146 tokens)
+            "…"
+        ] /* literal vec (−145 tokens) */.into_iter().map(String::from).collect();
 
         let mut metadata = HashMap::new();
         metadata.insert("type".to_string(), "test".to_string());
-        metadata.insert("count".to_string(), "3".to_string());
+        // … (1 more, −14 tokens)
 
         DataContainer {
             tags: small_vec,
@@ -95,8 +114,7 @@ impl LiteralDataManager {
 
     fn get_long_query(&self) -> &str {
         r#"
-SELECT
-    users.id, users.u…"# // literal string (−168 tokens)
+SELECT…"# // literal string (−179 tokens)
     }
 }
 
@@ -106,22 +124,6 @@ impl SmallConstants {
     const API_VERSION: &'static str = "v1";
     const DEFAULT_LIMIT: i32 = 50;
 }
-
-lazy_static! {
-    static ref HTTP_STATUS_CODES: HashMap<&'static str, i32> = {
-        let mut m = HashMap::new();
-        // …
-        m
-    };
-} // literal object (−196 tokens)
-
-lazy_static! {
-    static ref ERROR_MESSAGES: HashMap<&'static str, &'static str> = {
-        let mut m = HashMap::new();
-        // …
-        m
-    };
-} // literal object (−113 tokens)
 
 fn main() {
     let manager = LiteralDataManager::new();

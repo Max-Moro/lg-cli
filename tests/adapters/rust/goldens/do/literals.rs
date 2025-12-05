@@ -175,45 +175,6 @@ impl SmallConstants {
     const DEFAULT_LIMIT: i32 = 50;
 }
 
-lazy_static! {
-    static ref HTTP_STATUS_CODES: HashMap<&'static str, i32> = {
-        let mut m = HashMap::new();
-        m.insert("CONTINUE", 100);
-        m.insert("SWITCHING_PROTOCOLS", 101);
-        m.insert("OK", 200);
-        m.insert("CREATED", 201);
-        m.insert("ACCEPTED", 202);
-        m.insert("NO_CONTENT", 204);
-        m.insert("MOVED_PERMANENTLY", 301);
-        m.insert("FOUND", 302);
-        m.insert("NOT_MODIFIED", 304);
-        m.insert("BAD_REQUEST", 400);
-        m.insert("UNAUTHORIZED", 401);
-        m.insert("FORBIDDEN", 403);
-        m.insert("NOT_FOUND", 404);
-        m.insert("METHOD_NOT_ALLOWED", 405);
-        m.insert("CONFLICT", 409);
-        m.insert("INTERNAL_SERVER_ERROR", 500);
-        m.insert("NOT_IMPLEMENTED", 501);
-        m.insert("BAD_GATEWAY", 502);
-        m.insert("SERVICE_UNAVAILABLE", 503);
-        m
-    };
-}
-
-lazy_static! {
-    static ref ERROR_MESSAGES: HashMap<&'static str, &'static str> = {
-        let mut m = HashMap::new();
-        m.insert("VALIDATION_FAILED", "Input validation failed. Please check your data and try again.");
-        m.insert("AUTHENTICATION_REQUIRED", "Authentication is required to access this resource.");
-        m.insert("AUTHORIZATION_FAILED", "You do not have permission to perform this action.");
-        m.insert("RESOURCE_NOT_FOUND", "The requested resource could not be found on the server.");
-        m.insert("INTERNAL_ERROR", "An internal server error occurred. Please try again later.");
-        m.insert("RATE_LIMIT_EXCEEDED", "Rate limit exceeded. Please wait before making another request.");
-        m
-    };
-}
-
 fn main() {
     let manager = LiteralDataManager::new();
     let data = manager.process_data();

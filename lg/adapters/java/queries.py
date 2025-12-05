@@ -130,6 +130,12 @@ QUERIES = {
       name: (identifier) @method
       (#eq? @method "of")
       arguments: (argument_list) @args) @array
+
+    ; Double-brace initialization pattern
+    ; new HashMap<>() {{ put(...); put(...); }}
+    (object_creation_expression
+      (class_body
+        (block))) @object
     """,
 
     # Constructors

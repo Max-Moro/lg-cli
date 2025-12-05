@@ -72,7 +72,8 @@ let large_vec = vec![
         result, meta = adapter.process(lctx(code))
 
         assert "let small_vec = vec![1, 2, 3];" in result
-        assert "// literal array" in result or "/* literal array" in result
+        # v2 generates "// literal vec" (specific comment_name)
+        assert "// literal vec" in result or "/* literal vec" in result
 
     def test_array_literal_trimming(self):
         """Test trimming of array literals."""

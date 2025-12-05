@@ -74,9 +74,7 @@ class RustAdapter(CodeAdapter[RustCfg]):
         # Rust uses /// and //! for documentation
         return stripped.startswith('///') or stripped.startswith('//!')
 
-    def hook__get_literal_handler(
-        self, root_optimizer: LiteralOptimizer  # noqa: F841
-    ) -> LiteralHandler:
-        """Provide Rust literal handler for vec!, lazy_static!, and raw strings."""
-        from .literals import RustLiteralHandler
-        return RustLiteralHandler()
+    def create_literal_descriptor(self):
+        """Create Rust literal descriptor for v2 optimizer."""
+        from .literals_v2 import create_rust_descriptor
+        return create_rust_descriptor()

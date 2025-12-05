@@ -107,6 +107,23 @@ JAVA_SEQUENCE_FACTORY = LiteralPattern(
     priority=10,  # Lower than specific patterns
 )
 
+# Double-brace initialization: new HashMap<>() {{ put("k1", "v1"); put("k2", "v2"); }}
+JAVA_DOUBLE_BRACE = LiteralPattern(
+    category=LiteralCategory.BLOCK_INIT,
+    tree_sitter_types=["object_creation_expression"],
+    opening="",  # Not used for BLOCK_INIT
+    closing="",  # Not used for BLOCK_INIT
+
+    # BLOCK_INIT specific fields
+    block_selector="class_body/block",  # Navigate to inner block
+    statement_pattern="*/method_invocation",  # Match any method invocation (put, add, etc.)
+
+    min_elements=1,
+    placeholder_position=PlaceholderPosition.MIDDLE_COMMENT,
+    comment_name="double-brace init",
+    priority=15,  # Medium priority
+)
+
 
 def create_java_descriptor() -> LanguageLiteralDescriptor:
     """Create Java language descriptor for literal optimization."""
@@ -114,6 +131,7 @@ def create_java_descriptor() -> LanguageLiteralDescriptor:
         patterns=[
             JAVA_MAP_OF,           # High priority - pair-based Map.of
             JAVA_MAP_OF_ENTRIES,   # High priority - entry-based Map.ofEntries
+            JAVA_DOUBLE_BRACE,     # Medium priority - double-brace initialization
             JAVA_SEQUENCE_FACTORY, # Catch-all for other factory methods
             JAVA_STRING,
             JAVA_ARRAY_INITIALIZER,

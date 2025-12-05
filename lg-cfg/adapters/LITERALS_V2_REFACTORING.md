@@ -1,7 +1,7 @@
 # Literal Optimization v2 Refactoring
 
 > Memory file for tracking the large-scale refactoring of the literal optimization subsystem.
-> **Last updated**: 2025-12-04 (Go migration complete, 7 languages migrated)
+> **Last updated**: 2025-12-05 (BLOCK_INIT category implemented, 8 languages complete)
 
 ---
 
@@ -213,21 +213,26 @@ PYTHON_DICT = LiteralPattern(
 | Python | ✅ DONE | 19 passed, 2 skipped | MIDDLE_COMMENT for dicts, f-string interpolation, two-pass with composing |
 | JavaScript | ✅ DONE | 19 passed | MIDDLE_COMMENT for objects, `${}` interpolation, two-pass with composing |
 | TypeScript | ✅ DONE | 17 passed | Inherits JS patterns + TS object types, two-pass with composing |
-| Java | ✅ DONE | 4 passed | Factory calls (List.of, Map.of, Map.ofEntries), wrapper_match, tuple_size=2 for Map.of |
+| Java | ✅ DONE | 4 passed | Factory calls (List.of, Map.of, Map.ofEntries), BLOCK_INIT for double-brace initialization with DFS |
 | Kotlin | ✅ DONE | 10 passed | MAPPING category for mapOf with `to` operator, `${}` and `$var` interpolation, DFS nested optimization |
 | Scala | ✅ DONE | 2 passed | MAPPING category for Map with `->` operator, `${}` and `$var` interpolation, DFS nested optimization |
 | Go | ✅ DONE | 6 passed | Composite literals (map/slice/struct), preserve_all_keys for typed structs, MIDDLE_COMMENT for maps, DFS with full hierarchy |
-| Rust | ⏸️ WAIT | - | vec![], `{}` format strings (unreliable detection) |
+| Rust | ✅ DONE | 8 passed | Strings, arrays, vec! macros, BLOCK_INIT for HashMap initialization groups with DFS |
 | C | ⏸️ WAIT | - | Array initializers, no interpolation |
 | C++ | ⏸️ WAIT | - | Initializer lists, no interpolation |
 
-**Total tests passing**: 77 (Python 19, JS 19, TS 17, Java 4, Kotlin 10, Scala 2, Go 6)
+**Total tests passing**: 87 (Python 19, JS 19, TS 17, Java 4, Kotlin 10, Scala 2, Go 6, Rust 8)
 
 ### Key Achievements
 
 - **Two-pass optimization**: Independent string + collection optimization with composable edits
 - **Range edits composition**: Nested edit preservation system for complex transformations
 - **DFS-trimming**: Recursive optimization of nested structures preserving multiline layout
+- **BLOCK_INIT category**: Imperative initialization patterns (Java double-brace, Rust HashMap groups)
+  - Budget-aware statement selection with minimum 1 element
+  - Automatic group expansion for Rust let-declaration sequences
+  - Recursive DFS optimization of nested literals within statements
+  - Language-agnostic comment style injection
 - **preserve_all_keys**: Typed structs preserve all fields while applying DFS to nested values
 - **Wrapper extraction**: Universal detection of type prefixes (Go `map[K]V{}`, Java `List.of`)
 - **Java factory calls**: Full support for List.of, Map.of with wrapper_match and tuple_size
@@ -240,12 +245,8 @@ PYTHON_DICT = LiteralPattern(
 
 ### Next Steps
 
-1. **Continue language migration** with full DFS and two-pass support:
-   - Rust (vec![], macro calls — `{}` format strings unreliable to detect)
+1. **Continue language migration** with existing v2 capabilities:
    - C, C++ (array/struct initializers — no string interpolation)
-
-2. **Consider additional features** based on language needs:
-   - Macro detection improvements for Rust
 
 ---
 

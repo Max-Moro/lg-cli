@@ -107,6 +107,15 @@ class LiteralPattern:
     # Useful for struct literals where field names must be preserved
     preserve_all_keys: bool = False
 
+    # ========== BLOCK_INIT specific fields ==========
+    # For imperative initialization blocks (Java double-brace, Rust HashMap blocks)
+
+    # Path to statements block within the node (e.g., "class_body/block")
+    block_selector: Optional[str] = None
+
+    # Pattern to match repetitive statements to trim (e.g., "*/method_invocation")
+    statement_pattern: Optional[str] = None
+
     def get_opening(self, text: str) -> str:
         """Get opening delimiter for given text."""
         if callable(self.opening):

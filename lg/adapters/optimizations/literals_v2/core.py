@@ -7,7 +7,7 @@ Integrates with the existing adapter infrastructure.
 
 from __future__ import annotations
 
-from typing import cast, Optional
+from typing import cast, Optional, List
 
 from .categories import TrimResult
 from .handler import LanguageLiteralHandler
@@ -144,17 +144,31 @@ class LiteralOptimizerV2:
             literal_text = context.doc.get_node_text(node)
             token_count = self.adapter.tokenizer.count_text_cached(literal_text)
 
-            # Skip if within budget
-            if token_count <= max_tokens:
-                continue
+            # Get pattern to check if it's BLOCK_INIT (needs special handling)
+            wrapper = self.handler._detect_wrapper_from_text(literal_text, node.type) if literal_text else None
+            pattern_check = self.handler.descriptor.get_pattern_for(node.type, wrapper)
+
+            # Skip budget check for BLOCK_INIT patterns (they handle budget internally for groups)
+            is_block_init = pattern_check and pattern_check.category.value == "block"
+            if not is_block_init:
+                # Skip if within budget
+                if token_count <= max_tokens:
+                    continue
 
             # Process with DFS (will handle nested structures internally)
+            # For BLOCK_INIT: processor will expand let_declaration groups internally
             result = self._process_node(context, node, max_tokens)
 
             # Apply if any tokens were saved (removals can be in nested levels only)
-            if result and result.saved_tokens > 0:
-                # Apply using composing method - this will preserve nested string edits
-                self._apply_trim_result_composing(context, node, result, literal_text)
+            if result:
+                # Check if result is tuple (for BLOCK_INIT with expanded nodes)
+                if isinstance(result, tuple):
+                    trim_result, nodes_used = result
+                    # Use expanded nodes for replacement
+                    self._apply_trim_result_composing(context, nodes_used, trim_result, literal_text)
+                elif result.saved_tokens > 0:
+                    # Standard result with single node
+                    self._apply_trim_result_composing(context, [node], result, literal_text)
 
     def _apply_trim_result(
         self,
@@ -197,7 +211,7 @@ class LiteralOptimizerV2:
     def _apply_trim_result_composing(
         self,
         context: ProcessingContext,
-        node: Node,
+        nodes: List[Node],
         result: TrimResult,
         original_text: str
     ) -> None:
@@ -206,8 +220,13 @@ class LiteralOptimizerV2:
 
         This preserves nested narrow edits (from Pass 1) by composing them
         with the wide edit (from Pass 2 DFS).
+
+        Args:
+            nodes: Nodes to replace (usually 1, but can be group for BLOCK_INIT)
         """
-        start_byte, end_byte = context.doc.get_node_range(node)
+        # Calculate range from first to last node
+        start_byte = nodes[0].start_byte
+        end_byte = nodes[-1].end_byte
 
         # Apply replacement using composing method
         # This will find and preserve any nested string edits from Pass 1
@@ -245,7 +264,7 @@ class LiteralOptimizerV2:
         max_tokens: int,
     ) -> Optional[TrimResult]:
         """
-        Process a single tree-sitter node for literal optimization.
+        Process tree-sitter node for literal optimization.
 
         Args:
             context: Processing context with file info
@@ -253,7 +272,9 @@ class LiteralOptimizerV2:
             max_tokens: Token budget for this literal
 
         Returns:
-            TrimResult if optimization applied, None otherwise
+            TrimResult if optimization applied
+            OR (TrimResult, List[Node]) tuple for BLOCK_INIT with expanded node groups
+            OR None if no optimization applied
         """
         if self.handler is None:
             return None
@@ -270,7 +291,25 @@ class LiteralOptimizerV2:
         base_indent = self._get_base_indent(context.raw_text, start_byte)
         element_indent = self._get_element_indent(text, base_indent)
 
-        # Process through handler
+        # Get pattern to check category
+        wrapper = self.handler._detect_wrapper_from_text(text, node.type) if text else None
+        pattern = self.handler.descriptor.get_pattern_for(node.type, wrapper)
+
+        # BLOCK_INIT patterns need special handling with node access
+        if pattern and pattern.category.value == "block":
+            result = self.handler.process_block_init_node(
+                pattern=pattern,
+                node=node,
+                doc=context.doc,
+                token_budget=max_tokens,
+                base_indent=base_indent,
+            )
+
+            # process_block_init_node returns (TrimResult, nodes_used) or None
+            # Return as-is, caller will handle nodes_used
+            return result
+
+        # All other patterns: process through standard handler
         return self.handler.process_literal(
             text=text,
             tree_sitter_type=node.type,

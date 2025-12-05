@@ -217,7 +217,7 @@ src:
                   - condition: "TAGSET:adapters-optimizations:public-api"
                     allow: ["/code_analysis.py"]
                   - condition: "TAGSET:adapters-optimizations:literals"
-                    allow: ["/literals.py", "/literals_v2.py"]
+                    allow: ["/literals_v2.py"]
               scala:
                 mode: allow
                 allow:
