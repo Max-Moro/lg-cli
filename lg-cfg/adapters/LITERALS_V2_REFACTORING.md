@@ -1,7 +1,7 @@
 # Literal Optimization v2 Refactoring
 
 > Memory file for tracking the large-scale refactoring of the literal optimization subsystem.
-> **Last updated**: 2025-12-05 (BLOCK_INIT category implemented, 8 languages complete)
+> **Last updated**: 2025-12-05 (All 10 languages migrated to v2)
 
 ---
 
@@ -218,10 +218,10 @@ PYTHON_DICT = LiteralPattern(
 | Scala | ✅ DONE | 2 passed | MAPPING category for Map with `->` operator, `${}` and `$var` interpolation, DFS nested optimization |
 | Go | ✅ DONE | 6 passed | Composite literals (map/slice/struct), preserve_all_keys for typed structs, MIDDLE_COMMENT for maps, DFS with full hierarchy |
 | Rust | ✅ DONE | 8 passed | Strings, arrays, vec! macros, BLOCK_INIT for HashMap initialization groups with DFS |
-| C | ⏸️ WAIT | - | Array initializers, no interpolation |
-| C++ | ⏸️ WAIT | - | Initializer lists, no interpolation |
+| C | ✅ DONE | 5 passed | Strings, concatenated strings with AST extraction, initializer lists with MIDDLE_COMMENT, nested tuple detection |
+| C++ | ✅ DONE | 8 passed | Extends C with raw strings (R"(...)"), initializer lists with tuple-element support for nested std::map structures |
 
-**Total tests passing**: 87 (Python 19, JS 19, TS 17, Java 4, Kotlin 10, Scala 2, Go 6, Rust 8)
+**Total tests passing**: 100 (Python 19, JS 19, TS 17, Java 4, Kotlin 10, Scala 2, Go 6, Rust 8, C 5, C++ 8)
 
 ### Key Achievements
 
@@ -233,6 +233,14 @@ PYTHON_DICT = LiteralPattern(
   - Automatic group expansion for Rust let-declaration sequences
   - Recursive DFS optimization of nested literals within statements
   - Language-agnostic comment style injection
+- **AST-based sequence extraction**: New `requires_ast_extraction` flag for sequences without separators
+  - C/C++ concatenated strings: `"a" "b" "c"` processed via tree-sitter children
+  - Universal mechanism, language-agnostic implementation
+  - Automatic delimiter detection (regular strings, raw strings, triple-quoted)
+- **Tuple-element nested structures**: Support for `{"key", {...}}` patterns
+  - Differentiates tuples from key-value pairs using configurable separators
+  - Preserves element prefix during nested optimization (e.g., `{"database", {nested}}`)
+  - Used in C++ std::map<string, map<string, T>> initializers
 - **preserve_all_keys**: Typed structs preserve all fields while applying DFS to nested values
 - **Wrapper extraction**: Universal detection of type prefixes (Go `map[K]V{}`, Java `List.of`)
 - **Java factory calls**: Full support for List.of, Map.of with wrapper_match and tuple_size
@@ -240,13 +248,18 @@ PYTHON_DICT = LiteralPattern(
 - **MIDDLE_COMMENT**: Inline `# … (N more, −M tokens)` inside collections
 - **Context-aware comments**: Block vs single-line based on surrounding code
 - **String interpolation boundaries**: Safe truncation that respects `${...}`, `{...}` boundaries
-- **Declarative patterns**: ~60 lines for Python descriptor, ~120 lines for Java vs 300+ in old system
+- **Declarative patterns**: ~60 lines for Python descriptor, ~80 lines for C/C++ vs 300+ in old system
 - **Clean separation**: Core knows nothing about specific languages
 
-### Next Steps
+### Migration Complete
 
-1. **Continue language migration** with existing v2 capabilities:
-   - C, C++ (array/struct initializers — no string interpolation)
+All 10 supported languages have been successfully migrated to the v2 architecture:
+- ✅ Python, JavaScript, TypeScript
+- ✅ Java, Kotlin, Scala
+- ✅ Go, Rust
+- ✅ C, C++
+
+The v2 refactoring is complete with 100 tests passing across all languages.
 
 ---
 

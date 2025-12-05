@@ -74,15 +74,13 @@ impl LiteralDataManager {
 
         let supported_languages = vec![
             "english",
-            "spanish",
             "…"
-        ] /* literal vec (−85 tokens) */.into_iter().map(String::from).collect();
+        ] /* literal vec (−89 tokens) */.into_iter().map(String::from).collect();
 
         let allowed_extensions = vec![
             ".rs",
-            ".py",
             "…"
-        ] /* literal vec (−62 tokens) */.into_iter().map(String::from).collect();
+        ] /* literal vec (−65 tokens) */.into_iter().map(String::from).collect();
 
         Self {
             small_config,

@@ -56,14 +56,17 @@ class LiteralDataManager {
 
   private val supportedLanguages: List[String] = List(
     "english",
-    "spanish"
-    // … (22 more, −85 tokens)
+    "spanish",
+    "french"
+    // … (21 more, −82 tokens)
   )
 
   private val allowedExtensions: Set[String] = Set(
     ".scala",
-    ".sc"
-    // … (16 more, −49 tokens)
+    ".sc",
+    ".java",
+    ".kt"
+    // … (14 more, −43 tokens)
   )
 
   def processData(): DataContainer = {
@@ -71,8 +74,9 @@ class LiteralDataManager {
     val smallArray = List("one", "two", "three")
 
     val largeArray = List(
-      "item_001"
-      // … (29 more, −145 tokens)
+      "item_001",
+      "item_002"
+      // … (28 more, −140 tokens)
     )
 
     val nestedData = Map(

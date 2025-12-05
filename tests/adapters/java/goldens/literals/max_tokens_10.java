@@ -82,16 +82,14 @@ public class LiteralDataManager {
     public LiteralDataManager() {
         // Array with many elements (trimming candidate)
         this.supportedLanguages = List.of(
-            "english",
-            "spanish"
-            // … (22 more, −85 tokens)
+            "english"
+            // … (23 more, −89 tokens)
         );
 
         // Set with many elements
         this.allowedExtensions = Set.of(
-            ".java",
-            ".kt"
-            // … (16 more, −50 tokens)
+            ".java"
+            // … (17 more, −53 tokens)
         );
     }
 

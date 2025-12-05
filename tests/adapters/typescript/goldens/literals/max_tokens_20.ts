@@ -38,9 +38,10 @@ export class LiteralDataManager {
     private readonly largeConfig = {
         database: {
             host: "localhost",
-            // … (5 more, −75 tokens)
+            port: 5432,
+            // … (4 more, −70 tokens)
         },
-        // … (3 more, −220 tokens)
+        // … (3 more, −215 tokens)
     };
     
     constructor() {
@@ -48,15 +49,18 @@ export class LiteralDataManager {
         this.supportedLanguages = [
             "english",
             "spanish",
+            "french",
             "…",
-        ]; // literal array (−85 tokens)
+        ]; // literal array (−82 tokens)
         
         // Set with many elements
         this.allowedExtensions = new Set([
             ".js",
             ".ts",
+            ".jsx",
+            ".tsx",
             "…",
-        ]); // literal array (−53 tokens)
+        ]); // literal array (−47 tokens)
     }
     
     public processData(): DataContainer {
@@ -65,8 +69,9 @@ export class LiteralDataManager {
         
         const largeArray = [
             "item_001",
+            "item_002",
             "…",
-        ]; // literal array (−145 tokens)
+        ]; // literal array (−140 tokens)
         
         const nestedData = {
             level1: {
@@ -84,7 +89,8 @@ export class LiteralDataManager {
         
         return {
             tags: smallArray,
-            // … (3 more, −22 tokens)
+            items: largeArray,
+            // … (2 more, −18 tokens)
         };
     }
     

@@ -53,15 +53,13 @@ class LiteralDataManager {
   )
 
   private val supportedLanguages: List[String] = List(
-    "english",
-    "spanish"
-    // … (22 more, −85 tokens)
+    "english"
+    // … (23 more, −89 tokens)
   )
 
   private val allowedExtensions: Set[String] = Set(
-    ".scala",
-    ".sc"
-    // … (16 more, −49 tokens)
+    ".scala"
+    // … (17 more, −52 tokens)
   )
 
   def processData(): DataContainer = {

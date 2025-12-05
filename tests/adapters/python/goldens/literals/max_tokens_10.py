@@ -40,9 +40,8 @@ def process_data():
     # Multi-line list
     categories = [
         "Technology",
-        "Science",
         "…",
-    ] # literal array (−44 tokens)
+    ] # literal array (−47 tokens)
     
     # Nested data structure
     config = {
@@ -61,9 +60,8 @@ def process_data():
 # Set literal
 TAGS = {
     "python",
-    "javascript",
     "…",
-} # literal set (−39 tokens)
+} # literal set (−42 tokens)
 
 # Tuple with many elements
 COORDINATES = (

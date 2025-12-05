@@ -79,3 +79,8 @@ class CAdapter(CodeAdapter[CCfg]):
         """Provide C literal handler for struct arrays."""
         from .literals import CLiteralHandler
         return CLiteralHandler(root_optimizer)
+
+    def create_literal_descriptor(self):
+        """Create C literal descriptor for v2 optimizer."""
+        from .literals_v2 import create_c_descriptor
+        return create_c_descriptor()

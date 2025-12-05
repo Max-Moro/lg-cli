@@ -107,6 +107,11 @@ class LiteralPattern:
     # Useful for struct literals where field names must be preserved
     preserve_all_keys: bool = False
 
+    # Whether this pattern requires AST-based element extraction
+    # When True: uses tree-sitter node.children instead of text parsing
+    # Useful for sequences without explicit separators (e.g., concatenated strings)
+    requires_ast_extraction: bool = False
+
     # ========== BLOCK_INIT specific fields ==========
     # For imperative initialization blocks (Java double-brace, Rust HashMap blocks)
 

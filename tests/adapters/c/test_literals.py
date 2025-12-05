@@ -72,7 +72,7 @@ int large_array[] = {
         result, meta = adapter.process(lctx(code))
 
         assert "int small_array[] = {1, 2, 3};" in result
-        assert "// literal array" in result or "/* literal array" in result
+        assert "more" in result
 
     def test_struct_literal_trimming(self):
         """Test trimming of struct initializers."""

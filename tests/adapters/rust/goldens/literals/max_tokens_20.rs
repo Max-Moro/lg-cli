@@ -78,14 +78,17 @@ impl LiteralDataManager {
         let supported_languages = vec![
             "english",
             "spanish",
+            "french",
             "…"
-        ] /* literal vec (−85 tokens) */.into_iter().map(String::from).collect();
+        ] /* literal vec (−82 tokens) */.into_iter().map(String::from).collect();
 
         let allowed_extensions = vec![
             ".rs",
             ".py",
+            ".js",
+            ".ts",
             "…"
-        ] /* literal vec (−62 tokens) */.into_iter().map(String::from).collect();
+        ] /* literal vec (−56 tokens) */.into_iter().map(String::from).collect();
 
         Self {
             small_config,
@@ -100,8 +103,9 @@ impl LiteralDataManager {
 
         let large_vec = vec![
             "item_001",
+            "item_002",
             "…"
-        ] /* literal vec (−145 tokens) */.into_iter().map(String::from).collect();
+        ] /* literal vec (−140 tokens) */.into_iter().map(String::from).collect();
 
         let mut metadata = HashMap::new();
         metadata.insert("type".to_string(), "test".to_string());

@@ -31,16 +31,14 @@ export class LiteralDataManager {
         // Array with many elements (trimming candidate)
         this.supportedLanguages = [
             "english",
-            "spanish",
             "…",
-        ]; // literal array (−85 tokens)
+        ]; // literal array (−89 tokens)
 
         // Set with many elements
         this.allowedExtensions = new Set([
             ".js",
-            ".jsx",
             "…",
-        ]); // literal array (−53 tokens)
+        ]); // literal array (−56 tokens)
     }
 
     processData() {

@@ -278,7 +278,15 @@ class ResultFormatter:
         # Add wrapper for factory calls (e.g., Map.ofEntries)
         wrapper_prefix = f"{elem.nested_wrapper}" if elem.nested_wrapper else ""
 
-        if elem.key is not None:
+        # Add nested_prefix for tuple-like elements (e.g., {"database", {...}})
+        # nested_prefix contains the part before the nested structure (e.g., `"database", `)
+        if elem.nested_prefix:
+            # Tuple-like element with nested structure as second element
+            # Original element was like: {prefix}{nested}
+            # We need to wrap nested structure with outer braces
+            # E.g., {"database", {nested_formatted}}
+            return f"{{{elem.nested_prefix}{elem.nested_opening}{nested_formatted}{elem.nested_closing}}}"
+        elif elem.key is not None:
             # Key-value pair: use parser's kv_separator (e.g., ":" or " to ")
             kv_sep = parser.config.kv_separator if parser.config.kv_separator else ":"
             # Add space after kv_sep only if it doesn't already have trailing space

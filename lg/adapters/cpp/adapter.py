@@ -79,3 +79,8 @@ class CppAdapter(CodeAdapter[CppCfg]):
         """Provide C++ literal handler for struct arrays and nested initializers."""
         from .literals import CppLiteralHandler
         return CppLiteralHandler(root_optimizer)
+
+    def create_literal_descriptor(self):
+        """Create C++ literal descriptor for v2 optimizer."""
+        from .literals_v2 import create_cpp_descriptor
+        return create_cpp_descriptor()

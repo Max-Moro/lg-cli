@@ -49,16 +49,14 @@ class LiteralDataManager {
     init {
         // Array with many elements (trimming candidate)
         supportedLanguages = listOf(
-            "english",
-            "spanish"
-            // … (22 more, −85 tokens)
+            "english"
+            // … (23 more, −89 tokens)
         )
         
         // Set with many elements
         allowedExtensions = setOf(
-            ".kt",
-            ".kts"
-            // … (16 more, −49 tokens)
+            ".kt"
+            // … (17 more, −53 tokens)
         )
     }
     

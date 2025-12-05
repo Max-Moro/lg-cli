@@ -381,7 +381,7 @@ class BudgetSelector:
             elem_original_tokens = self.tokenizer.count_text_cached(elem.text)
 
             # Check if we can afford this element or must keep it due to min_keep
-            can_afford = tokens_used + elem_original_tokens <= remaining_budget
+            can_afford = elem_original_tokens <= remaining_budget
             must_keep = len(kept) < min_keep
             must_preserve = preserve_top_level_keys  # For typed structs: keep all fields
 
@@ -426,11 +426,9 @@ class BudgetSelector:
             else:
                 # Budget exhausted, cannot afford this element
                 budget_exhausted = True
-                removed.append(elem)
-
-        # Add any remaining elements to removed
-        if not budget_exhausted:
-            removed.extend(elements[len(kept):])
+                # Add this element and all remaining to removed
+                removed.extend(elements[i:])
+                break
 
         # Calculate tokens removed
         tokens_removed = sum(

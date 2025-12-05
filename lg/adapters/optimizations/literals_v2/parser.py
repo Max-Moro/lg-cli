@@ -55,6 +55,7 @@ class Element:
     nested_closing: Optional[str] = None    # Closing bracket: }, ], )
     nested_content: Optional[str] = None    # Content inside brackets
     nested_wrapper: Optional[str] = None    # Wrapper for factory calls: List.of, Map.ofEntries
+    nested_prefix: Optional[str] = None     # Prefix before nested structure (for tuple elements like {"key", {...}})
     is_multiline: bool = False              # Whether this element spans multiple lines
 
     @property
@@ -225,9 +226,10 @@ class ElementParser:
 
         # Extract nested structure info
         nested_info = self._extract_nested_info(check_text)
+        nested_prefix = None
         if nested_info:
             is_nested = True
-            nested_opening, nested_closing, nested_content, nested_wrapper = nested_info
+            nested_opening, nested_closing, nested_content, nested_wrapper, nested_prefix = nested_info
         else:
             nested_wrapper = None
 
@@ -246,19 +248,21 @@ class ElementParser:
             nested_closing=nested_closing,
             nested_content=nested_content,
             nested_wrapper=nested_wrapper,
+            nested_prefix=nested_prefix,
             is_multiline=is_multiline,
         )
 
     def _extract_nested_info(
         self,
         text: str
-    ) -> Optional[Tuple[str, str, str, Optional[str]]]:
+    ) -> Optional[Tuple[str, str, str, Optional[str], Optional[str]]]:
         """
         Extract nested structure info from text.
 
         Returns:
-            Tuple of (opening, closing, content, wrapper) or None if not nested
+            Tuple of (opening, closing, content, wrapper, prefix) or None if not nested
             wrapper is set for factory calls (e.g., "Map.ofEntries")
+            prefix is set for tuple-like elements (e.g., `"database", ` from `{"database", {...}}`)
         """
         text = text.strip()
 
@@ -269,7 +273,7 @@ class ElementParser:
                 if text.startswith(wrapper + "(") and text.endswith(")"):
                     # Extract content between parentheses
                     content = text[len(wrapper) + 1:-1]
-                    return "(", ")", content, wrapper
+                    return "(", ")", content, wrapper, None
 
         # Check for each bracket type (only { and [ for nested, not ())
         # Parentheses () are typically function calls, not data structures
@@ -279,7 +283,21 @@ class ElementParser:
             if text.startswith(opening) and text.endswith(closing):
                 # Extract content between brackets
                 content = text[len(opening):-len(closing)]
-                return opening, closing, content, None
+
+                # Special case: for tuple-like elements with nested collection as second element
+                # E.g., {"key", {...}} -> extract the inner {...} as nested_content
+                # This is useful for C/C++ initializer_list (std::map<string, map<string, T>>)
+                # and similar tuple-based structures in other languages
+                # ONLY apply if this is NOT a key-value structure (check for kv_separator at depth 0)
+                kv_sep = self.config.kv_separator or ":"  # Fallback to ":" if not configured
+                if opening == "{" and "," in content and not self._has_kv_separator_at_depth_zero(content, kv_sep):
+                    # Check if there's another nested { after the comma
+                    inner_nested = self._extract_deepest_nested(content, opening, closing)
+                    if inner_nested:
+                        inner_opening, inner_closing, inner_content, inner_wrapper, inner_prefix = inner_nested
+                        return inner_opening, inner_closing, inner_content, inner_wrapper, inner_prefix
+
+                return opening, closing, content, None, None
 
         # Check if text contains a nested structure (not at boundaries)
         # Only for { and [ - skip () as those are usually function calls
@@ -305,7 +323,119 @@ class ElementParser:
                             content = text[open_pos + 1:i]
                             # Extract wrapper prefix before the opening bracket
                             wrapper = text[:open_pos] if open_pos > 0 else None
-                            return opening, closing, content, wrapper
+                            return opening, closing, content, wrapper, None
+
+        return None
+
+    def _has_kv_separator_at_depth_zero(self, text: str, separator: str) -> bool:
+        """
+        Check if text contains a key-value separator at depth 0.
+
+        Used to distinguish tuple elements {"a", {...}} from key-value pairs {a: {...}}.
+
+        Args:
+            text: Text to check
+            separator: Separator to look for (e.g., ":")
+
+        Returns:
+            True if separator found at depth 0
+        """
+        depth = 0
+        in_string = False
+        string_char = None
+
+        for i, char in enumerate(text):
+            # Track strings
+            if not in_string and char in ('"', "'", "`"):
+                in_string = True
+                string_char = char
+                continue
+            if in_string:
+                if char == string_char and (i == 0 or text[i-1] != '\\'):
+                    in_string = False
+                    string_char = None
+                continue
+
+            # Track brackets outside strings
+            if char in "({[":
+                depth += 1
+            elif char in ")}]":
+                depth -= 1
+            elif depth == 0 and text[i:].startswith(separator):
+                return True
+
+        return False
+
+    def _extract_deepest_nested(
+        self,
+        text: str,
+        opening: str,
+        closing: str
+    ) -> Optional[Tuple[str, str, str, Optional[str], str]]:
+        """
+        Extract the nested structure after the first comma in text.
+
+        For tuple-like elements {"key", {...}}, this extracts the inner {...}.
+
+        Args:
+            text: Text to search (content between outer brackets, e.g., `"database", {...}`)
+            opening: Opening bracket to search for
+            closing: Closing bracket to match
+
+        Returns:
+            (opening, closing, content, wrapper, prefix) tuple or None
+            prefix is the part before the nested structure (e.g., `"database", `)
+        """
+        # Find the first comma at depth 0 (outside strings and brackets)
+        depth = 0
+        in_string = False
+        string_char = None
+        comma_pos = -1
+
+        for i, char in enumerate(text):
+            # Track strings
+            if not in_string and char in ('"', "'", "`"):
+                in_string = True
+                string_char = char
+                continue
+            if in_string:
+                if char == string_char and (i == 0 or text[i-1] != '\\'):
+                    in_string = False
+                    string_char = None
+                continue
+
+            # Track brackets outside strings
+            if char in "({[":
+                depth += 1
+            elif char in ")}]":
+                depth -= 1
+            elif char == ',' and depth == 0:
+                comma_pos = i
+                break  # Found first comma at depth 0
+
+        if comma_pos == -1:
+            return None  # No comma found - not a tuple
+
+        # Now find opening bracket after the comma
+        after_comma = text[comma_pos + 1:]
+        open_pos_rel = after_comma.find(opening)
+        if open_pos_rel == -1:
+            return None  # No opening bracket after comma
+
+        open_pos = comma_pos + 1 + open_pos_rel
+
+        # Find matching closing bracket
+        depth = 0
+        for i in range(open_pos, len(text)):
+            if text[i] == opening:
+                depth += 1
+            elif text[i] == closing:
+                depth -= 1
+                if depth == 0:
+                    content = text[open_pos + 1:i]
+                    # Prefix is everything before the opening bracket of nested structure
+                    prefix = text[:open_pos]
+                    return opening, closing, content, None, prefix
 
         return None
 

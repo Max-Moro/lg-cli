@@ -84,15 +84,18 @@ public class LiteralDataManager {
         // Array with many elements (trimming candidate)
         this.supportedLanguages = List.of(
             "english",
-            "spanish"
-            // … (22 more, −85 tokens)
+            "spanish",
+            "french"
+            // … (21 more, −82 tokens)
         );
 
         // Set with many elements
         this.allowedExtensions = Set.of(
             ".java",
-            ".kt"
-            // … (16 more, −50 tokens)
+            ".kt",
+            ".scala",
+            ".groovy"
+            // … (14 more, −43 tokens)
         );
     }
 
@@ -101,8 +104,9 @@ public class LiteralDataManager {
         List<String> smallArray = List.of("one", "two", "three");
 
         List<String> largeArray = List.of(
-            "item_001"
-            // … (29 more, −145 tokens)
+            "item_001",
+            "item_002"
+            // … (28 more, −140 tokens)
         );
 
         Map<String, Object> nestedData = Map.of(

@@ -11,14 +11,13 @@
 const char* SHORT_MESSAGE = "Hello, World!";
 
 // Long string literal (candidate for trimming)
-const char* LONG_MESSAGE = "This is an extremely long message that contains a substantial amount of text content which might be considere…"; // literal string (−53 tokens)
+const char* LONG_MESSAGE = "This is an extremely long message that contains a substantial amount of text content which might be considere…"; // literal string (−54 tokens)
 
 // Multi-line string with formatting (C++11 raw string literal)
 const char* TEMPLATE_WITH_DATA = R"(
 User Information:
 - Name: %s
-- Email: %s
-- Reg…)"; // literal string (−32 tokens)
+- Ema…)"; // literal string (−41 tokens)
 
 struct DataContainer {
     // Small array (should be preserved)
@@ -43,8 +42,12 @@ private:
     };
 
     std::map<std::string, std::map<std::string, int>> largeConfig = {
-        {"database", {}},
-    }; // literal array (−212 tokens)
+        {"database", {
+            {"port", 5432},
+            // … (6 more, −45 tokens)
+        }},
+        // … (3 more, −194 tokens)
+    };
 
     std::vector<std::string> supportedLanguages;
     std::vector<std::string> allowedExtensions;
@@ -56,9 +59,8 @@ public:
             "english",
             "spanish",
             "french",
-            "german",
-            "…",
-        }; // literal array (−79 tokens)
+            // … (21 more, −82 tokens)
+        };
 
         // Array with many elements
         allowedExtensions = {
@@ -66,9 +68,8 @@ public:
             ".hpp",
             ".cxx",
             ".hxx",
-            ".cc",
-            "…",
-        }; // literal array (−45 tokens)
+            // … (17 more, −52 tokens)
+        };
     }
 
     DataContainer processData() {
@@ -78,11 +79,15 @@ public:
         std::vector<std::string> largeArray = {
             "item_001",
             "item_002",
-            "item_003",
-            "…",
-        }; // literal array (−134 tokens)
+            // … (28 more, −140 tokens)
+        };
 
-        std::map<std::string, std::vector<std::map<std::string, std::string>>> nestedData = {{}}; // literal array (−110 tokens)
+        std::map<std::string, std::vector<std::map<std::string, std::string>>> nestedData = {
+            {"level1", {
+                {{"id", "1"}, {"name", "First"}, {"active", "true"}},
+                // … (4 more, −77 tokens)
+            }},
+        };
 
         DataContainer container;
         container.tags = smallArray;
@@ -96,8 +101,7 @@ public:
         // Very long SQL-like query string (C++11 raw string)
         return R"(
 SELECT
-    users.id, users.username, users.email, users.created_at,
-    prof…)"; // literal string (−158 tokens)
+    users.id, users.username, users.email, users.c…)"; // literal string (−166 tokens)
     }
 
     const std::vector<std::string>& getSupportedLanguages() const {

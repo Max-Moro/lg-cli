@@ -10,13 +10,12 @@
 const char* SHORT_MESSAGE = "Hello, World!";
 
 // Long string literal (candidate for trimming)
-const char* LONG_MESSAGE = "This is an extremely long message that contains a substantial amount of text content which might be considered…"; // literal string (−53 tokens)
+const char* LONG_MESSAGE = "This is an extremely long message that contains a substantial amount of text content which might be considered…"; // literal string (−54 tokens)
 
 // Multi-line string with formatting
 const char* TEMPLATE_WITH_DATA =
     "User Information:\n"
-    "- Name: %s\n"
-    "- Email: %…"; // literal string (−49 tokens)
+    "- Name: %s\n…"; // literal string (−55 tokens)
 
 typedef struct {
     // Small array (should be preserved)
@@ -50,8 +49,8 @@ static struct {
     const void* value;
 } large_config[] = {
     {"database.host", "localhost"},
-    {"database.port", (void*)5432},
-}; // literal array (−307 tokens)
+    // … (28 more, −290 tokens)
+};
 
 LiteralDataManager* literal_data_manager_new(void) {
     LiteralDataManager* manager = (LiteralDataManager*)malloc(sizeof(LiteralDataManager));
@@ -62,9 +61,8 @@ LiteralDataManager* literal_data_manager_new(void) {
         "english",
         "spanish",
         "french",
-        "german",
-        "…",
-    }; // literal array (−79 tokens)
+        // … (21 more, −82 tokens)
+    };
     manager->supported_languages = languages;
     manager->languages_count = sizeof(languages) / sizeof(languages[0]);
 
@@ -74,9 +72,8 @@ LiteralDataManager* literal_data_manager_new(void) {
         ".h",
         ".py",
         ".js",
-        ".ts",
-        "…",
-    }; // literal array (−50 tokens)
+        // … (18 more, −56 tokens)
+    };
     manager->allowed_extensions = extensions;
     manager->extensions_count = sizeof(extensions) / sizeof(extensions[0]);
 
@@ -96,9 +93,8 @@ DataContainer* process_data(void) {
     static char* large_array[] = {
         "item_001",
         "item_002",
-        "item_003",
-        "…",
-    }; // literal array (−134 tokens)
+        // … (28 more, −140 tokens)
+    };
     container->items = large_array;
     container->items_count = 30;
 
@@ -109,7 +105,7 @@ const char* get_long_query(void) {
     // Very long SQL-like query string
     return
         "SELECT "
-        "    users.id, users.username, users.email, users.created_at, "…"; // literal string (−196 tokens)
+        "    users.id, users.username, users.email, users.created_at, …"; // literal string (−196 tokens)
 }
 
 // Module-level constants with different sizes
@@ -173,7 +169,12 @@ struct {
     204,
     205,
     206,
-}; // literal array (−92 tokens)
+    300,
+    301,
+    302,
+    303,
+    // … (28 more, −28 tokens)
+};
 
 struct {
     const char* VALIDATION_FAILED;
@@ -185,5 +186,5 @@ struct {
     const char* INVALID_REQUEST_FORMAT;
 } ERROR_MESSAGES = {
     "Input validation failed. Please check your data and try again.",
-    "…",
-}; // literal array (−70 tokens)
+    // … (6 more, −65 tokens)
+};

@@ -93,10 +93,28 @@ class LiteralOptimizerV2:
         processed_strings = []  # Track (start, end, tokens_saved) for processed strings
 
         # Pass 1: Strings (all strings, processed independently)
-        for node, capture_name in literals:
-            if capture_name != "string":
-                continue
+        # Collect all string nodes first
+        string_nodes = [
+            (node, capture_name)
+            for node, capture_name in literals
+            if capture_name == "string"
+        ]
 
+        # Find top-level strings (not nested inside other strings)
+        # This handles concatenated_string containing child string_literal nodes
+        top_level_strings = []
+        for i, (node, capture_name) in enumerate(string_nodes):
+            start_byte, end_byte = context.doc.get_node_range(node)
+            is_nested = any(
+                j != i and
+                string_nodes[j][0].start_byte <= start_byte and
+                string_nodes[j][0].end_byte >= end_byte
+                for j in range(len(string_nodes))
+            )
+            if not is_nested:
+                top_level_strings.append((node, capture_name))
+
+        for node, capture_name in top_level_strings:
             # Skip docstrings
             if self.adapter.is_docstring_node(node, context.doc):
                 continue
@@ -307,6 +325,18 @@ class LiteralOptimizerV2:
 
             # process_block_init_node returns (TrimResult, nodes_used) or None
             # Return as-is, caller will handle nodes_used
+            return result
+
+        # Check if pattern requires AST-based element extraction
+        # (for sequences without explicit separators)
+        if pattern and pattern.requires_ast_extraction:
+            result = self.handler.process_ast_based_sequence(
+                node=node,
+                doc=context.doc,
+                token_budget=max_tokens,
+                base_indent=base_indent,
+                element_indent=element_indent,
+            )
             return result
 
         # All other patterns: process through standard handler

@@ -11,11 +11,11 @@
 const char* SHORT_MESSAGE = "Hello, World!";
 
 // Long string literal (candidate for trimming)
-const char* LONG_MESSAGE = "This is an extremely long message that contains…"; // literal string (−64 tokens)
+const char* LONG_MESSAGE = "This is an extremely long message that contains…"; // literal string (−65 tokens)
 
 // Multi-line string with formatting (C++11 raw string literal)
 const char* TEMPLATE_WITH_DATA = R"(
-User Information…)"; // literal string (−47 tokens)
+User…)"; // literal string (−52 tokens)
 
 struct DataContainer {
     // Small array (should be preserved)
@@ -36,11 +36,16 @@ private:
     // Class properties with various literal types
     std::map<std::string, bool> smallConfig = {
         {"debug", true},
-    }; // literal array (−6 tokens)
+        {"verbose", false}
+    };
 
     std::map<std::string, std::map<std::string, int>> largeConfig = {
-        {"database", {}},
-    }; // literal array (−212 tokens)
+        {"database", {
+            {"port", 5432},
+            // … (6 more, −45 tokens)
+        }},
+        // … (3 more, −194 tokens)
+    };
 
     std::vector<std::string> supportedLanguages;
     std::vector<std::string> allowedExtensions;
@@ -50,18 +55,14 @@ public:
         // Array with many elements (trimming candidate)
         supportedLanguages = {
             "english",
-            "spanish",
-            "french",
-            "…",
-        }; // literal array (−84 tokens)
+            // … (23 more, −89 tokens)
+        };
 
         // Array with many elements
         allowedExtensions = {
             ".cpp",
-            ".hpp",
-            ".cxx",
-            "…",
-        }; // literal array (−54 tokens)
+            // … (20 more, −62 tokens)
+        };
     }
 
     DataContainer processData() {
@@ -70,16 +71,20 @@ public:
 
         std::vector<std::string> largeArray = {
             "item_001",
-            "item_002",
-            "…",
-        }; // literal array (−140 tokens)
+            // … (29 more, −145 tokens)
+        };
 
-        std::map<std::string, std::vector<std::map<std::string, std::string>>> nestedData = {{}}; // literal array (−110 tokens)
+        std::map<std::string, std::vector<std::map<std::string, std::string>>> nestedData = {
+            {"level1", {
+                {{"id", "1"}, {"name", "First"}, {"active", "true"}},
+                // … (4 more, −77 tokens)
+            }},
+        };
 
         DataContainer container;
         container.tags = smallArray;
         container.items = largeArray;
-        container.metadata = {{"type", "test"}}; // literal array (−6 tokens)
+        container.metadata = {{"type", "test"}, {"count", "3"}};
 
         return container;
     }
@@ -87,8 +92,7 @@ public:
     std::string getLongQuery() {
         // Very long SQL-like query string (C++11 raw string)
         return R"(
-SELECT
-    users.id, users.u…)"; // literal string (−168 tokens)
+SELECT…)"; // literal string (−179 tokens)
     }
 
     const std::vector<std::string>& getSupportedLanguages() const {
@@ -130,15 +134,15 @@ struct HttpStatusCodes {
 
 struct ErrorMessages {
     static constexpr const char* VALIDATION_FAILED =
-        "Input validation failed. Please check you…"; // literal string (−4 tokens)
+        "Input validation failed. Please check you…"; // literal string (−6 tokens)
     static constexpr const char* AUTHENTICATION_REQUIRED =
         "Authentication is required to access this resource.";
     static constexpr const char* AUTHORIZATION_FAILED =
         "You do not have permission to perform this action.";
     static constexpr const char* RESOURCE_NOT_FOUND =
-        "The requested resource could not be foun…"; // literal string (−2 tokens)
+        "The requested resource could not be foun…"; // literal string (−3 tokens)
     static constexpr const char* INTERNAL_ERROR =
-        "An internal server error occurred. Please…"; // literal string (−3 tokens)
+        "An internal server error occurred. Please…"; // literal string (−5 tokens)
     static constexpr const char* RATE_LIMIT_EXCEEDED =
-        "Rate limit exceeded. Please wait before makin…"; // literal string (−1 tokens)
+        "Rate limit exceeded. Please wait before makin…"; // literal string (−3 tokens)
 };

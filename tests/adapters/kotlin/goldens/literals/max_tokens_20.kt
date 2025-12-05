@@ -52,15 +52,18 @@ class LiteralDataManager {
         // Array with many elements (trimming candidate)
         supportedLanguages = listOf(
             "english",
-            "spanish"
-            // … (22 more, −85 tokens)
+            "spanish",
+            "french"
+            // … (21 more, −82 tokens)
         )
         
         // Set with many elements
         allowedExtensions = setOf(
             ".kt",
-            ".kts"
-            // … (16 more, −49 tokens)
+            ".kts",
+            ".java",
+            ".scala"
+            // … (14 more, −43 tokens)
         )
     }
     
@@ -69,8 +72,9 @@ class LiteralDataManager {
         val smallArray = listOf("one", "two", "three")
         
         val largeArray = listOf(
-            "item_001"
-            // … (29 more, −145 tokens)
+            "item_001",
+            "item_002"
+            // … (28 more, −140 tokens)
         )
         
         val nestedData = mapOf(

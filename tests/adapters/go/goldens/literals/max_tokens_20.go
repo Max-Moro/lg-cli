@@ -77,8 +77,9 @@ func (m *LiteralDataManager) ProcessData() *DataContainer {
 
 	largeSlice := []string{
 		"item_001",
+		"item_002",
 		"…"
-	} // literal slice (−145 tokens)
+	} // literal slice (−140 tokens)
 
 	nestedData := map[string]interface{}{
 		"level1": map[string]interface{}{
