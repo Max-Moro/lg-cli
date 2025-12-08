@@ -12,7 +12,7 @@ from tree_sitter import Language
 from ..code_base import CodeAdapter
 from ..code_model import CodeCfg
 from ..optimizations import ImportClassifier, TreeSitterImportAnalyzer
-from ..optimizations.literals_v2 import LanguageLiteralDescriptor
+from ..optimizations.literals import LanguageLiteralDescriptor
 from ..tree_sitter_support import TreeSitterDocument
 
 
@@ -70,5 +70,5 @@ class JavaScriptAdapter(CodeAdapter[JavaScriptCfg]):
 
     def create_literal_descriptor(self) -> LanguageLiteralDescriptor:
         """Create JavaScript literal descriptor for v2 optimizer."""
-        from .literals_v2 import create_javascript_descriptor
+        from .literals import create_javascript_descriptor
         return create_javascript_descriptor()

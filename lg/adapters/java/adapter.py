@@ -11,7 +11,7 @@ from tree_sitter import Language
 
 from ..code_base import CodeAdapter
 from ..code_model import CodeCfg
-from ..optimizations import ImportClassifier, TreeSitterImportAnalyzer
+from ..optimizations import ImportClassifier, TreeSitterImportAnalyzer, LanguageLiteralDescriptor
 from ..tree_sitter_support import TreeSitterDocument
 
 
@@ -67,7 +67,7 @@ class JavaAdapter(CodeAdapter[JavaCfg]):
         from .code_analysis import JavaCodeAnalyzer
         return JavaCodeAnalyzer(doc)
 
-    def create_literal_descriptor(self):
+    def create_literal_descriptor(self) -> LanguageLiteralDescriptor:
         """Create Java literal descriptor for v2 optimizer."""
-        from .literals_v2 import create_java_descriptor
+        from .literals import create_java_descriptor
         return create_java_descriptor()

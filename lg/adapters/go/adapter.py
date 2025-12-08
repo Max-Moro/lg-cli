@@ -11,7 +11,7 @@ from tree_sitter import Language
 
 from ..code_base import CodeAdapter
 from ..code_model import CodeCfg
-from ..optimizations import ImportClassifier, TreeSitterImportAnalyzer
+from ..optimizations import ImportClassifier, TreeSitterImportAnalyzer, LanguageLiteralDescriptor
 from ..tree_sitter_support import TreeSitterDocument
 
 
@@ -73,7 +73,7 @@ class GoAdapter(CodeAdapter[GoCfg]):
         # Go uses single-line comments starting with // for documentation
         return stripped.startswith('//')
 
-    def create_literal_descriptor(self):
+    def create_literal_descriptor(self) -> LanguageLiteralDescriptor:
         """Create Go literal descriptor for v2 optimizer."""
-        from .literals_v2 import create_go_descriptor
+        from .literals import create_go_descriptor
         return create_go_descriptor()

@@ -13,7 +13,7 @@ Note: Java has no string interpolation, so no interpolation_markers are needed.
 
 from __future__ import annotations
 
-from ..optimizations.literals_v2 import (
+from ..optimizations.literals import (
     LiteralCategory,
     LiteralPattern,
     PlaceholderPosition,

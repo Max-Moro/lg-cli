@@ -11,8 +11,7 @@ from tree_sitter import Language
 
 from ..code_base import CodeAdapter
 from ..code_model import CodeCfg
-from ..optimizations import ImportClassifier, TreeSitterImportAnalyzer, LiteralOptimizer
-from ..optimizations.literals import LiteralHandler
+from ..optimizations import ImportClassifier, TreeSitterImportAnalyzer, LanguageLiteralDescriptor
 from ..tree_sitter_support import TreeSitterDocument
 
 
@@ -73,14 +72,7 @@ class CAdapter(CodeAdapter[CCfg]):
         stripped = comment_text.strip()
         return stripped.startswith('/**') or stripped.startswith('///')
 
-    def hook__get_literal_handler(
-        self, root_optimizer: LiteralOptimizer
-    ) -> LiteralHandler:
-        """Provide C literal handler for struct arrays."""
-        from .literals import CLiteralHandler
-        return CLiteralHandler(root_optimizer)
-
-    def create_literal_descriptor(self):
+    def create_literal_descriptor(self) -> LanguageLiteralDescriptor:
         """Create C literal descriptor for v2 optimizer."""
-        from .literals_v2 import create_c_descriptor
+        from .literals import create_c_descriptor
         return create_c_descriptor()

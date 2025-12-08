@@ -13,7 +13,7 @@ from ..code_base import CodeAdapter
 from ..code_model import CodeCfg
 from ..context import LightweightContext
 from ..optimizations import ImportClassifier, TreeSitterImportAnalyzer
-from ..optimizations.literals_v2 import LanguageLiteralDescriptor
+from ..optimizations.literals import LanguageLiteralDescriptor
 from ..tree_sitter_support import TreeSitterDocument
 
 
@@ -80,7 +80,7 @@ class TypeScriptAdapter(CodeAdapter[TypeScriptCfg]):
 
     def create_literal_descriptor(self) -> LanguageLiteralDescriptor:
         """Create TypeScript literal descriptor for v2 optimizer."""
-        from .literals_v2 import create_typescript_descriptor
+        from .literals import create_typescript_descriptor
         return create_typescript_descriptor()
 
     def should_skip(self, lightweight_ctx: LightweightContext) -> bool:

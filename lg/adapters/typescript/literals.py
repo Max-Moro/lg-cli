@@ -6,13 +6,13 @@ Extends JavaScript with TypeScript-specific type literals.
 
 from __future__ import annotations
 
-from ..optimizations.literals_v2 import (
+from ..optimizations.literals import (
     LiteralCategory,
     LiteralPattern,
     PlaceholderPosition,
     LanguageLiteralDescriptor,
 )
-from ..javascript.literals_v2 import (
+from ..javascript.literals import (
     JS_TEMPLATE_STRING,
     JS_STRING,
     JS_REGEX,

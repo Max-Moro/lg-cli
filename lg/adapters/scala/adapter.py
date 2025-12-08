@@ -12,7 +12,7 @@ from tree_sitter import Language
 from ..code_base import CodeAdapter
 from ..code_model import CodeCfg
 from ..optimizations import ImportClassifier, TreeSitterImportAnalyzer
-from ..optimizations.literals_v2 import LanguageLiteralDescriptor
+from ..optimizations.literals import LanguageLiteralDescriptor
 from ..tree_sitter_support import TreeSitterDocument
 
 
@@ -70,5 +70,5 @@ class ScalaAdapter(CodeAdapter[ScalaCfg]):
 
     def create_literal_descriptor(self) -> LanguageLiteralDescriptor:
         """Create Scala literal descriptor for v2 optimizer."""
-        from .literals_v2 import create_scala_descriptor
+        from .literals import create_scala_descriptor
         return create_scala_descriptor()

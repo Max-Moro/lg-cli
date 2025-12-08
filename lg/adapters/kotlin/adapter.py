@@ -12,7 +12,7 @@ from tree_sitter import Language
 from ..code_base import CodeAdapter
 from ..code_model import CodeCfg
 from ..optimizations import ImportClassifier, TreeSitterImportAnalyzer
-from ..optimizations.literals_v2 import LanguageLiteralDescriptor
+from ..optimizations.literals import LanguageLiteralDescriptor
 from ..tree_sitter_support import TreeSitterDocument
 
 
@@ -76,5 +76,5 @@ class KotlinAdapter(CodeAdapter[KotlinCfg]):
 
     def create_literal_descriptor(self) -> LanguageLiteralDescriptor:
         """Create Kotlin literal descriptor for v2 optimizer."""
-        from .literals_v2 import create_kotlin_descriptor
+        from .literals import create_kotlin_descriptor
         return create_kotlin_descriptor()

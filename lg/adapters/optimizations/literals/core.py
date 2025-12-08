@@ -16,7 +16,7 @@ from ...context import ProcessingContext
 from tree_sitter import Node
 
 
-class LiteralOptimizerV2:
+class LiteralOptimizer:
     """
     Literal optimizer using the v2 architecture.
 

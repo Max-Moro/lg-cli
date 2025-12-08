@@ -12,8 +12,8 @@ from __future__ import annotations
 
 import re
 
-from ..c.literals_v2 import C_INITIALIZER_LIST, C_CONCATENATED_STRING
-from ..optimizations.literals_v2 import (
+from ..c.literals import C_INITIALIZER_LIST, C_CONCATENATED_STRING
+from ..optimizations.literals import (
     LiteralCategory,
     LiteralPattern,
     PlaceholderPosition,

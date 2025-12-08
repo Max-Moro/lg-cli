@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import re
 
-from ..optimizations.literals_v2 import (
+from ..optimizations.literals import (
     LiteralCategory,
     LiteralPattern,
     PlaceholderPosition,

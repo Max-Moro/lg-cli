@@ -11,7 +11,7 @@ Scala-specific patterns:
 
 from __future__ import annotations
 
-from ..optimizations.literals_v2 import (
+from ..optimizations.literals import (
     LiteralCategory,
     LiteralPattern,
     PlaceholderPosition,
