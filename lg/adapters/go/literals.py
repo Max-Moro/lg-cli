@@ -44,12 +44,17 @@ def _detect_string_closing(text: str) -> str:
 # String literals (interpreted and raw)
 GO_STRING = LiteralPattern(
     category=LiteralCategory.STRING,
-    tree_sitter_types=["interpreted_string_literal", "raw_string_literal"],
+    query="""
+    [
+      (interpreted_string_literal) @lit
+      (raw_string_literal) @lit
+    ]
+    """,
     opening=_detect_string_opening,
     closing=_detect_string_closing,
     placeholder_position=PlaceholderPosition.INLINE,
     placeholder_template="…",
-    interpolation_markers=[],  # Go has no string interpolation
+    interpolation_markers=[],
 )
 
 # Composite literals: struct (typed, preserve fields)
@@ -57,45 +62,58 @@ GO_STRING = LiteralPattern(
 # Match: type names (not starting with []" or "map[")
 GO_COMPOSITE_STRUCT = LiteralPattern(
     category=LiteralCategory.MAPPING,
-    tree_sitter_types=["composite_literal"],
+    query="""
+    (composite_literal
+      type: (type_identifier) @type_name
+      (#not-match? @type_name "^map")
+      body: (literal_value)) @lit
+    """,
     opening="{",
     closing="}",
     separator=",",
     kv_separator=":",
-    wrapper_match=r"^(?!map\[)(?!\[\]).*",  # Not map, not slice
+    wrapper_match=r"^(?!map\[)(?!\[\]).*",
     placeholder_position=PlaceholderPosition.END,
     placeholder_template='"…"',
-    preserve_all_keys=True,  # Preserve all fields for typed structures
+    preserve_all_keys=True,
     min_elements=1,
     comment_name="struct",
-    priority=10,  # Higher priority to match before generic collection
+    priority=10,
 )
 
 # Composite literals: map (with key-value pairs)
 # Map literals: map[K]V{key: value, ...}
 GO_MAP = LiteralPattern(
     category=LiteralCategory.MAPPING,
-    tree_sitter_types=["composite_literal"],
+    query="""
+    (composite_literal
+      type: (map_type) @map_type
+      body: (literal_value)) @lit
+    """,
     opening="{",
     closing="}",
     separator=",",
     kv_separator=":",
-    wrapper_match=r"^map\[",  # Starts with map[
+    wrapper_match=r"^map\[",
     placeholder_position=PlaceholderPosition.MIDDLE_COMMENT,
     placeholder_template='"…": "…"',
     min_elements=1,
     comment_name="map",
-    priority=6,  # Between struct (10) and slice (5)
+    priority=6,
 )
 
 # Composite literals: slice (no key-value)
 # Slice literals: []Type{elem1, elem2, ...}
 GO_SLICE = LiteralPattern(
     category=LiteralCategory.FACTORY_CALL,
-    tree_sitter_types=["composite_literal"],
+    query="""
+    (composite_literal
+      type: (slice_type) @slice_type
+      body: (literal_value)) @lit
+    """,
     opening="{",
     closing="}",
-    wrapper_match=r"^\[\]",  # Starts with []
+    wrapper_match=r"^\[\]",
     placeholder_position=PlaceholderPosition.END,
     placeholder_template='"…"',
     min_elements=1,

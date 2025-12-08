@@ -128,20 +128,7 @@ QUERIES = {
     (declaration) @declaration
     """,
 
-    # Literals for trimming
-    "literals": """
-    (string_literal) @string
-
-    (char_literal) @string
-
-    (number_literal) @number
-
-    (concatenated_string) @string
-
-    (initializer_list) @array
-    """,
-
-    # Preprocessor defines (macros)
+# Preprocessor defines (macros)
     "preprocessor": """
     (preproc_def
       name: (identifier) @macro_name

@@ -6,9 +6,8 @@ Declarative definitions of literal patterns and behavior for each language.
 
 from __future__ import annotations
 
-import re
 from dataclasses import dataclass, field
-from typing import List, Optional
+from typing import List
 
 from .categories import LiteralPattern
 
@@ -28,44 +27,3 @@ class LanguageLiteralDescriptor:
     # Additional factory wrappers for nested detection (not patterns themselves)
     # Example: ["Map.entry"] for Java - not optimized directly but needs DFS detection
     nested_factory_wrappers: List[str] = field(default_factory=list)
-
-    def get_pattern_for(
-        self,
-        tree_sitter_type: str,
-        wrapper: Optional[str] = None
-    ) -> Optional[LiteralPattern]:
-        """
-        Get the first matching pattern for a tree-sitter node type.
-
-        Patterns are checked in order (respecting priority). A pattern matches if:
-        1. tree_sitter_type is in pattern.tree_sitter_types
-        2. If pattern.wrapper_match is set, wrapper must match the regex
-
-        Args:
-            tree_sitter_type: The tree-sitter node type
-            wrapper: Optional wrapper text (e.g., "List.of", "Map.ofEntries")
-
-        Returns:
-            Matching LiteralPattern or None
-        """
-        # Sort by priority (higher first)
-        sorted_patterns = sorted(
-            self.patterns,
-            key=lambda p: p.priority,
-            reverse=True
-        )
-
-        for pattern in sorted_patterns:
-            if tree_sitter_type not in pattern.tree_sitter_types:
-                continue
-
-            # Check wrapper_match if specified
-            if pattern.wrapper_match is not None:
-                if wrapper is None:
-                    continue
-                if not re.match(pattern.wrapper_match, wrapper):
-                    continue
-
-            return pattern
-
-        return None

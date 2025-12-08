@@ -39,8 +39,8 @@ class LiteralPattern:
     """
     category: LiteralCategory
 
-    # Tree-sitter node types that match this pattern
-    tree_sitter_types: List[str]
+    # Tree-sitter query for this pattern (S-expression)
+    query: str
 
     # Opening/closing delimiters (string or callable for dynamic detection)
     # Callable signature: (text: str) -> str

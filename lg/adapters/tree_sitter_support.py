@@ -94,31 +94,60 @@ class TreeSitterDocument(ABC):
             RuntimeError: If document is not parsed or query execution fails
         """
         root_node = self.root_node
-            
+
         # Check if query exists for this language
         query_definitions = self.get_query_definitions()
         if query_name not in query_definitions:
             raise ValueError(f"Unknown query: {query_name}")
-        
+
         # Get or create cached query
         if query_name not in self._query_cache:
             query_string = query_definitions[query_name]
             self._query_cache[query_name] = Query(self.get_language(), query_string)
-        
+
         query = self._query_cache[query_name]
-        
+
         # Execute query and collect results
         results = []
         cursor = QueryCursor(query)
-        
+
         # Use matches to get pattern matches with capture info
         matches = cursor.matches(root_node)
         for pattern_index, captures in matches:
             for capture_name, nodes in captures.items():
                 for node in nodes:
                     results.append((node, capture_name))
-        
+
         return results
+
+    def query_nodes(self, query_string: str, capture_name: str) -> List[Node]:
+        """
+        Execute a Tree-sitter query and return flat list of matching nodes.
+
+        Returns only nodes captured with the specified capture name.
+        Other captures are used for predicates but not returned.
+
+        Args:
+            query_string: S-expression query string
+            capture_name: Name of the capture to return
+
+        Returns:
+            List of matching nodes with the specified capture name
+        """
+        query = Query(self.get_language(), query_string)
+        cursor = QueryCursor(query)
+
+        nodes = []
+        matches = cursor.matches(self.root_node)
+
+        # Use matches to get pattern matches with capture info
+        # Only return nodes with the specified capture name
+        for pattern_index, captures in matches:
+            if capture_name in captures:
+                for node in captures[capture_name]:
+                    nodes.append(node)
+
+        return nodes
 
     def query_opt(self, query_name: str) -> List[Tuple[Node, str]]:
         """

@@ -41,20 +41,6 @@ QUERIES = {
       left: (identifier) @variable_name
       right: (_) @variable_value)
     """,
-    
-    # Literals for trimming
-    "literals": """
-    (string) @string
-    
-    (list) @array
-    
-    (dictionary) @object
-    
-    (set) @set
-    
-    (tuple) @array
-    """,
-    
     # Constructors and field-related methods
     "constructors": """
     (class_definition

@@ -173,49 +173,7 @@ QUERIES = {
         name: (type_identifier) @annotation_name))
     """,
 
-    # Literals for trimming
-    "literals": """
-    (string) @string
-
-    (interpolated_string) @string
-
-    (interpolated_string_expression) @string
-
-    (character_literal) @string
-
-    (integer_literal) @number
-
-    (floating_point_literal) @number
-
-    (boolean_literal) @boolean
-
-    ; Scala collection apply calls (factory methods)
-    ; Note: Map is handled separately below due to arrow operator syntax
-    (call_expression
-      function: (identifier) @collection_name
-      (#any-of? @collection_name "List" "Vector" "Seq" "Array" "Set")
-      arguments: (arguments) @collection_args) @array
-
-    ; Qualified collection calls (scala.collection.immutable.List)
-    ; Note: Map is handled separately below due to arrow operator syntax
-    (call_expression
-      function: (field_expression
-        value: (_)
-        field: (identifier) @collection_name
-        (#any-of? @collection_name "List" "Vector" "Seq" "Set"))
-      arguments: (arguments) @args) @array
-
-    ; Map with arrow syntax Map("key" -> "value")
-    (call_expression
-      function: (identifier) @_map_check
-      (#eq? @_map_check "Map")
-      arguments: (arguments
-        (infix_expression
-          operator: (operator_identifier) @_arrow_check
-          (#eq? @_arrow_check "->")))) @object
-    """,
-
-    # Pattern matching
+# Pattern matching
     "pattern_matching": """
     (match_expression
       value: (_) @match_value

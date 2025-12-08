@@ -103,25 +103,7 @@ QUERIES = {
       (call_expression) @goroutine_call)
     """,
 
-    # Literals for trimming
-    "literals": """
-    (interpreted_string_literal) @string
-
-    (raw_string_literal) @string
-
-    (rune_literal) @string
-
-    (int_literal) @number
-
-    (float_literal) @number
-
-    (imaginary_literal) @number
-
-    ; Composite literals (slices, maps, structs)
-    (composite_literal) @array
-    """,
-
-    # Package clause
+# Package clause
     "packages": """
     (package_clause
       (package_identifier) @package_name)

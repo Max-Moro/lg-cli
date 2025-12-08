@@ -24,10 +24,10 @@ from ..javascript.literals import (
 # TypeScript-specific: object types (interfaces, type literals)
 TS_OBJECT_TYPE = LiteralPattern(
     category=LiteralCategory.MAPPING,
-    tree_sitter_types=["object_type"],
+    query="(object_type) @lit",
     opening="{",
     closing="}",
-    separator=";",  # TypeScript object types use semicolons
+    separator=";",
     kv_separator=":",
     placeholder_position=PlaceholderPosition.END,
     placeholder_template='"…": "…"',

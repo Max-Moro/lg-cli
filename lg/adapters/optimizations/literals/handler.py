@@ -9,6 +9,7 @@ from __future__ import annotations
 
 from typing import List, Optional
 
+from .block_init import BlockInitProcessor
 from .categories import (
     LiteralCategory,
     LiteralPattern,
@@ -16,10 +17,9 @@ from .categories import (
     TrimResult,
 )
 from .descriptor import LanguageLiteralDescriptor
+from .formatter import ResultFormatter
 from .parser import ElementParser, ParseConfig, Element
 from .selector import BudgetSelector, Selection, DFSSelection
-from .formatter import ResultFormatter
-from .block_init import BlockInitProcessor
 from lg.stats.tokenizer import TokenService
 
 
@@ -115,17 +115,9 @@ class LanguageLiteralHandler:
 
         return self._parsers[key]
 
-    def detect_literal_type(self, tree_sitter_type: str, text: str = "") -> bool:
-        """Check if a tree-sitter node type is a literal we handle."""
-        wrapper = self._detect_wrapper_from_text(text, tree_sitter_type) if text else None
-        return self.descriptor.get_pattern_for(tree_sitter_type, wrapper) is not None
-
-    def _detect_wrapper_from_text(self, text: str, tree_sitter_type: str) -> Optional[str]:
+    def _detect_wrapper_from_text(self, text: str, pattern: 'LiteralPattern') -> Optional[str]:
         """
-        Detect wrapper prefix using opening delimiters from patterns.
-
-        Universal approach: tries all patterns for this tree-sitter type
-        and extracts wrapper based on their opening delimiters.
+        Detect wrapper prefix using opening delimiter from the known pattern.
 
         Examples:
         - Java: "List.of(...)" -> "List.of" (opening: "(")
@@ -134,58 +126,50 @@ class LanguageLiteralHandler:
 
         Args:
             text: Full literal text
-            tree_sitter_type: Tree-sitter node type
+            pattern: The pattern that matched this literal
 
         Returns:
             Wrapper string or None
         """
         stripped = text.strip()
 
-        # Get all patterns for this tree-sitter type
-        candidates = [
-            p for p in self.descriptor.patterns
-            if tree_sitter_type in p.tree_sitter_types
-        ]
+        # Get opening and closing delimiters from the known pattern
+        opening = pattern.get_opening(text) if callable(pattern.opening) else pattern.opening
+        closing = pattern.get_closing(text) if callable(pattern.closing) else pattern.closing
 
-        # Try to extract wrapper using opening delimiter from each pattern
-        for pattern in candidates:
-            # Get opening and closing delimiters (may be callable)
-            opening = pattern.get_opening(text) if callable(pattern.opening) else pattern.opening
-            closing = pattern.get_closing(text) if callable(pattern.closing) else pattern.closing
+        # If text starts with opening delimiter, there's no wrapper
+        if stripped.startswith(opening):
+            return None
 
-            # If text starts with opening delimiter, there's no wrapper
-            if stripped.startswith(opening):
-                continue
+        # Find position of opening delimiter
+        pos = stripped.find(opening)
+        if pos > 0:
+            # Extract wrapper as-is (preserve formatting)
+            wrapper = stripped[:pos]
 
-            # Find position of opening delimiter
-            pos = stripped.find(opening)
-            if pos > 0:
-                # Extract wrapper as-is (preserve formatting)
-                wrapper = stripped[:pos]
+            # Include empty bracket pairs that are part of type/wrapper syntax
+            if stripped[pos:pos+2] == opening + closing:
+                wrapper += opening + closing
 
-                # Include empty bracket pairs that are part of type/wrapper syntax
-                if stripped[pos:pos+2] == opening + closing:
-                    wrapper += opening + closing
-
-                return wrapper
+            return wrapper
 
         return None
 
-    def parse_literal(
+    def parse_literal_with_pattern(
         self,
         text: str,
-        tree_sitter_type: str,
+        pattern: 'LiteralPattern',
         start_byte: int,
         end_byte: int,
         base_indent: str = "",
         element_indent: str = "",
     ) -> Optional[ParsedLiteral]:
         """
-        Parse a literal from source text.
+        Parse a literal from source text using a known pattern.
 
         Args:
             text: Full literal text including delimiters
-            tree_sitter_type: Tree-sitter node type
+            pattern: LiteralPattern that matched this node
             start_byte: Start position in source
             end_byte: End position in source
             base_indent: Indentation of line containing literal
@@ -194,13 +178,8 @@ class LanguageLiteralHandler:
         Returns:
             ParsedLiteral or None if not recognized
         """
-        # Detect wrapper first (needed for pattern selection)
-        wrapper = self._detect_wrapper_from_text(text, tree_sitter_type)
-
-        # Get pattern with wrapper for filtering
-        pattern = self.descriptor.get_pattern_for(tree_sitter_type, wrapper)
-        if not pattern:
-            return None
+        # Detect wrapper (some patterns like Go composite_literal need it)
+        wrapper = self._detect_wrapper_from_text(text, pattern)
 
         # Detect opening/closing
         opening = pattern.get_opening(text)
@@ -208,6 +187,7 @@ class LanguageLiteralHandler:
 
         # Extract content (pass wrapper to skip past it when searching for opening)
         content = self._extract_content(text, opening, closing, wrapper)
+
         if content is None:
             return None
 
@@ -221,16 +201,16 @@ class LanguageLiteralHandler:
             original_text=text,
             start_byte=start_byte,
             end_byte=end_byte,
+            original_tokens=original_tokens,
             category=pattern.category,
-            pattern=pattern,
             opening=opening,
             closing=closing,
             content=content,
+            wrapper=wrapper,
             is_multiline=is_multiline,
             base_indent=base_indent,
-            element_indent=element_indent or (base_indent + "    "),
-            wrapper=wrapper,
-            original_tokens=original_tokens,
+            element_indent=element_indent,
+            pattern=pattern,
         )
 
     def _extract_content(
@@ -266,6 +246,7 @@ class LanguageLiteralHandler:
     def process_literal(
         self,
         text: str,
+        pattern: 'LiteralPattern',
         tree_sitter_type: str,
         start_byte: int,
         end_byte: int,
@@ -278,7 +259,8 @@ class LanguageLiteralHandler:
 
         Args:
             text: Full literal text
-            tree_sitter_type: Tree-sitter node type
+            pattern: LiteralPattern that matched this node
+            tree_sitter_type: Tree-sitter node type (for wrapper detection)
             start_byte: Start position
             end_byte: End position
             token_budget: Maximum tokens for content
@@ -288,9 +270,9 @@ class LanguageLiteralHandler:
         Returns:
             TrimResult if trimming is beneficial, None otherwise
         """
-        # Parse literal
-        parsed = self.parse_literal(
-            text, tree_sitter_type, start_byte, end_byte,
+        # Parse literal with known pattern
+        parsed = self.parse_literal_with_pattern(
+            text, pattern, start_byte, end_byte,
             base_indent, element_indent
         )
         if not parsed:
@@ -471,6 +453,7 @@ class LanguageLiteralHandler:
 
     def process_ast_based_sequence(
         self,
+        pattern: 'LiteralPattern',
         node,  # tree_sitter Node
         doc,  # TreeSitterDocument
         token_budget: int,
@@ -489,6 +472,7 @@ class LanguageLiteralHandler:
         as fit within the token budget.
 
         Args:
+            pattern: LiteralPattern that matched this node
             node: Tree-sitter node representing the sequence
             doc: Tree-sitter document
             token_budget: Token budget
@@ -498,23 +482,28 @@ class LanguageLiteralHandler:
         Returns:
             TrimResult if optimization applied, None otherwise
         """
-        # Get pattern for this node type
-        pattern = self.descriptor.get_pattern_for(node.type)
-        if not pattern:
-            return None
 
-        # Get all child string nodes that match string types from descriptor
-        # Find all string patterns in descriptor to get allowed child types
-        string_types = set()
-        for p in self.descriptor.patterns:
-            if p.category == LiteralCategory.STRING:
-                string_types.update(p.tree_sitter_types)
+        # Get all child string nodes that match string patterns
+        # Use the query to find string nodes
+        string_patterns = [p for p in self.descriptor.patterns if p.category == LiteralCategory.STRING]
 
-        # Filter children to only string nodes
-        child_strings = [
-            child for child in node.children
-            if child.type in string_types
-        ]
+        # Collect all string child nodes by querying each string pattern
+        child_strings = []
+        child_string_set = set()  # Track by (start, end) to avoid duplicates
+
+        for str_pattern in string_patterns:
+            matched_nodes = doc.query_nodes(str_pattern.query, "lit")
+            for matched_node in matched_nodes:
+                # Check if this node is a direct or indirect child of the input node
+                if (matched_node.start_byte >= node.start_byte and
+                    matched_node.end_byte <= node.end_byte):
+                    coords = (matched_node.start_byte, matched_node.end_byte)
+                    if coords not in child_string_set:
+                        child_string_set.add(coords)
+                        child_strings.append(matched_node)
+
+        # Sort by position
+        child_strings.sort(key=lambda n: n.start_byte)
 
         if not child_strings:
             return None  # No strings to process

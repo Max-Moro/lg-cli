@@ -186,22 +186,7 @@ QUERIES = {
       body: (compound_statement) @operator_body)
     """,
 
-    # Literals for trimming
-    "literals": """
-    (string_literal) @string
-
-    (raw_string_literal) @string
-
-    (char_literal) @string
-
-    (number_literal) @number
-
-    (concatenated_string) @string
-
-    (initializer_list) @array
-    """,
-
-    # Function declarations (prototypes)
+# Function declarations (prototypes)
     "function_declarations": """
     (declaration
       declarator: (function_declarator

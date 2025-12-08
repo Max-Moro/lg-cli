@@ -48,38 +48,50 @@ def _detect_string_closing(text: str) -> str:
 # String literals (regular and multi-line raw strings)
 KOTLIN_STRING = LiteralPattern(
     category=LiteralCategory.STRING,
-    tree_sitter_types=["string_literal", "multiline_string_literal"],
+    query="""
+    [
+      (string_literal) @lit
+      (multiline_string_literal) @lit
+    ]
+    """,
     opening=_detect_string_opening,
     closing=_detect_string_closing,
     placeholder_position=PlaceholderPosition.INLINE,
     placeholder_template="…",
-    # Kotlin supports both ${...} and $identifier interpolation
     interpolation_markers=[
-        ("$", "{", "}"),  # ${expression}
-        ("$", "", ""),     # $identifier
+        ("$", "{", "}"),
+        ("$", "", ""),
     ],
 )
 
 # Map.of equivalent: mapOf(k1 to v1, k2 to v2) - 'to' operator pairs
 KOTLIN_MAP_OF = LiteralPattern(
-    category=LiteralCategory.MAPPING,  # Changed from FACTORY_CALL to MAPPING
-    tree_sitter_types=["call_expression"],
+    category=LiteralCategory.MAPPING,
+    query="""
+    (call_expression
+      (identifier) @func_name
+      (#any-of? @func_name "mapOf" "mutableMapOf" "hashMapOf" "linkedMapOf")) @lit
+    """,
     wrapper_match=r"(mapOf|mutableMapOf|hashMapOf|linkedMapOf)$",
     opening="(",
     closing=")",
     separator=",",
-    kv_separator=" to ",  # Kotlin uses 'to' operator for key-value pairs
+    kv_separator=" to ",
     placeholder_position=PlaceholderPosition.MIDDLE_COMMENT,
-    placeholder_template='"…" to "…"',  # Kotlin to operator in placeholder
+    placeholder_template='"…" to "…"',
     min_elements=1,
     comment_name="object",
-    priority=20,  # Higher priority than generic factory
+    priority=20,
 )
 
 # Generic sequence factory: listOf(), setOf(), etc.
 KOTLIN_LIST_OF = LiteralPattern(
     category=LiteralCategory.FACTORY_CALL,
-    tree_sitter_types=["call_expression"],
+    query="""
+    (call_expression
+      (identifier) @func_name
+      (#any-of? @func_name "listOf" "mutableListOf" "arrayListOf")) @lit
+    """,
     wrapper_match=r"(listOf|mutableListOf|arrayListOf)$",
     opening="(",
     closing=")",
@@ -92,7 +104,11 @@ KOTLIN_LIST_OF = LiteralPattern(
 
 KOTLIN_SET_OF = LiteralPattern(
     category=LiteralCategory.FACTORY_CALL,
-    tree_sitter_types=["call_expression"],
+    query="""
+    (call_expression
+      (identifier) @func_name
+      (#any-of? @func_name "setOf" "mutableSetOf" "hashSetOf" "linkedSetOf")) @lit
+    """,
     wrapper_match=r"(setOf|mutableSetOf|hashSetOf|linkedSetOf)$",
     opening="(",
     closing=")",

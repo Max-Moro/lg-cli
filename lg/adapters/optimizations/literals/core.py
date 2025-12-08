@@ -9,11 +9,12 @@ from __future__ import annotations
 
 from typing import cast, Optional, List
 
-from .categories import TrimResult
+from tree_sitter import Node
+
+from .categories import TrimResult, LiteralCategory, LiteralPattern
 from .handler import LanguageLiteralHandler
 from ...code_model import LiteralConfig
 from ...context import ProcessingContext
-from tree_sitter import Node
 
 
 class LiteralOptimizer:
@@ -65,128 +66,132 @@ class LiteralOptimizer:
         if max_tokens is None:
             return  # Optimization disabled
 
-        # Query for all literals
-        literals = list(context.doc.query("literals"))
+        # Get all patterns from descriptor
+        patterns = self.handler.descriptor.patterns
 
-        # Two-pass approach for orthogonal string/collection processing.
-
-        # Pass 0: Identify collections
-        # Filter out underscore-prefixed captures (internal query helpers)
-        # and deduplicate by node coordinates
-        collections_raw = [
-            (node, capture_name)
-            for node, capture_name in literals
-            if capture_name != "string" and not capture_name.startswith("_")
-        ]
-
-        # Deduplicate by (start_byte, end_byte) - tree-sitter queries may return
-        # the same node multiple times with different capture names
-        seen_coords = set()
-        collections = []
-        for node, capture_name in collections_raw:
-            coords = (node.start_byte, node.end_byte)
-            if coords not in seen_coords:
-                seen_coords.add(coords)
-                collections.append((node, capture_name))
-
-
+        # Two-pass approach for orthogonal string/collection processing
         processed_strings = []  # Track (start, end, tokens_saved) for processed strings
 
-        # Pass 1: Strings (all strings, processed independently)
-        # Collect all string nodes first
-        string_nodes = [
-            (node, capture_name)
-            for node, capture_name in literals
-            if capture_name == "string"
-        ]
+        # Separate patterns by category for two-pass processing
+        string_patterns = [p for p in patterns if p.category == LiteralCategory.STRING]
+        collection_patterns = [p for p in patterns if p.category != LiteralCategory.STRING]
 
-        # Find top-level strings (not nested inside other strings)
-        # This handles concatenated_string containing child string_literal nodes
-        top_level_strings = []
-        for i, (node, capture_name) in enumerate(string_nodes):
-            start_byte, end_byte = context.doc.get_node_range(node)
-            is_nested = any(
-                j != i and
-                string_nodes[j][0].start_byte <= start_byte and
-                string_nodes[j][0].end_byte >= end_byte
-                for j in range(len(string_nodes))
-            )
-            if not is_nested:
-                top_level_strings.append((node, capture_name))
+        # Pass 1: Process all string patterns
+        # First, collect collection nodes that require AST extraction (e.g., concatenated_string)
+        # These will handle their child strings specially in Pass 2
+        ast_extraction_nodes_set = set()
+        for coll_pattern in collection_patterns:
+            if coll_pattern.requires_ast_extraction:
+                coll_nodes = context.doc.query_nodes(coll_pattern.query, "lit")
+                for coll_node in coll_nodes:
+                    ast_extraction_nodes_set.add((coll_node.start_byte, coll_node.end_byte))
 
-        for node, capture_name in top_level_strings:
-            # Skip docstrings
-            if self.adapter.is_docstring_node(node, context.doc):
-                continue
+        for pattern in string_patterns:
+            nodes = context.doc.query_nodes(pattern.query, "lit")
 
-            # Get node info
-            literal_text = context.doc.get_node_text(node)
-            token_count = self.adapter.tokenizer.count_text_cached(literal_text)
-
-            # Skip if within budget
-            if token_count <= max_tokens:
-                continue
-
-            # Process
-            result = self._process_node(context, node, max_tokens)
-            if result and result.saved_tokens > 0:
+            # Find top-level strings (not nested inside other strings AND not children of AST-extraction collections)
+            top_level_strings = []
+            for i, node in enumerate(nodes):
                 start_byte, end_byte = context.doc.get_node_range(node)
-                self._apply_trim_result(context, node, result, literal_text)
-                tokens_saved = result.saved_tokens
-                processed_strings.append((start_byte, end_byte, tokens_saved))
 
-        # Pass 2: Collections (arrays, objects, etc.)
-        # Process only top-level collections (not nested inside other collections)
-        # DFS will handle nested structures internally
-
-        # Find top-level collections (not contained by other collections)
-        top_level = []
-        for i, (node, capture_name) in enumerate(collections):
-            start_byte, end_byte = context.doc.get_node_range(node)
-            is_nested = any(
-                j != i and
-                collections[j][0].start_byte <= start_byte and
-                collections[j][0].end_byte >= end_byte
-                for j in range(len(collections))
-            )
-            if not is_nested:
-                # Skip if contained in a processed string range
-                contained_in_processed_string = any(
-                    s <= start_byte and end_byte <= e
-                    for s, e, _ in processed_strings
+                # Check if nested in another string
+                is_nested = any(
+                    j != i and
+                    nodes[j].start_byte <= start_byte and
+                    nodes[j].end_byte >= end_byte
+                    for j in range(len(nodes))
                 )
-                if not contained_in_processed_string:
-                    top_level.append((node, capture_name))
+                if is_nested:
+                    continue
 
-        for node, capture_name in top_level:
-            literal_text = context.doc.get_node_text(node)
-            token_count = self.adapter.tokenizer.count_text_cached(literal_text)
+                # Check if parent is an AST-extraction collection (e.g., concatenated_string in C)
+                # Skip if this string is part of such a collection - it will be processed in Pass 2
+                if node.parent:
+                    parent_range = (node.parent.start_byte, node.parent.end_byte)
+                    if parent_range in ast_extraction_nodes_set:
+                        continue  # Skip - will be processed as part of AST-extraction collection in Pass 2
 
-            # Get pattern to check if it's BLOCK_INIT (needs special handling)
-            wrapper = self.handler._detect_wrapper_from_text(literal_text, node.type) if literal_text else None
-            pattern_check = self.handler.descriptor.get_pattern_for(node.type, wrapper)
+                top_level_strings.append(node)
 
-            # Skip budget check for BLOCK_INIT patterns (they handle budget internally for groups)
-            is_block_init = pattern_check and pattern_check.category.value == "block"
-            if not is_block_init:
+            for node in top_level_strings:
+                # Skip docstrings
+                if self.adapter.is_docstring_node(node, context.doc):
+                    continue
+
+                # Get node info
+                literal_text = context.doc.get_node_text(node)
+                token_count = self.adapter.tokenizer.count_text_cached(literal_text)
+
                 # Skip if within budget
                 if token_count <= max_tokens:
                     continue
 
-            # Process with DFS (will handle nested structures internally)
-            # For BLOCK_INIT: processor will expand let_declaration groups internally
-            result = self._process_node(context, node, max_tokens)
+                # Process - pass pattern since node came from pattern.query
+                result = self._process_node(context, node, max_tokens, pattern)
+                if result and result.saved_tokens > 0:
+                    start_byte, end_byte = context.doc.get_node_range(node)
+                    self._apply_trim_result(context, node, result, literal_text)
+                    tokens_saved = result.saved_tokens
+                    processed_strings.append((start_byte, end_byte, tokens_saved))
 
-            # Apply if any tokens were saved (removals can be in nested levels only)
-            if result:
-                # Check if result is tuple (for BLOCK_INIT with expanded nodes)
-                if isinstance(result, tuple):
-                    trim_result, nodes_used = result
-                    # Use expanded nodes for replacement
-                    self._apply_trim_result_composing(context, nodes_used, trim_result, literal_text)
-                elif result.saved_tokens > 0:
-                    # Standard result with single node
-                    self._apply_trim_result_composing(context, [node], result, literal_text)
+        # Pass 2: Process all collection patterns
+        for pattern in collection_patterns:
+            nodes = context.doc.query_nodes(pattern.query, "lit")
+
+            # Deduplicate by (start_byte, end_byte)
+            seen_coords = set()
+            unique_nodes = []
+            for node in nodes:
+                coords = (node.start_byte, node.end_byte)
+                if coords not in seen_coords:
+                    seen_coords.add(coords)
+                    unique_nodes.append(node)
+
+            # Find top-level collections (not contained by other collections)
+            top_level = []
+            for i, node in enumerate(unique_nodes):
+                start_byte, end_byte = context.doc.get_node_range(node)
+                is_nested = any(
+                    j != i and
+                    unique_nodes[j].start_byte <= start_byte and
+                    unique_nodes[j].end_byte >= end_byte
+                    for j in range(len(unique_nodes))
+                )
+                if not is_nested:
+                    # Skip if contained in a processed string range
+                    contained_in_processed_string = any(
+                        s <= start_byte and end_byte <= e
+                        for s, e, _ in processed_strings
+                    )
+                    if not contained_in_processed_string:
+                        top_level.append(node)
+
+            for node in top_level:
+                literal_text = context.doc.get_node_text(node)
+                token_count = self.adapter.tokenizer.count_text_cached(literal_text)
+
+                # Skip budget check for BLOCK_INIT patterns (they handle budget internally for groups)
+                is_block_init = pattern.category.value == "block"
+                if not is_block_init:
+                    # Skip if within budget
+                    if token_count <= max_tokens:
+                        continue
+
+                # Process with DFS (will handle nested structures internally)
+                # For BLOCK_INIT: processor will expand let_declaration groups internally
+                # Pass pattern since node came from pattern.query
+                result = self._process_node(context, node, max_tokens, pattern)
+
+                # Apply if any tokens were saved (removals can be in nested levels only)
+                if result:
+                    # Check if result is tuple (for BLOCK_INIT with expanded nodes)
+                    if isinstance(result, tuple):
+                        trim_result, nodes_used = result
+                        # Use expanded nodes for replacement
+                        self._apply_trim_result_composing(context, nodes_used, trim_result, literal_text)
+                    elif result.saved_tokens > 0:
+                        # Standard result with single node
+                        self._apply_trim_result_composing(context, [node], result, literal_text)
 
     def _apply_trim_result(
         self,
@@ -280,6 +285,7 @@ class LiteralOptimizer:
         context: ProcessingContext,
         node: Node,
         max_tokens: int,
+        pattern: LiteralPattern,
     ) -> Optional[TrimResult]:
         """
         Process tree-sitter node for literal optimization.
@@ -288,6 +294,7 @@ class LiteralOptimizer:
             context: Processing context with file info
             node: Tree-sitter node to process
             max_tokens: Token budget for this literal
+            pattern: LiteralPattern that matched this node (from query)
 
         Returns:
             TrimResult if optimization applied
@@ -299,22 +306,14 @@ class LiteralOptimizer:
 
         # Get node text and position
         text = context.doc.get_node_text(node)
-
-        # Check if this node type is a literal (pass text for wrapper detection)
-        if not self.handler.detect_literal_type(node.type, text):
-            return None
         start_byte, end_byte = context.doc.get_node_range(node)
 
         # Detect indentation
         base_indent = self._get_base_indent(context.raw_text, start_byte)
         element_indent = self._get_element_indent(text, base_indent)
 
-        # Get pattern to check category
-        wrapper = self.handler._detect_wrapper_from_text(text, node.type) if text else None
-        pattern = self.handler.descriptor.get_pattern_for(node.type, wrapper)
-
         # BLOCK_INIT patterns need special handling with node access
-        if pattern and pattern.category.value == "block":
+        if pattern.category.value == "block":
             result = self.handler.process_block_init_node(
                 pattern=pattern,
                 node=node,
@@ -329,8 +328,9 @@ class LiteralOptimizer:
 
         # Check if pattern requires AST-based element extraction
         # (for sequences without explicit separators)
-        if pattern and pattern.requires_ast_extraction:
+        if pattern.requires_ast_extraction:
             result = self.handler.process_ast_based_sequence(
+                pattern=pattern,
                 node=node,
                 doc=context.doc,
                 token_budget=max_tokens,
@@ -340,8 +340,10 @@ class LiteralOptimizer:
             return result
 
         # All other patterns: process through standard handler
+        # Pass pattern and node.type for wrapper detection
         return self.handler.process_literal(
             text=text,
+            pattern=pattern,
             tree_sitter_type=node.type,
             start_byte=start_byte,
             end_byte=end_byte,

@@ -54,7 +54,7 @@ def _detect_string_closing(text: str) -> str:
 # JavaScript literal patterns
 JS_STRING = LiteralPattern(
     category=LiteralCategory.STRING,
-    tree_sitter_types=["string"],
+    query="(string) @lit",
     opening=_detect_string_opening,
     closing=_detect_string_closing,
     placeholder_position=PlaceholderPosition.INLINE,
@@ -63,31 +63,28 @@ JS_STRING = LiteralPattern(
 
 JS_TEMPLATE_STRING = LiteralPattern(
     category=LiteralCategory.STRING,
-    tree_sitter_types=["template_string"],
+    query="(template_string) @lit",
     opening="`",
     closing="`",
     placeholder_position=PlaceholderPosition.INLINE,
     placeholder_template="…",
-    # Template strings preserve whitespace
     preserve_whitespace=True,
-    # Higher priority to match before generic string
     priority=10,
-    # Template strings support ${...} interpolation
     interpolation_markers=[("$", "{", "}")],
 )
 
 JS_REGEX = LiteralPattern(
     category=LiteralCategory.STRING,
-    tree_sitter_types=["regex"],
+    query="(regex) @lit",
     opening="/",
-    closing="/",  # Note: flags come after, handled specially
+    closing="/",
     placeholder_position=PlaceholderPosition.INLINE,
     placeholder_template="…",
 )
 
 JS_ARRAY = LiteralPattern(
     category=LiteralCategory.SEQUENCE,
-    tree_sitter_types=["array"],
+    query="(array) @lit",
     opening="[",
     closing="]",
     separator=",",
@@ -99,7 +96,7 @@ JS_ARRAY = LiteralPattern(
 
 JS_OBJECT = LiteralPattern(
     category=LiteralCategory.MAPPING,
-    tree_sitter_types=["object"],
+    query="(object) @lit",
     opening="{",
     closing="}",
     separator=",",

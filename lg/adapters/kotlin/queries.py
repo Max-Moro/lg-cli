@@ -51,36 +51,7 @@ QUERIES = {
         (identifier) @property_name))
     """,
     
-    # Literals for trimming
-    "literals": """
-    (string_literal) @string
-
-    (multiline_string_literal) @string
-
-    (number_literal) @number
-
-    (float_literal) @number
-
-    ; Kotlin collection factory calls - List
-    (call_expression
-      (identifier) @collection_name
-      (#any-of? @collection_name
-        "listOf" "mutableListOf" "arrayListOf")) @array
-
-    ; Kotlin collection factory calls - Set
-    (call_expression
-      (identifier) @collection_name
-      (#any-of? @collection_name
-        "setOf" "mutableSetOf" "hashSetOf" "linkedSetOf")) @set
-
-    ; Kotlin collection factory calls - Map
-    (call_expression
-      (identifier) @collection_name
-      (#any-of? @collection_name
-        "mapOf" "mutableMapOf" "hashMapOf" "linkedMapOf")) @object
-    """,
-    
-    # Constructors and initializers
+# Constructors and initializers
     "constructors": """
     (class_declaration
       (class_body

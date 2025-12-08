@@ -430,25 +430,32 @@ class BlockInitProcessor:
         # Recursively find nested collection/block literals
         # We only want to optimize nested collections, not parts of the statement itself
         def find_literals(node: Node, is_direct_child: bool = False):
-            # Check if this node is a collection/block literal
+            # Check if this node matches any pattern in descriptor
             found_literal = False
             for pattern in self.handler.descriptor.patterns:
-                if node.type in pattern.tree_sitter_types:
-                    # Skip the statement node itself
-                    if node.start_byte == stmt_node.start_byte and node.end_byte == stmt_node.end_byte:
-                        break
+                # Try to match this node using the pattern's query
+                try:
+                    # Query to see if this specific node matches
+                    nodes = doc.query_nodes(pattern.query, "lit")
+                    if node in nodes:
+                        # Skip the statement node itself
+                        if node.start_byte == stmt_node.start_byte and node.end_byte == stmt_node.end_byte:
+                            break
 
-                    # Skip direct children of statement (these are part of the statement structure)
-                    # For example: put(...) method_invocation is direct child, but HashMap inside argument is not
-                    if is_direct_child:
-                        break
+                        # Skip direct children of statement (these are part of the statement structure)
+                        # For example: put(...) method_invocation is direct child, but HashMap inside argument is not
+                        if is_direct_child:
+                            break
 
-                    # Only collect collections/blocks
-                    # Categories to optimize: SEQUENCE, MAPPING, FACTORY_CALL, BLOCK_INIT
-                    if pattern.category.value in ["sequence", "mapping", "factory", "block"]:
-                        nested_literals.append(node)
-                        found_literal = True
-                    break
+                        # Only collect collections/blocks
+                        # Categories to optimize: SEQUENCE, MAPPING, FACTORY_CALL, BLOCK_INIT
+                        if pattern.category.value in ["sequence", "mapping", "factory", "block"]:
+                            nested_literals.append(node)
+                            found_literal = True
+                        break
+                except:
+                    # Query failed, skip this pattern
+                    continue
 
             # Don't recurse into found literals (they will be processed separately)
             if not found_literal:
@@ -483,9 +490,13 @@ class BlockInitProcessor:
             # Determine pattern and process
             nested_pattern = None
             for pattern in self.handler.descriptor.patterns:
-                if nested_node.type in pattern.tree_sitter_types:
-                    nested_pattern = pattern
-                    break
+                try:
+                    nodes = doc.query_nodes(pattern.query, "lit")
+                    if nested_node in nodes:
+                        nested_pattern = pattern
+                        break
+                except:
+                    continue
 
             if not nested_pattern:
                 continue

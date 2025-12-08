@@ -41,12 +41,17 @@ def _detect_string_closing(text: str) -> str:
 # String literals (interpreted strings)
 C_STRING = LiteralPattern(
     category=LiteralCategory.STRING,
-    tree_sitter_types=["string_literal", "char_literal"],
+    query="""
+    [
+      (string_literal) @lit
+      (char_literal) @lit
+    ]
+    """,
     opening=_detect_string_opening,
     closing=_detect_string_closing,
     placeholder_position=PlaceholderPosition.INLINE,
     placeholder_template="…",
-    interpolation_markers=[],  # C has no string interpolation
+    interpolation_markers=[],
 )
 
 # Concatenated strings: treat as a sequence where each child string is an element
@@ -54,22 +59,22 @@ C_STRING = LiteralPattern(
 # Requires AST extraction since there's no explicit separator between strings
 C_CONCATENATED_STRING = LiteralPattern(
     category=LiteralCategory.SEQUENCE,
-    tree_sitter_types=["concatenated_string"],
-    opening="",  # No delimiters for concatenated strings
+    query="(concatenated_string) @lit",
+    opening="",
     closing="",
-    separator="",  # Strings are just whitespace-separated
+    separator="",
     placeholder_position=PlaceholderPosition.END,
     placeholder_template="…",
-    min_elements=1,  # Keep at least the first string
+    min_elements=1,
     comment_name="literal string",
-    requires_ast_extraction=True,  # Use AST to extract child string nodes
+    requires_ast_extraction=True,
 )
 
 # Initializer lists: {...} for arrays and structs
 # These can be numeric arrays or struct arrays
 C_INITIALIZER_LIST = LiteralPattern(
     category=LiteralCategory.SEQUENCE,
-    tree_sitter_types=["initializer_list"],
+    query="(initializer_list) @lit",
     opening="{",
     closing="}",
     separator=",",

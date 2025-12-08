@@ -170,46 +170,7 @@ QUERIES = {
       (identifier) @visibility_scope) @visibility.pub_in
     """,
 
-    # Literals for trimming
-    "literals": """
-    (string_literal) @string
-
-    (raw_string_literal) @string
-
-    (char_literal) @string
-
-    (integer_literal) @number
-
-    (float_literal) @number
-
-    (boolean_literal) @boolean
-
-    (array_expression) @array
-
-    (tuple_expression) @array
-
-    ; Rust vec! macro
-    (macro_invocation
-      macro: (identifier) @macro_name
-      (#eq? @macro_name "vec")
-      (token_tree)) @array
-
-    ; Rust lazy_static! macro with HashMap
-    (macro_invocation
-      macro: (identifier) @macro_name
-      (#eq? @macro_name "lazy_static")
-      (token_tree)) @object
-
-    ; HashMap/Vec initialization pattern: let mut var = Collection::new(); var.insert(...);
-    ; Only capture let declarations with ::new() call
-    (let_declaration
-      value: (call_expression
-        function: (scoped_identifier
-          name: (identifier) @_method_name)
-        (#eq? @_method_name "new"))) @object
-    """,
-
-    # Variable declarations
+# Variable declarations
     "variables": """
     (let_declaration
       pattern: (identifier) @var_name

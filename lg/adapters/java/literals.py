@@ -42,18 +42,18 @@ def _detect_string_closing(text: str) -> str:
 # String literals (regular and text blocks)
 JAVA_STRING = LiteralPattern(
     category=LiteralCategory.STRING,
-    tree_sitter_types=["string_literal"],
+    query="(string_literal) @lit",
     opening=_detect_string_opening,
     closing=_detect_string_closing,
     placeholder_position=PlaceholderPosition.INLINE,
     placeholder_template="…",
-    interpolation_markers=[],  # Java has no string interpolation
+    interpolation_markers=[],
 )
 
 # Array initializers: { elem1, elem2, ... }
 JAVA_ARRAY_INITIALIZER = LiteralPattern(
     category=LiteralCategory.SEQUENCE,
-    tree_sitter_types=["array_initializer"],
+    query="(array_initializer) @lit",
     opening="{",
     closing="}",
     placeholder_position=PlaceholderPosition.END,
@@ -66,62 +66,122 @@ JAVA_ARRAY_INITIALIZER = LiteralPattern(
 # Must have higher priority than generic factory pattern
 JAVA_MAP_OF = LiteralPattern(
     category=LiteralCategory.FACTORY_CALL,
-    tree_sitter_types=["method_invocation"],
-    wrapper_match=r"Map\.of$",  # Match "Map.of" exactly (not Map.ofEntries)
+    query="""
+    (method_invocation
+      object: (identifier) @class_name
+      (#eq? @class_name "Map")
+      name: (identifier) @method_name
+      (#eq? @method_name "of")
+      arguments: (argument_list)) @lit
+    """,
+    wrapper_match=r"Map\.of$",
     opening="(",
     closing=")",
-    tuple_size=2,  # Group arguments into key-value pairs
+    tuple_size=2,
     placeholder_position=PlaceholderPosition.MIDDLE_COMMENT,
-    placeholder_template='"…", "…"',  # Placeholder is a pair
-    min_elements=1,
-    comment_name="map",
-    priority=20,  # Higher than generic factory
-)
-
-# Map.ofEntries(Map.entry(...), ...) - each argument is a Map.entry() call
-# Note: Map.entry is in factory_wrappers for nested detection but not a pattern itself
-JAVA_MAP_OF_ENTRIES = LiteralPattern(
-    category=LiteralCategory.FACTORY_CALL,
-    tree_sitter_types=["method_invocation"],
-    wrapper_match=r"Map\.ofEntries$",
-    opening="(",
-    closing=")",
-    placeholder_position=PlaceholderPosition.MIDDLE_COMMENT,
-    placeholder_template='Map.entry("…", "…")',  # Placeholder is an entry
+    placeholder_template='"…", "…"',
     min_elements=1,
     comment_name="map",
     priority=20,
 )
 
-# Generic sequence factory: List.of(), Set.of(), Stream.of(), Arrays.asList()
-# Lower priority - catches any factory not matched above
-JAVA_SEQUENCE_FACTORY = LiteralPattern(
+# Map.ofEntries(Map.entry(...), ...) - each argument is a Map.entry() call
+JAVA_MAP_OF_ENTRIES = LiteralPattern(
     category=LiteralCategory.FACTORY_CALL,
-    tree_sitter_types=["method_invocation"],
+    query="""
+    (method_invocation
+      object: (identifier) @class_name
+      (#eq? @class_name "Map")
+      name: (identifier) @method_name
+      (#eq? @method_name "ofEntries")
+      arguments: (argument_list)) @lit
+    """,
+    wrapper_match=r"Map\.ofEntries$",
+    opening="(",
+    closing=")",
+    placeholder_position=PlaceholderPosition.MIDDLE_COMMENT,
+    placeholder_template='Map.entry("…", "…")',
+    min_elements=1,
+    comment_name="map",
+    priority=20,
+)
+
+# List.of() and Set.of() - most common sequence factories
+JAVA_LIST_SET_OF = LiteralPattern(
+    category=LiteralCategory.FACTORY_CALL,
+    query="""
+    (method_invocation
+      object: (identifier) @class_name
+      (#any-of? @class_name "List" "Set")
+      name: (identifier) @method_name
+      (#any-of? @method_name "of" "copyOf")
+      arguments: (argument_list)) @lit
+    """,
     opening="(",
     closing=")",
     placeholder_position=PlaceholderPosition.MIDDLE_COMMENT,
     placeholder_template='"…"',
     min_elements=1,
     comment_name="array",
-    priority=10,  # Lower than specific patterns
+    priority=10,
+)
+
+# Arrays.asList() - legacy sequence factory
+JAVA_ARRAYS_ASLIST = LiteralPattern(
+    category=LiteralCategory.FACTORY_CALL,
+    query="""
+    (method_invocation
+      object: (identifier) @class_name
+      (#eq? @class_name "Arrays")
+      name: (identifier) @method_name
+      (#eq? @method_name "asList")
+      arguments: (argument_list)) @lit
+    """,
+    opening="(",
+    closing=")",
+    placeholder_position=PlaceholderPosition.MIDDLE_COMMENT,
+    placeholder_template='"…"',
+    min_elements=1,
+    comment_name="array",
+    priority=10,
+)
+
+# Stream.of() - stream sequence factory
+JAVA_STREAM_OF = LiteralPattern(
+    category=LiteralCategory.FACTORY_CALL,
+    query="""
+    (method_invocation
+      object: (identifier) @class_name
+      (#eq? @class_name "Stream")
+      name: (identifier) @method_name
+      (#eq? @method_name "of")
+      arguments: (argument_list)) @lit
+    """,
+    opening="(",
+    closing=")",
+    placeholder_position=PlaceholderPosition.MIDDLE_COMMENT,
+    placeholder_template='"…"',
+    min_elements=1,
+    comment_name="stream",
+    priority=10,
 )
 
 # Double-brace initialization: new HashMap<>() {{ put("k1", "v1"); put("k2", "v2"); }}
 JAVA_DOUBLE_BRACE = LiteralPattern(
     category=LiteralCategory.BLOCK_INIT,
-    tree_sitter_types=["object_creation_expression"],
-    opening="",  # Not used for BLOCK_INIT
-    closing="",  # Not used for BLOCK_INIT
-
-    # BLOCK_INIT specific fields
-    block_selector="class_body/block",  # Navigate to inner block
-    statement_pattern="*/method_invocation",  # Match any method invocation (put, add, etc.)
-
+    query="""
+    (object_creation_expression
+      (class_body
+        (block))) @lit
+    """,
+    opening="",
+    closing="",
+    block_selector="class_body/block",
+    statement_pattern="*/method_invocation",
     min_elements=1,
     placeholder_position=PlaceholderPosition.MIDDLE_COMMENT,
     comment_name="double-brace init",
-    priority=15,  # Medium priority
+    priority=15,
 )
 
 
@@ -132,7 +192,9 @@ def create_java_descriptor() -> LanguageLiteralDescriptor:
             JAVA_MAP_OF,           # High priority - pair-based Map.of
             JAVA_MAP_OF_ENTRIES,   # High priority - entry-based Map.ofEntries
             JAVA_DOUBLE_BRACE,     # Medium priority - double-brace initialization
-            JAVA_SEQUENCE_FACTORY, # Catch-all for other factory methods
+            JAVA_LIST_SET_OF,      # Medium priority - List/Set.of()
+            JAVA_ARRAYS_ASLIST,    # Medium priority - Arrays.asList()
+            JAVA_STREAM_OF,        # Medium priority - Stream.of()
             JAVA_STRING,
             JAVA_ARRAY_INITIALIZER,
         ],

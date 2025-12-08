@@ -389,7 +389,7 @@ class ResultFormatter:
             if isinstance(selection, DFSSelection):
                 raise ValueError(
                     f"String literals cannot use DFS selection. "
-                    f"Check language descriptor configuration for {parsed.pattern.tree_sitter_types}"
+                    f"Check language descriptor pattern: {parsed.pattern.query}"
                 )
             return self._format_string(parsed, cast(Selection, selection))
 
@@ -448,7 +448,7 @@ class ResultFormatter:
             if isinstance(selection, DFSSelection):
                 raise ValueError(
                     f"String literals cannot use DFS selection. "
-                    f"Check language descriptor configuration for {parsed.pattern.tree_sitter_types}"
+                    f"Check language descriptor pattern: {parsed.pattern.query}"
                 )
             return self._format_string(parsed, cast(Selection, selection))
 

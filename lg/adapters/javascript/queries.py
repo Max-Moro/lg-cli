@@ -100,22 +100,7 @@ QUERIES = {
         value: (_)? @variable_value))
     """,
 
-    # Literals for trimming
-    "literals": """
-    (string) @string
-
-    (template_string) @string
-
-    (regex) @string
-
-    (number) @number
-
-    (array) @array
-
-    (object) @object
-    """,
-
-    # Constructors
+# Constructors
     "constructors": """
     (class_declaration
       body: (class_body

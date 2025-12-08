@@ -89,56 +89,7 @@ QUERIES = {
         name: (identifier) @variable_name))
     """,
 
-    # Literals for trimming
-    "literals": """
-    (string_literal) @string
-
-    (decimal_integer_literal) @number
-
-    (hex_integer_literal) @number
-
-    (octal_integer_literal) @number
-
-    (binary_integer_literal) @number
-
-    (decimal_floating_point_literal) @number
-
-    (hex_floating_point_literal) @number
-
-    (array_initializer) @array
-
-    ; Java collection factory methods (Java 9+)
-    (method_invocation
-      object: (identifier) @class_name
-      (#any-of? @class_name "List" "Set" "Map")
-      name: (identifier) @method_name
-      (#any-of? @method_name "of" "ofEntries" "copyOf")
-      arguments: (argument_list) @args) @array
-
-    ; Arrays.asList() pattern
-    (method_invocation
-      object: (identifier) @arrays_class
-      (#eq? @arrays_class "Arrays")
-      name: (identifier) @method
-      (#eq? @method "asList")
-      arguments: (argument_list) @args) @array
-
-    ; Stream.of() pattern
-    (method_invocation
-      object: (identifier) @stream_class
-      (#eq? @stream_class "Stream")
-      name: (identifier) @method
-      (#eq? @method "of")
-      arguments: (argument_list) @args) @array
-
-    ; Double-brace initialization pattern
-    ; new HashMap<>() {{ put(...); put(...); }}
-    (object_creation_expression
-      (class_body
-        (block))) @object
-    """,
-
-    # Constructors
+# Constructors
     "constructors": """
     (constructor_declaration
       name: (identifier) @constructor_name

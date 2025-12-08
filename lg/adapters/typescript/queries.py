@@ -118,20 +118,7 @@ QUERIES = {
       name: (type_identifier) @class_name)
     """,
     
-    # Literals for trimming
-    "literals": """
-    (string) @string
-    
-    (template_string) @string
-    
-    (array) @array
-    
-    (object) @object
-    
-    (object_type) @object
-    """,
-    
-    # Constructors and field-related methods
+# Constructors and field-related methods
     "constructors": """
     (class_declaration
       body: (class_body

@@ -87,7 +87,7 @@ def _is_f_string(opening: str, content: str) -> bool:
 # Python literal patterns
 PYTHON_STRING = LiteralPattern(
     category=LiteralCategory.STRING,
-    tree_sitter_types=["string"],
+    query="(string) @lit",
     opening=_detect_string_opening,
     closing=_detect_string_closing,
     placeholder_position=PlaceholderPosition.INLINE,
@@ -100,51 +100,51 @@ PYTHON_STRING = LiteralPattern(
 
 PYTHON_LIST = LiteralPattern(
     category=LiteralCategory.SEQUENCE,
-    tree_sitter_types=["list"],
+    query="(list) @lit",
     opening="[",
     closing="]",
     separator=",",
     placeholder_position=PlaceholderPosition.END,
     placeholder_template='"…"',
     min_elements=1,
-    comment_name="array",  # For "literal array" comments
+    comment_name="array",
 )
 
 PYTHON_TUPLE = LiteralPattern(
     category=LiteralCategory.SEQUENCE,
-    tree_sitter_types=["tuple"],
+    query="(tuple) @lit",
     opening="(",
     closing=")",
     separator=",",
     placeholder_position=PlaceholderPosition.END,
     placeholder_template='"…"',
     min_elements=1,
-    comment_name="tuple",  # For "literal tuple" comments
+    comment_name="tuple",
 )
 
 PYTHON_DICT = LiteralPattern(
     category=LiteralCategory.MAPPING,
-    tree_sitter_types=["dictionary"],
+    query="(dictionary) @lit",
     opening="{",
     closing="}",
     separator=",",
     kv_separator=":",
     placeholder_position=PlaceholderPosition.MIDDLE_COMMENT,
-    placeholder_template='"…": "…"',  # Fallback, not used with MIDDLE_COMMENT
+    placeholder_template='"…": "…"',
     min_elements=1,
     comment_name="object",
 )
 
 PYTHON_SET = LiteralPattern(
     category=LiteralCategory.SEQUENCE,
-    tree_sitter_types=["set"],
+    query="(set) @lit",
     opening="{",
     closing="}",
     separator=",",
     placeholder_position=PlaceholderPosition.END,
     placeholder_template='"…"',
     min_elements=1,
-    comment_name="set",  # For "literal set" comments
+    comment_name="set",
 )
 
 

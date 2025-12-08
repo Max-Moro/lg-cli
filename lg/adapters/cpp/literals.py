@@ -65,13 +65,19 @@ def _detect_cpp_string_closing(text: str) -> str:
 # String literals (includes raw strings)
 CPP_STRING = LiteralPattern(
     category=LiteralCategory.STRING,
-    tree_sitter_types=["string_literal", "char_literal", "raw_string_literal"],
+    query="""
+    [
+      (string_literal) @lit
+      (char_literal) @lit
+      (raw_string_literal) @lit
+    ]
+    """,
     opening=_detect_cpp_string_opening,
     closing=_detect_cpp_string_closing,
     placeholder_position=PlaceholderPosition.INLINE,
     placeholder_template="…",
-    interpolation_markers=[],  # C++ has no string interpolation
-    preserve_whitespace=True,  # Raw strings preserve whitespace
+    interpolation_markers=[],
+    preserve_whitespace=True,
 )
 
 def create_cpp_descriptor() -> LanguageLiteralDescriptor:
