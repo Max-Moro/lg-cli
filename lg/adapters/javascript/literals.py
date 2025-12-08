@@ -1,5 +1,5 @@
 """
-JavaScript language descriptor for literal optimization v2.
+JavaScript language descriptor for literal optimization.
 
 Defines patterns for JavaScript literals: strings, template strings, arrays, objects.
 Also used as base for TypeScript.

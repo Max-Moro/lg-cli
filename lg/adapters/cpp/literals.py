@@ -1,5 +1,5 @@
 """
-C++ language descriptor for literal optimization v2.
+C++ language descriptor for literal optimization.
 
 Extends C with C++-specific raw string literals.
 

@@ -74,6 +74,6 @@ class RustAdapter(CodeAdapter[RustCfg]):
         return stripped.startswith('///') or stripped.startswith('//!')
 
     def create_literal_descriptor(self):
-        """Create Rust literal descriptor for v2 optimizer."""
+        """Create Rust literal descriptor."""
         from .literals import create_rust_descriptor
         return create_rust_descriptor()

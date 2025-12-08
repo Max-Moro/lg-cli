@@ -1,5 +1,5 @@
 """
-Kotlin language descriptor for literal optimization v2.
+Kotlin language descriptor for literal optimization.
 
 Defines patterns for Kotlin literals: strings, factory methods for collections.
 

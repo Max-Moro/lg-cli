@@ -1,5 +1,5 @@
 """
-Java language descriptor for literal optimization v2.
+Java language descriptor for literal optimization.
 
 Defines patterns for Java literals: strings, text blocks, arrays, and factory methods.
 

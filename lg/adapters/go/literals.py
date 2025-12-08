@@ -1,5 +1,5 @@
 """
-Go language descriptor for literal optimization v2.
+Go language descriptor for literal optimization.
 
 Defines patterns for Go literals: strings, slices, maps, structs.
 

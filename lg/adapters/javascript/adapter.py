@@ -69,6 +69,6 @@ class JavaScriptAdapter(CodeAdapter[JavaScriptCfg]):
         return JavaScriptCodeAnalyzer(doc)
 
     def create_literal_descriptor(self) -> LanguageLiteralDescriptor:
-        """Create JavaScript literal descriptor for v2 optimizer."""
+        """Create JavaScript literal descriptor."""
         from .literals import create_javascript_descriptor
         return create_javascript_descriptor()

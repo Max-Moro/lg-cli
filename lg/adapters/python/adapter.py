@@ -72,7 +72,7 @@ class PythonAdapter(CodeAdapter[PythonCfg]):
         return PythonCodeAnalyzer(doc)
 
     def create_literal_descriptor(self) -> LanguageLiteralDescriptor:
-        """Create Python literal descriptor for v2 optimizer."""
+        """Create Python literal descriptor."""
         from .literals import create_python_descriptor
         return create_python_descriptor()
 

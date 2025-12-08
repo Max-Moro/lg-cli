@@ -1,5 +1,5 @@
 """
-Python language descriptor for literal optimization v2.
+Python language descriptor for literal optimization.
 
 Defines patterns for Python literals: strings, lists, tuples, dicts, sets.
 """

@@ -73,6 +73,6 @@ class CppAdapter(CodeAdapter[CppCfg]):
         return stripped.startswith('/**') or stripped.startswith('///')
 
     def create_literal_descriptor(self) -> LanguageLiteralDescriptor:
-        """Create C++ literal descriptor for v2 optimizer."""
+        """Create C++ literal descriptor."""
         from .literals import create_cpp_descriptor
         return create_cpp_descriptor()

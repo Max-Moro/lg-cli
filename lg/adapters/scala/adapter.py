@@ -69,6 +69,6 @@ class ScalaAdapter(CodeAdapter[ScalaCfg]):
         return ScalaCodeAnalyzer(doc)
 
     def create_literal_descriptor(self) -> LanguageLiteralDescriptor:
-        """Create Scala literal descriptor for v2 optimizer."""
+        """Create Scala literal descriptor."""
         from .literals import create_scala_descriptor
         return create_scala_descriptor()

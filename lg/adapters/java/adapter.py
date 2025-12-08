@@ -68,6 +68,6 @@ class JavaAdapter(CodeAdapter[JavaCfg]):
         return JavaCodeAnalyzer(doc)
 
     def create_literal_descriptor(self) -> LanguageLiteralDescriptor:
-        """Create Java literal descriptor for v2 optimizer."""
+        """Create Java literal descriptor."""
         from .literals import create_java_descriptor
         return create_java_descriptor()

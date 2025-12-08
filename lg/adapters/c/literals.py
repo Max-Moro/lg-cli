@@ -1,5 +1,5 @@
 """
-C language descriptor for literal optimization v2.
+C language descriptor for literal optimization.
 
 Defines patterns for C literals: strings, arrays, initializer lists.
 

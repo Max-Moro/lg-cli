@@ -73,6 +73,6 @@ class CAdapter(CodeAdapter[CCfg]):
         return stripped.startswith('/**') or stripped.startswith('///')
 
     def create_literal_descriptor(self) -> LanguageLiteralDescriptor:
-        """Create C literal descriptor for v2 optimizer."""
+        """Create C literal descriptor."""
         from .literals import create_c_descriptor
         return create_c_descriptor()

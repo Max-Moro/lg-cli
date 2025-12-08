@@ -75,6 +75,6 @@ class KotlinAdapter(CodeAdapter[KotlinCfg]):
         remove_function_body_with_kdoc(*args, **kwargs)
 
     def create_literal_descriptor(self) -> LanguageLiteralDescriptor:
-        """Create Kotlin literal descriptor for v2 optimizer."""
+        """Create Kotlin literal descriptor."""
         from .literals import create_kotlin_descriptor
         return create_kotlin_descriptor()

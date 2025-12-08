@@ -1,5 +1,5 @@
 """
-TypeScript language descriptor for literal optimization v2.
+TypeScript language descriptor for literal optimization.
 
 Extends JavaScript with TypeScript-specific type literals.
 """

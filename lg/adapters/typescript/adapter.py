@@ -79,7 +79,7 @@ class TypeScriptAdapter(CodeAdapter[TypeScriptCfg]):
         return TypeScriptCodeAnalyzer(doc)
 
     def create_literal_descriptor(self) -> LanguageLiteralDescriptor:
-        """Create TypeScript literal descriptor for v2 optimizer."""
+        """Create TypeScript literal descriptor."""
         from .literals import create_typescript_descriptor
         return create_typescript_descriptor()
 

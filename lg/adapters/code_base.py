@@ -53,16 +53,8 @@ class CodeAdapter(BaseAdapter[C], ABC):
         pass
 
     def create_literal_descriptor(self) -> LanguageLiteralDescriptor:
-        """
-        Create language-specific literal descriptor for v2 optimizer.
-
-        Override in language adapters that support literal optimization v2.
-        Returns None for languages not yet migrated to v2.
-
-        Returns:
-            LanguageLiteralDescriptor or None
-        """
-        return None
+        """Create language-specific literal descriptor."""
+        pass
 
     # ============= HOOKS for injecting into optimization process ===========
 
@@ -151,7 +143,7 @@ class CodeAdapter(BaseAdapter[C], ABC):
         import_optimizer = ImportOptimizer(code_cfg.imports, self)
         import_optimizer.apply(context)
 
-        # Process literals (use v2 if adapter provides descriptor, else v1)
+        # Process literals
         literal_optimizer = LiteralOptimizer(code_cfg.literals, self)
         literal_optimizer.apply(context)
 

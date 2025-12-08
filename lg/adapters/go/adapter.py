@@ -74,6 +74,6 @@ class GoAdapter(CodeAdapter[GoCfg]):
         return stripped.startswith('//')
 
     def create_literal_descriptor(self) -> LanguageLiteralDescriptor:
-        """Create Go literal descriptor for v2 optimizer."""
+        """Create Go literal descriptor."""
         from .literals import create_go_descriptor
         return create_go_descriptor()

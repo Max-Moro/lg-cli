@@ -1,5 +1,5 @@
 """
-Rust language descriptor for literal optimization v2.
+Rust language descriptor for literal optimization.
 
 Defines patterns for Rust literals: strings, arrays, vec!, HashMap blocks, lazy_static!.
 

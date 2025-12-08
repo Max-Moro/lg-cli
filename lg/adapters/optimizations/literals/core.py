@@ -1,5 +1,5 @@
 """
-Core literal optimizer v2.
+Core literal optimizer.
 
 Main entry point for the literal optimization system.
 Integrates with the existing adapter infrastructure.
@@ -18,7 +18,7 @@ from tree_sitter import Node
 
 class LiteralOptimizer:
     """
-    Literal optimizer using the v2 architecture.
+    Literal optimizer.
 
     Created per-adapter, similar to other optimizers.
     """
@@ -58,7 +58,7 @@ class LiteralOptimizer:
             context: Processing context with document
         """
         if self.handler is None:
-            return  # Language not supported by v2
+            return  # Language not supported
 
         # Get max_tokens from config
         max_tokens = self.cfg.max_tokens

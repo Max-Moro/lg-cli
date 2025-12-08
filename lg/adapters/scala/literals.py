@@ -1,5 +1,5 @@
 """
-Scala language descriptor for literal optimization v2.
+Scala language descriptor for literal optimization.
 
 Defines patterns for Scala literals: strings, factory methods for collections.
 

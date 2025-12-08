@@ -1,5 +1,5 @@
 """
-Literal Optimization v2 - New architecture for literal trimming.
+Literal Optimization.
 
 This package provides a unified, extensible system for optimizing
 literal data in source code across multiple programming languages.

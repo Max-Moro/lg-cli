@@ -1,5 +1,5 @@
 """
-Core types and enums for literal optimization v2.
+Core types and enums for literal optimization.
 
 Defines universal literal categories, placeholder positions,
 and data structures used throughout the system.
