@@ -15,7 +15,7 @@ from .categories import (
 from .patterns import StringProfile, SequenceProfile, MappingProfile, FactoryProfile, BlockInitProfile, LanguageSyntaxFlags
 from .processing import LiteralPipeline
 from .descriptor import LanguageLiteralDescriptor
-from .formatter import ResultFormatter, FormattedResult
+from .processing.formatter import ResultFormatter, FormattedResult
 from .handler import LanguageLiteralHandler
 from .element_parser import ElementParser, ParseConfig, Element
 from .processing.selector import BudgetSelector, SelectionBase, Selection

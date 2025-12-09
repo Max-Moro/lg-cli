@@ -17,7 +17,7 @@ from .categories import (
     TrimResult,
 )
 from .descriptor import LanguageLiteralDescriptor
-from .formatter import ResultFormatter
+from .processing.formatter import ResultFormatter
 from .element_parser import ElementParser, ParseConfig, Element
 from .processing.selector import BudgetSelector, Selection, DFSSelection
 from .processing.parser import LiteralParser

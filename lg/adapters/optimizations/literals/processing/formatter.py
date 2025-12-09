@@ -14,14 +14,14 @@ from dataclasses import dataclass
 from typing import Optional, cast
 
 from lg.stats.tokenizer import TokenService
-from .categories import (
+from ..categories import (
     LiteralCategory,
     PlaceholderPosition,
     ParsedLiteral,
     TrimResult,
 )
-from .processing.selector import SelectionBase, Selection, DFSSelection
-from .element_parser import ElementParser
+from .selector import SelectionBase, Selection, DFSSelection
+from ..element_parser import ElementParser
 
 
 @dataclass

@@ -48,15 +48,15 @@
 - Создан `processing/selector.py` с полной логикой выбора по бюджету (Selection/DFSSelection)
 - Обновлены импорты в `handler.py`, `formatter.py`, `__init__.py`
 - **УДАЛЁН** старый `selector.py`
-- Все 100 тестов проходят без изменений в goldens
 
 ---
 
-### Этап 5: Вынос форматирования и плейсхолдеров
-- Из `formatter.py`/`handler.py` выделить форматирование в `processing/formatter.py`: построение итогового текста, вставка плейсхолдеров/комментариев
-- Убрать генерацию плейсхолдеров из других слоёв, оставить вызов нового formatter
-- Старый `formatter.py` удалить
-- **Критерий**: Все 100 тестов проходят
+### ✅ Этап 5: Вынос форматирования и плейсхолдеров
+
+**Выполнено**:
+- Создан `processing/formatter.py` с полной логикой форматирования (ResultFormatter, FormattedResult)
+- Обновлены импорты в `handler.py`, `__init__.py`
+- **УДАЛЁН** старый `formatter.py`
 
 ---
 
@@ -158,9 +158,9 @@
 ## Текущий статус
 
 - **Ветка**: `literals-v2`
-- **Текущий этап**: Завершён Этап 4, готов к Этапу 5
+- **Текущий этап**: Завершён Этап 5, готов к Этапу 6
 - **Последний успешный прогон**: 100/100 тестов
-- **Удалённые legacy файлы**: `core.py` ✅, `selector.py` ✅
+- **Удалённые legacy файлы**: `core.py` ✅, `selector.py` ✅, `formatter.py` ✅
 - **Переименованные файлы**: `parser.py` → `element_parser.py` ✅
-- **Новые файлы**: `processing/parser.py` (`LiteralParser`) ✅, `processing/selector.py` (`BudgetSelector`) ✅
-- **Оставшиеся legacy файлы**: `handler.py`, `formatter.py` (будут реорганизованы на Этапе 5, удаление handler на Этапе 12)
+- **Новые файлы в processing/**: `parser.py` ✅, `selector.py` ✅, `formatter.py` ✅
+- **Оставшиеся legacy файлы**: `handler.py` (будет удалён на Этапе 12)
