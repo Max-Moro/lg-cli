@@ -25,16 +25,9 @@
 
 #### ✅ 1.5) Миграция Python на StringProfile
 
-#### 1.6) Миграция Python на SequenceProfile и MappingProfile
-- Добавить `SequenceProfile` для list/tuple/set
-- Добавить `MappingProfile` для dictionary
-- Убрать соответствующие LiteralPattern из `patterns` списка
-- **Критерий**: `./scripts/test_adapters.sh literals python` проходит (10 тестов)
+#### ✅ 1.6) Миграция Python на SequenceProfile и MappingProfile
 
-#### 1.7) Полная миграция Python (очистка patterns)
-- Удалить `patterns` список полностью из Python descriptor
-- Убедиться что `@property patterns` возвращает результат `to_patterns()`
-- **Критерий**: `./scripts/test_adapters.sh literals python` проходит (10 тестов)
+#### ✅ 1.7) Полная миграция Python (очистка patterns)
 
 #### 1.8) Миграция C/C++ на профили
 - Мигрировать C: StringProfile + SequenceProfile
@@ -194,5 +187,5 @@
 ## Текущий статус
 
 - **Ветка**: `literals-v2`
-- **Текущий этап**: Переход к 1.6
+- **Текущий этап**: Переход к 1.8
 - **Последний успешный прогон**: 100/100 тестов

@@ -9,8 +9,6 @@ from __future__ import annotations
 import re
 
 from ..optimizations.literals import (
-    LiteralCategory,
-    LiteralPattern,
     PlaceholderPosition,
     LanguageLiteralDescriptor,
     StringProfile,
@@ -159,68 +157,7 @@ PYTHON_DICT_PROFILE = MappingProfile(
     preserve_all_keys=False,
 )
 
-# Legacy LiteralPattern (to be removed after full migration)
-PYTHON_STRING = LiteralPattern(
-    category=LiteralCategory.STRING,
-    query="(string) @lit",
-    opening=_detect_string_opening,
-    closing=_detect_string_closing,
-    placeholder_position=PlaceholderPosition.INLINE,
-    placeholder_template="…",
-    # f-strings use {...} for interpolation
-    # Callback checks if string is f-string before applying interpolation markers
-    interpolation_markers=[("", "{", "}")],
-    interpolation_active=_is_f_string,
-)
-
-PYTHON_LIST = LiteralPattern(
-    category=LiteralCategory.SEQUENCE,
-    query="(list) @lit",
-    opening="[",
-    closing="]",
-    separator=",",
-    placeholder_position=PlaceholderPosition.END,
-    placeholder_template='"…"',
-    min_elements=1,
-    comment_name="array",
-)
-
-PYTHON_TUPLE = LiteralPattern(
-    category=LiteralCategory.SEQUENCE,
-    query="(tuple) @lit",
-    opening="(",
-    closing=")",
-    separator=",",
-    placeholder_position=PlaceholderPosition.END,
-    placeholder_template='"…"',
-    min_elements=1,
-    comment_name="tuple",
-)
-
-PYTHON_DICT = LiteralPattern(
-    category=LiteralCategory.MAPPING,
-    query="(dictionary) @lit",
-    opening="{",
-    closing="}",
-    separator=",",
-    kv_separator=":",
-    placeholder_position=PlaceholderPosition.MIDDLE_COMMENT,
-    placeholder_template='"…": "…"',
-    min_elements=1,
-    comment_name="object",
-)
-
-PYTHON_SET = LiteralPattern(
-    category=LiteralCategory.SEQUENCE,
-    query="(set) @lit",
-    opening="{",
-    closing="}",
-    separator=",",
-    placeholder_position=PlaceholderPosition.END,
-    placeholder_template='"…"',
-    min_elements=1,
-    comment_name="set",
-)
+# Legacy patterns removed - all migrated to typed profiles (v2)
 
 
 def create_python_descriptor() -> LanguageLiteralDescriptor:
@@ -256,9 +193,4 @@ def create_python_descriptor() -> LanguageLiteralDescriptor:
 
         # Mapping profiles (v2)
         mapping_profiles=[PYTHON_DICT_PROFILE],
-
-        # Legacy patterns (all migrated to profiles)
-        _patterns=[
-            # All patterns migrated to typed profiles
-        ]
     )
