@@ -114,6 +114,7 @@ class LanguageLiteralDescriptor:
                 closing=profile.closing,
                 separator=profile.separator,
                 kv_separator=profile.kv_separator,
+                wrapper_match=profile.wrapper_match,
                 placeholder_position=profile.placeholder_position,
                 placeholder_template=profile.placeholder_template,
                 min_elements=profile.min_elements,

@@ -16,6 +16,9 @@ from ..optimizations.literals import (
     LiteralPattern,
     PlaceholderPosition,
     LanguageLiteralDescriptor,
+    StringProfile,
+    MappingProfile,
+    FactoryProfile,
 )
 
 
@@ -43,11 +46,10 @@ def _detect_string_closing(text: str) -> str:
     return '"'
 
 
-# ============= Kotlin literal patterns =============
+# ============= Kotlin literal profiles (v2) =============
 
-# String literals (regular and multi-line raw strings)
-KOTLIN_STRING = LiteralPattern(
-    category=LiteralCategory.STRING,
+# String profile (regular and multi-line raw strings with interpolation)
+KOTLIN_STRING_PROFILE = StringProfile(
     query="""
     [
       (string_literal) @lit
@@ -64,19 +66,18 @@ KOTLIN_STRING = LiteralPattern(
     ],
 )
 
-# Map.of equivalent: mapOf(k1 to v1, k2 to v2) - 'to' operator pairs
-KOTLIN_MAP_OF = LiteralPattern(
-    category=LiteralCategory.MAPPING,
+# Mapping profile for mapOf with 'to' operator
+KOTLIN_MAP_PROFILE = MappingProfile(
     query="""
     (call_expression
       (identifier) @func_name
       (#any-of? @func_name "mapOf" "mutableMapOf" "hashMapOf" "linkedMapOf")) @lit
     """,
-    wrapper_match=r"(mapOf|mutableMapOf|hashMapOf|linkedMapOf)$",
     opening="(",
     closing=")",
     separator=",",
     kv_separator=" to ",
+    wrapper_match=r"(mapOf|mutableMapOf|hashMapOf|linkedMapOf)$",
     placeholder_position=PlaceholderPosition.MIDDLE_COMMENT,
     placeholder_template='"…" to "…"',
     min_elements=1,
@@ -84,9 +85,8 @@ KOTLIN_MAP_OF = LiteralPattern(
     priority=20,
 )
 
-# Generic sequence factory: listOf(), setOf(), etc.
-KOTLIN_LIST_OF = LiteralPattern(
-    category=LiteralCategory.FACTORY_CALL,
+# Factory profiles for list/set
+KOTLIN_LIST_OF_PROFILE = FactoryProfile(
     query="""
     (call_expression
       (identifier) @func_name
@@ -95,6 +95,7 @@ KOTLIN_LIST_OF = LiteralPattern(
     wrapper_match=r"(listOf|mutableListOf|arrayListOf)$",
     opening="(",
     closing=")",
+    separator=",",
     placeholder_position=PlaceholderPosition.MIDDLE_COMMENT,
     placeholder_template='"…"',
     min_elements=1,
@@ -102,8 +103,7 @@ KOTLIN_LIST_OF = LiteralPattern(
     priority=15,
 )
 
-KOTLIN_SET_OF = LiteralPattern(
-    category=LiteralCategory.FACTORY_CALL,
+KOTLIN_SET_OF_PROFILE = FactoryProfile(
     query="""
     (call_expression
       (identifier) @func_name
@@ -112,6 +112,7 @@ KOTLIN_SET_OF = LiteralPattern(
     wrapper_match=r"(setOf|mutableSetOf|hashSetOf|linkedSetOf)$",
     opening="(",
     closing=")",
+    separator=",",
     placeholder_position=PlaceholderPosition.MIDDLE_COMMENT,
     placeholder_template='"…"',
     min_elements=1,
@@ -123,10 +124,15 @@ KOTLIN_SET_OF = LiteralPattern(
 def create_kotlin_descriptor() -> LanguageLiteralDescriptor:
     """Create Kotlin language descriptor for literal optimization."""
     return LanguageLiteralDescriptor(
-        _patterns=[
-            KOTLIN_MAP_OF,    # Highest priority - mapOf with 'to' pairs
-            KOTLIN_LIST_OF,   # Mid priority - listOf variants
-            KOTLIN_SET_OF,    # Mid priority - setOf variants
-            KOTLIN_STRING,    # String literals
-        ]
+        # String profiles
+        string_profiles=[KOTLIN_STRING_PROFILE],
+
+        # Mapping profiles
+        mapping_profiles=[KOTLIN_MAP_PROFILE],  # mapOf with 'to' operator
+
+        # Factory profiles
+        factory_profiles=[
+            KOTLIN_LIST_OF_PROFILE,  # listOf variants
+            KOTLIN_SET_OF_PROFILE,   # setOf variants
+        ],
     )

@@ -35,11 +35,7 @@
 
 #### ✅ 1.10) Добавление FactoryProfile в patterns.py
 
-#### 1.11) Миграция JVM-языков на профили (включая FactoryProfile)
-- Мигрировать Java: String + Sequence + Factory + BlockInit
-- Мигрировать Kotlin: String + Factory (listOf/mapOf с 'to')
-- Мигрировать Scala: String + Sequence + Mapping + Factory
-- **Критерий**: `./scripts/test_adapters.sh literals java,kotlin,scala` проходит
+#### ✅ 1.11) Миграция JVM-языков на профили (включая FactoryProfile)
 
 #### 1.12) Миграция Go и Rust на профили
 - Мигрировать Go: StringProfile (raw backtick) + SequenceProfile (slice) + MappingProfile (map/struct)
@@ -178,5 +174,5 @@
 ## Текущий статус
 
 - **Ветка**: `literals-v2`
-- **Текущий этап**: Переход к 1.11
+- **Текущий этап**: Переход к 1.12
 - **Последний успешный прогон**: 100/100 тестов

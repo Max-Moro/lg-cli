@@ -18,6 +18,9 @@ from ..optimizations.literals import (
     LiteralPattern,
     PlaceholderPosition,
     LanguageLiteralDescriptor,
+    StringProfile,
+    SequenceProfile,
+    FactoryProfile,
 )
 
 
@@ -37,11 +40,10 @@ def _detect_string_closing(text: str) -> str:
     return '"'
 
 
-# ============= Java literal patterns =============
+# ============= Java literal profiles (v2) =============
 
-# String literals (regular and text blocks)
-JAVA_STRING = LiteralPattern(
-    category=LiteralCategory.STRING,
+# String profile (regular and text blocks)
+JAVA_STRING_PROFILE = StringProfile(
     query="(string_literal) @lit",
     opening=_detect_string_opening,
     closing=_detect_string_closing,
@@ -50,22 +52,22 @@ JAVA_STRING = LiteralPattern(
     interpolation_markers=[],
 )
 
-# Array initializers: { elem1, elem2, ... }
-JAVA_ARRAY_INITIALIZER = LiteralPattern(
-    category=LiteralCategory.SEQUENCE,
+# Array initializer sequence profile
+JAVA_ARRAY_PROFILE = SequenceProfile(
     query="(array_initializer) @lit",
     opening="{",
     closing="}",
+    separator=",",
     placeholder_position=PlaceholderPosition.END,
     placeholder_template='"…"',
     min_elements=1,
     comment_name="array",
 )
 
+# Factory profiles
+
 # Map.of(k1, v1, k2, v2) - pairs as separate arguments
-# Must have higher priority than generic factory pattern
-JAVA_MAP_OF = LiteralPattern(
-    category=LiteralCategory.FACTORY_CALL,
+JAVA_MAP_OF_PROFILE = FactoryProfile(
     query="""
     (method_invocation
       object: (identifier) @class_name
@@ -77,17 +79,17 @@ JAVA_MAP_OF = LiteralPattern(
     wrapper_match=r"Map\.of$",
     opening="(",
     closing=")",
-    tuple_size=2,
+    separator=",",
     placeholder_position=PlaceholderPosition.MIDDLE_COMMENT,
     placeholder_template='"…", "…"',
     min_elements=1,
     comment_name="map",
     priority=20,
+    tuple_size=2,
 )
 
 # Map.ofEntries(Map.entry(...), ...) - each argument is a Map.entry() call
-JAVA_MAP_OF_ENTRIES = LiteralPattern(
-    category=LiteralCategory.FACTORY_CALL,
+JAVA_MAP_OF_ENTRIES_PROFILE = FactoryProfile(
     query="""
     (method_invocation
       object: (identifier) @class_name
@@ -99,6 +101,7 @@ JAVA_MAP_OF_ENTRIES = LiteralPattern(
     wrapper_match=r"Map\.ofEntries$",
     opening="(",
     closing=")",
+    separator=",",
     placeholder_position=PlaceholderPosition.MIDDLE_COMMENT,
     placeholder_template='Map.entry("…", "…")',
     min_elements=1,
@@ -107,8 +110,7 @@ JAVA_MAP_OF_ENTRIES = LiteralPattern(
 )
 
 # List.of() and Set.of() - most common sequence factories
-JAVA_LIST_SET_OF = LiteralPattern(
-    category=LiteralCategory.FACTORY_CALL,
+JAVA_LIST_SET_OF_PROFILE = FactoryProfile(
     query="""
     (method_invocation
       object: (identifier) @class_name
@@ -117,8 +119,10 @@ JAVA_LIST_SET_OF = LiteralPattern(
       (#any-of? @method_name "of" "copyOf")
       arguments: (argument_list)) @lit
     """,
+    wrapper_match=r"(List|Set)\.(of|copyOf)$",
     opening="(",
     closing=")",
+    separator=",",
     placeholder_position=PlaceholderPosition.MIDDLE_COMMENT,
     placeholder_template='"…"',
     min_elements=1,
@@ -127,8 +131,7 @@ JAVA_LIST_SET_OF = LiteralPattern(
 )
 
 # Arrays.asList() - legacy sequence factory
-JAVA_ARRAYS_ASLIST = LiteralPattern(
-    category=LiteralCategory.FACTORY_CALL,
+JAVA_ARRAYS_ASLIST_PROFILE = FactoryProfile(
     query="""
     (method_invocation
       object: (identifier) @class_name
@@ -137,8 +140,10 @@ JAVA_ARRAYS_ASLIST = LiteralPattern(
       (#eq? @method_name "asList")
       arguments: (argument_list)) @lit
     """,
+    wrapper_match=r"Arrays\.asList$",
     opening="(",
     closing=")",
+    separator=",",
     placeholder_position=PlaceholderPosition.MIDDLE_COMMENT,
     placeholder_template='"…"',
     min_elements=1,
@@ -147,8 +152,7 @@ JAVA_ARRAYS_ASLIST = LiteralPattern(
 )
 
 # Stream.of() - stream sequence factory
-JAVA_STREAM_OF = LiteralPattern(
-    category=LiteralCategory.FACTORY_CALL,
+JAVA_STREAM_OF_PROFILE = FactoryProfile(
     query="""
     (method_invocation
       object: (identifier) @class_name
@@ -157,8 +161,10 @@ JAVA_STREAM_OF = LiteralPattern(
       (#eq? @method_name "of")
       arguments: (argument_list)) @lit
     """,
+    wrapper_match=r"Stream\.of$",
     opening="(",
     closing=")",
+    separator=",",
     placeholder_position=PlaceholderPosition.MIDDLE_COMMENT,
     placeholder_template='"…"',
     min_elements=1,
@@ -188,15 +194,25 @@ JAVA_DOUBLE_BRACE = LiteralPattern(
 def create_java_descriptor() -> LanguageLiteralDescriptor:
     """Create Java language descriptor for literal optimization."""
     return LanguageLiteralDescriptor(
-        _patterns=[
-            JAVA_MAP_OF,           # High priority - pair-based Map.of
-            JAVA_MAP_OF_ENTRIES,   # High priority - entry-based Map.ofEntries
-            JAVA_DOUBLE_BRACE,     # Medium priority - double-brace initialization
-            JAVA_LIST_SET_OF,      # Medium priority - List/Set.of()
-            JAVA_ARRAYS_ASLIST,    # Medium priority - Arrays.asList()
-            JAVA_STREAM_OF,        # Medium priority - Stream.of()
-            JAVA_STRING,
-            JAVA_ARRAY_INITIALIZER,
+        # String profiles
+        string_profiles=[JAVA_STRING_PROFILE],
+
+        # Sequence profiles
+        sequence_profiles=[JAVA_ARRAY_PROFILE],
+
+        # Factory profiles
+        factory_profiles=[
+            JAVA_MAP_OF_PROFILE,           # High priority - pair-based Map.of
+            JAVA_MAP_OF_ENTRIES_PROFILE,   # High priority - entry-based Map.ofEntries
+            JAVA_LIST_SET_OF_PROFILE,      # Medium priority - List/Set.of()
+            JAVA_ARRAYS_ASLIST_PROFILE,    # Medium priority - Arrays.asList()
+            JAVA_STREAM_OF_PROFILE,        # Medium priority - Stream.of()
         ],
+
+        # Legacy patterns (will be removed in later stages)
+        _patterns=[
+            JAVA_DOUBLE_BRACE,  # BLOCK_INIT - will migrate when BlockInitProfile is added
+        ],
+
         nested_factory_wrappers=["Map.entry"],  # Nested wrappers for DFS detection
     )

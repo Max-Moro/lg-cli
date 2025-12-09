@@ -16,6 +16,9 @@ from ..optimizations.literals import (
     LiteralPattern,
     PlaceholderPosition,
     LanguageLiteralDescriptor,
+    StringProfile,
+    MappingProfile,
+    FactoryProfile,
 )
 
 
@@ -54,11 +57,10 @@ def _is_interpolated_string(opening: str, content: str) -> bool:
     return opening.startswith(('s"', 'f"', 'raw"', 's"""', 'f"""', 'raw"""'))
 
 
-# ============= Scala literal patterns =============
+# ============= Scala literal profiles (v2) =============
 
-# String literals (regular and interpolated)
-SCALA_STRING = LiteralPattern(
-    category=LiteralCategory.STRING,
+# String profile (regular and interpolated)
+SCALA_STRING_PROFILE = StringProfile(
     query="""
     [
       (string) @lit
@@ -77,20 +79,19 @@ SCALA_STRING = LiteralPattern(
     interpolation_active=_is_interpolated_string,
 )
 
-# Map factory with arrow operator: Map("key" -> "value")
-SCALA_MAP = LiteralPattern(
-    category=LiteralCategory.MAPPING,
+# Mapping profile for Map with arrow operator
+SCALA_MAP_PROFILE = MappingProfile(
     query="""
     (call_expression
       function: (identifier) @func_name
       (#any-of? @func_name "Map" "mutableMap" "HashMap" "LinkedHashMap")
       arguments: (arguments)) @lit
     """,
-    wrapper_match=r"(Map|mutableMap|HashMap|LinkedHashMap)$",
     opening="(",
     closing=")",
     separator=",",
     kv_separator=" -> ",
+    wrapper_match=r"(Map|mutableMap|HashMap|LinkedHashMap)$",
     placeholder_position=PlaceholderPosition.MIDDLE_COMMENT,
     placeholder_template='"…" -> "…"',
     min_elements=1,
@@ -98,9 +99,8 @@ SCALA_MAP = LiteralPattern(
     priority=20,
 )
 
-# List factory
-SCALA_LIST = LiteralPattern(
-    category=LiteralCategory.FACTORY_CALL,
+# Factory profiles for List/Set
+SCALA_LIST_PROFILE = FactoryProfile(
     query="""
     (call_expression
       function: (identifier) @func_name
@@ -110,6 +110,7 @@ SCALA_LIST = LiteralPattern(
     wrapper_match=r"(List|Vector|Seq|Array)$",
     opening="(",
     closing=")",
+    separator=",",
     placeholder_position=PlaceholderPosition.MIDDLE_COMMENT,
     placeholder_template='"…"',
     min_elements=1,
@@ -117,9 +118,7 @@ SCALA_LIST = LiteralPattern(
     priority=15,
 )
 
-# Set factory
-SCALA_SET = LiteralPattern(
-    category=LiteralCategory.FACTORY_CALL,
+SCALA_SET_PROFILE = FactoryProfile(
     query="""
     (call_expression
       function: (identifier) @func_name
@@ -129,6 +128,7 @@ SCALA_SET = LiteralPattern(
     wrapper_match=r"(Set|mutableSet|HashSet|LinkedHashSet)$",
     opening="(",
     closing=")",
+    separator=",",
     placeholder_position=PlaceholderPosition.MIDDLE_COMMENT,
     placeholder_template='"…"',
     min_elements=1,
@@ -140,10 +140,15 @@ SCALA_SET = LiteralPattern(
 def create_scala_descriptor() -> LanguageLiteralDescriptor:
     """Create Scala language descriptor for literal optimization."""
     return LanguageLiteralDescriptor(
-        _patterns=[
-            SCALA_MAP,    # Highest priority - Map with arrow pairs
-            SCALA_LIST,   # Mid priority - List variants
-            SCALA_SET,    # Mid priority - Set variants
-            SCALA_STRING, # String literals
-        ]
+        # String profiles
+        string_profiles=[SCALA_STRING_PROFILE],
+
+        # Mapping profiles
+        mapping_profiles=[SCALA_MAP_PROFILE],  # Map with arrow operator
+
+        # Factory profiles
+        factory_profiles=[
+            SCALA_LIST_PROFILE,  # List variants
+            SCALA_SET_PROFILE,   # Set variants
+        ],
     )

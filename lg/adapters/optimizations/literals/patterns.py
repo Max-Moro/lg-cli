@@ -206,6 +206,15 @@ class MappingProfile:
     """
     preserve_all_keys: bool = False
 
+    """
+    Regex pattern to match wrapper name (for factory-style mappings).
+    Used to distinguish between different mapping factories when multiple patterns
+    match the same tree-sitter node type.
+    Examples: r"(mapOf|hashMapOf)$" for Kotlin, r"(Map|HashMap)$" for Scala.
+    None for literal mappings (Python dict, JavaScript object).
+    """
+    wrapper_match: Optional[str] = None
+
 
 @dataclass
 class FactoryProfile:
