@@ -18,13 +18,12 @@ from __future__ import annotations
 import re
 
 from ..optimizations.literals import (
-    LiteralCategory,
-    LiteralPattern,
     PlaceholderPosition,
     LanguageLiteralDescriptor,
     StringProfile,
     SequenceProfile,
     FactoryProfile,
+    BlockInitProfile,
     LanguageSyntaxFlags,
 )
 
@@ -99,12 +98,11 @@ RUST_VEC_PROFILE = FactoryProfile(
     priority=10,
 )
 
-# ============= Legacy patterns (BLOCK_INIT - will migrate on stage 1.13) =============
+# ============= Rust literal profiles (v2 - continued) =============
 
-# HashMap initialization pattern: let mut m = HashMap::new(); m.insert(...); ...
+# Block init profile for HashMap initialization: let mut m = HashMap::new(); m.insert(...); ...
 # Each let declaration is processed independently
-RUST_HASHMAP_INIT = LiteralPattern(
-    category=LiteralCategory.BLOCK_INIT,
+RUST_HASHMAP_INIT_PROFILE = BlockInitProfile(
     query="""
     (let_declaration
       value: (call_expression
@@ -112,13 +110,12 @@ RUST_HASHMAP_INIT = LiteralPattern(
           name: (identifier) @method_name)
         (#eq? @method_name "new"))) @lit
     """,
-    opening="",
-    closing="",
+    block_selector=None,  # No block selector for let_declaration
     statement_pattern="*/call_expression",
-    min_elements=1,
     placeholder_position=PlaceholderPosition.MIDDLE_COMMENT,
-    comment_name="hashmap init",
+    min_elements=1,
     priority=15,
+    comment_name="hashmap init",
 )
 
 def create_rust_descriptor() -> LanguageLiteralDescriptor:
@@ -146,6 +143,6 @@ def create_rust_descriptor() -> LanguageLiteralDescriptor:
         # Factory profiles
         factory_profiles=[RUST_VEC_PROFILE],
 
-        # Legacy patterns (BLOCK_INIT - will migrate on stage 1.13)
-        _patterns=[RUST_HASHMAP_INIT],
+        # Block init profiles
+        block_init_profiles=[RUST_HASHMAP_INIT_PROFILE],
     )

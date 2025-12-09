@@ -5,6 +5,8 @@ This module defines base profile classes for different literal types:
 - StringProfile: For string literals
 - SequenceProfile: For sequences (lists, arrays, vectors)
 - MappingProfile: For mappings (dicts, maps, objects)
+- FactoryProfile: For factory methods/macros (List.of(), vec![...])
+- BlockInitProfile: For imperative block initialization (Java double-brace, Rust HashMap)
 
 Profiles encapsulate the common attributes needed to describe how a specific
 literal pattern should be recognized and optimized. These profiles will be
@@ -286,6 +288,51 @@ class FactoryProfile:
     None for sequence factories.
     """
     kv_separator: Optional[str] = None
+
+
+@dataclass
+class BlockInitProfile:
+    """
+    Profile for imperative block initialization patterns.
+
+    Describes imperative initialization blocks like Java double-brace
+    initialization and Rust HashMap initialization chains.
+    These are sequences of statements that initialize data structures.
+    """
+
+    """Tree-sitter query to match this block init pattern (S-expression format)."""
+    query: str
+
+    """
+    Path to statements block within the node (e.g., "class_body/block").
+    Defines how to navigate from matched node to the block containing statements.
+    None means the matched node itself is the block.
+    """
+    block_selector: Optional[str] = None
+
+    """
+    Pattern to match repetitive statements to trim (e.g., "*/method_invocation").
+    Defines which statements within the block should be optimized.
+    """
+    statement_pattern: Optional[str] = None
+
+    """
+    Where to place the placeholder when trimming.
+    Default: middle (as a comment between statements).
+    """
+    placeholder_position: PlaceholderPosition = PlaceholderPosition.MIDDLE_COMMENT
+
+    """Minimum number of statements to keep, even if over budget."""
+    min_elements: int = 1
+
+    """Priority for pattern matching. Higher values are checked first."""
+    priority: int = 0
+
+    """
+    Optional custom name for comments about this pattern.
+    If not set, defaults to "block init".
+    """
+    comment_name: Optional[str] = None
 
 
 @dataclass

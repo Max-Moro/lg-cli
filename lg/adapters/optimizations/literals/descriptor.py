@@ -16,6 +16,7 @@ from .patterns import (
     SequenceProfile,
     MappingProfile,
     FactoryProfile,
+    BlockInitProfile,
 )
 
 
@@ -55,6 +56,9 @@ class LanguageLiteralDescriptor:
 
     # Factory method/macro profiles (List.of(), vec![], mapOf(), etc.)
     factory_profiles: List[FactoryProfile] = field(default_factory=list)
+
+    # Block initialization profiles (Java double-brace, Rust HashMap chains, etc.)
+    block_init_profiles: List[BlockInitProfile] = field(default_factory=list)
 
     def to_patterns(self) -> List[LiteralPattern]:
         """
@@ -143,6 +147,22 @@ class LanguageLiteralDescriptor:
             )
             patterns.append(pattern)
 
+        # Convert BlockInitProfile instances
+        for profile in self.block_init_profiles:
+            pattern = LiteralPattern(
+                category=LiteralCategory.BLOCK_INIT,
+                query=profile.query,
+                opening="",
+                closing="",
+                block_selector=profile.block_selector,
+                statement_pattern=profile.statement_pattern,
+                placeholder_position=profile.placeholder_position,
+                min_elements=profile.min_elements,
+                priority=profile.priority,
+                comment_name=profile.comment_name,
+            )
+            patterns.append(pattern)
+
         # Add legacy patterns for gradual migration
         # This ensures backward compatibility during v1→v2 transition
         patterns.extend(self._patterns)
@@ -167,7 +187,8 @@ class LanguageLiteralDescriptor:
             len(self.string_profiles) > 0 or
             len(self.sequence_profiles) > 0 or
             len(self.mapping_profiles) > 0 or
-            len(self.factory_profiles) > 0
+            len(self.factory_profiles) > 0 or
+            len(self.block_init_profiles) > 0
         )
 
         if has_profiles:

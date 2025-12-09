@@ -15,13 +15,12 @@ from __future__ import annotations
 
 from ..optimizations.literals import (
     LanguageSyntaxFlags,
-    LiteralCategory,
-    LiteralPattern,
     PlaceholderPosition,
     LanguageLiteralDescriptor,
     StringProfile,
     SequenceProfile,
     FactoryProfile,
+    BlockInitProfile,
 )
 
 
@@ -173,22 +172,19 @@ JAVA_STREAM_OF_PROFILE = FactoryProfile(
     priority=10,
 )
 
-# Double-brace initialization: new HashMap<>() {{ put("k1", "v1"); put("k2", "v2"); }}
-JAVA_DOUBLE_BRACE = LiteralPattern(
-    category=LiteralCategory.BLOCK_INIT,
+# Block init profile for double-brace initialization: new HashMap<>() {{ put("k1", "v1"); put("k2", "v2"); }}
+JAVA_DOUBLE_BRACE_PROFILE = BlockInitProfile(
     query="""
     (object_creation_expression
       (class_body
         (block))) @lit
     """,
-    opening="",
-    closing="",
     block_selector="class_body/block",
     statement_pattern="*/method_invocation",
-    min_elements=1,
     placeholder_position=PlaceholderPosition.MIDDLE_COMMENT,
-    comment_name="double-brace init",
+    min_elements=1,
     priority=15,
+    comment_name="double-brace init",
 )
 
 
@@ -223,10 +219,8 @@ def create_java_descriptor() -> LanguageLiteralDescriptor:
             JAVA_STREAM_OF_PROFILE,        # Medium priority - Stream.of()
         ],
 
-        # Legacy patterns (will be removed in later stages)
-        _patterns=[
-            JAVA_DOUBLE_BRACE,  # BLOCK_INIT - will migrate when BlockInitProfile is added
-        ],
+        # Block init profiles
+        block_init_profiles=[JAVA_DOUBLE_BRACE_PROFILE],
 
         nested_factory_wrappers=["Map.entry"],  # Nested wrappers for DFS detection
     )
