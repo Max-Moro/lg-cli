@@ -83,7 +83,7 @@ CPP_STRING = LiteralPattern(
 def create_cpp_descriptor() -> LanguageLiteralDescriptor:
     """Create C++ language descriptor for literal optimization."""
     return LanguageLiteralDescriptor(
-        patterns=[
+        _patterns=[
             CPP_STRING,  # C++ strings (includes raw strings)
             C_CONCATENATED_STRING,  # Concatenated strings as sequences
             C_INITIALIZER_LIST,  # Reuse C initializer lists

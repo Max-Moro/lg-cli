@@ -21,11 +21,7 @@
 
 #### ✅ 1.3) Добавление полей профилей в descriptor
 
-#### 1.4) Backward compatibility: конвертация профилей → LiteralPattern
-- Добавить метод `to_patterns()` в `LanguageLiteralDescriptor`
-- Метод конвертирует профили в старые LiteralPattern
-- Добавить `@property patterns` который возвращает `to_patterns()` если профили заданы, иначе старый список
-- **Критерий**: Все 100 тестов проходят (конвертация добавлена но не используется)
+#### ✅ 1.4) Backward compatibility: конвертация профилей → LiteralPattern
 
 #### 1.5) Миграция Python на StringProfile
 - В `lg/adapters/python/literals.py`:
@@ -203,5 +199,5 @@
 ## Текущий статус
 
 - **Ветка**: `literals-v2`
-- **Текущий этап**: Переход к 1.4
+- **Текущий этап**: Переход к 1.5
 - **Последний успешный прогон**: 100/100 тестов

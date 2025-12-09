@@ -125,7 +125,7 @@ GO_SLICE = LiteralPattern(
 def create_go_descriptor() -> LanguageLiteralDescriptor:
     """Create Go language descriptor for literal optimization."""
     return LanguageLiteralDescriptor(
-        patterns=[
+        _patterns=[
             GO_COMPOSITE_STRUCT,       # Priority 10: Typed structs
             GO_MAP,                    # Priority 6: Maps with key-value
             GO_SLICE,                  # Priority 5: Slices

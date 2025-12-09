@@ -120,7 +120,7 @@ RUST_HASHMAP_INIT = LiteralPattern(
 def create_rust_descriptor() -> LanguageLiteralDescriptor:
     """Create Rust language descriptor for literal optimization."""
     return LanguageLiteralDescriptor(
-        patterns=[
+        _patterns=[
             RUST_HASHMAP_INIT,   # Priority 15: HashMap initialization groups
             RUST_VEC_MACRO,      # Priority 10: vec! macro
             RUST_ARRAY,          # Regular arrays

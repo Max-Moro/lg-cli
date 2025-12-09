@@ -188,7 +188,7 @@ JAVA_DOUBLE_BRACE = LiteralPattern(
 def create_java_descriptor() -> LanguageLiteralDescriptor:
     """Create Java language descriptor for literal optimization."""
     return LanguageLiteralDescriptor(
-        patterns=[
+        _patterns=[
             JAVA_MAP_OF,           # High priority - pair-based Map.of
             JAVA_MAP_OF_ENTRIES,   # High priority - entry-based Map.ofEntries
             JAVA_DOUBLE_BRACE,     # Medium priority - double-brace initialization

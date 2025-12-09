@@ -88,7 +88,7 @@ C_INITIALIZER_LIST = LiteralPattern(
 def create_c_descriptor() -> LanguageLiteralDescriptor:
     """Create C language descriptor for literal optimization."""
     return LanguageLiteralDescriptor(
-        patterns=[
+        _patterns=[
             C_STRING,
             C_CONCATENATED_STRING,
             C_INITIALIZER_LIST,

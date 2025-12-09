@@ -116,7 +116,7 @@ def create_javascript_descriptor() -> LanguageLiteralDescriptor:
         Configured LanguageLiteralDescriptor for JavaScript
     """
     return LanguageLiteralDescriptor(
-        patterns=[
+        _patterns=[
             JS_TEMPLATE_STRING,  # Higher priority - check first
             JS_STRING,
             JS_REGEX,

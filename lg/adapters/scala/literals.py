@@ -140,7 +140,7 @@ SCALA_SET = LiteralPattern(
 def create_scala_descriptor() -> LanguageLiteralDescriptor:
     """Create Scala language descriptor for literal optimization."""
     return LanguageLiteralDescriptor(
-        patterns=[
+        _patterns=[
             SCALA_MAP,    # Highest priority - Map with arrow pairs
             SCALA_LIST,   # Mid priority - List variants
             SCALA_SET,    # Mid priority - Set variants

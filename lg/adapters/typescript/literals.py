@@ -43,7 +43,7 @@ def create_typescript_descriptor() -> LanguageLiteralDescriptor:
         Configured LanguageLiteralDescriptor for TypeScript
     """
     return LanguageLiteralDescriptor(
-        patterns=[
+        _patterns=[
             JS_TEMPLATE_STRING,  # Higher priority - check first
             JS_STRING,
             JS_REGEX,

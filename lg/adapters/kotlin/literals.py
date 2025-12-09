@@ -123,7 +123,7 @@ KOTLIN_SET_OF = LiteralPattern(
 def create_kotlin_descriptor() -> LanguageLiteralDescriptor:
     """Create Kotlin language descriptor for literal optimization."""
     return LanguageLiteralDescriptor(
-        patterns=[
+        _patterns=[
             KOTLIN_MAP_OF,    # Highest priority - mapOf with 'to' pairs
             KOTLIN_LIST_OF,   # Mid priority - listOf variants
             KOTLIN_SET_OF,    # Mid priority - setOf variants

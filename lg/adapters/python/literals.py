@@ -156,7 +156,7 @@ def create_python_descriptor() -> LanguageLiteralDescriptor:
         Configured LanguageLiteralDescriptor for Python
     """
     return LanguageLiteralDescriptor(
-        patterns=[
+        _patterns=[
             PYTHON_STRING,
             PYTHON_LIST,
             PYTHON_TUPLE,
