@@ -2,58 +2,217 @@
 
 > Рабочий код перерабатывается в текущем каталоге. Параллельных веток и совместимости со старой моделью не будет.
 
-## Этапы (после каждого этапа код собирается для всех 10 языков)
+## Принципы миграции
 
-1) Новая модель дескриптора (единый шаг для всех языков)  
-- Переписать `lg/adapters/optimizations/literals/descriptor.py`: добавить флаги синтаксиса и групповые профили (strings/raw/interp, seq, map, factory, block_init, ast_seq).  
-- В каждом `lg/adapters/<lang>/literals.py` заменить паттерны на профильную конфигурацию; удалить старые поля/хаки.  
-- В адаптерах заменить вызовы на новый `create_literal_descriptor` (без ветвления v1/v2).  
-- Удалить старые вспомогательные структуры дескриптора.
+1. **Атомарность**: Каждый подэтап - минимальное изменение с полной проверкой тестов
+2. **Нулевые регрессии**: После каждого подэтапа все 100 тестов должны проходить
+3. **Постепенность**: Миграция языков идет группами по 1-3 языка
+4. **Backward compatibility**: До полной миграции ядра сохраняется совместимость через конвертацию
 
-2) Ввод `processing/pipeline.py` как единственной входной точки  
-- Создать `lg/adapters/optimizations/literals/processing/pipeline.py` и перенаправить вызовы адаптеров на него.  
-- Временно проксировать старые функции из `core.py`/`handler.py` в pipeline, чтобы сохранить сборку.
+## Этапы (после каждого подэтапа все тесты проходят)
 
-3) Вынос парсинга  
-- Из `handler.py`/`core.py` перенести разбор литералов в новый `processing/parser.py`: работа с Tree-sitter нодами, извлечение текста/границ, без бюджета и плейсхолдеров.  
-- Оставить в старых файлах только прокладки к parser.
+### Этап 1: Новая модель паттернов и дескриптора (profiles → patterns)
 
-4) Вынос бюджетного выбора  
-- Из существующего `selector.py`/`handler.py` вынести выбор по бюджету в `processing/selector.py`: логика Selection/DFSSelection без форматирования.  
-- Старые вызовы в `handler.py` заменить на обращения к новому selector.
+**Цель**: Заменить плоский `LiteralPattern` на типизированную иерархию профилей из v2.
 
-5) Вынос форматирования и плейсхолдеров  
-- Из `formatter.py`/`handler.py` выделить форматирование в `processing/formatter.py`: построение итогового текста, вставка плейсхолдеров/комментариев.  
-- Убрать генерацию плейсхолдеров из других слоёв, оставить вызов нового formatter.
+#### 1.1) Создание patterns.py с базовой инфраструктурой
+- Создать `lg/adapters/optimizations/literals/patterns.py`
+- Определить базовые профили: `StringProfile`, `SequenceProfile`, `MappingProfile`
+- Добавить экспорты в `__init__.py`
+- **Критерий**: Файл создан, импорты работают, тесты проходят (профили не используются)
 
-6) Компонент Interpolation  
-- Создать `components/interpolation.py`: правила границ/делимитеров интерполяции, корректировка тримминга строк.  
-- Удалить дублирующие проверки интерполяции из parser/formatter и из языковых хаков; подключить через pipeline.
+#### 1.2) Добавление LanguageSyntaxFlags
+- Добавить `@dataclass LanguageSyntaxFlags` в `patterns.py` со всеми флагами синтаксиса
+- Добавить поле `syntax: Optional[LanguageSyntaxFlags] = None` в `LanguageLiteralDescriptor`
+- **Критерий**: Все 100 тестов проходят (флаги добавлены но не используются)
 
-7) Компонент AST sequence  
-- Создать `components/ast_sequence.py` для последовательностей без разделителей (конкатенации строк и т.п.).  
-- В handler/core удалить AST-специфичные костыли; в parser использовать компонент для таких случаев.
+#### 1.3) Добавление полей профилей в descriptor
+- В `descriptor.py` добавить поля: `string_profile`, `sequence_profiles`, `mapping_profiles`
+- Все поля Optional/пустые списки по умолчанию
+- Старое поле `patterns: List[LiteralPattern]` остается
+- **Критерий**: Все 100 тестов проходят (новые поля не используются)
 
-8) Компонент Block init  
-- Создать `components/block_init.py` с API для imperative инициализаций (double-brace Java, Rust HashMap chain).  
-- Удалить из старого `block_init.py` размещённые эвристики; подключить новый компонент из pipeline.
+#### 1.4) Backward compatibility: конвертация профилей → LiteralPattern
+- Добавить метод `to_patterns()` в `LanguageLiteralDescriptor`
+- Метод конвертирует профили в старые LiteralPattern
+- Добавить `@property patterns` который возвращает `to_patterns()` если профили заданы, иначе старый список
+- **Критерий**: Все 100 тестов проходят (конвертация добавлена но не используется)
 
-9) Компонент Placeholder/Comment  
-- Создать `components/placeholder.py` для единого формирования плейсхолдеров/комментариев.  
-- Удалить логику вставки комментариев из formatter и языковых обработчиков; оставить вызовы компонента.
+#### 1.5) Миграция Python на StringProfile
+- В `lg/adapters/python/literals.py`:
+  - Инициализировать `LanguageSyntaxFlags` с Python-специфичными значениями
+  - Создать `StringProfile` для Python strings
+  - Убрать соответствующий LiteralPattern из `patterns` списка
+- **Критерий**: `./scripts/test_adapters.sh literals python` проходит (10 тестов)
 
-10) Компонент Budgeting  
-- Создать `components/budgeting.py` с политиками приоритетов/лимитов.  
-- Убрать бюджетные решения из formatter/parser; pipeline передает бюджет в selector/компонент.
+#### 1.6) Миграция Python на SequenceProfile и MappingProfile
+- Добавить `SequenceProfile` для list/tuple/set
+- Добавить `MappingProfile` для dictionary
+- Убрать соответствующие LiteralPattern из `patterns` списка
+- **Критерий**: `./scripts/test_adapters.sh literals python` проходит (10 тестов)
 
-11) Полное отключение наследия core/handler  
-- Удалить `core.py`/`handler.py`; обновить экспорты `lg/adapters/optimizations/literals/__init__.py` на `processing/` + `components/`.  
-- Проверить, что адаптеры используют только pipeline/processing/компоненты.
+#### 1.7) Полная миграция Python (очистка patterns)
+- Удалить `patterns` список полностью из Python descriptor
+- Убедиться что `@property patterns` возвращает результат `to_patterns()`
+- **Критерий**: `./scripts/test_adapters.sh literals python` проходит (10 тестов)
 
-12) Разгрузка языковых хаков  
-- В языковых `literals.py` убрать специальные ветки, которые покрываются компонентами (interpolation, ast_sequence, block_init).  
-- Оставить только декларативные профили/флаги в дескрипторах.
+#### 1.8) Миграция C/C++ на профили
+- Мигрировать C: StringProfile + SequenceProfile
+- Мигрировать C++: наследует C + raw strings
+- **Критерий**: `./scripts/test_adapters.sh literals c,cpp` проходит
 
-13) Финальная чистка структуры  
-- Убрать временные типы/шунты, оставить минимально необходимый публичный API (patterns/descriptor/pipeline/компоненты).  
-- Обновить `__init__.py` в `components/` и `processing/` для явных экспортов.
+#### 1.9) Миграция JavaScript/TypeScript на профили
+- Мигрировать JavaScript: StringProfile (с interpolation) + SequenceProfile + MappingProfile
+- Мигрировать TypeScript: наследует JavaScript + object_type
+- **Критерий**: `./scripts/test_adapters.sh literals javascript,typescript` проходит
+
+#### 1.10) Добавление FactoryProfile в patterns.py
+- Определить `FactoryProfile` для factory methods
+- Обновить `to_patterns()` для конвертации FactoryProfile
+- **Критерий**: Все 100 тестов проходят (профиль добавлен но не используется)
+
+#### 1.11) Миграция JVM-языков на профили (включая FactoryProfile)
+- Мигрировать Java: String + Sequence + Factory + BlockInit
+- Мигрировать Kotlin: String + Factory (listOf/mapOf с 'to')
+- Мигрировать Scala: String + Sequence + Mapping + Factory
+- **Критерий**: `./scripts/test_adapters.sh literals java,kotlin,scala` проходит
+
+#### 1.12) Миграция Go и Rust на профили
+- Мигрировать Go: StringProfile (raw backtick) + SequenceProfile (slice) + MappingProfile (map/struct)
+- Мигрировать Rust: StringProfile (raw r#) + SequenceProfile + FactoryProfile (vec!)
+- **Критерий**: `./scripts/test_adapters.sh literals go,rust` проходит
+
+#### 1.13) Добавление BlockInitProfile и ASTSequenceProfile
+- Определить оставшиеся типы профилей в `patterns.py`
+- Обновить `to_patterns()` для их конвертации
+- Обновить языки с этими паттернами (Java double-brace, Rust HashMap, C/C++ concatenated strings)
+- **Критерий**: Все 100 тестов проходят
+
+#### 1.14) Финализация Этапа 1: проверка полной миграции
+- Убедиться что все 10 языков используют только профили
+- Убедиться что во всех языках удалено прямое задание `patterns` списка
+- Запуск полного набора: `./scripts/test_adapters.sh literals all`
+- **Критерий**: Все 100 тестов проходят
+
+---
+
+### Этап 2: Ввод `processing/pipeline.py` как единственной входной точки
+- Создать `lg/adapters/optimizations/literals/processing/pipeline.py` и перенаправить вызовы адаптеров на него
+- Временно проксировать старые функции из `core.py`/`handler.py` в pipeline, чтобы сохранить сборку
+- **Критерий**: Все 100 тестов проходят
+
+---
+
+### Этап 3: Вынос парсинга
+- Из `handler.py`/`core.py` перенести разбор литералов в новый `processing/parser.py`: работа с Tree-sitter нодами, извлечение текста/границ, без бюджета и плейсхолдеров
+- Оставить в старых файлах только прокладки к parser
+- **Критерий**: Все 100 тестов проходят
+
+---
+
+### Этап 4: Вынос бюджетного выбора
+- Из существующего `selector.py`/`handler.py` вынести выбор по бюджету в `processing/selector.py`: логика Selection/DFSSelection без форматирования
+- Старые вызовы в `handler.py` заменить на обращения к новому selector
+- **Критерий**: Все 100 тестов проходят
+
+---
+
+### Этап 5: Вынос форматирования и плейсхолдеров
+- Из `formatter.py`/`handler.py` выделить форматирование в `processing/formatter.py`: построение итогового текста, вставка плейсхолдеров/комментариев
+- Убрать генерацию плейсхолдеров из других слоёв, оставить вызов нового formatter
+- **Критерий**: Все 100 тестов проходят
+
+---
+
+### Этап 6: Адаптация ядра для работы с профилями напрямую
+
+**Цель**: Убрать промежуточную конвертацию профилей → LiteralPattern, научить ядро работать с профилями.
+
+#### 6.1) Рефакторинг parser для работы с профилями
+- `processing/parser.py` принимает профили напрямую вместо LiteralPattern
+- Удалить зависимость от `to_patterns()`
+- **Критерий**: Все 100 тестов проходят
+
+#### 6.2) Рефакторинг selector для работы с профилями
+- `processing/selector.py` работает с структурами на основе профилей
+- **Критерий**: Все 100 тестов проходят
+
+#### 6.3) Рефакторинг formatter для работы с профилями
+- `processing/formatter.py` использует метаданные из профилей напрямую
+- **Критерий**: Все 100 тестов проходят
+
+#### 6.4) Удаление backward compatibility
+- Удалить метод `to_patterns()` из `LanguageLiteralDescriptor`
+- Удалить старое поле `patterns: List[LiteralPattern]` если оно осталось
+- **Критерий**: Все 100 тестов проходят
+
+#### 6.5) Удаление LiteralPattern
+- Переместить enum `LiteralCategory` в `patterns.py` (используется профилями)
+- Удалить класс `LiteralPattern` из `categories.py`
+- Обновить импорты во всех файлах
+- **Критерий**: Все 100 тестов проходят
+
+---
+
+### Этап 7: Компонент Interpolation
+- Создать `components/interpolation.py`: правила границ/делимитеров интерполяции, корректировка тримминга строк
+- Удалить дублирующие проверки интерполяции из parser/formatter и из языковых хаков; подключить через pipeline
+- **Критерий**: Все 100 тестов проходят
+
+---
+
+### Этап 8: Компонент AST sequence
+- Создать `components/ast_sequence.py` для последовательностей без разделителей (конкатенации строк и т.п.)
+- В handler/core удалить AST-специфичные костыли; в parser использовать компонент для таких случаев
+- **Критерий**: Все 100 тестов проходят
+
+---
+
+### Этап 9: Компонент Block init
+- Создать `components/block_init.py` с API для imperative инициализаций (double-brace Java, Rust HashMap chain)
+- Удалить из старого `block_init.py` размещённые эвристики; подключить новый компонент из pipeline
+- **Критерий**: Все 100 тестов проходят
+
+---
+
+### Этап 10: Компонент Placeholder/Comment
+- Создать `components/placeholder.py` для единого формирования плейсхолдеров/комментариев
+- Удалить логику вставки комментариев из formatter и языковых обработчиков; оставить вызовы компонента
+- **Критерий**: Все 100 тестов проходят
+
+---
+
+### Этап 11: Компонент Budgeting
+- Создать `components/budgeting.py` с политиками приоритетов/лимитов
+- Убрать бюджетные решения из formatter/parser; pipeline передает бюджет в selector/компонент
+- **Критерий**: Все 100 тестов проходят
+
+---
+
+### Этап 12: Полное отключение наследия core/handler
+- Удалить `core.py`/`handler.py`; обновить экспорты `lg/adapters/optimizations/literals/__init__.py` на `processing/` + `components/`
+- Проверить, что адаптеры используют только pipeline/processing/компоненты
+- **Критерий**: Все 100 тестов проходят
+
+---
+
+### Этап 13: Разгрузка языковых хаков
+- В языковых `literals.py` убрать специальные ветки, которые покрываются компонентами (interpolation, ast_sequence, block_init)
+- Оставить только декларативные профили/флаги в дескрипторах
+- **Критерий**: Все 100 тестов проходят
+
+---
+
+### Этап 14: Финальная чистка структуры
+- Убрать временные типы/шунты, оставить минимально необходимый публичный API (patterns/descriptor/pipeline/компоненты)
+- Обновить `__init__.py` в `components/` и `processing/` для явных экспортов
+- Финальный прогон всех тестов
+- **Критерий**: Все 100 тестов проходят
+
+---
+
+## Текущий статус
+
+- **Ветка**: `literals-v2`
+- **Текущий этап**: Подготовка к 1.1
+- **Последний успешный прогон**: 100/100 тестов (baseline перед началом миграции)
