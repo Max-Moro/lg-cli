@@ -14,6 +14,7 @@ Note: Java has no string interpolation, so no interpolation_markers are needed.
 from __future__ import annotations
 
 from ..optimizations.literals import (
+    LanguageSyntaxFlags,
     LiteralCategory,
     LiteralPattern,
     PlaceholderPosition,
@@ -195,6 +196,19 @@ def create_java_descriptor() -> LanguageLiteralDescriptor:
     """Create Java language descriptor for literal optimization."""
     return LanguageLiteralDescriptor(
         # String profiles
+        # Language syntax flags
+        syntax=LanguageSyntaxFlags(
+            single_line_comment="//",
+            block_comment_open="/*",
+            block_comment_close="*/",
+            supports_raw_strings=False,          # Java has no raw strings
+            supports_template_strings=False,     # Java has no template strings
+            supports_multiline_strings=True,     # Java 15+ has text blocks """..."""
+            factory_wrappers=["List.of", "Set.of", "Map.of", "Map.ofEntries", "Arrays.asList", "Stream.of"],
+            supports_block_init=True,            # Java has double-brace initialization
+            supports_ast_sequences=False,        # Java has no concatenated strings
+        ),
+
         string_profiles=[JAVA_STRING_PROFILE],
 
         # Sequence profiles

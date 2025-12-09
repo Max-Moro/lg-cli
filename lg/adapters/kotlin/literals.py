@@ -12,6 +12,7 @@ Kotlin-specific patterns:
 from __future__ import annotations
 
 from ..optimizations.literals import (
+    LanguageSyntaxFlags,
     LiteralCategory,
     LiteralPattern,
     PlaceholderPosition,
@@ -125,6 +126,19 @@ def create_kotlin_descriptor() -> LanguageLiteralDescriptor:
     """Create Kotlin language descriptor for literal optimization."""
     return LanguageLiteralDescriptor(
         # String profiles
+        # Language syntax flags
+        syntax=LanguageSyntaxFlags(
+            single_line_comment="//",
+            block_comment_open="/*",
+            block_comment_close="*/",
+            supports_raw_strings=False,          # Kotlin has no raw strings (multiline """ is not raw)
+            supports_template_strings=True,      # Kotlin has string templates with ${}
+            supports_multiline_strings=True,     # Kotlin has multiline strings """..."""
+            factory_wrappers=["listOf", "mutableListOf", "arrayListOf", "setOf", "mutableSetOf", "hashSetOf", "linkedSetOf", "mapOf", "mutableMapOf", "hashMapOf", "linkedMapOf"],
+            supports_block_init=False,           # Kotlin has no block init
+            supports_ast_sequences=False,        # Kotlin has no concatenated strings
+        ),
+
         string_profiles=[KOTLIN_STRING_PROFILE],
 
         # Mapping profiles

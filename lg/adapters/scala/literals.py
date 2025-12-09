@@ -12,6 +12,7 @@ Scala-specific patterns:
 from __future__ import annotations
 
 from ..optimizations.literals import (
+    LanguageSyntaxFlags,
     LiteralCategory,
     LiteralPattern,
     PlaceholderPosition,
@@ -141,6 +142,19 @@ def create_scala_descriptor() -> LanguageLiteralDescriptor:
     """Create Scala language descriptor for literal optimization."""
     return LanguageLiteralDescriptor(
         # String profiles
+        # Language syntax flags
+        syntax=LanguageSyntaxFlags(
+            single_line_comment="//",
+            block_comment_open="/*",
+            block_comment_close="*/",
+            supports_raw_strings=False,          # Scala has no raw strings (multiline """ is not raw)
+            supports_template_strings=True,      # Scala has string interpolation s"", f"", raw""
+            supports_multiline_strings=True,     # Scala has multiline strings """..."""
+            factory_wrappers=["List", "Vector", "Seq", "Array", "Set", "mutableSet", "HashSet", "LinkedHashSet", "Map", "mutableMap", "HashMap", "LinkedHashMap"],
+            supports_block_init=False,           # Scala has no block init
+            supports_ast_sequences=False,        # Scala has no concatenated strings
+        ),
+
         string_profiles=[SCALA_STRING_PROFILE],
 
         # Mapping profiles

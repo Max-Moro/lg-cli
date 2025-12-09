@@ -37,10 +37,7 @@
 
 #### ✅ 1.11) Миграция JVM-языков на профили (включая FactoryProfile)
 
-#### 1.12) Миграция Go и Rust на профили
-- Мигрировать Go: StringProfile (raw backtick) + SequenceProfile (slice) + MappingProfile (map/struct)
-- Мигрировать Rust: StringProfile (raw r#) + SequenceProfile + FactoryProfile (vec!)
-- **Критерий**: `./scripts/test_adapters.sh literals go,rust` проходит
+#### ✅ 1.12) Миграция Go и Rust на профили
 
 #### 1.13) Добавление BlockInitProfile и ASTSequenceProfile
 - Определить оставшиеся типы профилей в `patterns.py`
@@ -174,5 +171,5 @@
 ## Текущий статус
 
 - **Ветка**: `literals-v2`
-- **Текущий этап**: Переход к 1.12
+- **Текущий этап**: Переход к 1.13
 - **Последний успешный прогон**: 100/100 тестов
