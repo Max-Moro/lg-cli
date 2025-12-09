@@ -14,6 +14,8 @@ from ..optimizations.literals import (
     PlaceholderPosition,
     LanguageLiteralDescriptor,
     StringProfile,
+    SequenceProfile,
+    MappingProfile,
     LanguageSyntaxFlags,
 )
 
@@ -86,9 +88,9 @@ def _is_f_string(opening: str, content: str) -> bool:
     return 'f' in opening.lower() or 'F' in opening
 
 
-# Python literal patterns
+# Python literal patterns (v2 profiles)
 
-# String profile (v2)
+# String profile
 PYTHON_STRING_PROFILE = StringProfile(
     query="(string) @lit",
     opening=_detect_string_opening,
@@ -100,6 +102,61 @@ PYTHON_STRING_PROFILE = StringProfile(
     preserve_whitespace=False,
     priority=0,
     comment_name=None,
+)
+
+# Sequence profiles
+PYTHON_LIST_PROFILE = SequenceProfile(
+    query="(list) @lit",
+    opening="[",
+    closing="]",
+    separator=",",
+    placeholder_position=PlaceholderPosition.END,
+    placeholder_template='"…"',
+    min_elements=1,
+    priority=0,
+    comment_name="array",
+    requires_ast_extraction=False,
+)
+
+PYTHON_TUPLE_PROFILE = SequenceProfile(
+    query="(tuple) @lit",
+    opening="(",
+    closing=")",
+    separator=",",
+    placeholder_position=PlaceholderPosition.END,
+    placeholder_template='"…"',
+    min_elements=1,
+    priority=0,
+    comment_name="tuple",
+    requires_ast_extraction=False,
+)
+
+PYTHON_SET_PROFILE = SequenceProfile(
+    query="(set) @lit",
+    opening="{",
+    closing="}",
+    separator=",",
+    placeholder_position=PlaceholderPosition.END,
+    placeholder_template='"…"',
+    min_elements=1,
+    priority=0,
+    comment_name="set",
+    requires_ast_extraction=False,
+)
+
+# Mapping profile
+PYTHON_DICT_PROFILE = MappingProfile(
+    query="(dictionary) @lit",
+    opening="{",
+    closing="}",
+    separator=",",
+    kv_separator=":",
+    placeholder_position=PlaceholderPosition.MIDDLE_COMMENT,
+    placeholder_template='"…": "…"',
+    min_elements=1,
+    priority=0,
+    comment_name="object",
+    preserve_all_keys=False,
 )
 
 # Legacy LiteralPattern (to be removed after full migration)
@@ -190,12 +247,18 @@ def create_python_descriptor() -> LanguageLiteralDescriptor:
         # String profiles (v2)
         string_profiles=[PYTHON_STRING_PROFILE],
 
-        # Legacy patterns (to be migrated)
+        # Sequence profiles (v2)
+        sequence_profiles=[
+            PYTHON_LIST_PROFILE,
+            PYTHON_TUPLE_PROFILE,
+            PYTHON_SET_PROFILE,
+        ],
+
+        # Mapping profiles (v2)
+        mapping_profiles=[PYTHON_DICT_PROFILE],
+
+        # Legacy patterns (all migrated to profiles)
         _patterns=[
-            # PYTHON_STRING removed - migrated to string_profiles
-            PYTHON_LIST,
-            PYTHON_TUPLE,
-            PYTHON_DICT,
-            PYTHON_SET,
+            # All patterns migrated to typed profiles
         ]
     )
