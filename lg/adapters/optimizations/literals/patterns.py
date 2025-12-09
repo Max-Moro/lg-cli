@@ -208,6 +208,78 @@ class MappingProfile:
 
 
 @dataclass
+class FactoryProfile:
+    """
+    Profile for factory method/macro patterns.
+
+    Describes factory calls like List.of(...), vec![...], mapOf(...).
+    Factory methods are language-specific ways to create collections or other
+    data structures through function/method calls or macros.
+    """
+
+    """Tree-sitter query to match this factory pattern (S-expression format)."""
+    query: str
+
+    """
+    Regex pattern to match wrapper name (e.g., r"List\\.of$", r"^vec$").
+    Used to distinguish between different factory methods when multiple patterns
+    match the same tree-sitter node type.
+    """
+    wrapper_match: str
+
+    """
+    Opening delimiter for arguments.
+    Can be a static string (e.g., "(", "![") or a callable that
+    dynamically determines the delimiter based on the matched text.
+    """
+    opening: Union[str, Callable[[str], str]]
+
+    """
+    Closing delimiter for arguments.
+    Can be a static string (e.g., ")", "]") or a callable that
+    dynamically determines the delimiter based on the matched text.
+    """
+    closing: Union[str, Callable[[str], str]]
+
+    """Element separator string. Default: comma."""
+    separator: str = ","
+
+    """
+    Where to place the placeholder when trimming.
+    Default: middle (as a comment between elements).
+    """
+    placeholder_position: PlaceholderPosition = PlaceholderPosition.MIDDLE_COMMENT
+
+    """Template for the placeholder text. Default: quoted ellipsis."""
+    placeholder_template: str = '"…"'
+
+    """Minimum number of elements to keep, even if over budget."""
+    min_elements: int = 1
+
+    """Priority for pattern matching. Higher values are checked first."""
+    priority: int = 0
+
+    """
+    Optional custom name for comments about this pattern.
+    If not set, defaults to the literal category name.
+    """
+    comment_name: Optional[str] = None
+
+    """
+    Group elements into tuples of this size (for Map.of pair semantics).
+    Default 1 = no grouping. Set to 2 for Map.of(k1, v1, k2, v2).
+    """
+    tuple_size: int = 1
+
+    """
+    For factory methods that create mappings: key-value separator.
+    Examples: " to " for Kotlin mapOf("k" to "v"), " -> " for Scala Map("k" -> "v").
+    None for sequence factories.
+    """
+    kv_separator: Optional[str] = None
+
+
+@dataclass
 class LanguageSyntaxFlags:
     """
     Language-specific syntax flags for literal optimization.

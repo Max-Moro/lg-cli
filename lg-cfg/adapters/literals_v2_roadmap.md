@@ -33,10 +33,7 @@
 
 #### ✅ 1.9) Миграция JavaScript/TypeScript на профили
 
-#### 1.10) Добавление FactoryProfile в patterns.py
-- Определить `FactoryProfile` для factory methods
-- Обновить `to_patterns()` для конвертации FactoryProfile
-- **Критерий**: Все 100 тестов проходят (профиль добавлен но не используется)
+#### ✅ 1.10) Добавление FactoryProfile в patterns.py
 
 #### 1.11) Миграция JVM-языков на профили (включая FactoryProfile)
 - Мигрировать Java: String + Sequence + Factory + BlockInit
@@ -181,5 +178,5 @@
 ## Текущий статус
 
 - **Ветка**: `literals-v2`
-- **Текущий этап**: Переход к 1.10
+- **Текущий этап**: Переход к 1.11
 - **Последний успешный прогон**: 100/100 тестов

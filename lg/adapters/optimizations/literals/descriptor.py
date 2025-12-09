@@ -15,6 +15,7 @@ from .patterns import (
     StringProfile,
     SequenceProfile,
     MappingProfile,
+    FactoryProfile,
 )
 
 
@@ -51,6 +52,9 @@ class LanguageLiteralDescriptor:
 
     # Mapping literal profiles (dicts, maps, objects, etc.)
     mapping_profiles: List[MappingProfile] = field(default_factory=list)
+
+    # Factory method/macro profiles (List.of(), vec![], mapOf(), etc.)
+    factory_profiles: List[FactoryProfile] = field(default_factory=list)
 
     def to_patterns(self) -> List[LiteralPattern]:
         """
@@ -119,6 +123,25 @@ class LanguageLiteralDescriptor:
             )
             patterns.append(pattern)
 
+        # Convert FactoryProfile instances
+        for profile in self.factory_profiles:
+            pattern = LiteralPattern(
+                category=LiteralCategory.FACTORY_CALL,
+                query=profile.query,
+                opening=profile.opening,
+                closing=profile.closing,
+                separator=profile.separator,
+                wrapper_match=profile.wrapper_match,
+                placeholder_position=profile.placeholder_position,
+                placeholder_template=profile.placeholder_template,
+                min_elements=profile.min_elements,
+                priority=profile.priority,
+                comment_name=profile.comment_name,
+                tuple_size=profile.tuple_size,
+                kv_separator=profile.kv_separator,
+            )
+            patterns.append(pattern)
+
         # Add legacy patterns for gradual migration
         # This ensures backward compatibility during v1→v2 transition
         patterns.extend(self._patterns)
@@ -142,7 +165,8 @@ class LanguageLiteralDescriptor:
         has_profiles = (
             len(self.string_profiles) > 0 or
             len(self.sequence_profiles) > 0 or
-            len(self.mapping_profiles) > 0
+            len(self.mapping_profiles) > 0 or
+            len(self.factory_profiles) > 0
         )
 
         if has_profiles:
