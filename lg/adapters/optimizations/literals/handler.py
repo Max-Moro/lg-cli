@@ -217,6 +217,29 @@ class LanguageLiteralHandler:
 
         return self._parsers[key]
 
+    def get_parser_for_profile(self, profile) -> ElementParser:
+        """
+        Get or create parser for a profile.
+
+        Args:
+            profile: LiteralProfile to create parser for
+
+        Returns:
+            ElementParser configured for this profile
+        """
+        from .element_parser import create_parse_config_from_profile
+
+        # Create cache key from profile attributes
+        separator = getattr(profile, 'separator', ',')
+        kv_separator = getattr(profile, 'kv_separator', None)
+        key = f"{separator}:{kv_separator}"
+
+        if key not in self._parsers:
+            config = create_parse_config_from_profile(profile, self._factory_wrappers)
+            self._parsers[key] = ElementParser(config)
+
+        return self._parsers[key]
+
     def _detect_wrapper_from_text(self, text: str, pattern: 'LiteralPattern') -> Optional[str]:
         """Delegate to literal_parser."""
         return self.literal_parser._detect_wrapper_from_text(text, pattern)
@@ -407,7 +430,8 @@ class LanguageLiteralHandler:
         # For preserve_all_keys: keep all top-level keys, but apply DFS to nested values
         selection = self.selector.select_dfs(
             elements, content_budget,
-            parser=parser,
+            profile=profile,
+            handler=self,
             min_keep=pattern.min_elements,
             tuple_size=pattern.tuple_size,
             preserve_top_level_keys=pattern.preserve_all_keys,

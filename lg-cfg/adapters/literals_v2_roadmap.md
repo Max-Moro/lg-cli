@@ -75,17 +75,21 @@
 - `processing/formatter.py`: использует `hasattr()` для безопасного доступа к атрибутам профилей
 - Интерполяция работает корректно через `isinstance(profile, StringProfile)`
 
-#### 6.2) Рефакторинг selector для работы с профилями
-- `processing/selector.py` работает с структурами на основе профилей
-- **Критерий**: Все 100 тестов проходят
+#### ✅ 6.2) Рефакторинг selector для работы с профилями
+
+**Выполнено**:
+- Добавлена функция `create_parse_config_from_profile()` в `element_parser.py`
+- Добавлен метод `handler.get_parser_for_profile()` для создания parser из профиля
+- Обновлены сигнатуры `select_dfs()` и `_select_dfs_tuples()` для работы с `profile` и `handler`
+- Временная конвертация `_convert_profile_to_pattern()` больше не используется в selector
 
 #### 6.3) Рефакторинг formatter для работы с профилями
 - `processing/formatter.py` использует метаданные из профилей напрямую
 - **Критерий**: Все 100 тестов проходят
 
 #### 6.4) Удаление backward compatibility
-- Удалить метод `to_patterns()` из `LanguageLiteralDescriptor`
-- Удалить старое поле `patterns: List[LiteralPattern]` если оно осталось
+- Удалить метод `to_patterns()` (и использующий его код) из `LanguageLiteralDescriptor`
+- Удалить старое поле `_patterns: List[LiteralPattern]` если оно осталось
 - **Критерий**: Все 100 тестов проходят
 
 #### 6.5) Удаление LiteralPattern
@@ -164,13 +168,10 @@
 ## Текущий статус
 
 - **Ветка**: `literals-v2`
-- **Текущий этап**: Завершён подэтап 6.1, готов к подэтапу 6.2
+- **Текущий этап**: Завершён подэтап 6.2, готов к подэтапу 6.3
 - **Последний успешный прогон**: 100/100 тестов
 - **Удалённые legacy файлы**: `core.py` ✅, `selector.py` ✅, `formatter.py` ✅
 - **Переименованные файлы**: `parser.py` → `element_parser.py` ✅
 - **Новые файлы в processing/**: `parser.py` ✅, `selector.py` ✅, `formatter.py` ✅
 - **Оставшиеся legacy файлы**: `handler.py` (будет удалён на Этапе 12)
-- **Ключевые изменения 6.1**:
-  - Pipeline работает с профилями напрямую (`descriptor.string_profiles` и т.д.)
-  - Parser создаёт `ParsedLiteral` с `profile` вместо `pattern`
-  - Временная функция `_convert_profile_to_pattern()` для selector/formatter (будет удалена на этапах 6.2-6.4)
+- **Прогресс Этапа 6**: Parser ✅, Selector ✅, Formatter (в процессе)

@@ -325,7 +325,8 @@ class BudgetSelector:
         self,
         elements: List[Element],
         budget: int,
-        parser: ElementParser,
+        profile,  # LiteralProfile
+        handler,  # LanguageLiteralHandler for parser access
         min_keep: int = 1,
         tuple_size: int = 1,
         preserve_top_level_keys: bool = False,
@@ -344,7 +345,8 @@ class BudgetSelector:
         Args:
             elements: List of elements at current level
             budget: Token budget for this level and all nested levels
-            parser: Parser for recursively parsing nested content
+            profile: LiteralProfile for getting parser configuration
+            handler: LanguageLiteralHandler for accessing parser
             min_keep: Minimum elements to keep at each level
             tuple_size: Group elements into tuples (e.g., 2 for k,v pairs)
             preserve_top_level_keys: If True, keep all keys at top level (for typed structs)
@@ -352,10 +354,13 @@ class BudgetSelector:
         Returns:
             DFSSelection with kept/removed elements and nested selections
         """
+        # Get parser through profile
+        parser = handler.get_parser_for_profile(profile)
+
         # Handle tuple grouping for Map.of style patterns
         if tuple_size > 1:
             return self._select_dfs_tuples(
-                elements, budget, parser, min_keep, tuple_size, preserve_top_level_keys
+                elements, budget, profile, handler, min_keep, tuple_size, preserve_top_level_keys
             )
 
         if not elements:
@@ -398,7 +403,8 @@ class BudgetSelector:
                     nested_sel = self.select_dfs(
                         nested_elements,
                         remaining_budget,
-                        parser,
+                        profile,
+                        handler,
                         min_keep=min_keep,
                         preserve_top_level_keys=False,  # Only preserve at top level
                     )
@@ -455,7 +461,8 @@ class BudgetSelector:
         self,
         elements: List[Element],
         budget: int,
-        parser: ElementParser,
+        profile,  # LiteralProfile
+        handler,  # LanguageLiteralHandler
         min_keep: int,
         tuple_size: int,
         preserve_top_level_keys: bool = False,
@@ -466,6 +473,9 @@ class BudgetSelector:
         Groups elements into tuples and applies DFS recursively to nested structures
         within tuple elements.
         """
+        # Get parser through profile
+        parser = handler.get_parser_for_profile(profile)
+
         if not elements:
             return DFSSelection(
                 kept_elements=[],
@@ -504,7 +514,8 @@ class BudgetSelector:
                     nested_sel = self.select_dfs(
                         parser.parse(elem.nested_content),
                         remaining_budget,
-                        parser,
+                        profile,
+                        handler,
                         min_keep=min_keep,
                         preserve_top_level_keys=False,  # Only preserve at top level
                     )

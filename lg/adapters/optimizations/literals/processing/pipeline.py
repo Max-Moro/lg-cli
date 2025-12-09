@@ -11,7 +11,6 @@ from typing import cast, List, Optional
 
 from lg.adapters.code_model import LiteralConfig
 from lg.adapters.context import ProcessingContext
-from ..handler import LanguageLiteralHandler
 from ..patterns import BlockInitProfile, SequenceProfile
 
 
@@ -39,10 +38,11 @@ class LiteralPipeline:
         # Get descriptor from adapter
         descriptor = self.adapter.create_literal_descriptor()
         if descriptor is None:
-            self.handler: Optional[LanguageLiteralHandler] = None
+            self.handler = None
             return
 
         # Create handler with language-specific comment style
+        from ..handler import LanguageLiteralHandler
         comment_style = self.adapter.get_comment_style()
         self.handler = LanguageLiteralHandler(
             self.adapter.name,
