@@ -25,15 +25,20 @@
 - Pipeline управляет обходом AST и применением результатов к context
 - **УДАЛЁН** `core.py` (логика перенесена в pipeline)
 - Все импорты обновлены: `LiteralOptimizer` → `LiteralPipeline`
-- **Результат**: Все 100 тестов проходят
 
 ---
 
-### Этап 3: Вынос парсинга
-- Из существующего `parser.py`/`handler.py` перенести разбор литералов в новый `processing/parser.py`: работа с Tree-sitter нодами, извлечение текста/границ, без бюджета и плейсхолдеров
-- Оставить в `handler.py` только прокладки к parser
-- Старый `parser.py` удалить
-- **Критерий**: Все 100 тестов проходят
+#### ✅ Этап 3: Вынос парсинга
+
+**Выполнено**:
+- Создан `processing/parser.py` с классом `LiteralParser` для парсинга литералов из Tree-sitter нод
+- Перенесены методы `parse_literal_with_pattern`, `_detect_wrapper_from_text`, `_extract_content` из `handler.py` в `LiteralParser`
+- `handler.py` делегирует парсинг в `LiteralParser` (остались только прокладки)
+- Старый `parser.py` переименован в `element_parser.py` (парсинг элементов ВНУТРИ литералов)
+- Обновлены все импорты: `from .parser import` → `from .element_parser import`
+- Чёткое разделение:
+  - `processing/parser.py` (`LiteralParser`) — парсинг литералов из исходного кода
+  - `element_parser.py` (`ElementParser`) — парсинг элементов внутри контента литерала
 
 ---
 
@@ -151,7 +156,9 @@
 ## Текущий статус
 
 - **Ветка**: `literals-v2`
-- **Текущий этап**: Завершён Этап 2, готов к Этапу 3
+- **Текущий этап**: Завершён Этап 3, готов к Этапу 4
 - **Последний успешный прогон**: 100/100 тестов
 - **Удалённые legacy файлы**: `core.py` ✅
-- **Оставшиеся legacy файлы**: `handler.py` (будет удалён на Этапе 12)
+- **Переименованные файлы**: `parser.py` → `element_parser.py` ✅
+- **Новые файлы**: `processing/parser.py` (`LiteralParser`) ✅
+- **Оставшиеся legacy файлы**: `handler.py`, `selector.py`, `formatter.py` (будут реорганизованы на Этапах 4-5, удаление handler на Этапе 12)

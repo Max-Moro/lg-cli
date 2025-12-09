@@ -17,7 +17,7 @@ from .processing import LiteralPipeline
 from .descriptor import LanguageLiteralDescriptor
 from .formatter import ResultFormatter, FormattedResult
 from .handler import LanguageLiteralHandler
-from .parser import ElementParser, ParseConfig, Element
+from .element_parser import ElementParser, ParseConfig, Element
 from .selector import BudgetSelector, SelectionBase, Selection
 
 __all__ = [

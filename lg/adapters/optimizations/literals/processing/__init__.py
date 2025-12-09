@@ -5,5 +5,6 @@ This package contains the core processing pipeline and its components.
 """
 
 from .pipeline import LiteralPipeline
+from .parser import LiteralParser
 
-__all__ = ["LiteralPipeline"]
+__all__ = ["LiteralPipeline", "LiteralParser"]

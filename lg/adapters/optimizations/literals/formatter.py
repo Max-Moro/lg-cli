@@ -21,7 +21,7 @@ from .categories import (
     TrimResult,
 )
 from .selector import SelectionBase, Selection, DFSSelection
-from .parser import ElementParser
+from .element_parser import ElementParser
 
 
 @dataclass
