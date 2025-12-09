@@ -16,10 +16,12 @@ Note: Go has no string interpolation.
 from __future__ import annotations
 
 from ..optimizations.literals import (
-    LiteralCategory,
-    LiteralPattern,
     PlaceholderPosition,
     LanguageLiteralDescriptor,
+    StringProfile,
+    MappingProfile,
+    FactoryProfile,
+    LanguageSyntaxFlags,
 )
 
 
@@ -39,11 +41,10 @@ def _detect_string_closing(text: str) -> str:
     return '"'
 
 
-# ============= Go literal patterns =============
+# ============= Go literal profiles (v2) =============
 
-# String literals (interpreted and raw)
-GO_STRING = LiteralPattern(
-    category=LiteralCategory.STRING,
+# String profile for Go string literals (interpreted and raw)
+GO_STRING_PROFILE = StringProfile(
     query="""
     [
       (interpreted_string_literal) @lit
@@ -57,11 +58,10 @@ GO_STRING = LiteralPattern(
     interpolation_markers=[],
 )
 
-# Composite literals: struct (typed, preserve fields)
+# Mapping profile for struct literals (typed, preserve fields)
 # Struct literals: Type{field: value, ...}
-# Match: type names (not starting with []" or "map[")
-GO_COMPOSITE_STRUCT = LiteralPattern(
-    category=LiteralCategory.MAPPING,
+# Match: type names (not starting with "map[")
+GO_STRUCT_PROFILE = MappingProfile(
     query="""
     (composite_literal
       type: (type_identifier) @type_name
@@ -81,10 +81,9 @@ GO_COMPOSITE_STRUCT = LiteralPattern(
     priority=10,
 )
 
-# Composite literals: map (with key-value pairs)
+# Mapping profile for map literals
 # Map literals: map[K]V{key: value, ...}
-GO_MAP = LiteralPattern(
-    category=LiteralCategory.MAPPING,
+GO_MAP_PROFILE = MappingProfile(
     query="""
     (composite_literal
       type: (map_type) @map_type
@@ -102,18 +101,18 @@ GO_MAP = LiteralPattern(
     priority=6,
 )
 
-# Composite literals: slice (no key-value)
+# Factory profile for slice literals
 # Slice literals: []Type{elem1, elem2, ...}
-GO_SLICE = LiteralPattern(
-    category=LiteralCategory.FACTORY_CALL,
+GO_SLICE_PROFILE = FactoryProfile(
     query="""
     (composite_literal
       type: (slice_type) @slice_type
       body: (literal_value)) @lit
     """,
+    wrapper_match=r"^\[\]",
     opening="{",
     closing="}",
-    wrapper_match=r"^\[\]",
+    separator=",",
     placeholder_position=PlaceholderPosition.END,
     placeholder_template='"…"',
     min_elements=1,
@@ -125,10 +124,28 @@ GO_SLICE = LiteralPattern(
 def create_go_descriptor() -> LanguageLiteralDescriptor:
     """Create Go language descriptor for literal optimization."""
     return LanguageLiteralDescriptor(
-        _patterns=[
-            GO_COMPOSITE_STRUCT,       # Priority 10: Typed structs
-            GO_MAP,                    # Priority 6: Maps with key-value
-            GO_SLICE,                  # Priority 5: Slices
-            GO_STRING,                 # Strings
-        ]
+        # Language syntax flags
+        syntax=LanguageSyntaxFlags(
+            single_line_comment="//",
+            block_comment_open="/*",
+            block_comment_close="*/",
+            supports_raw_strings=True,           # Go has raw strings with backticks
+            supports_template_strings=False,     # Go has no template strings
+            supports_multiline_strings=True,     # Raw strings can be multiline
+            factory_wrappers=[],                 # Go has no factory methods
+            supports_block_init=False,           # Go has no block init
+            supports_ast_sequences=False,        # Go has no concatenated strings
+        ),
+
+        # String profiles
+        string_profiles=[GO_STRING_PROFILE],
+
+        # Mapping profiles
+        mapping_profiles=[
+            GO_STRUCT_PROFILE,  # Priority 10: Typed structs
+            GO_MAP_PROFILE,     # Priority 6: Maps
+        ],
+
+        # Factory profiles
+        factory_profiles=[GO_SLICE_PROFILE],  # Priority 5: Slices
     )

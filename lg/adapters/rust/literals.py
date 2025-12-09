@@ -22,6 +22,10 @@ from ..optimizations.literals import (
     LiteralPattern,
     PlaceholderPosition,
     LanguageLiteralDescriptor,
+    StringProfile,
+    SequenceProfile,
+    FactoryProfile,
+    LanguageSyntaxFlags,
 )
 
 
@@ -46,11 +50,10 @@ def _detect_raw_string_closing(text: str) -> str:
     return '"'
 
 
-# ============= Rust literal patterns =============
+# ============= Rust literal profiles (v2) =============
 
-# String literals (regular and raw)
-RUST_STRING = LiteralPattern(
-    category=LiteralCategory.STRING,
+# String profile (regular and raw strings)
+RUST_STRING_PROFILE = StringProfile(
     query="""
     [
       (string_literal) @lit
@@ -64,23 +67,21 @@ RUST_STRING = LiteralPattern(
     interpolation_markers=[],
 )
 
-# Array expressions: [elem1, elem2, ...]
-RUST_ARRAY = LiteralPattern(
-    category=LiteralCategory.SEQUENCE,
+# Sequence profile for array expressions
+RUST_ARRAY_PROFILE = SequenceProfile(
     query="(array_expression) @lit",
     opening="[",
     closing="]",
+    separator=",",
     placeholder_position=PlaceholderPosition.END,
     placeholder_template='"…"',
     min_elements=1,
     comment_name="array",
 )
 
-# vec! macro: vec![elem1, elem2, ...]
-# Note: For Rust macros, the ! is part of the wrapper, not the opening delimiter
-# So we search for "![" as opening to extract "vec" as wrapper
-RUST_VEC_MACRO = LiteralPattern(
-    category=LiteralCategory.FACTORY_CALL,
+# Factory profile for vec! macro
+# Note: For Rust macros, the ! is part of the wrapper
+RUST_VEC_PROFILE = FactoryProfile(
     query="""
     (macro_invocation
       macro: (identifier) @macro_name
@@ -90,12 +91,15 @@ RUST_VEC_MACRO = LiteralPattern(
     wrapper_match=r"^vec$",
     opening="![",
     closing="]",
+    separator=",",
     placeholder_position=PlaceholderPosition.END,
     placeholder_template='"…"',
     min_elements=1,
     comment_name="vec",
     priority=10,
 )
+
+# ============= Legacy patterns (BLOCK_INIT - will migrate on stage 1.13) =============
 
 # HashMap initialization pattern: let mut m = HashMap::new(); m.insert(...); ...
 # Each let declaration is processed independently
@@ -120,10 +124,28 @@ RUST_HASHMAP_INIT = LiteralPattern(
 def create_rust_descriptor() -> LanguageLiteralDescriptor:
     """Create Rust language descriptor for literal optimization."""
     return LanguageLiteralDescriptor(
-        _patterns=[
-            RUST_HASHMAP_INIT,   # Priority 15: HashMap initialization groups
-            RUST_VEC_MACRO,      # Priority 10: vec! macro
-            RUST_ARRAY,          # Regular arrays
-            RUST_STRING,         # Strings (regular and raw)
-        ]
+        # Language syntax flags
+        syntax=LanguageSyntaxFlags(
+            single_line_comment="//",
+            block_comment_open="/*",
+            block_comment_close="*/",
+            supports_raw_strings=True,           # Rust has raw strings r#"..."#
+            supports_template_strings=False,     # Rust has no template strings
+            supports_multiline_strings=True,     # Raw strings can be multiline
+            factory_wrappers=["vec"],            # vec! macro
+            supports_block_init=True,            # Rust has HashMap initialization blocks
+            supports_ast_sequences=False,        # Rust has no concatenated strings
+        ),
+
+        # String profiles
+        string_profiles=[RUST_STRING_PROFILE],
+
+        # Sequence profiles
+        sequence_profiles=[RUST_ARRAY_PROFILE],
+
+        # Factory profiles
+        factory_profiles=[RUST_VEC_PROFILE],
+
+        # Legacy patterns (BLOCK_INIT - will migrate on stage 1.13)
+        _patterns=[RUST_HASHMAP_INIT],
     )
