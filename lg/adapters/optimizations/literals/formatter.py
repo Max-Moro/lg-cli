@@ -20,7 +20,7 @@ from .categories import (
     ParsedLiteral,
     TrimResult,
 )
-from .selector import SelectionBase, Selection, DFSSelection
+from .processing.selector import SelectionBase, Selection, DFSSelection
 from .element_parser import ElementParser
 
 

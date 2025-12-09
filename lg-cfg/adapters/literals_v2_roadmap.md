@@ -42,11 +42,13 @@
 
 ---
 
-### Этап 4: Вынос бюджетного выбора
-- Из существующего `selector.py`/`handler.py` вынести выбор по бюджету в `processing/selector.py`: логика Selection/DFSSelection без форматирования
-- Старые вызовы в `handler.py` заменить на обращения к новому selector
-- Старый `selector.py` удалить
-- **Критерий**: Все 100 тестов проходят
+### ✅ Этап 4: Вынос бюджетного выбора
+
+**Выполнено**:
+- Создан `processing/selector.py` с полной логикой выбора по бюджету (Selection/DFSSelection)
+- Обновлены импорты в `handler.py`, `formatter.py`, `__init__.py`
+- **УДАЛЁН** старый `selector.py`
+- Все 100 тестов проходят без изменений в goldens
 
 ---
 
@@ -156,9 +158,9 @@
 ## Текущий статус
 
 - **Ветка**: `literals-v2`
-- **Текущий этап**: Завершён Этап 3, готов к Этапу 4
+- **Текущий этап**: Завершён Этап 4, готов к Этапу 5
 - **Последний успешный прогон**: 100/100 тестов
-- **Удалённые legacy файлы**: `core.py` ✅
+- **Удалённые legacy файлы**: `core.py` ✅, `selector.py` ✅
 - **Переименованные файлы**: `parser.py` → `element_parser.py` ✅
-- **Новые файлы**: `processing/parser.py` (`LiteralParser`) ✅
-- **Оставшиеся legacy файлы**: `handler.py`, `selector.py`, `formatter.py` (будут реорганизованы на Этапах 4-5, удаление handler на Этапе 12)
+- **Новые файлы**: `processing/parser.py` (`LiteralParser`) ✅, `processing/selector.py` (`BudgetSelector`) ✅
+- **Оставшиеся legacy файлы**: `handler.py`, `formatter.py` (будут реорганизованы на Этапе 5, удаление handler на Этапе 12)

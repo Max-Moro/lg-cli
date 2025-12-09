@@ -19,7 +19,7 @@ from .categories import (
 from .descriptor import LanguageLiteralDescriptor
 from .formatter import ResultFormatter
 from .element_parser import ElementParser, ParseConfig, Element
-from .selector import BudgetSelector, Selection, DFSSelection
+from .processing.selector import BudgetSelector, Selection, DFSSelection
 from .processing.parser import LiteralParser
 from lg.stats.tokenizer import TokenService
 

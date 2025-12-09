@@ -11,7 +11,7 @@ from dataclasses import dataclass, field
 from typing import List, Dict
 
 from lg.stats.tokenizer import TokenService
-from .element_parser import ElementParser, Element
+from ..element_parser import ElementParser, Element
 
 
 @dataclass

@@ -18,7 +18,7 @@ from .descriptor import LanguageLiteralDescriptor
 from .formatter import ResultFormatter, FormattedResult
 from .handler import LanguageLiteralHandler
 from .element_parser import ElementParser, ParseConfig, Element
-from .selector import BudgetSelector, SelectionBase, Selection
+from .processing.selector import BudgetSelector, SelectionBase, Selection
 
 __all__ = [
     # Descriptor types
