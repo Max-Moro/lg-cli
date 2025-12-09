@@ -13,6 +13,8 @@ from ..optimizations.literals import (
     LiteralPattern,
     PlaceholderPosition,
     LanguageLiteralDescriptor,
+    StringProfile,
+    LanguageSyntaxFlags,
 )
 
 
@@ -85,6 +87,22 @@ def _is_f_string(opening: str, content: str) -> bool:
 
 
 # Python literal patterns
+
+# String profile (v2)
+PYTHON_STRING_PROFILE = StringProfile(
+    query="(string) @lit",
+    opening=_detect_string_opening,
+    closing=_detect_string_closing,
+    placeholder_position=PlaceholderPosition.INLINE,
+    placeholder_template="…",
+    interpolation_markers=[("", "{", "}")],
+    interpolation_active=_is_f_string,
+    preserve_whitespace=False,
+    priority=0,
+    comment_name=None,
+)
+
+# Legacy LiteralPattern (to be removed after full migration)
 PYTHON_STRING = LiteralPattern(
     category=LiteralCategory.STRING,
     query="(string) @lit",
@@ -156,8 +174,25 @@ def create_python_descriptor() -> LanguageLiteralDescriptor:
         Configured LanguageLiteralDescriptor for Python
     """
     return LanguageLiteralDescriptor(
+        # Language syntax flags
+        syntax=LanguageSyntaxFlags(
+            single_line_comment="#",
+            block_comment_open='"""',
+            block_comment_close='"""',
+            supports_raw_strings=True,  # r"..."
+            supports_template_strings=False,  # No backticks
+            supports_multiline_strings=True,  # """ """
+            factory_wrappers=[],  # Python doesn't use factory methods
+            supports_block_init=False,
+            supports_ast_sequences=False,
+        ),
+
+        # String profiles (v2)
+        string_profiles=[PYTHON_STRING_PROFILE],
+
+        # Legacy patterns (to be migrated)
         _patterns=[
-            PYTHON_STRING,
+            # PYTHON_STRING removed - migrated to string_profiles
             PYTHON_LIST,
             PYTHON_TUPLE,
             PYTHON_DICT,

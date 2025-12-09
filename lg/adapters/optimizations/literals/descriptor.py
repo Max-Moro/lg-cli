@@ -60,6 +60,8 @@ class LanguageLiteralDescriptor:
         typed profiles (StringProfile, SequenceProfile, MappingProfile) into
         the legacy LiteralPattern format.
 
+        Also includes legacy _patterns for gradual migration support.
+
         Returns:
             List of LiteralPattern instances sorted by priority (descending)
         """
@@ -116,6 +118,10 @@ class LanguageLiteralDescriptor:
                 preserve_all_keys=profile.preserve_all_keys,
             )
             patterns.append(pattern)
+
+        # Add legacy patterns for gradual migration
+        # This ensures backward compatibility during v1→v2 transition
+        patterns.extend(self._patterns)
 
         # Sort by priority (descending) to maintain priority-based matching
         patterns.sort(key=lambda p: p.priority, reverse=True)

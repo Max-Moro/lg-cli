@@ -23,12 +23,7 @@
 
 #### ✅ 1.4) Backward compatibility: конвертация профилей → LiteralPattern
 
-#### 1.5) Миграция Python на StringProfile
-- В `lg/adapters/python/literals.py`:
-  - Инициализировать `LanguageSyntaxFlags` с Python-специфичными значениями
-  - Создать `StringProfile` для Python strings
-  - Убрать соответствующий LiteralPattern из `patterns` списка
-- **Критерий**: `./scripts/test_adapters.sh literals python` проходит (10 тестов)
+#### ✅ 1.5) Миграция Python на StringProfile
 
 #### 1.6) Миграция Python на SequenceProfile и MappingProfile
 - Добавить `SequenceProfile` для list/tuple/set
@@ -199,5 +194,5 @@
 ## Текущий статус
 
 - **Ветка**: `literals-v2`
-- **Текущий этап**: Переход к 1.5
+- **Текущий этап**: Переход к 1.6
 - **Последний успешный прогон**: 100/100 тестов
