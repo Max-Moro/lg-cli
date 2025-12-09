@@ -518,6 +518,7 @@ class BlockInitProcessor:
                 # Regular literal - use handler
                 trim_result = self.handler.process_literal(
                     text=nested_text,
+                    pattern=nested_pattern,
                     tree_sitter_type=nested_node.type,
                     start_byte=nested_node.start_byte,
                     end_byte=nested_node.end_byte,

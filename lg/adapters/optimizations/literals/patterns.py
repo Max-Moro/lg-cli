@@ -360,3 +360,8 @@ class LanguageSyntaxFlags:
     # Special initialization patterns
     supports_block_init: bool = False           # Java double-brace, Rust HashMap chains
     supports_ast_sequences: bool = False        # Concatenated strings without separators
+
+
+# Union type for all profile types
+# Used to work with profiles directly instead of converting to LiteralPattern
+LiteralProfile = Union[StringProfile, SequenceProfile, MappingProfile, FactoryProfile, BlockInitProfile]

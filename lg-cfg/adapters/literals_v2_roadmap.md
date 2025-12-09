@@ -64,10 +64,16 @@
 
 **Цель**: Убрать промежуточную конвертацию профилей → LiteralPattern, научить ядро работать с профилями.
 
-#### 6.1) Рефакторинг parser для работы с профилями
-- `processing/parser.py` принимает профили напрямую вместо LiteralPattern
-- Удалить зависимость от `to_patterns()`
-- **Критерий**: Все 100 тестов проходят
+#### ✅ 6.1) Рефакторинг parser для работы с профилями
+
+**Выполнено**:
+- Добавлен `LiteralProfile = Union[StringProfile, SequenceProfile, ...]` в `patterns.py`
+- `ParsedLiteral.profile: object` вместо `pattern` (избегаем circular imports)
+- `processing/parser.py`: новые методы `parse_literal_with_profile()`, `_get_category_from_profile()`, `_get_delimiter()`
+- `processing/pipeline.py`: итерирует по `descriptor.string_profiles`, `descriptor.*_profiles` и передает профили в handler
+- `handler.py`: методы принимают `profile` + `pattern` (backward compat), добавлена временная `_convert_profile_to_pattern()`
+- `processing/formatter.py`: использует `hasattr()` для безопасного доступа к атрибутам профилей
+- Интерполяция работает корректно через `isinstance(profile, StringProfile)`
 
 #### 6.2) Рефакторинг selector для работы с профилями
 - `processing/selector.py` работает с структурами на основе профилей
@@ -158,9 +164,13 @@
 ## Текущий статус
 
 - **Ветка**: `literals-v2`
-- **Текущий этап**: Завершён Этап 5, готов к Этапу 6
+- **Текущий этап**: Завершён подэтап 6.1, готов к подэтапу 6.2
 - **Последний успешный прогон**: 100/100 тестов
 - **Удалённые legacy файлы**: `core.py` ✅, `selector.py` ✅, `formatter.py` ✅
 - **Переименованные файлы**: `parser.py` → `element_parser.py` ✅
 - **Новые файлы в processing/**: `parser.py` ✅, `selector.py` ✅, `formatter.py` ✅
 - **Оставшиеся legacy файлы**: `handler.py` (будет удалён на Этапе 12)
+- **Ключевые изменения 6.1**:
+  - Pipeline работает с профилями напрямую (`descriptor.string_profiles` и т.д.)
+  - Parser создаёт `ParsedLiteral` с `profile` вместо `pattern`
+  - Временная функция `_convert_profile_to_pattern()` для selector/formatter (будет удалена на этапах 6.2-6.4)

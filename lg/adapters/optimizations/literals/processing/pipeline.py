@@ -11,8 +11,8 @@ from typing import cast, List, Optional
 
 from lg.adapters.code_model import LiteralConfig
 from lg.adapters.context import ProcessingContext
-from ..categories import LiteralCategory
 from ..handler import LanguageLiteralHandler
+from ..patterns import BlockInitProfile, SequenceProfile
 
 
 class LiteralPipeline:
@@ -69,26 +69,19 @@ class LiteralPipeline:
         if max_tokens is None:
             return  # Optimization disabled
 
-        # Get all patterns from descriptor
-        patterns = self.handler.descriptor.patterns
-
         # Two-pass approach for orthogonal string/collection processing
         processed_strings = []  # Track (start, end, tokens_saved) for processed strings
 
-        # Separate patterns by category for two-pass processing
-        string_patterns = [p for p in patterns if p.category == LiteralCategory.STRING]
-        collection_patterns = [p for p in patterns if p.category != LiteralCategory.STRING]
+        # Pass 1: Process all string profiles
+        self._process_strings(context, None, max_tokens, processed_strings)
 
-        # Pass 1: Process all string patterns
-        self._process_strings(context, string_patterns, max_tokens, processed_strings)
-
-        # Pass 2: Process all collection patterns
-        self._process_collections(context, collection_patterns, max_tokens, processed_strings)
+        # Pass 2: Process all collection profiles
+        self._process_collections(context, None, max_tokens, processed_strings)
 
     def _process_strings(
         self,
         context: ProcessingContext,
-        string_patterns: List,
+        _: None,  # Unused parameter for compatibility
         max_tokens: int,
         processed_strings: List
     ) -> None:
@@ -97,24 +90,28 @@ class LiteralPipeline:
 
         Args:
             context: Processing context
-            string_patterns: String literal patterns
+            _: Unused (for parameter compatibility)
             max_tokens: Token budget
             processed_strings: Output list for tracking processed ranges
         """
         # Collect AST-extraction collection nodes to skip their children
         ast_extraction_nodes_set = set()
-        all_patterns = self.handler.descriptor.patterns
-        collection_patterns = [p for p in all_patterns if p.category != LiteralCategory.STRING]
+        all_profiles = (
+            self.handler.descriptor.sequence_profiles +
+            self.handler.descriptor.mapping_profiles +
+            self.handler.descriptor.factory_profiles +
+            self.handler.descriptor.block_init_profiles
+        )
 
-        for coll_pattern in collection_patterns:
-            if coll_pattern.requires_ast_extraction:
-                coll_nodes = context.doc.query_nodes(coll_pattern.query, "lit")
+        for coll_profile in all_profiles:
+            if hasattr(coll_profile, 'requires_ast_extraction') and coll_profile.requires_ast_extraction:
+                coll_nodes = context.doc.query_nodes(coll_profile.query, "lit")
                 for coll_node in coll_nodes:
                     ast_extraction_nodes_set.add((coll_node.start_byte, coll_node.end_byte))
 
-        # Process each string pattern
-        for pattern in string_patterns:
-            nodes = context.doc.query_nodes(pattern.query, "lit")
+        # Process each string profile
+        for profile in self.handler.descriptor.string_profiles:
+            nodes = context.doc.query_nodes(profile.query, "lit")
 
             # Find top-level strings (not nested, not in AST-extraction collections)
             top_level_strings = []
@@ -153,10 +150,10 @@ class LiteralPipeline:
                 if token_count <= max_tokens:
                     continue
 
-                # Process node (temporary: delegate to handler)
+                # Process node (delegate to handler with profile)
                 result = self.handler.process_literal(
                     text=literal_text,
-                    pattern=pattern,
+                    profile=profile,
                     tree_sitter_type=node.type,
                     start_byte=node.start_byte,
                     end_byte=node.end_byte,
@@ -173,7 +170,7 @@ class LiteralPipeline:
     def _process_collections(
         self,
         context: ProcessingContext,
-        collection_patterns: List,
+        _: None,  # Unused parameter for compatibility
         max_tokens: int,
         processed_strings: List
     ) -> None:
@@ -182,12 +179,20 @@ class LiteralPipeline:
 
         Args:
             context: Processing context
-            collection_patterns: Collection literal patterns
+            _: Unused (for parameter compatibility)
             max_tokens: Token budget
             processed_strings: Ranges already processed in Pass 1
         """
-        for pattern in collection_patterns:
-            nodes = context.doc.query_nodes(pattern.query, "lit")
+        # Gather all collection profiles
+        all_collection_profiles = (
+            self.handler.descriptor.sequence_profiles +
+            self.handler.descriptor.mapping_profiles +
+            self.handler.descriptor.factory_profiles +
+            self.handler.descriptor.block_init_profiles
+        )
+
+        for profile in all_collection_profiles:
+            nodes = context.doc.query_nodes(profile.query, "lit")
 
             # Deduplicate by coordinates
             seen_coords = set()
@@ -227,13 +232,13 @@ class LiteralPipeline:
                 token_count = self.adapter.tokenizer.count_text_cached(literal_text)
 
                 # Skip budget check for BLOCK_INIT (handles budget internally)
-                is_block_init = pattern.category.value == "block"
+                is_block_init = isinstance(profile, BlockInitProfile)
                 if not is_block_init:
                     if token_count <= max_tokens:
                         continue
 
-                # Process with DFS (temporary: delegate to handler)
-                result = self._process_collection_node(context, node, max_tokens, pattern)
+                # Process with DFS (delegate to handler with profile)
+                result = self._process_collection_node(context, node, max_tokens, profile)
 
                 # Apply if tokens saved
                 if result:
@@ -245,12 +250,12 @@ class LiteralPipeline:
                         # Standard result
                         self._apply_trim_result_composing(context, [node], result, literal_text)
 
-    def _process_collection_node(self, context: ProcessingContext, node, max_tokens: int, pattern):
+    def _process_collection_node(self, context: ProcessingContext, node, max_tokens: int, profile):
         """Process collection node (temporary delegation to handler)."""
         # BLOCK_INIT special handling
-        if pattern.category.value == "block":
+        if isinstance(profile, BlockInitProfile):
             result = self.handler.process_block_init_node(
-                pattern=pattern,
+                profile=profile,
                 node=node,
                 doc=context.doc,
                 token_budget=max_tokens,
@@ -259,13 +264,13 @@ class LiteralPipeline:
             return result
 
         # AST-based sequences
-        if pattern.requires_ast_extraction:
+        if isinstance(profile, SequenceProfile) and profile.requires_ast_extraction:
             text = context.doc.get_node_text(node)
             base_indent = self._get_base_indent(context.raw_text, node.start_byte)
             element_indent = self._get_element_indent(text, base_indent)
 
             result = self.handler.process_ast_based_sequence(
-                pattern=pattern,
+                profile=profile,
                 node=node,
                 doc=context.doc,
                 token_budget=max_tokens,
@@ -278,7 +283,7 @@ class LiteralPipeline:
         text = context.doc.get_node_text(node)
         return self.handler.process_literal(
             text=text,
-            pattern=pattern,
+            profile=profile,
             tree_sitter_type=node.type,
             start_byte=node.start_byte,
             end_byte=node.end_byte,

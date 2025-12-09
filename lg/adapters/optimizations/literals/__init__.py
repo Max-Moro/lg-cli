@@ -12,12 +12,20 @@ from .categories import (
     ParsedLiteral,
     TrimResult,
 )
-from .patterns import StringProfile, SequenceProfile, MappingProfile, FactoryProfile, BlockInitProfile, LanguageSyntaxFlags
-from .processing import LiteralPipeline
 from .descriptor import LanguageLiteralDescriptor
-from .processing.formatter import ResultFormatter, FormattedResult
-from .handler import LanguageLiteralHandler
 from .element_parser import ElementParser, ParseConfig, Element
+from .handler import LanguageLiteralHandler
+from .patterns import (
+    StringProfile,
+    SequenceProfile,
+    MappingProfile,
+    FactoryProfile,
+    BlockInitProfile,
+    LanguageSyntaxFlags,
+    LiteralProfile,
+)
+from .processing import LiteralPipeline
+from .processing.formatter import ResultFormatter, FormattedResult
 from .processing.selector import BudgetSelector, SelectionBase, Selection
 
 __all__ = [
@@ -26,6 +34,8 @@ __all__ = [
     "LiteralCategory",
     "PlaceholderPosition",
     "LiteralPattern",
+    "ParsedLiteral",
+    "TrimResult",
 
     # Profile types
     "StringProfile",
@@ -34,7 +44,16 @@ __all__ = [
     "FactoryProfile",
     "BlockInitProfile",
     "LanguageSyntaxFlags",
+    "LiteralProfile",
 
     # Main optimizer
-    "LiteralPipeline"
+    "LiteralPipeline",
+    "LanguageLiteralHandler",
+    "ResultFormatter",
+    "FormattedResult",
+    "ElementParser",
+    "ParseConfig",
+    "Element",
+    "BudgetSelector",
+    "Selection",
 ]

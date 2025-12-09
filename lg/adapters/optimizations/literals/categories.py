@@ -148,7 +148,8 @@ class ParsedLiteral:
 
     # Detected structure
     category: LiteralCategory
-    pattern: LiteralPattern
+    # Profile (can be StringProfile, SequenceProfile, MappingProfile, FactoryProfile, BlockInitProfile, or LiteralPattern)
+    profile: object  # Typed as object to avoid circular imports; use hasattr() to check attributes
 
     # Parsed boundaries
     opening: str

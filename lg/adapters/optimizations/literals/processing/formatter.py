@@ -14,13 +14,13 @@ from dataclasses import dataclass
 from typing import Optional, cast
 
 from lg.stats.tokenizer import TokenService
+from .selector import SelectionBase, Selection, DFSSelection
 from ..categories import (
     LiteralCategory,
     PlaceholderPosition,
     ParsedLiteral,
     TrimResult,
 )
-from .selector import SelectionBase, Selection, DFSSelection
 from ..element_parser import ElementParser
 
 
@@ -80,13 +80,23 @@ class ResultFormatter:
         Args:
             parsed: ParsedLiteral with structure info
             selection: Selection with kept/removed elements
-            placeholder_text: Custom placeholder (or use pattern default)
+            placeholder_text: Custom placeholder (or use profile default)
 
         Returns:
             FormattedResult ready for insertion
         """
-        pattern = parsed.pattern
-        placeholder = placeholder_text or pattern.placeholder_template
+        profile = parsed.profile
+
+        # Get placeholder from profile
+        if hasattr(profile, 'placeholder_template'):
+            placeholder = placeholder_text or profile.placeholder_template
+        else:
+            placeholder = placeholder_text or '"…"'
+
+        # Get placeholder position from profile
+        placeholder_position = PlaceholderPosition.END
+        if hasattr(profile, 'placeholder_position'):
+            placeholder_position = profile.placeholder_position
 
         # Format based on category and layout
         if parsed.is_multiline:
@@ -96,7 +106,7 @@ class ResultFormatter:
 
         # Generate comment if needed
         comment, comment_byte = self._generate_comment_impl(
-            parsed, selection, pattern.placeholder_position
+            parsed, selection, placeholder_position
         )
 
         return FormattedResult(
@@ -121,13 +131,23 @@ class ResultFormatter:
             parsed: ParsedLiteral with structure info
             selection: DFSSelection with recursive nested selections
             parser: ElementParser for parsing nested content
-            placeholder_text: Custom placeholder (or use pattern default)
+            placeholder_text: Custom placeholder (or use profile default)
 
         Returns:
             FormattedResult ready for insertion
         """
-        pattern = parsed.pattern
-        placeholder = placeholder_text or pattern.placeholder_template
+        profile = parsed.profile
+
+        # Get placeholder from profile
+        if hasattr(profile, 'placeholder_template'):
+            placeholder = placeholder_text or profile.placeholder_template
+        else:
+            placeholder = placeholder_text or '"…"'
+
+        # Get placeholder position from profile
+        placeholder_position = PlaceholderPosition.END
+        if hasattr(profile, 'placeholder_position'):
+            placeholder_position = profile.placeholder_position
 
         # Format based on category and layout
         if parsed.is_multiline:
@@ -137,7 +157,7 @@ class ResultFormatter:
 
         # Generate comment if needed
         comment, comment_byte = self._generate_comment_impl(
-            parsed, selection, pattern.placeholder_position
+            parsed, selection, placeholder_position
         )
 
         return FormattedResult(
@@ -326,8 +346,12 @@ class ResultFormatter:
         else:
             saved = selection.tokens_removed
 
-        # Use pattern's comment_name if set, otherwise category value
-        category_name = parsed.pattern.comment_name or parsed.category.value
+        # Use profile's comment_name if set, otherwise category value
+        profile = parsed.profile
+        comment_name = None
+        if hasattr(profile, 'comment_name'):
+            comment_name = profile.comment_name
+        category_name = comment_name or parsed.category.value
         # Return raw content - formatting is done by handler based on context
         comment_content = f"literal {category_name} (−{saved} tokens)"
         return comment_content, parsed.end_byte
@@ -362,12 +386,16 @@ class ResultFormatter:
 
         Handles both flat Selection and DFS selection with nested structures.
         """
-        pattern = parsed.pattern
+        profile = parsed.profile
         elements_text = []
+
+        # Get nested inline threshold if available
+        inline_threshold = 60  # Default
+        if hasattr(profile, 'nested_inline_threshold'):
+            inline_threshold = profile.nested_inline_threshold
 
         # Process kept elements (with optional nested handling for DFS)
         if isinstance(selection, DFSSelection):
-            inline_threshold = parsed.pattern.nested_inline_threshold
             for i, elem in enumerate(selection.kept_elements):
                 if i in selection.nested_selections:
                     # Reconstruct with nested formatting (DFS only)
@@ -394,7 +422,14 @@ class ResultFormatter:
             return self._format_string(parsed, cast(Selection, selection))
 
         # Handle collections with separator
-        separator = pattern.separator
+        separator = ","  # Default
+        if hasattr(profile, 'separator'):
+            separator = profile.separator
+
+        # Get placeholder position
+        placeholder_position = PlaceholderPosition.END
+        if hasattr(profile, 'placeholder_position'):
+            placeholder_position = profile.placeholder_position
 
         # Get tokens saved (different for Selection vs DFSSelection)
         tokens_saved = selection.total_tokens_removed if isinstance(selection, DFSSelection) else selection.tokens_removed
@@ -402,12 +437,12 @@ class ResultFormatter:
         # Build elements part
         if not elements_text:
             content = placeholder
-        elif pattern.placeholder_position == PlaceholderPosition.END:
+        elif placeholder_position == PlaceholderPosition.END:
             # Only add placeholder if elements were removed, not if values were just replaced
             if selection.removed_count > 0:
                 elements_text.append(placeholder)
             content = f"{separator} ".join(elements_text)
-        elif pattern.placeholder_position == PlaceholderPosition.MIDDLE_COMMENT:
+        elif placeholder_position == PlaceholderPosition.MIDDLE_COMMENT:
             # Insert block comment with full info
             # Only if elements were actually removed at this level (not just in nested)
             if selection.removed_count > 0 and len(elements_text) >= 1:
@@ -440,21 +475,36 @@ class ResultFormatter:
 
         Handles both flat Selection and DFS selection with nested structures.
         """
-        pattern = parsed.pattern
+        profile = parsed.profile
         elements = selection.kept_elements
 
         # Handle string literals
         if parsed.category == LiteralCategory.STRING:
             if isinstance(selection, DFSSelection):
+                query = getattr(profile, 'query', 'unknown')
                 raise ValueError(
                     f"String literals cannot use DFS selection. "
-                    f"Check language descriptor pattern: {parsed.pattern.query}"
+                    f"Check language descriptor pattern: {query}"
                 )
             return self._format_string(parsed, cast(Selection, selection))
 
         base_indent = parsed.base_indent
         elem_indent = parsed.element_indent or (base_indent + "    ")
-        separator = pattern.separator
+
+        # Get separator from profile
+        separator = ","
+        if hasattr(profile, 'separator'):
+            separator = profile.separator
+
+        # Get placeholder position
+        placeholder_position = PlaceholderPosition.END
+        if hasattr(profile, 'placeholder_position'):
+            placeholder_position = profile.placeholder_position
+
+        # Get tuple size from profile
+        tuple_size = 1
+        if hasattr(profile, 'tuple_size'):
+            tuple_size = profile.tuple_size
 
         lines = []
 
@@ -465,13 +515,15 @@ class ResultFormatter:
             lines.append(parsed.opening)
 
         # Elements - group by tuple_size if specified
-        tuple_size = pattern.tuple_size
-        is_last_line = not selection.has_removals or pattern.placeholder_position != PlaceholderPosition.END
+        is_last_line = not selection.has_removals or placeholder_position != PlaceholderPosition.END
         allow_trailing = parsed.category != LiteralCategory.FACTORY_CALL
 
         # Process elements with type-aware nested handling
+        inline_threshold = 60  # Default
+        if hasattr(profile, 'nested_inline_threshold'):
+            inline_threshold = profile.nested_inline_threshold
+
         if isinstance(selection, DFSSelection):
-            inline_threshold = parsed.pattern.nested_inline_threshold
             for i in range(0, len(elements), tuple_size):
                 group = elements[i:i + tuple_size]
                 group_texts = []
@@ -515,11 +567,11 @@ class ResultFormatter:
         # Placeholder based on position
         # Note: only add placeholder if elements were removed, not if values were just replaced
         if selection.removed_count > 0:
-            if pattern.placeholder_position == PlaceholderPosition.END:
+            if placeholder_position == PlaceholderPosition.END:
                 # Placeholder is last, so it gets no trailing separator for factory calls
                 trailing_sep = "" if parsed.category == LiteralCategory.FACTORY_CALL else separator
                 lines.append(f"{elem_indent}{placeholder}{trailing_sep}")
-            elif pattern.placeholder_position == PlaceholderPosition.MIDDLE_COMMENT:
+            elif placeholder_position == PlaceholderPosition.MIDDLE_COMMENT:
                 # Build inline comment with full info (no separate comment needed)
                 # Only if elements were actually removed at this level (not just in nested)
                 removed_count = selection.removed_count
