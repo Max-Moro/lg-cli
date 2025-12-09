@@ -8,10 +8,12 @@ Also used as base for TypeScript.
 from __future__ import annotations
 
 from ..optimizations.literals import (
-    LiteralCategory,
-    LiteralPattern,
     PlaceholderPosition,
     LanguageLiteralDescriptor,
+    StringProfile,
+    SequenceProfile,
+    MappingProfile,
+    LanguageSyntaxFlags,
 )
 
 
@@ -51,9 +53,10 @@ def _detect_string_closing(text: str) -> str:
     return '"'
 
 
-# JavaScript literal patterns
-JS_STRING = LiteralPattern(
-    category=LiteralCategory.STRING,
+# ============= JavaScript literal profiles (v2) =============
+
+# Regular string profile (single and double quotes)
+JS_STRING_PROFILE = StringProfile(
     query="(string) @lit",
     opening=_detect_string_opening,
     closing=_detect_string_closing,
@@ -61,8 +64,8 @@ JS_STRING = LiteralPattern(
     placeholder_template="…",
 )
 
-JS_TEMPLATE_STRING = LiteralPattern(
-    category=LiteralCategory.STRING,
+# Template string profile (backticks with interpolation)
+JS_TEMPLATE_STRING_PROFILE = StringProfile(
     query="(template_string) @lit",
     opening="`",
     closing="`",
@@ -73,8 +76,8 @@ JS_TEMPLATE_STRING = LiteralPattern(
     interpolation_markers=[("$", "{", "}")],
 )
 
-JS_REGEX = LiteralPattern(
-    category=LiteralCategory.STRING,
+# Regex profile
+JS_REGEX_PROFILE = StringProfile(
     query="(regex) @lit",
     opening="/",
     closing="/",
@@ -82,8 +85,8 @@ JS_REGEX = LiteralPattern(
     placeholder_template="…",
 )
 
-JS_ARRAY = LiteralPattern(
-    category=LiteralCategory.SEQUENCE,
+# Array sequence profile
+JS_ARRAY_PROFILE = SequenceProfile(
     query="(array) @lit",
     opening="[",
     closing="]",
@@ -94,8 +97,8 @@ JS_ARRAY = LiteralPattern(
     comment_name="array",
 )
 
-JS_OBJECT = LiteralPattern(
-    category=LiteralCategory.MAPPING,
+# Object mapping profile
+JS_OBJECT_PROFILE = MappingProfile(
     query="(object) @lit",
     opening="{",
     closing="}",
@@ -116,11 +119,29 @@ def create_javascript_descriptor() -> LanguageLiteralDescriptor:
         Configured LanguageLiteralDescriptor for JavaScript
     """
     return LanguageLiteralDescriptor(
-        _patterns=[
-            JS_TEMPLATE_STRING,  # Higher priority - check first
-            JS_STRING,
-            JS_REGEX,
-            JS_ARRAY,
-            JS_OBJECT,
-        ]
+        # Language syntax flags
+        syntax=LanguageSyntaxFlags(
+            single_line_comment="//",
+            block_comment_open="/*",
+            block_comment_close="*/",
+            supports_raw_strings=False,          # JavaScript has no raw strings
+            supports_template_strings=True,      # JavaScript has template strings ``
+            supports_multiline_strings=True,     # Template strings can be multiline
+            factory_wrappers=[],                 # JavaScript has no factory methods
+            supports_block_init=False,           # JavaScript has no block init
+            supports_ast_sequences=False,        # JavaScript has no concatenated strings
+        ),
+
+        # String profiles
+        string_profiles=[
+            JS_TEMPLATE_STRING_PROFILE,  # Higher priority - check first
+            JS_STRING_PROFILE,
+            JS_REGEX_PROFILE,
+        ],
+
+        # Sequence profiles
+        sequence_profiles=[JS_ARRAY_PROFILE],
+
+        # Mapping profiles
+        mapping_profiles=[JS_OBJECT_PROFILE],
     )

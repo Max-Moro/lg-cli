@@ -31,10 +31,7 @@
 
 #### ✅ 1.8) Миграция C/C++ на профили
 
-#### 1.9) Миграция JavaScript/TypeScript на профили
-- Мигрировать JavaScript: StringProfile (с interpolation) + SequenceProfile + MappingProfile
-- Мигрировать TypeScript: наследует JavaScript + object_type
-- **Критерий**: `./scripts/test_adapters.sh literals javascript,typescript` проходит
+#### ✅ 1.9) Миграция JavaScript/TypeScript на профили
 
 #### 1.10) Добавление FactoryProfile в patterns.py
 - Определить `FactoryProfile` для factory methods
@@ -184,5 +181,5 @@
 ## Текущий статус
 
 - **Ветка**: `literals-v2`
-- **Текущий этап**: Переход к 1.9
+- **Текущий этап**: Переход к 1.10
 - **Последний успешный прогон**: 100/100 тестов
