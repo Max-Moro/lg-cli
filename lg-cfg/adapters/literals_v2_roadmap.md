@@ -29,10 +29,7 @@
 
 #### ✅ 1.7) Полная миграция Python (очистка patterns)
 
-#### 1.8) Миграция C/C++ на профили
-- Мигрировать C: StringProfile + SequenceProfile
-- Мигрировать C++: наследует C + raw strings
-- **Критерий**: `./scripts/test_adapters.sh literals c,cpp` проходит
+#### ✅ 1.8) Миграция C/C++ на профили
 
 #### 1.9) Миграция JavaScript/TypeScript на профили
 - Мигрировать JavaScript: StringProfile (с interpolation) + SequenceProfile + MappingProfile
@@ -187,5 +184,5 @@
 ## Текущий статус
 
 - **Ветка**: `literals-v2`
-- **Текущий этап**: Переход к 1.8
+- **Текущий этап**: Переход к 1.9
 - **Последний успешный прогон**: 100/100 тестов

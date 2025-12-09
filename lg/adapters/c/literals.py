@@ -13,10 +13,11 @@ C-specific patterns:
 from __future__ import annotations
 
 from ..optimizations.literals import (
-    LiteralCategory,
-    LiteralPattern,
     PlaceholderPosition,
     LanguageLiteralDescriptor,
+    StringProfile,
+    SequenceProfile,
+    LanguageSyntaxFlags,
 )
 
 
@@ -36,11 +37,10 @@ def _detect_string_closing(text: str) -> str:
     return '"'
 
 
-# ============= C literal patterns =============
+# ============= C literal profiles (v2) =============
 
-# String literals (interpreted strings)
-C_STRING = LiteralPattern(
-    category=LiteralCategory.STRING,
+# String profile for C string literals (interpreted strings)
+C_STRING_PROFILE = StringProfile(
     query="""
     [
       (string_literal) @lit
@@ -54,11 +54,10 @@ C_STRING = LiteralPattern(
     interpolation_markers=[],
 )
 
-# Concatenated strings: treat as a sequence where each child string is an element
-# This allows keeping the first complete string and removing the rest
+# Sequence profile for concatenated strings
+# Treat as a sequence where each child string is an element
 # Requires AST extraction since there's no explicit separator between strings
-C_CONCATENATED_STRING = LiteralPattern(
-    category=LiteralCategory.SEQUENCE,
+C_CONCATENATED_STRING_PROFILE = SequenceProfile(
     query="(concatenated_string) @lit",
     opening="",
     closing="",
@@ -70,10 +69,8 @@ C_CONCATENATED_STRING = LiteralPattern(
     requires_ast_extraction=True,
 )
 
-# Initializer lists: {...} for arrays and structs
-# These can be numeric arrays or struct arrays
-C_INITIALIZER_LIST = LiteralPattern(
-    category=LiteralCategory.SEQUENCE,
+# Sequence profile for initializer lists: {...} for arrays and structs
+C_INITIALIZER_LIST_PROFILE = SequenceProfile(
     query="(initializer_list) @lit",
     opening="{",
     closing="}",
@@ -88,9 +85,25 @@ C_INITIALIZER_LIST = LiteralPattern(
 def create_c_descriptor() -> LanguageLiteralDescriptor:
     """Create C language descriptor for literal optimization."""
     return LanguageLiteralDescriptor(
-        _patterns=[
-            C_STRING,
-            C_CONCATENATED_STRING,
-            C_INITIALIZER_LIST,
-        ]
+        # Language syntax flags
+        syntax=LanguageSyntaxFlags(
+            single_line_comment="//",
+            block_comment_open="/*",
+            block_comment_close="*/",
+            supports_raw_strings=False,          # C has no raw strings
+            supports_template_strings=False,     # C has no template strings
+            supports_multiline_strings=False,    # C has no multiline strings
+            factory_wrappers=[],                 # C has no factory methods
+            supports_block_init=False,           # C has no block init
+            supports_ast_sequences=True,         # C has concatenated strings
+        ),
+
+        # String profiles
+        string_profiles=[C_STRING_PROFILE],
+
+        # Sequence profiles
+        sequence_profiles=[
+            C_CONCATENATED_STRING_PROFILE,
+            C_INITIALIZER_LIST_PROFILE,
+        ],
     )

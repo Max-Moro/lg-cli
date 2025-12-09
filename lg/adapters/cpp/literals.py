@@ -12,12 +12,12 @@ from __future__ import annotations
 
 import re
 
-from ..c.literals import C_INITIALIZER_LIST, C_CONCATENATED_STRING
+from ..c.literals import C_INITIALIZER_LIST_PROFILE, C_CONCATENATED_STRING_PROFILE
 from ..optimizations.literals import (
-    LiteralCategory,
-    LiteralPattern,
     PlaceholderPosition,
     LanguageLiteralDescriptor,
+    StringProfile,
+    LanguageSyntaxFlags,
 )
 
 
@@ -60,11 +60,10 @@ def _detect_cpp_string_closing(text: str) -> str:
     return '"'
 
 
-# ============= C++ literal patterns =============
+# ============= C++ literal profiles (v2) =============
 
-# String literals (includes raw strings)
-CPP_STRING = LiteralPattern(
-    category=LiteralCategory.STRING,
+# String profile for C++ literals (includes raw strings)
+CPP_STRING_PROFILE = StringProfile(
     query="""
     [
       (string_literal) @lit
@@ -83,9 +82,25 @@ CPP_STRING = LiteralPattern(
 def create_cpp_descriptor() -> LanguageLiteralDescriptor:
     """Create C++ language descriptor for literal optimization."""
     return LanguageLiteralDescriptor(
-        _patterns=[
-            CPP_STRING,  # C++ strings (includes raw strings)
-            C_CONCATENATED_STRING,  # Concatenated strings as sequences
-            C_INITIALIZER_LIST,  # Reuse C initializer lists
-        ]
+        # Language syntax flags
+        syntax=LanguageSyntaxFlags(
+            single_line_comment="//",
+            block_comment_open="/*",
+            block_comment_close="*/",
+            supports_raw_strings=True,           # C++ has raw strings R"(...)"
+            supports_template_strings=False,     # C++ has no template strings
+            supports_multiline_strings=False,    # C++ has no multiline strings
+            factory_wrappers=[],                 # C++ has no factory methods
+            supports_block_init=False,           # C++ has no block init
+            supports_ast_sequences=True,         # C++ has concatenated strings (inherited from C)
+        ),
+
+        # String profiles
+        string_profiles=[CPP_STRING_PROFILE],
+
+        # Sequence profiles
+        sequence_profiles=[
+            C_CONCATENATED_STRING_PROFILE,  # Reuse C concatenated strings
+            C_INITIALIZER_LIST_PROFILE,      # Reuse C initializer lists
+        ],
     )
