@@ -17,7 +17,7 @@ from .optimizations import (
     FunctionBodyOptimizer,
     CommentOptimizer,
     ImportOptimizer,
-    LiteralOptimizer,
+    LiteralPipeline,
     LanguageLiteralDescriptor,
     TreeSitterImportAnalyzer,
     ImportClassifier
@@ -143,9 +143,9 @@ class CodeAdapter(BaseAdapter[C], ABC):
         import_optimizer = ImportOptimizer(code_cfg.imports, self)
         import_optimizer.apply(context)
 
-        # Process literals
-        literal_optimizer = LiteralOptimizer(code_cfg.literals, self)
-        literal_optimizer.apply(context)
+        # Process literals - delegated to LiteralPipeline
+        pipeline = LiteralPipeline(code_cfg.literals, self)
+        pipeline.apply(context)
 
     def _finalize_placeholders(self, context: ProcessingContext, ph_cfg: PlaceholderConfig) -> Tuple[str, Dict[str, Any]]:
         """

@@ -13,7 +13,7 @@ from .categories import (
     TrimResult,
 )
 from .patterns import StringProfile, SequenceProfile, MappingProfile, FactoryProfile, BlockInitProfile, LanguageSyntaxFlags
-from .core import LiteralOptimizer
+from .processing import LiteralPipeline
 from .descriptor import LanguageLiteralDescriptor
 from .formatter import ResultFormatter, FormattedResult
 from .handler import LanguageLiteralHandler
@@ -36,5 +36,5 @@ __all__ = [
     "LanguageSyntaxFlags",
 
     # Main optimizer
-    "LiteralOptimizer"
+    "LiteralPipeline"
 ]
