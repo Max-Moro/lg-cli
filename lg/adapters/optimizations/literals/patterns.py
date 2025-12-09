@@ -205,3 +205,30 @@ class MappingProfile:
     Useful for struct literals where field names must be preserved.
     """
     preserve_all_keys: bool = False
+
+
+@dataclass
+class LanguageSyntaxFlags:
+    """
+    Language-specific syntax flags for literal optimization.
+
+    Defines universal syntax characteristics that affect how literals
+    are parsed and formatted across different languages.
+    """
+
+    # Comment syntax
+    single_line_comment: Optional[str] = None  # e.g., "//", "#"
+    block_comment_open: Optional[str] = None   # e.g., "/*", '"""'
+    block_comment_close: Optional[str] = None  # e.g., "*/", '"""'
+
+    # String literal support
+    supports_raw_strings: bool = False          # r"...", R"(...)"
+    supports_template_strings: bool = False     # `...`
+    supports_multiline_strings: bool = False    # """..."""
+
+    # Factory method patterns
+    factory_wrappers: List[str] = field(default_factory=list)  # ["List.of", "vec!"]
+
+    # Special initialization patterns
+    supports_block_init: bool = False           # Java double-brace, Rust HashMap chains
+    supports_ast_sequences: bool = False        # Concatenated strings without separators

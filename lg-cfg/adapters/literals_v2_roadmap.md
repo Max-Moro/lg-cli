@@ -17,10 +17,7 @@
 
 #### ✅ 1.1) Создание patterns.py с базовой инфраструктурой
 
-#### 1.2) Добавление LanguageSyntaxFlags
-- Добавить `@dataclass LanguageSyntaxFlags` в `patterns.py` со всеми флагами синтаксиса
-- Добавить поле `syntax: Optional[LanguageSyntaxFlags] = None` в `LanguageLiteralDescriptor`
-- **Критерий**: Все 100 тестов проходят (флаги добавлены но не используются)
+#### ✅ 1.2) Добавление LanguageSyntaxFlags
 
 #### 1.3) Добавление полей профилей в descriptor
 - В `descriptor.py` добавить поля: `string_profile`, `sequence_profiles`, `mapping_profiles`
@@ -210,5 +207,5 @@
 ## Текущий статус
 
 - **Ветка**: `literals-v2`
-- **Текущий этап**: Переход к 1.2
+- **Текущий этап**: Переход к 1.3
 - **Последний успешный прогон**: 100/100 тестов
