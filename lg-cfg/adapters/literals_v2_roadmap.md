@@ -19,11 +19,7 @@
 
 #### ✅ 1.2) Добавление LanguageSyntaxFlags
 
-#### 1.3) Добавление полей профилей в descriptor
-- В `descriptor.py` добавить поля: `string_profile`, `sequence_profiles`, `mapping_profiles`
-- Все поля Optional/пустые списки по умолчанию
-- Старое поле `patterns: List[LiteralPattern]` остается
-- **Критерий**: Все 100 тестов проходят (новые поля не используются)
+#### ✅ 1.3) Добавление полей профилей в descriptor
 
 #### 1.4) Backward compatibility: конвертация профилей → LiteralPattern
 - Добавить метод `to_patterns()` в `LanguageLiteralDescriptor`
@@ -207,5 +203,5 @@
 ## Текущий статус
 
 - **Ветка**: `literals-v2`
-- **Текущий этап**: Переход к 1.3
+- **Текущий этап**: Переход к 1.4
 - **Последний успешный прогон**: 100/100 тестов
