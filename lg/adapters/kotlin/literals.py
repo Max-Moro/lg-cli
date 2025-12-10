@@ -81,7 +81,6 @@ KOTLIN_MAP_PROFILE = MappingProfile(
     placeholder_template='"…" to "…"',
     min_elements=1,
     comment_name="object",
-    priority=20,
 )
 
 # Factory profiles for list/set
@@ -99,7 +98,6 @@ KOTLIN_LIST_OF_PROFILE = FactoryProfile(
     placeholder_template='"…"',
     min_elements=1,
     comment_name="array",
-    priority=15,
 )
 
 KOTLIN_SET_OF_PROFILE = FactoryProfile(
@@ -116,7 +114,6 @@ KOTLIN_SET_OF_PROFILE = FactoryProfile(
     placeholder_template='"…"',
     min_elements=1,
     comment_name="set",
-    priority=15,
 )
 
 

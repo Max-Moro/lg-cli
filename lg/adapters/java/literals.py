@@ -84,7 +84,6 @@ JAVA_MAP_OF_PROFILE = FactoryProfile(
     placeholder_template='"…", "…"',
     min_elements=1,
     comment_name="map",
-    priority=20,
     tuple_size=2,
 )
 
@@ -106,7 +105,6 @@ JAVA_MAP_OF_ENTRIES_PROFILE = FactoryProfile(
     placeholder_template='Map.entry("…", "…")',
     min_elements=1,
     comment_name="map",
-    priority=20,
 )
 
 # List.of() and Set.of() - most common sequence factories
@@ -127,7 +125,6 @@ JAVA_LIST_SET_OF_PROFILE = FactoryProfile(
     placeholder_template='"…"',
     min_elements=1,
     comment_name="array",
-    priority=10,
 )
 
 # Arrays.asList() - legacy sequence factory
@@ -148,7 +145,6 @@ JAVA_ARRAYS_ASLIST_PROFILE = FactoryProfile(
     placeholder_template='"…"',
     min_elements=1,
     comment_name="array",
-    priority=10,
 )
 
 # Stream.of() - stream sequence factory
@@ -169,7 +165,6 @@ JAVA_STREAM_OF_PROFILE = FactoryProfile(
     placeholder_template='"…"',
     min_elements=1,
     comment_name="stream",
-    priority=10,
 )
 
 # Block init profile for double-brace initialization: new HashMap<>() {{ put("k1", "v1"); put("k2", "v2"); }}
@@ -183,7 +178,6 @@ JAVA_DOUBLE_BRACE_PROFILE = BlockInitProfile(
     statement_pattern="*/method_invocation",
     placeholder_position=PlaceholderPosition.MIDDLE_COMMENT,
     min_elements=1,
-    priority=15,
     comment_name="double-brace init",
 )
 
@@ -212,11 +206,11 @@ def create_java_descriptor() -> LanguageLiteralDescriptor:
 
         # Factory profiles
         factory_profiles=[
-            JAVA_MAP_OF_PROFILE,           # High priority - pair-based Map.of
-            JAVA_MAP_OF_ENTRIES_PROFILE,   # High priority - entry-based Map.ofEntries
-            JAVA_LIST_SET_OF_PROFILE,      # Medium priority - List/Set.of()
-            JAVA_ARRAYS_ASLIST_PROFILE,    # Medium priority - Arrays.asList()
-            JAVA_STREAM_OF_PROFILE,        # Medium priority - Stream.of()
+            JAVA_MAP_OF_PROFILE,           # Pair-based Map.of
+            JAVA_MAP_OF_ENTRIES_PROFILE,   # Entry-based Map.ofEntries
+            JAVA_LIST_SET_OF_PROFILE,      # List/Set.of()
+            JAVA_ARRAYS_ASLIST_PROFILE,    # Arrays.asList()
+            JAVA_STREAM_OF_PROFILE,        # Stream.of()
         ],
 
         # Block init profiles

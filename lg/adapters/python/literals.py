@@ -98,7 +98,6 @@ PYTHON_STRING_PROFILE = StringProfile(
     interpolation_markers=[("", "{", "}")],
     interpolation_active=_is_f_string,
     preserve_whitespace=False,
-    priority=0,
     comment_name=None,
 )
 
@@ -111,7 +110,6 @@ PYTHON_LIST_PROFILE = SequenceProfile(
     placeholder_position=PlaceholderPosition.END,
     placeholder_template='"…"',
     min_elements=1,
-    priority=0,
     comment_name="array",
     requires_ast_extraction=False,
 )
@@ -124,7 +122,6 @@ PYTHON_TUPLE_PROFILE = SequenceProfile(
     placeholder_position=PlaceholderPosition.END,
     placeholder_template='"…"',
     min_elements=1,
-    priority=0,
     comment_name="tuple",
     requires_ast_extraction=False,
 )
@@ -137,7 +134,6 @@ PYTHON_SET_PROFILE = SequenceProfile(
     placeholder_position=PlaceholderPosition.END,
     placeholder_template='"…"',
     min_elements=1,
-    priority=0,
     comment_name="set",
     requires_ast_extraction=False,
 )
@@ -152,7 +148,6 @@ PYTHON_DICT_PROFILE = MappingProfile(
     placeholder_position=PlaceholderPosition.MIDDLE_COMMENT,
     placeholder_template='"…": "…"',
     min_elements=1,
-    priority=0,
     comment_name="object",
     preserve_all_keys=False,
 )

@@ -95,7 +95,6 @@ SCALA_MAP_PROFILE = MappingProfile(
     placeholder_template='"…" -> "…"',
     min_elements=1,
     comment_name="object",
-    priority=20,
 )
 
 # Factory profiles for List/Set
@@ -114,7 +113,6 @@ SCALA_LIST_PROFILE = FactoryProfile(
     placeholder_template='"…"',
     min_elements=1,
     comment_name="array",
-    priority=15,
 )
 
 SCALA_SET_PROFILE = FactoryProfile(
@@ -132,7 +130,6 @@ SCALA_SET_PROFILE = FactoryProfile(
     placeholder_template='"…"',
     min_elements=1,
     comment_name="set",
-    priority=15,
 )
 
 

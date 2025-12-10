@@ -95,7 +95,6 @@ RUST_VEC_PROFILE = FactoryProfile(
     placeholder_template='"…"',
     min_elements=1,
     comment_name="vec",
-    priority=10,
 )
 
 # ============= Rust literal profiles (v2 - continued) =============
@@ -114,7 +113,6 @@ RUST_HASHMAP_INIT_PROFILE = BlockInitProfile(
     statement_pattern="*/call_expression",
     placeholder_position=PlaceholderPosition.MIDDLE_COMMENT,
     min_elements=1,
-    priority=15,
     comment_name="hashmap init",
 )
 

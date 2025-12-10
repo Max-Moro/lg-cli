@@ -58,9 +58,9 @@ def create_typescript_descriptor() -> LanguageLiteralDescriptor:
 
         # String profiles (inherited from JavaScript)
         string_profiles=[
-            JS_TEMPLATE_STRING_PROFILE,  # Higher priority - check first
-            JS_STRING_PROFILE,
-            JS_REGEX_PROFILE,
+            JS_TEMPLATE_STRING_PROFILE,  # Template strings (backticks with interpolation)
+            JS_STRING_PROFILE,            # Regular strings (single and double quotes)
+            JS_REGEX_PROFILE,             # Regex literals
         ],
 
         # Sequence profiles (inherited from JavaScript)

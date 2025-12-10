@@ -101,7 +101,6 @@ class LiteralProfile:
     - How to recognize the literal pattern (query)
     - How to delimit it (opening/closing) - may be None for block-based literals
     - Where to place the trimming placeholder
-    - Priority for pattern matching
     - Optional custom comment name
     """
 
@@ -129,9 +128,6 @@ class LiteralProfile:
 
     """Template for the placeholder text."""
     placeholder_template: str = "…"
-
-    """Priority for pattern matching. Higher values are checked first."""
-    priority: int = 0
 
     """
     Optional custom name for comments about this pattern.

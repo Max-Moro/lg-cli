@@ -72,7 +72,6 @@ JS_TEMPLATE_STRING_PROFILE = StringProfile(
     placeholder_position=PlaceholderPosition.INLINE,
     placeholder_template="…",
     preserve_whitespace=True,
-    priority=10,
     interpolation_markers=[("$", "{", "}")],
 )
 
@@ -134,9 +133,9 @@ def create_javascript_descriptor() -> LanguageLiteralDescriptor:
 
         # String profiles
         string_profiles=[
-            JS_TEMPLATE_STRING_PROFILE,  # Higher priority - check first
-            JS_STRING_PROFILE,
-            JS_REGEX_PROFILE,
+            JS_TEMPLATE_STRING_PROFILE,  # Template strings (backticks with interpolation)
+            JS_STRING_PROFILE,            # Regular strings (single and double quotes)
+            JS_REGEX_PROFILE,             # Regex literals
         ],
 
         # Sequence profiles

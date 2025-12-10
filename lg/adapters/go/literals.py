@@ -78,7 +78,6 @@ GO_STRUCT_PROFILE = MappingProfile(
     preserve_all_keys=True,
     min_elements=1,
     comment_name="struct",
-    priority=10,
 )
 
 # Mapping profile for map literals
@@ -98,7 +97,6 @@ GO_MAP_PROFILE = MappingProfile(
     placeholder_template='"…": "…"',
     min_elements=1,
     comment_name="map",
-    priority=6,
 )
 
 # Factory profile for slice literals
@@ -117,7 +115,6 @@ GO_SLICE_PROFILE = FactoryProfile(
     placeholder_template='"…"',
     min_elements=1,
     comment_name="slice",
-    priority=5,
 )
 
 
@@ -142,10 +139,10 @@ def create_go_descriptor() -> LanguageLiteralDescriptor:
 
         # Mapping profiles
         mapping_profiles=[
-            GO_STRUCT_PROFILE,  # Priority 10: Typed structs
-            GO_MAP_PROFILE,     # Priority 6: Maps
+            GO_STRUCT_PROFILE,  # Typed structs
+            GO_MAP_PROFILE,     # Maps
         ],
 
         # Factory profiles
-        factory_profiles=[GO_SLICE_PROFILE],  # Priority 5: Slices
+        factory_profiles=[GO_SLICE_PROFILE],  # Slices
     )
