@@ -104,7 +104,7 @@ class LiteralPipeline:
         )
 
         for coll_profile in all_profiles:
-            if hasattr(coll_profile, 'requires_ast_extraction') and coll_profile.requires_ast_extraction:
+            if isinstance(coll_profile, SequenceProfile) and coll_profile.requires_ast_extraction:
                 coll_nodes = context.doc.query_nodes(coll_profile.query, "lit")
                 for coll_node in coll_nodes:
                     ast_extraction_nodes_set.add((coll_node.start_byte, coll_node.end_byte))

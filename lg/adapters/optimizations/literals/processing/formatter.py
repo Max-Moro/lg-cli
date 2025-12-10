@@ -15,13 +15,15 @@ from typing import Optional, cast
 
 from lg.stats.tokenizer import TokenService
 from .selector import SelectionBase, Selection, DFSSelection
-from ..categories import (
+from ..patterns import (
+    PlaceholderPosition,
     ParsedLiteral,
     TrimResult,
-)
-from ..patterns import (
-    LiteralCategory,
-    PlaceholderPosition,
+    StringProfile,
+    SequenceProfile,
+    MappingProfile,
+    FactoryProfile,
+    BlockInitProfile,
 )
 from ..element_parser import ElementParser
 
@@ -90,15 +92,10 @@ class ResultFormatter:
         profile = parsed.profile
 
         # Get placeholder from profile
-        if hasattr(profile, 'placeholder_template'):
-            placeholder = placeholder_text or profile.placeholder_template
-        else:
-            placeholder = placeholder_text or '"…"'
+        placeholder = placeholder_text or profile.placeholder_template
 
         # Get placeholder position from profile
-        placeholder_position = PlaceholderPosition.END
-        if hasattr(profile, 'placeholder_position'):
-            placeholder_position = profile.placeholder_position
+        placeholder_position = profile.placeholder_position
 
         # Format based on category and layout
         if parsed.is_multiline:
@@ -141,15 +138,10 @@ class ResultFormatter:
         profile = parsed.profile
 
         # Get placeholder from profile
-        if hasattr(profile, 'placeholder_template'):
-            placeholder = placeholder_text or profile.placeholder_template
-        else:
-            placeholder = placeholder_text or '"…"'
+        placeholder = placeholder_text or profile.placeholder_template
 
         # Get placeholder position from profile
-        placeholder_position = PlaceholderPosition.END
-        if hasattr(profile, 'placeholder_position'):
-            placeholder_position = profile.placeholder_position
+        placeholder_position = profile.placeholder_position
 
         # Format based on category and layout
         if parsed.is_multiline:
@@ -348,12 +340,26 @@ class ResultFormatter:
         else:
             saved = selection.tokens_removed
 
-        # Use profile's comment_name if set, otherwise category value
+        # Determine comment name from profile
         profile = parsed.profile
-        comment_name = None
-        if hasattr(profile, 'comment_name'):
-            comment_name = profile.comment_name
-        category_name = comment_name or parsed.category.value
+        comment_name = profile.comment_name
+
+        # Fallback to profile type if comment_name is None
+        if comment_name is None:
+            if isinstance(profile, StringProfile):
+                comment_name = "string"
+            elif isinstance(profile, SequenceProfile):
+                comment_name = "sequence"
+            elif isinstance(profile, MappingProfile):
+                comment_name = "mapping"
+            elif isinstance(profile, FactoryProfile):
+                comment_name = "factory"
+            elif isinstance(profile, BlockInitProfile):
+                comment_name = "block"
+            else:
+                comment_name = "literal"
+
+        category_name = comment_name
         # Return raw content - formatting is done by handler based on context
         comment_content = f"literal {category_name} (−{saved} tokens)"
         return comment_content, parsed.end_byte
@@ -392,9 +398,7 @@ class ResultFormatter:
         elements_text = []
 
         # Get nested inline threshold if available
-        inline_threshold = 60  # Default
-        if hasattr(profile, 'nested_inline_threshold'):
-            inline_threshold = profile.nested_inline_threshold
+        inline_threshold = getattr(profile, 'nested_inline_threshold', 60)
 
         # Process kept elements (with optional nested handling for DFS)
         if isinstance(selection, DFSSelection):
@@ -415,9 +419,9 @@ class ResultFormatter:
                 elements_text.append(elem.text)
 
         # Handle string literals (inline placeholder)
-        if parsed.category == LiteralCategory.STRING:
+        if isinstance(profile, StringProfile):
             if isinstance(selection, DFSSelection):
-                query = getattr(profile, 'query', 'unknown')
+                query = profile.query
                 raise ValueError(
                     f"String literals cannot use DFS selection. "
                     f"Check language descriptor pattern: {query}"
@@ -425,14 +429,10 @@ class ResultFormatter:
             return self._format_string(parsed, cast(Selection, selection))
 
         # Handle collections with separator
-        separator = ","  # Default
-        if hasattr(profile, 'separator'):
-            separator = profile.separator
+        separator = getattr(profile, 'separator', ',')
 
         # Get placeholder position
-        placeholder_position = PlaceholderPosition.END
-        if hasattr(profile, 'placeholder_position'):
-            placeholder_position = profile.placeholder_position
+        placeholder_position = profile.placeholder_position
 
         # Get tokens saved (different for Selection vs DFSSelection)
         tokens_saved = selection.total_tokens_removed if isinstance(selection, DFSSelection) else selection.tokens_removed
@@ -482,9 +482,9 @@ class ResultFormatter:
         elements = selection.kept_elements
 
         # Handle string literals
-        if parsed.category == LiteralCategory.STRING:
+        if isinstance(profile, StringProfile):
             if isinstance(selection, DFSSelection):
-                query = getattr(profile, 'query', 'unknown')
+                query = profile.query
                 raise ValueError(
                     f"String literals cannot use DFS selection. "
                     f"Check language descriptor pattern: {query}"
@@ -495,19 +495,13 @@ class ResultFormatter:
         elem_indent = parsed.element_indent or (base_indent + "    ")
 
         # Get separator from profile
-        separator = ","
-        if hasattr(profile, 'separator'):
-            separator = profile.separator
+        separator = getattr(profile, 'separator', ',')
 
         # Get placeholder position
-        placeholder_position = PlaceholderPosition.END
-        if hasattr(profile, 'placeholder_position'):
-            placeholder_position = profile.placeholder_position
+        placeholder_position = profile.placeholder_position
 
-        # Get tuple size from profile
-        tuple_size = 1
-        if hasattr(profile, 'tuple_size'):
-            tuple_size = profile.tuple_size
+        # Get tuple size from profile (only FactoryProfile has this)
+        tuple_size = getattr(profile, 'tuple_size', 1)
 
         lines = []
 
@@ -519,12 +513,10 @@ class ResultFormatter:
 
         # Elements - group by tuple_size if specified
         is_last_line = not selection.has_removals or placeholder_position != PlaceholderPosition.END
-        allow_trailing = parsed.category != LiteralCategory.FACTORY_CALL
+        allow_trailing = not isinstance(profile, FactoryProfile)
 
         # Process elements with type-aware nested handling
-        inline_threshold = 60  # Default
-        if hasattr(profile, 'nested_inline_threshold'):
-            inline_threshold = profile.nested_inline_threshold
+        inline_threshold = getattr(profile, 'nested_inline_threshold', 60)
 
         if isinstance(selection, DFSSelection):
             for i in range(0, len(elements), tuple_size):
@@ -572,7 +564,7 @@ class ResultFormatter:
         if selection.removed_count > 0:
             if placeholder_position == PlaceholderPosition.END:
                 # Placeholder is last, so it gets no trailing separator for factory calls
-                trailing_sep = "" if parsed.category == LiteralCategory.FACTORY_CALL else separator
+                trailing_sep = "" if isinstance(profile, FactoryProfile) else separator
                 lines.append(f"{elem_indent}{placeholder}{trailing_sep}")
             elif placeholder_position == PlaceholderPosition.MIDDLE_COMMENT:
                 # Build inline comment with full info (no separate comment needed)

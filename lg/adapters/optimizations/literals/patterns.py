@@ -27,17 +27,121 @@ class PlaceholderPosition(Enum):
     NONE = "none"                   # No placeholder (silent trim)
 
 
-class LiteralCategory(Enum):
-    """Universal categories for literals across all languages."""
-    STRING = "string"           # Any strings: single, multi, raw, template
-    SEQUENCE = "sequence"       # Arrays, lists, vectors, tuples, slices
-    MAPPING = "mapping"         # Dicts, maps, objects, hash maps
-    FACTORY_CALL = "factory"    # List.of(), vec![], mapOf(), listOf()
-    BLOCK_INIT = "block"        # { let mut m = ...; m }, lazy_static!
+@dataclass
+class ParsedLiteral:
+    """
+    Result of parsing a literal from source code.
+
+    Contains all information needed for trimming and formatting.
+    Category is determined by the profile type (use isinstance checks).
+    """
+    # Original text and position
+    original_text: str
+    start_byte: int
+    end_byte: int
+
+    # Profile (StringProfile, SequenceProfile, MappingProfile, FactoryProfile, or BlockInitProfile)
+    # Typed as object to avoid circular imports; use isinstance() to check type
+    profile: object
+
+    # Parsed boundaries
+    opening: str
+    closing: str
+    content: str  # Content without opening/closing
+
+    # Layout information
+    is_multiline: bool
+    base_indent: str = ""       # Indentation of the line where literal starts
+    element_indent: str = ""    # Indentation for elements inside
+
+    # For factory calls: the wrapper (e.g., "List.of", "vec!")
+    wrapper: Optional[str] = None
+
+    # Token count of original
+    original_tokens: int = 0
 
 
 @dataclass
-class StringProfile:
+class TrimResult:
+    """
+    Result of trimming a literal.
+
+    Contains the trimmed text and metadata about what was removed.
+    """
+    # Final trimmed text (ready to replace original)
+    trimmed_text: str
+
+    # Metrics
+    original_tokens: int
+    trimmed_tokens: int
+    saved_tokens: int
+
+    # What was trimmed
+    elements_kept: int
+    elements_removed: int
+
+    # Comment to add (if placeholder_position requires it)
+    comment_text: Optional[str] = None
+    comment_position: Optional[int] = None  # Byte offset for comment insertion
+
+    @property
+    def savings_ratio(self) -> float:
+        """Calculate token savings ratio."""
+        if self.trimmed_tokens == 0:
+            return float('inf')
+        return self.saved_tokens / self.trimmed_tokens
+
+
+@dataclass
+class LiteralProfile:
+    """
+    Base profile class for all literal pattern types.
+
+    Encapsulates common attributes shared across different literal types:
+    - How to recognize the literal pattern (query)
+    - How to delimit it (opening/closing) - may be None for block-based literals
+    - Where to place the trimming placeholder
+    - Priority for pattern matching
+    - Optional custom comment name
+    """
+
+    """Tree-sitter query to match this literal pattern (S-expression format)."""
+    query: str
+
+    """
+    Opening delimiter for the literal.
+    Can be a static string (e.g., quote, bracket, paren) or a callable that
+    dynamically determines the delimiter based on the matched text.
+    For block-based literals (BlockInitProfile), this can be None.
+    """
+    opening: Union[str, Callable[[str], str], None] = None
+
+    """
+    Closing delimiter for the literal.
+    Can be a static string (e.g., quote, bracket, paren) or a callable that
+    dynamically determines the delimiter based on the matched text.
+    For block-based literals (BlockInitProfile), this can be None.
+    """
+    closing: Union[str, Callable[[str], str], None] = None
+
+    """Where to place the placeholder when trimming."""
+    placeholder_position: PlaceholderPosition = PlaceholderPosition.END
+
+    """Template for the placeholder text."""
+    placeholder_template: str = "…"
+
+    """Priority for pattern matching. Higher values are checked first."""
+    priority: int = 0
+
+    """
+    Optional custom name for comments about this pattern.
+    If not set, defaults to the literal category name.
+    """
+    comment_name: Optional[str] = None
+
+
+@dataclass
+class StringProfile(LiteralProfile):
     """
     Profile for string literal patterns.
 
@@ -46,28 +150,8 @@ class StringProfile:
     positioning within the string content.
     """
 
-    """Tree-sitter query to match this string pattern (S-expression format)."""
-    query: str
-
-    """
-    Opening delimiter for the string.
-    Can be a static string (e.g., double quote, single quote, triple quotes) or a callable that
-    dynamically determines the delimiter based on the matched text.
-    """
-    opening: Union[str, Callable[[str], str]]
-
-    """
-    Closing delimiter for the string.
-    Can be a static string (e.g., double quote, single quote, triple quotes) or a callable that
-    dynamically determines the delimiter based on the matched text.
-    """
-    closing: Union[str, Callable[[str], str]]
-
     """Where to place the placeholder when trimming. Default: inline within the string."""
     placeholder_position: PlaceholderPosition = PlaceholderPosition.INLINE
-
-    """Template for the placeholder text. Default: ellipsis character."""
-    placeholder_template: str = "…"
 
     """
     Whether to preserve exact whitespace when trimming.
@@ -93,18 +177,9 @@ class StringProfile:
     """
     interpolation_active: Optional[Callable[[str, str], bool]] = None
 
-    """Priority for pattern matching. Higher values are checked first."""
-    priority: int = 0
-
-    """
-    Optional custom name for comments about this pattern.
-    If not set, defaults to the literal category name.
-    """
-    comment_name: Optional[str] = None
-
 
 @dataclass
-class SequenceProfile:
+class SequenceProfile(LiteralProfile):
     """
     Profile for sequence literal patterns.
 
@@ -112,23 +187,6 @@ class SequenceProfile:
     vectors, tuples, slices), including element separation, placeholder
     positioning, and minimum element preservation.
     """
-
-    """Tree-sitter query to match this sequence pattern (S-expression format)."""
-    query: str
-
-    """
-    Opening delimiter for the sequence.
-    Can be a static string (e.g., bracket or paren) or a callable that
-    dynamically determines the delimiter based on the matched text.
-    """
-    opening: Union[str, Callable[[str], str]]
-
-    """
-    Closing delimiter for the sequence.
-    Can be a static string (e.g., bracket or paren) or a callable that
-    dynamically determines the delimiter based on the matched text.
-    """
-    closing: Union[str, Callable[[str], str]]
 
     """Element separator string. Default: comma."""
     separator: str = ","
@@ -145,15 +203,6 @@ class SequenceProfile:
     """Minimum number of elements to keep, even if over budget."""
     min_elements: int = 1
 
-    """Priority for pattern matching. Higher values are checked first."""
-    priority: int = 0
-
-    """
-    Optional custom name for comments about this pattern.
-    If not set, defaults to the literal category name.
-    """
-    comment_name: Optional[str] = None
-
     """
     Whether this pattern requires AST-based element extraction.
     When True: uses tree-sitter node.children instead of text parsing.
@@ -163,7 +212,7 @@ class SequenceProfile:
 
 
 @dataclass
-class MappingProfile:
+class MappingProfile(LiteralProfile):
     """
     Profile for mapping literal patterns.
 
@@ -171,23 +220,6 @@ class MappingProfile:
     objects, hash maps), including key-value separation, element separation,
     and handling of typed structures where all keys must be preserved.
     """
-
-    """Tree-sitter query to match this mapping pattern (S-expression format)."""
-    query: str
-
-    """
-    Opening delimiter for the mapping.
-    Can be a static string (e.g., brace) or a callable that
-    dynamically determines the delimiter based on the matched text.
-    """
-    opening: Union[str, Callable[[str], str]]
-
-    """
-    Closing delimiter for the mapping.
-    Can be a static string (e.g., brace) or a callable that
-    dynamically determines the delimiter based on the matched text.
-    """
-    closing: Union[str, Callable[[str], str]]
 
     """Element separator string. Default: comma."""
     separator: str = ","
@@ -204,17 +236,8 @@ class MappingProfile:
     """Template for the placeholder text. Default: key-value pair with ellipsis."""
     placeholder_template: str = '"…": "…"'
 
-    min_elements: int = 1
     """Minimum number of elements to keep, even if over budget."""
-
-    """Priority for pattern matching. Higher values are checked first."""
-    priority: int = 0
-
-    """
-    Optional custom name for comments about this pattern.
-    If not set, defaults to the literal category name.
-    """
-    comment_name: Optional[str] = None
+    min_elements: int = 1
 
     """
     For typed structures: preserve all keys/fields at top level.
@@ -234,7 +257,7 @@ class MappingProfile:
 
 
 @dataclass
-class FactoryProfile:
+class FactoryProfile(LiteralProfile):
     """
     Profile for factory method/macro patterns.
 
@@ -243,29 +266,13 @@ class FactoryProfile:
     data structures through function/method calls or macros.
     """
 
-    """Tree-sitter query to match this factory pattern (S-expression format)."""
-    query: str
-
     """
     Regex pattern to match wrapper name (e.g., r"List\\.of$", r"^vec$").
     Used to distinguish between different factory methods when multiple patterns
     match the same tree-sitter node type.
+    # Required in practice, empty string is invalid and will fail at runtime
     """
-    wrapper_match: str
-
-    """
-    Opening delimiter for arguments.
-    Can be a static string (e.g., "(", "![") or a callable that
-    dynamically determines the delimiter based on the matched text.
-    """
-    opening: Union[str, Callable[[str], str]]
-
-    """
-    Closing delimiter for arguments.
-    Can be a static string (e.g., ")", "]") or a callable that
-    dynamically determines the delimiter based on the matched text.
-    """
-    closing: Union[str, Callable[[str], str]]
+    wrapper_match: str = ""
 
     """Element separator string. Default: comma."""
     separator: str = ","
@@ -282,15 +289,6 @@ class FactoryProfile:
     """Minimum number of elements to keep, even if over budget."""
     min_elements: int = 1
 
-    """Priority for pattern matching. Higher values are checked first."""
-    priority: int = 0
-
-    """
-    Optional custom name for comments about this pattern.
-    If not set, defaults to the literal category name.
-    """
-    comment_name: Optional[str] = None
-
     """
     Group elements into tuples of this size (for Map.of pair semantics).
     Default 1 = no grouping. Set to 2 for Map.of(k1, v1, k2, v2).
@@ -306,7 +304,7 @@ class FactoryProfile:
 
 
 @dataclass
-class BlockInitProfile:
+class BlockInitProfile(LiteralProfile):
     """
     Profile for imperative block initialization patterns.
 
@@ -314,9 +312,6 @@ class BlockInitProfile:
     initialization and Rust HashMap initialization chains.
     These are sequences of statements that initialize data structures.
     """
-
-    """Tree-sitter query to match this block init pattern (S-expression format)."""
-    query: str
 
     """
     Path to statements block within the node (e.g., "class_body/block").
@@ -339,15 +334,6 @@ class BlockInitProfile:
 
     """Minimum number of statements to keep, even if over budget."""
     min_elements: int = 1
-
-    """Priority for pattern matching. Higher values are checked first."""
-    priority: int = 0
-
-    """
-    Optional custom name for comments about this pattern.
-    If not set, defaults to "block init".
-    """
-    comment_name: Optional[str] = None
 
 
 @dataclass
@@ -375,7 +361,3 @@ class LanguageSyntaxFlags:
     # Special initialization patterns
     supports_block_init: bool = False           # Java double-brace, Rust HashMap chains
     supports_ast_sequences: bool = False        # Concatenated strings without separators
-
-
-# Union type for all profile types
-LiteralProfile = Union[StringProfile, SequenceProfile, MappingProfile, FactoryProfile, BlockInitProfile]

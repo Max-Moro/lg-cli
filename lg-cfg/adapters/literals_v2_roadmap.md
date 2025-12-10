@@ -31,6 +31,26 @@
 ### ✅ Этап 6: Адаптация ядра для работы с профилями
 Полный переход на профили (5 подэтапов: parser, selector, formatter, backward compat, LiteralPattern). Удалено ~555 строк legacy кода. Перемещены `LiteralCategory` и `PlaceholderPosition` в `patterns.py`.
 
+### ✅ Этап 6.1: Рефакторинг модели профилей (вклинившийся)
+Улучшение архитектуры модели после выявления проблем при работе с профилями.
+
+**Решенные проблемы**:
+- Проблема №1: Избыточное использование hasattr/getattr (64+ вызова)
+  * Создан базовый класс `LiteralProfile` с общими атрибутами
+  * Специализированные профили наследуются от базового
+  * Заменены hasattr/getattr на прямой доступ и isinstance проверки
+
+- Проблема №2: Фрагментация модели на 3 модуля
+  * Объединены `categories.py` и `patterns.py` в единый `patterns.py`
+  * Удален `categories.py` (ParsedLiteral, TrimResult перенесены)
+  * Осталось 2 модуля: patterns.py (модель) и descriptor.py (языковые дескрипторы)
+
+- Проблема №3: Дублирование LiteralCategory enum
+  * Удален `LiteralCategory` enum полностью
+  * Удалено поле `category` из `ParsedLiteral`
+  * Все проверки заменены на `isinstance(profile, ProfileType)`
+  * Генерация комментариев через интроспекцию типа профиля
+
 ---
 
 ## Предстоящие этапы
@@ -103,9 +123,12 @@
 ## Текущий статус
 
 - **Ветка**: `literals-v2`
-- **Текущий этап**: ✅ Этапы 1-6 завершены, готов к Этапу 7
+- **Текущий этап**: ✅ Этапы 1-6.1 завершены, готов к Этапу 7
 - **Последний прогон**: 100/100 тестов ✅
+- **Последний коммит**: `b9f45b1` "Stage 6.1: Refactor profile model"
 - **Структура**:
   - `processing/`: parser ✅, selector ✅, formatter ✅, pipeline ✅
-  - Удалено: core.py, старые selector.py/formatter.py, LiteralPattern (~555 строк)
+  - `patterns.py`: Модель данных с иерархией профилей ✅ (базовый LiteralProfile + 5 специализированных)
+  - `descriptor.py`: Языковые дескрипторы ✅
+  - Удалено: core.py, старые selector.py/formatter.py, categories.py, LiteralPattern, LiteralCategory (~661 строк)
   - Legacy: handler.py (удаляется на Этапе 12), block_init.py (рефакторится на Этапе 9)

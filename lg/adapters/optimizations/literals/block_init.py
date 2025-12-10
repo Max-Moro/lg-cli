@@ -12,7 +12,7 @@ from __future__ import annotations
 from typing import List, Optional, Tuple
 
 from lg.adapters.tree_sitter_support import Node, TreeSitterDocument
-from .categories import TrimResult
+from .patterns import TrimResult
 
 
 class BlockInitProcessor:

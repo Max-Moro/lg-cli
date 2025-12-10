@@ -12,11 +12,10 @@ from __future__ import annotations
 
 from typing import Optional, Union
 
-from ..categories import ParsedLiteral
 from ..patterns import (
     LiteralProfile,
-    LiteralCategory,
     PlaceholderPosition,
+    ParsedLiteral,
     StringProfile,
     SequenceProfile,
     MappingProfile,
@@ -50,30 +49,6 @@ class LiteralParser:
             tokenizer: Token counting service
         """
         self.tokenizer = tokenizer
-
-    def _get_category_from_profile(self, profile: LiteralProfile) -> LiteralCategory:
-        """
-        Determine LiteralCategory from profile type.
-
-        Args:
-            profile: The profile instance
-
-        Returns:
-            LiteralCategory corresponding to the profile type
-        """
-        if isinstance(profile, StringProfile):
-            return LiteralCategory.STRING
-        elif isinstance(profile, SequenceProfile):
-            return LiteralCategory.SEQUENCE
-        elif isinstance(profile, MappingProfile):
-            return LiteralCategory.MAPPING
-        elif isinstance(profile, FactoryProfile):
-            return LiteralCategory.FACTORY_CALL
-        elif isinstance(profile, BlockInitProfile):
-            return LiteralCategory.BLOCK_INIT
-        else:
-            # Fallback for unknown profile types
-            return LiteralCategory.STRING
 
     def parse_literal_with_profile(
         self,
@@ -117,15 +92,11 @@ class LiteralParser:
         # Count tokens
         original_tokens = self.tokenizer.count_text_cached(text)
 
-        # Determine category from profile type
-        category = self._get_category_from_profile(profile)
-
         return ParsedLiteral(
             original_text=text,
             start_byte=start_byte,
             end_byte=end_byte,
             original_tokens=original_tokens,
-            category=category,
             opening=opening,
             closing=closing,
             content=content,

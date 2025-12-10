@@ -11,14 +11,11 @@ from typing import List, Optional
 
 from lg.stats.tokenizer import TokenService
 from .block_init import BlockInitProcessor
-from .categories import (
-    ParsedLiteral,
-    TrimResult,
-)
 from .descriptor import LanguageLiteralDescriptor
 from .element_parser import ElementParser, ParseConfig, Element
 from .patterns import (
-    LiteralCategory,
+    ParsedLiteral,
+    TrimResult,
     StringProfile,
     SequenceProfile,
     MappingProfile,
@@ -97,7 +94,7 @@ class LanguageLiteralHandler:
 
         # Collect from mapping profiles (some have wrappers like Kotlin mapOf)
         for profile in self.descriptor.mapping_profiles:
-            if hasattr(profile, 'wrapper_match') and profile.wrapper_match:
+            if isinstance(profile, MappingProfile) and profile.wrapper_match:
                 regex = profile.wrapper_match.rstrip("$")
                 if regex.startswith("(") and regex.endswith(")"):
                     regex = regex[1:-1]
@@ -129,7 +126,8 @@ class LanguageLiteralHandler:
         # Create cache key from profile attributes
         separator = getattr(profile, 'separator', ',')
         kv_separator = getattr(profile, 'kv_separator', None)
-        key = f"{separator}:{kv_separator}"
+        tuple_size = getattr(profile, 'tuple_size', 1)
+        key = f"{separator}:{kv_separator}:{tuple_size}"
 
         if key not in self._parsers:
             config = create_parse_config_from_profile(profile, self._factory_wrappers)
@@ -190,10 +188,11 @@ class LanguageLiteralHandler:
         if parsed.original_tokens <= token_budget:
             return None
 
-        # Handle based on category
-        if parsed.category == LiteralCategory.STRING:
+        # Handle based on profile type
+        profile = parsed.profile
+        if isinstance(profile, StringProfile):
             return self._process_string(parsed, token_budget)
-        elif parsed.category == LiteralCategory.BLOCK_INIT:
+        elif isinstance(profile, BlockInitProfile):
             # BLOCK_INIT requires special handling with node access
             # This path should not be reached from process_literal
             raise RuntimeError(
@@ -276,7 +275,7 @@ class LanguageLiteralHandler:
             return None
 
         # Calculate overhead
-        placeholder = getattr(profile, 'placeholder_template', '"…"')
+        placeholder = profile.placeholder_template
         overhead = self.selector.calculate_overhead(
             parsed.opening, parsed.closing, placeholder,
             parsed.is_multiline, parsed.element_indent
@@ -436,7 +435,7 @@ class LanguageLiteralHandler:
 
         # Keep as many complete child strings as fit in budget
         # Overhead is just for placeholder (no delimiters)
-        placeholder = getattr(profile, 'placeholder_template', '"…"')
+        placeholder = profile.placeholder_template
         placeholder_tokens = self.tokenizer.count_text_cached(placeholder)
 
         content_budget = max(1, token_budget - placeholder_tokens)
@@ -525,7 +524,7 @@ class LanguageLiteralHandler:
         saved_tokens = original_tokens - trimmed_tokens
 
         # Create comment
-        comment_name = getattr(profile, 'comment_name', 'literal')
+        comment_name = profile.comment_name or 'literal'
         comment_text = f"{comment_name} (−{saved_tokens} tokens)"
 
         return TrimResult(
