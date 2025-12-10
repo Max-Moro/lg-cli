@@ -13,6 +13,7 @@ from tree_sitter._binding import Node
 
 from lg.stats.tokenizer import TokenService
 from .components.interpolation import InterpolationHandler
+from .components.placeholder import PlaceholderCommentFormatter
 from .descriptor import LanguageLiteralDescriptor
 from .element_parser import ElementParser, Element, ParseConfig
 from .patterns import (
@@ -72,6 +73,7 @@ class LanguageLiteralHandler:
         self.selector = BudgetSelector(tokenizer)
         self.formatter = ResultFormatter(tokenizer, comment_style)
         self.interpolation = InterpolationHandler()
+        self.placeholder_formatter = PlaceholderCommentFormatter(comment_style)
 
         # Collect factory wrappers from all FACTORY_CALL patterns for nested detection
         self._factory_wrappers = self._collect_factory_wrappers()
@@ -342,6 +344,8 @@ class LanguageLiteralHandler:
         This method can be overridden by language-specific handlers
         for custom behavior.
 
+        Delegates to placeholder_formatter component.
+
         Args:
             text_after_literal: Text after the literal in the source
             comment_content: Raw comment text (e.g., "literal string (−N tokens)")
@@ -350,67 +354,6 @@ class LanguageLiteralHandler:
             Tuple of (formatted_comment, offset_from_literal_end)
             The offset indicates where to insert relative to literal end.
         """
-        # Get the remainder of the line after the literal
-        line_remainder = text_after_literal.split('\n')[0]
-
-        # Find insertion point and determine comment style
-        offset, needs_block = self._find_comment_insertion_point(line_remainder)
-
-        if needs_block:
-            return self._format_block_comment(comment_content), offset
-
-        return self._format_single_comment(comment_content), offset
-
-    def _find_comment_insertion_point(self, line_remainder: str) -> tuple[int, bool]:
-        """
-        Find the best insertion point for comment.
-
-        Returns:
-            Tuple of (offset, needs_block_comment)
-            - offset: characters to skip before inserting
-            - needs_block_comment: whether block comment is needed
-        """
-        if not line_remainder.strip():
-            return 0, False  # Empty line - insert at literal end, single-line OK
-
-        # Look for punctuation that should come before the comment
-        offset = 0
-
-        # Skip closing brackets first
-        while offset < len(line_remainder) and line_remainder[offset] in ')]}':
-            offset += 1
-
-        # Check for semicolon
-        if offset < len(line_remainder) and line_remainder[offset] == ';':
-            offset += 1
-            # Check what follows the semicolon
-            after_semi = line_remainder[offset:].strip()
-            if after_semi:
-                # Code after semicolon - need block comment
-                return offset, True
-            return offset, False
-
-        # Check for comma
-        if offset < len(line_remainder) and line_remainder[offset] == ',':
-            offset += 1
-            after_comma = line_remainder[offset:].strip()
-            # Safe if followed by closing bracket or end of line
-            if not after_comma or after_comma[0] in ')]}':
-                return offset, False
-            # More elements follow - need block comment
-            return offset, True
-
-        # No recognized punctuation - check if there's code
-        remaining = line_remainder[offset:].strip()
-        if remaining:
-            return offset, True  # Code present - need block comment
-
-        return offset, False
-
-    def _format_single_comment(self, content: str) -> str:
-        """Format as single-line comment."""
-        return f" {self.single_comment} {content}"
-
-    def _format_block_comment(self, content: str) -> str:
-        """Format as block comment."""
-        return f" {self.block_comment[0]} {content} {self.block_comment[1]}"
+        return self.placeholder_formatter.format_comment_for_context(
+            text_after_literal, comment_content
+        )

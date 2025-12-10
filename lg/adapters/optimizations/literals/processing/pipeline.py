@@ -394,7 +394,7 @@ class LiteralPipeline:
         placeholder_style = self.adapter.cfg.placeholders.style
         if placeholder_style != "none" and result.comment_text:
             text_after = context.raw_text[end_byte:]
-            formatted_comment, offset = self.handler.get_comment_for_context(
+            formatted_comment, offset = self.handler.placeholder_formatter.format_comment_for_context(
                 text_after, result.comment_text
             )
             context.editor.add_insertion(
@@ -419,7 +419,7 @@ class LiteralPipeline:
         placeholder_style = self.adapter.cfg.placeholders.style
         if placeholder_style != "none" and result.comment_text:
             text_after = context.raw_text[end_byte:]
-            formatted_comment, offset = self.handler.get_comment_for_context(
+            formatted_comment, offset = self.handler.placeholder_formatter.format_comment_for_context(
                 text_after, result.comment_text
             )
             context.editor.add_insertion(

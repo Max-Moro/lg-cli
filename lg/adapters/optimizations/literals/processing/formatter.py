@@ -16,6 +16,7 @@ from typing import Optional, cast
 from lg.stats.tokenizer import TokenService
 from .selector import SelectionBase, Selection, DFSSelection
 from ..element_parser import ElementParser
+from ..components.placeholder import PlaceholderCommentFormatter
 from ..patterns import (
     PlaceholderPosition,
     ParsedLiteral,
@@ -73,6 +74,7 @@ class ResultFormatter:
         self.tokenizer = tokenizer
         self.single_comment = comment_style[0]
         self.block_comment = comment_style[1]
+        self.placeholder_formatter = PlaceholderCommentFormatter(comment_style)
 
     def format(
         self,
@@ -348,22 +350,14 @@ class ResultFormatter:
 
         # Fallback to profile type if comment_name is None
         if comment_name is None:
-            if isinstance(profile, StringProfile):
-                comment_name = "string"
-            elif isinstance(profile, SequenceProfile):
-                comment_name = "sequence"
-            elif isinstance(profile, MappingProfile):
-                comment_name = "mapping"
-            elif isinstance(profile, FactoryProfile):
-                comment_name = "factory"
-            elif isinstance(profile, BlockInitProfile):
-                comment_name = "block"
-            else:
-                comment_name = "literal"
+            category_name = self._get_default_category_name(profile)
+        else:
+            category_name = comment_name
 
-        category_name = comment_name
         # Return raw content - formatting is done by handler based on context
-        comment_content = f"literal {category_name} (−{saved} tokens)"
+        comment_content = self.placeholder_formatter.generate_comment_text(
+            category_name, saved
+        )
         return comment_content, parsed.end_byte
 
     def _format_single_line(
@@ -596,6 +590,21 @@ class ResultFormatter:
         truncated = f"{kept_content}…"
 
         return f"{parsed.opening}{truncated}{parsed.closing}"
+
+    def _get_default_category_name(self, profile: LiteralProfile) -> str:
+        """Get default category name from profile type."""
+        if isinstance(profile, StringProfile):
+            return "string"
+        elif isinstance(profile, SequenceProfile):
+            return "sequence"
+        elif isinstance(profile, MappingProfile):
+            return "mapping"
+        elif isinstance(profile, FactoryProfile):
+            return "factory"
+        elif isinstance(profile, BlockInitProfile):
+            return "block"
+        else:
+            return "literal"
 
     def create_trim_result(
         self,

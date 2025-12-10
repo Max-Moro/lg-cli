@@ -8,5 +8,6 @@ of literal string processing.
 from .interpolation import InterpolationHandler
 from .ast_sequence import ASTSequenceProcessor
 from .block_init import BlockInitProcessor
+from .placeholder import PlaceholderCommentFormatter
 
-__all__ = ['InterpolationHandler', 'ASTSequenceProcessor', 'BlockInitProcessor']
+__all__ = ['InterpolationHandler', 'ASTSequenceProcessor', 'BlockInitProcessor', 'PlaceholderCommentFormatter']
