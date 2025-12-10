@@ -12,6 +12,7 @@ from typing import List, Optional, cast
 from tree_sitter._binding import Node
 
 from lg.stats.tokenizer import TokenService
+from .components.budgeting import BudgetCalculator
 from .components.interpolation import InterpolationHandler
 from .components.placeholder import PlaceholderCommentFormatter
 from .descriptor import LanguageLiteralDescriptor
@@ -74,6 +75,7 @@ class LanguageLiteralHandler:
         self.formatter = ResultFormatter(tokenizer, comment_style)
         self.interpolation = InterpolationHandler()
         self.placeholder_formatter = PlaceholderCommentFormatter(comment_style)
+        self.budget_calculator = BudgetCalculator(tokenizer)
 
         # Collect factory wrappers from all FACTORY_CALL patterns for nested detection
         self._factory_wrappers = self._collect_factory_wrappers()
@@ -216,7 +218,7 @@ class LanguageLiteralHandler:
     ) -> Optional[TrimResult]:
         """Process string literal - truncate content."""
         # Calculate overhead
-        overhead = self.selector.calculate_overhead(
+        overhead = self.budget_calculator.calculate_overhead(
             parsed.opening, parsed.closing, "…",
             parsed.is_multiline, parsed.element_indent
         )
@@ -285,7 +287,7 @@ class LanguageLiteralHandler:
 
         # Calculate overhead
         placeholder = profile.placeholder_template
-        overhead = self.selector.calculate_overhead(
+        overhead = self.budget_calculator.calculate_overhead(
             parsed.opening, parsed.closing, placeholder,
             parsed.is_multiline, parsed.element_indent
         )

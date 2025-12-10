@@ -13,6 +13,7 @@ from typing import List, Dict
 from lg.stats.tokenizer import TokenService
 from ..element_parser import Element
 from ..patterns import LiteralProfile, ParsedLiteral, CollectionProfile
+from ..components.budgeting import BudgetCalculator
 
 
 @dataclass
@@ -105,6 +106,7 @@ class BudgetSelector:
     def __init__(self, tokenizer: TokenService):
         """Initialize selector with tokenizer."""
         self.tokenizer = tokenizer
+        self.budget_calculator = BudgetCalculator(tokenizer)
 
     def select_first(
         self,
@@ -294,33 +296,6 @@ class BudgetSelector:
         else:
             # Default to first
             return self.select_first(elements, budget, **kwargs)
-
-    def calculate_overhead(
-        self,
-        opening: str,
-        closing: str,
-        placeholder: str,
-        is_multiline: bool = False,
-        indent: str = "",
-    ) -> int:
-        """
-        Calculate token overhead for literal structure.
-
-        Args:
-            opening: Opening delimiter
-            closing: Closing delimiter
-            placeholder: Placeholder text
-            is_multiline: Whether literal is multiline
-            indent: Indentation string
-
-        Returns:
-            Total overhead tokens
-        """
-        overhead_text = f"{opening}{placeholder}{closing}"
-        if is_multiline:
-            overhead_text = f"{opening}\n{indent}{placeholder}\n{indent}{closing}"
-
-        return self.tokenizer.count_text_cached(overhead_text)
 
     def select_dfs(
         self,
