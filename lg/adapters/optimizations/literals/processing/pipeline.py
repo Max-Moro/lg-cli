@@ -7,7 +7,7 @@ Orchestrates the two-pass literal processing workflow.
 
 from __future__ import annotations
 
-from typing import Callable, cast, List, Optional, Tuple, Union
+from typing import Callable, cast, List, Tuple, Union
 
 from lg.adapters.code_model import LiteralConfig
 from lg.adapters.context import ProcessingContext
@@ -73,15 +73,14 @@ class LiteralPipeline:
         processed_strings = []  # Track (start, end, tokens_saved) for processed strings
 
         # Pass 1: Process all string profiles
-        self._process_strings(context, None, max_tokens, processed_strings)
+        self._process_strings(context, max_tokens, processed_strings)
 
         # Pass 2: Process all collection profiles
-        self._process_collections(context, None, max_tokens, processed_strings)
+        self._process_collections(context, max_tokens, processed_strings)
 
     def _process_strings(
         self,
         context: ProcessingContext,
-        _: None,  # Unused parameter for compatibility
         max_tokens: int,
         processed_strings: List
     ) -> None:
@@ -165,7 +164,6 @@ class LiteralPipeline:
     def _process_collections(
         self,
         context: ProcessingContext,
-        _: None,
         max_tokens: int,
         processed_strings: List
     ) -> None:

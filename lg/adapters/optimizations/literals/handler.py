@@ -12,14 +12,11 @@ from typing import List, Optional
 from lg.stats.tokenizer import TokenService
 from .block_init import BlockInitProcessor
 from .descriptor import LanguageLiteralDescriptor
-from .element_parser import ElementParser, ParseConfig, Element
+from .element_parser import ElementParser, Element
 from .patterns import (
     ParsedLiteral,
     TrimResult,
     StringProfile,
-    SequenceProfile,
-    MappingProfile,
-    FactoryProfile,
     BlockInitProfile,
     LiteralProfile,
 )
@@ -94,7 +91,7 @@ class LanguageLiteralHandler:
 
         # Collect from mapping profiles (some have wrappers like Kotlin mapOf)
         for profile in self.descriptor.mapping_profiles:
-            if isinstance(profile, MappingProfile) and profile.wrapper_match:
+            if profile.wrapper_match:
                 regex = profile.wrapper_match.rstrip("$")
                 if regex.startswith("(") and regex.endswith(")"):
                     regex = regex[1:-1]
@@ -648,7 +645,7 @@ class LanguageLiteralHandler:
         profile = parsed.profile
 
         # Get interpolation markers from profile if it's a StringProfile
-        if isinstance(profile, StringProfile):
+        if type(profile).__name__ == 'StringProfile':
             markers = profile.interpolation_markers
             activation_callback = profile.interpolation_active
         else:

@@ -68,6 +68,26 @@
 
 **Результат**: 100/100 тестов ✅, голдены без изменений, ~50 строк удалено
 
+#### ✅ Этап 6.3: Персонализированная обработка профилей (вклинившийся)
+Устранение избыточного паттерна "склеивание-расклеивание" через прямую работу с типизированными списками профилей.
+
+**Проблема**:
+- Профили склеивались в `all_profiles` / `profile_groups`, теряя типовую информацию
+- Затем код "расклеивал" через `isinstance` или строковые метки типов (`profile_type: str`)
+- Терялась типобезопасность, добавлялся runtime overhead
+
+**Решение (только в pipeline.py)**:
+- Убрано склеивание профилей - прямая итерация по типизированным спискам
+- Общая логика пайплайна вынесена в переиспользуемый `_process_profile()`
+- Удалён dispatcher `_process_collection_node()` со строковыми метками
+- Специализированные процессоры получают профили нужного типа напрямую
+
+**Выполненные изменения**:
+- `pipeline.py`: персонализированная обработка через `_process_profile()`, убраны все isinstance для dispatch
+- `formatter.py`, `handler.py`: микро-оптимизация импортов (без структурных изменений)
+
+**Результат**: 100/100 тестов ✅, голдены без изменений, улучшена структура pipeline
+
 ### Этап 7: Компонент Interpolation
 - Создать `components/interpolation.py`: правила границ/делимитеров интерполяции, корректировка тримминга строк
 - Удалить дублирующие проверки интерполяции из parser/formatter и из `handler.py`; подключить через pipeline
@@ -122,12 +142,12 @@
 ## Текущий статус
 
 - **Ветка**: `literals-v2`
-- **Текущий этап**: ✅ Этапы 1-6.2 завершены, готов к Этапу 7
+- **Текущий этап**: ✅ Этапы 1-6.3 завершены, готов к Этапу 7
 - **Последний прогон**: 100/100 тестов ✅
-- **Последний коммит**: (pending) "Stage 6.5: Remove priority field completely"
+- **Последний коммит**: (pending) "Stage 6.3: Eliminate dispatch pattern via personalized profile processing"
 - **Структура**:
-  - `processing/`: parser ✅, selector ✅, formatter ✅, pipeline ✅
-  - `patterns.py`: Модель данных с иерархией профилей ✅ (базовый LiteralProfile + 5 специализированных, БЕЗ priority)
+  - `processing/`: parser ✅, selector ✅, formatter ✅, pipeline ✅ (персонализированная обработка)
+  - `patterns.py`: Модель данных с иерархией профилей ✅ (базовый LiteralProfile + 5 специализированных)
   - `descriptor.py`: Языковые дескрипторы ✅
-  - Удалено: core.py, старые selector.py/formatter.py, categories.py, LiteralPattern, LiteralCategory, priority (~711 строк)
+  - Удалено: core.py, старые selector.py/formatter.py, categories.py, LiteralPattern, LiteralCategory, priority, dispatch pattern (~800 строк)
   - Legacy: handler.py (удаляется на Этапе 12), block_init.py (рефакторится на Этапе 9)

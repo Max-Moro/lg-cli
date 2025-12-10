@@ -15,6 +15,7 @@ from typing import Optional, cast
 
 from lg.stats.tokenizer import TokenService
 from .selector import SelectionBase, Selection, DFSSelection
+from ..element_parser import ElementParser
 from ..patterns import (
     PlaceholderPosition,
     ParsedLiteral,
@@ -25,7 +26,6 @@ from ..patterns import (
     FactoryProfile,
     BlockInitProfile,
 )
-from ..element_parser import ElementParser
 
 
 @dataclass
