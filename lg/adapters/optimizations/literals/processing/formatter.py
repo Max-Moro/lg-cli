@@ -415,9 +415,10 @@ class ResultFormatter:
         # Handle string literals (inline placeholder)
         if parsed.category == LiteralCategory.STRING:
             if isinstance(selection, DFSSelection):
+                query = getattr(profile, 'query', 'unknown')
                 raise ValueError(
                     f"String literals cannot use DFS selection. "
-                    f"Check language descriptor pattern: {parsed.pattern.query}"
+                    f"Check language descriptor pattern: {query}"
                 )
             return self._format_string(parsed, cast(Selection, selection))
 

@@ -83,9 +83,12 @@
 - Обновлены сигнатуры `select_dfs()` и `_select_dfs_tuples()` для работы с `profile` и `handler`
 - Временная конвертация `_convert_profile_to_pattern()` больше не используется в selector
 
-#### 6.3) Рефакторинг formatter для работы с профилями
-- `processing/formatter.py` использует метаданные из профилей напрямую
-- **Критерий**: Все 100 тестов проходят
+#### ✅ 6.3) Рефакторинг formatter для работы с профилями
+
+**Выполнено**:
+- Исправлено последнее использование `parsed.pattern.query` → `getattr(profile, 'query', 'unknown')`
+- Formatter полностью работает с профилями через `hasattr()`/`getattr()`
+- Убрана последняя зависимость от `parsed.pattern` в formatter
 
 #### 6.4) Удаление backward compatibility
 - Удалить метод `to_patterns()` (и использующий его код) из `LanguageLiteralDescriptor`
@@ -168,10 +171,10 @@
 ## Текущий статус
 
 - **Ветка**: `literals-v2`
-- **Текущий этап**: Завершён подэтап 6.2, готов к подэтапу 6.3
+- **Текущий этап**: Завершён подэтап 6.3, готов к подэтапу 6.4
 - **Последний успешный прогон**: 100/100 тестов
 - **Удалённые legacy файлы**: `core.py` ✅, `selector.py` ✅, `formatter.py` ✅
 - **Переименованные файлы**: `parser.py` → `element_parser.py` ✅
 - **Новые файлы в processing/**: `parser.py` ✅, `selector.py` ✅, `formatter.py` ✅
 - **Оставшиеся legacy файлы**: `handler.py` (будет удалён на Этапе 12)
-- **Прогресс Этапа 6**: Parser ✅, Selector ✅, Formatter (в процессе)
+- **Прогресс Этапа 6**: Parser ✅, Selector ✅, Formatter ✅
