@@ -46,10 +46,8 @@
 #### ✅ Этап 7.1: Восстановление строгой типизации (вклинившийся)
 Устранены проблемы с типизацией, накопившиеся в ходе предыдущих этапов.
 
-### Этап 8: Компонент AST sequence
-- Создать `components/ast_sequence.py` для последовательностей без разделителей (конкатенации строк и т.п.)
-- Удалить AST-специфичные костыли из `handler.py`; использовать компонент через pipeline
-- **Критерий**: Все 100 тестов проходят
+### ✅ Этап 8: Компонент AST sequence
+Создан `components/ast_sequence.py` (ASTSequenceProcessor) для последовательностей без разделителей (конкатенация строк C/C++). Удалён метод `process_ast_based_sequence` из `handler.py`; компонент подключён через pipeline.
 
 ### Этап 9: Компонент Block init
 - Перенести текущий `block_init.py` в `components/block_init.py` с API для imperative инициализаций (double-brace Java, Rust HashMap chain)
@@ -95,14 +93,14 @@
 ## Текущий статус
 
 - **Ветка**: `literals-v2`
-- **Текущий этап**: ✅ Этапы 1-7.1 завершены, готов к Этапу 8
+- **Текущий этап**: ✅ Этапы 1-8 завершены, готов к Этапу 9
 - **Последний прогон**: 100/100 тестов ✅
-- **Последний коммит**: (pending) "Stage 7.1: Restore strict typing"
+- **Последний коммит**: (pending) "Stage 8: AST sequence component"
 - **Структура**:
   - `processing/`: parser ✅, selector ✅, formatter ✅, pipeline ✅
-  - `components/`: interpolation ✅
+  - `components/`: interpolation ✅, ast_sequence ✅
   - `patterns.py`: Generic инфраструктура ✅, типовая иерархия с CollectionProfile ✅
   - `descriptor.py`: Языковые дескрипторы ✅
-  - Удалено: core.py, старые selector.py/formatter.py, categories.py, LiteralPattern, LiteralCategory, priority, dispatch pattern (~800 строк)
+  - Удалено: core.py, старые selector.py/formatter.py, categories.py, LiteralPattern, LiteralCategory, priority, dispatch pattern, process_ast_based_sequence (~950 строк)
   - Удалено: все getattr вызовы (14 мест), длинные isinstance цепочки
   - Legacy: handler.py (удаляется на Этапе 12), block_init.py (рефакторится на Этапе 9)

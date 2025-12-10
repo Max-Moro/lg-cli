@@ -37,9 +37,6 @@ class LiteralPipeline:
 
         # Get descriptor from adapter
         descriptor = self.adapter.create_literal_descriptor()
-        if descriptor is None:
-            self.handler = None
-            return
 
         # Create handler with language-specific comment style
         from ..handler import LanguageLiteralHandler
@@ -49,6 +46,13 @@ class LiteralPipeline:
             descriptor,
             self.adapter.tokenizer,
             (comment_style[0], (comment_style[1][0], comment_style[1][1]))
+        )
+
+        # Create AST sequence processor
+        from ..components.ast_sequence import ASTSequenceProcessor
+        self.ast_sequence_processor = ASTSequenceProcessor(
+            self.adapter.tokenizer,
+            descriptor.string_profiles
         )
 
     def apply(self, context: ProcessingContext) -> None:
@@ -319,7 +323,7 @@ class LiteralPipeline:
             base_indent = self._get_base_indent(context.raw_text, node.start_byte)
             element_indent = self._get_element_indent(text, base_indent)
 
-            result = self.handler.process_ast_based_sequence(
+            result = self.ast_sequence_processor.process(
                 profile=profile,
                 node=node,
                 doc=context.doc,

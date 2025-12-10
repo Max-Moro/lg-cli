@@ -6,5 +6,6 @@ of literal string processing.
 """
 
 from .interpolation import InterpolationHandler
+from .ast_sequence import ASTSequenceProcessor
 
-__all__ = ['InterpolationHandler']
+__all__ = ['InterpolationHandler', 'ASTSequenceProcessor']
