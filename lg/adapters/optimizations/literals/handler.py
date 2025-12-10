@@ -12,7 +12,7 @@ from typing import List, Optional, cast
 from tree_sitter._binding import Node
 
 from lg.stats.tokenizer import TokenService
-from .block_init import BlockInitProcessor
+from .components.block_init import BlockInitProcessor
 from .components.interpolation import InterpolationHandler
 from .descriptor import LanguageLiteralDescriptor
 from .element_parser import ElementParser, Element, ParseConfig
