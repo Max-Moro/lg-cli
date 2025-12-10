@@ -12,14 +12,13 @@ from typing import List, Optional
 from lg.stats.tokenizer import TokenService
 from .block_init import BlockInitProcessor
 from .categories import (
-    LiteralCategory,
-    LiteralPattern,
     ParsedLiteral,
     TrimResult,
 )
 from .descriptor import LanguageLiteralDescriptor
 from .element_parser import ElementParser, ParseConfig, Element
 from .patterns import (
+    LiteralCategory,
     StringProfile,
     SequenceProfile,
     MappingProfile,
@@ -80,98 +79,6 @@ class LanguageLiteralHandler:
         # Cache parsers for different patterns
         self._parsers: dict[str, ElementParser] = {}
 
-    def _convert_profile_to_pattern(self, profile: LiteralProfile) -> LiteralPattern:
-        """
-        Convert a profile to a LiteralPattern.
-
-        This is a temporary adapter for backward compatibility while
-        selector and formatter still work with LiteralPattern.
-
-        Args:
-            profile: The profile instance
-
-        Returns:
-            LiteralPattern with equivalent attributes
-        """
-        if isinstance(profile, StringProfile):
-            return LiteralPattern(
-                category=LiteralCategory.STRING,
-                query=profile.query,
-                opening=profile.opening,
-                closing=profile.closing,
-                placeholder_position=profile.placeholder_position,
-                placeholder_template=profile.placeholder_template,
-                preserve_whitespace=profile.preserve_whitespace,
-                interpolation_markers=profile.interpolation_markers,
-                interpolation_active=profile.interpolation_active,
-                priority=profile.priority,
-                comment_name=profile.comment_name,
-            )
-        elif isinstance(profile, SequenceProfile):
-            return LiteralPattern(
-                category=LiteralCategory.SEQUENCE,
-                query=profile.query,
-                opening=profile.opening,
-                closing=profile.closing,
-                separator=profile.separator,
-                placeholder_position=profile.placeholder_position,
-                placeholder_template=profile.placeholder_template,
-                min_elements=profile.min_elements,
-                priority=profile.priority,
-                comment_name=profile.comment_name,
-                requires_ast_extraction=profile.requires_ast_extraction,
-            )
-        elif isinstance(profile, MappingProfile):
-            return LiteralPattern(
-                category=LiteralCategory.MAPPING,
-                query=profile.query,
-                opening=profile.opening,
-                closing=profile.closing,
-                separator=profile.separator,
-                kv_separator=profile.kv_separator,
-                wrapper_match=profile.wrapper_match,
-                placeholder_position=profile.placeholder_position,
-                placeholder_template=profile.placeholder_template,
-                min_elements=profile.min_elements,
-                priority=profile.priority,
-                comment_name=profile.comment_name,
-                preserve_all_keys=profile.preserve_all_keys,
-            )
-        elif isinstance(profile, FactoryProfile):
-            return LiteralPattern(
-                category=LiteralCategory.FACTORY_CALL,
-                query=profile.query,
-                opening=profile.opening,
-                closing=profile.closing,
-                separator=profile.separator,
-                wrapper_match=profile.wrapper_match,
-                placeholder_position=profile.placeholder_position,
-                placeholder_template=profile.placeholder_template,
-                min_elements=profile.min_elements,
-                priority=profile.priority,
-                comment_name=profile.comment_name,
-                tuple_size=profile.tuple_size,
-                kv_separator=profile.kv_separator,
-            )
-        elif isinstance(profile, BlockInitProfile):
-            return LiteralPattern(
-                category=LiteralCategory.BLOCK_INIT,
-                query=profile.query,
-                opening="",
-                closing="",
-                block_selector=profile.block_selector,
-                statement_pattern=profile.statement_pattern,
-                placeholder_position=profile.placeholder_position,
-                min_elements=profile.min_elements,
-                priority=profile.priority,
-                comment_name=profile.comment_name,
-            )
-        else:
-            # Fallback: treat as LiteralPattern if it already is one
-            if isinstance(profile, LiteralPattern):
-                return profile
-            raise ValueError(f"Unknown profile type: {type(profile)}")
-
     def _collect_factory_wrappers(self) -> List[str]:
         """Collect all factory method wrappers from descriptor for nested detection."""
         wrappers = []
@@ -207,21 +114,6 @@ class LanguageLiteralHandler:
 
         return wrappers
 
-    def get_parser(self, pattern: LiteralPattern) -> ElementParser:
-        """Get or create parser for a pattern."""
-        key = f"{pattern.separator}:{pattern.kv_separator}"
-
-        if key not in self._parsers:
-            config = ParseConfig(
-                separator=pattern.separator,
-                kv_separator=pattern.kv_separator,
-                preserve_whitespace=pattern.preserve_whitespace,
-                factory_wrappers=self._factory_wrappers,
-            )
-            self._parsers[key] = ElementParser(config)
-
-        return self._parsers[key]
-
     def get_parser_for_profile(self, profile) -> ElementParser:
         """
         Get or create parser for a profile.
@@ -245,24 +137,6 @@ class LanguageLiteralHandler:
 
         return self._parsers[key]
 
-    def _detect_wrapper_from_text(self, text: str, pattern: 'LiteralPattern') -> Optional[str]:
-        """Delegate to literal_parser."""
-        return self.literal_parser._detect_wrapper_from_text(text, pattern)
-
-    def parse_literal_with_pattern(
-        self,
-        text: str,
-        pattern: 'LiteralPattern',
-        start_byte: int,
-        end_byte: int,
-        base_indent: str = "",
-        element_indent: str = "",
-    ) -> Optional[ParsedLiteral]:
-        """Delegate to literal_parser."""
-        return self.literal_parser.parse_literal_with_pattern(
-            text, pattern, start_byte, end_byte, base_indent, element_indent
-        )
-
     def _extract_content(
         self,
         text: str,
@@ -277,7 +151,6 @@ class LanguageLiteralHandler:
         self,
         text: str,
         profile: Optional[LiteralProfile] = None,
-        pattern: Optional['LiteralPattern'] = None,
         tree_sitter_type: str = "",
         start_byte: int = 0,
         end_byte: int = 0,
@@ -291,7 +164,6 @@ class LanguageLiteralHandler:
         Args:
             text: Full literal text
             profile: LiteralProfile (StringProfile, SequenceProfile, etc.) that matched this node
-            pattern: LiteralPattern (deprecated, for backward compatibility)
             tree_sitter_type: Tree-sitter node type (for wrapper detection)
             start_byte: Start position
             end_byte: End position
@@ -302,29 +174,14 @@ class LanguageLiteralHandler:
         Returns:
             TrimResult if trimming is beneficial, None otherwise
         """
-        # Handle backward compatibility: if pattern is provided without profile, convert it
-        if profile is None and pattern is not None:
-            # Try to convert pattern to profile (minimal adapter)
-            # This is temporary for backward compatibility
-            profile = pattern
-        elif profile is None:
+        if profile is None:
             return None
 
-        # Determine if profile is a pattern or actual profile
-        is_pattern = isinstance(profile, LiteralPattern)
-
-        if is_pattern:
-            # Use pattern-based parsing
-            parsed = self.parse_literal_with_pattern(
-                text, profile, start_byte, end_byte,
-                base_indent, element_indent
-            )
-        else:
-            # Use profile-based parsing
-            parsed = self.literal_parser.parse_literal_with_profile(
-                text, profile, start_byte, end_byte,
-                base_indent, element_indent
-            )
+        # Use profile-based parsing
+        parsed = self.literal_parser.parse_literal_with_profile(
+            text, profile, start_byte, end_byte,
+            base_indent, element_indent
+        )
 
         if not parsed:
             return None
@@ -340,7 +197,7 @@ class LanguageLiteralHandler:
             # BLOCK_INIT requires special handling with node access
             # This path should not be reached from process_literal
             raise RuntimeError(
-                "BLOCK_INIT patterns must be processed via process_block_init_node, "
+                "BLOCK_INIT profiles must be processed via process_block_init_node, "
                 "not process_literal"
             )
         else:
@@ -409,12 +266,8 @@ class LanguageLiteralHandler:
         """Process collection literal with DFS for nested structures."""
         profile = parsed.profile
 
-        # Convert profile to pattern for getting parser
-        # TODO: This is a temporary adapter - should refactor get_parser to work with profiles
-        pattern = self._convert_profile_to_pattern(profile)
-
-        # Get parser for this pattern
-        parser = self.get_parser(pattern)
+        # Get parser for this profile
+        parser = self.get_parser_for_profile(profile)
 
         # Parse elements
         elements = parser.parse(parsed.content)
@@ -423,7 +276,7 @@ class LanguageLiteralHandler:
             return None
 
         # Calculate overhead
-        placeholder = pattern.placeholder_template
+        placeholder = getattr(profile, 'placeholder_template', '"…"')
         overhead = self.selector.calculate_overhead(
             parsed.opening, parsed.closing, placeholder,
             parsed.is_multiline, parsed.element_indent
@@ -433,13 +286,17 @@ class LanguageLiteralHandler:
 
         # Select elements with DFS (budget-aware nested selection)
         # For preserve_all_keys: keep all top-level keys, but apply DFS to nested values
+        min_elements = getattr(profile, 'min_elements', 1)
+        tuple_size = getattr(profile, 'tuple_size', 1)
+        preserve_all_keys = getattr(profile, 'preserve_all_keys', False)
+
         selection = self.selector.select_dfs(
             elements, content_budget,
             profile=profile,
             handler=self,
-            min_keep=pattern.min_elements,
-            tuple_size=pattern.tuple_size,
-            preserve_top_level_keys=pattern.preserve_all_keys,
+            min_keep=min_elements,
+            tuple_size=tuple_size,
+            preserve_top_level_keys=preserve_all_keys,
         )
 
         if not selection.has_removals:
@@ -472,21 +329,19 @@ class LanguageLiteralHandler:
     def process_block_init_node(
         self,
         profile: Optional[LiteralProfile] = None,
-        pattern: Optional[LiteralPattern] = None,
         node=None,  # tree_sitter Node
         doc=None,  # TreeSitterDocument
         token_budget: int = 0,
         base_indent: str = "",
     ) -> Optional[TrimResult]:
         """
-        Process BLOCK_INIT pattern with direct node access.
+        Process BLOCK_INIT profile with direct node access.
 
-        This is a separate entry point for BLOCK_INIT patterns
+        This is a separate entry point for BLOCK_INIT profiles
         because they require AST navigation, not just text processing.
 
         Args:
             profile: BlockInitProfile that matched this node
-            pattern: LiteralPattern (deprecated, for backward compatibility)
             node: Tree-sitter node to process (will be expanded to group for let_declarations)
             doc: Tree-sitter document
             token_budget: Token budget
@@ -496,23 +351,13 @@ class LanguageLiteralHandler:
             (TrimResult, nodes_used) tuple if optimization applied, None otherwise
             nodes_used is the list of nodes that should be replaced (expanded group for Rust)
         """
-        # Handle backward compatibility: if pattern is provided without profile, convert it
-        if profile is None and pattern is not None:
-            profile = pattern
-        elif profile is None:
+        if profile is None:
             return None
-
-        # For backward compatibility with BlockInitProcessor, convert profile to pattern if needed
-        if isinstance(profile, LiteralPattern):
-            pattern_to_use = profile
-        else:
-            # Convert profile to pattern for BlockInitProcessor
-            pattern_to_use = self._convert_profile_to_pattern(profile)
 
         # Delegate to BlockInitProcessor
         # Returns (TrimResult, nodes_used) or None
         result = self.block_init_processor.process(
-            pattern=pattern_to_use,
+            profile=profile,
             node=node,
             doc=doc,
             token_budget=token_budget,
@@ -525,7 +370,6 @@ class LanguageLiteralHandler:
     def process_ast_based_sequence(
         self,
         profile: Optional[LiteralProfile] = None,
-        pattern: Optional['LiteralPattern'] = None,
         node=None,  # tree_sitter Node
         doc=None,  # TreeSitterDocument
         token_budget: int = 0,
@@ -545,7 +389,6 @@ class LanguageLiteralHandler:
 
         Args:
             profile: SequenceProfile with requires_ast_extraction=True
-            pattern: LiteralPattern (deprecated, for backward compatibility)
             node: Tree-sitter node representing the sequence
             doc: Tree-sitter document
             token_budget: Token budget
@@ -555,17 +398,8 @@ class LanguageLiteralHandler:
         Returns:
             TrimResult if optimization applied, None otherwise
         """
-        # Handle backward compatibility: if pattern is provided without profile, convert it
-        if profile is None and pattern is not None:
-            profile = pattern
-        elif profile is None:
+        if profile is None:
             return None
-
-        # Convert profile to pattern if needed for consistency
-        if isinstance(profile, LiteralPattern):
-            actual_pattern = profile
-        else:
-            actual_pattern = self._convert_profile_to_pattern(profile)
 
         # Get all child string nodes that match string profiles
         # Use the query to find string nodes
@@ -602,7 +436,7 @@ class LanguageLiteralHandler:
 
         # Keep as many complete child strings as fit in budget
         # Overhead is just for placeholder (no delimiters)
-        placeholder = actual_pattern.placeholder_template
+        placeholder = getattr(profile, 'placeholder_template', '"…"')
         placeholder_tokens = self.tokenizer.count_text_cached(placeholder)
 
         content_budget = max(1, token_budget - placeholder_tokens)
@@ -691,7 +525,8 @@ class LanguageLiteralHandler:
         saved_tokens = original_tokens - trimmed_tokens
 
         # Create comment
-        comment_text = f"{actual_pattern.comment_name} (−{saved_tokens} tokens)"
+        comment_name = getattr(profile, 'comment_name', 'literal')
+        comment_text = f"{comment_name} (−{saved_tokens} tokens)"
 
         return TrimResult(
             trimmed_text=trimmed_text,

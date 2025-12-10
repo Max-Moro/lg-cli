@@ -12,7 +12,7 @@ from __future__ import annotations
 from typing import List, Optional, Tuple
 
 from lg.adapters.tree_sitter_support import Node, TreeSitterDocument
-from .categories import LiteralPattern, TrimResult
+from .categories import TrimResult
 
 
 class BlockInitProcessor:
@@ -42,17 +42,17 @@ class BlockInitProcessor:
 
     def process(
         self,
-        pattern: LiteralPattern,
+        profile,  # BlockInitProfile
         node: Node,
         doc: TreeSitterDocument,
         token_budget: int,
         base_indent: str = "",
     ) -> Optional[Tuple[TrimResult, List[Node]]]:
         """
-        Process a BLOCK_INIT pattern.
+        Process a BLOCK_INIT profile.
 
         Args:
-            pattern: LiteralPattern with BLOCK_INIT configuration
+            profile: BlockInitProfile with BLOCK_INIT configuration
             node: Tree-sitter node to process (will be expanded to group for let_declaration)
             doc: Tree-sitter document
             token_budget: Token budget for this block
@@ -68,25 +68,25 @@ class BlockInitProcessor:
         if node.type == "let_declaration":
             # Rust-style: let mut var = HashMap::new(); var.insert(...);
             # Expands to group internally
-            return self._process_let_group(pattern, node, doc, token_budget, base_indent)
+            return self._process_let_group(profile, node, doc, token_budget, base_indent)
         else:
             # Java-style: whole block with multiple statements
-            result = self._process_block(pattern, node, doc, token_budget, base_indent)
+            result = self._process_block(profile, node, doc, token_budget, base_indent)
             return (result, [node]) if result else None
 
     def _process_block(
         self,
-        pattern: LiteralPattern,
+        profile,  # BlockInitProfile
         node: Node,
         doc: TreeSitterDocument,
         token_budget: int,
         base_indent: str = "",
     ) -> Optional[TrimResult]:
         """
-        Process a block-based BLOCK_INIT pattern (Java double-brace).
+        Process a block-based BLOCK_INIT profile (Java double-brace).
 
         Args:
-            pattern: LiteralPattern with BLOCK_INIT configuration
+            profile: BlockInitProfile with BLOCK_INIT configuration
             node: Tree-sitter node (block or object_creation_expression)
             doc: Tree-sitter document
             token_budget: Token budget for this block
@@ -96,28 +96,28 @@ class BlockInitProcessor:
             TrimResult if trimming applied, None otherwise
         """
         # 1. Find statements block
-        statements_node = self._find_statements_block(node, pattern, doc)
+        statements_node = self._find_statements_block(node, profile, doc)
         if not statements_node:
             return None
 
-        # 2. Collect statements matching the pattern
+        # 2. Collect statements matching the profile
         statements = self._get_child_statements(statements_node)
         if not statements:
             return None
 
-        # Filter statements by pattern (e.g., "*/method_invocation" for Java double-brace)
+        # Filter statements by profile (e.g., "*/method_invocation" for Java double-brace)
         matching_stmts = []
         for stmt in statements:
-            if pattern.statement_pattern and self._matches_pattern(stmt, pattern.statement_pattern, doc):
+            if profile.statement_pattern and self._matches_pattern(stmt, profile.statement_pattern, doc):
                 matching_stmts.append(stmt)
 
         # 3. Check if worth trimming
-        if len(matching_stmts) < pattern.min_elements:
+        if len(matching_stmts) < profile.min_elements:
             return None  # Too few statements
 
         # 4. Calculate what to keep/remove using budget-aware selection
         keep_stmts, remove_stmts = self._select_statements(
-            matching_stmts, pattern, doc, token_budget
+            matching_stmts, profile, doc, token_budget
         )
 
         if not remove_stmts:
@@ -129,7 +129,7 @@ class BlockInitProcessor:
 
         # 6. Build trimmed text with DFS optimization
         trimmed_text = self._reconstruct_block(
-            node, keep_stmts, remove_stmts, pattern, doc, base_indent, token_budget
+            node, keep_stmts, remove_stmts, profile, doc, base_indent, token_budget
         )
 
         trimmed_tokens = self.tokenizer.count_text_cached(trimmed_text)
@@ -149,7 +149,7 @@ class BlockInitProcessor:
 
     def _process_let_group(
         self,
-        pattern: LiteralPattern,
+        profile,  # BlockInitProfile
         node: Node,
         doc: TreeSitterDocument,
         token_budget: int,
@@ -159,7 +159,7 @@ class BlockInitProcessor:
         Process a let-declaration group (Rust HashMap::new() + inserts).
 
         Args:
-            pattern: LiteralPattern with BLOCK_INIT configuration
+            profile: BlockInitProfile with BLOCK_INIT configuration
             node: let_declaration node
             doc: Tree-sitter document
             token_budget: Token budget
@@ -178,8 +178,8 @@ class BlockInitProcessor:
             return None
 
         # 3. Collect following statements for this variable
-        insert_stmts = self._collect_insert_statements(node, var_name, pattern, doc)
-        if len(insert_stmts) < pattern.min_elements:
+        insert_stmts = self._collect_insert_statements(node, var_name, profile, doc)
+        if len(insert_stmts) < profile.min_elements:
             return None  # Too few statements
 
         # 4. Calculate original tokens for the group (let + all inserts)
@@ -221,7 +221,7 @@ class BlockInitProcessor:
 
         # 5. Build trimmed text with DFS optimization
         trimmed_text = self._reconstruct_let_group(
-            node, insert_stmts, keep_stmts, remove_stmts, pattern, doc, base_indent, token_budget
+            node, insert_stmts, keep_stmts, remove_stmts, profile, doc, base_indent, token_budget
         )
 
         trimmed_tokens = self.tokenizer.count_text_cached(trimmed_text)
@@ -247,20 +247,20 @@ class BlockInitProcessor:
         return (trim_result, nodes_to_replace)
 
     def _find_statements_block(
-        self, node: Node, pattern: LiteralPattern, doc: TreeSitterDocument
+        self, node: Node, profile, doc: TreeSitterDocument
     ) -> Optional[Node]:
         """
         Find the block containing statements to process.
 
         Args:
             node: Root node
-            pattern: Pattern with block_selector
+            profile: Profile with block_selector
             doc: Document
 
         Returns:
             Statements block node or None
         """
-        if not pattern.block_selector:
+        if not profile.block_selector:
             # No selector - use node itself if it's a block-like node
             if node.type in ("block", "class_body", "declaration_list"):
                 return node
@@ -268,7 +268,7 @@ class BlockInitProcessor:
 
         # Navigate path like "class_body/block"
         current = node
-        for segment in pattern.block_selector.split("/"):
+        for segment in profile.block_selector.split("/"):
             found = False
             for child in current.children:
                 if child.type == segment:
@@ -365,7 +365,7 @@ class BlockInitProcessor:
     def _select_statements(
         self,
         statements: List[Node],
-        pattern: LiteralPattern,
+        profile,  # BlockInitProfile
         doc: TreeSitterDocument,
         token_budget: int,
     ) -> Tuple[List[Node], List[Node]]:
@@ -374,7 +374,7 @@ class BlockInitProcessor:
 
         Args:
             statements: Statements to trim (e.g., put/add calls for Java double-brace)
-            pattern: Pattern configuration (unused currently, kept for consistency)
+            profile: Profile configuration (unused currently, kept for consistency)
             doc: Document for getting node text
             token_budget: Token budget for entire block
 
@@ -531,22 +531,9 @@ class BlockInitProcessor:
             profile_type = type(nested_profile).__name__
 
             if profile_type == "BlockInitProfile":
-                # Nested BLOCK_INIT - convert profile to pattern and call recursively
-                from .categories import LiteralPattern, LiteralCategory
-                nested_pattern = LiteralPattern(
-                    category=LiteralCategory.BLOCK_INIT,
-                    query=nested_profile.query,
-                    opening="",
-                    closing="",
-                    block_selector=nested_profile.block_selector,
-                    statement_pattern=nested_profile.statement_pattern,
-                    placeholder_position=nested_profile.placeholder_position,
-                    min_elements=nested_profile.min_elements,
-                    priority=nested_profile.priority,
-                    comment_name=nested_profile.comment_name,
-                )
+                # Nested BLOCK_INIT - call recursively with profile
                 result = self.process(
-                    nested_pattern,
+                    nested_profile,
                     nested_node,
                     doc,
                     token_budget,
@@ -592,7 +579,7 @@ class BlockInitProcessor:
         original_node: Node,
         keep_stmts: List[Node],
         remove_stmts: List[Node],
-        pattern: LiteralPattern,
+        profile,  # BlockInitProfile
         doc: TreeSitterDocument,
         base_indent: str,
         token_budget: int = 0,
@@ -604,7 +591,7 @@ class BlockInitProcessor:
             original_node: Original block node
             keep_stmts: Statements to keep
             remove_stmts: Statements removed (for count)
-            pattern: Pattern with placeholder config
+            profile: Profile with placeholder config
             doc: Document
             base_indent: Base indentation
 
@@ -615,7 +602,7 @@ class BlockInitProcessor:
         original_text = doc.get_node_text(original_node)
 
         # Find statements block (compute once, reuse below)
-        statements_block = self._find_statements_block(original_node, pattern, doc)
+        statements_block = self._find_statements_block(original_node, profile, doc)
         all_statements = self._get_child_statements(statements_block)
 
         # Extract opening (everything before first kept statement)
@@ -660,7 +647,7 @@ class BlockInitProcessor:
                 stmt_parts.append(separator + stmt_text)
 
         # Insert placeholder comment after kept statements if needed
-        if remove_stmts and pattern.placeholder_position.value == "middle" and keep_stmts:
+        if remove_stmts and profile.placeholder_position.value == "middle" and keep_stmts:
             # Format placeholder comment
             removed_count = len(remove_stmts)
             tokens_saved = sum(
@@ -716,7 +703,7 @@ class BlockInitProcessor:
         return None
 
     def _collect_insert_statements(
-        self, let_node: Node, var_name: str, pattern: LiteralPattern, doc: TreeSitterDocument
+        self, let_node: Node, var_name: str, profile, doc: TreeSitterDocument
     ) -> List[Node]:
         """Collect following statements that call methods on var_name."""
         parent = let_node.parent
@@ -783,7 +770,7 @@ class BlockInitProcessor:
         all_inserts: List[Node],
         keep_inserts: List[Node],
         remove_inserts: List[Node],
-        pattern: LiteralPattern,
+        profile,  # BlockInitProfile
         doc: TreeSitterDocument,
         base_indent: str,
         token_budget: int = 0,
@@ -802,7 +789,7 @@ class BlockInitProcessor:
             insert_parts.append(insert_text)
 
         # Add placeholder if needed
-        if remove_inserts and pattern.placeholder_position.value == "middle":
+        if remove_inserts and profile.placeholder_position.value == "middle":
             removed_count = len(remove_inserts)
             tokens_saved = sum(
                 self.tokenizer.count_text_cached(doc.get_node_text(s))

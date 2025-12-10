@@ -6,12 +6,6 @@ Extends JavaScript with TypeScript-specific type literals.
 
 from __future__ import annotations
 
-from ..optimizations.literals import (
-    PlaceholderPosition,
-    LanguageLiteralDescriptor,
-    MappingProfile,
-    LanguageSyntaxFlags,
-)
 from ..javascript.literals import (
     JS_TEMPLATE_STRING_PROFILE,
     JS_STRING_PROFILE,
@@ -19,7 +13,12 @@ from ..javascript.literals import (
     JS_ARRAY_PROFILE,
     JS_OBJECT_PROFILE,
 )
-
+from ..optimizations.literals import (
+    PlaceholderPosition,
+    LanguageLiteralDescriptor,
+    MappingProfile,
+    LanguageSyntaxFlags,
+)
 
 # ============= TypeScript literal profiles (v2) =============
 

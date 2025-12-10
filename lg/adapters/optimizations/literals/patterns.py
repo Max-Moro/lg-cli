@@ -9,16 +9,31 @@ This module defines base profile classes for different literal types:
 - BlockInitProfile: For imperative block initialization (Java double-brace, Rust HashMap)
 
 Profiles encapsulate the common attributes needed to describe how a specific
-literal pattern should be recognized and optimized. These profiles will be
-converted to LiteralPattern instances during initialization.
+literal pattern should be recognized and optimized.
 """
 
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from enum import Enum
 from typing import Callable, List, Optional, Union
 
-from .categories import PlaceholderPosition
+
+class PlaceholderPosition(Enum):
+    """Where to place the trimming placeholder."""
+    END = "end"                     # Before closing: [..., "…"] // comment
+    MIDDLE_COMMENT = "middle"       # As comment in middle: [..., /* … comment */, ]
+    INLINE = "inline"               # Inside string: "text…" // comment
+    NONE = "none"                   # No placeholder (silent trim)
+
+
+class LiteralCategory(Enum):
+    """Universal categories for literals across all languages."""
+    STRING = "string"           # Any strings: single, multi, raw, template
+    SEQUENCE = "sequence"       # Arrays, lists, vectors, tuples, slices
+    MAPPING = "mapping"         # Dicts, maps, objects, hash maps
+    FACTORY_CALL = "factory"    # List.of(), vec![], mapOf(), listOf()
+    BLOCK_INIT = "block"        # { let mut m = ...; m }, lazy_static!
 
 
 @dataclass
@@ -363,5 +378,4 @@ class LanguageSyntaxFlags:
 
 
 # Union type for all profile types
-# Used to work with profiles directly instead of converting to LiteralPattern
 LiteralProfile = Union[StringProfile, SequenceProfile, MappingProfile, FactoryProfile, BlockInitProfile]

@@ -13,8 +13,6 @@ from __future__ import annotations
 
 from ..optimizations.literals import (
     LanguageSyntaxFlags,
-    LiteralCategory,
-    LiteralPattern,
     PlaceholderPosition,
     LanguageLiteralDescriptor,
     StringProfile,

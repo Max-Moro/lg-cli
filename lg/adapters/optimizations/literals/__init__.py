@@ -6,9 +6,6 @@ literal data in source code across multiple programming languages.
 """
 
 from .categories import (
-    LiteralCategory,
-    PlaceholderPosition,
-    LiteralPattern,
     ParsedLiteral,
     TrimResult,
 )
@@ -16,6 +13,8 @@ from .descriptor import LanguageLiteralDescriptor
 from .element_parser import ElementParser, ParseConfig, Element
 from .handler import LanguageLiteralHandler
 from .patterns import (
+    LiteralCategory,
+    PlaceholderPosition,
     StringProfile,
     SequenceProfile,
     MappingProfile,
@@ -29,13 +28,14 @@ from .processing.formatter import ResultFormatter, FormattedResult
 from .processing.selector import BudgetSelector, SelectionBase, Selection
 
 __all__ = [
-    # Descriptor types
-    "LanguageLiteralDescriptor",
+    # Enums and types
     "LiteralCategory",
     "PlaceholderPosition",
-    "LiteralPattern",
     "ParsedLiteral",
     "TrimResult",
+
+    # Descriptor
+    "LanguageLiteralDescriptor",
 
     # Profile types
     "StringProfile",

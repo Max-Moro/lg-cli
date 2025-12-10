@@ -16,10 +16,12 @@ from typing import Optional, cast
 from lg.stats.tokenizer import TokenService
 from .selector import SelectionBase, Selection, DFSSelection
 from ..categories import (
-    LiteralCategory,
-    PlaceholderPosition,
     ParsedLiteral,
     TrimResult,
+)
+from ..patterns import (
+    LiteralCategory,
+    PlaceholderPosition,
 )
 from ..element_parser import ElementParser
 
