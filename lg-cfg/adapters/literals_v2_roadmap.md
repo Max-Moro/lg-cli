@@ -52,27 +52,24 @@
 ### ✅ Этап 9: Компонент Block init
 Перенесен `block_init.py` в `components/` с чистым API (конкретные зависимости через конструктор). Компонент подключен в pipeline. Legacy файл удален (805 строк).
 
-### Этап 10: Компонент Placeholder/Comment
-- Создать `components/placeholder.py` для единого формирования плейсхолдеров/комментариев
-- Удалить логику вставки комментариев из formatter и `handler.py`; оставить вызовы компонента
-- **Критерий**: Все 100 тестов проходят
+### ✅ Этап 10: Компонент Placeholder/Comment
+Создан `components/placeholder.py` (PlaceholderCommentFormatter) для единого формирования плейсхолдеров и комментариев. Консолидирована логика из `handler.py` (`get_comment_for_context()`) и `formatter.py` (`_generate_comment_impl()`). Удалено 47 строк кода.
 
-### Этап 11: Компонент Budgeting
-- Создать `components/budgeting.py` с политиками приоритетов/лимитов
-- Убрать бюджетные решения из formatter/parser; pipeline передает бюджет в selector/компонент
-- **Критерий**: Все 100 тестов проходят
+### ✅ Этап 11: Компонент Budgeting
+Создан `components/budgeting.py` (BudgetCalculator) для расчета токенов overhead. Извлечен метод `calculate_overhead()` из `selector.py`. Компонент интегрирован в handler и selector. Удалено 22 строки кода.
 
 ### Этап 12: Полное отключение наследия handler
 
 **Цель**: Удалить последний legacy файл и убедиться что pipeline содержит только высокоуровневую оркестрацию.
 
-- **УДАЛИТЬ** `handler.py` (единственный оставшийся legacy файл)
-- Обновить экспорты `lg/adapters/optimizations/literals/__init__.py` на `processing/` + `components/`
+- **УДАЛИТЬ** `handler.py` (единственный оставшийся legacy файл). Оставшуюся логику распределить по модулям, предусмотренным новой архитектурой.
 - Убедиться что в `pipeline.py` осталась **только высокоуровневая оркестрация**:
   - Управление двухпроходной логикой
   - Вызовы компонентов из `processing/` и `components/`
   - Никакой детальной логики парсинга/форматирования/бюджетирования
 - Проверить, что адаптеры используют только pipeline/processing/компоненты
+- Убедится, что все компоненты и элементы процессинга создаются разово. Убедиться в корректности DI между модулями.
+- Убедиться, что все компоненты и элементы процессинга получают только нужные им данные для работы.
 - **Критерий**: Все 100 тестов проходят
 
 ### Этап 13: Разгрузка языковых хаков
@@ -91,14 +88,14 @@
 ## Текущий статус
 
 - **Ветка**: `literals-v2`
-- **Текущий этап**: ✅ Этапы 1-9 завершены, готов к Этапу 10
+- **Текущий этап**: ✅ Этапы 1-11 завершены, готов к Этапу 12
 - **Последний прогон**: 100/100 тестов ✅
-- **Последний коммит**: "Stage 9.4: Remove legacy block_init.py"
+- **Последний коммит**: "Stage 11: Budgeting component"
 - **Структура**:
   - `processing/`: parser ✅, selector ✅, formatter ✅, pipeline ✅
-  - `components/`: interpolation ✅, ast_sequence ✅, block_init ✅
+  - `components/`: interpolation ✅, ast_sequence ✅, block_init ✅, placeholder ✅, budgeting ✅
   - `patterns.py`: Generic инфраструктура ✅, типовая иерархия с CollectionProfile ✅
   - `descriptor.py`: Языковые дескрипторы ✅
-  - Удалено: core.py, старые selector.py/formatter.py, categories.py, LiteralPattern, LiteralCategory, priority, dispatch pattern, process_ast_based_sequence, block_init.py (~1755 строк)
+  - Удалено: core.py, старые selector.py/formatter.py, categories.py, LiteralPattern, LiteralCategory, priority, dispatch pattern, process_ast_based_sequence, block_init.py (~1824 строк)
   - Удалено: все getattr вызовы (14 мест), длинные isinstance цепочки
   - Legacy: handler.py (удаляется на Этапе 12)
