@@ -9,10 +9,16 @@ Handles imperative initialization blocks like:
 
 from __future__ import annotations
 
-from typing import List, Optional, Tuple
+from typing import List, Optional, Tuple, Callable
 
 from lg.adapters.tree_sitter_support import Node, TreeSitterDocument
-from ..patterns import TrimResult, BlockInitProfile
+from ..patterns import TrimResult, BlockInitProfile, LiteralProfile
+
+# Type alias for literal processing callback
+ProcessLiteralCallback = Callable[
+    [str, LiteralProfile, int, int, int, str, str],  # text, profile, start_byte, end_byte, token_budget, base_indent, element_indent
+    Optional[TrimResult]
+]
 
 
 class BlockInitProcessor:
@@ -26,17 +32,15 @@ class BlockInitProcessor:
     Supports DFS (recursive) optimization of nested literals within statements.
     """
 
-    def __init__(self, tokenizer, handler=None, comment_style=("//", ("/*", "*/"))):
+    def __init__(self, tokenizer, comment_style=("//", ("/*", "*/"))):
         """
         Initialize processor.
 
         Args:
             tokenizer: Token counting service
-            handler: Optional handler for recursive optimization of nested literals
             comment_style: Comment syntax (single_line, (block_open, block_close))
         """
         self.tokenizer = tokenizer
-        self.handler = handler
         self.single_comment = comment_style[0]
         self.block_comment = comment_style[1]
 
@@ -46,7 +50,9 @@ class BlockInitProcessor:
         node: Node,
         doc: TreeSitterDocument,
         token_budget: int,
-        base_indent: str = "",
+        base_indent: str,
+        all_profiles: List[LiteralProfile],
+        process_literal_callback: ProcessLiteralCallback,
     ) -> Optional[Tuple[TrimResult, List[Node]]]:
         """
         Process a BLOCK_INIT profile.
@@ -57,6 +63,8 @@ class BlockInitProcessor:
             doc: Tree-sitter document
             token_budget: Token budget for this block
             base_indent: Base indentation
+            all_profiles: List of all literal profiles for nested literal detection
+            process_literal_callback: Callback for processing nested literals
 
         Returns:
             (TrimResult, nodes_used) tuple if trimming applied, None otherwise
@@ -68,10 +76,14 @@ class BlockInitProcessor:
         if node.type == "let_declaration":
             # Rust-style: let mut var = HashMap::new(); var.insert(...);
             # Expands to group internally
-            return self._process_let_group(profile, node, doc, token_budget, base_indent)
+            return self._process_let_group(
+                profile, node, doc, token_budget, base_indent, all_profiles, process_literal_callback
+            )
         else:
             # Java-style: whole block with multiple statements
-            result = self._process_block(profile, node, doc, token_budget)
+            result = self._process_block(
+                profile, node, doc, token_budget, base_indent, all_profiles, process_literal_callback
+            )
             return (result, [node]) if result else None
 
     def _process_block(
@@ -80,7 +92,9 @@ class BlockInitProcessor:
         node: Node,
         doc: TreeSitterDocument,
         token_budget: int,
-        base_indent: str = "",
+        base_indent: str,
+        all_profiles: List[LiteralProfile],
+        process_literal_callback: ProcessLiteralCallback,
     ) -> Optional[TrimResult]:
         """
         Process a block-based BLOCK_INIT profile (Java double-brace).
@@ -129,7 +143,8 @@ class BlockInitProcessor:
 
         # 6. Build trimmed text with DFS optimization
         trimmed_text = self._reconstruct_block(
-            node, keep_stmts, remove_stmts, profile, doc, base_indent, token_budget
+            node, keep_stmts, remove_stmts, profile, doc, base_indent, token_budget,
+            all_profiles, process_literal_callback
         )
 
         trimmed_tokens = self.tokenizer.count_text_cached(trimmed_text)
@@ -153,7 +168,9 @@ class BlockInitProcessor:
         node: Node,
         doc: TreeSitterDocument,
         token_budget: int,
-        base_indent: str = "",
+        base_indent: str,
+        all_profiles: List[LiteralProfile],
+        process_literal_callback: ProcessLiteralCallback,
     ) -> Optional[Tuple[TrimResult, List[Node]]]:
         """
         Process a let-declaration group (Rust HashMap::new() + inserts).
@@ -221,7 +238,8 @@ class BlockInitProcessor:
 
         # 5. Build trimmed text with DFS optimization
         trimmed_text = self._reconstruct_let_group(
-            node, insert_stmts, keep_stmts, remove_stmts, profile, doc, base_indent, token_budget
+            node, insert_stmts, keep_stmts, remove_stmts, profile, doc, base_indent, token_budget,
+            all_profiles, process_literal_callback
         )
 
         trimmed_tokens = self.tokenizer.count_text_cached(trimmed_text)
@@ -404,6 +422,8 @@ class BlockInitProcessor:
         stmt_node: Node,
         doc: TreeSitterDocument,
         token_budget: int,
+        all_profiles: List[LiteralProfile],
+        process_literal_callback: ProcessLiteralCallback,
     ) -> str:
         """
         Recursively optimize nested literals within a statement (DFS).
@@ -412,13 +432,12 @@ class BlockInitProcessor:
             stmt_node: Statement node to optimize
             doc: Document
             token_budget: Token budget for nested optimization
+            all_profiles: List of all literal profiles for nested literal detection
+            process_literal_callback: Callback for processing nested literals
 
         Returns:
             Optimized statement text with nested literals trimmed
         """
-        if not self.handler:
-            # No handler - return original text
-            return doc.get_node_text(stmt_node)
 
         # Get statement text
         stmt_text = doc.get_node_text(stmt_node)
@@ -432,14 +451,7 @@ class BlockInitProcessor:
         def find_literals(node: Node, is_direct_child: bool = False):
             # Check if this node matches any profile in descriptor
             found_literal = False
-            # Try to match against all profile types
-            all_profiles = (
-                self.handler.descriptor.string_profiles +
-                self.handler.descriptor.sequence_profiles +
-                self.handler.descriptor.mapping_profiles +
-                self.handler.descriptor.factory_profiles +
-                self.handler.descriptor.block_init_profiles
-            )
+            # Try to match against all profile types (from parameter)
             for profile in all_profiles:
                 # Try to match this node using the profile's query
                 try:
@@ -507,13 +519,7 @@ class BlockInitProcessor:
             # Try to optimize this nested literal
             # Determine profile and process
             nested_profile = None
-            all_profiles = (
-                self.handler.descriptor.string_profiles +
-                self.handler.descriptor.sequence_profiles +
-                self.handler.descriptor.mapping_profiles +
-                self.handler.descriptor.factory_profiles +
-                self.handler.descriptor.block_init_profiles
-            )
+            # Use all_profiles from parameter (already collected by caller)
             for profile in all_profiles:
                 try:
                     nodes = doc.query_nodes(profile.query, "lit")
@@ -538,19 +544,21 @@ class BlockInitProcessor:
                     doc,
                     token_budget,
                     base_indent="",
+                    all_profiles=all_profiles,
+                    process_literal_callback=process_literal_callback,
                 )
                 if result:
                     trim_result, _ = result
             else:
-                # Regular literal - use handler with profile
-                trim_result = self.handler.process_literal(
-                    text=nested_text,
-                    profile=nested_profile,
-                    start_byte=nested_node.start_byte,
-                    end_byte=nested_node.end_byte,
-                    token_budget=token_budget,
-                    base_indent="",
-                    element_indent="",
+                # Regular literal - use callback
+                trim_result = process_literal_callback(
+                    nested_text,
+                    nested_profile,
+                    nested_node.start_byte,
+                    nested_node.end_byte,
+                    token_budget,
+                    "",  # base_indent
+                    "",  # element_indent
                 )
 
             # Collect replacement if optimization succeeded
@@ -581,7 +589,9 @@ class BlockInitProcessor:
         profile: BlockInitProfile,
         doc: TreeSitterDocument,
         base_indent: str,
-        token_budget: int = 0,
+        token_budget: int,
+        all_profiles: List[LiteralProfile],
+        process_literal_callback: ProcessLiteralCallback,
     ) -> str:
         """
         Reconstruct block with kept statements and placeholder.
@@ -635,7 +645,9 @@ class BlockInitProcessor:
         stmt_parts = []
         for i, stmt in enumerate(keep_stmts):
             # Get statement text with recursive optimization (DFS)
-            stmt_text = self._optimize_statement_recursive(stmt, doc, token_budget)
+            stmt_text = self._optimize_statement_recursive(
+                stmt, doc, token_budget, all_profiles, process_literal_callback
+            )
 
             # Get whitespace before statement (from previous statement or opening)
             if i == 0:
@@ -772,11 +784,15 @@ class BlockInitProcessor:
         profile: BlockInitProfile,
         doc: TreeSitterDocument,
         base_indent: str,
-        token_budget: int = 0,
+        token_budget: int,
+        all_profiles: List[LiteralProfile],
+        process_literal_callback: ProcessLiteralCallback,
     ) -> str:
         """Reconstruct let group with trimmed inserts and DFS optimization."""
         # Optimize let declaration itself (may contain nested literals)
-        let_text = self._optimize_statement_recursive(let_node, doc, token_budget)
+        let_text = self._optimize_statement_recursive(
+            let_node, doc, token_budget, all_profiles, process_literal_callback
+        )
 
         # Get separator between statements (approximate as newline)
         separator = "\n" + base_indent
@@ -784,7 +800,9 @@ class BlockInitProcessor:
         # Build insert parts with DFS optimization
         insert_parts = []
         for insert in keep_inserts:
-            insert_text = self._optimize_statement_recursive(insert, doc, token_budget)
+            insert_text = self._optimize_statement_recursive(
+                insert, doc, token_budget, all_profiles, process_literal_callback
+            )
             insert_parts.append(insert_text)
 
         # Add placeholder if needed

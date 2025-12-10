@@ -72,7 +72,7 @@ class LanguageLiteralHandler:
         self.literal_parser = LiteralParser(tokenizer)
         self.selector = BudgetSelector(tokenizer)
         self.formatter = ResultFormatter(tokenizer, comment_style)
-        self.block_init_processor = BlockInitProcessor(tokenizer, handler=self, comment_style=comment_style)
+        self.block_init_processor = BlockInitProcessor(tokenizer, comment_style=comment_style)
         self.interpolation = InterpolationHandler()
 
         # Collect factory wrappers from all FACTORY_CALL patterns for nested detection
@@ -357,6 +357,15 @@ class LanguageLiteralHandler:
             nodes_used is the list of nodes that should be replaced (expanded group for Rust)
         """
 
+        # Collect all profiles for nested literal detection
+        all_profiles = (
+            self.descriptor.string_profiles +
+            self.descriptor.sequence_profiles +
+            self.descriptor.mapping_profiles +
+            self.descriptor.factory_profiles +
+            self.descriptor.block_init_profiles
+        )
+
         # Delegate to BlockInitProcessor
         # Returns (TrimResult, nodes_used) or None
         return self.block_init_processor.process(
@@ -365,6 +374,8 @@ class LanguageLiteralHandler:
             doc=doc,
             token_budget=token_budget,
             base_indent=base_indent,
+            all_profiles=all_profiles,
+            process_literal_callback=self.process_literal,
         )
 
     # ========== Context-aware comment formatting ==========
