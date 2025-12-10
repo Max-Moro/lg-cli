@@ -9,99 +9,31 @@
 3. **Постепенность**: Миграция языков идет группами по 1-3 языка
 4. **Backward compatibility**: До полной миграции ядра сохраняется совместимость через конвертацию
 
-## Этапы (после каждого подэтапа все тесты проходят)
-
-### ✅ Этап 1: Новая модель паттернов и дескриптора (profiles → patterns)
-
-**Цель**: Заменить плоский `LiteralPattern` на типизированную иерархию профилей из v2.
-
 ---
 
-### ✅ Этап 2: Ввод `processing/pipeline.py` как владельца оркестрации
+## Завершённые этапы
 
-**Выполнено**:
-- Создан `lg/adapters/optimizations/literals/processing/pipeline.py` с полной оркестрацией
-- Pipeline владеет двухпроходной логикой (Pass 1: strings, Pass 2: collections)
-- Pipeline управляет обходом AST и применением результатов к context
-- **УДАЛЁН** `core.py` (логика перенесена в pipeline)
-- Все импорты обновлены: `LiteralOptimizer` → `LiteralPipeline`
+### ✅ Этап 1: Новая модель паттернов и дескриптора
+Заменён плоский `LiteralPattern` на типизированную иерархию профилей (StringProfile, SequenceProfile, MappingProfile, FactoryProfile, BlockInitProfile).
 
----
+### ✅ Этап 2: Ввод processing/pipeline.py
+Создан `processing/pipeline.py` с двухпроходной оркестрацией. Удалён `core.py`.
 
-#### ✅ Этап 3: Вынос парсинга
-
-**Выполнено**:
-- Создан `processing/parser.py` с классом `LiteralParser` для парсинга литералов из Tree-sitter нод
-- Перенесены методы `parse_literal_with_pattern`, `_detect_wrapper_from_text`, `_extract_content` из `handler.py` в `LiteralParser`
-- `handler.py` делегирует парсинг в `LiteralParser` (остались только прокладки)
-- Старый `parser.py` переименован в `element_parser.py` (парсинг элементов ВНУТРИ литералов)
-- Обновлены все импорты: `from .parser import` → `from .element_parser import`
-- Чёткое разделение:
-  - `processing/parser.py` (`LiteralParser`) — парсинг литералов из исходного кода
-  - `element_parser.py` (`ElementParser`) — парсинг элементов внутри контента литерала
-
----
+### ✅ Этап 3: Вынос парсинга
+Создан `processing/parser.py` (LiteralParser). Старый `parser.py` → `element_parser.py`.
 
 ### ✅ Этап 4: Вынос бюджетного выбора
+Создан `processing/selector.py` (Selection/DFSSelection). Удалён старый `selector.py`.
 
-**Выполнено**:
-- Создан `processing/selector.py` с полной логикой выбора по бюджету (Selection/DFSSelection)
-- Обновлены импорты в `handler.py`, `formatter.py`, `__init__.py`
-- **УДАЛЁН** старый `selector.py`
+### ✅ Этап 5: Вынос форматирования
+Создан `processing/formatter.py` (ResultFormatter). Удалён старый `formatter.py`.
 
----
-
-### ✅ Этап 5: Вынос форматирования и плейсхолдеров
-
-**Выполнено**:
-- Создан `processing/formatter.py` с полной логикой форматирования (ResultFormatter, FormattedResult)
-- Обновлены импорты в `handler.py`, `__init__.py`
-- **УДАЛЁН** старый `formatter.py`
+### ✅ Этап 6: Адаптация ядра для работы с профилями
+Полный переход на профили (5 подэтапов: parser, selector, formatter, backward compat, LiteralPattern). Удалено ~555 строк legacy кода. Перемещены `LiteralCategory` и `PlaceholderPosition` в `patterns.py`.
 
 ---
 
-### Этап 6: Адаптация ядра для работы с профилями напрямую
-
-**Цель**: Убрать промежуточную конвертацию профилей → LiteralPattern, научить ядро работать с профилями.
-
-#### ✅ 6.1) Рефакторинг parser для работы с профилями
-
-**Выполнено**:
-- Добавлен `LiteralProfile = Union[StringProfile, SequenceProfile, ...]` в `patterns.py`
-- `ParsedLiteral.profile: object` вместо `pattern` (избегаем circular imports)
-- `processing/parser.py`: новые методы `parse_literal_with_profile()`, `_get_category_from_profile()`, `_get_delimiter()`
-- `processing/pipeline.py`: итерирует по `descriptor.string_profiles`, `descriptor.*_profiles` и передает профили в handler
-- `handler.py`: методы принимают `profile` + `pattern` (backward compat), добавлена временная `_convert_profile_to_pattern()`
-- `processing/formatter.py`: использует `hasattr()` для безопасного доступа к атрибутам профилей
-- Интерполяция работает корректно через `isinstance(profile, StringProfile)`
-
-#### ✅ 6.2) Рефакторинг selector для работы с профилями
-
-**Выполнено**:
-- Добавлена функция `create_parse_config_from_profile()` в `element_parser.py`
-- Добавлен метод `handler.get_parser_for_profile()` для создания parser из профиля
-- Обновлены сигнатуры `select_dfs()` и `_select_dfs_tuples()` для работы с `profile` и `handler`
-- Временная конвертация `_convert_profile_to_pattern()` больше не используется в selector
-
-#### ✅ 6.3) Рефакторинг formatter для работы с профилями
-
-**Выполнено**:
-- Исправлено последнее использование `parsed.pattern.query` → `getattr(profile, 'query', 'unknown')`
-- Formatter полностью работает с профилями через `hasattr()`/`getattr()`
-- Убрана последняя зависимость от `parsed.pattern` в formatter
-
-#### 6.4) Удаление backward compatibility
-- Удалить метод `to_patterns()` (и использующий его код) из `LanguageLiteralDescriptor`
-- Удалить старое поле `_patterns: List[LiteralPattern]` если оно осталось
-- **Критерий**: Все 100 тестов проходят
-
-#### 6.5) Удаление LiteralPattern
-- Переместить enum `LiteralCategory` в `patterns.py` (используется профилями)
-- Удалить класс `LiteralPattern` из `categories.py`
-- Обновить импорты во всех файлах
-- **Критерий**: Все 100 тестов проходят
-
----
+## Предстоящие этапы
 
 ### Этап 7: Компонент Interpolation
 - Создать `components/interpolation.py`: правила границ/делимитеров интерполяции, корректировка тримминга строк
@@ -171,10 +103,9 @@
 ## Текущий статус
 
 - **Ветка**: `literals-v2`
-- **Текущий этап**: Завершён подэтап 6.3, готов к подэтапу 6.4
-- **Последний успешный прогон**: 100/100 тестов
-- **Удалённые legacy файлы**: `core.py` ✅, `selector.py` ✅, `formatter.py` ✅
-- **Переименованные файлы**: `parser.py` → `element_parser.py` ✅
-- **Новые файлы в processing/**: `parser.py` ✅, `selector.py` ✅, `formatter.py` ✅
-- **Оставшиеся legacy файлы**: `handler.py` (будет удалён на Этапе 12)
-- **Прогресс Этапа 6**: Parser ✅, Selector ✅, Formatter ✅
+- **Текущий этап**: ✅ Этапы 1-6 завершены, готов к Этапу 7
+- **Последний прогон**: 100/100 тестов ✅
+- **Структура**:
+  - `processing/`: parser ✅, selector ✅, formatter ✅, pipeline ✅
+  - Удалено: core.py, старые selector.py/formatter.py, LiteralPattern (~555 строк)
+  - Legacy: handler.py (удаляется на Этапе 12), block_init.py (рефакторится на Этапе 9)
