@@ -49,10 +49,8 @@
 ### ✅ Этап 8: Компонент AST sequence
 Создан `components/ast_sequence.py` (ASTSequenceProcessor) для последовательностей без разделителей (конкатенация строк C/C++). Удалён метод `process_ast_based_sequence` из `handler.py`; компонент подключён через pipeline.
 
-### Этап 9: Компонент Block init
-- Перенести текущий `block_init.py` в `components/block_init.py` с API для imperative инициализаций (double-brace Java, Rust HashMap chain)
-- Подключить новый компонент из `components/block_init.py` pipeline
-- **Критерий**: Все 100 тестов проходят
+### ✅ Этап 9: Компонент Block init
+Перенесен `block_init.py` в `components/` с чистым API (конкретные зависимости через конструктор). Компонент подключен в pipeline. Legacy файл удален (805 строк).
 
 ### Этап 10: Компонент Placeholder/Comment
 - Создать `components/placeholder.py` для единого формирования плейсхолдеров/комментариев
@@ -93,14 +91,14 @@
 ## Текущий статус
 
 - **Ветка**: `literals-v2`
-- **Текущий этап**: ✅ Этапы 1-8 завершены, готов к Этапу 9
+- **Текущий этап**: ✅ Этапы 1-9 завершены, готов к Этапу 10
 - **Последний прогон**: 100/100 тестов ✅
-- **Последний коммит**: (pending) "Stage 8: AST sequence component"
+- **Последний коммит**: "Stage 9.4: Remove legacy block_init.py"
 - **Структура**:
   - `processing/`: parser ✅, selector ✅, formatter ✅, pipeline ✅
-  - `components/`: interpolation ✅, ast_sequence ✅
+  - `components/`: interpolation ✅, ast_sequence ✅, block_init ✅
   - `patterns.py`: Generic инфраструктура ✅, типовая иерархия с CollectionProfile ✅
   - `descriptor.py`: Языковые дескрипторы ✅
-  - Удалено: core.py, старые selector.py/formatter.py, categories.py, LiteralPattern, LiteralCategory, priority, dispatch pattern, process_ast_based_sequence (~950 строк)
+  - Удалено: core.py, старые selector.py/formatter.py, categories.py, LiteralPattern, LiteralCategory, priority, dispatch pattern, process_ast_based_sequence, block_init.py (~1755 строк)
   - Удалено: все getattr вызовы (14 мест), длинные isinstance цепочки
-  - Legacy: handler.py (удаляется на Этапе 12), block_init.py (рефакторится на Этапе 9)
+  - Legacy: handler.py (удаляется на Этапе 12)

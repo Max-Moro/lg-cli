@@ -12,7 +12,6 @@ from typing import List, Optional, cast
 from tree_sitter._binding import Node
 
 from lg.stats.tokenizer import TokenService
-from .components.block_init import BlockInitProcessor
 from .components.interpolation import InterpolationHandler
 from .descriptor import LanguageLiteralDescriptor
 from .element_parser import ElementParser, Element, ParseConfig
@@ -72,7 +71,6 @@ class LanguageLiteralHandler:
         self.literal_parser = LiteralParser(tokenizer)
         self.selector = BudgetSelector(tokenizer)
         self.formatter = ResultFormatter(tokenizer, comment_style)
-        self.block_init_processor = BlockInitProcessor(tokenizer, comment_style=comment_style)
         self.interpolation = InterpolationHandler()
 
         # Collect factory wrappers from all FACTORY_CALL patterns for nested detection
@@ -203,7 +201,7 @@ class LanguageLiteralHandler:
             # BLOCK_INIT requires special handling with node access
             # This path should not be reached from process_literal
             raise RuntimeError(
-                "BLOCK_INIT profiles must be processed via process_block_init_node, "
+                "BLOCK_INIT profiles must be processed via LiteralPipeline._process_block_init_node, "
                 "not process_literal"
             )
         else:
@@ -329,53 +327,6 @@ class LanguageLiteralHandler:
             elements_removed=selection.removed_count,
             comment_text=formatted.comment,
             comment_position=formatted.comment_byte,
-        )
-
-    def process_block_init_node(
-        self,
-        profile: BlockInitProfile,
-        node: Node,
-        doc: TreeSitterDocument,
-        token_budget: int = 0,
-        base_indent: str = "",
-    ) -> Optional[TrimResult]:
-        """
-        Process BLOCK_INIT profile with direct node access.
-
-        This is a separate entry point for BLOCK_INIT profiles
-        because they require AST navigation, not just text processing.
-
-        Args:
-            profile: BlockInitProfile that matched this node
-            node: Tree-sitter node to process (will be expanded to group for let_declarations)
-            doc: Tree-sitter document
-            token_budget: Token budget
-            base_indent: Base indentation
-
-        Returns:
-            (TrimResult, nodes_used) tuple if optimization applied, None otherwise
-            nodes_used is the list of nodes that should be replaced (expanded group for Rust)
-        """
-
-        # Collect all profiles for nested literal detection
-        all_profiles = (
-            self.descriptor.string_profiles +
-            self.descriptor.sequence_profiles +
-            self.descriptor.mapping_profiles +
-            self.descriptor.factory_profiles +
-            self.descriptor.block_init_profiles
-        )
-
-        # Delegate to BlockInitProcessor
-        # Returns (TrimResult, nodes_used) or None
-        return self.block_init_processor.process(
-            profile=profile,
-            node=node,
-            doc=doc,
-            token_budget=token_budget,
-            base_indent=base_indent,
-            all_profiles=all_profiles,
-            process_literal_callback=self.process_literal,
         )
 
     # ========== Context-aware comment formatting ==========

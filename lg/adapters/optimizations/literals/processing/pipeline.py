@@ -12,6 +12,7 @@ from typing import Callable, cast, List, Tuple, Union
 from lg.adapters.code_model import LiteralConfig
 from lg.adapters.context import ProcessingContext
 from ..patterns import LiteralProfile, BlockInitProfile, SequenceProfile, CollectionProfile
+from ..components.block_init import BlockInitProcessor
 
 
 class LiteralPipeline:
@@ -53,6 +54,22 @@ class LiteralPipeline:
         self.ast_sequence_processor = ASTSequenceProcessor(
             self.adapter.tokenizer,
             descriptor.string_profiles
+        )
+
+        # Create block init processor
+        comment_style = self.adapter.get_comment_style()
+        all_profiles = (
+            self.handler.descriptor.string_profiles +
+            self.handler.descriptor.sequence_profiles +
+            self.handler.descriptor.mapping_profiles +
+            self.handler.descriptor.factory_profiles +
+            self.handler.descriptor.block_init_profiles
+        )
+        self.block_init_processor = BlockInitProcessor(
+            self.adapter.tokenizer,
+            all_profiles,
+            self.handler.process_literal,
+            (comment_style[0], (comment_style[1][0], comment_style[1][1]))
         )
 
     def apply(self, context: ProcessingContext) -> None:
@@ -290,7 +307,7 @@ class LiteralPipeline:
         Returns:
             Processing result or tuple
         """
-        result = self.handler.process_block_init_node(
+        result = self.block_init_processor.process(
             profile=profile,
             node=node,
             doc=context.doc,
