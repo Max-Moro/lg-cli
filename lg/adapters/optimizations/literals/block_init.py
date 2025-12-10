@@ -430,13 +430,21 @@ class BlockInitProcessor:
         # Recursively find nested collection/block literals
         # We only want to optimize nested collections, not parts of the statement itself
         def find_literals(node: Node, is_direct_child: bool = False):
-            # Check if this node matches any pattern in descriptor
+            # Check if this node matches any profile in descriptor
             found_literal = False
-            for pattern in self.handler.descriptor.patterns:
-                # Try to match this node using the pattern's query
+            # Try to match against all profile types
+            all_profiles = (
+                self.handler.descriptor.string_profiles +
+                self.handler.descriptor.sequence_profiles +
+                self.handler.descriptor.mapping_profiles +
+                self.handler.descriptor.factory_profiles +
+                self.handler.descriptor.block_init_profiles
+            )
+            for profile in all_profiles:
+                # Try to match this node using the profile's query
                 try:
                     # Query to see if this specific node matches
-                    nodes = doc.query_nodes(pattern.query, "lit")
+                    nodes = doc.query_nodes(profile.query, "lit")
                     if node in nodes:
                         # Skip the statement node itself
                         if node.start_byte == stmt_node.start_byte and node.end_byte == stmt_node.end_byte:
@@ -449,12 +457,22 @@ class BlockInitProcessor:
 
                         # Only collect collections/blocks
                         # Categories to optimize: SEQUENCE, MAPPING, FACTORY_CALL, BLOCK_INIT
-                        if pattern.category.value in ["sequence", "mapping", "factory", "block"]:
+                        # Get category from profile's comment_name if available, or infer from type
+                        profile_type = type(profile).__name__
+                        category_map = {
+                            'StringProfile': 'string',
+                            'SequenceProfile': 'sequence',
+                            'MappingProfile': 'mapping',
+                            'FactoryProfile': 'factory',
+                            'BlockInitProfile': 'block',
+                        }
+                        category = category_map.get(profile_type, '')
+                        if category in ["sequence", "mapping", "factory", "block"]:
                             nested_literals.append(node)
                             found_literal = True
                         break
                 except:
-                    # Query failed, skip this pattern
+                    # Query failed, skip this profile
                     continue
 
             # Don't recurse into found literals (they will be processed separately)
@@ -487,24 +505,46 @@ class BlockInitProcessor:
                 continue
 
             # Try to optimize this nested literal
-            # Determine pattern and process
-            nested_pattern = None
-            for pattern in self.handler.descriptor.patterns:
+            # Determine profile and process
+            nested_profile = None
+            all_profiles = (
+                self.handler.descriptor.string_profiles +
+                self.handler.descriptor.sequence_profiles +
+                self.handler.descriptor.mapping_profiles +
+                self.handler.descriptor.factory_profiles +
+                self.handler.descriptor.block_init_profiles
+            )
+            for profile in all_profiles:
                 try:
-                    nodes = doc.query_nodes(pattern.query, "lit")
+                    nodes = doc.query_nodes(profile.query, "lit")
                     if nested_node in nodes:
-                        nested_pattern = pattern
+                        nested_profile = profile
                         break
                 except:
                     continue
 
-            if not nested_pattern:
+            if not nested_profile:
                 continue
 
-            # Optimize nested literal based on category
+            # Optimize nested literal based on profile type
             trim_result = None
-            if nested_pattern.category.value == "block":
-                # Nested BLOCK_INIT - recursive call
+            profile_type = type(nested_profile).__name__
+
+            if profile_type == "BlockInitProfile":
+                # Nested BLOCK_INIT - convert profile to pattern and call recursively
+                from .categories import LiteralPattern, LiteralCategory
+                nested_pattern = LiteralPattern(
+                    category=LiteralCategory.BLOCK_INIT,
+                    query=nested_profile.query,
+                    opening="",
+                    closing="",
+                    block_selector=nested_profile.block_selector,
+                    statement_pattern=nested_profile.statement_pattern,
+                    placeholder_position=nested_profile.placeholder_position,
+                    min_elements=nested_profile.min_elements,
+                    priority=nested_profile.priority,
+                    comment_name=nested_profile.comment_name,
+                )
                 result = self.process(
                     nested_pattern,
                     nested_node,
@@ -515,10 +555,10 @@ class BlockInitProcessor:
                 if result:
                     trim_result, _ = result
             else:
-                # Regular literal - use handler
+                # Regular literal - use handler with profile
                 trim_result = self.handler.process_literal(
                     text=nested_text,
-                    pattern=nested_pattern,
+                    profile=nested_profile,
                     tree_sitter_type=nested_node.type,
                     start_byte=nested_node.start_byte,
                     end_byte=nested_node.end_byte,

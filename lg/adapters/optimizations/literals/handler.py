@@ -175,21 +175,26 @@ class LanguageLiteralHandler:
     def _collect_factory_wrappers(self) -> List[str]:
         """Collect all factory method wrappers from descriptor for nested detection."""
         wrappers = []
-        for pattern in self.descriptor.patterns:
-            if pattern.category in (LiteralCategory.FACTORY_CALL, LiteralCategory.MAPPING) and pattern.wrapper_match:
-                # Extract wrapper names from regex
-                # Examples: "(mapOf|listOf)$" -> ["mapOf", "listOf"]
-                #           "List\.of$" -> ["List.of"]
-                regex = pattern.wrapper_match.rstrip("$")
 
-                # Remove grouping parentheses if present
+        # Collect from factory profiles
+        for profile in self.descriptor.factory_profiles:
+            if profile.wrapper_match:
+                regex = profile.wrapper_match.rstrip("$")
                 if regex.startswith("(") and regex.endswith(")"):
                     regex = regex[1:-1]
-
-                # Split by | to get alternatives
                 alternatives = regex.split("|")
+                for alt in alternatives:
+                    wrapper = alt.replace("\\.", ".")
+                    if wrapper and wrapper not in wrappers:
+                        wrappers.append(wrapper)
 
-                # Clean each alternative and add to wrappers
+        # Collect from mapping profiles (some have wrappers like Kotlin mapOf)
+        for profile in self.descriptor.mapping_profiles:
+            if hasattr(profile, 'wrapper_match') and profile.wrapper_match:
+                regex = profile.wrapper_match.rstrip("$")
+                if regex.startswith("(") and regex.endswith(")"):
+                    regex = regex[1:-1]
+                alternatives = regex.split("|")
                 for alt in alternatives:
                     wrapper = alt.replace("\\.", ".")
                     if wrapper and wrapper not in wrappers:
