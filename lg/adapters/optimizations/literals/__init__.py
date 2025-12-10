@@ -13,6 +13,7 @@ from .patterns import (
     ParsedLiteral,
     TrimResult,
     StringProfile,
+    CollectionProfile,
     SequenceProfile,
     MappingProfile,
     FactoryProfile,
@@ -35,6 +36,7 @@ __all__ = [
 
     # Profile types
     "StringProfile",
+    "CollectionProfile",
     "SequenceProfile",
     "MappingProfile",
     "FactoryProfile",

@@ -10,6 +10,8 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import List, Optional, Tuple
 
+from .patterns import LiteralProfile, CollectionProfile, MappingProfile, FactoryProfile
+
 
 @dataclass
 class ParseConfig:
@@ -520,25 +522,3 @@ class ElementParser:
 
         # Parse the nested content
         return self.parse(element.nested_content)
-
-
-def create_parse_config_from_profile(
-    profile,  # LiteralProfile type
-    factory_wrappers: List[str]
-) -> ParseConfig:
-    """
-    Create ParseConfig from profile attributes.
-
-    Args:
-        profile: LiteralProfile (StringProfile, SequenceProfile, etc.)
-        factory_wrappers: List of factory wrapper names for nested detection
-
-    Returns:
-        ParseConfig with attributes extracted from profile
-    """
-    return ParseConfig(
-        separator=getattr(profile, 'separator', ','),
-        kv_separator=getattr(profile, 'kv_separator', None),
-        preserve_whitespace=getattr(profile, 'preserve_whitespace', False),
-        factory_wrappers=factory_wrappers,
-    )

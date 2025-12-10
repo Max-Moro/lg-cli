@@ -11,7 +11,7 @@ from typing import Callable, cast, List, Tuple, Union
 
 from lg.adapters.code_model import LiteralConfig
 from lg.adapters.context import ProcessingContext
-from ..patterns import BlockInitProfile, MappingProfile, SequenceProfile, FactoryProfile
+from ..patterns import LiteralProfile, BlockInitProfile, SequenceProfile, CollectionProfile
 
 
 class LiteralPipeline:
@@ -148,7 +148,6 @@ class LiteralPipeline:
                 result = self.handler.process_literal(
                     text=literal_text,
                     profile=profile,
-                    tree_sitter_type=node.type,
                     start_byte=node.start_byte,
                     end_byte=node.end_byte,
                     token_budget=max_tokens,
@@ -198,7 +197,7 @@ class LiteralPipeline:
     def _process_profile(
         self,
         context: ProcessingContext,
-        profile,
+        profile: LiteralProfile,
         max_tokens: int,
         processed_strings: List,
         processor: Callable
@@ -325,7 +324,6 @@ class LiteralPipeline:
                 node=node,
                 doc=context.doc,
                 token_budget=max_tokens,
-                base_indent=base_indent,
                 element_indent=element_indent,
             )
             return result
@@ -338,7 +336,7 @@ class LiteralPipeline:
         context: ProcessingContext,
         node,
         max_tokens: int,
-        profile: Union[SequenceProfile, MappingProfile, FactoryProfile]
+        profile: CollectionProfile
     ) -> object:
         """
         Process standard collection nodes (mapping, factory, regular sequence).
@@ -356,7 +354,6 @@ class LiteralPipeline:
         return self.handler.process_literal(
             text=text,
             profile=profile,
-            tree_sitter_type=node.type,
             start_byte=node.start_byte,
             end_byte=node.end_byte,
             token_budget=max_tokens,

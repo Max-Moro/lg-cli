@@ -40,10 +40,11 @@
 #### ✅ Этап 6.3: Персонализированная обработка профилей (вклинившийся)
 Устранение избыточного паттерна "склеивание-расклеивание" через прямую работу с типизированными списками профилей.
 
-### Этап 7: Компонент Interpolation
-- Создать `components/interpolation.py`: правила границ/делимитеров интерполяции, корректировка тримминга строк
-- Удалить дублирующие проверки интерполяции из parser/formatter и из `handler.py`; подключить через pipeline
-- **Критерий**: Все 100 тестов проходят
+### ✅ Этап 7: Компонент Interpolation
+Создан `components/interpolation.py` с правилами границ/делимитеров интерполяции, корректировка тримминга строк. Удалены дублирующие проверки интерполяции из parser/formatter; подключено через pipeline. Все 100 тестов проходят.
+
+#### ✅ Этап 7.1: Восстановление строгой типизации (вклинившийся)
+Устранены проблемы с типизацией, накопившиеся в ходе предыдущих этапов.
 
 ### Этап 8: Компонент AST sequence
 - Создать `components/ast_sequence.py` для последовательностей без разделителей (конкатенации строк и т.п.)
@@ -94,12 +95,14 @@
 ## Текущий статус
 
 - **Ветка**: `literals-v2`
-- **Текущий этап**: ✅ Этапы 1-6.3 завершены, готов к Этапу 7
+- **Текущий этап**: ✅ Этапы 1-7.1 завершены, готов к Этапу 8
 - **Последний прогон**: 100/100 тестов ✅
-- **Последний коммит**: (pending) "Stage 6.3: Eliminate dispatch pattern via personalized profile processing"
+- **Последний коммит**: (pending) "Stage 7.1: Restore strict typing"
 - **Структура**:
-  - `processing/`: parser ✅, selector ✅, formatter ✅, pipeline ✅ (персонализированная обработка)
-  - `patterns.py`: Модель данных с иерархией профилей ✅ (базовый LiteralProfile + 5 специализированных)
+  - `processing/`: parser ✅, selector ✅, formatter ✅, pipeline ✅
+  - `components/`: interpolation ✅
+  - `patterns.py`: Generic инфраструктура ✅, типовая иерархия с CollectionProfile ✅
   - `descriptor.py`: Языковые дескрипторы ✅
   - Удалено: core.py, старые selector.py/formatter.py, categories.py, LiteralPattern, LiteralCategory, priority, dispatch pattern (~800 строк)
+  - Удалено: все getattr вызовы (14 мест), длинные isinstance цепочки
   - Legacy: handler.py (удаляется на Этапе 12), block_init.py (рефакторится на Этапе 9)

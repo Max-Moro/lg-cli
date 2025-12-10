@@ -7,23 +7,29 @@ for a specific programming language.
 
 from __future__ import annotations
 
-from typing import List, Optional
+from typing import List, Optional, cast
+
+from tree_sitter._binding import Node
 
 from lg.stats.tokenizer import TokenService
 from .block_init import BlockInitProcessor
 from .components.interpolation import InterpolationHandler
 from .descriptor import LanguageLiteralDescriptor
-from .element_parser import ElementParser, Element
+from .element_parser import ElementParser, Element, ParseConfig
 from .patterns import (
     ParsedLiteral,
     TrimResult,
     StringProfile,
     BlockInitProfile,
     LiteralProfile,
+    CollectionProfile,
+    MappingProfile,
+    FactoryProfile, SequenceProfile
 )
 from .processing.formatter import ResultFormatter
 from .processing.parser import LiteralParser
 from .processing.selector import BudgetSelector, Selection, DFSSelection
+from ...tree_sitter_support import TreeSitterDocument
 
 
 class LanguageLiteralHandler:
@@ -110,7 +116,7 @@ class LanguageLiteralHandler:
 
         return wrappers
 
-    def get_parser_for_profile(self, profile) -> ElementParser:
+    def get_parser_for_profile(self, profile: CollectionProfile) -> ElementParser:
         """
         Get or create parser for a profile.
 
@@ -120,16 +126,21 @@ class LanguageLiteralHandler:
         Returns:
             ElementParser configured for this profile
         """
-        from .element_parser import create_parse_config_from_profile
 
         # Create cache key from profile attributes
-        separator = getattr(profile, 'separator', ',')
-        kv_separator = getattr(profile, 'kv_separator', None)
-        tuple_size = getattr(profile, 'tuple_size', 1)
+        separator = profile.separator
+        kv_separator = profile.kv_separator if isinstance(profile, (MappingProfile, FactoryProfile)) else None
+        tuple_size = profile.tuple_size if isinstance(profile, FactoryProfile) else 1
+
         key = f"{separator}:{kv_separator}:{tuple_size}"
 
         if key not in self._parsers:
-            config = create_parse_config_from_profile(profile, self._factory_wrappers)
+            config = ParseConfig(
+                separator=separator,
+                kv_separator=kv_separator,
+                preserve_whitespace=False,
+                factory_wrappers=self._factory_wrappers,
+            )
             self._parsers[key] = ElementParser(config)
 
         return self._parsers[key]
@@ -147,8 +158,7 @@ class LanguageLiteralHandler:
     def process_literal(
         self,
         text: str,
-        profile: Optional[LiteralProfile] = None,
-        tree_sitter_type: str = "",
+        profile: LiteralProfile,
         start_byte: int = 0,
         end_byte: int = 0,
         token_budget: int = 0,
@@ -171,8 +181,6 @@ class LanguageLiteralHandler:
         Returns:
             TrimResult if trimming is beneficial, None otherwise
         """
-        if profile is None:
-            return None
 
         # Use profile-based parsing
         parsed = self.literal_parser.parse_literal_with_profile(
@@ -190,7 +198,7 @@ class LanguageLiteralHandler:
         # Handle based on profile type
         profile = parsed.profile
         if isinstance(profile, StringProfile):
-            return self._process_string(parsed, token_budget)
+            return self._process_string(cast(ParsedLiteral[StringProfile], parsed), token_budget)
         elif isinstance(profile, BlockInitProfile):
             # BLOCK_INIT requires special handling with node access
             # This path should not be reached from process_literal
@@ -199,11 +207,11 @@ class LanguageLiteralHandler:
                 "not process_literal"
             )
         else:
-            return self._process_collection_dfs(parsed, token_budget)
+            return self._process_collection_dfs(cast(ParsedLiteral[CollectionProfile], parsed), token_budget)
 
     def _process_string(
         self,
-        parsed: ParsedLiteral,
+        parsed: ParsedLiteral[StringProfile],
         token_budget: int
     ) -> Optional[TrimResult]:
         """Process string literal - truncate content."""
@@ -260,7 +268,7 @@ class LanguageLiteralHandler:
 
     def _process_collection_dfs(
         self,
-        parsed: ParsedLiteral,
+        parsed: ParsedLiteral[CollectionProfile],
         token_budget: int
     ) -> Optional[TrimResult]:
         """Process collection literal with DFS for nested structures."""
@@ -286,17 +294,14 @@ class LanguageLiteralHandler:
 
         # Select elements with DFS (budget-aware nested selection)
         # For preserve_all_keys: keep all top-level keys, but apply DFS to nested values
-        min_elements = getattr(profile, 'min_elements', 1)
-        tuple_size = getattr(profile, 'tuple_size', 1)
-        preserve_all_keys = getattr(profile, 'preserve_all_keys', False)
 
         selection = self.selector.select_dfs(
             elements, content_budget,
             profile=profile,
             handler=self,
-            min_keep=min_elements,
-            tuple_size=tuple_size,
-            preserve_top_level_keys=preserve_all_keys,
+            min_keep=profile.min_elements,
+            tuple_size=profile.tuple_size if isinstance(profile, FactoryProfile) else 1,
+            preserve_top_level_keys=profile.preserve_all_keys if isinstance(profile, MappingProfile) else False,
         )
 
         if not selection.has_removals:
@@ -308,7 +313,7 @@ class LanguageLiteralHandler:
 
     def _create_trim_result_dfs(
         self,
-        parsed: ParsedLiteral,
+        parsed: ParsedLiteral[CollectionProfile],
         selection: DFSSelection,
         formatted,  # FormattedResult
     ) -> TrimResult:
@@ -328,9 +333,9 @@ class LanguageLiteralHandler:
 
     def process_block_init_node(
         self,
-        profile: Optional[LiteralProfile] = None,
-        node=None,  # tree_sitter Node
-        doc=None,  # TreeSitterDocument
+        profile: BlockInitProfile,
+        node: Node,
+        doc: TreeSitterDocument,
         token_budget: int = 0,
         base_indent: str = "",
     ) -> Optional[TrimResult]:
@@ -351,12 +356,10 @@ class LanguageLiteralHandler:
             (TrimResult, nodes_used) tuple if optimization applied, None otherwise
             nodes_used is the list of nodes that should be replaced (expanded group for Rust)
         """
-        if profile is None:
-            return None
 
         # Delegate to BlockInitProcessor
         # Returns (TrimResult, nodes_used) or None
-        result = self.block_init_processor.process(
+        return self.block_init_processor.process(
             profile=profile,
             node=node,
             doc=doc,
@@ -364,16 +367,12 @@ class LanguageLiteralHandler:
             base_indent=base_indent,
         )
 
-        # Return as-is: (TrimResult, nodes_used) or None
-        return result
-
     def process_ast_based_sequence(
         self,
-        profile: Optional[LiteralProfile] = None,
-        node=None,  # tree_sitter Node
-        doc=None,  # TreeSitterDocument
+        profile: SequenceProfile,
+        node: Node,
+        doc: TreeSitterDocument,
         token_budget: int = 0,
-        base_indent: str = "",
         element_indent: str = "",
     ) -> Optional[TrimResult]:
         """
@@ -398,8 +397,6 @@ class LanguageLiteralHandler:
         Returns:
             TrimResult if optimization applied, None otherwise
         """
-        if profile is None:
-            return None
 
         # Get all child string nodes that match string profiles
         # Use the query to find string nodes

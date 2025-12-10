@@ -12,7 +12,7 @@ from __future__ import annotations
 from typing import List, Optional, Tuple
 
 from lg.adapters.tree_sitter_support import Node, TreeSitterDocument
-from .patterns import TrimResult
+from .patterns import TrimResult, BlockInitProfile
 
 
 class BlockInitProcessor:
@@ -42,7 +42,7 @@ class BlockInitProcessor:
 
     def process(
         self,
-        profile,  # BlockInitProfile
+        profile: BlockInitProfile,
         node: Node,
         doc: TreeSitterDocument,
         token_budget: int,
@@ -71,12 +71,12 @@ class BlockInitProcessor:
             return self._process_let_group(profile, node, doc, token_budget, base_indent)
         else:
             # Java-style: whole block with multiple statements
-            result = self._process_block(profile, node, doc, token_budget, base_indent)
+            result = self._process_block(profile, node, doc, token_budget)
             return (result, [node]) if result else None
 
     def _process_block(
         self,
-        profile,  # BlockInitProfile
+        profile: BlockInitProfile,
         node: Node,
         doc: TreeSitterDocument,
         token_budget: int,
@@ -149,7 +149,7 @@ class BlockInitProcessor:
 
     def _process_let_group(
         self,
-        profile,  # BlockInitProfile
+        profile: BlockInitProfile,
         node: Node,
         doc: TreeSitterDocument,
         token_budget: int,
@@ -247,7 +247,7 @@ class BlockInitProcessor:
         return (trim_result, nodes_to_replace)
 
     def _find_statements_block(
-        self, node: Node, profile, doc: TreeSitterDocument
+        self, node: Node, profile: BlockInitProfile, doc: TreeSitterDocument
     ) -> Optional[Node]:
         """
         Find the block containing statements to process.
@@ -365,7 +365,7 @@ class BlockInitProcessor:
     def _select_statements(
         self,
         statements: List[Node],
-        profile,  # BlockInitProfile
+        profile: BlockInitProfile,
         doc: TreeSitterDocument,
         token_budget: int,
     ) -> Tuple[List[Node], List[Node]]:
@@ -546,7 +546,6 @@ class BlockInitProcessor:
                 trim_result = self.handler.process_literal(
                     text=nested_text,
                     profile=nested_profile,
-                    tree_sitter_type=nested_node.type,
                     start_byte=nested_node.start_byte,
                     end_byte=nested_node.end_byte,
                     token_budget=token_budget,
@@ -579,7 +578,7 @@ class BlockInitProcessor:
         original_node: Node,
         keep_stmts: List[Node],
         remove_stmts: List[Node],
-        profile,  # BlockInitProfile
+        profile: BlockInitProfile,
         doc: TreeSitterDocument,
         base_indent: str,
         token_budget: int = 0,
@@ -703,7 +702,7 @@ class BlockInitProcessor:
         return None
 
     def _collect_insert_statements(
-        self, let_node: Node, var_name: str, profile, doc: TreeSitterDocument
+        self, let_node: Node, var_name: str, profile: BlockInitProfile, doc: TreeSitterDocument
     ) -> List[Node]:
         """Collect following statements that call methods on var_name."""
         parent = let_node.parent
@@ -770,7 +769,7 @@ class BlockInitProcessor:
         all_inserts: List[Node],
         keep_inserts: List[Node],
         remove_inserts: List[Node],
-        profile,  # BlockInitProfile
+        profile: BlockInitProfile,
         doc: TreeSitterDocument,
         base_indent: str,
         token_budget: int = 0,

@@ -16,6 +16,7 @@ from ..patterns import (
     LiteralProfile,
     PlaceholderPosition,
     ParsedLiteral,
+    P,
     StringProfile,
     SequenceProfile,
     MappingProfile,
@@ -53,12 +54,12 @@ class LiteralParser:
     def parse_literal_with_profile(
         self,
         text: str,
-        profile: LiteralProfile,
+        profile: P,
         start_byte: int,
         end_byte: int,
         base_indent: str = "",
         element_indent: str = "",
-    ) -> Optional[ParsedLiteral]:
+    ) -> Optional[ParsedLiteral[P]]:
         """
         Parse a literal from source text using a known profile.
 
@@ -123,7 +124,7 @@ class LiteralParser:
             return delimiter(text)
         return delimiter
 
-    def _detect_wrapper_from_profile(self, text: str, profile: LiteralProfile) -> Optional[str]:
+    def _detect_wrapper_from_profile(self, text: str, profile: P) -> Optional[str]:
         """
         Detect wrapper prefix using opening delimiter from the known profile.
 

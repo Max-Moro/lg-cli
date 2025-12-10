@@ -11,7 +11,8 @@ from dataclasses import dataclass, field
 from typing import List, Dict
 
 from lg.stats.tokenizer import TokenService
-from ..element_parser import ElementParser, Element
+from ..element_parser import Element
+from ..patterns import LiteralProfile, ParsedLiteral, CollectionProfile
 
 
 @dataclass
@@ -325,8 +326,8 @@ class BudgetSelector:
         self,
         elements: List[Element],
         budget: int,
-        profile,  # LiteralProfile
-        handler,  # LanguageLiteralHandler for parser access
+        profile: CollectionProfile,
+        handler,  # LanguageLiteralHandler (circular import, keep as comment)
         min_keep: int = 1,
         tuple_size: int = 1,
         preserve_top_level_keys: bool = False,
@@ -345,7 +346,7 @@ class BudgetSelector:
         Args:
             elements: List of elements at current level
             budget: Token budget for this level and all nested levels
-            profile: LiteralProfile for getting parser configuration
+            profile: CollectionProfile for getting parser configuration
             handler: LanguageLiteralHandler for accessing parser
             min_keep: Minimum elements to keep at each level
             tuple_size: Group elements into tuples (e.g., 2 for k,v pairs)
@@ -461,8 +462,8 @@ class BudgetSelector:
         self,
         elements: List[Element],
         budget: int,
-        profile,  # LiteralProfile
-        handler,  # LanguageLiteralHandler
+        profile: CollectionProfile,
+        handler,  # LanguageLiteralHandler (circular import, keep as comment)
         min_keep: int,
         tuple_size: int,
         preserve_top_level_keys: bool = False,

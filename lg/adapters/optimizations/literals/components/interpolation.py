@@ -12,7 +12,9 @@ Supports various interpolation syntaxes:
 
 from __future__ import annotations
 
-from typing import Optional
+from typing import List, Optional, Tuple, Callable
+
+from ..patterns import StringProfile
 
 
 class InterpolationHandler:
@@ -36,10 +38,10 @@ class InterpolationHandler:
 
     def get_active_markers(
         self,
-        profile: object,
+        profile: StringProfile,
         opening: str,
         content: str,
-    ) -> list[tuple[str, str, str]]:
+    ) -> List[Tuple[str, str, str]]:
         """
         Determine which interpolation markers are active for this string.
 
@@ -65,16 +67,12 @@ class InterpolationHandler:
             >>> markers = handler.get_active_markers(profile, 'f"', "hello {name}")
             >>> # Returns [("", "{", "}")] for f-string
         """
-        # Get interpolation markers from profile if it's a StringProfile
-        if type(profile).__name__ != 'StringProfile':
-            # Non-string profiles don't have interpolation markers
-            return []
-
-        markers = getattr(profile, 'interpolation_markers', None)
+        # Get interpolation markers from profile
+        markers = profile.interpolation_markers
         if not markers:
             return []
 
-        activation_callback = getattr(profile, 'interpolation_active', None)
+        activation_callback = profile.interpolation_active
         active_markers = []
 
         for marker in markers:
@@ -98,7 +96,7 @@ class InterpolationHandler:
         self,
         truncated: str,
         original: str,
-        markers: list[tuple[str, str, str]],
+        markers: List[Tuple[str, str, str]],
     ) -> str:
         """
         Adjust truncation point to respect string interpolation boundaries.
@@ -139,8 +137,8 @@ class InterpolationHandler:
     def find_interpolation_regions(
         self,
         content: str,
-        markers: list[tuple[str, str, str]],
-    ) -> list[tuple[int, int]]:
+        markers: List[Tuple[str, str, str]],
+    ) -> List[Tuple[int, int]]:
         """
         Find all string interpolation regions in content.
 

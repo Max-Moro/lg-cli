@@ -16,7 +16,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Callable, List, Optional, Union
+from typing import Callable, Generic, List, Optional, TypeVar, Union
 
 
 class PlaceholderPosition(Enum):
@@ -25,71 +25,6 @@ class PlaceholderPosition(Enum):
     MIDDLE_COMMENT = "middle"       # As comment in middle: [..., /* … comment */, ]
     INLINE = "inline"               # Inside string: "text…" // comment
     NONE = "none"                   # No placeholder (silent trim)
-
-
-@dataclass
-class ParsedLiteral:
-    """
-    Result of parsing a literal from source code.
-
-    Contains all information needed for trimming and formatting.
-    Category is determined by the profile type (use isinstance checks).
-    """
-    # Original text and position
-    original_text: str
-    start_byte: int
-    end_byte: int
-
-    # Profile (StringProfile, SequenceProfile, MappingProfile, FactoryProfile, or BlockInitProfile)
-    # Typed as object to avoid circular imports; use isinstance() to check type
-    profile: object
-
-    # Parsed boundaries
-    opening: str
-    closing: str
-    content: str  # Content without opening/closing
-
-    # Layout information
-    is_multiline: bool
-    base_indent: str = ""       # Indentation of the line where literal starts
-    element_indent: str = ""    # Indentation for elements inside
-
-    # For factory calls: the wrapper (e.g., "List.of", "vec!")
-    wrapper: Optional[str] = None
-
-    # Token count of original
-    original_tokens: int = 0
-
-
-@dataclass
-class TrimResult:
-    """
-    Result of trimming a literal.
-
-    Contains the trimmed text and metadata about what was removed.
-    """
-    # Final trimmed text (ready to replace original)
-    trimmed_text: str
-
-    # Metrics
-    original_tokens: int
-    trimmed_tokens: int
-    saved_tokens: int
-
-    # What was trimmed
-    elements_kept: int
-    elements_removed: int
-
-    # Comment to add (if placeholder_position requires it)
-    comment_text: Optional[str] = None
-    comment_position: Optional[int] = None  # Byte offset for comment insertion
-
-    @property
-    def savings_ratio(self) -> float:
-        """Calculate token savings ratio."""
-        if self.trimmed_tokens == 0:
-            return float('inf')
-        return self.saved_tokens / self.trimmed_tokens
 
 
 @dataclass
@@ -128,6 +63,9 @@ class LiteralProfile:
 
     """Template for the placeholder text."""
     placeholder_template: str = "…"
+
+    """Threshold for keeping nested structures inline (in tokens)."""
+    inline_threshold: int = 60
 
     """
     Optional custom name for comments about this pattern.
@@ -175,7 +113,22 @@ class StringProfile(LiteralProfile):
 
 
 @dataclass
-class SequenceProfile(LiteralProfile):
+class CollectionProfile(LiteralProfile):
+    """
+    Base profile for collection literals (arrays, dicts, sets, etc.).
+
+    Provides common attributes for all collection types.
+    """
+
+    """Element separator string."""
+    separator: str = ","
+
+    """Minimum number of elements to keep, even if over budget."""
+    min_elements: int = 1
+
+
+@dataclass
+class SequenceProfile(CollectionProfile):
     """
     Profile for sequence literal patterns.
 
@@ -183,9 +136,6 @@ class SequenceProfile(LiteralProfile):
     vectors, tuples, slices), including element separation, placeholder
     positioning, and minimum element preservation.
     """
-
-    """Element separator string. Default: comma."""
-    separator: str = ","
 
     """
     Where to place the placeholder when trimming.
@@ -196,9 +146,6 @@ class SequenceProfile(LiteralProfile):
     """Template for the placeholder text. Default: quoted ellipsis."""
     placeholder_template: str = '"…"'
 
-    """Minimum number of elements to keep, even if over budget."""
-    min_elements: int = 1
-
     """
     Whether this pattern requires AST-based element extraction.
     When True: uses tree-sitter node.children instead of text parsing.
@@ -208,7 +155,7 @@ class SequenceProfile(LiteralProfile):
 
 
 @dataclass
-class MappingProfile(LiteralProfile):
+class MappingProfile(CollectionProfile):
     """
     Profile for mapping literal patterns.
 
@@ -216,9 +163,6 @@ class MappingProfile(LiteralProfile):
     objects, hash maps), including key-value separation, element separation,
     and handling of typed structures where all keys must be preserved.
     """
-
-    """Element separator string. Default: comma."""
-    separator: str = ","
 
     """Key-value separator string. Default: colon."""
     kv_separator: str = ":"
@@ -231,9 +175,6 @@ class MappingProfile(LiteralProfile):
 
     """Template for the placeholder text. Default: key-value pair with ellipsis."""
     placeholder_template: str = '"…": "…"'
-
-    """Minimum number of elements to keep, even if over budget."""
-    min_elements: int = 1
 
     """
     For typed structures: preserve all keys/fields at top level.
@@ -253,7 +194,7 @@ class MappingProfile(LiteralProfile):
 
 
 @dataclass
-class FactoryProfile(LiteralProfile):
+class FactoryProfile(CollectionProfile):
     """
     Profile for factory method/macro patterns.
 
@@ -270,9 +211,6 @@ class FactoryProfile(LiteralProfile):
     """
     wrapper_match: str = ""
 
-    """Element separator string. Default: comma."""
-    separator: str = ","
-
     """
     Where to place the placeholder when trimming.
     Default: middle (as a comment between elements).
@@ -281,9 +219,6 @@ class FactoryProfile(LiteralProfile):
 
     """Template for the placeholder text. Default: quoted ellipsis."""
     placeholder_template: str = '"…"'
-
-    """Minimum number of elements to keep, even if over budget."""
-    min_elements: int = 1
 
     """
     Group elements into tuples of this size (for Map.of pair semantics).
@@ -357,3 +292,71 @@ class LanguageSyntaxFlags:
     # Special initialization patterns
     supports_block_init: bool = False           # Java double-brace, Rust HashMap chains
     supports_ast_sequences: bool = False        # Concatenated strings without separators
+
+
+# TypeVar for generic profile types
+P = TypeVar('P', bound=LiteralProfile)
+
+
+@dataclass
+class ParsedLiteral(Generic[P]):
+    """
+    Result of parsing a literal from source code.
+
+    Contains all information needed for trimming and formatting.
+    Category is determined by the profile type (use isinstance checks).
+    """
+    # Original text and position
+    original_text: str
+    start_byte: int
+    end_byte: int
+
+    # Profile
+    profile: P
+
+    # Parsed boundaries
+    opening: str
+    closing: str
+    content: str  # Content without opening/closing
+
+    # Layout information
+    is_multiline: bool
+    base_indent: str = ""       # Indentation of the line where literal starts
+    element_indent: str = ""    # Indentation for elements inside
+
+    # For factory calls: the wrapper (e.g., "List.of", "vec!")
+    wrapper: Optional[str] = None
+
+    # Token count of original
+    original_tokens: int = 0
+
+
+@dataclass
+class TrimResult:
+    """
+    Result of trimming a literal.
+
+    Contains the trimmed text and metadata about what was removed.
+    """
+    # Final trimmed text (ready to replace original)
+    trimmed_text: str
+
+    # Metrics
+    original_tokens: int
+    trimmed_tokens: int
+    saved_tokens: int
+
+    # What was trimmed
+    elements_kept: int
+    elements_removed: int
+
+    # Comment to add (if placeholder_position requires it)
+    comment_text: Optional[str] = None
+    comment_position: Optional[int] = None  # Byte offset for comment insertion
+
+    @property
+    def savings_ratio(self) -> float:
+        """Calculate token savings ratio."""
+        if self.trimmed_tokens == 0:
+            return float('inf')
+        return self.saved_tokens / self.trimmed_tokens

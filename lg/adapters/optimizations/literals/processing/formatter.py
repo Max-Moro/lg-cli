@@ -21,10 +21,12 @@ from ..patterns import (
     ParsedLiteral,
     TrimResult,
     StringProfile,
+    CollectionProfile,
     SequenceProfile,
     MappingProfile,
     FactoryProfile,
     BlockInitProfile,
+    LiteralProfile,
 )
 
 
@@ -74,7 +76,7 @@ class ResultFormatter:
 
     def format(
         self,
-        parsed: ParsedLiteral,
+        parsed: ParsedLiteral[StringProfile],
         selection: Selection,
         placeholder_text: Optional[str] = None,
     ) -> FormattedResult:
@@ -118,7 +120,7 @@ class ResultFormatter:
 
     def format_dfs(
         self,
-        parsed: ParsedLiteral,
+        parsed: ParsedLiteral[CollectionProfile],
         selection: DFSSelection,
         parser: ElementParser,
         placeholder_text: Optional[str] = None,
@@ -135,7 +137,7 @@ class ResultFormatter:
         Returns:
             FormattedResult ready for insertion
         """
-        profile = parsed.profile
+        profile: CollectionProfile = parsed.profile
 
         # Get placeholder from profile
         placeholder = placeholder_text or profile.placeholder_template
@@ -384,7 +386,7 @@ class ResultFormatter:
 
     def _format_single_line_impl(
         self,
-        parsed: ParsedLiteral,
+        parsed: ParsedLiteral[LiteralProfile],
         selection: SelectionBase,
         placeholder: str,
         parser: Optional[ElementParser] = None,
@@ -397,9 +399,6 @@ class ResultFormatter:
         profile = parsed.profile
         elements_text = []
 
-        # Get nested inline threshold if available
-        inline_threshold = getattr(profile, 'nested_inline_threshold', 60)
-
         # Process kept elements (with optional nested handling for DFS)
         if isinstance(selection, DFSSelection):
             for i, elem in enumerate(selection.kept_elements):
@@ -408,7 +407,7 @@ class ResultFormatter:
                     elem_text = self._reconstruct_element_with_nested(
                         elem, selection.nested_selections[i], parser, placeholder,
                         is_multiline=False,
-                        inline_threshold=inline_threshold
+                        inline_threshold=profile.inline_threshold
                     )
                 else:
                     elem_text = elem.text
@@ -429,7 +428,7 @@ class ResultFormatter:
             return self._format_string(parsed, cast(Selection, selection))
 
         # Handle collections with separator
-        separator = getattr(profile, 'separator', ',')
+        separator = profile.separator if isinstance(profile, CollectionProfile) else ','
 
         # Get placeholder position
         placeholder_position = profile.placeholder_position
@@ -468,7 +467,7 @@ class ResultFormatter:
 
     def _format_multiline_impl(
         self,
-        parsed: ParsedLiteral,
+        parsed: ParsedLiteral[LiteralProfile],
         selection: SelectionBase,
         placeholder: str,
         parser: Optional[ElementParser] = None,
@@ -495,13 +494,13 @@ class ResultFormatter:
         elem_indent = parsed.element_indent or (base_indent + "    ")
 
         # Get separator from profile
-        separator = getattr(profile, 'separator', ',')
+        separator = profile.separator if isinstance(profile, CollectionProfile) else ','
 
         # Get placeholder position
         placeholder_position = profile.placeholder_position
 
         # Get tuple size from profile (only FactoryProfile has this)
-        tuple_size = getattr(profile, 'tuple_size', 1)
+        tuple_size = profile.tuple_size if isinstance(profile, FactoryProfile) else 1
 
         lines = []
 
@@ -514,9 +513,6 @@ class ResultFormatter:
         # Elements - group by tuple_size if specified
         is_last_line = not selection.has_removals or placeholder_position != PlaceholderPosition.END
         allow_trailing = not isinstance(profile, FactoryProfile)
-
-        # Process elements with type-aware nested handling
-        inline_threshold = getattr(profile, 'nested_inline_threshold', 60)
 
         if isinstance(selection, DFSSelection):
             for i in range(0, len(elements), tuple_size):
@@ -531,7 +527,7 @@ class ResultFormatter:
                             is_multiline=True,
                             base_indent=elem_indent,
                             elem_indent=elem_indent + "    ",
-                            inline_threshold=inline_threshold
+                            inline_threshold=profile.inline_threshold
                         )
                     else:
                         elem_text = elem.text
