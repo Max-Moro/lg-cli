@@ -11,6 +11,7 @@ from typing import List, Optional
 
 from lg.stats.tokenizer import TokenService
 from .block_init import BlockInitProcessor
+from .components.interpolation import InterpolationHandler
 from .descriptor import LanguageLiteralDescriptor
 from .element_parser import ElementParser, Element
 from .patterns import (
@@ -66,6 +67,7 @@ class LanguageLiteralHandler:
         self.selector = BudgetSelector(tokenizer)
         self.formatter = ResultFormatter(tokenizer, comment_style)
         self.block_init_processor = BlockInitProcessor(tokenizer, handler=self, comment_style=comment_style)
+        self.interpolation = InterpolationHandler()
 
         # Collect factory wrappers from all FACTORY_CALL patterns for nested detection
         self._factory_wrappers = self._collect_factory_wrappers()
@@ -223,9 +225,11 @@ class LanguageLiteralHandler:
 
         # Adjust for string interpolation boundaries
         # Don't cut inside ${...}, #{...}, etc.
-        interpolation_markers = self._get_active_interpolation_markers(parsed)
+        interpolation_markers = self.interpolation.get_active_markers(
+            parsed.profile, parsed.opening, parsed.content
+        )
         if interpolation_markers:
-            truncated = self._adjust_for_interpolation(
+            truncated = self.interpolation.adjust_truncation(
                 truncated, parsed.content, interpolation_markers
             )
 
@@ -619,208 +623,3 @@ class LanguageLiteralHandler:
     def _format_block_comment(self, content: str) -> str:
         """Format as block comment."""
         return f" {self.block_comment[0]} {content} {self.block_comment[1]}"
-
-    def _get_active_interpolation_markers(
-        self,
-        parsed: ParsedLiteral,
-    ) -> list[tuple]:
-        """
-        Get interpolation markers that are active for this specific string.
-
-        Some markers only apply when the string has specific characteristics:
-        - Python {}: only for f-strings (opening starts with f/F)
-        - Rust {}: only for format strings (we can't detect reliably)
-        - JS ${}: for template strings (backticks)
-
-        For markers with a prefix (like $), they're self-checking via the prefix.
-        For markers without prefix, the profile's interpolation_active callback
-        determines whether the marker applies to a specific string.
-
-        Args:
-            parsed: The parsed literal
-
-        Returns:
-            List of active interpolation markers
-        """
-        profile = parsed.profile
-
-        # Get interpolation markers from profile if it's a StringProfile
-        if type(profile).__name__ == 'StringProfile':
-            markers = profile.interpolation_markers
-            activation_callback = profile.interpolation_active
-        else:
-            # Non-string profiles don't have interpolation markers
-            return []
-
-        if not markers:
-            return []
-
-        active_markers = []
-
-        for marker in markers:
-            prefix, opening, closing = marker
-
-            # Markers with a prefix (like "$" in "${...}") are self-checking
-            if prefix:
-                active_markers.append(marker)
-            else:
-                # Empty prefix markers - use callback if available
-                if activation_callback is not None:
-                    if activation_callback(parsed.opening, parsed.content):
-                        active_markers.append(marker)
-                else:
-                    # No callback - assume marker is always active
-                    active_markers.append(marker)
-
-        return active_markers
-
-    def _adjust_for_interpolation(
-        self,
-        truncated: str,
-        original: str,
-        markers: list[tuple],
-    ) -> str:
-        """
-        Adjust truncation point to respect string interpolation boundaries.
-
-        If truncation lands inside an interpolator like ${...} or #{...},
-        extend to include the complete interpolator to preserve valid AST.
-
-        Args:
-            truncated: The truncated string content
-            original: The original full string content
-            markers: List of (prefix, opening, closing) tuples
-
-        Returns:
-            Adjusted truncated string that doesn't break interpolators
-        """
-        cut_pos = len(truncated)
-
-        # Find all interpolation regions in original
-        interpolators = self._find_interpolation_regions(original, markers)
-
-        for start, end in interpolators:
-            # If cut position is inside this interpolator
-            if start < cut_pos <= end:
-                # Extend to include the full interpolator
-                return original[:end]
-
-        return truncated
-
-    def _find_interpolation_regions(
-        self,
-        content: str,
-        markers: list[tuple],
-    ) -> list[tuple[int, int]]:
-        """
-        Find all string interpolation regions in content.
-
-        Args:
-            content: String content to search
-            markers: List of (prefix, opening, closing) tuples
-
-        Returns:
-            List of (start, end) tuples for each interpolator
-        """
-        regions = []
-        i = 0
-
-        while i < len(content):
-            for prefix, opening, closing in markers:
-                full_opener = prefix + opening
-
-                # Case 1: Bracketed interpolation like ${...}, #{...}, {...}
-                if opening and closing:
-                    if content[i:].startswith(full_opener):
-                        brace_pos = i + len(prefix)
-                        end = self._find_matching_brace(content, brace_pos)
-                        if end != -1:
-                            regions.append((i, end + 1))
-                            i = end + 1
-                            break
-                # Case 2: Simple identifier like $name (no braces)
-                elif prefix and not opening:
-                    if content[i:].startswith(prefix):
-                        # Find end of identifier
-                        end = self._find_identifier_end(content, i + len(prefix))
-                        if end > i + len(prefix):
-                            regions.append((i, end))
-                            i = end
-                            break
-            else:
-                i += 1
-
-        return regions
-
-    def _find_identifier_end(self, content: str, start: int) -> int:
-        """
-        Find the end of an identifier starting at position.
-
-        Identifiers: letters, digits, underscores (first char not digit).
-
-        Args:
-            content: String content
-            start: Position where identifier starts
-
-        Returns:
-            Position after the last character of identifier
-        """
-        i = start
-        if i >= len(content):
-            return start
-
-        # First char must be letter or underscore
-        if not (content[i].isalpha() or content[i] == '_'):
-            return start
-
-        i += 1
-        while i < len(content) and (content[i].isalnum() or content[i] == '_'):
-            i += 1
-
-        return i
-
-    def _find_matching_brace(self, content: str, start: int) -> int:
-        """
-        Find the matching closing brace for an opening brace at start position.
-
-        Handles nested braces and string literals inside interpolators.
-
-        Args:
-            content: String content
-            start: Position of opening brace
-
-        Returns:
-            Position of matching closing brace, or -1 if not found
-        """
-        if start >= len(content) or content[start] != '{':
-            return -1
-
-        depth = 1
-        i = start + 1
-        in_string = False
-        string_char = None
-
-        while i < len(content) and depth > 0:
-            char = content[i]
-
-            # Handle string literals inside interpolator
-            if not in_string and char in '"\'`':
-                in_string = True
-                string_char = char
-            elif in_string and char == string_char:
-                # Check for escape
-                if i > 0 and content[i-1] != '\\':
-                    in_string = False
-                    string_char = None
-            elif not in_string:
-                if char == '{':
-                    depth += 1
-                elif char == '}':
-                    depth -= 1
-
-            i += 1
-
-        if depth == 0:
-            return i - 1  # Position of closing brace
-
-        return -1
