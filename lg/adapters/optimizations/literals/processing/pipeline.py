@@ -7,11 +7,11 @@ Orchestrates the two-pass literal processing workflow.
 
 from __future__ import annotations
 
-from typing import cast, List, Optional
+from typing import Callable, cast, List, Optional, Tuple, Union
 
 from lg.adapters.code_model import LiteralConfig
 from lg.adapters.context import ProcessingContext
-from ..patterns import BlockInitProfile, SequenceProfile
+from ..patterns import BlockInitProfile, MappingProfile, SequenceProfile, FactoryProfile
 
 
 class LiteralPipeline:
@@ -95,19 +95,14 @@ class LiteralPipeline:
             processed_strings: Output list for tracking processed ranges
         """
         # Collect AST-extraction collection nodes to skip their children
+        # Only SequenceProfile can have requires_ast_extraction=True
         ast_extraction_nodes_set = set()
-        all_profiles = (
-            self.handler.descriptor.sequence_profiles +
-            self.handler.descriptor.mapping_profiles +
-            self.handler.descriptor.factory_profiles +
-            self.handler.descriptor.block_init_profiles
-        )
 
-        for coll_profile in all_profiles:
-            if isinstance(coll_profile, SequenceProfile) and coll_profile.requires_ast_extraction:
-                coll_nodes = context.doc.query_nodes(coll_profile.query, "lit")
-                for coll_node in coll_nodes:
-                    ast_extraction_nodes_set.add((coll_node.start_byte, coll_node.end_byte))
+        for seq_profile in self.handler.descriptor.sequence_profiles:
+            if seq_profile.requires_ast_extraction:
+                seq_nodes = context.doc.query_nodes(seq_profile.query, "lit")
+                for seq_node in seq_nodes:
+                    ast_extraction_nodes_set.add((seq_node.start_byte, seq_node.end_byte))
 
         # Process each string profile
         for profile in self.handler.descriptor.string_profiles:
@@ -170,7 +165,7 @@ class LiteralPipeline:
     def _process_collections(
         self,
         context: ProcessingContext,
-        _: None,  # Unused parameter for compatibility
+        _: None,
         max_tokens: int,
         processed_strings: List
     ) -> None:
@@ -183,62 +178,87 @@ class LiteralPipeline:
             max_tokens: Token budget
             processed_strings: Ranges already processed in Pass 1
         """
-        # Gather all collection profiles
-        all_collection_profiles = (
-            self.handler.descriptor.sequence_profiles +
-            self.handler.descriptor.mapping_profiles +
-            self.handler.descriptor.factory_profiles +
-            self.handler.descriptor.block_init_profiles
-        )
+        # Process each profile type with specialized processor
+        # Type-safe, no isinstance or string tags needed
 
-        for profile in all_collection_profiles:
-            nodes = context.doc.query_nodes(profile.query, "lit")
+        for profile in self.handler.descriptor.sequence_profiles:
+            self._process_profile(context, profile, max_tokens, processed_strings,
+                                 self._process_sequence_node)
 
-            # Deduplicate by coordinates
-            seen_coords = set()
-            unique_nodes = []
-            for node in nodes:
-                coords = (node.start_byte, node.end_byte)
-                if coords not in seen_coords:
-                    seen_coords.add(coords)
-                    unique_nodes.append(node)
+        for profile in self.handler.descriptor.mapping_profiles:
+            self._process_profile(context, profile, max_tokens, processed_strings,
+                                 self._process_standard_collection_node)
 
-            # Find top-level collections
-            top_level = []
-            for i, node in enumerate(unique_nodes):
-                start_byte, end_byte = context.doc.get_node_range(node)
+        for profile in self.handler.descriptor.factory_profiles:
+            self._process_profile(context, profile, max_tokens, processed_strings,
+                                 self._process_standard_collection_node)
 
-                # Check if nested in another collection
-                is_nested = any(
-                    j != i and
-                    unique_nodes[j].start_byte <= start_byte and
-                    unique_nodes[j].end_byte >= end_byte
-                    for j in range(len(unique_nodes))
-                )
-                if is_nested:
-                    continue
+        for profile in self.handler.descriptor.block_init_profiles:
+            self._process_profile(context, profile, max_tokens, processed_strings,
+                                 self._process_block_init_node)
 
-                # Skip if contained in processed string
-                contained_in_string = any(
-                    s <= start_byte and end_byte <= e
-                    for s, e, _ in processed_strings
-                )
-                if not contained_in_string:
-                    top_level.append(node)
+    def _process_profile(
+        self,
+        context: ProcessingContext,
+        profile,
+        max_tokens: int,
+        processed_strings: List,
+        processor: Callable
+    ) -> None:
+        """
+        Common pipeline logic for processing any profile type.
 
-            # Process each top-level collection
-            for node in top_level:
-                literal_text = context.doc.get_node_text(node)
-                token_count = self.adapter.tokenizer.count_text_cached(literal_text)
+        Args:
+            context: Processing context
+            profile: Profile to process (type determined by processor)
+            max_tokens: Token budget
+            processed_strings: Already processed string ranges
+            processor: Specialized processor function for this profile type
+        """
+        nodes = context.doc.query_nodes(profile.query, "lit")
 
-                # Skip budget check for BLOCK_INIT (handles budget internally)
-                is_block_init = isinstance(profile, BlockInitProfile)
-                if not is_block_init:
-                    if token_count <= max_tokens:
-                        continue
+        # Deduplicate by coordinates
+        seen_coords = set()
+        unique_nodes = []
+        for node in nodes:
+            coords = (node.start_byte, node.end_byte)
+            if coords not in seen_coords:
+                seen_coords.add(coords)
+                unique_nodes.append(node)
 
-                # Process with DFS (delegate to handler with profile)
-                result = self._process_collection_node(context, node, max_tokens, profile)
+        # Find top-level collections
+        top_level = []
+        for i, node in enumerate(unique_nodes):
+            start_byte, end_byte = context.doc.get_node_range(node)
+
+            # Check if nested in another collection
+            is_nested = any(
+                j != i and
+                unique_nodes[j].start_byte <= start_byte and
+                unique_nodes[j].end_byte >= end_byte
+                for j in range(len(unique_nodes))
+            )
+            if is_nested:
+                continue
+
+            # Skip if contained in processed string
+            contained_in_string = any(
+                s <= start_byte and end_byte <= e
+                for s, e, _ in processed_strings
+            )
+            if not contained_in_string:
+                top_level.append(node)
+
+        # Process each top-level collection
+        for node in top_level:
+            literal_text = context.doc.get_node_text(node)
+            token_count = self.adapter.tokenizer.count_text_cached(literal_text)
+
+            # Skip budget check for BLOCK_INIT (handles budget internally)
+            # Processor knows how to handle its profile type
+            if token_count > max_tokens or isinstance(profile, BlockInitProfile):
+                # Call specialized processor
+                result = processor(context, node, max_tokens, profile)
 
                 # Apply if tokens saved
                 if result:
@@ -250,21 +270,54 @@ class LiteralPipeline:
                         # Standard result
                         self._apply_trim_result_composing(context, [node], result, literal_text)
 
-    def _process_collection_node(self, context: ProcessingContext, node, max_tokens: int, profile):
-        """Process collection node (temporary delegation to handler)."""
-        # BLOCK_INIT special handling
-        if isinstance(profile, BlockInitProfile):
-            result = self.handler.process_block_init_node(
-                profile=profile,
-                node=node,
-                doc=context.doc,
-                token_budget=max_tokens,
-                base_indent=self._get_base_indent(context.raw_text, node.start_byte),
-            )
-            return result
+    def _process_block_init_node(
+        self,
+        context: ProcessingContext,
+        node,
+        max_tokens: int,
+        profile: BlockInitProfile
+    ) -> Union[object, Tuple]:
+        """
+        Process BlockInitProfile node.
 
-        # AST-based sequences
-        if isinstance(profile, SequenceProfile) and profile.requires_ast_extraction:
+        Args:
+            context: Processing context
+            node: Tree-sitter node
+            max_tokens: Token budget
+            profile: BlockInitProfile instance
+
+        Returns:
+            Processing result or tuple
+        """
+        result = self.handler.process_block_init_node(
+            profile=profile,
+            node=node,
+            doc=context.doc,
+            token_budget=max_tokens,
+            base_indent=self._get_base_indent(context.raw_text, node.start_byte),
+        )
+        return result
+
+    def _process_sequence_node(
+        self,
+        context: ProcessingContext,
+        node,
+        max_tokens: int,
+        profile: SequenceProfile
+    ) -> object:
+        """
+        Process SequenceProfile node.
+
+        Args:
+            context: Processing context
+            node: Tree-sitter node
+            max_tokens: Token budget
+            profile: SequenceProfile instance
+
+        Returns:
+            Processing result
+        """
+        if profile.requires_ast_extraction:
             text = context.doc.get_node_text(node)
             base_indent = self._get_base_indent(context.raw_text, node.start_byte)
             element_indent = self._get_element_indent(text, base_indent)
@@ -278,8 +331,29 @@ class LiteralPipeline:
                 element_indent=element_indent,
             )
             return result
+        else:
+            # Standard sequence processing
+            return self._process_standard_collection_node(context, node, max_tokens, profile)
 
-        # Standard collections
+    def _process_standard_collection_node(
+        self,
+        context: ProcessingContext,
+        node,
+        max_tokens: int,
+        profile: Union[SequenceProfile, MappingProfile, FactoryProfile]
+    ) -> object:
+        """
+        Process standard collection nodes (mapping, factory, regular sequence).
+
+        Args:
+            context: Processing context
+            node: Tree-sitter node
+            max_tokens: Token budget
+            profile: Profile instance
+
+        Returns:
+            Processing result
+        """
         text = context.doc.get_node_text(node)
         return self.handler.process_literal(
             text=text,
