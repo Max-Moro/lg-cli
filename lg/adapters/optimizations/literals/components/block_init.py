@@ -13,11 +13,10 @@ from typing import List, Optional, Tuple, Callable
 
 from lg.adapters.tree_sitter_support import Node, TreeSitterDocument
 from ..patterns import TrimResult, BlockInitProfile, LiteralProfile
-from ..utils.element_parser import Element
 
 # Type alias for literal processing callback
 ProcessLiteralCallback = Callable[
-    [str, LiteralProfile, int, int, int, str, str],  # text, profile, start_byte, end_byte, token_budget, base_indent, element_indent
+    [object, object, str, LiteralProfile, int],  # node, doc, source_text, profile, token_budget
     Optional[TrimResult]
 ]
 
@@ -54,6 +53,8 @@ class BlockInitProcessor:
         self.process_literal_callback = process_literal_callback
         self.single_comment = comment_style[0]
         self.block_comment = comment_style[1]
+        self.source_text = None  # Set by process() method
+        self.doc = None  # Set by process() method
 
     def process(
         self,
@@ -62,6 +63,7 @@ class BlockInitProcessor:
         doc: TreeSitterDocument,
         token_budget: int,
         base_indent: str,
+        source_text: str = "",
     ) -> Optional[Tuple[TrimResult, List[Node]]]:
         """
         Process a BLOCK_INIT profile.
@@ -72,6 +74,7 @@ class BlockInitProcessor:
             doc: Tree-sitter document
             token_budget: Token budget for this block
             base_indent: Base indentation
+            source_text: Full source text (for nested literal processing)
 
         Returns:
             (TrimResult, nodes_used) tuple if trimming applied, None otherwise
@@ -79,6 +82,10 @@ class BlockInitProcessor:
             - For Java: [node] (single node)
             - For Rust: [let_node] + insert_stmts (expanded group)
         """
+        # Store source_text and doc for use in nested literal processing
+        self.source_text = source_text
+        self.doc = doc
+
         # Route based on node type
         if node.type == "let_declaration":
             # Rust-style: let mut var = HashMap::new(); var.insert(...);
@@ -536,19 +543,18 @@ class BlockInitProcessor:
                     doc,
                     token_budget,
                     base_indent="",
+                    source_text=self.source_text,
                 )
                 if result:
                     trim_result, _ = result
             else:
-                # Regular literal - use callback
+                # Regular literal - use callback with new signature
                 trim_result = self.process_literal_callback(
-                    nested_text,
+                    nested_node,
+                    self.doc,
+                    self.source_text,
                     nested_profile,
-                    nested_node.start_byte,
-                    nested_node.end_byte,
                     token_budget,
-                    "",  # base_indent
-                    "",  # element_indent
                 )
 
             # Collect replacement if optimization succeeded

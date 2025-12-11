@@ -16,9 +16,6 @@ from lg.adapters.context import ProcessingContext
 from .formatter import ResultFormatter
 from .parser import LiteralParser
 from .selector import BudgetSelector, Selection, DFSSelection
-from ..utils.element_parser import ElementParser, Element, ParseConfig
-from ..utils.budgeting import BudgetCalculator
-from ..utils.interpolation import InterpolationHandler
 from ..components import (
     ASTSequenceProcessor,
     BlockInitProcessor,
@@ -34,6 +31,9 @@ from ..patterns import (
     MappingProfile,
     FactoryProfile,
 )
+from ..utils.budgeting import BudgetCalculator
+from ..utils.element_parser import ElementParser, Element, ParseConfig
+from ..utils.interpolation import InterpolationHandler
 
 
 class LiteralPipeline:
@@ -199,13 +199,11 @@ class LiteralPipeline:
 
                 # Process node with profile
                 result = self._process_literal_impl(
-                    text=literal_text,
+                    node=node,
+                    doc=context.doc,
+                    source_text=context.raw_text,
                     profile=profile,
-                    start_byte=node.start_byte,
-                    end_byte=node.end_byte,
                     token_budget=max_tokens,
-                    base_indent=self._get_base_indent(context.raw_text, node.start_byte),
-                    element_indent=self._get_element_indent(literal_text, ""),
                 )
 
                 if result and result.saved_tokens > 0:
@@ -339,12 +337,14 @@ class LiteralPipeline:
         Returns:
             Processing result or tuple
         """
+        base_indent = LiteralParser.detect_base_indent(context.raw_text, node.start_byte)
         result = self.block_init_processor.process(
             profile=profile,
             node=node,
             doc=context.doc,
             token_budget=max_tokens,
-            base_indent=self._get_base_indent(context.raw_text, node.start_byte),
+            base_indent=base_indent,
+            source_text=context.raw_text,
         )
         return result
 
@@ -369,8 +369,8 @@ class LiteralPipeline:
         """
         if profile.requires_ast_extraction:
             text = context.doc.get_node_text(node)
-            base_indent = self._get_base_indent(context.raw_text, node.start_byte)
-            element_indent = self._get_element_indent(text, base_indent)
+            base_indent = LiteralParser.detect_base_indent(context.raw_text, node.start_byte)
+            element_indent = LiteralParser.detect_element_indent(text, base_indent)
 
             result = self.ast_sequence_processor.process(
                 profile=profile,
@@ -403,15 +403,12 @@ class LiteralPipeline:
         Returns:
             Processing result
         """
-        text = context.doc.get_node_text(node)
         return self._process_literal_impl(
-            text=text,
+            node=node,
+            doc=context.doc,
+            source_text=context.raw_text,
             profile=profile,
-            start_byte=node.start_byte,
-            end_byte=node.end_byte,
             token_budget=max_tokens,
-            base_indent=self._get_base_indent(context.raw_text, node.start_byte),
-            element_indent=self._get_element_indent(text, ""),
         )
 
     def _apply_trim_result(self, context: ProcessingContext, node: Node, result: TrimResult, original_text: str) -> None:
@@ -463,42 +460,6 @@ class LiteralPipeline:
         context.metrics.mark_element_removed("literal")
         context.metrics.add_chars_saved(len(original_text) - len(result.trimmed_text))
 
-    def _get_base_indent(self, text: str, byte_pos: int) -> str:
-        """Get indentation of line containing byte position."""
-        line_start = text.rfind('\n', 0, byte_pos)
-        if line_start == -1:
-            line_start = 0
-        else:
-            line_start += 1
-
-        indent = ""
-        for i in range(line_start, min(byte_pos, len(text))):
-            if text[i] in ' \t':
-                indent += text[i]
-            else:
-                break
-
-        return indent
-
-    def _get_element_indent(self, literal_text: str, base_indent: str) -> str:
-        """Detect element indentation from literal content."""
-        lines = literal_text.split('\n')
-        if len(lines) < 2:
-            return base_indent + "    "
-
-        for line in lines[1:]:
-            stripped = line.strip()
-            if stripped and not stripped.startswith((']', '}', ')')):
-                indent = ""
-                for char in line:
-                    if char in ' \t':
-                        indent += char
-                    else:
-                        break
-                if indent:
-                    return indent
-
-        return base_indent + "    "
 
     def _collect_factory_wrappers(self) -> List[str]:
         """Collect all factory method wrappers from descriptor for nested detection."""
@@ -565,33 +526,28 @@ class LiteralPipeline:
 
     def _process_literal_impl(
         self,
-        text: str,
+        node,
+        doc,
+        source_text: str,
         profile: LiteralProfile,
-        start_byte: int = 0,
-        end_byte: int = 0,
         token_budget: int = 0,
-        base_indent: str = "",
-        element_indent: str = "",
     ) -> Optional[TrimResult]:
         """
         Process a literal and return trimmed result if beneficial.
 
         Args:
-            text: Full literal text
+            node: Tree-sitter node representing the literal
+            doc: Tree-sitter document
+            source_text: Full source text
             profile: LiteralProfile (StringProfile, SequenceProfile, etc.) that matched this node
-            start_byte: Start position
-            end_byte: End position
             token_budget: Maximum tokens for content
-            base_indent: Line indentation
-            element_indent: Element indentation
 
         Returns:
             TrimResult if trimming is beneficial, None otherwise
         """
-        # Use profile-based parsing
-        parsed = self.literal_parser.parse_literal_with_profile(
-            text, profile, start_byte, end_byte,
-            base_indent, element_indent
+        # Use profile-based parsing with automatic indent detection
+        parsed = self.literal_parser.parse_from_node(
+            node, doc, source_text, profile
         )
 
         if not parsed:
