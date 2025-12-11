@@ -20,10 +20,7 @@ from ..patterns import (
     ParsedLiteral,
     StringProfile,
     CollectionProfile,
-    SequenceProfile,
-    MappingProfile,
     FactoryProfile,
-    BlockInitProfile,
     LiteralProfile,
 )
 from ..utils.element_parser import ElementParser
@@ -426,6 +423,54 @@ class ResultFormatter:
             # Simple nested element
             return f"{wrapper_prefix}{elem.nested_opening}{nested_formatted}{elem.nested_closing}"
 
+    def _collect_element_texts(
+        self,
+        selection: SelectionBase,
+        parser: Optional[ElementParser],
+        placeholder: str,
+        is_multiline: bool,
+        base_indent: str,
+        elem_indent: str,
+        inline_threshold: int
+    ) -> list[str]:
+        """
+        Collect formatted texts for all kept elements.
+
+        Handles both flat Selection and DFS with nested structures.
+
+        Args:
+            selection: Selection with kept elements
+            parser: ElementParser for nested content (None for flat Selection)
+            placeholder: Placeholder text
+            is_multiline: Whether to format nested content as multiline
+            base_indent: Base indentation for nested content
+            elem_indent: Indentation for nested elements
+            inline_threshold: Maximum tokens for inline nested structures
+
+        Returns:
+            List of formatted element texts
+        """
+        elements_text = []
+
+        if isinstance(selection, DFSSelection):
+            for i, elem in enumerate(selection.kept_elements):
+                if i in selection.nested_selections:
+                    elem_text = self._reconstruct_element_with_nested(
+                        elem, selection.nested_selections[i], parser, placeholder,
+                        is_multiline=is_multiline,
+                        base_indent=base_indent,
+                        elem_indent=elem_indent,
+                        inline_threshold=inline_threshold
+                    )
+                else:
+                    elem_text = elem.text
+                elements_text.append(elem_text)
+        else:
+            for elem in selection.kept_elements:
+                elements_text.append(elem.text)
+
+        return elements_text
+
     def _generate_comment_impl(
         self,
         parsed: ParsedLiteral,
@@ -488,25 +533,15 @@ class ResultFormatter:
         Handles both flat Selection and DFS selection with nested structures.
         """
         profile = parsed.profile
-        elements_text = []
 
-        # Process kept elements (with optional nested handling for DFS)
-        if isinstance(selection, DFSSelection):
-            for i, elem in enumerate(selection.kept_elements):
-                if i in selection.nested_selections:
-                    # Reconstruct with nested formatting (DFS only)
-                    elem_text = self._reconstruct_element_with_nested(
-                        elem, selection.nested_selections[i], parser, placeholder,
-                        is_multiline=False,
-                        inline_threshold=profile.inline_threshold
-                    )
-                else:
-                    elem_text = elem.text
-                elements_text.append(elem_text)
-        else:
-            # Flat selection - no nested handling
-            for elem in selection.kept_elements:
-                elements_text.append(elem.text)
+        # Collect formatted element texts
+        elements_text = self._collect_element_texts(
+            selection, parser, placeholder,
+            is_multiline=False,
+            base_indent="",
+            elem_indent="",
+            inline_threshold=profile.inline_threshold
+        )
 
         # Handle string literals (inline placeholder)
         if isinstance(profile, StringProfile):
