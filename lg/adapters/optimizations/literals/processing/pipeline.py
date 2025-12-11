@@ -197,18 +197,12 @@ class LiteralPipeline:
                 if token_count <= max_tokens:
                     continue
 
-                # Process node with profile
-                result = self._process_literal_impl(
-                    node=node,
-                    doc=context.doc,
-                    source_text=context.raw_text,
-                    profile=profile,
-                    token_budget=max_tokens,
-                )
+                # Process node with unified entry point
+                result = self._process_literal(context, node, profile, max_tokens)
 
                 if result and result.saved_tokens > 0:
                     start_byte, end_byte = context.doc.get_node_range(node)
-                    self._apply_trim_result(context, node, result, literal_text)
+                    self._apply_result(context, node, result, literal_text)
                     processed_strings.append((start_byte, end_byte, result.saved_tokens))
 
     def _process_collections(
@@ -226,24 +220,19 @@ class LiteralPipeline:
             max_tokens: Token budget
             processed_strings: Ranges already processed in Pass 1
         """
-        # Process each profile type with specialized processor
-        # Type-safe, no isinstance or string tags needed
+        # Process each profile type through unified entry point
 
         for profile in self.descriptor.sequence_profiles:
-            self._process_profile(context, profile, max_tokens, processed_strings,
-                                 self._process_sequence_node)
+            self._process_profile(context, profile, max_tokens, processed_strings)
 
         for profile in self.descriptor.mapping_profiles:
-            self._process_profile(context, profile, max_tokens, processed_strings,
-                                 self._process_standard_collection_node)
+            self._process_profile(context, profile, max_tokens, processed_strings)
 
         for profile in self.descriptor.factory_profiles:
-            self._process_profile(context, profile, max_tokens, processed_strings,
-                                 self._process_standard_collection_node)
+            self._process_profile(context, profile, max_tokens, processed_strings)
 
         for profile in self.descriptor.block_init_profiles:
-            self._process_profile(context, profile, max_tokens, processed_strings,
-                                 self._process_block_init_node)
+            self._process_profile(context, profile, max_tokens, processed_strings)
 
     def _process_profile(
         self,
@@ -251,17 +240,15 @@ class LiteralPipeline:
         profile: LiteralProfile,
         max_tokens: int,
         processed_strings: List,
-        processor: Callable
     ) -> None:
         """
         Common pipeline logic for processing any profile type.
 
         Args:
             context: Processing context
-            profile: Profile to process (type determined by processor)
+            profile: Profile to process
             max_tokens: Token budget
             processed_strings: Already processed string ranges
-            processor: Specialized processor function for this profile type
         """
         nodes = context.doc.query_nodes(profile.query, "lit")
 
@@ -303,117 +290,112 @@ class LiteralPipeline:
             token_count = self.adapter.tokenizer.count_text_cached(literal_text)
 
             # Skip budget check for BLOCK_INIT (handles budget internally)
-            # Processor knows how to handle its profile type
             if token_count > max_tokens or isinstance(profile, BlockInitProfile):
-                # Call specialized processor
-                result = processor(context, node, max_tokens, profile)
+                # Call unified processing entry point
+                result = self._process_literal(context, node, profile, max_tokens)
 
                 # Apply if tokens saved
                 if result:
                     if isinstance(result, tuple):
                         # BLOCK_INIT with expanded nodes
                         trim_result, nodes_used = result
-                        self._apply_trim_result_composing(context, nodes_used, trim_result, literal_text)
+                        self._apply_result(context, nodes_used, trim_result, literal_text, use_composing=True)
                     elif result.saved_tokens > 0:
                         # Standard result
-                        self._apply_trim_result_composing(context, [node], result, literal_text)
+                        self._apply_result(context, [node], result, literal_text, use_composing=True)
 
-    def _process_block_init_node(
+    def _process_literal(
         self,
         context: ProcessingContext,
         node,
-        max_tokens: int,
-        profile: BlockInitProfile
-    ) -> Union[object, Tuple]:
+        profile: LiteralProfile,
+        budget: int
+    ) -> Union[TrimResult, Tuple[TrimResult, List], None]:
         """
-        Process BlockInitProfile node.
+        Unified literal processing entry point.
+
+        Only coordinates stages and components - no detailed logic.
 
         Args:
             context: Processing context
             node: Tree-sitter node
-            max_tokens: Token budget
-            profile: BlockInitProfile instance
+            profile: Literal profile
+            budget: Token budget
 
         Returns:
-            Processing result or tuple
+            TrimResult if optimization applied, None otherwise
         """
-        result = self.block_init_processor.process(
-            node=node,
-            doc=context.doc,
-            source_text=context.raw_text,
-            profile=profile,
-            token_budget=max_tokens,
-        )
-        return result
-
-    def _process_sequence_node(
-        self,
-        context: ProcessingContext,
-        node,
-        max_tokens: int,
-        profile: SequenceProfile
-    ) -> object:
-        """
-        Process SequenceProfile node.
-
-        Args:
-            context: Processing context
-            node: Tree-sitter node
-            max_tokens: Token budget
-            profile: SequenceProfile instance
-
-        Returns:
-            Processing result
-        """
-        if profile.requires_ast_extraction:
-            result = self.ast_sequence_processor.process(
-                node=node,
-                doc=context.doc,
-                source_text=context.raw_text,
-                profile=profile,
-                token_budget=max_tokens,
+        # Check special components
+        if self.ast_sequence_processor.can_handle(profile, node, context.doc):
+            return self.ast_sequence_processor.process(
+                node,
+                context.doc,
+                context.raw_text,
+                profile,
+                budget
             )
+
+        if self.block_init_processor.can_handle(profile, node, context.doc):
+            result = self.block_init_processor.process(
+                node,
+                context.doc,
+                context.raw_text,
+                profile,
+                budget
+            )
+            # Return tuple as-is for proper handling in _process_profile()
             return result
-        else:
-            # Standard sequence processing
-            return self._process_standard_collection_node(context, node, max_tokens, profile)
 
-    def _process_standard_collection_node(
+        # Standard path through stages
+        parsed = self.literal_parser.parse_from_node(
+            node, context.doc, context.raw_text, profile
+        )
+
+        if not parsed or parsed.original_tokens <= budget:
+            return None
+
+        # Route by profile type
+        if isinstance(profile, StringProfile):
+            return self._process_string(parsed, budget)
+        else:
+            return self._process_collection(parsed, budget)
+
+    def _apply_result(
         self,
         context: ProcessingContext,
         node,
-        max_tokens: int,
-        profile: CollectionProfile
-    ) -> object:
+        result: TrimResult,
+        original_text: str,
+        use_composing: bool = False
+    ) -> None:
         """
-        Process standard collection nodes (mapping, factory, regular sequence).
+        Unified result application.
 
         Args:
             context: Processing context
-            node: Tree-sitter node
-            max_tokens: Token budget
-            profile: Profile instance
-
-        Returns:
-            Processing result
+            node: Tree-sitter node (or list of nodes for composing)
+            result: Trim result to apply
+            original_text: Original text for metrics
+            use_composing: Whether to use composing method
         """
-        return self._process_literal_impl(
-            node=node,
-            doc=context.doc,
-            source_text=context.raw_text,
-            profile=profile,
-            token_budget=max_tokens,
-        )
+        if use_composing:
+            # Handle list of nodes
+            nodes = node if isinstance(node, list) else [node]
+            start_byte = nodes[0].start_byte
+            end_byte = nodes[-1].end_byte
 
-    def _apply_trim_result(self, context: ProcessingContext, node: Node, result: TrimResult, original_text: str) -> None:
-        """Apply trim result."""
-        start_byte, end_byte = context.doc.get_node_range(node)
+            context.editor.add_replacement_composing_nested(
+                start_byte, end_byte, result.trimmed_text,
+                edit_type="literal_trimmed"
+            )
+        else:
+            start_byte, end_byte = context.doc.get_node_range(node)
+            context.editor.add_replacement(
+                start_byte, end_byte, result.trimmed_text,
+                edit_type="literal_trimmed"
+            )
 
-        context.editor.add_replacement(
-            start_byte, end_byte, result.trimmed_text,
-            edit_type="literal_trimmed"
-        )
-
+        # Add comment if needed
         placeholder_style = self.adapter.cfg.placeholders.style
         if placeholder_style != "none" and result.comment_text:
             text_after = context.raw_text[end_byte:]
@@ -426,31 +408,7 @@ class LiteralPipeline:
                 edit_type="literal_comment"
             )
 
-        context.metrics.mark_element_removed("literal")
-        context.metrics.add_chars_saved(len(original_text) - len(result.trimmed_text))
-
-    def _apply_trim_result_composing(self, context: ProcessingContext, nodes: List, result: TrimResult, original_text: str) -> None:
-        """Apply trim result using composing method."""
-        start_byte = nodes[0].start_byte
-        end_byte = nodes[-1].end_byte
-
-        context.editor.add_replacement_composing_nested(
-            start_byte, end_byte, result.trimmed_text,
-            edit_type="literal_trimmed"
-        )
-
-        placeholder_style = self.adapter.cfg.placeholders.style
-        if placeholder_style != "none" and result.comment_text:
-            text_after = context.raw_text[end_byte:]
-            formatted_comment, offset = self.formatter._format_comment_for_context(
-                text_after, result.comment_text
-            )
-            context.editor.add_insertion(
-                end_byte + offset,
-                formatted_comment,
-                edit_type="literal_comment"
-            )
-
+        # Update metrics
         context.metrics.mark_element_removed("literal")
         context.metrics.add_chars_saved(len(original_text) - len(result.trimmed_text))
 
@@ -563,21 +521,29 @@ class LiteralPipeline:
                 "not _process_literal_impl"
             )
         else:
-            return self._process_collection_dfs(cast(ParsedLiteral[CollectionProfile], parsed), token_budget)
+            return self._process_collection(cast(ParsedLiteral[CollectionProfile], parsed), token_budget)
 
     def _process_string(
         self,
         parsed: ParsedLiteral[StringProfile],
-        token_budget: int
+        budget: int
     ) -> Optional[TrimResult]:
-        """Process string literal - truncate content."""
+        """
+        Process string literals through standard stages.
+
+        Args:
+            parsed: Parsed string literal
+            budget: Token budget
+
+        Returns:
+            TrimResult if optimization applied
+        """
         # Calculate overhead
         overhead = self.budget_calculator.calculate_overhead(
             parsed.opening, parsed.closing, "…",
             parsed.is_multiline, parsed.element_indent
         )
-
-        content_budget = max(1, token_budget - overhead)
+        content_budget = max(1, budget - overhead)
 
         # Truncate content
         truncated = self.adapter.tokenizer.truncate_to_tokens(
@@ -585,93 +551,86 @@ class LiteralPipeline:
         )
 
         if len(truncated) >= len(parsed.content):
-            return None  # No trimming needed
+            return None
 
-        # Adjust for string interpolation boundaries
-        # Don't cut inside ${...}, #{...}, etc.
-        interpolation_markers = self.interpolation.get_active_markers(
+        # Adjust for interpolation
+        markers = self.interpolation.get_active_markers(
             parsed.profile, parsed.opening, parsed.content
         )
-        if interpolation_markers:
+        if markers:
             truncated = self.interpolation.adjust_truncation(
-                truncated, parsed.content, interpolation_markers
+                truncated, parsed.content, markers
             )
 
-        # Create pseudo-selection for string
+        # Create pseudo-selection and format
         kept_element = Element(
             text=truncated,
             raw_text=truncated,
             start_offset=0,
             end_offset=len(truncated),
         )
+        removed_element = Element(
+            text="...", raw_text="...",
+            start_offset=0, end_offset=0
+        )
 
         selection = Selection(
             kept_elements=[kept_element],
-            removed_elements=[],  # Conceptually removed
+            removed_elements=[removed_element],
             total_count=1,
             tokens_kept=self.adapter.tokenizer.count_text_cached(truncated),
             tokens_removed=parsed.original_tokens - self.adapter.tokenizer.count_text_cached(truncated),
         )
-        # Mark as having removals for formatting
-        selection.removed_elements = [Element(
-            text="...", raw_text="...", start_offset=0, end_offset=0
-        )]
 
         # Format result
         formatted = self.formatter.format(parsed, selection)
-
         return self.formatter.create_trim_result(parsed, selection, formatted)
 
-    def _process_collection_dfs(
+    def _process_collection(
         self,
         parsed: ParsedLiteral[CollectionProfile],
-        token_budget: int
+        budget: int
     ) -> Optional[TrimResult]:
-        """Process collection literal with DFS for nested structures."""
-        profile = parsed.profile
+        """
+        Process collections through selector + formatter.
 
-        # Get parser for this profile
-        parser = self._get_parser_for_profile(profile)
+        Args:
+            parsed: Parsed collection literal
+            budget: Token budget
 
-        # Parse elements
+        Returns:
+            TrimResult if optimization applied
+        """
+        parser = self._get_parser_for_profile(parsed.profile)
         elements = parser.parse(parsed.content)
 
         if not elements:
             return None
 
         # Calculate overhead
-        placeholder = profile.placeholder_template
+        placeholder = parsed.profile.placeholder_template
         overhead = self.budget_calculator.calculate_overhead(
             parsed.opening, parsed.closing, placeholder,
             parsed.is_multiline, parsed.element_indent
         )
+        content_budget = max(1, budget - overhead)
 
-        content_budget = max(1, token_budget - overhead)
-
-        # Select elements with DFS (budget-aware nested selection)
+        # Select elements with DFS
         selection = self.selector.select_dfs(
             elements, content_budget,
-            profile=profile,
+            profile=parsed.profile,
             get_parser_func=self._get_parser_for_profile,
-            min_keep=profile.min_elements,
-            tuple_size=profile.tuple_size if isinstance(profile, FactoryProfile) else 1,
-            preserve_top_level_keys=profile.preserve_all_keys if isinstance(profile, MappingProfile) else False,
+            min_keep=parsed.profile.min_elements,
+            tuple_size=parsed.profile.tuple_size if isinstance(parsed.profile, FactoryProfile) else 1,
+            preserve_top_level_keys=parsed.profile.preserve_all_keys if isinstance(parsed.profile, MappingProfile) else False,
         )
 
         if not selection.has_removals:
-            return None  # No trimming needed
+            return None
 
-        # Format result with DFS
+        # Format result
         formatted = self.formatter.format_dfs(parsed, selection, parser)
-        return self._create_trim_result_dfs(parsed, selection, formatted)
 
-    def _create_trim_result_dfs(
-        self,
-        parsed: ParsedLiteral[CollectionProfile],
-        selection: DFSSelection,
-        formatted,  # FormattedResult
-    ) -> TrimResult:
-        """Create TrimResult from DFS formatting data."""
         trimmed_tokens = self.adapter.tokenizer.count_text_cached(formatted.text)
 
         return TrimResult(
