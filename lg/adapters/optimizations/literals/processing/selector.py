@@ -12,7 +12,6 @@ from typing import List, Dict, Callable
 
 from lg.stats.tokenizer import TokenService
 from ..patterns import CollectionProfile
-from ..utils.budgeting import BudgetCalculator
 from ..utils.element_parser import Element, ElementParser
 
 
@@ -121,196 +120,33 @@ class BudgetSelector:
     def __init__(self, tokenizer: TokenService):
         """Initialize selector with tokenizer."""
         self.tokenizer = tokenizer
-        self.budget_calculator = BudgetCalculator(tokenizer)
 
-    def select_first(
+    def calculate_overhead(
         self,
-        elements: List[Element],
-        budget: int,
-        min_keep: int = 1,
-        separator_overhead: int = 0,  # Comma typically doesn't add tokens
-        tuple_size: int = 1,  # Group elements into tuples (2 for Map.of pairs)
-    ) -> Selection:
+        opening: str,
+        closing: str,
+        placeholder: str,
+        is_multiline: bool = False,
+        indent: str = "",
+    ) -> int:
         """
-        Select first N elements that fit in budget.
+        Calculate token overhead for literal structure.
 
         Args:
-            elements: List of elements to select from
-            budget: Maximum tokens for content
-            min_keep: Minimum elements to keep (even if over budget)
-            separator_overhead: Tokens per separator
-            tuple_size: Group elements into tuples (e.g., 2 for k,v pairs)
+            opening: Opening delimiter
+            closing: Closing delimiter
+            placeholder: Placeholder text
+            is_multiline: Whether literal is multiline
+            indent: Indentation string
 
         Returns:
-            Selection with kept and removed elements
+            Total overhead tokens
         """
-        if not elements:
-            return Selection(
-                kept_elements=[],
-                removed_elements=[],
-                total_count=0,
-                tokens_kept=0,
-                tokens_removed=0,
-            )
+        overhead_text = f"{opening}{placeholder}{closing}"
+        if is_multiline:
+            overhead_text = f"{opening}\n{indent}{placeholder}\n{indent}{closing}"
 
-        # Group elements into tuples if tuple_size > 1
-        if tuple_size > 1:
-            tuples = self._group_into_tuples(elements, tuple_size)
-            return self._select_tuples(tuples, budget, min_keep, separator_overhead)
-
-        kept: List[Element] = []
-        removed: List[Element] = []
-        tokens_used = 0
-
-        for i, elem in enumerate(elements):
-            elem_tokens = self.tokenizer.count_text_cached(elem.text)
-            total_with_sep = elem_tokens + (separator_overhead if kept else 0)
-
-            if tokens_used + total_with_sep <= budget or len(kept) < min_keep:
-                kept.append(elem)
-                tokens_used += total_with_sep
-            else:
-                removed.append(elem)
-
-        # Add remaining elements to removed
-        removed.extend(elements[len(kept) + len(removed):])
-
-        tokens_removed = sum(
-            self.tokenizer.count_text_cached(e.text) for e in removed
-        )
-
-        return Selection(
-            kept_elements=kept,
-            removed_elements=removed,
-            total_count=len(elements),
-            tokens_kept=tokens_used,
-            tokens_removed=tokens_removed,
-            placeholder_index=-1,  # Placeholder at end
-        )
-
-    def _group_into_tuples(
-        self,
-        elements: List[Element],
-        tuple_size: int
-    ) -> List[List[Element]]:
-        """Group elements into tuples of specified size."""
-        tuples = []
-        for i in range(0, len(elements), tuple_size):
-            tuples.append(elements[i:i + tuple_size])
-        return tuples
-
-    def _select_tuples(
-        self,
-        tuples: List[List[Element]],
-        budget: int,
-        min_keep: int,
-        separator_overhead: int,
-    ) -> Selection:
-        """Select tuples that fit in budget, treating each tuple as a unit."""
-        kept_elements: List[Element] = []
-        removed_elements: List[Element] = []
-        tokens_used = 0
-        tuples_kept = 0
-
-        for tpl in tuples:
-            # Calculate tokens for entire tuple
-            tuple_text = ", ".join(e.text for e in tpl)
-            tuple_tokens = self.tokenizer.count_text_cached(tuple_text)
-            total_with_sep = tuple_tokens + (separator_overhead if kept_elements else 0)
-
-            if tokens_used + total_with_sep <= budget or tuples_kept < min_keep:
-                kept_elements.extend(tpl)
-                tokens_used += total_with_sep
-                tuples_kept += 1
-            else:
-                removed_elements.extend(tpl)
-
-        tokens_removed = sum(
-            self.tokenizer.count_text_cached(e.text) for e in removed_elements
-        )
-
-        # Total count is number of tuples, not individual elements
-        total_tuples = len(tuples)
-
-        return Selection(
-            kept_elements=kept_elements,
-            removed_elements=removed_elements,
-            total_count=total_tuples,
-            tokens_kept=tokens_used,
-            tokens_removed=tokens_removed,
-            placeholder_index=-1,
-        )
-
-    def select_first_last(
-        self,
-        elements: List[Element],
-        budget: int,
-        separator_overhead: int = 2,
-    ) -> Selection:
-        """
-        Select first and last elements, fitting as many as possible.
-
-        Useful for showing structure while indicating content was trimmed.
-        """
-        if len(elements) <= 2:
-            return self.select_first(elements, budget)
-
-        first_elem = elements[0]
-        last_elem = elements[-1]
-
-        first_tokens = self.tokenizer.count_text_cached(first_elem.text)
-        last_tokens = self.tokenizer.count_text_cached(last_elem.text)
-
-        # Always try to keep first and last
-        if first_tokens + last_tokens + separator_overhead * 2 <= budget:
-            kept = [first_elem, last_elem]
-            removed = elements[1:-1]
-            tokens_kept = first_tokens + last_tokens + separator_overhead * 2
-        else:
-            # Can only keep first
-            kept = [first_elem]
-            removed = elements[1:]
-            tokens_kept = first_tokens
-
-        tokens_removed = sum(
-            self.tokenizer.count_text_cached(e.text) for e in removed
-        )
-
-        return Selection(
-            kept_elements=kept,
-            removed_elements=removed,
-            total_count=len(elements),
-            tokens_kept=tokens_kept,
-            tokens_removed=tokens_removed,
-            placeholder_index=1 if len(kept) == 2 else -1,  # Between first and last
-        )
-
-    def select_within_budget(
-        self,
-        elements: List[Element],
-        budget: int,
-        strategy: str = "first",
-        **kwargs
-    ) -> Selection:
-        """
-        Select elements using specified strategy.
-
-        Args:
-            elements: Elements to select from
-            budget: Token budget for content
-            strategy: Selection strategy ("first", "first_last", "distribute")
-            **kwargs: Strategy-specific options
-
-        Returns:
-            Selection result
-        """
-        if strategy == "first":
-            return self.select_first(elements, budget, **kwargs)
-        elif strategy == "first_last":
-            return self.select_first_last(elements, budget, **kwargs)
-        else:
-            # Default to first
-            return self.select_first(elements, budget, **kwargs)
+        return self.tokenizer.count_text_cached(overhead_text)
 
     def select_dfs(
         self,
@@ -556,3 +392,14 @@ class BudgetSelector:
             remaining_budget=remaining_budget,
             budget_exhausted=budget_exhausted,
         )
+
+    def _group_into_tuples(
+        self,
+        elements: List[Element],
+        tuple_size: int
+    ) -> List[List[Element]]:
+        """Group elements into tuples of specified size."""
+        tuples = []
+        for i in range(0, len(elements), tuple_size):
+            tuples.append(elements[i:i + tuple_size])
+        return tuples

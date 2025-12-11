@@ -28,7 +28,6 @@ from ..patterns import (
     MappingProfile,
     FactoryProfile,
 )
-from ..utils.budgeting import BudgetCalculator
 from ..utils.element_parser import ElementParser, Element, ParseConfig
 from ..utils.interpolation import InterpolationHandler
 
@@ -72,9 +71,7 @@ class LiteralPipeline:
         self.literal_parser = LiteralParser(self.adapter.tokenizer)
         self.selector = BudgetSelector(self.adapter.tokenizer)
         self.formatter = ResultFormatter(self.adapter.tokenizer, comment_style)
-
         self.interpolation = InterpolationHandler()
-        self.budget_calculator = BudgetCalculator(self.adapter.tokenizer)
 
         # =================================
         # Special components (ordered by priority)
@@ -463,7 +460,7 @@ class LiteralPipeline:
             TrimResult if optimization applied
         """
         # Calculate overhead
-        overhead = self.budget_calculator.calculate_overhead(
+        overhead = self.selector.calculate_overhead(
             parsed.opening, parsed.closing, "…",
             parsed.is_multiline, parsed.element_indent
         )
@@ -546,7 +543,7 @@ class LiteralPipeline:
 
         # Calculate overhead
         placeholder = parsed.profile.placeholder_template
-        overhead = self.budget_calculator.calculate_overhead(
+        overhead = self.selector.calculate_overhead(
             parsed.opening, parsed.closing, placeholder,
             parsed.is_multiline, parsed.element_indent
         )

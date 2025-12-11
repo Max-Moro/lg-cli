@@ -23,8 +23,8 @@ lg/adapters/optimizations/literals/
 ├── utils/                      # Утилитарные модули
 │   ├── __init__.py
 │   ├── element_parser.py       # Парсинг содержимого элементов
-│   ├── budgeting.py            # Расчет токенов структурных элементов
-│   └── interpolation.py        # Обработка интерполяции в строках
+│   ├── interpolation.py        # Обработка интерполяции в строках
+│   └── indentation.py          # Определение отступов
 │
 ├── __init__.py                 # Публичный API
 ├── descriptor.py               # Декларативная модель языковых паттернов
@@ -72,8 +72,8 @@ lg/adapters/optimizations/literals/
 
 **Утилиты**:
 - `element_parser.py` — парсинг элементов внутри литералов
-- `budgeting.py` — расчет токенов структурных элементов
 - `interpolation.py` — работа с интерполяцией в строках
+- `indentation.py` — определение отступов в исходном коде
 
 ### 2. Оркестратор как координатор
 
