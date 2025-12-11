@@ -7,7 +7,7 @@ literal data in source code across multiple programming languages.
 
 from .descriptor import LanguageLiteralDescriptor
 from .patterns import (
-    LanguageSyntaxFlags, PlaceholderPosition, StringProfile,
+    PlaceholderPosition, StringProfile,
     SequenceProfile, MappingProfile, FactoryProfile, BlockInitProfile
 )
 from .processing import LiteralPipeline
@@ -15,7 +15,6 @@ from .processing import LiteralPipeline
 __all__ = [
     # Descriptor and types
     "LanguageLiteralDescriptor",
-    "LanguageSyntaxFlags",
     "PlaceholderPosition",
 
     # Profiles

@@ -10,7 +10,6 @@ from dataclasses import dataclass, field
 from typing import List, Optional
 
 from .patterns import (
-    LanguageSyntaxFlags,
     StringProfile,
     SequenceProfile,
     MappingProfile,
@@ -31,9 +30,6 @@ class LanguageLiteralDescriptor:
     # Additional factory wrappers for nested detection (not patterns themselves)
     # Example: ["Map.entry"] for Java - not optimized directly but needs DFS detection
     nested_factory_wrappers: List[str] = field(default_factory=list)
-
-    # Language-specific syntax flags
-    syntax: Optional[LanguageSyntaxFlags] = None
 
     # ============= Profile-based configuration =============
     # These fields define literals using typed profiles (StringProfile, SequenceProfile, etc.).

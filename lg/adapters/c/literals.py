@@ -17,7 +17,6 @@ from ..optimizations.literals import (
     LanguageLiteralDescriptor,
     StringProfile,
     SequenceProfile,
-    LanguageSyntaxFlags,
 )
 
 
@@ -85,19 +84,6 @@ C_INITIALIZER_LIST_PROFILE = SequenceProfile(
 def create_c_descriptor() -> LanguageLiteralDescriptor:
     """Create C language descriptor for literal optimization."""
     return LanguageLiteralDescriptor(
-        # Language syntax flags
-        syntax=LanguageSyntaxFlags(
-            single_line_comment="//",
-            block_comment_open="/*",
-            block_comment_close="*/",
-            supports_raw_strings=False,          # C has no raw strings
-            supports_template_strings=False,     # C has no template strings
-            supports_multiline_strings=False,    # C has no multiline strings
-            factory_wrappers=[],                 # C has no factory methods
-            supports_block_init=False,           # C has no block init
-            supports_ast_sequences=True,         # C has concatenated strings
-        ),
-
         # String profiles
         string_profiles=[C_STRING_PROFILE],
 

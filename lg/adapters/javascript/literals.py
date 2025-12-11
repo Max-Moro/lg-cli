@@ -13,7 +13,6 @@ from ..optimizations.literals import (
     StringProfile,
     SequenceProfile,
     MappingProfile,
-    LanguageSyntaxFlags,
 )
 
 
@@ -118,19 +117,6 @@ def create_javascript_descriptor() -> LanguageLiteralDescriptor:
         Configured LanguageLiteralDescriptor for JavaScript
     """
     return LanguageLiteralDescriptor(
-        # Language syntax flags
-        syntax=LanguageSyntaxFlags(
-            single_line_comment="//",
-            block_comment_open="/*",
-            block_comment_close="*/",
-            supports_raw_strings=False,          # JavaScript has no raw strings
-            supports_template_strings=True,      # JavaScript has template strings ``
-            supports_multiline_strings=True,     # Template strings can be multiline
-            factory_wrappers=[],                 # JavaScript has no factory methods
-            supports_block_init=False,           # JavaScript has no block init
-            supports_ast_sequences=False,        # JavaScript has no concatenated strings
-        ),
-
         # String profiles
         string_profiles=[
             JS_TEMPLATE_STRING_PROFILE,  # Template strings (backticks with interpolation)

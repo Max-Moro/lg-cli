@@ -254,8 +254,7 @@ class TrimResult:
 
 1. Создать дескриптор в `lg/adapters/<язык>/literals.py`
 2. Определить профили (StringProfile, SequenceProfile, ...)
-3. Установить флаги в LanguageSyntaxFlags
-4. Если нужен специальный компонент — создать в `components/`
+3. Если нужен специальный компонент — создать в `components/`
 
 **Пример нового компонента**:
 ```python

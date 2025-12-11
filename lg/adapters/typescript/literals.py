@@ -17,7 +17,6 @@ from ..optimizations.literals import (
     PlaceholderPosition,
     LanguageLiteralDescriptor,
     MappingProfile,
-    LanguageSyntaxFlags,
 )
 
 # TypeScript literal profiles
@@ -43,19 +42,6 @@ def create_typescript_descriptor() -> LanguageLiteralDescriptor:
         Configured LanguageLiteralDescriptor for TypeScript
     """
     return LanguageLiteralDescriptor(
-        # Language syntax flags (same as JavaScript)
-        syntax=LanguageSyntaxFlags(
-            single_line_comment="//",
-            block_comment_open="/*",
-            block_comment_close="*/",
-            supports_raw_strings=False,          # TypeScript has no raw strings
-            supports_template_strings=True,      # TypeScript has template strings ``
-            supports_multiline_strings=True,     # Template strings can be multiline
-            factory_wrappers=[],                 # TypeScript has no factory methods
-            supports_block_init=False,           # TypeScript has no block init
-            supports_ast_sequences=False,        # TypeScript has no concatenated strings
-        ),
-
         # String profiles (inherited from JavaScript)
         string_profiles=[
             JS_TEMPLATE_STRING_PROFILE,  # Template strings (backticks with interpolation)

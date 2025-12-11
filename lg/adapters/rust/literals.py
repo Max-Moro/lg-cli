@@ -24,7 +24,6 @@ from ..optimizations.literals import (
     SequenceProfile,
     FactoryProfile,
     BlockInitProfile,
-    LanguageSyntaxFlags,
 )
 
 
@@ -117,19 +116,6 @@ RUST_HASHMAP_INIT_PROFILE = BlockInitProfile(
 def create_rust_descriptor() -> LanguageLiteralDescriptor:
     """Create Rust language descriptor for literal optimization."""
     return LanguageLiteralDescriptor(
-        # Language syntax flags
-        syntax=LanguageSyntaxFlags(
-            single_line_comment="//",
-            block_comment_open="/*",
-            block_comment_close="*/",
-            supports_raw_strings=True,           # Rust has raw strings r#"..."#
-            supports_template_strings=False,     # Rust has no template strings
-            supports_multiline_strings=True,     # Raw strings can be multiline
-            factory_wrappers=["vec"],            # vec! macro
-            supports_block_init=True,            # Rust has HashMap initialization blocks
-            supports_ast_sequences=False,        # Rust has no concatenated strings
-        ),
-
         # String profiles
         string_profiles=[RUST_STRING_PROFILE],
 

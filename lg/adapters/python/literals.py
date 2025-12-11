@@ -14,7 +14,6 @@ from ..optimizations.literals import (
     StringProfile,
     SequenceProfile,
     MappingProfile,
-    LanguageSyntaxFlags,
 )
 
 
@@ -160,19 +159,6 @@ def create_python_descriptor() -> LanguageLiteralDescriptor:
         Configured LanguageLiteralDescriptor for Python
     """
     return LanguageLiteralDescriptor(
-        # Language syntax flags
-        syntax=LanguageSyntaxFlags(
-            single_line_comment="#",
-            block_comment_open='"""',
-            block_comment_close='"""',
-            supports_raw_strings=True,  # r"..."
-            supports_template_strings=False,  # No backticks
-            supports_multiline_strings=True,  # """ """
-            factory_wrappers=[],  # Python doesn't use factory methods
-            supports_block_init=False,
-            supports_ast_sequences=False,
-        ),
-
         # String profiles
         string_profiles=[PYTHON_STRING_PROFILE],
 

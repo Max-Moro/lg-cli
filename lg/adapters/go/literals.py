@@ -21,7 +21,6 @@ from ..optimizations.literals import (
     StringProfile,
     MappingProfile,
     FactoryProfile,
-    LanguageSyntaxFlags,
 )
 
 
@@ -121,19 +120,6 @@ GO_SLICE_PROFILE = FactoryProfile(
 def create_go_descriptor() -> LanguageLiteralDescriptor:
     """Create Go language descriptor for literal optimization."""
     return LanguageLiteralDescriptor(
-        # Language syntax flags
-        syntax=LanguageSyntaxFlags(
-            single_line_comment="//",
-            block_comment_open="/*",
-            block_comment_close="*/",
-            supports_raw_strings=True,           # Go has raw strings with backticks
-            supports_template_strings=False,     # Go has no template strings
-            supports_multiline_strings=True,     # Raw strings can be multiline
-            factory_wrappers=[],                 # Go has no factory methods
-            supports_block_init=False,           # Go has no block init
-            supports_ast_sequences=False,        # Go has no concatenated strings
-        ),
-
         # String profiles
         string_profiles=[GO_STRING_PROFILE],
 
