@@ -1,524 +1,423 @@
 # Дорожная карта рефакторинга Literals Optimization
 
-Этот документ содержит поэтапный план приведения текущего кода к финальной архитектуре, описанной в `literals_architecture.md`.
-
-## Текущее состояние (Baseline)
-
-### Структура "как есть"
-
-```
-lg/adapters/optimizations/literals/
-├── components/
-│   ├── ast_sequence.py          # ✅ Остается
-│   ├── block_init.py            # ✅ Остается
-│   ├── budgeting.py             # ❌ Переносим в utils/
-│   ├── interpolation.py         # ❌ Переносим в utils/
-│   └── placeholder.py           # ❌ Сливаем с formatter
-├── processing/
-│   ├── pipeline.py              # 🔧 Упрощаем (~700 строк → ~250 строк)
-│   ├── parser.py                # 🔧 Расширяем (добавляем методы отступов)
-│   ├── selector.py              # ✅ Без изменений
-│   └── formatter.py             # 🔧 Расширяем (включаем placeholder logic)
-├── element_parser.py            # ❌ Переносим в utils/
-└── ... (модель без изменений)
-```
-
-### Проблемы текущей структуры
-
-1. **Ложные компоненты**: `budgeting`, `interpolation`, `placeholder` — не настоящие компоненты
-2. **Раздутый pipeline**: ~700 строк с детальной логикой обработки
-3. **Протекание логики**: Условия применимости компонентов в pipeline
-4. **Подготовка параметров**: Pipeline готовит параметры для компонентов
+Этот документ содержит план приведения кода к финальной архитектуре, описанной в `literals_architecture.md`.
 
 ---
 
-## Этапы рефакторинга
-
----
+## ✅ Выполненные этапы (Этапы 1-4)
 
 ### Этап 1: Создание структуры utils/ и перенос утилит
+**Статус**: ✅ Завершен (commit 304bbec)
 
-**Цель**: Выделить утилитарные модули в отдельный пакет
-
-**Действия**:
-
-1. **Создать пакет `utils/`**
-   ```bash
-   mkdir lg/adapters/optimizations/literals/utils
-   touch lg/adapters/optimizations/literals/utils/__init__.py
-   ```
-
-2. **Перенести `element_parser.py` → `utils/element_parser.py`**
-   - Переместить файл
-   - Обновить импорты во всех использующих модулях:
-     - `processing/formatter.py`
-     - `processing/selector.py`
-     - `components/block_init.py`
-
-3. **Перенести `components/budgeting.py` → `utils/budgeting.py`**
-   - Переместить файл
-   - Обновить импорты:
-     - `processing/selector.py`
-     - `processing/formatter.py`
-
-4. **Перенести `components/interpolation.py` → `utils/interpolation.py`**
-   - Переместить файл
-   - Обновить импорты:
-     - `processing/pipeline.py`
-
-5. **Обновить `utils/__init__.py`**
-   ```python
-   from .element_parser import ElementParser, Element, ParseConfig
-   from .budgeting import BudgetCalculator
-   from .interpolation import InterpolationHandler
-
-   __all__ = [
-       "ElementParser", "Element", "ParseConfig",
-       "BudgetCalculator",
-       "InterpolationHandler",
-   ]
-   ```
-
-6. **Обновить `components/__init__.py`**
-   - Удалить экспорты перенесенных модулей
-   - Оставить только `ASTSequenceProcessor`, `BlockInitProcessor`
-
-**Тестирование**:
-
-**Коммит**:
-```bash
-git add lg/adapters/optimizations/literals/
-git commit -m "refactor(literals): Extract utility modules to utils/ package
-
-- Create utils/ package for utility modules
-- Move element_parser.py to utils/
-- Move budgeting.py from components/ to utils/
-- Move interpolation.py from components/ to utils/
-- Update all imports
-- components/ now contains only specialized processors
-
-No behavioral changes, all tests pass."
-```
+**Результат**:
+- Создан пакет `utils/` для утилитарных модулей
+- Перенесены: `element_parser.py`, `budgeting.py`, `interpolation.py`
+- Обновлены все импорты в 7 модулях
+- `components/` содержит только специализированные процессоры
 
 ---
 
 ### Этап 2: Слияние PlaceholderCommentFormatter с ResultFormatter
+**Статус**: ✅ Завершен (commit f067fe3)
 
-**Цель**: Устранить ложный компонент `placeholder.py`, включив его логику в formatter
-
-**Действия**:
-
-1. **Скопировать код из `components/placeholder.py` в `processing/formatter.py`**
-   - Скопировать класс `PlaceholderCommentFormatter` внутрь `ResultFormatter`
-   - Сделать его приватным вложенным классом или методами
-
-2. **Обновить `ResultFormatter.__init__`**
-   ```python
-   def __init__(self, tokenizer, comment_style):
-       self.tokenizer = tokenizer
-       self.comment_style = comment_style
-       # Убрать self.placeholder_formatter = PlaceholderCommentFormatter(...)
-   ```
-
-3. **Перенести методы внутрь `ResultFormatter`**
-   ```python
-   def _format_comment_for_context(self, text_after_literal, comment_content):
-       """Логика из PlaceholderCommentFormatter.format_comment_for_context"""
-       ...
-
-   def _generate_comment_text(self, category_name, tokens_saved):
-       """Логика из PlaceholderCommentFormatter.generate_comment_text"""
-       ...
-   ```
-
-4. **Обновить вызовы в `ResultFormatter`**
-   - Заменить `self.placeholder_formatter.format_comment_for_context(...)`
-   - На `self._format_comment_for_context(...)`
-
-5. **Удалить `components/placeholder.py`**
-
-6. **Обновить `components/__init__.py`**
-   - Удалить экспорт `PlaceholderCommentFormatter`
-
-**Тестирование**:
-
-**Коммит**:
-```bash
-git add lg/adapters/optimizations/literals/
-git commit -m "refactor(literals): Merge PlaceholderCommentFormatter into ResultFormatter
-
-- Move placeholder formatting logic into ResultFormatter
-- Remove components/placeholder.py (false component)
-- Make placeholder methods private in ResultFormatter
-- Update imports
-
-No behavioral changes, all tests pass."
-```
+**Результат**:
+- Удален ложный компонент `components/placeholder.py`
+- Логика форматирования placeholder перенесена в `ResultFormatter`
+- 5 методов добавлены как приватные в `ResultFormatter`
+- Чистое сокращение: 122 insertions, 156 deletions
 
 ---
 
 ### Этап 3: Расширение LiteralParser методами определения отступов
+**Статус**: ✅ Завершен (commit c078f04)
 
-**Цель**: Переместить логику определения отступов из pipeline в parser
-
-**Действия**:
-
-1. **Добавить статические методы в `LiteralParser`**
-   ```python
-   @staticmethod
-   def detect_base_indent(text: str, byte_pos: int) -> str:
-       """
-       Определить отступ строки, содержащей литерал.
-
-       Логика из pipeline._get_base_indent()
-       """
-       line_start = text.rfind('\n', 0, byte_pos)
-       if line_start == -1:
-           line_start = 0
-       else:
-           line_start += 1
-
-       indent = ""
-       for i in range(line_start, min(byte_pos, len(text))):
-           if text[i] in ' \t':
-               indent += text[i]
-           else:
-               break
-
-       return indent
-
-   @staticmethod
-   def detect_element_indent(literal_text: str, base_indent: str) -> str:
-       """
-       Определить отступ элементов внутри литерала.
-
-       Логика из pipeline._get_element_indent()
-       """
-       lines = literal_text.split('\n')
-       if len(lines) < 2:
-           return base_indent + "    "
-
-       for line in lines[1:]:
-           stripped = line.strip()
-           if stripped and not stripped.startswith((']', '}', ')')):
-               indent = ""
-               for char in line:
-                   if char in ' \t':
-                       indent += char
-                   else:
-                       break
-               if indent:
-                   return indent
-
-       return base_indent + "    "
-   ```
-
-2. **Добавить высокоуровневый метод `parse_from_node`**
-   ```python
-   def parse_from_node(
-       self,
-       node,
-       doc,
-       source_text: str,
-       profile: P
-   ) -> ParsedLiteral[P]:
-       """
-       Высокоуровневый API: парсит литерал с автоматическим определением параметров.
-
-       Pipeline должен использовать этот метод вместо низкоуровневого API.
-       """
-       text = doc.get_node_text(node)
-       start_byte, end_byte = doc.get_node_range(node)
-
-       # Автоматически определяем отступы
-       base_indent = self.detect_base_indent(source_text, start_byte)
-       element_indent = self.detect_element_indent(text, base_indent)
-
-       # Делегируем низкоуровневому методу
-       return self.parse_literal_with_profile(
-           text, profile, start_byte, end_byte,
-           base_indent, element_indent
-       )
-   ```
-
-3. **Обновить `pipeline.py` для использования нового API**
-   - В `_process_literal_impl` заменить:
-     ```python
-     # Было:
-     base_indent = self._get_base_indent(context.raw_text, start_byte)
-     element_indent = self._get_element_indent(literal_text, base_indent)
-     parsed = self.parser.parse_literal_with_profile(
-         text, profile, start_byte, end_byte,
-         base_indent, element_indent
-     )
-
-     # Стало:
-     parsed = self.parser.parse_from_node(
-         node, context.doc, context.raw_text, profile
-     )
-     ```
-
-4. **Удалить методы `_get_base_indent` и `_get_element_indent` из `pipeline.py`**
-
-**Тестирование**:
-
-**Коммит**:
-```bash
-git add lg/adapters/optimizations/literals/
-git commit -m "refactor(literals): Move indent detection logic to LiteralParser
-
-- Add detect_base_indent() static method to LiteralParser
-- Add detect_element_indent() static method to LiteralParser
-- Add high-level parse_from_node() method
-- Remove _get_base_indent() and _get_element_indent() from pipeline
-- Pipeline now uses parser's high-level API
-
-No behavioral changes, all tests pass."
-```
+**Результат**:
+- Добавлены статические методы: `detect_base_indent()`, `detect_element_indent()`
+- Добавлен высокоуровневый API: `parse_from_node()`
+- Удалены методы `_get_base_indent()` и `_get_element_indent()` из pipeline
+- Pipeline использует высокоуровневый API парсера
+- Чистое упрощение: 153 insertions, 82 deletions
 
 ---
 
 ### Этап 4: Добавление can_handle() в компоненты
+**Статус**: ✅ Завершен (commit fe59bd2)
 
-**Цель**: Сделать компоненты автономными, способными самостоятельно решать применимость
+**Результат**:
+- Компоненты стали полностью автономными
+- Добавлены методы `can_handle()` в `ASTSequenceProcessor` и `BlockInitProcessor`
+- Компоненты сами извлекают данные и определяют параметры
+- Унифицированная сигнатура `process(node, doc, source_text, profile, token_budget)`
+- Расширение функциональности: 167 insertions, 46 deletions
 
-**Действия**:
+---
 
-1. **Добавить `can_handle()` в `ASTSequenceProcessor`**
-   ```python
-   # components/ast_sequence.py
+## 🚧 Текущий этап
 
-   def can_handle(
-       self,
-       profile: LiteralProfile,
-       node,
-       doc
-   ) -> bool:
-       """
-       Проверить, применим ли этот компонент к данному литералу.
+### Этап 5: Упрощение pipeline до чистого оркестратора
 
-       ASTSequenceProcessor применим только к SequenceProfile
-       с флагом requires_ast_extraction=True.
-       """
-       return (
-           isinstance(profile, SequenceProfile) and
-           profile.requires_ast_extraction
-       )
-   ```
+**Цель**: Превратить pipeline в элегантный координатор ~250 строк (сейчас ~700)
 
-2. **Обновить сигнатуру `ASTSequenceProcessor.process()`**
-   ```python
-   def process(
-       self,
-       node,
-       doc,
-       source_text: str,
-       profile: SequenceProfile,
-       token_budget: int
-   ) -> Optional[TrimResult]:
-       """
-       Полная автономная обработка AST-based последовательности.
+**Текущая структура pipeline (~700 строк)**:
+```
+LiteralPipeline (processing/pipeline.py)
+├── apply()                                 # Entry point
+├── _process_strings()                      # Pass 1
+├── _process_collections()                  # Pass 2
+├── _process_profile()                      # Common routing
+├── _process_block_init_node()             # Специализированный роутер
+├── _process_sequence_node()               # Специализированный роутер
+├── _process_standard_collection_node()    # Специализированный роутер
+├── _process_literal_impl()                # Низкоуровневая обработка
+├── _process_string()                       # String processing
+├── _process_collection_dfs()              # Collection processing
+├── _apply_trim_result()                   # Apply results
+├── _apply_trim_result_composing()         # Apply results (composing)
+└── ... вспомогательные методы
+```
 
-       Компонент сам:
-       - Извлекает текст из node
-       - Определяет отступы
-       - Парсит элементы через AST
-       - Форматирует результат
-       """
-       text = doc.get_node_text(node)
-       base_indent = self._detect_indent(source_text, node.start_byte)
-       element_indent = self._detect_element_indent(text, base_indent)
+**Проблемы текущего pipeline**:
+1. **Специализированные роутеры** (`_process_*_node`) — дублируют логику маршрутизации
+2. **Низкоуровневая обработка** (`_process_literal_impl`) — смешивает координацию и логику
+3. **Условия применимости** — в pipeline вместо компонентов
+4. **Подготовка параметров** — pipeline готовит данные для компонентов
 
-       # Остальная логика без изменений
-       ...
-   ```
-
-3. **Добавить приватные методы в `ASTSequenceProcessor`**
-   ```python
-   @staticmethod
-   def _detect_indent(text: str, byte_pos: int) -> str:
-       """Определить базовый отступ (копия из LiteralParser)."""
-       # Скопировать логику из LiteralParser.detect_base_indent
-       ...
-
-   @staticmethod
-   def _detect_element_indent(literal_text: str, base_indent: str) -> str:
-       """Определить отступ элементов (копия из LiteralParser)."""
-       # Скопировать логику из LiteralParser.detect_element_indent
-       ...
-   ```
-
-4. **Добавить `can_handle()` в `BlockInitProcessor`**
-   ```python
-   # components/block_init.py
-
-   def can_handle(
-       self,
-       profile: LiteralProfile,
-       node,
-       doc
-   ) -> bool:
-       """
-       Проверить применимость BlockInitProcessor.
-
-       Применим только к BlockInitProfile.
-       """
-       return isinstance(profile, BlockInitProfile)
-   ```
-
-5. **Обновить `BlockInitProcessor.process()` для автономности**
-   - Добавить извлечение текста и определение отступов внутри
-   - Сделать полностью автономным
-
-**Тестирование**:
-
-**Коммит**:
-```bash
-git add lg/adapters/optimizations/literals/
-git commit -m "refactor(literals): Make components autonomous with can_handle()
-
-- Add can_handle() to ASTSequenceProcessor
-- Add can_handle() to BlockInitProcessor
-- Make components fully autonomous (self-contained processing)
-- Components now extract data and determine parameters internally
-
-No behavioral changes, all tests pass."
+**Целевая структура pipeline (~250 строк)**:
+```
+LiteralPipeline (processing/pipeline.py)
+├── apply()                          # Entry point (двухпроходная логика)
+├── _process_strings()               # Pass 1 coordinator
+├── _process_collections()           # Pass 2 coordinator
+├── _process_profile()               # Unified profile processing
+├── _process_literal()               # ⭐ ЕДИНАЯ точка обработки
+│   ├── Проверка can_handle() компонентов
+│   └── Роутинг на _process_string() или _process_collection()
+├── _process_string()                # Simplified string processing
+├── _process_collection()            # Simplified collection processing
+└── _apply_result()                  # Unified result application
 ```
 
 ---
 
-### Этап 5: Упрощение pipeline до чистого оркестратора
+### Действия по Этапу 5
 
-**Цель**: Превратить pipeline в элегантный координатор ~250 строк
+#### 1. Создать единый метод `_process_literal()`
 
-**Действия**:
+**Добавить в `processing/pipeline.py` после метода `_process_profile`:**
 
-1. **Создать единый метод `_process_literal()`**
-   ```python
-   def _process_literal(
-       self,
-       context: ProcessingContext,
-       node,
-       profile: LiteralProfile,
-       budget: int
-   ) -> Optional[TrimResult]:
-       """
-       Единая точка обработки любого литерала.
+```python
+def _process_literal(
+    self,
+    context: ProcessingContext,
+    node,
+    profile: LiteralProfile,
+    budget: int
+) -> Optional[TrimResult]:
+    """
+    Unified literal processing entry point.
 
-       Только координация стадий и компонентов.
-       """
-       # Проверка специальных компонентов
-       for component in self.special_components:
-           if component.can_handle(profile, node, context.doc):
-               return component.process(
-                   node,
-                   context.doc,
-                   context.raw_text,
-                   profile,
-                   budget
-               )
+    Only coordinates stages and components - no detailed logic.
 
-       # Стандартный путь через стадии
-       parsed = self.parser.parse_from_node(
-           node, context.doc, context.raw_text, profile
-       )
+    Args:
+        context: Processing context
+        node: Tree-sitter node
+        profile: Literal profile
+        budget: Token budget
 
-       if parsed.original_tokens <= budget:
-           return None
+    Returns:
+        TrimResult if optimization applied, None otherwise
+    """
+    # Check special components
+    for component in self.special_components:
+        if component.can_handle(profile, node, context.doc):
+            result = component.process(
+                node,
+                context.doc,
+                context.raw_text,
+                profile,
+                budget
+            )
+            # Handle tuple return from BlockInitProcessor
+            if isinstance(result, tuple):
+                trim_result, nodes_used = result
+                return trim_result
+            return result
 
-       # Выбор стратегии: строка или коллекция
-       if isinstance(profile, StringProfile):
-           result = self._process_string(parsed, budget)
-       else:
-           result = self._process_collection(parsed, budget)
+    # Standard path through stages
+    parsed = self.literal_parser.parse_from_node(
+        node, context.doc, context.raw_text, profile
+    )
 
-       return result
-   ```
+    if not parsed or parsed.original_tokens <= budget:
+        return None
 
-2. **Упростить `_process_string()`**
-   ```python
-   def _process_string(
-       self,
-       parsed: ParsedLiteral[StringProfile],
-       budget: int
-   ) -> Optional[TrimResult]:
-       """Обработка строк через стандартные стадии."""
-       # Расчет overhead
-       overhead = self._calculate_overhead(parsed, "…")
-       content_budget = max(1, budget - overhead)
+    # Route by profile type
+    if isinstance(profile, StringProfile):
+        return self._process_string(parsed, budget)
+    else:
+        return self._process_collection(parsed, budget)
+```
 
-       # Truncation
-       truncated = self.tokenizer.truncate_to_tokens(
-           parsed.content, content_budget
-       )
+#### 2. Создать упрощенный `_process_string()`
 
-       if len(truncated) >= len(parsed.content):
-           return None
+**Заменить текущий метод `_process_string()` на:**
 
-       # Коррекция для интерполяции
-       interpolation_handler = InterpolationHandler()
-       markers = interpolation_handler.get_active_markers(
-           parsed.profile, parsed.opening, parsed.content
-       )
-       if markers:
-           truncated = interpolation_handler.adjust_truncation(
-               truncated, parsed.content, markers
-           )
+```python
+def _process_string(
+    self,
+    parsed: ParsedLiteral[StringProfile],
+    budget: int
+) -> Optional[TrimResult]:
+    """
+    Process string literals through standard stages.
 
-       # Создание pseudo-selection и форматирование
-       selection = self._create_string_selection(truncated, parsed)
-       formatted = self.formatter.format(parsed, selection)
+    Args:
+        parsed: Parsed string literal
+        budget: Token budget
 
-       return self.formatter.create_trim_result(parsed, selection, formatted)
-   ```
+    Returns:
+        TrimResult if optimization applied
+    """
+    # Calculate overhead
+    overhead = self.budget_calculator.calculate_overhead(
+        parsed.opening, parsed.closing, "…",
+        parsed.is_multiline, parsed.element_indent
+    )
+    content_budget = max(1, budget - overhead)
 
-3. **Упростить `_process_collection()`**
-   ```python
-   def _process_collection(
-       self,
-       parsed: ParsedLiteral[CollectionProfile],
-       budget: int
-   ) -> Optional[TrimResult]:
-       """Обработка коллекций через selector + formatter."""
-       parser = self._get_parser_for_profile(parsed.profile)
-       elements = parser.parse(parsed.content)
+    # Truncate content
+    truncated = self.adapter.tokenizer.truncate_to_tokens(
+        parsed.content, content_budget
+    )
 
-       if not elements:
-           return None
+    if len(truncated) >= len(parsed.content):
+        return None
 
-       # Выбор элементов
-       selection = self.selector.select_dfs(
-           elements, budget, parsed.profile,
-           self._get_parser_for_profile,
-           ...
-       )
+    # Adjust for interpolation
+    markers = self.interpolation.get_active_markers(
+        parsed.profile, parsed.opening, parsed.content
+    )
+    if markers:
+        truncated = self.interpolation.adjust_truncation(
+            truncated, parsed.content, markers
+        )
 
-       if not selection.has_removals:
-           return None
+    # Create pseudo-selection and format
+    kept_element = Element(
+        text=truncated,
+        raw_text=truncated,
+        start_offset=0,
+        end_offset=len(truncated),
+    )
+    removed_element = Element(
+        text="...", raw_text="...",
+        start_offset=0, end_offset=0
+    )
 
-       # Форматирование
-       formatted = self.formatter.format_dfs(parsed, selection, parser)
+    selection = Selection(
+        kept_elements=[kept_element],
+        removed_elements=[removed_element],
+        total_count=1,
+        tokens_kept=self.adapter.tokenizer.count_text_cached(truncated),
+        tokens_removed=parsed.original_tokens - self.adapter.tokenizer.count_text_cached(truncated),
+    )
 
-       return self._create_trim_result_dfs(parsed, selection, formatted)
-   ```
+    # Format result
+    formatted = self.formatter.format(parsed, selection)
+    return self.formatter.create_trim_result(parsed, selection, formatted)
+```
 
-4. **Удалить старые методы-роутеры**
-   - Удалить `_process_sequence_node`
-   - Удалить `_process_standard_collection_node`
-   - Удалить `_process_block_init_node`
-   - Удалить `_process_literal_impl` (заменен на `_process_literal`)
+#### 3. Создать упрощенный `_process_collection()`
 
-5. **Обновить `_process_strings()` и `_process_collections()`**
-   - Использовать единый `_process_literal()` вместо специализированных методов
+**Заменить текущий метод `_process_collection_dfs()` на `_process_collection()`:**
 
-**Тестирование**:
+```python
+def _process_collection(
+    self,
+    parsed: ParsedLiteral[CollectionProfile],
+    budget: int
+) -> Optional[TrimResult]:
+    """
+    Process collections through selector + formatter.
 
-**Коммит**:
+    Args:
+        parsed: Parsed collection literal
+        budget: Token budget
+
+    Returns:
+        TrimResult if optimization applied
+    """
+    parser = self._get_parser_for_profile(parsed.profile)
+    elements = parser.parse(parsed.content)
+
+    if not elements:
+        return None
+
+    # Calculate overhead
+    placeholder = parsed.profile.placeholder_template
+    overhead = self.budget_calculator.calculate_overhead(
+        parsed.opening, parsed.closing, placeholder,
+        parsed.is_multiline, parsed.element_indent
+    )
+    content_budget = max(1, budget - overhead)
+
+    # Select elements with DFS
+    selection = self.selector.select_dfs(
+        elements, content_budget,
+        profile=parsed.profile,
+        get_parser_func=self._get_parser_for_profile,
+        min_keep=parsed.profile.min_elements,
+        tuple_size=parsed.profile.tuple_size if isinstance(parsed.profile, FactoryProfile) else 1,
+        preserve_top_level_keys=parsed.profile.preserve_all_keys if isinstance(parsed.profile, MappingProfile) else False,
+    )
+
+    if not selection.has_removals:
+        return None
+
+    # Format result
+    formatted = self.formatter.format_dfs(parsed, selection, parser)
+
+    trimmed_tokens = self.adapter.tokenizer.count_text_cached(formatted.text)
+
+    return TrimResult(
+        trimmed_text=formatted.text,
+        original_tokens=parsed.original_tokens,
+        trimmed_tokens=trimmed_tokens,
+        saved_tokens=parsed.original_tokens - trimmed_tokens,
+        elements_kept=selection.kept_count,
+        elements_removed=selection.removed_count,
+        comment_text=formatted.comment,
+        comment_position=formatted.comment_byte,
+    )
+```
+
+#### 4. Удалить специализированные роутеры
+
+**Удалить полностью эти методы:**
+- `_process_block_init_node()`
+- `_process_sequence_node()`
+- `_process_standard_collection_node()`
+- `_process_literal_impl()`
+
+#### 5. Обновить `_process_profile()` для использования `_process_literal()`
+
+**Заменить в методе `_process_profile()` вызов `processor(...)` на:**
+
+```python
+# Было:
+result = processor(context, node, max_tokens, profile)
+
+# Стало:
+result = self._process_literal(context, node, profile, max_tokens)
+```
+
+И удалить параметр `processor` из сигнатуры метода.
+
+#### 6. Упростить `_process_strings()` и `_process_collections()`
+
+Обновить циклы обработки для использования единого `_process_literal()`.
+
+В `_process_strings()`:
+```python
+# Было сложное ветвление с docstring checks
+# Стало:
+result = self._process_literal(context, node, profile, max_tokens)
+```
+
+В `_process_collections()`:
+```python
+# Было:
+self._process_profile(context, profile, max_tokens, processed_strings, processor)
+
+# Стало:
+self._process_profile(context, profile, max_tokens, processed_strings)
+```
+
+#### 7. Создать единый метод применения результатов
+
+**Объединить `_apply_trim_result()` и `_apply_trim_result_composing()` в один:**
+
+```python
+def _apply_result(
+    self,
+    context: ProcessingContext,
+    node,
+    result: TrimResult,
+    original_text: str,
+    use_composing: bool = False
+) -> None:
+    """
+    Unified result application.
+
+    Args:
+        context: Processing context
+        node: Tree-sitter node
+        result: Trim result to apply
+        original_text: Original text for metrics
+        use_composing: Whether to use composing method
+    """
+    start_byte, end_byte = context.doc.get_node_range(node)
+
+    if use_composing:
+        context.editor.add_replacement_composing_nested(
+            start_byte, end_byte, result.trimmed_text,
+            edit_type="literal_trimmed"
+        )
+    else:
+        context.editor.add_replacement(
+            start_byte, end_byte, result.trimmed_text,
+            edit_type="literal_trimmed"
+        )
+
+    # Add comment if needed
+    placeholder_style = self.adapter.cfg.placeholders.style
+    if placeholder_style != "none" and result.comment_text:
+        text_after = context.raw_text[end_byte:]
+        formatted_comment, offset = self.formatter._format_comment_for_context(
+            text_after, result.comment_text
+        )
+        context.editor.add_insertion(
+            end_byte + offset,
+            formatted_comment,
+            edit_type="literal_comment"
+        )
+
+    # Update metrics
+    context.metrics.mark_element_removed("literal")
+    context.metrics.add_chars_saved(len(original_text) - len(result.trimmed_text))
+```
+
+---
+
+### Тестирование Этапа 5
+
+```bash
+./scripts/test_adapters.sh literals all
+# Ожидание: 100 passed
+```
+
+Финальная проверка:
+
+```bash
+# Проверить размер pipeline
+wc -l lg/adapters/optimizations/literals/processing/pipeline.py
+# Цель: ~250 строк (было ~700)
+
+# Полный прогон всех тестов
+./scripts/test_adapters.sh all all
+# Ожидание: 100+ passed, 0 failed
+```
+
+---
+
+### Коммит Этапа 5
+
 ```bash
 git add lg/adapters/optimizations/literals/
 git commit -m "refactor(literals): Simplify pipeline to pure orchestrator
 
 - Create unified _process_literal() method
+- Simplify _process_string() and _process_collection()
 - Remove specialized routing methods
 - Delegate applicability checks to components via can_handle()
 - Pipeline is now ~250 lines of pure coordination
@@ -531,21 +430,18 @@ No behavioral changes, all tests pass."
 
 ## Финальная проверка
 
-После завершения всех этапов:
+После завершения Этапа 5:
 
-### 1. Полный прогон тестов
+### 1. Полный прогон тестов (если еще не был сделан)
 
 ```bash
-# Все языки, все оптимизации
-./scripts/test_adapters.sh all all
-
+./scripts/test_adapters.sh literals all
 # Ожидание: 100+ passed, 0 failed
 ```
 
 ### 2. Проверка структуры
 
 ```bash
-# Проверить что структура соответствует финальной архитектуре
 ls -R lg/adapters/optimizations/literals/
 
 # Ожидаемая структура:
@@ -559,43 +455,19 @@ ls -R lg/adapters/optimizations/literals/
 
 ```bash
 wc -l lg/adapters/optimizations/literals/processing/pipeline.py
-
-# Ожидание: ~250 строк (вместо ~700)
+# Ожидание: ~250 строк (было ~700)
 ```
 
 ### 4. Проверка git статуса
 
 ```bash
 git status
-
 # Ожидание: working tree clean (все закоммичено)
-```
-
-### 5. Финальный коммит (если есть мелкие правки)
-
-```bash
-git add .
-git commit -m "refactor(literals): Complete architecture refactoring
-
-Summary of changes:
-- Extracted utils/ package for utility modules
-- Merged placeholder logic into ResultFormatter
-- Extended LiteralParser with indent detection
-- Made components autonomous with can_handle()
-- Simplified pipeline to ~250 lines of coordination
-
-Result:
-- Clean architecture with clear separation of concerns
-- All tests pass (100+ tests)
-- No behavioral changes (backward compatible)
-- Pipeline is now an elegant orchestrator"
 ```
 
 ---
 
 ## Метрики успеха
-
-После завершения рефакторинга должны быть достигнуты:
 
 ### Количественные метрики
 
