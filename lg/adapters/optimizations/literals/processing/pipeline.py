@@ -7,15 +7,13 @@ Orchestrates the two-pass literal processing workflow.
 
 from __future__ import annotations
 
-from typing import Callable, cast, List, Optional, Tuple, Union
-
-from tree_sitter._binding import Node
+from typing import cast, List, Optional, Tuple, Union
 
 from lg.adapters.code_model import LiteralConfig
 from lg.adapters.context import ProcessingContext
 from .formatter import ResultFormatter
 from .parser import LiteralParser
-from .selector import BudgetSelector, Selection, DFSSelection
+from .selector import BudgetSelector, Selection
 from ..components import (
     ASTSequenceProcessor,
     BlockInitProcessor,
@@ -23,7 +21,6 @@ from ..components import (
 from ..patterns import (
     LiteralProfile,
     BlockInitProfile,
-    SequenceProfile,
     CollectionProfile,
     StringProfile,
     ParsedLiteral,
@@ -123,28 +120,24 @@ class LiteralPipeline:
             return  # Optimization disabled
 
         # Two-pass approach for orthogonal string/collection processing
-        processed_strings = []  # Track (start, end, tokens_saved) for processed strings
 
         # Pass 1: Process all string profiles
-        self._process_strings(context, max_tokens, processed_strings)
+        self._process_strings(context, max_tokens)
 
         # Pass 2: Process all collection profiles
-        self._process_collections(context, max_tokens, processed_strings)
+        self._process_collections(context, max_tokens)
 
     def _process_strings(
         self,
         context: ProcessingContext,
         max_tokens: int,
-        processed_strings: List
     ) -> None:
         """
         Pass 1: Process string literals.
 
         Args:
             context: Processing context
-            _: Unused (for parameter compatibility)
             max_tokens: Token budget
-            processed_strings: Output list for tracking processed ranges
         """
         # Collect AST-extraction collection nodes to skip their children
         # Only SequenceProfile can have requires_ast_extraction=True
@@ -203,43 +196,38 @@ class LiteralPipeline:
                 if result and result.saved_tokens > 0:
                     start_byte, end_byte = context.doc.get_node_range(node)
                     self._apply_result(context, node, result, literal_text)
-                    processed_strings.append((start_byte, end_byte, result.saved_tokens))
 
     def _process_collections(
         self,
         context: ProcessingContext,
         max_tokens: int,
-        processed_strings: List
     ) -> None:
         """
         Pass 2: Process collection literals with DFS.
 
         Args:
             context: Processing context
-            _: Unused (for parameter compatibility)
             max_tokens: Token budget
-            processed_strings: Ranges already processed in Pass 1
         """
         # Process each profile type through unified entry point
 
         for profile in self.descriptor.sequence_profiles:
-            self._process_profile(context, profile, max_tokens, processed_strings)
+            self._process_profile(context, profile, max_tokens)
 
         for profile in self.descriptor.mapping_profiles:
-            self._process_profile(context, profile, max_tokens, processed_strings)
+            self._process_profile(context, profile, max_tokens)
 
         for profile in self.descriptor.factory_profiles:
-            self._process_profile(context, profile, max_tokens, processed_strings)
+            self._process_profile(context, profile, max_tokens)
 
         for profile in self.descriptor.block_init_profiles:
-            self._process_profile(context, profile, max_tokens, processed_strings)
+            self._process_profile(context, profile, max_tokens)
 
     def _process_profile(
         self,
         context: ProcessingContext,
         profile: LiteralProfile,
         max_tokens: int,
-        processed_strings: List,
     ) -> None:
         """
         Common pipeline logic for processing any profile type.
@@ -248,7 +236,6 @@ class LiteralPipeline:
             context: Processing context
             profile: Profile to process
             max_tokens: Token budget
-            processed_strings: Already processed string ranges
         """
         nodes = context.doc.query_nodes(profile.query, "lit")
 
@@ -276,13 +263,7 @@ class LiteralPipeline:
             if is_nested:
                 continue
 
-            # Skip if contained in processed string
-            contained_in_string = any(
-                s <= start_byte and end_byte <= e
-                for s, e, _ in processed_strings
-            )
-            if not contained_in_string:
-                top_level.append(node)
+            top_level.append(node)
 
         # Process each top-level collection
         for node in top_level:
