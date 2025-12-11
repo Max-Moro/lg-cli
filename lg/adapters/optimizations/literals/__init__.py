@@ -7,7 +7,6 @@ literal data in source code across multiple programming languages.
 
 from .descriptor import LanguageLiteralDescriptor
 from .element_parser import ElementParser, ParseConfig, Element
-from .handler import LanguageLiteralHandler
 from .patterns import (
     PlaceholderPosition,
     ParsedLiteral,
@@ -46,7 +45,6 @@ __all__ = [
 
     # Main optimizer
     "LiteralPipeline",
-    "LanguageLiteralHandler",
     "ResultFormatter",
     "FormattedResult",
     "ElementParser",

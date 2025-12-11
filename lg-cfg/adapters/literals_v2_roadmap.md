@@ -58,19 +58,8 @@
 ### ✅ Этап 11: Компонент Budgeting
 Создан `components/budgeting.py` (BudgetCalculator) для расчета токенов overhead. Извлечен метод `calculate_overhead()` из `selector.py`. Компонент интегрирован в handler и selector. Удалено 22 строки кода.
 
-### Этап 12: Полное отключение наследия handler
-
-**Цель**: Удалить последний legacy файл и убедиться что pipeline содержит только высокоуровневую оркестрацию.
-
-- **УДАЛИТЬ** `handler.py` (единственный оставшийся legacy файл). Оставшуюся логику распределить по модулям, предусмотренным новой архитектурой.
-- Убедиться что в `pipeline.py` осталась **только высокоуровневая оркестрация**:
-  - Управление двухпроходной логикой
-  - Вызовы компонентов из `processing/` и `components/`
-  - Никакой детальной логики парсинга/форматирования/бюджетирования
-- Проверить, что адаптеры используют только pipeline/processing/компоненты
-- Убедится, что все компоненты и элементы процессинга создаются разово. Убедиться в корректности DI между модулями.
-- Убедиться, что все компоненты и элементы процессинга получают только нужные им данные для работы.
-- **Критерий**: Все 100 тестов проходят
+### ✅ Этап 12: Полное отключение наследия handler
+Удален `handler.py` (361 строка). Вся логика мигрирована в `LiteralPipeline`: создание компонентов, ElementParser кеш, factory_wrappers, методы обработки (`_process_literal_impl`, `_process_string`, `_process_collection_dfs`). Обновлен `BudgetSelector.select_dfs()` для приема `get_parser_func` вместо handler. Устранена циркулярная зависимость, pipeline стал единственной точкой оркестрации. Все 100 тестов проходят.
 
 ### Этап 13: Разгрузка языковых хаков
 - В языковых `literals.py` убрать специальные ветки, которые покрываются компонентами (interpolation, ast_sequence, block_init)
@@ -88,14 +77,14 @@
 ## Текущий статус
 
 - **Ветка**: `literals-v2`
-- **Текущий этап**: ✅ Этапы 1-11 завершены, готов к Этапу 12
+- **Текущий этап**: ✅ Этапы 1-12 завершены, готов к Этапу 13
 - **Последний прогон**: 100/100 тестов ✅
-- **Последний коммит**: "Stage 11: Budgeting component"
+- **Последний коммит**: "Stage 12: Remove handler.py legacy"
 - **Структура**:
-  - `processing/`: parser ✅, selector ✅, formatter ✅, pipeline ✅
+  - `processing/`: parser ✅, selector ✅, formatter ✅, pipeline ✅ (единственная точка оркестрации)
   - `components/`: interpolation ✅, ast_sequence ✅, block_init ✅, placeholder ✅, budgeting ✅
   - `patterns.py`: Generic инфраструктура ✅, типовая иерархия с CollectionProfile ✅
   - `descriptor.py`: Языковые дескрипторы ✅
-  - Удалено: core.py, старые selector.py/formatter.py, categories.py, LiteralPattern, LiteralCategory, priority, dispatch pattern, process_ast_based_sequence, block_init.py (~1824 строк)
-  - Удалено: все getattr вызовы (14 мест), длинные isinstance цепочки
-  - Legacy: handler.py (удаляется на Этапе 12)
+  - Удалено: core.py, старые selector.py/formatter.py, categories.py, LiteralPattern, LiteralCategory, priority, dispatch pattern, process_ast_based_sequence, block_init.py, handler.py (~2185 строк)
+  - Удалено: все getattr вызовы (14 мест), длинные isinstance цепочки, циркулярные зависимости
+  - Legacy файлов не осталось ✅
