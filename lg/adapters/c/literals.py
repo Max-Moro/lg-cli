@@ -37,7 +37,7 @@ def _detect_string_closing(text: str) -> str:
     return '"'
 
 
-# ============= C literal profiles (v2) =============
+# C literal profiles
 
 # String profile for C string literals (interpreted strings)
 C_STRING_PROFILE = StringProfile(

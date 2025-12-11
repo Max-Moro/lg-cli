@@ -354,7 +354,7 @@ class ResultFormatter:
         else:
             category_name = comment_name
 
-        # Return raw content - formatting is done by handler based on context
+        # Return raw content - formatting is done by context
         comment_content = self.placeholder_formatter.generate_comment_text(
             category_name, saved
         )

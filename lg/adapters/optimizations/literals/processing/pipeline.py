@@ -1,5 +1,5 @@
 """
-Literal optimization pipeline (v2 entry point).
+Literal optimization pipeline.
 
 This module serves as the single entry point for literal optimization.
 Orchestrates the two-pass literal processing workflow.
@@ -34,7 +34,7 @@ from .selector import BudgetSelector, Selection, DFSSelection
 
 class LiteralPipeline:
     """
-    Main pipeline for literal optimization (v2).
+    Main pipeline for literal optimization.
 
     Orchestrates two-pass literal processing:
     - Pass 1: String literals (inline truncation)
@@ -61,7 +61,7 @@ class LiteralPipeline:
         self.single_comment = comment_style[0]
         self.block_comment = comment_style[1]
 
-        # Create reusable components (migrated from handler)
+        # Create reusable components
         self.literal_parser = LiteralParser(self.adapter.tokenizer)
         self.selector = BudgetSelector(self.adapter.tokenizer)
         self.formatter = ResultFormatter(self.adapter.tokenizer, comment_style)

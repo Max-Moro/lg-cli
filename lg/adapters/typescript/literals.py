@@ -20,7 +20,7 @@ from ..optimizations.literals import (
     LanguageSyntaxFlags,
 )
 
-# ============= TypeScript literal profiles (v2) =============
+# TypeScript literal profiles
 
 # TypeScript-specific: object type mapping profile (interfaces, type literals)
 TS_OBJECT_TYPE_PROFILE = MappingProfile(

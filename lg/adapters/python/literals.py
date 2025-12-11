@@ -86,7 +86,7 @@ def _is_f_string(opening: str, content: str) -> bool:
     return 'f' in opening.lower() or 'F' in opening
 
 
-# Python literal patterns (v2 profiles)
+# Python literal profiles
 
 # String profile
 PYTHON_STRING_PROFILE = StringProfile(
@@ -152,9 +152,6 @@ PYTHON_DICT_PROFILE = MappingProfile(
     preserve_all_keys=False,
 )
 
-# Legacy patterns removed - all migrated to typed profiles (v2)
-
-
 def create_python_descriptor() -> LanguageLiteralDescriptor:
     """
     Create Python language descriptor for literal optimization.
@@ -176,16 +173,16 @@ def create_python_descriptor() -> LanguageLiteralDescriptor:
             supports_ast_sequences=False,
         ),
 
-        # String profiles (v2)
+        # String profiles
         string_profiles=[PYTHON_STRING_PROFILE],
 
-        # Sequence profiles (v2)
+        # Sequence profiles
         sequence_profiles=[
             PYTHON_LIST_PROFILE,
             PYTHON_TUPLE_PROFILE,
             PYTHON_SET_PROFILE,
         ],
 
-        # Mapping profiles (v2)
+        # Mapping profiles
         mapping_profiles=[PYTHON_DICT_PROFILE],
     )

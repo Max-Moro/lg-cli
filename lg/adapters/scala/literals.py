@@ -56,7 +56,7 @@ def _is_interpolated_string(opening: str, content: str) -> bool:
     return opening.startswith(('s"', 'f"', 'raw"', 's"""', 'f"""', 'raw"""'))
 
 
-# ============= Scala literal profiles (v2) =============
+# Scala literal profiles
 
 # String profile (regular and interpolated)
 SCALA_STRING_PROFILE = StringProfile(

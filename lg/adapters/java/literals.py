@@ -40,7 +40,7 @@ def _detect_string_closing(text: str) -> str:
     return '"'
 
 
-# ============= Java literal profiles (v2) =============
+# Java literal profiles
 
 # String profile (regular and text blocks)
 JAVA_STRING_PROFILE = StringProfile(

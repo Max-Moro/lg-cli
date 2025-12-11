@@ -53,7 +53,7 @@ def _detect_string_closing(text: str) -> str:
     return '"'
 
 
-# ============= JavaScript literal profiles (v2) =============
+# JavaScript literal profiles
 
 # Regular string profile (single and double quotes)
 JS_STRING_PROFILE = StringProfile(

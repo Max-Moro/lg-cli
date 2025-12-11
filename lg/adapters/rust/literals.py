@@ -49,7 +49,7 @@ def _detect_raw_string_closing(text: str) -> str:
     return '"'
 
 
-# ============= Rust literal profiles (v2) =============
+# Rust literal profiles
 
 # String profile (regular and raw strings)
 RUST_STRING_PROFILE = StringProfile(
@@ -96,8 +96,6 @@ RUST_VEC_PROFILE = FactoryProfile(
     min_elements=1,
     comment_name="vec",
 )
-
-# ============= Rust literal profiles (v2 - continued) =============
 
 # Block init profile for HashMap initialization: let mut m = HashMap::new(); m.insert(...); ...
 # Each let declaration is processed independently

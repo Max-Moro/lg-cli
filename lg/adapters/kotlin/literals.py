@@ -45,7 +45,7 @@ def _detect_string_closing(text: str) -> str:
     return '"'
 
 
-# ============= Kotlin literal profiles (v2) =============
+# Kotlin literal profiles
 
 # String profile (regular and multi-line raw strings with interpolation)
 KOTLIN_STRING_PROFILE = StringProfile(

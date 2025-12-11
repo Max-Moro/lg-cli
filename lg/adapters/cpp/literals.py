@@ -60,7 +60,7 @@ def _detect_cpp_string_closing(text: str) -> str:
     return '"'
 
 
-# ============= C++ literal profiles (v2) =============
+# C++ literal profiles
 
 # String profile for C++ literals (includes raw strings)
 CPP_STRING_PROFILE = StringProfile(

@@ -41,7 +41,7 @@ def _detect_string_closing(text: str) -> str:
     return '"'
 
 
-# ============= Go literal profiles (v2) =============
+# Go literal profiles
 
 # String profile for Go string literals (interpreted and raw)
 GO_STRING_PROFILE = StringProfile(
