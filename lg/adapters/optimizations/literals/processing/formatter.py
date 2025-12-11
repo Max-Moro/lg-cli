@@ -15,11 +15,9 @@ from typing import Optional, cast
 
 from lg.stats.tokenizer import TokenService
 from .selector import SelectionBase, Selection, DFSSelection
-from ..utils.element_parser import ElementParser
 from ..patterns import (
     PlaceholderPosition,
     ParsedLiteral,
-    TrimResult,
     StringProfile,
     CollectionProfile,
     SequenceProfile,
@@ -28,6 +26,7 @@ from ..patterns import (
     BlockInitProfile,
     LiteralProfile,
 )
+from ..utils.element_parser import ElementParser
 
 
 @dataclass
@@ -718,33 +717,3 @@ class ResultFormatter:
             return "block"
         else:
             return "literal"
-
-    def create_trim_result(
-        self,
-        parsed: ParsedLiteral,
-        selection: Selection,
-        formatted: FormattedResult,
-    ) -> TrimResult:
-        """
-        Create TrimResult from formatting data.
-
-        Args:
-            parsed: Original parsed literal
-            selection: Element selection
-            formatted: Formatted result
-
-        Returns:
-            Complete TrimResult
-        """
-        trimmed_tokens = self.tokenizer.count_text_cached(formatted.text)
-
-        return TrimResult(
-            trimmed_text=formatted.text,
-            original_tokens=parsed.original_tokens,
-            trimmed_tokens=trimmed_tokens,
-            saved_tokens=parsed.original_tokens - trimmed_tokens,
-            elements_kept=selection.kept_count,
-            elements_removed=selection.removed_count,
-            comment_text=formatted.comment,
-            comment_position=formatted.comment_byte,
-        )

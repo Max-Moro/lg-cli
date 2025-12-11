@@ -8,7 +8,7 @@ public class LegacyLiterals {
     // Small map (should be preserved)
     private static final Map<String, Integer> SMALL_CONFIG = new HashMap<String, Integer>() {{
         put("timeout", 30);
-        // … (1 more, −8 tokens)
+        put("retries", 3);
     }};
 
     // Large map with double-brace (candidate for trimming)

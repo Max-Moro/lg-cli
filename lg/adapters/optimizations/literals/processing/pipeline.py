@@ -7,7 +7,7 @@ Orchestrates the two-pass literal processing workflow.
 
 from __future__ import annotations
 
-from typing import cast, List, Optional, Tuple, Union
+from typing import cast, List, Optional
 
 from lg.adapters.code_model import LiteralConfig
 from lg.adapters.context import ProcessingContext
@@ -77,16 +77,10 @@ class LiteralPipeline:
         self.formatter = ResultFormatter(self.adapter.tokenizer, comment_style)
 
         # =================================
-        # Special components
+        # Special components (ordered by priority)
         # =================================
 
-        # Create AST sequence processor
-        self.ast_sequence_processor = ASTSequenceProcessor(
-            self.adapter.tokenizer,
-            self.descriptor.string_profiles
-        )
-
-        # Create block init processor
+        # Collect all profiles for nested literal detection
         all_profiles = (
             self.descriptor.string_profiles +
             self.descriptor.sequence_profiles +
@@ -94,12 +88,20 @@ class LiteralPipeline:
             self.descriptor.factory_profiles +
             self.descriptor.block_init_profiles
         )
-        self.block_init_processor = BlockInitProcessor(
-            self.adapter.tokenizer,
-            all_profiles,
-            self._process_literal_impl,
-            comment_style
-        )
+
+        # Create component instances
+        self.special_components = [
+            ASTSequenceProcessor(
+                self.adapter.tokenizer,
+                self.descriptor.string_profiles
+            ),
+            BlockInitProcessor(
+                self.adapter.tokenizer,
+                all_profiles,
+                self._process_literal_impl,
+                comment_style
+            ),
+        ]
 
         self.interpolation = InterpolationHandler()
         self.budget_calculator = BudgetCalculator(self.adapter.tokenizer)
@@ -194,7 +196,6 @@ class LiteralPipeline:
                 result = self._process_literal(context, node, profile, max_tokens)
 
                 if result and result.saved_tokens > 0:
-                    start_byte, end_byte = context.doc.get_node_range(node)
                     self._apply_result(context, node, result, literal_text)
 
     def _process_collections(
@@ -276,14 +277,8 @@ class LiteralPipeline:
                 result = self._process_literal(context, node, profile, max_tokens)
 
                 # Apply if tokens saved
-                if result:
-                    if isinstance(result, tuple):
-                        # BLOCK_INIT with expanded nodes
-                        trim_result, nodes_used = result
-                        self._apply_result(context, nodes_used, trim_result, literal_text, use_composing=True)
-                    elif result.saved_tokens > 0:
-                        # Standard result
-                        self._apply_result(context, [node], result, literal_text, use_composing=True)
+                if result and result.saved_tokens > 0:
+                    self._apply_result(context, node, result, literal_text)
 
     def _process_literal(
         self,
@@ -291,7 +286,7 @@ class LiteralPipeline:
         node,
         profile: LiteralProfile,
         budget: int
-    ) -> Union[TrimResult, Tuple[TrimResult, List], None]:
+    ) -> Optional[TrimResult]:
         """
         Unified literal processing entry point.
 
@@ -306,26 +301,16 @@ class LiteralPipeline:
         Returns:
             TrimResult if optimization applied, None otherwise
         """
-        # Check special components
-        if self.ast_sequence_processor.can_handle(profile, node, context.doc):
-            return self.ast_sequence_processor.process(
-                node,
-                context.doc,
-                context.raw_text,
-                profile,
-                budget
-            )
-
-        if self.block_init_processor.can_handle(profile, node, context.doc):
-            result = self.block_init_processor.process(
-                node,
-                context.doc,
-                context.raw_text,
-                profile,
-                budget
-            )
-            # Return tuple as-is for proper handling in _process_profile()
-            return result
+        # Try special components first (in priority order)
+        for component in self.special_components:
+            if component.can_handle(profile, node, context.doc):
+                return component.process(
+                    node,
+                    context.doc,
+                    context.raw_text,
+                    profile,
+                    budget
+                )
 
         # Standard path through stages
         parsed = self.literal_parser.parse_from_node(
@@ -346,22 +331,21 @@ class LiteralPipeline:
         context: ProcessingContext,
         node,
         result: TrimResult,
-        original_text: str,
-        use_composing: bool = False
+        original_text: str
     ) -> None:
         """
         Unified result application.
 
         Args:
             context: Processing context
-            node: Tree-sitter node (or list of nodes for composing)
+            node: Tree-sitter node (or list of nodes for single-node replacement)
             result: Trim result to apply
             original_text: Original text for metrics
-            use_composing: Whether to use composing method
         """
-        if use_composing:
-            # Handle list of nodes
-            nodes = node if isinstance(node, list) else [node]
+        # Determine nodes to replace from result or from node parameter
+        if result.nodes_to_replace:
+            # Use nodes from TrimResult (composing replacement)
+            nodes = result.nodes_to_replace
             start_byte = nodes[0].start_byte
             end_byte = nodes[-1].end_byte
 
@@ -370,8 +354,9 @@ class LiteralPipeline:
                 edit_type="literal_trimmed"
             )
         else:
+            # Simple single-node replacement
             start_byte, end_byte = context.doc.get_node_range(node)
-            context.editor.add_replacement(
+            context.editor.add_replacement_composing_nested(
                 start_byte, end_byte, result.trimmed_text,
                 edit_type="literal_trimmed"
             )
@@ -565,7 +550,20 @@ class LiteralPipeline:
 
         # Format result
         formatted = self.formatter.format(parsed, selection)
-        return self.formatter.create_trim_result(parsed, selection, formatted)
+
+        trimmed_tokens = self.adapter.tokenizer.count_text_cached(formatted.text)
+
+        return TrimResult(
+            trimmed_text=formatted.text,
+            original_tokens=parsed.original_tokens,
+            trimmed_tokens=trimmed_tokens,
+            saved_tokens=parsed.original_tokens - trimmed_tokens,
+            elements_kept=selection.kept_count,
+            elements_removed=selection.removed_count,
+            comment_text=formatted.comment,
+            comment_position=formatted.comment_byte,
+        )
+
 
     def _process_collection(
         self,

@@ -9,7 +9,7 @@ Handles imperative initialization blocks like:
 
 from __future__ import annotations
 
-from typing import List, Optional, Tuple, Callable
+from typing import List, Optional, Callable
 
 from lg.adapters.tree_sitter_support import Node, TreeSitterDocument
 from ..patterns import TrimResult, BlockInitProfile, LiteralProfile
@@ -111,7 +111,7 @@ class BlockInitProcessor:
         source_text: str,
         profile: BlockInitProfile,
         token_budget: int,
-    ) -> Optional[Tuple[TrimResult, List[Node]]]:
+    ) -> Optional[TrimResult]:
         """
         Full autonomous processing of BLOCK_INIT literal.
 
@@ -128,7 +128,8 @@ class BlockInitProcessor:
             token_budget: Token budget
 
         Returns:
-            (TrimResult, nodes_used) tuple if trimming applied, None otherwise
+            TrimResult if trimming applied, None otherwise
+            TrimResult.nodes_to_replace will contain nodes to replace as group
         """
         # Store source_text and doc for use in nested literal processing
         self.source_text = source_text
@@ -143,7 +144,9 @@ class BlockInitProcessor:
         else:
             # Java-style: whole block with multiple statements
             result = self._process_block(profile, node, doc, token_budget, base_indent)
-            return (result, [node]) if result else None
+            if result:
+                result.nodes_to_replace = [node]
+            return result
 
     def _process_block(
         self,
@@ -225,7 +228,7 @@ class BlockInitProcessor:
         doc: TreeSitterDocument,
         token_budget: int,
         base_indent: str,
-    ) -> Optional[Tuple[TrimResult, List[Node]]]:
+    ) -> Optional[TrimResult]:
         """
         Process a let-declaration group (Rust HashMap::new() + inserts).
 
@@ -238,6 +241,7 @@ class BlockInitProcessor:
 
         Returns:
             TrimResult if trimming applied, None otherwise
+            TrimResult.nodes_to_replace will contain all nodes to replace as group
         """
         # 1. Check if this is HashMap::new() or similar collection init
         if not self._is_collection_init(node, doc):
@@ -302,7 +306,10 @@ class BlockInitProcessor:
             return None  # Not economical
 
         # No external comment needed - placeholder is already embedded in trimmed_text
-        trim_result = TrimResult(
+        # Store all nodes to replace (let + all inserts) in TrimResult
+        nodes_to_replace = [node] + insert_stmts
+
+        return TrimResult(
             trimmed_text=trimmed_text,
             original_tokens=original_tokens,
             trimmed_tokens=trimmed_tokens,
@@ -311,11 +318,8 @@ class BlockInitProcessor:
             elements_removed=len(remove_stmts),
             comment_text=None,  # Placeholder already in text
             comment_position=None,
+            nodes_to_replace=nodes_to_replace,
         )
-
-        # Return result + all nodes that should be replaced (let + all inserts)
-        nodes_to_replace = [node] + insert_stmts
-        return (trim_result, nodes_to_replace)
 
     def _find_statements_block(
         self, node: Node, profile: BlockInitProfile, doc: TreeSitterDocument
@@ -586,15 +590,13 @@ class BlockInitProcessor:
 
             if isinstance(nested_profile, BlockInitProfile):
                 # Nested BLOCK_INIT - call recursively with profile
-                result = self.process(
+                trim_result = self.process(
                     nested_node,
                     doc,
                     self.source_text,
                     nested_profile,
                     token_budget,
                 )
-                if result:
-                    trim_result, _ = result
             else:
                 # Regular literal - use callback with new signature
                 trim_result = self.process_literal_callback(
