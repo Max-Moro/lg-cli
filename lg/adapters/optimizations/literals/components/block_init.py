@@ -13,6 +13,7 @@ from typing import List, Optional, Callable
 
 from lg.adapters.tree_sitter_support import Node, TreeSitterDocument
 from ..patterns import TrimResult, BlockInitProfile, LiteralProfile
+from ..utils.indentation import detect_base_indent
 
 # Type alias for literal processing callback
 ProcessLiteralCallback = Callable[
@@ -77,32 +78,6 @@ class BlockInitProcessor:
         """
         return isinstance(profile, BlockInitProfile)
 
-    @staticmethod
-    def _detect_indent(text: str, byte_pos: int) -> str:
-        """
-        Determine base indentation (copy of LiteralParser logic).
-
-        Args:
-            text: Full source text
-            byte_pos: Byte position where literal starts
-
-        Returns:
-            Indentation string
-        """
-        line_start = text.rfind('\n', 0, byte_pos)
-        if line_start == -1:
-            line_start = 0
-        else:
-            line_start += 1
-
-        indent = ""
-        for i in range(line_start, min(byte_pos, len(text))):
-            if text[i] in ' \t':
-                indent += text[i]
-            else:
-                break
-
-        return indent
 
     def process(
         self,
@@ -134,7 +109,7 @@ class BlockInitProcessor:
         # Store source_text and doc for use in nested literal processing
         self.source_text = source_text
         self.doc = doc
-        base_indent = self._detect_indent(source_text, node.start_byte)
+        base_indent = detect_base_indent(source_text, node.start_byte)
 
         # Route based on node type
         if node.type == "let_declaration":

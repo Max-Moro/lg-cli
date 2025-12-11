@@ -16,6 +16,7 @@ from ..patterns import (
     ParsedLiteral,
     P,
 )
+from ..utils.indentation import detect_base_indent, detect_element_indent
 
 
 class LiteralParser:
@@ -198,80 +199,6 @@ class LiteralParser:
 
         return stripped[len(opening):-len(closing)]
 
-    @staticmethod
-    def detect_base_indent(text: str, byte_pos: int) -> str:
-        """
-        Determine indentation of the line containing the literal.
-
-        Extracts the whitespace characters (spaces and tabs) from the beginning
-        of the line up to the position where the literal starts.
-
-        Args:
-            text: Full source text
-            byte_pos: Byte position where literal starts
-
-        Returns:
-            Indentation string (spaces/tabs)
-
-        Example:
-            >>> text = "def foo():\\n    x = [1, 2, 3]"
-            >>> pos = text.find('[')
-            >>> LiteralParser.detect_base_indent(text, pos)
-            '    '
-        """
-        line_start = text.rfind('\n', 0, byte_pos)
-        if line_start == -1:
-            line_start = 0
-        else:
-            line_start += 1
-
-        indent = ""
-        for i in range(line_start, min(byte_pos, len(text))):
-            if text[i] in ' \t':
-                indent += text[i]
-            else:
-                break
-
-        return indent
-
-    @staticmethod
-    def detect_element_indent(literal_text: str, base_indent: str) -> str:
-        """
-        Determine indentation for elements inside a multiline literal.
-
-        Scans the literal's content to find the indentation level used for
-        its elements. If the literal is single-line or indentation cannot
-        be determined, returns base_indent + 4 spaces.
-
-        Args:
-            literal_text: Full literal text (including delimiters)
-            base_indent: Base indentation of the line containing the literal
-
-        Returns:
-            Element indentation string
-
-        Example:
-            >>> literal = "[\\n    1,\\n    2\\n]"
-            >>> LiteralParser.detect_element_indent(literal, "")
-            '    '
-        """
-        lines = literal_text.split('\n')
-        if len(lines) < 2:
-            return base_indent + "    "
-
-        for line in lines[1:]:
-            stripped = line.strip()
-            if stripped and not stripped.startswith((']', '}', ')')):
-                indent = ""
-                for char in line:
-                    if char in ' \t':
-                        indent += char
-                    else:
-                        break
-                if indent:
-                    return indent
-
-        return base_indent + "    "
 
     def parse_from_node(
         self,
@@ -305,8 +232,8 @@ class LiteralParser:
         start_byte, end_byte = doc.get_node_range(node)
 
         # Automatically determine indentation
-        base_indent = self.detect_base_indent(source_text, start_byte)
-        element_indent = self.detect_element_indent(text, base_indent)
+        base_indent = detect_base_indent(source_text, start_byte)
+        element_indent = detect_element_indent(text, base_indent)
 
         # Delegate to low-level method
         return self.parse_literal_with_profile(

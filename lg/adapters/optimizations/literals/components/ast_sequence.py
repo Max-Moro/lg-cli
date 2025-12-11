@@ -19,6 +19,7 @@ from typing import Optional, List
 
 from lg.stats.tokenizer import TokenService
 from ..patterns import LiteralProfile, SequenceProfile, TrimResult, StringProfile
+from ..utils.indentation import detect_base_indent, detect_element_indent
 
 
 class ASTSequenceProcessor:
@@ -70,62 +71,6 @@ class ASTSequenceProcessor:
             profile.requires_ast_extraction
         )
 
-    @staticmethod
-    def _detect_indent(text: str, byte_pos: int) -> str:
-        """
-        Determine base indentation (copy of LiteralParser logic).
-
-        Args:
-            text: Full source text
-            byte_pos: Byte position where literal starts
-
-        Returns:
-            Indentation string
-        """
-        line_start = text.rfind('\n', 0, byte_pos)
-        if line_start == -1:
-            line_start = 0
-        else:
-            line_start += 1
-
-        indent = ""
-        for i in range(line_start, min(byte_pos, len(text))):
-            if text[i] in ' \t':
-                indent += text[i]
-            else:
-                break
-
-        return indent
-
-    @staticmethod
-    def _detect_element_indent(literal_text: str, base_indent: str) -> str:
-        """
-        Determine element indentation (copy of LiteralParser logic).
-
-        Args:
-            literal_text: Full literal text
-            base_indent: Base indentation
-
-        Returns:
-            Element indentation string
-        """
-        lines = literal_text.split('\n')
-        if len(lines) < 2:
-            return base_indent + "    "
-
-        for line in lines[1:]:
-            stripped = line.strip()
-            if stripped and not stripped.startswith((']', '}', ')')):
-                indent = ""
-                for char in line:
-                    if char in ' \t':
-                        indent += char
-                    else:
-                        break
-                if indent:
-                    return indent
-
-        return base_indent + "    "
 
     def process(
         self,
@@ -155,8 +100,8 @@ class ASTSequenceProcessor:
             TrimResult if optimization applied, None otherwise
         """
         text = doc.get_node_text(node)
-        base_indent = self._detect_indent(source_text, node.start_byte)
-        element_indent = self._detect_element_indent(text, base_indent)
+        base_indent = detect_base_indent(source_text, node.start_byte)
+        element_indent = detect_element_indent(text, base_indent)
 
         # Collect all string child nodes by querying each string profile
         child_strings = []
