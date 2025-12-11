@@ -17,12 +17,8 @@ from __future__ import annotations
 import re
 from typing import Optional, List
 
-from tree_sitter._binding import Node
-
 from lg.stats.tokenizer import TokenService
-from ..patterns import SequenceProfile, TrimResult, StringProfile
-from ....tree_sitter_support import TreeSitterDocument
-from ..utils.element_parser import ElementParser
+from ..patterns import LiteralProfile, SequenceProfile, TrimResult, StringProfile
 
 
 class ASTSequenceProcessor:
@@ -49,35 +45,118 @@ class ASTSequenceProcessor:
         self.tokenizer = tokenizer
         self.string_profiles = string_profiles
 
-    def process(
+    def can_handle(
         self,
-        profile: SequenceProfile,
-        node: Node,
-        doc: TreeSitterDocument,
-        token_budget: int = 0,
-        element_indent: str = "",
-    ) -> Optional[TrimResult]:
+        profile: LiteralProfile,
+        node,
+        doc,
+    ) -> bool:
         """
-        Process sequence literals using AST-based element extraction.
+        Check if this component is applicable to the given literal.
 
-        This method is used for sequences where elements cannot be reliably
-        extracted via text parsing (e.g., no separators). Common use cases:
-        - C/C++ concatenated strings: "a" "b" "c"
-        - Languages with implicit sequence concatenation
-
-        Uses tree-sitter AST to extract child elements, then keeps as many
-        as fit within the token budget.
+        ASTSequenceProcessor is applicable only to SequenceProfile
+        with requires_ast_extraction=True flag.
 
         Args:
-            profile: SequenceProfile with requires_ast_extraction=True
-            node: Tree-sitter node representing the sequence
+            profile: Literal profile
+            node: Tree-sitter node (unused, kept for interface consistency)
+            doc: Tree-sitter document (unused, kept for interface consistency)
+
+        Returns:
+            True if this component should handle the literal
+        """
+        return (
+            isinstance(profile, SequenceProfile) and
+            profile.requires_ast_extraction
+        )
+
+    @staticmethod
+    def _detect_indent(text: str, byte_pos: int) -> str:
+        """
+        Determine base indentation (copy of LiteralParser logic).
+
+        Args:
+            text: Full source text
+            byte_pos: Byte position where literal starts
+
+        Returns:
+            Indentation string
+        """
+        line_start = text.rfind('\n', 0, byte_pos)
+        if line_start == -1:
+            line_start = 0
+        else:
+            line_start += 1
+
+        indent = ""
+        for i in range(line_start, min(byte_pos, len(text))):
+            if text[i] in ' \t':
+                indent += text[i]
+            else:
+                break
+
+        return indent
+
+    @staticmethod
+    def _detect_element_indent(literal_text: str, base_indent: str) -> str:
+        """
+        Determine element indentation (copy of LiteralParser logic).
+
+        Args:
+            literal_text: Full literal text
+            base_indent: Base indentation
+
+        Returns:
+            Element indentation string
+        """
+        lines = literal_text.split('\n')
+        if len(lines) < 2:
+            return base_indent + "    "
+
+        for line in lines[1:]:
+            stripped = line.strip()
+            if stripped and not stripped.startswith((']', '}', ')')):
+                indent = ""
+                for char in line:
+                    if char in ' \t':
+                        indent += char
+                    else:
+                        break
+                if indent:
+                    return indent
+
+        return base_indent + "    "
+
+    def process(
+        self,
+        node,
+        doc,
+        source_text: str,
+        profile: SequenceProfile,
+        token_budget: int,
+    ) -> Optional[TrimResult]:
+        """
+        Full autonomous processing of AST-based sequence literal.
+
+        Component itself:
+        - Extracts text from node
+        - Determines indentation
+        - Parses elements via AST
+        - Formats result
+
+        Args:
+            node: Tree-sitter node
             doc: Tree-sitter document
+            source_text: Full source text
+            profile: SequenceProfile with requires_ast_extraction=True
             token_budget: Token budget
-            element_indent: Element indentation
 
         Returns:
             TrimResult if optimization applied, None otherwise
         """
+        text = doc.get_node_text(node)
+        base_indent = self._detect_indent(source_text, node.start_byte)
+        element_indent = self._detect_element_indent(text, base_indent)
 
         # Collect all string child nodes by querying each string profile
         child_strings = []

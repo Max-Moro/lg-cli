@@ -56,35 +56,84 @@ class BlockInitProcessor:
         self.source_text = None  # Set by process() method
         self.doc = None  # Set by process() method
 
-    def process(
+    def can_handle(
         self,
-        profile: BlockInitProfile,
-        node: Node,
-        doc: TreeSitterDocument,
-        token_budget: int,
-        base_indent: str,
-        source_text: str = "",
-    ) -> Optional[Tuple[TrimResult, List[Node]]]:
+        profile: LiteralProfile,
+        node,
+        doc,
+    ) -> bool:
         """
-        Process a BLOCK_INIT profile.
+        Check applicability of BlockInitProcessor.
+
+        Applicable only to BlockInitProfile.
 
         Args:
-            profile: BlockInitProfile with BLOCK_INIT configuration
-            node: Tree-sitter node to process (will be expanded to group for let_declaration)
+            profile: Literal profile
+            node: Tree-sitter node (unused, kept for interface consistency)
+            doc: Tree-sitter document (unused, kept for interface consistency)
+
+        Returns:
+            True if this component should handle the literal
+        """
+        return isinstance(profile, BlockInitProfile)
+
+    @staticmethod
+    def _detect_indent(text: str, byte_pos: int) -> str:
+        """
+        Determine base indentation (copy of LiteralParser logic).
+
+        Args:
+            text: Full source text
+            byte_pos: Byte position where literal starts
+
+        Returns:
+            Indentation string
+        """
+        line_start = text.rfind('\n', 0, byte_pos)
+        if line_start == -1:
+            line_start = 0
+        else:
+            line_start += 1
+
+        indent = ""
+        for i in range(line_start, min(byte_pos, len(text))):
+            if text[i] in ' \t':
+                indent += text[i]
+            else:
+                break
+
+        return indent
+
+    def process(
+        self,
+        node,
+        doc,
+        source_text: str,
+        profile: BlockInitProfile,
+        token_budget: int,
+    ) -> Optional[Tuple[TrimResult, List[Node]]]:
+        """
+        Full autonomous processing of BLOCK_INIT literal.
+
+        Component itself:
+        - Extracts data and determines parameters
+        - Processes block initialization
+        - Formats result
+
+        Args:
+            node: Tree-sitter node
             doc: Tree-sitter document
-            token_budget: Token budget for this block
-            base_indent: Base indentation
-            source_text: Full source text (for nested literal processing)
+            source_text: Full source text
+            profile: BlockInitProfile
+            token_budget: Token budget
 
         Returns:
             (TrimResult, nodes_used) tuple if trimming applied, None otherwise
-            nodes_used is the list of nodes to replace:
-            - For Java: [node] (single node)
-            - For Rust: [let_node] + insert_stmts (expanded group)
         """
         # Store source_text and doc for use in nested literal processing
         self.source_text = source_text
         self.doc = doc
+        base_indent = self._detect_indent(source_text, node.start_byte)
 
         # Route based on node type
         if node.type == "let_declaration":
@@ -538,12 +587,11 @@ class BlockInitProcessor:
             if isinstance(nested_profile, BlockInitProfile):
                 # Nested BLOCK_INIT - call recursively with profile
                 result = self.process(
-                    nested_profile,
                     nested_node,
                     doc,
+                    self.source_text,
+                    nested_profile,
                     token_budget,
-                    base_indent="",
-                    source_text=self.source_text,
                 )
                 if result:
                     trim_result, _ = result

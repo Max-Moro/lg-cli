@@ -337,14 +337,12 @@ class LiteralPipeline:
         Returns:
             Processing result or tuple
         """
-        base_indent = LiteralParser.detect_base_indent(context.raw_text, node.start_byte)
         result = self.block_init_processor.process(
-            profile=profile,
             node=node,
             doc=context.doc,
-            token_budget=max_tokens,
-            base_indent=base_indent,
             source_text=context.raw_text,
+            profile=profile,
+            token_budget=max_tokens,
         )
         return result
 
@@ -368,16 +366,12 @@ class LiteralPipeline:
             Processing result
         """
         if profile.requires_ast_extraction:
-            text = context.doc.get_node_text(node)
-            base_indent = LiteralParser.detect_base_indent(context.raw_text, node.start_byte)
-            element_indent = LiteralParser.detect_element_indent(text, base_indent)
-
             result = self.ast_sequence_processor.process(
-                profile=profile,
                 node=node,
                 doc=context.doc,
+                source_text=context.raw_text,
+                profile=profile,
                 token_budget=max_tokens,
-                element_indent=element_indent,
             )
             return result
         else:
