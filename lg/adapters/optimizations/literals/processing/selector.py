@@ -11,9 +11,9 @@ from dataclasses import dataclass, field
 from typing import List, Dict, Callable
 
 from lg.stats.tokenizer import TokenService
-from ..utils.element_parser import Element, ElementParser
-from ..patterns import LiteralProfile, ParsedLiteral, CollectionProfile
+from ..patterns import CollectionProfile
 from ..utils.budgeting import BudgetCalculator
+from ..utils.element_parser import Element, ElementParser
 
 
 @dataclass

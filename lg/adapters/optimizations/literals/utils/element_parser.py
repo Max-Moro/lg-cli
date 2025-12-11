@@ -10,7 +10,8 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import List, Optional, Tuple
 
-from ..patterns import LiteralProfile, CollectionProfile, MappingProfile, FactoryProfile
+from ..descriptor import LanguageLiteralDescriptor
+from ..patterns import CollectionProfile, MappingProfile, FactoryProfile
 
 
 @dataclass
@@ -33,6 +34,42 @@ class ParseConfig:
     # Factory method wrappers (for detecting () as nested in factory calls)
     # Examples: ["List.of", "Map.of", "Map.ofEntries", "Set.of"]
     factory_wrappers: List[str] = field(default_factory=list)
+
+    @classmethod
+    def from_profile_and_descriptor(
+        cls,
+        profile: CollectionProfile,
+        descriptor: LanguageLiteralDescriptor
+    ) -> ParseConfig:
+        """
+        Создать ParseConfig из профиля и дескриптора.
+
+        Автоматически извлекает:
+        - separator из профиля
+        - kv_separator из профиля (если MappingProfile/FactoryProfile)
+        - factory_wrappers из дескриптора
+
+        Args:
+            profile: CollectionProfile (SequenceProfile, MappingProfile, FactoryProfile)
+            descriptor: LanguageLiteralDescriptor
+
+        Returns:
+            Сконфигурированный ParseConfig
+        """
+        separator = profile.separator
+        kv_separator = None
+
+        if isinstance(profile, (MappingProfile, FactoryProfile)):
+            kv_separator = profile.kv_separator
+
+        factory_wrappers = ElementParser.collect_factory_wrappers_from_descriptor(descriptor)
+
+        return cls(
+            separator=separator,
+            kv_separator=kv_separator,
+            preserve_whitespace=False,
+            factory_wrappers=factory_wrappers,
+        )
 
 
 @dataclass
@@ -88,9 +125,58 @@ class ElementParser:
     - Multi-line content with indentation
     """
 
-    def __init__(self, config: Optional[ParseConfig] = None):
+    def __init__(self, config: ParseConfig):
         """Initialize parser with configuration."""
-        self.config = config or ParseConfig()
+        self.config = config
+
+    @staticmethod
+    def collect_factory_wrappers_from_descriptor(descriptor: LanguageLiteralDescriptor) -> List[str]:
+        """
+        Извлечь все factory wrappers из дескриптора языка.
+
+        Собирает wrappers из:
+        - factory_profiles (wrapper_match regex)
+        - mapping_profiles (wrapper_match regex, если есть)
+        - nested_factory_wrappers (дополнительные wrappers)
+
+        Args:
+            descriptor: LanguageLiteralDescriptor
+
+        Returns:
+            List уникальных factory wrappers
+        """
+        wrappers = []
+
+        # Collect from factory profiles
+        for profile in descriptor.factory_profiles:
+            if profile.wrapper_match:
+                regex = profile.wrapper_match.rstrip("$")
+                if regex.startswith("(") and regex.endswith(")"):
+                    regex = regex[1:-1]
+                alternatives = regex.split("|")
+                for alt in alternatives:
+                    wrapper = alt.replace("\\.", ".")
+                    if wrapper and wrapper not in wrappers:
+                        wrappers.append(wrapper)
+
+        # Collect from mapping profiles (some have wrappers like Kotlin mapOf)
+        for profile in descriptor.mapping_profiles:
+            if profile.wrapper_match:
+                regex = profile.wrapper_match.rstrip("$")
+                if regex.startswith("(") and regex.endswith(")"):
+                    regex = regex[1:-1]
+                alternatives = regex.split("|")
+                for alt in alternatives:
+                    wrapper = alt.replace("\\.", ".")
+                    if wrapper and wrapper not in wrappers:
+                        wrappers.append(wrapper)
+
+        # Add additional wrappers from descriptor
+        for wrapper in descriptor.nested_factory_wrappers:
+            if wrapper not in wrappers:
+                wrappers.append(wrapper)
+
+        return wrappers
 
     def parse(self, content: str) -> List[Element]:
         """

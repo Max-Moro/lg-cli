@@ -7,7 +7,7 @@ Orchestrates the two-pass literal processing workflow.
 
 from __future__ import annotations
 
-from typing import cast, List, Optional
+from typing import cast, Optional
 
 from lg.adapters.code_model import LiteralConfig
 from lg.adapters.context import ProcessingContext
@@ -61,9 +61,6 @@ class LiteralPipeline:
         comment_style = self.adapter.get_comment_style()
         self.single_comment = comment_style[0]
         self.block_comment = comment_style[1]
-
-        # Collect factory wrappers from all FACTORY_CALL patterns for nested detection
-        self._factory_wrappers = self._collect_factory_wrappers()
 
         # Cache parsers for different patterns
         self._parsers: dict[str, ElementParser] = {}
@@ -379,47 +376,12 @@ class LiteralPipeline:
         context.metrics.add_chars_saved(len(original_text) - len(result.trimmed_text))
 
 
-    def _collect_factory_wrappers(self) -> List[str]:
-        """Collect all factory method wrappers from descriptor for nested detection."""
-        wrappers = []
-
-        # Collect from factory profiles
-        for profile in self.descriptor.factory_profiles:
-            if profile.wrapper_match:
-                regex = profile.wrapper_match.rstrip("$")
-                if regex.startswith("(") and regex.endswith(")"):
-                    regex = regex[1:-1]
-                alternatives = regex.split("|")
-                for alt in alternatives:
-                    wrapper = alt.replace("\\.", ".")
-                    if wrapper and wrapper not in wrappers:
-                        wrappers.append(wrapper)
-
-        # Collect from mapping profiles (some have wrappers like Kotlin mapOf)
-        for profile in self.descriptor.mapping_profiles:
-            if profile.wrapper_match:
-                regex = profile.wrapper_match.rstrip("$")
-                if regex.startswith("(") and regex.endswith(")"):
-                    regex = regex[1:-1]
-                alternatives = regex.split("|")
-                for alt in alternatives:
-                    wrapper = alt.replace("\\.", ".")
-                    if wrapper and wrapper not in wrappers:
-                        wrappers.append(wrapper)
-
-        # Add additional wrappers from descriptor
-        for wrapper in self.descriptor.nested_factory_wrappers:
-            if wrapper not in wrappers:
-                wrappers.append(wrapper)
-
-        return wrappers
-
     def _get_parser_for_profile(self, profile: CollectionProfile) -> ElementParser:
         """
         Get or create parser for a profile.
 
         Args:
-            profile: LiteralProfile to create parser for
+            profile: CollectionProfile to create parser for
 
         Returns:
             ElementParser configured for this profile
@@ -432,12 +394,8 @@ class LiteralPipeline:
         key = f"{separator}:{kv_separator}:{tuple_size}"
 
         if key not in self._parsers:
-            config = ParseConfig(
-                separator=separator,
-                kv_separator=kv_separator,
-                preserve_whitespace=False,
-                factory_wrappers=self._factory_wrappers,
-            )
+            # Use factory method to create config with automatic wrapper collection
+            config = ParseConfig.from_profile_and_descriptor(profile, self.descriptor)
             self._parsers[key] = ElementParser(config)
 
         return self._parsers[key]
