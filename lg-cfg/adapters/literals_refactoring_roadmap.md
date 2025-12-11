@@ -2,29 +2,6 @@
 
 Этот документ содержит поэтапный план приведения текущего кода к финальной архитектуре, описанной в `literals_architecture.md`.
 
----
-
-## Принципы выполнения
-
-### Базовые правила
-
-1. **Атомарность этапов**: Каждый этап — минимальное изменение, которое можно протестировать
-2. **Тестирование между этапами**: После каждого этапа — полный прогон тестов
-3. **Никаких изменений в голденах**: Все изменения должны сохранять backward compatibility
-4. **Быстрый откат**: При проблемах — немедленный откат и пересмотр подхода
-5. **Коммиты после успеха**: Каждый успешный этап — отдельный коммит
-
-### Стратегия тестирования
-
-Следуем рекомендациям из `testing_guidelines.md`:
-
-- **После каждого этапа**: `./scripts/test_adapters.sh all all`
-- **Ожидание**: 100+ passed, 0 failed, no changes in goldens
-- **При падениях**: Анализ через temporary `UPDATE_GOLDENS=true`, затем откат
-- **Baseline**: Перед началом работы убедиться, что все тесты проходят
-
----
-
 ## Текущее состояние (Baseline)
 
 ### Структура "как есть"
@@ -107,15 +84,6 @@ lg/adapters/optimizations/literals/
    - Оставить только `ASTSequenceProcessor`, `BlockInitProcessor`
 
 **Тестирование**:
-```bash
-# Проверка что ничего не сломалось
-./scripts/test_adapters.sh all all
-# Ожидание: 100+ passed, 0 failed
-
-# Проверка что голдены не изменились
-git status
-# Ожидание: No changes in tests/adapters/*/goldens/
-```
 
 **Коммит**:
 ```bash
@@ -130,13 +98,6 @@ git commit -m "refactor(literals): Extract utility modules to utils/ package
 - components/ now contains only specialized processors
 
 No behavioral changes, all tests pass."
-```
-
-**Время**: ~15-20 минут
-
-**Откат при проблемах**:
-```bash
-git restore lg/adapters/optimizations/literals/
 ```
 
 ---
@@ -180,13 +141,6 @@ git restore lg/adapters/optimizations/literals/
    - Удалить экспорт `PlaceholderCommentFormatter`
 
 **Тестирование**:
-```bash
-./scripts/test_adapters.sh all all
-# Ожидание: 100+ passed, 0 failed
-
-git status
-# Ожидание: No changes in goldens
-```
 
 **Коммит**:
 ```bash
@@ -199,13 +153,6 @@ git commit -m "refactor(literals): Merge PlaceholderCommentFormatter into Result
 - Update imports
 
 No behavioral changes, all tests pass."
-```
-
-**Время**: ~20-25 минут
-
-**Откат при проблемах**:
-```bash
-git restore lg/adapters/optimizations/literals/
 ```
 
 ---
@@ -314,13 +261,6 @@ git restore lg/adapters/optimizations/literals/
 4. **Удалить методы `_get_base_indent` и `_get_element_indent` из `pipeline.py`**
 
 **Тестирование**:
-```bash
-./scripts/test_adapters.sh all all
-# Ожидание: 100+ passed, 0 failed
-
-git status
-# Ожидание: No changes in goldens
-```
 
 **Коммит**:
 ```bash
@@ -334,13 +274,6 @@ git commit -m "refactor(literals): Move indent detection logic to LiteralParser
 - Pipeline now uses parser's high-level API
 
 No behavioral changes, all tests pass."
-```
-
-**Время**: ~25-30 минут
-
-**Откат при проблемах**:
-```bash
-git restore lg/adapters/optimizations/literals/
 ```
 
 ---
@@ -438,13 +371,6 @@ git restore lg/adapters/optimizations/literals/
    - Сделать полностью автономным
 
 **Тестирование**:
-```bash
-./scripts/test_adapters.sh all all
-# Ожидание: 100+ passed, 0 failed
-
-git status
-# Ожидание: No changes in goldens
-```
 
 **Коммит**:
 ```bash
@@ -457,13 +383,6 @@ git commit -m "refactor(literals): Make components autonomous with can_handle()
 - Components now extract data and determine parameters internally
 
 No behavioral changes, all tests pass."
-```
-
-**Время**: ~30-35 минут
-
-**Откат при проблемах**:
-```bash
-git restore lg/adapters/optimizations/literals/
 ```
 
 ---
@@ -593,13 +512,6 @@ git restore lg/adapters/optimizations/literals/
    - Использовать единый `_process_literal()` вместо специализированных методов
 
 **Тестирование**:
-```bash
-./scripts/test_adapters.sh all all
-# Ожидание: 100+ passed, 0 failed
-
-git status
-# Ожидание: No changes in goldens
-```
 
 **Коммит**:
 ```bash
@@ -613,13 +525,6 @@ git commit -m "refactor(literals): Simplify pipeline to pure orchestrator
 - Clean separation: pipeline coordinates, components/stages execute
 
 No behavioral changes, all tests pass."
-```
-
-**Время**: ~40-50 минут
-
-**Откат при проблемах**:
-```bash
-git restore lg/adapters/optimizations/literals/
 ```
 
 ---
@@ -707,132 +612,3 @@ Result:
 - ✅ Стадии имеют высокоуровневый API
 - ✅ Четкое разделение на processing/components/utils
 - ✅ Легко добавлять новые компоненты и языки
-
----
-
-## Troubleshooting
-
-### Проблема: Тесты падают после этапа
-
-**Действия**:
-1. Временно обновить голдены для анализа:
-   ```bash
-   ./scripts/test_adapters.sh <optimization> <language> true
-   ```
-
-2. Посмотреть diff:
-   ```bash
-   git diff tests/adapters/<language>/goldens/
-   ```
-
-3. Анализ:
-   - Если изменения логичны → возможно, была скрытая ошибка
-   - Если изменения странные → откатить этап
-
-4. **ОБЯЗАТЕЛЬНО** откатить временные голдены:
-   ```bash
-   git restore tests/
-   ```
-
-5. Откатить код этапа:
-   ```bash
-   git restore lg/adapters/optimizations/literals/
-   ```
-
-6. Пересмотреть подход к этапу
-
-### Проблема: Множественные падения (>10 тестов)
-
-**Действия**:
-1. Немедленный откат:
-   ```bash
-   git restore .
-   ```
-
-2. Проверка baseline:
-   ```bash
-   ./scripts/test_adapters.sh all all
-   # Должно быть: 100+ passed
-   ```
-
-3. Анализ причины:
-   - Слишком большой этап → разбить на меньшие
-   - Ошибка в понимании → пересмотреть подход
-   - Системная проблема → обсудить с командой
-
-4. Новая попытка с более мелким этапом
-
-### Проблема: Импорты не работают после переноса
-
-**Действия**:
-1. Проверить все файлы, которые импортируют перенесенный модуль:
-   ```bash
-   grep -r "from.*budgeting import" lg/adapters/
-   ```
-
-2. Обновить все найденные импорты
-
-3. Проверить `__init__.py` в пакетах
-
-4. Запустить тесты снова
-
----
-
-## Чеклист выполнения
-
-Использовать для отслеживания прогресса:
-
-- [ ] **Этап 0**: Проверка baseline (все тесты проходят)
-- [ ] **Этап 1**: Создание utils/ и перенос утилит
-  - [ ] Создан пакет utils/
-  - [ ] Перенесен element_parser
-  - [ ] Перенесен budgeting
-  - [ ] Перенесен interpolation
-  - [ ] Обновлены импорты
-  - [ ] Тесты проходят
-  - [ ] Закоммичено
-- [ ] **Этап 2**: Слияние placeholder с formatter
-  - [ ] Логика скопирована в formatter
-  - [ ] Удален components/placeholder.py
-  - [ ] Обновлены вызовы
-  - [ ] Тесты проходят
-  - [ ] Закоммичено
-- [ ] **Этап 3**: Расширение LiteralParser
-  - [ ] Добавлены методы отступов
-  - [ ] Добавлен parse_from_node()
-  - [ ] Обновлен pipeline для нового API
-  - [ ] Удалены старые методы из pipeline
-  - [ ] Тесты проходят
-  - [ ] Закоммичено
-- [ ] **Этап 4**: Добавление can_handle()
-  - [ ] can_handle() в ASTSequenceProcessor
-  - [ ] can_handle() в BlockInitProcessor
-  - [ ] Компоненты автономны
-  - [ ] Тесты проходят
-  - [ ] Закоммичено
-- [ ] **Этап 5**: Упрощение pipeline
-  - [ ] Создан _process_literal()
-  - [ ] Упрощены _process_string/collection()
-  - [ ] Удалены методы-роутеры
-  - [ ] Тесты проходят
-  - [ ] Закоммичено
-- [ ] **Финал**: Финальная проверка
-  - [ ] Полный прогон тестов
-  - [ ] Проверка структуры
-  - [ ] Проверка размера pipeline
-  - [ ] Финальный коммит
-
----
-
-## Заключение
-
-Следование этой дорожной карте обеспечит:
-
-1. **Безопасность**: Каждый шаг проверяется тестами
-2. **Откатываемость**: Любой этап можно откатить
-3. **Прозрачность**: Прогресс виден через коммиты
-4. **Качество**: Финальная архитектура соответствует видению
-
-**Общее время выполнения**: 2.5-3 часа чистого времени (без отвлечений)
-
-**Итог**: Чистая, элегантная архитектура с минимальной связностью модулей.
