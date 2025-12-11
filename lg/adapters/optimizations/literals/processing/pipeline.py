@@ -22,7 +22,6 @@ from ..utils.interpolation import InterpolationHandler
 from ..components import (
     ASTSequenceProcessor,
     BlockInitProcessor,
-    PlaceholderCommentFormatter
 )
 from ..patterns import (
     LiteralProfile,
@@ -106,7 +105,6 @@ class LiteralPipeline:
         )
 
         self.interpolation = InterpolationHandler()
-        self.placeholder_formatter = PlaceholderCommentFormatter(comment_style)
         self.budget_calculator = BudgetCalculator(self.adapter.tokenizer)
 
     def apply(self, context: ProcessingContext) -> None:
@@ -428,7 +426,7 @@ class LiteralPipeline:
         placeholder_style = self.adapter.cfg.placeholders.style
         if placeholder_style != "none" and result.comment_text:
             text_after = context.raw_text[end_byte:]
-            formatted_comment, offset = self.placeholder_formatter.format_comment_for_context(
+            formatted_comment, offset = self.formatter._format_comment_for_context(
                 text_after, result.comment_text
             )
             context.editor.add_insertion(
@@ -453,7 +451,7 @@ class LiteralPipeline:
         placeholder_style = self.adapter.cfg.placeholders.style
         if placeholder_style != "none" and result.comment_text:
             text_after = context.raw_text[end_byte:]
-            formatted_comment, offset = self.placeholder_formatter.format_comment_for_context(
+            formatted_comment, offset = self.formatter._format_comment_for_context(
                 text_after, result.comment_text
             )
             context.editor.add_insertion(

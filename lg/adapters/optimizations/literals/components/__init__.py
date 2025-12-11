@@ -7,6 +7,5 @@ of literal string processing.
 
 from .ast_sequence import ASTSequenceProcessor
 from .block_init import BlockInitProcessor
-from .placeholder import PlaceholderCommentFormatter
 
-__all__ = ['ASTSequenceProcessor', 'BlockInitProcessor', 'PlaceholderCommentFormatter']
+__all__ = ['ASTSequenceProcessor', 'BlockInitProcessor']
