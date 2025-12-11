@@ -386,7 +386,7 @@ class ResultFormatter:
             # Add placeholder comment if has removals at this level
             # (not just propagated from deeper nesting)
             if nested_sel.has_removals and nested_sel.removed_count > 0:
-                tokens_saved = nested_sel.total_tokens_removed
+                tokens_saved = nested_sel.total_tokens_saved
                 removed_count = nested_sel.removed_count
                 comment_text = f"… ({removed_count} more, −{tokens_saved} tokens)"
                 lines.append(f"{elem_indent}{self.single_comment} {comment_text}")
@@ -399,7 +399,7 @@ class ResultFormatter:
             nested_formatted = f"{separator} ".join(nested_elements_text)
             # Only add comment if elements were removed at this level
             if nested_sel.has_removals and nested_sel.removed_count > 0:
-                tokens_saved = nested_sel.total_tokens_removed
+                tokens_saved = nested_sel.total_tokens_saved
                 removed_count = nested_sel.removed_count
                 comment_text = f"… ({removed_count} more, −{tokens_saved} tokens)"
                 nested_formatted = f"{nested_formatted}, {self.block_comment[0]} {comment_text} {self.block_comment[1]}"
@@ -450,11 +450,8 @@ class ResultFormatter:
         if position == PlaceholderPosition.MIDDLE_COMMENT:
             return None, None
 
-        # Get tokens saved (different for Selection vs DFSSelection)
-        if isinstance(selection, DFSSelection):
-            saved = selection.total_tokens_removed
-        else:
-            saved = selection.tokens_removed
+        # Get tokens saved using unified property
+        saved = selection.total_tokens_saved
 
         # Determine comment name from profile
         profile = parsed.profile
@@ -539,8 +536,8 @@ class ResultFormatter:
         # Get placeholder position
         placeholder_position = profile.placeholder_position
 
-        # Get tokens saved (different for Selection vs DFSSelection)
-        tokens_saved = selection.total_tokens_removed if isinstance(selection, DFSSelection) else selection.tokens_removed
+        # Get tokens saved using unified property
+        tokens_saved = selection.total_tokens_saved
 
         # Build elements part
         if not elements_text:
@@ -658,8 +655,8 @@ class ResultFormatter:
                 trailing_sep = separator if (allow_trailing or not is_last_group) else ""
                 lines.append(f"{elem_indent}{group_text}{trailing_sep}")
 
-        # Get tokens saved (different for Selection vs DFSSelection)
-        tokens_saved = selection.total_tokens_removed if isinstance(selection, DFSSelection) else selection.tokens_removed
+        # Get tokens saved using unified property
+        tokens_saved = selection.total_tokens_saved
 
         # Placeholder based on position
         # Note: only add placeholder if elements were removed, not if values were just replaced

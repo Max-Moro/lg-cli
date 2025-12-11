@@ -48,6 +48,21 @@ class SelectionBase:
     def has_removals(self) -> bool:
         return self.removed_count > 0
 
+    @property
+    def total_tokens_saved(self) -> int:
+        """
+        Total tokens removed by this selection.
+
+        For flat Selection: same as tokens_removed.
+        For DFSSelection: includes nested removals.
+
+        Returns:
+            Total number of tokens removed
+        """
+        if isinstance(self, DFSSelection):
+            return self.total_tokens_removed
+        return self.tokens_removed
+
 
 @dataclass
 class Selection(SelectionBase):
