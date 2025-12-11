@@ -453,20 +453,8 @@ class ResultFormatter:
         # Get tokens saved using unified property
         saved = selection.total_tokens_saved
 
-        # Determine comment name from profile
-        profile = parsed.profile
-        comment_name = profile.comment_name
-
-        # Fallback to profile type if comment_name is None
-        if comment_name is None:
-            category_name = self._get_default_category_name(profile)
-        else:
-            category_name = comment_name
-
         # Return raw content - formatting is done by context
-        comment_content = self._generate_comment_text(
-            category_name, saved
-        )
+        comment_content = self._generate_comment_text(parsed.profile.get_category_name(), saved)
         return comment_content, parsed.end_byte
 
     def _format_single_line(
@@ -699,18 +687,3 @@ class ResultFormatter:
         truncated = f"{kept_content}…"
 
         return f"{parsed.opening}{truncated}{parsed.closing}"
-
-    def _get_default_category_name(self, profile: LiteralProfile) -> str:
-        """Get default category name from profile type."""
-        if isinstance(profile, StringProfile):
-            return "string"
-        elif isinstance(profile, SequenceProfile):
-            return "sequence"
-        elif isinstance(profile, MappingProfile):
-            return "mapping"
-        elif isinstance(profile, FactoryProfile):
-            return "factory"
-        elif isinstance(profile, BlockInitProfile):
-            return "block"
-        else:
-            return "literal"

@@ -73,6 +73,33 @@ class LiteralProfile:
     """
     comment_name: Optional[str] = None
 
+    def get_category_name(self) -> str:
+        """
+        Get category name for this profile type.
+
+        Returns the comment_name if set, otherwise derives a default name
+        from the profile class name.
+
+        Returns:
+            Category name for comments and metrics
+
+        Example:
+            >>> StringProfile().get_category_name()
+            'string'
+            >>> SequenceProfile(comment_name='array').get_category_name()
+            'array'
+        """
+        # Use comment_name if explicitly set
+        if self.comment_name:
+            return self.comment_name
+
+        # Derive from class name: remove 'Profile' suffix and convert to lowercase
+        type_name = type(self).__name__
+        if type_name.endswith('Profile'):
+            type_name = type_name[:-7]  # Remove 'Profile' suffix
+
+        return type_name.lower()
+
 
 @dataclass
 class StringProfile(LiteralProfile):
