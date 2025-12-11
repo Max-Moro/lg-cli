@@ -62,7 +62,7 @@ class ResultFormatter:
     def __init__(
         self,
         tokenizer: TokenService,
-        comment_style: tuple[str, tuple[str, str]] = ("//", ("/*", "*/"))
+        comment_style: tuple[str, tuple[str, str], tuple[str, str]]
     ):
         """
         Initialize formatter.

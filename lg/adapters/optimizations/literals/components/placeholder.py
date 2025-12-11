@@ -18,7 +18,7 @@ class PlaceholderCommentFormatter:
     - Generating comment text with token savings information
     """
 
-    def __init__(self, comment_style: tuple[str, tuple[str, str]]):
+    def __init__(self, comment_style: tuple[str, tuple[str, str], tuple[str, str]]):
         """
         Initialize formatter with language-specific comment syntax.
 

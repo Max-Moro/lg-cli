@@ -37,7 +37,7 @@ class BlockInitProcessor:
         tokenizer,
         all_profiles: List[LiteralProfile],
         process_literal_callback: ProcessLiteralCallback,
-        comment_style=("//", ("/*", "*/")),
+        comment_style: tuple[str, tuple[str, str], tuple[str, str]],
     ):
         """
         Initialize processor.

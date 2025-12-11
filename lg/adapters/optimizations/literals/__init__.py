@@ -25,31 +25,18 @@ from .processing.formatter import ResultFormatter, FormattedResult
 from .processing.selector import BudgetSelector, Selection
 
 __all__ = [
-    # Enums and types
-    "PlaceholderPosition",
-    "ParsedLiteral",
-    "TrimResult",
-
-    # Descriptor
+    # Descriptor and types
     "LanguageLiteralDescriptor",
+    "LanguageSyntaxFlags",
+    "PlaceholderPosition",
 
-    # Profile types
+    # Profiles
     "StringProfile",
-    "CollectionProfile",
     "SequenceProfile",
     "MappingProfile",
     "FactoryProfile",
     "BlockInitProfile",
-    "LanguageSyntaxFlags",
-    "LiteralProfile",
 
     # Main optimizer
     "LiteralPipeline",
-    "ResultFormatter",
-    "FormattedResult",
-    "ElementParser",
-    "ParseConfig",
-    "Element",
-    "BudgetSelector",
-    "Selection",
 ]
