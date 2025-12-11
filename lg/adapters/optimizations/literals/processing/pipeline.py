@@ -58,7 +58,7 @@ class LiteralPipeline:
         self.descriptor = self.adapter.create_literal_descriptor()
 
         # Get comment style from adapter
-        comment_style = self.adapter.get_comment_style()
+        comment_style: tuple[str, tuple[str, str]] = cast(tuple[str, tuple[str, str]], self.adapter.get_comment_style()[:2])
         self.single_comment = comment_style[0]
         self.block_comment = comment_style[1]
 
@@ -72,6 +72,9 @@ class LiteralPipeline:
         self.literal_parser = LiteralParser(self.adapter.tokenizer)
         self.selector = BudgetSelector(self.adapter.tokenizer)
         self.formatter = ResultFormatter(self.adapter.tokenizer, comment_style)
+
+        self.interpolation = InterpolationHandler()
+        self.budget_calculator = BudgetCalculator(self.adapter.tokenizer)
 
         # =================================
         # Special components (ordered by priority)
@@ -99,9 +102,6 @@ class LiteralPipeline:
                 comment_style
             ),
         ]
-
-        self.interpolation = InterpolationHandler()
-        self.budget_calculator = BudgetCalculator(self.adapter.tokenizer)
 
     def apply(self, context: ProcessingContext) -> None:
         """
