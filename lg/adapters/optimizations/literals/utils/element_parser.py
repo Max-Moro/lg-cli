@@ -10,7 +10,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import List, Optional, Tuple
 
-from .patterns import LiteralProfile, CollectionProfile, MappingProfile, FactoryProfile
+from ..patterns import LiteralProfile, CollectionProfile, MappingProfile, FactoryProfile
 
 
 @dataclass

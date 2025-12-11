@@ -13,6 +13,7 @@ from typing import List, Optional, Tuple, Callable
 
 from lg.adapters.tree_sitter_support import Node, TreeSitterDocument
 from ..patterns import TrimResult, BlockInitProfile, LiteralProfile
+from ..utils.element_parser import Element
 
 # Type alias for literal processing callback
 ProcessLiteralCallback = Callable[

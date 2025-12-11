@@ -15,7 +15,7 @@ from typing import Optional, cast
 
 from lg.stats.tokenizer import TokenService
 from .selector import SelectionBase, Selection, DFSSelection
-from ..element_parser import ElementParser
+from ..utils.element_parser import ElementParser
 from ..components.placeholder import PlaceholderCommentFormatter
 from ..patterns import (
     PlaceholderPosition,

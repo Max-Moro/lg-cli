@@ -16,14 +16,14 @@ from lg.adapters.context import ProcessingContext
 from .formatter import ResultFormatter
 from .parser import LiteralParser
 from .selector import BudgetSelector, Selection, DFSSelection
+from ..utils.element_parser import ElementParser, Element, ParseConfig
+from ..utils.budgeting import BudgetCalculator
+from ..utils.interpolation import InterpolationHandler
 from ..components import (
     ASTSequenceProcessor,
     BlockInitProcessor,
-    BudgetCalculator,
-    InterpolationHandler,
     PlaceholderCommentFormatter
 )
-from ..element_parser import ElementParser, Element, ParseConfig
 from ..patterns import (
     LiteralProfile,
     BlockInitProfile,

@@ -22,6 +22,7 @@ from tree_sitter._binding import Node
 from lg.stats.tokenizer import TokenService
 from ..patterns import SequenceProfile, TrimResult, StringProfile
 from ....tree_sitter_support import TreeSitterDocument
+from ..utils.element_parser import ElementParser
 
 
 class ASTSequenceProcessor:

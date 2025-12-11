@@ -6,7 +6,7 @@ literal data in source code across multiple programming languages.
 """
 
 from .descriptor import LanguageLiteralDescriptor
-from .element_parser import ElementParser, ParseConfig, Element
+from .utils.element_parser import ElementParser, ParseConfig, Element
 from .patterns import (
     PlaceholderPosition,
     ParsedLiteral,
