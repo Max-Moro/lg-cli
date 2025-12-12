@@ -172,18 +172,12 @@ class BudgetSelector:
             budget: Token budget for this level and all nested levels
             parser: ElementParser configured for a profile
             min_keep: Minimum elements to keep at each level
-            tuple_size: Group elements into tuples (e.g., 2 for k,v pairs)
+            tuple_size: Group elements into tuples (e.g., 2 for k,v pairs, 1 for single elements)
             preserve_top_level_keys: If True, keep all keys at top level (for typed structs)
 
         Returns:
             DFSSelection with kept/removed elements and nested selections
         """
-
-        # Handle tuple grouping for Map.of style patterns
-        if tuple_size > 1:
-            return self._select_dfs_tuples(
-                elements, budget, parser, min_keep, tuple_size, preserve_top_level_keys
-            )
 
         if not elements:
             return DFSSelection(
@@ -196,27 +190,30 @@ class BudgetSelector:
                 budget_exhausted=False,
             )
 
+        # Group elements into tuples if needed (tuple_size=1 means single elements)
+        if tuple_size > 1:
+            groups = [elements[i:i + tuple_size] for i in range(0, len(elements), tuple_size)]
+        else:
+            groups = [[e] for e in elements]
+
         kept: List[Element] = []
         removed: List[Element] = []
         tokens_used = 0
         remaining_budget = budget
         budget_exhausted = False
+        groups_kept = 0
         nested_selections: Dict[int, DFSSelection] = {}
 
-        for i, elem in enumerate(elements):
-            # Count original tokens for this element
-            elem_original_tokens = self.tokenizer.count_text_cached(elem.text)
+        for group_idx, group in enumerate(groups):
+            # Calculate optimized tokens for this group (considering nested optimizations)
+            group_optimized_tokens = 0
 
-            # Check if we can afford this element or must keep it due to min_keep
-            can_afford = elem_original_tokens <= remaining_budget
-            must_keep = len(kept) < min_keep
-            must_preserve = preserve_top_level_keys  # For typed structs: keep all fields
+            # Process each element in group, handling nested structures
+            for elem_offset, elem in enumerate(group):
+                elem_idx = group_idx * tuple_size + elem_offset
+                elem_original_tokens = self.tokenizer.count_text_cached(elem.text)
 
-            if can_afford or must_keep or must_preserve:
-                # Keep this element
-                kept.append(elem)
-
-                # If this element has multiline nested structure, recursively process it
+                # If element has multiline nested structure, recursively process it
                 # Single-line nested structures are treated as leaf elements
                 if elem.is_multiline_nested:
                     # Recursively optimize nested structure with current remaining budget
@@ -229,32 +226,54 @@ class BudgetSelector:
                         min_keep=min_keep,
                         preserve_top_level_keys=False,  # Only preserve at top level
                     )
-                    nested_selections[i] = nested_sel
+                    nested_selections[elem_idx] = nested_sel
 
-                    # Calculate optimized size of this element
-                    # (original tokens minus tokens saved by nested optimization)
+                    # Calculate optimized size: original tokens minus tokens saved by nested optimization
                     elem_optimized_tokens = elem_original_tokens - nested_sel.total_tokens_removed
-
-                    # Subtract optimized size from budget
-                    tokens_used += elem_optimized_tokens
-                    remaining_budget -= elem_optimized_tokens
-                    budget_exhausted = nested_sel.budget_exhausted
-
-                    # If budget exhausted in nested level, stop processing siblings
-                    # UNLESS preserve_top_level_keys=True (must keep all top-level fields)
-                    if budget_exhausted and not preserve_top_level_keys:
-                        # Add remaining elements as removed
-                        removed.extend(elements[i + 1:])
-                        break
+                    group_optimized_tokens += elem_optimized_tokens
                 else:
-                    # Leaf element - subtract its tokens directly
-                    tokens_used += elem_original_tokens
-                    remaining_budget -= elem_original_tokens
+                    # Leaf element - use its tokens directly
+                    group_optimized_tokens += elem_original_tokens
+
+            # Check if we can afford this group with optimized size
+            can_afford = group_optimized_tokens <= remaining_budget
+
+            # Determine if we must keep this group
+            must_keep = groups_kept < min_keep
+            must_preserve = preserve_top_level_keys  # For typed structs: keep all fields
+
+            if can_afford or must_keep or must_preserve:
+                # Keep this group
+                kept.extend(group)
+                tokens_used += group_optimized_tokens
+                remaining_budget -= group_optimized_tokens
+                groups_kept += 1
+
+                # Check for budget exhaustion in nested levels
+                # For tuple_size=1, check after processing element
+                if tuple_size == 1 and len(group) == 1:
+                    elem_idx = group_idx
+                    if elem_idx in nested_selections:
+                        budget_exhausted = nested_selections[elem_idx].budget_exhausted
+                        # If budget exhausted in nested level, stop processing siblings
+                        # UNLESS preserve_top_level_keys=True (must keep all top-level fields)
+                        if budget_exhausted and not preserve_top_level_keys:
+                            # Add remaining groups as removed
+                            for remaining_group in groups[group_idx + 1:]:
+                                removed.extend(remaining_group)
+                            break
             else:
-                # Budget exhausted, cannot afford this element
+                # Budget exhausted, cannot afford this group
                 budget_exhausted = True
-                # Add this element and all remaining to removed
-                removed.extend(elements[i:])
+                # Add this group and all remaining groups to removed
+                for remaining_group in groups[group_idx:]:
+                    removed.extend(remaining_group)
+                # Remove nested selections for removed elements
+                for remaining_group_idx in range(group_idx, len(groups)):
+                    for elem_offset in range(len(groups[remaining_group_idx])):
+                        elem_idx = remaining_group_idx * tuple_size + elem_offset
+                        if elem_idx in nested_selections:
+                            del nested_selections[elem_idx]
                 break
 
         # Calculate tokens removed
@@ -262,134 +281,16 @@ class BudgetSelector:
             self.tokenizer.count_text_cached(e.text) for e in removed
         )
 
-        # Calculate total tokens removed including nested
-        total_tokens_removed_including_nested = tokens_removed
-        for nested_sel in nested_selections.values():
-            total_tokens_removed_including_nested += nested_sel.total_tokens_removed
+        # Determine total_count: for tuples it's number of groups, for single elements it's number of elements
+        total_count = len(groups) if tuple_size > 1 else len(elements)
 
         return DFSSelection(
             kept_elements=kept,
             removed_elements=removed,
-            total_count=len(elements),
+            total_count=total_count,
             tokens_kept=tokens_used,
             tokens_removed=tokens_removed,
             nested_selections=nested_selections,
             remaining_budget=remaining_budget,
             budget_exhausted=budget_exhausted,
         )
-
-    def _select_dfs_tuples(
-        self,
-        elements: List[Element],
-        budget: int,
-        parser: ElementParser,
-        min_keep: int,
-        tuple_size: int,
-        preserve_top_level_keys: bool = False,
-    ) -> DFSSelection:
-        """
-        DFS selection with tuple grouping (for Map.of style patterns).
-
-        Groups elements into tuples and applies DFS recursively to nested structures
-        within tuple elements.
-        """
-
-        if not elements:
-            return DFSSelection(
-                kept_elements=[],
-                removed_elements=[],
-                total_count=0,
-                tokens_kept=0,
-                tokens_removed=0,
-                remaining_budget=budget,
-                budget_exhausted=False,
-            )
-
-        # Group elements into tuples
-        tuples = self._group_into_tuples(elements, tuple_size)
-
-        kept: List[Element] = []
-        removed: List[Element] = []
-        tokens_used = 0
-        remaining_budget = budget
-        budget_exhausted = False
-        tuples_kept = 0
-        nested_selections: Dict[int, DFSSelection] = {}
-
-        for tuple_idx, tpl in enumerate(tuples):
-            # Process each element in tuple with DFS if nested
-            tuple_optimized_tokens = 0
-
-            # First pass: calculate original size and process nested structures
-            for elem_offset, elem in enumerate(tpl):
-                elem_idx = tuple_idx * tuple_size + elem_offset
-                elem_original_tokens = self.tokenizer.count_text_cached(elem.text)
-
-                # If element has multiline nested structure, recursively process it
-                if elem.is_multiline_nested:
-                    # Pass full remaining budget to recursion (not reduced by previous tuple elements)
-                    # Note: preserve_top_level_keys NOT passed to nested calls
-                    nested_sel = self.select_dfs(
-                        parser.parse(elem.nested_content),
-                        remaining_budget,
-                        parser,
-                        min_keep=min_keep,
-                        preserve_top_level_keys=False,  # Only preserve at top level
-                    )
-                    nested_selections[elem_idx] = nested_sel
-
-                    # Calculate element tokens after nested optimization
-                    # Original size minus tokens saved by nested optimization
-                    elem_optimized_tokens = elem_original_tokens - nested_sel.total_tokens_removed
-                    tuple_optimized_tokens += elem_optimized_tokens
-                else:
-                    # Leaf element - use its tokens directly
-                    tuple_optimized_tokens += elem_original_tokens
-
-            # Check if we can afford this tuple with optimized size
-            can_afford = tokens_used + tuple_optimized_tokens <= remaining_budget
-
-            # Apply must_keep at all levels to preserve recursion chain
-            must_keep = tuples_kept < min_keep
-            must_preserve = preserve_top_level_keys  # For typed structs: keep all fields
-
-            if can_afford or must_keep or must_preserve:
-                kept.extend(tpl)
-                tokens_used += tuple_optimized_tokens
-                remaining_budget -= tuple_optimized_tokens
-                tuples_kept += 1
-            else:
-                budget_exhausted = True
-                removed.extend(tpl)
-                # Remove nested selections for removed tuples
-                for elem_offset in range(len(tpl)):
-                    elem_idx = tuple_idx * tuple_size + elem_offset
-                    if elem_idx in nested_selections:
-                        del nested_selections[elem_idx]
-
-        # Calculate tokens removed
-        tokens_removed = sum(
-            self.tokenizer.count_text_cached(e.text) for e in removed
-        )
-
-        return DFSSelection(
-            kept_elements=kept,
-            removed_elements=removed,
-            total_count=len(tuples),
-            tokens_kept=tokens_used,
-            tokens_removed=tokens_removed,
-            nested_selections=nested_selections,
-            remaining_budget=remaining_budget,
-            budget_exhausted=budget_exhausted,
-        )
-
-    def _group_into_tuples(
-        self,
-        elements: List[Element],
-        tuple_size: int
-    ) -> List[List[Element]]:
-        """Group elements into tuples of specified size."""
-        tuples = []
-        for i in range(0, len(elements), tuple_size):
-            tuples.append(elements[i:i + tuple_size])
-        return tuples
