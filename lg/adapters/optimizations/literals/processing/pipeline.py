@@ -285,8 +285,7 @@ class LiteralPipeline:
             # Select elements with DFS
             selection = self.selector.select_dfs(
                 elements, content_budget,
-                profile=parsed.profile,
-                get_parser_func=self._get_parser_for_profile,
+                parser,
                 min_keep=parsed.profile.min_elements,
                 tuple_size=parsed.profile.tuple_size if isinstance(parsed.profile, FactoryProfile) else 1,
                 preserve_top_level_keys=parsed.profile.preserve_all_keys if isinstance(parsed.profile, MappingProfile) else False,

@@ -8,10 +8,9 @@ within a token budget, including DFS selection for nested structures.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import List, Dict, Callable
+from typing import List, Dict
 
 from lg.stats.tokenizer import TokenService
-from ..patterns import CollectionProfile
 from ..utils.element_parser import Element, ElementParser
 
 
@@ -152,8 +151,7 @@ class BudgetSelector:
         self,
         elements: List[Element],
         budget: int,
-        profile: CollectionProfile,
-        get_parser_func: Callable[[CollectionProfile], ElementParser],
+        parser: ElementParser,
         min_keep: int = 1,
         tuple_size: int = 1,
         preserve_top_level_keys: bool = False,
@@ -172,8 +170,7 @@ class BudgetSelector:
         Args:
             elements: List of elements at current level
             budget: Token budget for this level and all nested levels
-            profile: CollectionProfile for getting parser configuration
-            get_parser_func: Function to get parser for a profile
+            parser: ElementParser configured for a profile
             min_keep: Minimum elements to keep at each level
             tuple_size: Group elements into tuples (e.g., 2 for k,v pairs)
             preserve_top_level_keys: If True, keep all keys at top level (for typed structs)
@@ -181,13 +178,11 @@ class BudgetSelector:
         Returns:
             DFSSelection with kept/removed elements and nested selections
         """
-        # Get parser through callback function
-        parser = get_parser_func(profile)
 
         # Handle tuple grouping for Map.of style patterns
         if tuple_size > 1:
             return self._select_dfs_tuples(
-                elements, budget, profile, get_parser_func, min_keep, tuple_size, preserve_top_level_keys
+                elements, budget, parser, min_keep, tuple_size, preserve_top_level_keys
             )
 
         if not elements:
@@ -230,8 +225,7 @@ class BudgetSelector:
                     nested_sel = self.select_dfs(
                         nested_elements,
                         remaining_budget,
-                        profile,
-                        get_parser_func,
+                        parser,
                         min_keep=min_keep,
                         preserve_top_level_keys=False,  # Only preserve at top level
                     )
@@ -288,8 +282,7 @@ class BudgetSelector:
         self,
         elements: List[Element],
         budget: int,
-        profile: CollectionProfile,
-        get_parser_func: Callable[[CollectionProfile], ElementParser],
+        parser: ElementParser,
         min_keep: int,
         tuple_size: int,
         preserve_top_level_keys: bool = False,
@@ -300,8 +293,6 @@ class BudgetSelector:
         Groups elements into tuples and applies DFS recursively to nested structures
         within tuple elements.
         """
-        # Get parser through callback function
-        parser = get_parser_func(profile)
 
         if not elements:
             return DFSSelection(
@@ -341,8 +332,7 @@ class BudgetSelector:
                     nested_sel = self.select_dfs(
                         parser.parse(elem.nested_content),
                         remaining_budget,
-                        profile,
-                        get_parser_func,
+                        parser,
                         min_keep=min_keep,
                         preserve_top_level_keys=False,  # Only preserve at top level
                     )
