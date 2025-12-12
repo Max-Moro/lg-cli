@@ -258,10 +258,7 @@ class LiteralPipeline:
                 start_offset=0,
                 end_offset=len(truncated),
             )
-            removed_element = Element(
-                text="...", raw_text="...",
-                start_offset=0, end_offset=0
-            )
+            removed_element = Element(text="", raw_text="", start_offset=0, end_offset=0)
 
             selection = Selection(
                 kept_elements=[kept_element],
