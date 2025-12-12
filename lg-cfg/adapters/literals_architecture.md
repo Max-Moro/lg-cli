@@ -1,559 +1,194 @@
 # Архитектура Literals Optimization
 
-Подсистема оптимизации литералов для языковых адаптеров является наиболее сложной и развитой. Это обусловлено тем, что реальные языки программирования достаточно сильно отличаются правилами и синтаксисом декларации различных литералов. Данная система позволяет настраивать паттерны литералов в декларативном формате, вместо подхода через индивидуальные императивные хуки в каждом конечном языковом адаптере. Но из-за этого ей приходится учитывать множество особенностей и нюансов адаптации под конкретные потребности языков.
+Подсистема оптимизации литералов — наиболее сложная часть языковых адаптеров. Она использует декларативный подход для настройки паттернов литералов вместо императивных хуков в каждом языковом адаптере, что требует учета множества языковых особенностей.
 
 ---
 
-## Основная структура подсистемы оптимизации литералов
+## Структура подсистемы
 
 ```
 lg/adapters/optimizations/literals/
-├── processing/                 # Универсальные стадии и сервисы
-│   ├── __init__.py
-│   ├── pipeline.py             # LiteralPipeline (оркестратор, ~276 строк)
-│   ├── parser.py               # LiteralParser (парсинг структуры)
-│   ├── selector.py             # BudgetSelector (выбор элементов)
-│   ├── string_formatter.py     # StringFormatter (форматирование строк)
-│   └── collection_formatter.py # CollectionFormatter (форматирование коллекций с DFS)
+├── processing/                 # Shared сервисы
+│   ├── pipeline.py             # LiteralPipeline (координатор)
+│   ├── parser.py               # LiteralParser
+│   ├── selector.py             # BudgetSelector
+│   ├── string_formatter.py     # StringFormatter
+│   └── collection_formatter.py # CollectionFormatter
 │
-├── components/                 # Автономные компоненты обработки
-│   ├── __init__.py
-│   ├── base.py                 # LiteralProcessor (общий интерфейс для всех компонентов)
-│   ├── string_literal.py       # StringLiteralProcessor (строковые литералы)
-│   ├── standard_collections.py # StandardCollectionsProcessor (стандартные коллекции)
-│   ├── ast_sequence.py         # ASTSequenceProcessor (AST-based последовательности)
-│   ├── block_init.py           # BlockInitProcessorBase (базовый класс для imperative initialization)
-│   ├── java_double_brace.py    # JavaDoubleBraceProcessor (Java double-brace initialization)
-│   └── rust_let_group.py       # RustLetGroupProcessor (Rust HashMap let-group initialization)
+├── components/                 # Автономные процессоры
+│   ├── base.py                 # LiteralProcessor (интерфейс)
+│   ├── string_literal.py       # StringLiteralProcessor
+│   ├── standard_collections.py # StandardCollectionsProcessor
+│   ├── ast_sequence.py         # ASTSequenceProcessor
+│   ├── block_init.py           # BlockInitProcessorBase
+│   ├── java_double_brace.py    # JavaDoubleBraceProcessor
+│   └── rust_let_group.py       # RustLetGroupProcessor
 │
-├── utils/                      # Утилитарные модули
-│   ├── __init__.py
-│   ├── element_parser.py       # Парсинг содержимого элементов
-│   ├── interpolation.py        # Обработка интерполяции в строках
-│   ├── indentation.py          # Определение отступов
-│   └── comment_formatter.py    # CommentFormatter (утилиты комментирования)
+├── utils/                      # Утилиты
+│   ├── element_parser.py
+│   ├── interpolation.py
+│   ├── indentation.py
+│   └── comment_formatter.py
 │
-├── __init__.py                 # Публичный API
-├── descriptor.py               # Декларативная модель языковых паттернов
-└── patterns.py                 # Иерархия профилей литералов
+├── descriptor.py               # LanguageLiteralDescriptor
+└── patterns.py                 # Иерархия профилей
 ```
 
 ---
 
-## Принципы архитектуры
+## Архитектурные принципы
 
-### 1. Четкое разделение на три типа модулей
+### 1. Трехуровневая структура
 
-#### Универсальные стадии и сервисы (`processing/`)
+**Processing (shared сервисы)**:
+- Создаются 1 раз в pipeline
+- Используются всеми компонентами
+- Языконезависимые
+- Обмен через типизированную ER-модель
 
-**Характеристики**:
-- Предоставляют shared сервисы для всех компонентов
-- Создаются один раз в pipeline
-- Работают с любыми языками и любыми видами литералов
-- Обмениваются данными через явную ER-модель
+**Components (автономные процессоры)**:
+- Полная инкапсуляция логики для типа литерала
+- Решение применимости через `can_handle()`
+- Priority order регистрация
+- Иерархия наследования от `LiteralProcessor`
 
-**Стадии и сервисы**:
-- `pipeline.py` — оркестрация всего процесса (~276 строк)
-- `parser.py` — shared LiteralParser для всех компонентов
-- `selector.py` — shared BudgetSelector для выбора элементов
-- `string_formatter.py` — специализированное форматирование строк
-- `collection_formatter.py` — специализированное форматирование коллекций с DFS
+**Utils (вспомогательные модули)**:
+- Без бизнес-логики оптимизации
+- Используются повсеместно
 
-#### Автономные компоненты обработки (`components/`)
+### 2. Компонентная архитектура
 
-**Характеристики**:
-- Полностью автономные процессоры для конкретных типов литералов
-- Инкапсулируют всю логику от парсинга до форматирования
-- Используют shared сервисы из pipeline
-- Сами решают применимость через `can_handle()`
-- Регистрируются в pipeline в priority order
+Все компоненты наследуют единый интерфейс `LiteralProcessor`:
+- `can_handle(profile, node, doc) -> bool` — проверка применимости
+- `process(...) -> Optional[TrimResult]` — полная обработка
 
-**Компоненты**:
-- `base.py` — **LiteralProcessor** (общий интерфейс)
-  - Абстрактный базовый класс для всех компонентов обработки литералов
-  - Определяет контракт: `can_handle()` и `process()`
-  - Обеспечивает типизацию в pipeline
-  - Позволяет статическим анализаторам проверять соответствие компонентов
+**6 процессоров**:
+- **StringLiteralProcessor** — строки с интерполяцией
+- **StandardCollectionsProcessor** — коллекции с DFS (инкапсулирует кэш ElementParser)
+- **ASTSequenceProcessor** — C/C++ concatenated strings
+- **BlockInitProcessorBase** — базовый для императивной инициализации
+  - **JavaDoubleBraceProcessor** — `new HashMap() {{ put(...); }}`
+  - **RustLetGroupProcessor** — `let mut m = HashMap::new(); m.insert(...);`
 
-- `string_literal.py` — **StringLiteralProcessor** (строковые литералы)
-  - Наследует LiteralProcessor
-  - Обрабатывает все StringProfile
-  - Использует LiteralParser, StringFormatter
-  - Поддерживает интерполяцию
+### 3. Pipeline как минималистичный координатор
 
-- `standard_collections.py` — **StandardCollectionsProcessor** (стандартные коллекции)
-  - Наследует LiteralProcessor
-  - Обрабатывает SequenceProfile, MappingProfile, FactoryProfile
-  - Использует LiteralParser, CollectionFormatter, BudgetSelector
-  - Инкапсулирует кэш ElementParser'ов
-  - Поддерживает DFS для вложенных структур
+**Делает**:
+- Создает shared сервисы (1 раз)
+- Фильтрует top-level vs nested узлы
+- Вызывает компоненты через `can_handle()` + `process()`
+- Применяет результаты к context
 
-- `ast_sequence.py` — **ASTSequenceProcessor** (AST-based последовательности)
-  - Наследует LiteralProcessor
-  - Обрабатывает SequenceProfile с requires_ast_extraction=True
-  - Специальный случай для C/C++ concatenated strings
+**НЕ делает**:
+- Парсинг/форматирование (делегирует компонентам)
+- Проверку условий применимости (делегирует `can_handle`)
+- Кэширование ElementParser (инкапсулировано в компоненте)
 
-- `block_init.py` — **BlockInitProcessorBase** (базовый класс для imperative initialization)
-  - Наследует LiteralProcessor
-  - Абстрактный базовый класс для обработки императивных блоков инициализации
-  - Общая логика: DFS оптимизация вложенных литералов, pattern matching
-  - Специализируется на два паттерна через подклассы
+### 4. Специализация форматтеров
 
-- `java_double_brace.py` — **JavaDoubleBraceProcessor** (Java double-brace initialization)
-  - Наследует BlockInitProcessorBase
-  - Обрабатывает Java double-brace паттерн: `new HashMap() {{ put(...); }}`
-  - Специализированные методы для работы с блоками statements
+**StringFormatter** — только строки, simple truncation, без DFS
 
-- `rust_let_group.py` — **RustLetGroupProcessor** (Rust HashMap let-group initialization)
-  - Наследует BlockInitProcessorBase
-  - Обрабатывает Rust let-group паттерн: `let mut m = HashMap::new(); m.insert(...);`
-  - Специализированные методы для работы с группами let-declaration
+**CollectionFormatter** — только коллекции, полная DFS рекурсия, multiline/single-line
 
-#### Утилитарные модули (`utils/`)
-
-**Характеристики**:
-- Используются повсеместно разными стадиями и компонентами
-- Не содержат бизнес-логики оптимизации
-- Предоставляют вспомогательные функции
-
-**Утилиты**:
-- `element_parser.py` — парсинг элементов внутри литералов
-- `interpolation.py` — работа с интерполяцией в строках
-- `indentation.py` — определение отступов в исходном коде
-- `comment_formatter.py` — генерация и форматирование комментариев (shared для обоих форматтеров)
-
-### 2. Pipeline как чистый координатор
-
-`processing/pipeline.py` — **минималистичный оркестратор** (~276 строк):
-
-**Что делает pipeline**:
-- ✅ Создает shared сервисы (LiteralParser, BudgetSelector, CommentFormatter) — 1 раз
-- ✅ Регистрирует компоненты в priority order
-- ✅ Фильтрует top-level vs nested узлы
-- ✅ Вызывает компоненты через `can_handle()` + `process()`
-- ✅ Применяет результаты к context
-
-**Чего НЕ делает pipeline**:
-- ❌ Не содержит детальной логики парсинга/форматирования
-- ❌ Не проверяет условия применимости компонентов (делегирует `can_handle`)
-- ❌ Не подготавливает параметры для компонентов (использует shared сервисы)
-- ❌ Не маршрутизирует на разные пути обработки (компоненты автономны)
-- ❌ Не кэширует ElementParser'ы (инкапсулировано в StandardCollectionsProcessor)
-
-**Shared сервисы** (создаются 1 раз, передаются в компоненты):
-```python
-self.selector = BudgetSelector(self.adapter.tokenizer)
-self.comment_formatter = CommentFormatter(comment_style)
-self.literal_parser = LiteralParser(self.adapter.tokenizer)
-```
-
-**Архитектура компонентов**:
-```python
-self.special_components: List[LiteralProcessor] = [
-    # Специальные случаи (priority first)
-    ASTSequenceProcessor(tokenizer, string_profiles),
-    JavaDoubleBraceProcessor(tokenizer, all_profiles, callback, comment_style),
-    RustLetGroupProcessor(tokenizer, all_profiles, callback, comment_style),
-
-    # Стандартные случаи
-    StringLiteralProcessor(tokenizer, literal_parser, comment_formatter),
-    StandardCollectionsProcessor(tokenizer, literal_parser, selector, comment_formatter, descriptor),
-]
-```
-
-### 3. Автономность компонентов
-
-Каждый специализированный компонент полностью автономен:
-
-```python
-class SpecializedComponent:
-    def can_handle(self, profile, node, doc) -> bool:
-        """Компонент сам решает, применим ли он."""
-        ...
-
-    def process(self, node, doc, source_text, profile, budget) -> Optional[TrimResult]:
-        """
-        Полная автономная обработка.
-
-        Компонент сам:
-        - Извлекает нужные данные
-        - Определяет параметры
-        - Парсит структуру
-        - Форматирует результат
-        """
-        ...
-```
-
-**Преимущества**:
-- Pipeline не знает о внутренностях компонента
-- Легко добавлять новые компоненты
-- Тестирование компонентов изолированно
-
-### 4. Общий интерфейс LiteralProcessor
-
-Все компоненты обработки литералов наследуют абстрактный базовый класс `LiteralProcessor`:
-
-```python
-class LiteralProcessor(ABC):
-    """
-    Abstract base class for all literal processing components.
-
-    All literal processors must implement:
-    - can_handle(): Check if component is applicable to a pattern
-    - process(): Process the literal and return optimization result
-    """
-
-    @abstractmethod
-    def can_handle(self, profile: LiteralProfile, node, doc) -> bool:
-        """Check if this component can handle the given literal pattern."""
-        pass
-
-    @abstractmethod
-    def process(
-        self,
-        node,
-        doc,
-        source_text: str,
-        profile: LiteralProfile,
-        token_budget: int,
-    ) -> Optional[TrimResult]:
-        """Process the literal and return optimization result."""
-        pass
-```
-
-**Преимущества единого интерфейса**:
-- Явный контракт для всех компонентов
-- Типизация в pipeline: `List[LiteralProcessor]`
-- Статические анализаторы (mypy, IDE) проверяют соответствие
-- Упрощение добавления новых компонентов
-- Документированный API для разработчиков
-
-### 5. Расширенные стадии
-
-Стадии предоставляют богатый API для работы на разных уровнях:
-
-```python
-# LiteralParser - низкий и высокий уровень
-class LiteralParser:
-    def parse_from_node(self, node, doc, source_text, profile):
-        """Высокоуровневый API: автоматически всё определяет."""
-        ...
-
-    def parse_literal_with_profile(self, text, profile, ...):
-        """Низкоуровневый API: требует готовых параметров."""
-        ...
-
-    @staticmethod
-    def detect_base_indent(text, byte_pos):
-        """Утилита: определение отступов."""
-        ...
-```
-
-**Pipeline использует высокоуровневый API**, компоненты могут использовать любой уровень.
-
-### 6. Специализация форматтеров
-
-Форматирование разделено на два специализированных модуля вместо одного монолитного:
-
-**StringFormatter** (`string_formatter.py`, ~89 строк):
-- Обрабатывает **только** строковые литералы
-- Простое усечение с добавлением многоточия `…`
-- Явная типизация: `ParsedLiteral[StringProfile]` + `Selection`
-- Никакой DFS, рекурсии, вложенных структур
-- Никаких проверок `isinstance()`
-
-**CollectionFormatter** (`collection_formatter.py`, ~342 строки):
-- Обрабатывает **только** коллекции
-- Полная поддержка DFS с рекурсивной обработкой вложенности
-- Явная типизация: `ParsedLiteral[CollectionProfile]` + `DFSSelection`
-- Multiline/single-line форматирование
-- Группировка tuple для Map.of паттернов
-- Inline threshold для вложенных структур
-
-**CommentFormatter** (`utils/comment_formatter.py`, ~140 строк):
-- Универсальные утилиты комментирования
-- Shared компонент для обоих форматтеров
-- Генерация текста с информацией об экономии токенов
-- Контекстное форматирование (single-line vs block)
-- Определение точек вставки
-
-**Преимущества специализации**:
-- ✅ Явная типизация без проверок типов
-- ✅ Упрощение логики каждого форматтера
-- ✅ Изолированное тестирование
-- ✅ Независимое развитие функциональности
+**CommentFormatter** — shared утилита для обоих форматтеров
 
 ---
 
 ## Поток данных
 
-### Компонентная архитектура обработки
-
-**Pipeline координирует компоненты**:
+**Общий**:
 ```
-Node (Tree-sitter)
-    ↓
-Pipeline: цикл по компонентам
-    ↓
-Component.can_handle(profile, node, doc) → true/false
-    ↓
-Component.process(node, doc, source_text, profile, budget) → TrimResult
-    ↓
-Context (применение результата)
+Node → Pipeline цикл → Component.can_handle() → Component.process() → TrimResult → Context
 ```
 
-### StringLiteralProcessor (строки)
-
+**StringLiteralProcessor**:
 ```
-Node (Tree-sitter) + StringProfile
-    ↓
-[LiteralParser.parse_from_node()] → ParsedLiteral[StringProfile]
-    ↓
-[Tokenizer.truncate_to_tokens()] → truncated content
-    ↓
-[InterpolationHandler.adjust_truncation()] → adjusted content
-    ↓
-[StringFormatter.format()] → FormattedResult
-    ↓
-Return TrimResult
+Node + StringProfile
+  → LiteralParser.parse_from_node() → ParsedLiteral
+  → Tokenizer.truncate_to_tokens() → truncated
+  → InterpolationHandler.adjust_truncation() → adjusted
+  → StringFormatter.format() → FormattedResult
+  → TrimResult
 ```
 
-### StandardCollectionsProcessor (коллекции)
-
+**StandardCollectionsProcessor**:
 ```
-Node (Tree-sitter) + CollectionProfile
-    ↓
-[LiteralParser.parse_from_node()] → ParsedLiteral[CollectionProfile]
-    ↓
-[ElementParser.parse()] → List[Element]
-    ↓
-[BudgetSelector.select_dfs()] → DFSSelection (with nested)
-    ↓
-[CollectionFormatter.format_dfs()] → FormattedResult
-    ↓
-Return TrimResult
+Node + CollectionProfile
+  → LiteralParser.parse_from_node() → ParsedLiteral
+  → ElementParser.parse() → List[Element]
+  → BudgetSelector.select_dfs() → DFSSelection (nested)
+  → CollectionFormatter.format_dfs() → FormattedResult
+  → TrimResult
 ```
 
-**Инкапсуляция**: StandardCollectionsProcessor внутренне управляет кэшем ElementParser'ов.
-
-### Специальные компоненты
-
-**ASTSequenceProcessor** (C/C++ concatenated strings):
-```
-Node + SequenceProfile[requires_ast_extraction=True]
-    ↓
-Извлечь child string nodes через Tree-sitter queries
-    ↓
-Выбрать строки по бюджету
-    ↓
-Вставить placeholder в последнюю строку
-    ↓
-Return TrimResult
-```
-
-**BlockInitProcessor** (Java double-brace, Rust HashMap):
-```
-Node + BlockInitProfile
-    ↓
-Извлечь initialization statements
-    ↓
-Выбрать statements по бюджету (с DFS для вложенных литералов)
-    ↓
-Форматировать с placeholder
-    ↓
-Return TrimResult (nodes_to_replace для групповой замены)
-```
-
-### Единопроходная архитектура
-
-**Единый проход** обрабатывает все типы литералов:
-- Строки (StringProfile) — inline truncation с интерполяцией
-- Коллекции (SequenceProfile, MappingProfile) — DFS с рекурсией
-- Фабрики (FactoryProfile) — DFS с поддержкой tuple_size
-- Блоки инициализации (BlockInitProfile) — специализированная обработка
-
-**Преимущества единого прохода**:
-- Упрощение логики оркестратора
-- Единообразная обработка всех типов профилей
-- Меньше дублирования кода
-- Более гибкое добавление новых типов литералов
+**Единопроходная архитектура**: все типы литералов (строки, коллекции, фабрики, блоки) в одном проходе.
 
 ---
 
-## ER-модель между стадиями
+## ER-модель
 
-### ParsedLiteral
-```python
-@dataclass
-class ParsedLiteral(Generic[P]):
-    """Результат парсинга."""
-    original_text: str
-    start_byte: int
-    end_byte: int
-    profile: P                    # StringProfile | CollectionProfile
-    opening: str
-    closing: str
-    content: str
-    is_multiline: bool
-    base_indent: str
-    element_indent: str
-    wrapper: Optional[str]
-    original_tokens: int
-```
+**ParsedLiteral** — результат парсинга (original_text, opening, closing, content, is_multiline, base_indent, wrapper, profile)
 
-### Selection / DFSSelection
-```python
-@dataclass
-class Selection:
-    """Результат выбора элементов (flat)."""
-    kept_elements: List[Element]
-    removed_elements: List[Element]
-    total_count: int
-    tokens_kept: int
-    tokens_removed: int
+**Selection** — выбор элементов (kept_elements, removed_elements, tokens_kept/removed)
 
-@dataclass
-class DFSSelection(Selection):
-    """Результат выбора с рекурсией."""
-    nested_selections: Dict[int, DFSSelection]
-    remaining_budget: int
-    budget_exhausted: bool
-```
+**DFSSelection** — с рекурсией (nested_selections, remaining_budget, budget_exhausted)
 
-### FormattedResult
-```python
-@dataclass
-class FormattedResult:
-    """Результат форматирования (из StringFormatter / CollectionFormatter)."""
-    text: str                      # Отформатированный текст
-    start_byte: int               # Диапазон замены
-    end_byte: int
-    comment: Optional[str]        # Внешний комментарий (если нужен)
-    comment_byte: Optional[int]   # Позиция вставки комментария
-```
+**FormattedResult** — отформатированный текст (text, start/end_byte, comment, comment_byte)
 
-### TrimResult
-```python
-@dataclass
-class TrimResult:
-    """Результат компонента (ASTSequenceProcessor, BlockInitProcessor)."""
-    trimmed_text: str
-    original_tokens: int
-    trimmed_tokens: int
-    saved_tokens: int
-    elements_kept: int
-    elements_removed: int
-    comment_text: Optional[str]
-    comment_position: Optional[int]
-    nodes_to_replace: Optional[list]  # Для групповой замены (BLOCK_INIT)
-```
+**TrimResult** — финальный результат компонента (trimmed_text, tokens, elements, nodes_to_replace)
+
+---
+
+## Граница ответственности
+
+**Pipeline**:
+- Создание shared сервисов (1 раз)
+- Координация единого прохода
+- Фильтрация top-level/nested
+- Цикл по компонентам
+- Применение результатов
+
+**Компоненты**:
+- Проверка применимости
+- Извлечение данных (через shared LiteralParser)
+- Парсинг элементов
+- Выбор по бюджету (через shared BudgetSelector)
+- Форматирование (через shared форматтеры)
+- Возврат TrimResult
+
+**Shared сервисы**:
+- **LiteralParser** — парсинг структуры
+- **BudgetSelector** — выбор элементов
+- **CommentFormatter** — комментирование
+- **StringFormatter/CollectionFormatter** — специализированное форматирование
 
 ---
 
 ## Расширяемость
 
-### Добавление нового языка
+**Новый язык**:
+1. Создать дескриптор `lg/adapters/<язык>/literals.py`
+2. Определить профили (StringProfile, SequenceProfile, MappingProfile, FactoryProfile)
+3. При необходимости создать специальный компонент в `components/`
 
-1. Создать дескриптор в `lg/adapters/<язык>/literals.py`
-2. Определить профили (StringProfile, SequenceProfile, ...)
-3. Если нужен специальный компонент — создать в `components/`
+**Новый компонент**:
+- Наследовать `LiteralProcessor`
+- Реализовать `can_handle()` и `process()`
+- Зарегистрировать в pipeline в priority order
 
-**Пример нового компонента**:
-```python
-# components/my_special.py
-from components.base import LiteralProcessor
-
-class MySpecialProcessor(LiteralProcessor):
-    def can_handle(self, profile, node, doc) -> bool:
-        return profile.some_flag  # Проверка применимости
-
-    def process(self, node, doc, source_text, profile, budget):
-        # Полная автономная обработка
-        ...
-        return TrimResult(...)
-```
-
-**Регистрация**:
-```python
-# processing/pipeline.py
-def __init__(self, cfg, adapter):
-    self.special_components: List[LiteralProcessor] = [
-        ASTSequenceProcessor(...),
-        JavaDoubleBraceProcessor(...),
-        RustLetGroupProcessor(...),
-        MySpecialProcessor(...),  # Добавить сюда
-    ]
-```
-
-### Добавление нового типа профиля
-
+**Новый тип профиля**:
 1. Создать класс в `patterns.py` (наследник `LiteralProfile`)
-2. Реализовать обработку в стадиях или компоненте
+2. Реализовать обработку в компоненте
 3. Добавить в дескриптор языка
 
 ---
 
-## Граница ответственности Pipeline vs Компоненты
+## Ключевые принципы
 
-### Pipeline отвечает за:
-- ✅ Создание shared сервисов (1 раз при инициализации)
-- ✅ Координацию единого прохода со всеми типами профилей
-- ✅ Фильтрацию top-level vs nested узлов
-- ✅ Цикл по компонентам с проверкой `can_handle()`
-- ✅ Применение результатов к context (editor, metrics)
-
-### Компоненты отвечают за:
-- ✅ Проверку применимости через `can_handle(profile, node, doc)`
-- ✅ Извлечение данных из Tree-sitter (через shared LiteralParser)
-- ✅ Определение параметров (отступы, структура)
-- ✅ Парсинг элементов (StandardCollectionsProcessor инкапсулирует ElementParser)
-- ✅ Выбор элементов по бюджету (через shared BudgetSelector)
-- ✅ Форматирование результата (через shared форматтеры)
-- ✅ Возврат готового `TrimResult`
-
-### Shared сервисы отвечают за:
-- ✅ **LiteralParser**: парсинг структуры литералов (используется всеми компонентами)
-- ✅ **BudgetSelector**: выбор элементов по бюджету (используется StandardCollectionsProcessor)
-- ✅ **CommentFormatter**: форматирование комментариев (используется форматтерами)
-- ✅ **StringFormatter**: форматирование строк (используется StringLiteralProcessor)
-- ✅ **CollectionFormatter**: форматирование коллекций (используется StandardCollectionsProcessor)
-
-**Инкапсуляция**: StandardCollectionsProcessor владеет кэшем ElementParser'ов — это его внутренняя деталь реализации.
-
-**Правило**: Если логика протекла из компонента в pipeline — граница выбрана неверно, нужно больше переносить в компонент.
-
----
-
-## Корневой пакет
-
-Корневой пакет `literals/` содержит:
-
-- **Публичный API** (`__init__.py`) — экспорт основных классов
-- **Декларативная модель** (`descriptor.py`) — `LanguageLiteralDescriptor`
-- **Профили паттернов** (`patterns.py`) — иерархия `LiteralProfile`
-
----
-
-## Итоги
-
-**Ключевые принципы**:
-
-1. **Общий интерфейс** — все компоненты наследуют абстрактный `LiteralProcessor`
-2. **Минималистичный оркестратор** — `pipeline.py` (~276 строк) только координирует
-3. **Shared сервисы** — создаются 1 раз, передаются в компоненты
-4. **Полностью автономные компоненты** — от `can_handle()` до `TrimResult`
-5. **Компонентная архитектура** — 6 автономных процессоров наследуют `LiteralProcessor`:
-   - StringLiteralProcessor (строковые литералы)
-   - StandardCollectionsProcessor (коллекции с инкапсулированным кэшем)
-   - ASTSequenceProcessor (специальные последовательности C/C++)
-   - BlockInitProcessorBase (абстрактный базовый класс для imperative initialization)
-     - JavaDoubleBraceProcessor (Java double-brace инициализация)
-     - RustLetGroupProcessor (Rust let-group инициализация)
-6. **Инкапсуляция** — каждый компонент владеет своими данными
-7. **Единопроходная обработка** — все типы литералов в одном проходе
-8. **Явная ER-модель** — типизированные структуры данных
-9. **Четкая классификация** — processing (сервисы) / components (процессоры) / utils (утилиты)
-10. **Унифицированный дескриптор** — все профили в одном списке
-11. **Специализация форматтеров** — отдельные модули для строк и коллекций
-12. **Типизированный pipeline** — `List[LiteralProcessor]` для static анализа
-
+1. **Единый интерфейс** — все компоненты наследуют `LiteralProcessor`
+2. **Shared сервисы** — создаются 1 раз, передаются компонентам
+3. **Автономность** — компоненты полностью самодостаточны
+4. **Инкапсуляция** — каждый компонент владеет своими данными (кэш ElementParser в StandardCollectionsProcessor)
+5. **Единопроходность** — все типы литералов в одном проходе
+6. **Типизация** — явная ER-модель, `List[LiteralProcessor]` для static анализа
+7. **Специализация** — отдельные форматтеры для строк и коллекций
+8. **DFS оптимизация** — рекурсивная обработка вложенных структур
