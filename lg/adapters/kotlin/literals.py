@@ -119,13 +119,14 @@ KOTLIN_SET_OF_PROFILE = FactoryProfile(
 def create_kotlin_descriptor() -> LanguageLiteralDescriptor:
     """Create Kotlin language descriptor for literal optimization."""
     return LanguageLiteralDescriptor(
-        string_profiles=[KOTLIN_STRING_PROFILE],
+        profiles=[
+            # String profiles
+            KOTLIN_STRING_PROFILE,
 
-        # Mapping profiles
-        mapping_profiles=[KOTLIN_MAP_PROFILE],  # mapOf with 'to' operator
+            # Mapping profiles
+            KOTLIN_MAP_PROFILE,  # mapOf with 'to' operator
 
-        # Factory profiles
-        factory_profiles=[
+            # Factory profiles
             KOTLIN_LIST_OF_PROFILE,  # listOf variants
             KOTLIN_SET_OF_PROFILE,   # setOf variants
         ],

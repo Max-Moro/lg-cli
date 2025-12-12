@@ -184,22 +184,23 @@ JAVA_DOUBLE_BRACE_PROFILE = BlockInitProfile(
 def create_java_descriptor() -> LanguageLiteralDescriptor:
     """Create Java language descriptor for literal optimization."""
     return LanguageLiteralDescriptor(
-        string_profiles=[JAVA_STRING_PROFILE],
+        profiles=[
+            # String profiles
+            JAVA_STRING_PROFILE,
 
-        # Sequence profiles
-        sequence_profiles=[JAVA_ARRAY_PROFILE],
+            # Sequence profiles
+            JAVA_ARRAY_PROFILE,
 
-        # Factory profiles
-        factory_profiles=[
+            # Factory profiles
             JAVA_MAP_OF_PROFILE,           # Pair-based Map.of
             JAVA_MAP_OF_ENTRIES_PROFILE,   # Entry-based Map.ofEntries
             JAVA_LIST_SET_OF_PROFILE,      # List/Set.of()
             JAVA_ARRAYS_ASLIST_PROFILE,    # Arrays.asList()
             JAVA_STREAM_OF_PROFILE,        # Stream.of()
-        ],
 
-        # Block init profiles
-        block_init_profiles=[JAVA_DOUBLE_BRACE_PROFILE],
+            # Block init profiles
+            JAVA_DOUBLE_BRACE_PROFILE,
+        ],
 
         nested_factory_wrappers=["Map.entry"],  # Nested wrappers for DFS detection
     )

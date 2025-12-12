@@ -117,16 +117,16 @@ def create_javascript_descriptor() -> LanguageLiteralDescriptor:
         Configured LanguageLiteralDescriptor for JavaScript
     """
     return LanguageLiteralDescriptor(
-        # String profiles
-        string_profiles=[
+        profiles=[
+            # String profiles
             JS_TEMPLATE_STRING_PROFILE,  # Template strings (backticks with interpolation)
             JS_STRING_PROFILE,            # Regular strings (single and double quotes)
             JS_REGEX_PROFILE,             # Regex literals
+
+            # Sequence profiles
+            JS_ARRAY_PROFILE,
+
+            # Mapping profiles
+            JS_OBJECT_PROFILE,
         ],
-
-        # Sequence profiles
-        sequence_profiles=[JS_ARRAY_PROFILE],
-
-        # Mapping profiles
-        mapping_profiles=[JS_OBJECT_PROFILE],
     )

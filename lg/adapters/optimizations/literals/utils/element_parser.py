@@ -147,29 +147,28 @@ class ElementParser:
         """
         wrappers = []
 
-        # Collect from factory profiles
-        for profile in descriptor.factory_profiles:
-            if profile.wrapper_match:
-                regex = profile.wrapper_match.rstrip("$")
-                if regex.startswith("(") and regex.endswith(")"):
-                    regex = regex[1:-1]
-                alternatives = regex.split("|")
-                for alt in alternatives:
-                    wrapper = alt.replace("\\.", ".")
-                    if wrapper and wrapper not in wrappers:
-                        wrappers.append(wrapper)
-
-        # Collect from mapping profiles (some have wrappers like Kotlin mapOf)
-        for profile in descriptor.mapping_profiles:
-            if profile.wrapper_match:
-                regex = profile.wrapper_match.rstrip("$")
-                if regex.startswith("(") and regex.endswith(")"):
-                    regex = regex[1:-1]
-                alternatives = regex.split("|")
-                for alt in alternatives:
-                    wrapper = alt.replace("\\.", ".")
-                    if wrapper and wrapper not in wrappers:
-                        wrappers.append(wrapper)
+        # Collect from all profiles (filter by type)
+        for profile in descriptor.profiles:
+            if isinstance(profile, FactoryProfile):
+                if profile.wrapper_match:
+                    regex = profile.wrapper_match.rstrip("$")
+                    if regex.startswith("(") and regex.endswith(")"):
+                        regex = regex[1:-1]
+                    alternatives = regex.split("|")
+                    for alt in alternatives:
+                        wrapper = alt.replace("\\.", ".")
+                        if wrapper and wrapper not in wrappers:
+                            wrappers.append(wrapper)
+            elif isinstance(profile, MappingProfile):
+                if profile.wrapper_match:
+                    regex = profile.wrapper_match.rstrip("$")
+                    if regex.startswith("(") and regex.endswith(")"):
+                        regex = regex[1:-1]
+                    alternatives = regex.split("|")
+                    for alt in alternatives:
+                        wrapper = alt.replace("\\.", ".")
+                        if wrapper and wrapper not in wrappers:
+                            wrappers.append(wrapper)
 
         # Add additional wrappers from descriptor
         for wrapper in descriptor.nested_factory_wrappers:

@@ -27,6 +27,7 @@ from ..patterns import (
     TrimResult,
     MappingProfile,
     FactoryProfile,
+    SequenceProfile,
 )
 from ..utils.element_parser import ElementParser, Element, ParseConfig
 from ..utils.interpolation import InterpolationHandler
@@ -36,9 +37,8 @@ class LiteralPipeline:
     """
     Main pipeline for literal optimization.
 
-    Orchestrates two-pass literal processing:
-    - Pass 1: String literals (inline truncation)
-    - Pass 2: Collections (DFS with nested optimization)
+    Orchestrates single-pass unified processing for all literal types
+    (strings, sequences, mappings, factories, and block initializations).
     """
 
     def __init__(self, cfg: LiteralConfig, adapter):
@@ -77,24 +77,15 @@ class LiteralPipeline:
         # Special components (ordered by priority)
         # =================================
 
-        # Collect all profiles for nested literal detection
-        all_profiles = (
-            self.descriptor.string_profiles +
-            self.descriptor.sequence_profiles +
-            self.descriptor.mapping_profiles +
-            self.descriptor.factory_profiles +
-            self.descriptor.block_init_profiles
-        )
-
         # Create component instances
         self.special_components = [
             ASTSequenceProcessor(
                 self.adapter.tokenizer,
-                self.descriptor.string_profiles
+                [p for p in self.descriptor.profiles if isinstance(p, StringProfile)]
             ),
             BlockInitProcessor(
                 self.adapter.tokenizer,
-                all_profiles,
+                self.descriptor.profiles,
                 self._process_literal_impl,
                 comment_style
             ),
@@ -102,10 +93,7 @@ class LiteralPipeline:
 
     def apply(self, context: ProcessingContext) -> None:
         """
-        Apply literal optimization using two-pass approach.
-
-        Pass 1: Process strings (top-level only)
-        Pass 2: Process collections with DFS (nested structures)
+        Apply literal optimization using unified single-pass approach.
 
         Args:
             context: Processing context with document
@@ -115,108 +103,10 @@ class LiteralPipeline:
         if max_tokens is None:
             return  # Optimization disabled
 
-        # Two-pass approach for orthogonal string/collection processing
-
-        # Pass 1: Process all string profiles
-        self._process_strings(context, max_tokens)
-
-        # Pass 2: Process all collection profiles
-        self._process_collections(context, max_tokens)
-
-    def _process_strings(
-        self,
-        context: ProcessingContext,
-        max_tokens: int,
-    ) -> None:
-        """
-        Pass 1: Process string literals.
-
-        Args:
-            context: Processing context
-            max_tokens: Token budget
-        """
-        # Collect AST-extraction collection nodes to skip their children
-        # Only SequenceProfile can have requires_ast_extraction=True
-        ast_extraction_nodes_set = set()
-
-        for seq_profile in self.descriptor.sequence_profiles:
-            if seq_profile.requires_ast_extraction:
-                seq_nodes = context.doc.query_nodes(seq_profile.query, "lit")
-                for seq_node in seq_nodes:
-                    ast_extraction_nodes_set.add((seq_node.start_byte, seq_node.end_byte))
-
-        # Process each string profile
-        for profile in self.descriptor.string_profiles:
-            nodes = context.doc.query_nodes(profile.query, "lit")
-
-            # Find top-level strings (not nested, not in AST-extraction collections)
-            top_level_strings = []
-            for i, node in enumerate(nodes):
-                start_byte, end_byte = context.doc.get_node_range(node)
-
-                # Check if nested in another string
-                is_nested = any(
-                    j != i and
-                    nodes[j].start_byte <= start_byte and
-                    nodes[j].end_byte >= end_byte
-                    for j in range(len(nodes))
-                )
-                if is_nested:
-                    continue
-
-                # Check if parent is AST-extraction collection
-                if node.parent:
-                    parent_range = (node.parent.start_byte, node.parent.end_byte)
-                    if parent_range in ast_extraction_nodes_set:
-                        continue
-
-                top_level_strings.append(node)
-
-            # Process each top-level string
-            for node in top_level_strings:
-                # Skip docstrings
-                if self.adapter.is_docstring_node(node, context.doc):
-                    continue
-
-                # Get node info
-                literal_text = context.doc.get_node_text(node)
-                token_count = self.adapter.tokenizer.count_text_cached(literal_text)
-
-                # Skip if within budget
-                if token_count <= max_tokens:
-                    continue
-
-                # Process node with unified entry point
-                result = self._process_literal(context, node, profile, max_tokens)
-
-                if result and result.saved_tokens > 0:
-                    self._apply_result(context, node, result, literal_text)
-
-    def _process_collections(
-        self,
-        context: ProcessingContext,
-        max_tokens: int,
-    ) -> None:
-        """
-        Pass 2: Process collection literals with DFS.
-
-        Args:
-            context: Processing context
-            max_tokens: Token budget
-        """
-        # Process each profile type through unified entry point
-
-        for profile in self.descriptor.sequence_profiles:
+        # Process all profiles in single pass
+        for profile in self.descriptor.profiles:
             self._process_profile(context, profile, max_tokens)
 
-        for profile in self.descriptor.mapping_profiles:
-            self._process_profile(context, profile, max_tokens)
-
-        for profile in self.descriptor.factory_profiles:
-            self._process_profile(context, profile, max_tokens)
-
-        for profile in self.descriptor.block_init_profiles:
-            self._process_profile(context, profile, max_tokens)
 
     def _process_profile(
         self,
@@ -232,6 +122,16 @@ class LiteralPipeline:
             profile: Profile to process
             max_tokens: Token budget
         """
+        # Collect AST-extraction collection nodes to skip their children
+        ast_extraction_nodes_set = set()
+
+        # Only SequenceProfile can have requires_ast_extraction=True
+        for p in self.descriptor.profiles:
+            if isinstance(p, SequenceProfile) and p.requires_ast_extraction:
+                seq_nodes = context.doc.query_nodes(p.query, "lit")
+                for seq_node in seq_nodes:
+                    ast_extraction_nodes_set.add((seq_node.start_byte, seq_node.end_byte))
+
         nodes = context.doc.query_nodes(profile.query, "lit")
 
         # Deduplicate by coordinates
@@ -247,6 +147,12 @@ class LiteralPipeline:
         top_level = []
         for i, node in enumerate(unique_nodes):
             start_byte, end_byte = context.doc.get_node_range(node)
+
+            # For StringProfile: skip strings that are children of AST-extraction sequences
+            if isinstance(profile, StringProfile) and node.parent:
+                parent_range = (node.parent.start_byte, node.parent.end_byte)
+                if parent_range in ast_extraction_nodes_set:
+                    continue  # Skip - will be processed as whole sequence
 
             # Check if nested in another collection
             is_nested = any(

@@ -84,11 +84,11 @@ C_INITIALIZER_LIST_PROFILE = SequenceProfile(
 def create_c_descriptor() -> LanguageLiteralDescriptor:
     """Create C language descriptor for literal optimization."""
     return LanguageLiteralDescriptor(
-        # String profiles
-        string_profiles=[C_STRING_PROFILE],
+        profiles=[
+            # String profiles
+            C_STRING_PROFILE,
 
-        # Sequence profiles
-        sequence_profiles=[
+            # Sequence profiles
             C_CONCATENATED_STRING_PROFILE,
             C_INITIALIZER_LIST_PROFILE,
         ],

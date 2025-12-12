@@ -10,6 +10,7 @@ from dataclasses import dataclass, field
 from typing import List, Optional
 
 from .patterns import (
+    LiteralProfile,
     StringProfile,
     SequenceProfile,
     MappingProfile,
@@ -25,28 +26,16 @@ class LanguageLiteralDescriptor:
 
     Languages provide this descriptor to define how their literals
     should be recognized and processed.
+
+    All literal profiles (strings, sequences, mappings, factories, and block initializations)
+    are unified in a single profiles list for simplified single-pass processing.
     """
+
+    # All literal profiles (strings, sequences, mappings, factories, blocks)
+    # Unified collection of all profile types for flexible processing
+    profiles: List[LiteralProfile] = field(default_factory=list)
 
     # Additional factory wrappers for nested detection (not patterns themselves)
     # Example: ["Map.entry"] for Java - not optimized directly but needs DFS detection
     nested_factory_wrappers: List[str] = field(default_factory=list)
-
-    # ============= Profile-based configuration =============
-    # These fields define literals using typed profiles (StringProfile, SequenceProfile, etc.).
-    # All fields are optional and default to empty.
-
-    # String literal profiles (can have multiple: regular, template, raw, etc.)
-    string_profiles: List[StringProfile] = field(default_factory=list)
-
-    # Sequence literal profiles (lists, arrays, tuples, sets, etc.)
-    sequence_profiles: List[SequenceProfile] = field(default_factory=list)
-
-    # Mapping literal profiles (dicts, maps, objects, etc.)
-    mapping_profiles: List[MappingProfile] = field(default_factory=list)
-
-    # Factory method/macro profiles (List.of(), vec![], mapOf(), etc.)
-    factory_profiles: List[FactoryProfile] = field(default_factory=list)
-
-    # Block initialization profiles (Java double-brace, Rust HashMap chains, etc.)
-    block_init_profiles: List[BlockInitProfile] = field(default_factory=list)
 

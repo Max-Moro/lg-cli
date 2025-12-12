@@ -120,15 +120,15 @@ GO_SLICE_PROFILE = FactoryProfile(
 def create_go_descriptor() -> LanguageLiteralDescriptor:
     """Create Go language descriptor for literal optimization."""
     return LanguageLiteralDescriptor(
-        # String profiles
-        string_profiles=[GO_STRING_PROFILE],
+        profiles=[
+            # String profiles
+            GO_STRING_PROFILE,
 
-        # Mapping profiles
-        mapping_profiles=[
+            # Mapping profiles
             GO_STRUCT_PROFILE,  # Typed structs
             GO_MAP_PROFILE,     # Maps
-        ],
 
-        # Factory profiles
-        factory_profiles=[GO_SLICE_PROFILE],  # Slices
+            # Factory profiles
+            GO_SLICE_PROFILE,  # Slices
+        ],
     )

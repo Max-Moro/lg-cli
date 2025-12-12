@@ -81,11 +81,11 @@ CPP_STRING_PROFILE = StringProfile(
 def create_cpp_descriptor() -> LanguageLiteralDescriptor:
     """Create C++ language descriptor for literal optimization."""
     return LanguageLiteralDescriptor(
-        # String profiles
-        string_profiles=[CPP_STRING_PROFILE],
+        profiles=[
+            # String profiles
+            CPP_STRING_PROFILE,
 
-        # Sequence profiles
-        sequence_profiles=[
+            # Sequence profiles
             C_CONCATENATED_STRING_PROFILE,  # Reuse C concatenated strings
             C_INITIALIZER_LIST_PROFILE,      # Reuse C initializer lists
         ],

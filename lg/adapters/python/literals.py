@@ -159,16 +159,16 @@ def create_python_descriptor() -> LanguageLiteralDescriptor:
         Configured LanguageLiteralDescriptor for Python
     """
     return LanguageLiteralDescriptor(
-        # String profiles
-        string_profiles=[PYTHON_STRING_PROFILE],
+        profiles=[
+            # String profiles
+            PYTHON_STRING_PROFILE,
 
-        # Sequence profiles
-        sequence_profiles=[
+            # Sequence profiles
             PYTHON_LIST_PROFILE,
             PYTHON_TUPLE_PROFILE,
             PYTHON_SET_PROFILE,
-        ],
 
-        # Mapping profiles
-        mapping_profiles=[PYTHON_DICT_PROFILE],
+            # Mapping profiles
+            PYTHON_DICT_PROFILE,
+        ],
     )

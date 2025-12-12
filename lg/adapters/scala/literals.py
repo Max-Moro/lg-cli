@@ -135,13 +135,14 @@ SCALA_SET_PROFILE = FactoryProfile(
 def create_scala_descriptor() -> LanguageLiteralDescriptor:
     """Create Scala language descriptor for literal optimization."""
     return LanguageLiteralDescriptor(
-        string_profiles=[SCALA_STRING_PROFILE],
+        profiles=[
+            # String profiles
+            SCALA_STRING_PROFILE,
 
-        # Mapping profiles
-        mapping_profiles=[SCALA_MAP_PROFILE],  # Map with arrow operator
+            # Mapping profiles
+            SCALA_MAP_PROFILE,  # Map with arrow operator
 
-        # Factory profiles
-        factory_profiles=[
+            # Factory profiles
             SCALA_LIST_PROFILE,  # List variants
             SCALA_SET_PROFILE,   # Set variants
         ],

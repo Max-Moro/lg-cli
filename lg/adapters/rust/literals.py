@@ -116,15 +116,17 @@ RUST_HASHMAP_INIT_PROFILE = BlockInitProfile(
 def create_rust_descriptor() -> LanguageLiteralDescriptor:
     """Create Rust language descriptor for literal optimization."""
     return LanguageLiteralDescriptor(
-        # String profiles
-        string_profiles=[RUST_STRING_PROFILE],
+        profiles=[
+            # String profiles
+            RUST_STRING_PROFILE,
 
-        # Sequence profiles
-        sequence_profiles=[RUST_ARRAY_PROFILE],
+            # Sequence profiles
+            RUST_ARRAY_PROFILE,
 
-        # Factory profiles
-        factory_profiles=[RUST_VEC_PROFILE],
+            # Factory profiles
+            RUST_VEC_PROFILE,
 
-        # Block init profiles
-        block_init_profiles=[RUST_HASHMAP_INIT_PROFILE],
+            # Block init profiles
+            RUST_HASHMAP_INIT_PROFILE,
+        ],
     )

@@ -42,18 +42,16 @@ def create_typescript_descriptor() -> LanguageLiteralDescriptor:
         Configured LanguageLiteralDescriptor for TypeScript
     """
     return LanguageLiteralDescriptor(
-        # String profiles (inherited from JavaScript)
-        string_profiles=[
+        profiles=[
+            # String profiles (inherited from JavaScript)
             JS_TEMPLATE_STRING_PROFILE,  # Template strings (backticks with interpolation)
             JS_STRING_PROFILE,            # Regular strings (single and double quotes)
             JS_REGEX_PROFILE,             # Regex literals
-        ],
 
-        # Sequence profiles (inherited from JavaScript)
-        sequence_profiles=[JS_ARRAY_PROFILE],
+            # Sequence profiles (inherited from JavaScript)
+            JS_ARRAY_PROFILE,
 
-        # Mapping profiles (JavaScript + TypeScript-specific)
-        mapping_profiles=[
+            # Mapping profiles (JavaScript + TypeScript-specific)
             TS_OBJECT_TYPE_PROFILE,  # TypeScript-specific object types
             JS_OBJECT_PROFILE,       # JavaScript objects
         ],
