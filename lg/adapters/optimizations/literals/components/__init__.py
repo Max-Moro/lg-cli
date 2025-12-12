@@ -7,5 +7,12 @@ of literal string processing.
 
 from .ast_sequence import ASTSequenceProcessor
 from .block_init import BlockInitProcessor
+from .string_literal import StringLiteralProcessor
+from .standard_collections import StandardCollectionsProcessor
 
-__all__ = ['ASTSequenceProcessor', 'BlockInitProcessor']
+__all__ = [
+    'ASTSequenceProcessor',
+    'BlockInitProcessor',
+    'StringLiteralProcessor',
+    'StandardCollectionsProcessor',
+]

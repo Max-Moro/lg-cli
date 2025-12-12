@@ -15,7 +15,7 @@ const char* LONG_MESSAGE = "This is an extremely long message that contains…";
 
 // Multi-line string with formatting (C++11 raw string literal)
 const char* TEMPLATE_WITH_DATA = R"(
-User…)"; // literal string (−52 tokens)
+User Information…)"; // literal string (−51 tokens)
 
 struct DataContainer {
     // Small array (should be preserved)
@@ -92,7 +92,8 @@ public:
     std::string getLongQuery() {
         // Very long SQL-like query string (C++11 raw string)
         return R"(
-SELECT…)"; // literal string (−179 tokens)
+SELECT
+    users.id, users.u…)"; // literal string (−172 tokens)
     }
 
     const std::vector<std::string>& getSupportedLanguages() const {

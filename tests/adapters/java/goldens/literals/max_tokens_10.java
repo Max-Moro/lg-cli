@@ -16,7 +16,7 @@ class Constants {
 
     // Multi-line string with embedded expressions (Java 15+ text blocks)
     public static final String TEMPLATE_WITH_DATA = String.format("""
-        User…""", // literal string (−58 tokens)
+        User Information:…""", // literal string (−56 tokens)
         getUserName(),
         getUserEmail(),
         Instant.now().toString(),
@@ -120,7 +120,8 @@ public class LiteralDataManager {
     public String getLongQuery() {
         // Very long SQL-like query string
         return """
-            SELECT…"""; // literal string (−185 tokens)
+            SELECT
+                user…"""; // literal string (−182 tokens)
     }
 
     public List<String> getSupportedLanguages() { return supportedLanguages; }

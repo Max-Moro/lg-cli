@@ -12,7 +12,8 @@ const ShortMessage = "Hello, World!"
 const LongMessage = "This is an extremely long message that contains a…" // literal string (−63 tokens)
 
 // Multi-line string with formatting
-const TemplateWithData = `User Inform…` // literal string (−50 tokens)
+const TemplateWithData = `User Information:
+-…` // literal string (−48 tokens)
 
 // DataContainer holds various literal types
 type DataContainer struct {
@@ -103,7 +104,8 @@ func (m *LiteralDataManager) ProcessData() *DataContainer {
 // GetLongQuery returns a very long SQL-like query string
 func (m *LiteralDataManager) GetLongQuery() string {
 	return `
-		SELECT…` // literal string (−191 tokens)
+		SELECT
+			users.id, users.us…` // literal string (−184 tokens)
 }
 
 // Module-level constants with different sizes

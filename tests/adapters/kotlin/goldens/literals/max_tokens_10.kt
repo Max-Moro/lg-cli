@@ -12,7 +12,8 @@ const val LONG_MESSAGE = """This is an extremely long message that cont…""" //
 
 // Multi-line raw string with embedded expressions
 val TEMPLATE_WITH_DATA = """
-User Information…""" // literal string (−66 tokens)
+User Information:
+- Name: ${getUserName()}…""" // literal string (−58 tokens)
 
 data class DataContainer(
     // Small array (should be preserved)
@@ -94,7 +95,8 @@ class LiteralDataManager {
     fun getLongQuery(): String {
         // Very long SQL-like query string
         return """
-            SELECT…""" /* literal string (−186 tokens) */.trimIndent()
+            SELECT 
+                use…""" /* literal string (−183 tokens) */.trimIndent()
     }
 }
 

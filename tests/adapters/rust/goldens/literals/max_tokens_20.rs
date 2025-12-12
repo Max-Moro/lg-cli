@@ -12,7 +12,7 @@ const LONG_MESSAGE: &str = "This is an extremely long message that contains a su
 const TEMPLATE_WITH_DATA: &str = r#"User Information:
 - Name: {}
 - Email: {}
-- Reg…"#; // literal string (−29 tokens)
+- Registration Date:…"#; // literal string (−27 tokens)
 
 #[derive(Debug)]
 struct DataContainer {
@@ -122,7 +122,8 @@ impl LiteralDataManager {
     fn get_long_query(&self) -> &str {
         r#"
 SELECT
-    users.id, users.username, users.email, users.c…"# // literal string (−166 tokens)
+    users.id, users.username, users.email, users.created_at,
+    prof…"# // literal string (−162 tokens)
     }
 }
 

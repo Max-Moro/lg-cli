@@ -12,26 +12,21 @@ from typing import cast, Optional
 from lg.adapters.code_model import LiteralConfig
 from lg.adapters.context import ProcessingContext
 from .parser import LiteralParser
-from .selector import BudgetSelector, Selection
-from .string_formatter import StringFormatter
-from .collection_formatter import CollectionFormatter
-from ..utils.comment_formatter import CommentFormatter
+from .selector import BudgetSelector
 from ..components import (
     ASTSequenceProcessor,
     BlockInitProcessor,
+    StringLiteralProcessor,
+    StandardCollectionsProcessor,
 )
 from ..patterns import (
     LiteralProfile,
     BlockInitProfile,
-    CollectionProfile,
     StringProfile,
     TrimResult,
-    MappingProfile,
-    FactoryProfile,
     SequenceProfile,
 )
-from ..utils.element_parser import ElementParser, Element, ParseConfig
-from ..utils.interpolation import InterpolationHandler
+from ..utils.comment_formatter import CommentFormatter
 
 
 class LiteralPipeline:
@@ -60,27 +55,19 @@ class LiteralPipeline:
         # Get comment style from adapter
         comment_style: tuple[str, tuple[str, str]] = cast(tuple[str, tuple[str, str]], self.adapter.get_comment_style()[:2])
 
-        # Cache parsers for different patterns
-        self._parsers: dict[str, ElementParser] = {}
-
-        # =================================
-        # Universal processing stages of the pipeline
-        # =================================
-
-        self.literal_parser = LiteralParser(self.adapter.tokenizer)
+        # Shared services
         self.selector = BudgetSelector(self.adapter.tokenizer)
-        comment_formatter = CommentFormatter(comment_style)
-        self.string_formatter = StringFormatter(self.adapter.tokenizer, comment_formatter)
-        self.collection_formatter = CollectionFormatter(self.adapter.tokenizer, comment_formatter)
-        self.comment_formatter = comment_formatter
-        self.interpolation = InterpolationHandler()
+        self.comment_formatter = CommentFormatter(comment_style)
+        self.literal_parser = LiteralParser(self.adapter.tokenizer)
 
         # =================================
-        # Special components (ordered by priority)
+        # Processing components (ordered by priority)
         # =================================
 
         # Create component instances
+        # Order matters: more specific components first
         self.special_components = [
+            # Special cases
             ASTSequenceProcessor(
                 self.adapter.tokenizer,
                 [p for p in self.descriptor.profiles if isinstance(p, StringProfile)]
@@ -90,6 +77,20 @@ class LiteralPipeline:
                 self.descriptor.profiles,
                 self._process_literal,
                 comment_style
+            ),
+
+            # Standard cases
+            StringLiteralProcessor(
+                self.adapter.tokenizer,
+                self.literal_parser,
+                self.comment_formatter
+            ),
+            StandardCollectionsProcessor(
+                self.adapter.tokenizer,
+                self.literal_parser,
+                self.selector,
+                self.comment_formatter,
+                self.descriptor
             ),
         ]
 
@@ -196,7 +197,7 @@ class LiteralPipeline:
         Unified literal processing entry point.
 
         Called both from the pipeline and recursively from components.
-        Only coordinates stages and components - no detailed logic.
+        Delegates all processing to specialized components.
 
         Args:
             node: Tree-sitter node representing the literal
@@ -208,7 +209,7 @@ class LiteralPipeline:
         Returns:
             TrimResult if optimization applied, None otherwise
         """
-        # Try special components first (in priority order)
+        # Try components in priority order
         for component in self.special_components:
             if component.can_handle(profile, node, doc):
                 return component.process(
@@ -219,97 +220,8 @@ class LiteralPipeline:
                     budget
                 )
 
-        # Standard path through stages
-        parsed = self.literal_parser.parse_from_node(
-            node, doc, source_text, profile
-        )
-
-        if not parsed or parsed.original_tokens <= budget:
-            return None
-
-        # Calculate overhead
-        placeholder = "…" if isinstance(profile, StringProfile) else parsed.profile.placeholder_template
-        overhead = self.selector.calculate_overhead(
-            parsed.opening, parsed.closing, placeholder,
-            parsed.is_multiline, parsed.element_indent
-        )
-        content_budget = max(1, budget - overhead)
-
-        # Process content based on type
-        if isinstance(profile, StringProfile):
-            # String processing: truncate + interpolation
-            truncated = self.adapter.tokenizer.truncate_to_tokens(
-                parsed.content, content_budget
-            )
-
-            if len(truncated) >= len(parsed.content):
-                return None
-
-            # Adjust for interpolation
-            markers = self.interpolation.get_active_markers(
-                parsed.profile, parsed.opening, parsed.content
-            )
-            if markers:
-                truncated = self.interpolation.adjust_truncation(
-                    truncated, parsed.content, markers
-                )
-
-            # Create pseudo-selection for formatter
-            kept_element = Element(
-                text=truncated,
-                raw_text=truncated,
-                start_offset=0,
-                end_offset=len(truncated),
-            )
-            removed_element = Element(text="", raw_text="", start_offset=0, end_offset=0)
-
-            selection = Selection(
-                kept_elements=[kept_element],
-                removed_elements=[removed_element],
-                total_count=1,
-                tokens_kept=self.adapter.tokenizer.count_text_cached(truncated),
-                tokens_removed=parsed.original_tokens - self.adapter.tokenizer.count_text_cached(truncated),
-            )
-
-            # Format result
-            formatted = self.string_formatter.format(parsed, selection)
-
-        else:
-            # Collection processing: parse + DFS selection
-            parser = self._get_parser_for_profile(parsed.profile)
-            elements = parser.parse(parsed.content)
-
-            if not elements:
-                return None
-
-            # Select elements with DFS
-            selection = self.selector.select_dfs(
-                elements, content_budget,
-                parser,
-                min_keep=parsed.profile.min_elements,
-                tuple_size=parsed.profile.tuple_size if isinstance(parsed.profile, FactoryProfile) else 1,
-                preserve_top_level_keys=parsed.profile.preserve_all_keys if isinstance(parsed.profile, MappingProfile) else False,
-            )
-
-            if not selection.has_removals:
-                return None
-
-            # Format result
-            formatted = self.collection_formatter.format_dfs(parsed, selection, parser)
-
-        # Build final result (common for both types)
-        trimmed_tokens = self.adapter.tokenizer.count_text_cached(formatted.text)
-
-        return TrimResult(
-            trimmed_text=formatted.text,
-            original_tokens=parsed.original_tokens,
-            trimmed_tokens=trimmed_tokens,
-            saved_tokens=parsed.original_tokens - trimmed_tokens,
-            elements_kept=selection.kept_count,
-            elements_removed=selection.removed_count,
-            comment_text=formatted.comment,
-            comment_position=formatted.comment_byte,
-        )
+        # No component handled this literal
+        return None
 
     def _apply_result(
         self,
@@ -362,28 +274,3 @@ class LiteralPipeline:
         # Update metrics
         context.metrics.mark_element_removed("literal")
         context.metrics.add_chars_saved(len(original_text) - len(result.trimmed_text))
-
-
-    def _get_parser_for_profile(self, profile: CollectionProfile) -> ElementParser:
-        """
-        Get or create parser for a profile.
-
-        Args:
-            profile: CollectionProfile to create parser for
-
-        Returns:
-            ElementParser configured for this profile
-        """
-        # Create cache key from profile attributes
-        separator = profile.separator
-        kv_separator = profile.kv_separator if isinstance(profile, (MappingProfile, FactoryProfile)) else None
-        tuple_size = profile.tuple_size if isinstance(profile, FactoryProfile) else 1
-
-        key = f"{separator}:{kv_separator}:{tuple_size}"
-
-        if key not in self._parsers:
-            # Use factory method to create config with automatic wrapper collection
-            config = ParseConfig.from_profile_and_descriptor(profile, self.descriptor)
-            self._parsers[key] = ElementParser(config)
-
-        return self._parsers[key]

@@ -9,7 +9,8 @@ const SHORT_MESSAGE: &str = "Hello, World!";
 const LONG_MESSAGE: &str = "This is an extremely long message that contains a…"; // literal string (−63 tokens)
 
 // Multi-line string with formatting
-const TEMPLATE_WITH_DATA: &str = r#"User In…"#; // literal string (−40 tokens)
+const TEMPLATE_WITH_DATA: &str = r#"User Information:
+- Nam…"#; // literal string (−37 tokens)
 
 #[derive(Debug)]
 struct DataContainer {
@@ -112,7 +113,8 @@ impl LiteralDataManager {
 
     fn get_long_query(&self) -> &str {
         r#"
-SELECT…"# // literal string (−179 tokens)
+SELECT
+    users.id, users.u…"# // literal string (−172 tokens)
     }
 }
 

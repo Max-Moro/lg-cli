@@ -105,7 +105,7 @@ class LiteralDataManager {
     // Very long SQL-like query string
     """
       SELECT
-        users.id, users.username, users.email, users.cre…""" /* literal string (−171 tokens) */.stripMargin
+        users.id, users.username, users.email, users.created_at,…""" /* literal string (−170 tokens) */.stripMargin
   }
 }
 

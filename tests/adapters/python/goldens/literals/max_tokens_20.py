@@ -12,7 +12,7 @@ LONG_STRING = """This is a very long string that contains a lot of text and migh
 DATA_STRING = """
 {
     "users": [
-        {"id": 1, "name":…""" # literal string (−105 tokens)
+        {"id": 1, "name": "Alice",…""" # literal string (−102 tokens)
 
 class DataContainer:
     """Class with various literal types."""

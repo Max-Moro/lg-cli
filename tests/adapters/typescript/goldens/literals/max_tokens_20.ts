@@ -12,7 +12,8 @@ const LONG_MESSAGE = `This is an extremely long message that contains a substant
 const TEMPLATE_WITH_DATA = `
 User Information:
 - Name: ${getUserName()}
-- Email: ${getUserEmail()}…`; // literal string (−50 tokens)
+- Email: ${getUserEmail()}
+- Re…`; // literal string (−48 tokens)
 
 interface DataContainer {
     // Small array (should be preserved)
@@ -98,7 +99,7 @@ export class LiteralDataManager {
         // Very long SQL-like query string
         return `
             SELECT 
-                users.id, users.username, users.email, user…`; // literal string (−174 tokens)
+                users.id, users.username, users.email, users.created_at,…`; // literal string (−171 tokens)
     }
     
     // Properties with literal data

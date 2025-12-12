@@ -10,7 +10,8 @@ const LONG_MESSAGE = `This is an extremely long message that conta…`; // liter
 
 // Multi-line template literal with embedded expressions
 const TEMPLATE_WITH_DATA = `
-User Information…`; // literal string (−65 tokens)
+User Information:
+- Name: ${getUserName()}…`; // literal string (−57 tokens)
 
 interface DataContainer {
     // Small array (should be preserved)
@@ -87,7 +88,8 @@ export class LiteralDataManager {
     public getLongQuery(): string {
         // Very long SQL-like query string
         return `
-            SELECT…`; // literal string (−186 tokens)
+            SELECT 
+                use…`; // literal string (−183 tokens)
     }
     
     // Properties with literal data

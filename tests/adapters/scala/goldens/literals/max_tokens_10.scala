@@ -20,7 +20,8 @@ object Constants {
   def getProfileCompleteness(): Int = 85
 
   val TEMPLATE_WITH_DATA = s"""
-User Inform…""" // literal string (−69 tokens)
+User Information:
+- Name…""" // literal string (−66 tokens)
 }
 
 case class DataContainer(
@@ -96,7 +97,8 @@ class LiteralDataManager {
   def getLongQuery(): String = {
     // Very long SQL-like query string
     """
-      SELECT…""" /* literal string (−185 tokens) */.stripMargin
+      SELECT
+        users.id, use…""" /* literal string (−179 tokens) */.stripMargin
   }
 }
 

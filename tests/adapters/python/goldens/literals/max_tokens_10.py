@@ -11,7 +11,7 @@ LONG_STRING = """This is a very long string that contains…""" # literal string
 # Multi-line string with data
 DATA_STRING = """
 {
-    "user…""" # literal string (−117 tokens)
+    "users": […""" # literal string (−115 tokens)
 
 class DataContainer:
     """Class with various literal types."""

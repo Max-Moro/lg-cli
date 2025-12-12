@@ -9,10 +9,12 @@ Handles:
 
 from __future__ import annotations
 
-from typing import Optional
+from typing import Optional, TYPE_CHECKING
 
 from ..patterns import ParsedLiteral, PlaceholderPosition
-from ..processing.selector import SelectionBase
+
+if TYPE_CHECKING:
+    from ..processing.selector import SelectionBase
 
 
 class CommentFormatter:
