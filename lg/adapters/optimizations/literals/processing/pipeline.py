@@ -86,7 +86,7 @@ class LiteralPipeline:
             BlockInitProcessor(
                 self.adapter.tokenizer,
                 self.descriptor.profiles,
-                self._process_literal_impl,
+                self._process_literal,
                 comment_style
             ),
         ]
@@ -174,7 +174,9 @@ class LiteralPipeline:
             # Skip budget check for BLOCK_INIT (handles budget internally)
             if token_count > max_tokens or isinstance(profile, BlockInitProfile):
                 # Call unified processing entry point
-                result = self._process_literal(context, node, profile, max_tokens)
+                result = self._process_literal(
+                    node, context.doc, context.raw_text, profile, max_tokens
+                )
 
                 # Apply if tokens saved
                 if result and result.saved_tokens > 0:
@@ -182,20 +184,23 @@ class LiteralPipeline:
 
     def _process_literal(
         self,
-        context: ProcessingContext,
         node,
+        doc,
+        source_text: str,
         profile: LiteralProfile,
         budget: int
     ) -> Optional[TrimResult]:
         """
         Unified literal processing entry point.
 
+        Called both from the pipeline and recursively from components.
         Only coordinates stages and components - no detailed logic.
 
         Args:
-            context: Processing context
-            node: Tree-sitter node
-            profile: Literal profile
+            node: Tree-sitter node representing the literal
+            doc: Tree-sitter document
+            source_text: Full source text
+            profile: Literal profile (StringProfile, SequenceProfile, etc.)
             budget: Token budget
 
         Returns:
@@ -203,18 +208,18 @@ class LiteralPipeline:
         """
         # Try special components first (in priority order)
         for component in self.special_components:
-            if component.can_handle(profile, node, context.doc):
+            if component.can_handle(profile, node, doc):
                 return component.process(
                     node,
-                    context.doc,
-                    context.raw_text,
+                    doc,
+                    source_text,
                     profile,
                     budget
                 )
 
         # Standard path through stages
         parsed = self.literal_parser.parse_from_node(
-            node, context.doc, context.raw_text, profile
+            node, doc, source_text, profile
         )
 
         if not parsed or parsed.original_tokens <= budget:
@@ -302,53 +307,6 @@ class LiteralPipeline:
             self._parsers[key] = ElementParser(config)
 
         return self._parsers[key]
-
-    def _process_literal_impl(
-        self,
-        node,
-        doc,
-        source_text: str,
-        profile: LiteralProfile,
-        token_budget: int = 0,
-    ) -> Optional[TrimResult]:
-        """
-        Process a literal and return trimmed result if beneficial.
-
-        Args:
-            node: Tree-sitter node representing the literal
-            doc: Tree-sitter document
-            source_text: Full source text
-            profile: LiteralProfile (StringProfile, SequenceProfile, etc.) that matched this node
-            token_budget: Maximum tokens for content
-
-        Returns:
-            TrimResult if trimming is beneficial, None otherwise
-        """
-        # Use profile-based parsing with automatic indent detection
-        parsed = self.literal_parser.parse_from_node(
-            node, doc, source_text, profile
-        )
-
-        if not parsed:
-            return None
-
-        # Check if already within budget
-        if parsed.original_tokens <= token_budget:
-            return None
-
-        # Handle based on profile type
-        profile = parsed.profile
-        if isinstance(profile, StringProfile):
-            return self._process_string(cast(ParsedLiteral[StringProfile], parsed), token_budget)
-        elif isinstance(profile, BlockInitProfile):
-            # BLOCK_INIT requires special handling with node access
-            # This path should not be reached from _process_literal_impl
-            raise RuntimeError(
-                "BLOCK_INIT profiles must be processed via LiteralPipeline._process_block_init_node, "
-                "not _process_literal_impl"
-            )
-        else:
-            return self._process_collection(cast(ParsedLiteral[CollectionProfile], parsed), token_budget)
 
     def _process_string(
         self,
