@@ -11,37 +11,16 @@ Kotlin-specific patterns:
 
 from __future__ import annotations
 
-from ..optimizations.literals import (
-    PlaceholderPosition,
-    LanguageLiteralDescriptor,
-    StringProfile,
-    MappingProfile,
-    FactoryProfile,
+from ..optimizations.literals import *
+
+KOTLIN_DELIMITER_CONFIG = DelimiterConfig(
+    string_prefixes=[],  # No prefixes in Kotlin
+    triple_quote_styles=['"""'],  # Only """ for multiline
+    single_quote_styles=['"', "'"],
+    default_delimiter='"',
 )
 
-
-def _detect_string_opening(text: str) -> str:
-    """Detect Kotlin string opening delimiter (regular or multi-line raw string)."""
-    stripped = text.strip()
-    if stripped.startswith('"""'):
-        return '"""'
-    if stripped.startswith('"'):
-        return '"'
-    if stripped.startswith("'"):
-        return "'"
-    return '"'
-
-
-def _detect_string_closing(text: str) -> str:
-    """Detect Kotlin string closing delimiter."""
-    stripped = text.strip()
-    if stripped.endswith('"""'):
-        return '"""'
-    if stripped.endswith('"'):
-        return '"'
-    if stripped.endswith("'"):
-        return "'"
-    return '"'
+_kotlin_detector = DelimiterDetector(KOTLIN_DELIMITER_CONFIG)
 
 
 # Kotlin literal profiles
@@ -54,8 +33,8 @@ KOTLIN_STRING_PROFILE = StringProfile(
       (multiline_string_literal) @lit
     ]
     """,
-    opening=_detect_string_opening,
-    closing=_detect_string_closing,
+    opening=_kotlin_detector.detect_opening,
+    closing=_kotlin_detector.detect_closing,
     placeholder_position=PlaceholderPosition.INLINE,
     placeholder_template="…",
     interpolation_markers=[
@@ -120,13 +99,8 @@ def create_kotlin_descriptor() -> LanguageLiteralDescriptor:
     """Create Kotlin language descriptor for literal optimization."""
     return LanguageLiteralDescriptor(
         profiles=[
-            # String profiles
             KOTLIN_STRING_PROFILE,
-
-            # Mapping profiles
-            KOTLIN_MAP_PROFILE,  # mapOf with 'to' operator
-
-            # Factory profiles
+            KOTLIN_MAP_PROFILE,
             KOTLIN_LIST_OF_PROFILE,  # listOf variants
             KOTLIN_SET_OF_PROFILE,   # setOf variants
         ],

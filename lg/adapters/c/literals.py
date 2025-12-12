@@ -12,28 +12,16 @@ C-specific patterns:
 
 from __future__ import annotations
 
-from ..optimizations.literals import (
-    PlaceholderPosition,
-    LanguageLiteralDescriptor,
-    StringProfile,
-    SequenceProfile,
+from ..optimizations.literals import *
+
+C_DELIMITER_CONFIG = DelimiterConfig(
+    string_prefixes=[],  # No prefixes in C
+    triple_quote_styles=[],  # No triple quotes
+    single_quote_styles=['"', "'"],
+    default_delimiter='"',
 )
 
-
-def _detect_string_opening(text: str) -> str:
-    """Detect C string opening delimiter."""
-    stripped = text.strip()
-    if stripped.startswith("'"):
-        return "'"
-    return '"'
-
-
-def _detect_string_closing(text: str) -> str:
-    """Detect C string closing delimiter."""
-    stripped = text.strip()
-    if stripped.endswith("'"):
-        return "'"
-    return '"'
+_c_detector = DelimiterDetector(C_DELIMITER_CONFIG)
 
 
 # C literal profiles
@@ -46,8 +34,8 @@ C_STRING_PROFILE = StringProfile(
       (char_literal) @lit
     ]
     """,
-    opening=_detect_string_opening,
-    closing=_detect_string_closing,
+    opening=_c_detector.detect_opening,
+    closing=_c_detector.detect_closing,
     placeholder_position=PlaceholderPosition.INLINE,
     placeholder_template="…",
     interpolation_markers=[],
@@ -85,10 +73,7 @@ def create_c_descriptor() -> LanguageLiteralDescriptor:
     """Create C language descriptor for literal optimization."""
     return LanguageLiteralDescriptor(
         profiles=[
-            # String profiles
             C_STRING_PROFILE,
-
-            # Sequence profiles
             C_CONCATENATED_STRING_PROFILE,
             C_INITIALIZER_LIST_PROFILE,
         ],

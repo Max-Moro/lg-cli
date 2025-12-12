@@ -6,69 +6,16 @@ Defines patterns for Python literals: strings, lists, tuples, dicts, sets.
 
 from __future__ import annotations
 
-import re
+from ..optimizations.literals import *
 
-from ..optimizations.literals import (
-    PlaceholderPosition,
-    LanguageLiteralDescriptor,
-    StringProfile,
-    SequenceProfile,
-    MappingProfile,
+PYTHON_DELIMITER_CONFIG = DelimiterConfig(
+    string_prefixes=["f", "F", "r", "R", "b", "B", "u", "U"],
+    triple_quote_styles=['"""', "'''"],
+    single_quote_styles=['"', "'"],
+    default_delimiter='"',
 )
 
-
-def _detect_string_opening(text: str) -> str:
-    """
-    Detect Python string opening delimiter.
-
-    Handles: "", '', \"""\""", ''', f"", r"", b"", fr"", rf"", etc.
-    """
-    stripped = text.strip()
-
-    # Check for prefixes (f, r, b, u, fr, rf, br, rb)
-    prefix_match = re.match(r'^([fFrRbBuU]{0,2})', stripped)
-    prefix = prefix_match.group(1) if prefix_match else ""
-
-    rest = stripped[len(prefix):]
-
-    # Check for triple quotes first
-    if rest.startswith('"""'):
-        return f'{prefix}"""'
-    if rest.startswith("'''"):
-        return f"{prefix}'''"
-
-    # Single quotes
-    if rest.startswith('"'):
-        return f'{prefix}"'
-    if rest.startswith("'"):
-        return f"{prefix}'"
-
-    # Fallback
-    return '"'
-
-
-def _detect_string_closing(text: str) -> str:
-    """
-    Detect Python string closing delimiter.
-
-    Matches the opening delimiter style.
-    """
-    stripped = text.strip()
-
-    # Check for triple quotes at end
-    if stripped.endswith('"""'):
-        return '"""'
-    if stripped.endswith("'''"):
-        return "'''"
-
-    # Single quotes
-    if stripped.endswith('"'):
-        return '"'
-    if stripped.endswith("'"):
-        return "'"
-
-    # Fallback
-    return '"'
+_python_detector = DelimiterDetector(PYTHON_DELIMITER_CONFIG)
 
 
 def _is_f_string(opening: str, content: str) -> bool:
@@ -90,8 +37,8 @@ def _is_f_string(opening: str, content: str) -> bool:
 # String profile
 PYTHON_STRING_PROFILE = StringProfile(
     query="(string) @lit",
-    opening=_detect_string_opening,
-    closing=_detect_string_closing,
+    opening=_python_detector.detect_opening,
+    closing=_python_detector.detect_closing,
     placeholder_position=PlaceholderPosition.INLINE,
     placeholder_template="…",
     interpolation_markers=[("", "{", "}")],
@@ -160,15 +107,10 @@ def create_python_descriptor() -> LanguageLiteralDescriptor:
     """
     return LanguageLiteralDescriptor(
         profiles=[
-            # String profiles
             PYTHON_STRING_PROFILE,
-
-            # Sequence profiles
             PYTHON_LIST_PROFILE,
             PYTHON_TUPLE_PROFILE,
             PYTHON_SET_PROFILE,
-
-            # Mapping profiles
             PYTHON_DICT_PROFILE,
         ],
     )

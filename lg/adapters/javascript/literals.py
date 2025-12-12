@@ -7,49 +7,16 @@ Also used as base for TypeScript.
 
 from __future__ import annotations
 
-from ..optimizations.literals import (
-    PlaceholderPosition,
-    LanguageLiteralDescriptor,
-    StringProfile,
-    SequenceProfile,
-    MappingProfile,
+from ..optimizations.literals import *
+
+JS_DELIMITER_CONFIG = DelimiterConfig(
+    string_prefixes=[],  # No prefixes in JavaScript
+    triple_quote_styles=[],  # No triple quotes
+    single_quote_styles=['`', '"', "'"],  # Backticks first for template strings
+    default_delimiter='"',
 )
 
-
-def _detect_string_opening(text: str) -> str:
-    """
-    Detect JavaScript string opening delimiter.
-
-    Handles: "", '', ``
-    """
-    stripped = text.strip()
-
-    if stripped.startswith('`'):
-        return '`'
-    if stripped.startswith('"'):
-        return '"'
-    if stripped.startswith("'"):
-        return "'"
-
-    # Fallback
-    return '"'
-
-
-def _detect_string_closing(text: str) -> str:
-    """
-    Detect JavaScript string closing delimiter.
-    """
-    stripped = text.strip()
-
-    if stripped.endswith('`'):
-        return '`'
-    if stripped.endswith('"'):
-        return '"'
-    if stripped.endswith("'"):
-        return "'"
-
-    # Fallback
-    return '"'
+_js_detector = DelimiterDetector(JS_DELIMITER_CONFIG)
 
 
 # JavaScript literal profiles
@@ -57,8 +24,8 @@ def _detect_string_closing(text: str) -> str:
 # Regular string profile (single and double quotes)
 JS_STRING_PROFILE = StringProfile(
     query="(string) @lit",
-    opening=_detect_string_opening,
-    closing=_detect_string_closing,
+    opening=_js_detector.detect_opening,
+    closing=_js_detector.detect_closing,
     placeholder_position=PlaceholderPosition.INLINE,
     placeholder_template="…",
 )
@@ -118,15 +85,10 @@ def create_javascript_descriptor() -> LanguageLiteralDescriptor:
     """
     return LanguageLiteralDescriptor(
         profiles=[
-            # String profiles
             JS_TEMPLATE_STRING_PROFILE,  # Template strings (backticks with interpolation)
             JS_STRING_PROFILE,            # Regular strings (single and double quotes)
             JS_REGEX_PROFILE,             # Regex literals
-
-            # Sequence profiles
             JS_ARRAY_PROFILE,
-
-            # Mapping profiles
             JS_OBJECT_PROFILE,
         ],
     )

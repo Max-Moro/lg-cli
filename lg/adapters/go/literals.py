@@ -15,29 +15,16 @@ Note: Go has no string interpolation.
 
 from __future__ import annotations
 
-from ..optimizations.literals import (
-    PlaceholderPosition,
-    LanguageLiteralDescriptor,
-    StringProfile,
-    MappingProfile,
-    FactoryProfile,
+from ..optimizations.literals import *
+
+GO_DELIMITER_CONFIG = DelimiterConfig(
+    string_prefixes=[],  # No prefixes in Go
+    triple_quote_styles=[],  # No triple quotes
+    single_quote_styles=['`', '"'],  # Backticks for raw strings
+    default_delimiter='"',
 )
 
-
-def _detect_string_opening(text: str) -> str:
-    """Detect Go string opening delimiter."""
-    stripped = text.strip()
-    if stripped.startswith('`'):
-        return '`'
-    return '"'
-
-
-def _detect_string_closing(text: str) -> str:
-    """Detect Go string closing delimiter."""
-    stripped = text.strip()
-    if stripped.endswith('`'):
-        return '`'
-    return '"'
+_go_detector = DelimiterDetector(GO_DELIMITER_CONFIG)
 
 
 # Go literal profiles
@@ -50,8 +37,8 @@ GO_STRING_PROFILE = StringProfile(
       (raw_string_literal) @lit
     ]
     """,
-    opening=_detect_string_opening,
-    closing=_detect_string_closing,
+    opening=_go_detector.detect_opening,
+    closing=_go_detector.detect_closing,
     placeholder_position=PlaceholderPosition.INLINE,
     placeholder_template="…",
     interpolation_markers=[],
@@ -121,14 +108,9 @@ def create_go_descriptor() -> LanguageLiteralDescriptor:
     """Create Go language descriptor for literal optimization."""
     return LanguageLiteralDescriptor(
         profiles=[
-            # String profiles
             GO_STRING_PROFILE,
-
-            # Mapping profiles
-            GO_STRUCT_PROFILE,  # Typed structs
-            GO_MAP_PROFILE,     # Maps
-
-            # Factory profiles
-            GO_SLICE_PROFILE,  # Slices
+            GO_STRUCT_PROFILE,
+            GO_MAP_PROFILE,
+            GO_SLICE_PROFILE,
         ],
     )

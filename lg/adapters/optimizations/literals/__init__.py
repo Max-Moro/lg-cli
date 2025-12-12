@@ -11,6 +11,7 @@ from .patterns import (
     SequenceProfile, MappingProfile, FactoryProfile, BlockInitProfile
 )
 from .processing import LiteralPipeline
+from .utils import DelimiterConfig, DelimiterDetector
 
 __all__ = [
     # Descriptor and types
@@ -26,4 +27,8 @@ __all__ = [
 
     # Main optimizer
     "LiteralPipeline",
+
+    # Utils
+    "DelimiterConfig",
+    "DelimiterDetector",
 ]

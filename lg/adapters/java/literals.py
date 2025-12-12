@@ -13,30 +13,16 @@ Note: Java has no string interpolation, so no interpolation_markers are needed.
 
 from __future__ import annotations
 
-from ..optimizations.literals import (
-    PlaceholderPosition,
-    LanguageLiteralDescriptor,
-    StringProfile,
-    SequenceProfile,
-    FactoryProfile,
-    BlockInitProfile,
+from ..optimizations.literals import *
+
+JAVA_DELIMITER_CONFIG = DelimiterConfig(
+    string_prefixes=[],  # No prefixes in Java
+    triple_quote_styles=['"""'],  # Text blocks (Java 15+)
+    single_quote_styles=['"'],
+    default_delimiter='"',
 )
 
-
-def _detect_string_opening(text: str) -> str:
-    """Detect Java string opening delimiter (regular or text block)."""
-    stripped = text.strip()
-    if stripped.startswith('"""'):
-        return '"""'
-    return '"'
-
-
-def _detect_string_closing(text: str) -> str:
-    """Detect Java string closing delimiter."""
-    stripped = text.strip()
-    if stripped.endswith('"""'):
-        return '"""'
-    return '"'
+_java_detector = DelimiterDetector(JAVA_DELIMITER_CONFIG)
 
 
 # Java literal profiles
@@ -44,8 +30,8 @@ def _detect_string_closing(text: str) -> str:
 # String profile (regular and text blocks)
 JAVA_STRING_PROFILE = StringProfile(
     query="(string_literal) @lit",
-    opening=_detect_string_opening,
-    closing=_detect_string_closing,
+    opening=_java_detector.detect_opening,
+    closing=_java_detector.detect_closing,
     placeholder_position=PlaceholderPosition.INLINE,
     placeholder_template="…",
     interpolation_markers=[],
@@ -185,20 +171,13 @@ def create_java_descriptor() -> LanguageLiteralDescriptor:
     """Create Java language descriptor for literal optimization."""
     return LanguageLiteralDescriptor(
         profiles=[
-            # String profiles
             JAVA_STRING_PROFILE,
-
-            # Sequence profiles
             JAVA_ARRAY_PROFILE,
-
-            # Factory profiles
-            JAVA_MAP_OF_PROFILE,           # Pair-based Map.of
-            JAVA_MAP_OF_ENTRIES_PROFILE,   # Entry-based Map.ofEntries
-            JAVA_LIST_SET_OF_PROFILE,      # List/Set.of()
-            JAVA_ARRAYS_ASLIST_PROFILE,    # Arrays.asList()
-            JAVA_STREAM_OF_PROFILE,        # Stream.of()
-
-            # Block init profiles
+            JAVA_MAP_OF_PROFILE,
+            JAVA_MAP_OF_ENTRIES_PROFILE,
+            JAVA_LIST_SET_OF_PROFILE,
+            JAVA_ARRAYS_ASLIST_PROFILE,
+            JAVA_STREAM_OF_PROFILE,
             JAVA_DOUBLE_BRACE_PROFILE,
         ],
 

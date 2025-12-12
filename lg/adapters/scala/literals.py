@@ -11,43 +11,16 @@ Scala-specific patterns:
 
 from __future__ import annotations
 
-from ..optimizations.literals import (
-    PlaceholderPosition,
-    LanguageLiteralDescriptor,
-    StringProfile,
-    MappingProfile,
-    FactoryProfile,
+from ..optimizations.literals import *
+
+SCALA_DELIMITER_CONFIG = DelimiterConfig(
+    string_prefixes=["s", "f", "raw"],  # Interpolation prefixes
+    triple_quote_styles=['"""'],
+    single_quote_styles=['"', "'"],
+    default_delimiter='"',
 )
 
-
-def _detect_string_opening(text: str) -> str:
-    """Detect Scala string opening delimiter (with interpolation prefix)."""
-    stripped = text.strip()
-    # Check for triple-quoted strings first
-    if stripped.startswith('s"""') or stripped.startswith('f"""') or stripped.startswith('raw"""'):
-        return stripped[:4]  # s""", f""", raw"""
-    if stripped.startswith('"""'):
-        return '"""'
-    # Check for interpolated strings
-    if stripped.startswith('s"') or stripped.startswith('f"') or stripped.startswith('raw"'):
-        return stripped[:2]
-    if stripped.startswith('"'):
-        return '"'
-    if stripped.startswith("'"):
-        return "'"
-    return '"'
-
-
-def _detect_string_closing(text: str) -> str:
-    """Detect Scala string closing delimiter."""
-    stripped = text.strip()
-    if stripped.endswith('"""'):
-        return '"""'
-    if stripped.endswith('"'):
-        return '"'
-    if stripped.endswith("'"):
-        return "'"
-    return '"'
+_scala_detector = DelimiterDetector(SCALA_DELIMITER_CONFIG)
 
 
 def _is_interpolated_string(opening: str, content: str) -> bool:
@@ -66,8 +39,8 @@ SCALA_STRING_PROFILE = StringProfile(
       (interpolated_string_expression) @lit
     ]
     """,
-    opening=_detect_string_opening,
-    closing=_detect_string_closing,
+    opening=_scala_detector.detect_opening,
+    closing=_scala_detector.detect_closing,
     placeholder_position=PlaceholderPosition.INLINE,
     placeholder_template="…",
     interpolation_markers=[
@@ -136,14 +109,9 @@ def create_scala_descriptor() -> LanguageLiteralDescriptor:
     """Create Scala language descriptor for literal optimization."""
     return LanguageLiteralDescriptor(
         profiles=[
-            # String profiles
             SCALA_STRING_PROFILE,
-
-            # Mapping profiles
-            SCALA_MAP_PROFILE,  # Map with arrow operator
-
-            # Factory profiles
-            SCALA_LIST_PROFILE,  # List variants
-            SCALA_SET_PROFILE,   # Set variants
+            SCALA_MAP_PROFILE,
+            SCALA_LIST_PROFILE,
+            SCALA_SET_PROFILE,
         ],
     )

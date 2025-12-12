@@ -15,37 +15,39 @@ Format strings (`"{}..."`) exist but can't be reliably detected without runtime 
 
 from __future__ import annotations
 
-import re
+from ..optimizations.literals import *
 
-from ..optimizations.literals import (
-    PlaceholderPosition,
-    LanguageLiteralDescriptor,
-    StringProfile,
-    SequenceProfile,
-    FactoryProfile,
-    BlockInitProfile,
+
+def _rust_raw_closing(text: str, opening: str) -> str:
+    """
+    Compute closing delimiter for Rust raw strings.
+
+    Rust raw strings: r#"..."#, r##"..."##, etc.
+    Closing mirrors the number of hashes in opening.
+
+    Args:
+        text: Full string text (unused, kept for signature consistency)
+        opening: Matched opening delimiter (e.g., 'r#"', 'r##"')
+
+    Returns:
+        Closing delimiter (e.g., '"#', '"##')
+    """
+    # Count hashes in opening: r#" → 1 hash, r##" → 2 hashes
+    hash_count = opening.count('#')
+    return '"' + '#' * hash_count
+
+
+RUST_DELIMITER_CONFIG = DelimiterConfig(
+    string_prefixes=[],
+    triple_quote_styles=[],  # Rust has no triple quotes
+    single_quote_styles=['"'],
+    raw_string_patterns=[
+        (r'^(r#+)"', _rust_raw_closing),  # r#"..."#, r##"..."##
+    ],
+    default_delimiter='"',
 )
 
-
-def _detect_raw_string_opening(text: str) -> str:
-    """Detect Rust raw string opening delimiter (r#", r##", etc.)."""
-    stripped = text.strip()
-    # Match r, r#, r##, etc.
-    match = re.match(r'^(r#+)"', stripped)
-    if match:
-        return match.group(0)  # e.g., r#"
-    return '"'
-
-
-def _detect_raw_string_closing(text: str) -> str:
-    """Detect Rust raw string closing delimiter ("#, "##, etc.)."""
-    stripped = text.strip()
-    # Count hashes in opening to determine closing
-    match = re.match(r'^(r#+)"', stripped)
-    if match:
-        hash_count = len(match.group(1)) - 1  # subtract 'r'
-        return '"' + '#' * hash_count  # e.g., "#
-    return '"'
+_rust_detector = DelimiterDetector(RUST_DELIMITER_CONFIG)
 
 
 # Rust literal profiles
@@ -58,8 +60,8 @@ RUST_STRING_PROFILE = StringProfile(
       (raw_string_literal) @lit
     ]
     """,
-    opening=_detect_raw_string_opening,
-    closing=_detect_raw_string_closing,
+    opening=_rust_detector.detect_opening,
+    closing=_rust_detector.detect_closing,
     placeholder_position=PlaceholderPosition.INLINE,
     placeholder_template="…",
     interpolation_markers=[],
@@ -117,16 +119,9 @@ def create_rust_descriptor() -> LanguageLiteralDescriptor:
     """Create Rust language descriptor for literal optimization."""
     return LanguageLiteralDescriptor(
         profiles=[
-            # String profiles
             RUST_STRING_PROFILE,
-
-            # Sequence profiles
             RUST_ARRAY_PROFILE,
-
-            # Factory profiles
             RUST_VEC_PROFILE,
-
-            # Block init profiles
             RUST_HASHMAP_INIT_PROFILE,
         ],
     )
