@@ -13,7 +13,8 @@ lg/adapters/optimizations/literals/
 │   ├── pipeline.py             # LiteralPipeline (оркестратор)
 │   ├── parser.py               # LiteralParser (парсинг структуры)
 │   ├── selector.py             # BudgetSelector (выбор элементов)
-│   └── formatter.py            # ResultFormatter (форматирование)
+│   ├── string_formatter.py     # StringFormatter (форматирование строк)
+│   └── collection_formatter.py # CollectionFormatter (форматирование коллекций с DFS)
 │
 ├── components/                 # Опциональные специализированные компоненты
 │   ├── __init__.py
@@ -24,7 +25,8 @@ lg/adapters/optimizations/literals/
 │   ├── __init__.py
 │   ├── element_parser.py       # Парсинг содержимого элементов
 │   ├── interpolation.py        # Обработка интерполяции в строках
-│   └── indentation.py          # Определение отступов
+│   ├── indentation.py          # Определение отступов
+│   └── comment_formatter.py    # CommentFormatter (утилиты комментирования)
 │
 ├── __init__.py                 # Публичный API
 ├── descriptor.py               # Декларативная модель языковых паттернов
@@ -49,7 +51,8 @@ lg/adapters/optimizations/literals/
 - `pipeline.py` — оркестрация всего процесса
 - `parser.py` — парсинг структуры литерала → `ParsedLiteral`
 - `selector.py` — выбор элементов по бюджету → `Selection`/`DFSSelection`
-- `formatter.py` — форматирование результата → `TrimResult`
+- `string_formatter.py` — форматирование строк → `FormattedResult`
+- `collection_formatter.py` — форматирование коллекций с DFS → `FormattedResult`
 
 #### Опциональные специализированные компоненты (`components/`)
 
@@ -74,6 +77,7 @@ lg/adapters/optimizations/literals/
 - `element_parser.py` — парсинг элементов внутри литералов
 - `interpolation.py` — работа с интерполяцией в строках
 - `indentation.py` — определение отступов в исходном коде
+- `comment_formatter.py` — генерация и форматирование комментариев (shared для обоих форматтеров)
 
 ### 2. Оркестратор как координатор
 
@@ -144,20 +148,66 @@ class LiteralParser:
 
 **Pipeline использует высокоуровневый API**, компоненты могут использовать любой уровень.
 
+### 5. Специализация форматтеров
+
+Форматирование разделено на два специализированных модуля вместо одного монолитного:
+
+**StringFormatter** (`string_formatter.py`, ~89 строк):
+- Обрабатывает **только** строковые литералы
+- Простое усечение с добавлением многоточия `…`
+- Явная типизация: `ParsedLiteral[StringProfile]` + `Selection`
+- Никакой DFS, рекурсии, вложенных структур
+- Никаких проверок `isinstance()`
+
+**CollectionFormatter** (`collection_formatter.py`, ~342 строки):
+- Обрабатывает **только** коллекции
+- Полная поддержка DFS с рекурсивной обработкой вложенности
+- Явная типизация: `ParsedLiteral[CollectionProfile]` + `DFSSelection`
+- Multiline/single-line форматирование
+- Группировка tuple для Map.of паттернов
+- Inline threshold для вложенных структур
+
+**CommentFormatter** (`utils/comment_formatter.py`, ~140 строк):
+- Универсальные утилиты комментирования
+- Shared компонент для обоих форматтеров
+- Генерация текста с информацией об экономии токенов
+- Контекстное форматирование (single-line vs block)
+- Определение точек вставки
+
+**Преимущества специализации**:
+- ✅ Явная типизация без проверок типов
+- ✅ Упрощение логики каждого форматтера
+- ✅ Изолированное тестирование
+- ✅ Независимое развитие функциональности
+
 ---
 
 ## Поток данных
 
 ### Стандартный путь (без специальных компонентов)
 
+**Для строк:**
 ```
 Node (Tree-sitter)
     ↓
-[Parser] → ParsedLiteral (текст, структура, отступы, токены)
+[Parser] → ParsedLiteral[StringProfile]
     ↓
-[Selector] → Selection/DFSSelection (kept_elements, removed_elements)
+[Selector] → Selection (kept_elements, removed_elements)
     ↓
-[Formatter] → TrimResult (trimmed_text, saved_tokens, comment)
+[StringFormatter] → FormattedResult (truncated string with …)
+    ↓
+Context (применение к исходному коду)
+```
+
+**Для коллекций:**
+```
+Node (Tree-sitter)
+    ↓
+[Parser] → ParsedLiteral[CollectionProfile]
+    ↓
+[Selector] → DFSSelection (with nested_selections)
+    ↓
+[CollectionFormatter] → FormattedResult (formatted collection with DFS)
     ↓
 Context (применение к исходному коду)
 ```
@@ -230,11 +280,23 @@ class DFSSelection(Selection):
     budget_exhausted: bool
 ```
 
+### FormattedResult
+```python
+@dataclass
+class FormattedResult:
+    """Результат форматирования (из StringFormatter / CollectionFormatter)."""
+    text: str                      # Отформатированный текст
+    start_byte: int               # Диапазон замены
+    end_byte: int
+    comment: Optional[str]        # Внешний комментарий (если нужен)
+    comment_byte: Optional[int]   # Позиция вставки комментария
+```
+
 ### TrimResult
 ```python
 @dataclass
 class TrimResult:
-    """Финальный результат оптимизации."""
+    """Результат компонента (ASTSequenceProcessor, BlockInitProcessor)."""
     trimmed_text: str
     original_tokens: int
     trimmed_tokens: int
@@ -243,6 +305,7 @@ class TrimResult:
     elements_removed: int
     comment_text: Optional[str]
     comment_position: Optional[int]
+    nodes_to_replace: Optional[list]  # Для групповой замены (BLOCK_INIT)
 ```
 
 ---
@@ -333,5 +396,6 @@ def __init__(self, cfg, adapter):
 5. **Явная ER-модель** — стадии обмениваются через типизированные структуры
 6. **Четкая классификация** — processing / components / utils
 7. **Унифицированный дескриптор** — все профили в одном списке
+8. **Специализация форматтеров** — отдельные модули для строк и коллекций без проверок типов
 
-**Результат**: Чистая, расширяемая архитектура с минимальной связностью модулей и упрощенной логикой координации.
+**Результат**: Чистая, расширяемая архитектура с минимальной связностью модулей, явной типизацией и упрощенной логикой координации.

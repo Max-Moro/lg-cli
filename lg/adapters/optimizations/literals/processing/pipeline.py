@@ -11,9 +11,11 @@ from typing import cast, Optional
 
 from lg.adapters.code_model import LiteralConfig
 from lg.adapters.context import ProcessingContext
-from .formatter import ResultFormatter
 from .parser import LiteralParser
 from .selector import BudgetSelector, Selection
+from .string_formatter import StringFormatter
+from .collection_formatter import CollectionFormatter
+from ..utils.comment_formatter import CommentFormatter
 from ..components import (
     ASTSequenceProcessor,
     BlockInitProcessor,
@@ -57,8 +59,6 @@ class LiteralPipeline:
 
         # Get comment style from adapter
         comment_style: tuple[str, tuple[str, str]] = cast(tuple[str, tuple[str, str]], self.adapter.get_comment_style()[:2])
-        self.single_comment = comment_style[0]
-        self.block_comment = comment_style[1]
 
         # Cache parsers for different patterns
         self._parsers: dict[str, ElementParser] = {}
@@ -69,7 +69,10 @@ class LiteralPipeline:
 
         self.literal_parser = LiteralParser(self.adapter.tokenizer)
         self.selector = BudgetSelector(self.adapter.tokenizer)
-        self.formatter = ResultFormatter(self.adapter.tokenizer, comment_style)
+        comment_formatter = CommentFormatter(comment_style)
+        self.string_formatter = StringFormatter(self.adapter.tokenizer, comment_formatter)
+        self.collection_formatter = CollectionFormatter(self.adapter.tokenizer, comment_formatter)
+        self.comment_formatter = comment_formatter
         self.interpolation = InterpolationHandler()
 
         # =================================
@@ -269,7 +272,7 @@ class LiteralPipeline:
             )
 
             # Format result
-            formatted = self.formatter.format(parsed, selection)
+            formatted = self.string_formatter.format(parsed, selection)
 
         else:
             # Collection processing: parse + DFS selection
@@ -292,7 +295,7 @@ class LiteralPipeline:
                 return None
 
             # Format result
-            formatted = self.formatter.format_dfs(parsed, selection, parser)
+            formatted = self.collection_formatter.format_dfs(parsed, selection, parser)
 
         # Build final result (common for both types)
         trimmed_tokens = self.adapter.tokenizer.count_text_cached(formatted.text)
@@ -347,7 +350,7 @@ class LiteralPipeline:
         placeholder_style = self.adapter.cfg.placeholders.style
         if placeholder_style != "none" and result.comment_text:
             text_after = context.raw_text[end_byte:]
-            formatted_comment, offset = self.formatter._format_comment_for_context(
+            formatted_comment, offset = self.comment_formatter.format_for_context(
                 text_after, result.comment_text
             )
             context.editor.add_insertion(
