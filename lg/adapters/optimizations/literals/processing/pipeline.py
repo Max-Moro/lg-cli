@@ -23,7 +23,6 @@ from ..patterns import (
     BlockInitProfile,
     CollectionProfile,
     StringProfile,
-    ParsedLiteral,
     TrimResult,
     MappingProfile,
     FactoryProfile,
@@ -225,11 +224,93 @@ class LiteralPipeline:
         if not parsed or parsed.original_tokens <= budget:
             return None
 
-        # Route by profile type
+        # Calculate overhead
+        placeholder = "…" if isinstance(profile, StringProfile) else parsed.profile.placeholder_template
+        overhead = self.selector.calculate_overhead(
+            parsed.opening, parsed.closing, placeholder,
+            parsed.is_multiline, parsed.element_indent
+        )
+        content_budget = max(1, budget - overhead)
+
+        # Process content based on type
         if isinstance(profile, StringProfile):
-            return self._process_string(parsed, budget)
+            # String processing: truncate + interpolation
+            truncated = self.adapter.tokenizer.truncate_to_tokens(
+                parsed.content, content_budget
+            )
+
+            if len(truncated) >= len(parsed.content):
+                return None
+
+            # Adjust for interpolation
+            markers = self.interpolation.get_active_markers(
+                parsed.profile, parsed.opening, parsed.content
+            )
+            if markers:
+                truncated = self.interpolation.adjust_truncation(
+                    truncated, parsed.content, markers
+                )
+
+            # Create pseudo-selection for formatter
+            kept_element = Element(
+                text=truncated,
+                raw_text=truncated,
+                start_offset=0,
+                end_offset=len(truncated),
+            )
+            removed_element = Element(
+                text="...", raw_text="...",
+                start_offset=0, end_offset=0
+            )
+
+            selection = Selection(
+                kept_elements=[kept_element],
+                removed_elements=[removed_element],
+                total_count=1,
+                tokens_kept=self.adapter.tokenizer.count_text_cached(truncated),
+                tokens_removed=parsed.original_tokens - self.adapter.tokenizer.count_text_cached(truncated),
+            )
+
+            # Format result
+            formatted = self.formatter.format(parsed, selection)
+
         else:
-            return self._process_collection(parsed, budget)
+            # Collection processing: parse + DFS selection
+            parser = self._get_parser_for_profile(parsed.profile)
+            elements = parser.parse(parsed.content)
+
+            if not elements:
+                return None
+
+            # Select elements with DFS
+            selection = self.selector.select_dfs(
+                elements, content_budget,
+                profile=parsed.profile,
+                get_parser_func=self._get_parser_for_profile,
+                min_keep=parsed.profile.min_elements,
+                tuple_size=parsed.profile.tuple_size if isinstance(parsed.profile, FactoryProfile) else 1,
+                preserve_top_level_keys=parsed.profile.preserve_all_keys if isinstance(parsed.profile, MappingProfile) else False,
+            )
+
+            if not selection.has_removals:
+                return None
+
+            # Format result
+            formatted = self.formatter.format_dfs(parsed, selection, parser)
+
+        # Build final result (common for both types)
+        trimmed_tokens = self.adapter.tokenizer.count_text_cached(formatted.text)
+
+        return TrimResult(
+            trimmed_text=formatted.text,
+            original_tokens=parsed.original_tokens,
+            trimmed_tokens=trimmed_tokens,
+            saved_tokens=parsed.original_tokens - trimmed_tokens,
+            elements_kept=selection.kept_count,
+            elements_removed=selection.removed_count,
+            comment_text=formatted.comment,
+            comment_position=formatted.comment_byte,
+        )
 
     def _apply_result(
         self,
@@ -243,7 +324,7 @@ class LiteralPipeline:
 
         Args:
             context: Processing context
-            node: Tree-sitter node (or list of nodes for single-node replacement)
+            node: Tree-sitter node
             result: Trim result to apply
             original_text: Original text for metrics
         """
@@ -307,137 +388,3 @@ class LiteralPipeline:
             self._parsers[key] = ElementParser(config)
 
         return self._parsers[key]
-
-    def _process_string(
-        self,
-        parsed: ParsedLiteral[StringProfile],
-        budget: int
-    ) -> Optional[TrimResult]:
-        """
-        Process string literals through standard stages.
-
-        Args:
-            parsed: Parsed string literal
-            budget: Token budget
-
-        Returns:
-            TrimResult if optimization applied
-        """
-        # Calculate overhead
-        overhead = self.selector.calculate_overhead(
-            parsed.opening, parsed.closing, "…",
-            parsed.is_multiline, parsed.element_indent
-        )
-        content_budget = max(1, budget - overhead)
-
-        # Truncate content
-        truncated = self.adapter.tokenizer.truncate_to_tokens(
-            parsed.content, content_budget
-        )
-
-        if len(truncated) >= len(parsed.content):
-            return None
-
-        # Adjust for interpolation
-        markers = self.interpolation.get_active_markers(
-            parsed.profile, parsed.opening, parsed.content
-        )
-        if markers:
-            truncated = self.interpolation.adjust_truncation(
-                truncated, parsed.content, markers
-            )
-
-        # Create pseudo-selection and format
-        kept_element = Element(
-            text=truncated,
-            raw_text=truncated,
-            start_offset=0,
-            end_offset=len(truncated),
-        )
-        removed_element = Element(
-            text="...", raw_text="...",
-            start_offset=0, end_offset=0
-        )
-
-        selection = Selection(
-            kept_elements=[kept_element],
-            removed_elements=[removed_element],
-            total_count=1,
-            tokens_kept=self.adapter.tokenizer.count_text_cached(truncated),
-            tokens_removed=parsed.original_tokens - self.adapter.tokenizer.count_text_cached(truncated),
-        )
-
-        # Format result
-        formatted = self.formatter.format(parsed, selection)
-
-        trimmed_tokens = self.adapter.tokenizer.count_text_cached(formatted.text)
-
-        return TrimResult(
-            trimmed_text=formatted.text,
-            original_tokens=parsed.original_tokens,
-            trimmed_tokens=trimmed_tokens,
-            saved_tokens=parsed.original_tokens - trimmed_tokens,
-            elements_kept=selection.kept_count,
-            elements_removed=selection.removed_count,
-            comment_text=formatted.comment,
-            comment_position=formatted.comment_byte,
-        )
-
-
-    def _process_collection(
-        self,
-        parsed: ParsedLiteral[CollectionProfile],
-        budget: int
-    ) -> Optional[TrimResult]:
-        """
-        Process collections through selector + formatter.
-
-        Args:
-            parsed: Parsed collection literal
-            budget: Token budget
-
-        Returns:
-            TrimResult if optimization applied
-        """
-        parser = self._get_parser_for_profile(parsed.profile)
-        elements = parser.parse(parsed.content)
-
-        if not elements:
-            return None
-
-        # Calculate overhead
-        placeholder = parsed.profile.placeholder_template
-        overhead = self.selector.calculate_overhead(
-            parsed.opening, parsed.closing, placeholder,
-            parsed.is_multiline, parsed.element_indent
-        )
-        content_budget = max(1, budget - overhead)
-
-        # Select elements with DFS
-        selection = self.selector.select_dfs(
-            elements, content_budget,
-            profile=parsed.profile,
-            get_parser_func=self._get_parser_for_profile,
-            min_keep=parsed.profile.min_elements,
-            tuple_size=parsed.profile.tuple_size if isinstance(parsed.profile, FactoryProfile) else 1,
-            preserve_top_level_keys=parsed.profile.preserve_all_keys if isinstance(parsed.profile, MappingProfile) else False,
-        )
-
-        if not selection.has_removals:
-            return None
-
-        # Format result
-        formatted = self.formatter.format_dfs(parsed, selection, parser)
-
-        trimmed_tokens = self.adapter.tokenizer.count_text_cached(formatted.text)
-
-        return TrimResult(
-            trimmed_text=formatted.text,
-            original_tokens=parsed.original_tokens,
-            trimmed_tokens=trimmed_tokens,
-            saved_tokens=parsed.original_tokens - trimmed_tokens,
-            elements_kept=selection.kept_count,
-            elements_removed=selection.removed_count,
-            comment_text=formatted.comment,
-            comment_position=formatted.comment_byte,
-        )

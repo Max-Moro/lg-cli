@@ -9,7 +9,7 @@ Handles imperative initialization blocks like:
 
 from __future__ import annotations
 
-from typing import List, Optional, Callable
+from typing import List, Optional, Callable, Tuple
 
 from lg.adapters.tree_sitter_support import Node, TreeSitterDocument
 from ..patterns import TrimResult, BlockInitProfile, LiteralProfile
@@ -165,9 +165,7 @@ class BlockInitProcessor:
             return None  # Too few statements
 
         # 4. Calculate what to keep/remove using budget-aware selection
-        keep_stmts, remove_stmts = self._select_statements(
-            matching_stmts, profile, doc, token_budget
-        )
+        keep_stmts, remove_stmts = self._select_statements(matching_stmts, doc, token_budget)
 
         if not remove_stmts:
             return None  # Nothing to remove
@@ -415,7 +413,6 @@ class BlockInitProcessor:
     def _select_statements(
         self,
         statements: List[Node],
-        profile: BlockInitProfile,
         doc: TreeSitterDocument,
         token_budget: int,
     ) -> Tuple[List[Node], List[Node]]:
