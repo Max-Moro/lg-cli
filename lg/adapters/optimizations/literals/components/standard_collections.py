@@ -12,6 +12,7 @@ from __future__ import annotations
 from typing import Optional
 
 from lg.stats.tokenizer import TokenService
+from .base import LiteralProcessor
 from ..descriptor import LanguageLiteralDescriptor
 from ..patterns import (
     LiteralProfile,
@@ -28,7 +29,7 @@ from ..utils import CommentFormatter
 from ..utils.element_parser import ElementParser, ParseConfig
 
 
-class StandardCollectionsProcessor:
+class StandardCollectionsProcessor(LiteralProcessor):
     """
     Processes standard collection literals with DFS optimization.
 

@@ -5,14 +5,20 @@ Reusable, self-contained components for handling specific aspects
 of literal string processing.
 """
 
+from .base import LiteralProcessor
 from .ast_sequence import ASTSequenceProcessor
-from .block_init import BlockInitProcessor
+from .block_init import BlockInitProcessorBase
+from .java_double_brace import JavaDoubleBraceProcessor
+from .rust_let_group import RustLetGroupProcessor
 from .string_literal import StringLiteralProcessor
 from .standard_collections import StandardCollectionsProcessor
 
 __all__ = [
+    'LiteralProcessor',
     'ASTSequenceProcessor',
-    'BlockInitProcessor',
+    'BlockInitProcessorBase',
+    'JavaDoubleBraceProcessor',
+    'RustLetGroupProcessor',
     'StringLiteralProcessor',
     'StandardCollectionsProcessor',
 ]

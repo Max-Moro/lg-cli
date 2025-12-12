@@ -18,10 +18,13 @@ lg/adapters/optimizations/literals/
 │
 ├── components/                 # Автономные компоненты обработки
 │   ├── __init__.py
+│   ├── base.py                 # LiteralProcessor (общий интерфейс для всех компонентов)
 │   ├── string_literal.py       # StringLiteralProcessor (строковые литералы)
 │   ├── standard_collections.py # StandardCollectionsProcessor (стандартные коллекции)
 │   ├── ast_sequence.py         # ASTSequenceProcessor (AST-based последовательности)
-│   └── block_init.py           # BlockInitProcessor (imperative initialization)
+│   ├── block_init.py           # BlockInitProcessorBase (базовый класс для imperative initialization)
+│   ├── java_double_brace.py    # JavaDoubleBraceProcessor (Java double-brace initialization)
+│   └── rust_let_group.py       # RustLetGroupProcessor (Rust HashMap let-group initialization)
 │
 ├── utils/                      # Утилитарные модули
 │   ├── __init__.py
@@ -66,24 +69,45 @@ lg/adapters/optimizations/literals/
 - Регистрируются в pipeline в priority order
 
 **Компоненты**:
+- `base.py` — **LiteralProcessor** (общий интерфейс)
+  - Абстрактный базовый класс для всех компонентов обработки литералов
+  - Определяет контракт: `can_handle()` и `process()`
+  - Обеспечивает типизацию в pipeline
+  - Позволяет статическим анализаторам проверять соответствие компонентов
+
 - `string_literal.py` — **StringLiteralProcessor** (строковые литералы)
+  - Наследует LiteralProcessor
   - Обрабатывает все StringProfile
   - Использует LiteralParser, StringFormatter
   - Поддерживает интерполяцию
 
 - `standard_collections.py` — **StandardCollectionsProcessor** (стандартные коллекции)
+  - Наследует LiteralProcessor
   - Обрабатывает SequenceProfile, MappingProfile, FactoryProfile
   - Использует LiteralParser, CollectionFormatter, BudgetSelector
   - Инкапсулирует кэш ElementParser'ов
   - Поддерживает DFS для вложенных структур
 
 - `ast_sequence.py` — **ASTSequenceProcessor** (AST-based последовательности)
+  - Наследует LiteralProcessor
   - Обрабатывает SequenceProfile с requires_ast_extraction=True
   - Специальный случай для C/C++ concatenated strings
 
-- `block_init.py` — **BlockInitProcessor** (imperative initialization)
-  - Обрабатывает BlockInitProfile
-  - Java double-brace initialization, Rust HashMap blocks
+- `block_init.py` — **BlockInitProcessorBase** (базовый класс для imperative initialization)
+  - Наследует LiteralProcessor
+  - Абстрактный базовый класс для обработки императивных блоков инициализации
+  - Общая логика: DFS оптимизация вложенных литералов, pattern matching
+  - Специализируется на два паттерна через подклассы
+
+- `java_double_brace.py` — **JavaDoubleBraceProcessor** (Java double-brace initialization)
+  - Наследует BlockInitProcessorBase
+  - Обрабатывает Java double-brace паттерн: `new HashMap() {{ put(...); }}`
+  - Специализированные методы для работы с блоками statements
+
+- `rust_let_group.py` — **RustLetGroupProcessor** (Rust HashMap let-group initialization)
+  - Наследует BlockInitProcessorBase
+  - Обрабатывает Rust let-group паттерн: `let mut m = HashMap::new(); m.insert(...);`
+  - Специализированные методы для работы с группами let-declaration
 
 #### Утилитарные модули (`utils/`)
 
@@ -125,10 +149,11 @@ self.literal_parser = LiteralParser(self.adapter.tokenizer)
 
 **Архитектура компонентов**:
 ```python
-self.special_components = [
+self.special_components: List[LiteralProcessor] = [
     # Специальные случаи (priority first)
     ASTSequenceProcessor(tokenizer, string_profiles),
-    BlockInitProcessor(tokenizer, all_profiles, callback, comment_style),
+    JavaDoubleBraceProcessor(tokenizer, all_profiles, callback, comment_style),
+    RustLetGroupProcessor(tokenizer, all_profiles, callback, comment_style),
 
     # Стандартные случаи
     StringLiteralProcessor(tokenizer, literal_parser, comment_formatter),
@@ -164,7 +189,46 @@ class SpecializedComponent:
 - Легко добавлять новые компоненты
 - Тестирование компонентов изолированно
 
-### 4. Расширенные стадии
+### 4. Общий интерфейс LiteralProcessor
+
+Все компоненты обработки литералов наследуют абстрактный базовый класс `LiteralProcessor`:
+
+```python
+class LiteralProcessor(ABC):
+    """
+    Abstract base class for all literal processing components.
+
+    All literal processors must implement:
+    - can_handle(): Check if component is applicable to a pattern
+    - process(): Process the literal and return optimization result
+    """
+
+    @abstractmethod
+    def can_handle(self, profile: LiteralProfile, node, doc) -> bool:
+        """Check if this component can handle the given literal pattern."""
+        pass
+
+    @abstractmethod
+    def process(
+        self,
+        node,
+        doc,
+        source_text: str,
+        profile: LiteralProfile,
+        token_budget: int,
+    ) -> Optional[TrimResult]:
+        """Process the literal and return optimization result."""
+        pass
+```
+
+**Преимущества единого интерфейса**:
+- Явный контракт для всех компонентов
+- Типизация в pipeline: `List[LiteralProcessor]`
+- Статические анализаторы (mypy, IDE) проверяют соответствие
+- Упрощение добавления новых компонентов
+- Документированный API для разработчиков
+
+### 5. Расширенные стадии
 
 Стадии предоставляют богатый API для работы на разных уровнях:
 
@@ -187,7 +251,7 @@ class LiteralParser:
 
 **Pipeline использует высокоуровневый API**, компоненты могут использовать любой уровень.
 
-### 5. Специализация форматтеров
+### 6. Специализация форматтеров
 
 Форматирование разделено на два специализированных модуля вместо одного монолитного:
 
@@ -397,7 +461,9 @@ class TrimResult:
 **Пример нового компонента**:
 ```python
 # components/my_special.py
-class MySpecialProcessor:
+from components.base import LiteralProcessor
+
+class MySpecialProcessor(LiteralProcessor):
     def can_handle(self, profile, node, doc) -> bool:
         return profile.some_flag  # Проверка применимости
 
@@ -411,9 +477,10 @@ class MySpecialProcessor:
 ```python
 # processing/pipeline.py
 def __init__(self, cfg, adapter):
-    self.special_components = [
+    self.special_components: List[LiteralProcessor] = [
         ASTSequenceProcessor(...),
-        BlockInitProcessor(...),
+        JavaDoubleBraceProcessor(...),
+        RustLetGroupProcessor(...),
         MySpecialProcessor(...),  # Добавить сюда
     ]
 ```
@@ -471,18 +538,22 @@ def __init__(self, cfg, adapter):
 
 **Ключевые принципы**:
 
-1. **Минималистичный оркестратор** — `pipeline.py` (~276 строк) только координирует
-2. **Shared сервисы** — создаются 1 раз, передаются в компоненты
-3. **Полностью автономные компоненты** — от `can_handle()` до `TrimResult`
-4. **Компонентная архитектура** — 4 автономных процессора:
-   - StringLiteralProcessor (строки)
+1. **Общий интерфейс** — все компоненты наследуют абстрактный `LiteralProcessor`
+2. **Минималистичный оркестратор** — `pipeline.py` (~276 строк) только координирует
+3. **Shared сервисы** — создаются 1 раз, передаются в компоненты
+4. **Полностью автономные компоненты** — от `can_handle()` до `TrimResult`
+5. **Компонентная архитектура** — 6 автономных процессоров наследуют `LiteralProcessor`:
+   - StringLiteralProcessor (строковые литералы)
    - StandardCollectionsProcessor (коллекции с инкапсулированным кэшем)
-   - ASTSequenceProcessor (специальные последовательности)
-   - BlockInitProcessor (imperative initialization)
-5. **Инкапсуляция** — каждый компонент владеет своими данными
-6. **Единопроходная обработка** — все типы литералов в одном проходе
-7. **Явная ER-модель** — типизированные структуры данных
-8. **Четкая классификация** — processing (сервисы) / components (процессоры) / utils (утилиты)
-9. **Унифицированный дескриптор** — все профили в одном списке
-10. **Специализация форматтеров** — отдельные модули для строк и коллекций
+   - ASTSequenceProcessor (специальные последовательности C/C++)
+   - BlockInitProcessorBase (абстрактный базовый класс для imperative initialization)
+     - JavaDoubleBraceProcessor (Java double-brace инициализация)
+     - RustLetGroupProcessor (Rust let-group инициализация)
+6. **Инкапсуляция** — каждый компонент владеет своими данными
+7. **Единопроходная обработка** — все типы литералов в одном проходе
+8. **Явная ER-модель** — типизированные структуры данных
+9. **Четкая классификация** — processing (сервисы) / components (процессоры) / utils (утилиты)
+10. **Унифицированный дескриптор** — все профили в одном списке
+11. **Специализация форматтеров** — отдельные модули для строк и коллекций
+12. **Типизированный pipeline** — `List[LiteralProcessor]` для static анализа
 

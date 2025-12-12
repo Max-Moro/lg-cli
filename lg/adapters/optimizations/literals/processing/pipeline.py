@@ -7,15 +7,17 @@ Orchestrates the two-pass literal processing workflow.
 
 from __future__ import annotations
 
-from typing import cast, Optional
+from typing import cast, Optional, List
 
 from lg.adapters.code_model import LiteralConfig
 from lg.adapters.context import ProcessingContext
 from .parser import LiteralParser
 from .selector import BudgetSelector
 from ..components import (
+    LiteralProcessor,
     ASTSequenceProcessor,
-    BlockInitProcessor,
+    JavaDoubleBraceProcessor,
+    RustLetGroupProcessor,
     StringLiteralProcessor,
     StandardCollectionsProcessor,
 )
@@ -66,13 +68,19 @@ class LiteralPipeline:
 
         # Create component instances
         # Order matters: more specific components first
-        self.special_components = [
+        self.special_components: List[LiteralProcessor] = [
             # Special cases
             ASTSequenceProcessor(
                 self.adapter.tokenizer,
                 [p for p in self.descriptor.profiles if isinstance(p, StringProfile)]
             ),
-            BlockInitProcessor(
+            JavaDoubleBraceProcessor(
+                self.adapter.tokenizer,
+                self.descriptor.profiles,
+                self._process_literal,
+                comment_style
+            ),
+            RustLetGroupProcessor(
                 self.adapter.tokenizer,
                 self.descriptor.profiles,
                 self._process_literal,

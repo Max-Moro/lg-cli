@@ -18,11 +18,12 @@ import re
 from typing import Optional, List
 
 from lg.stats.tokenizer import TokenService
+from .base import LiteralProcessor
 from ..patterns import LiteralProfile, SequenceProfile, TrimResult, StringProfile
 from ..utils.indentation import detect_base_indent, detect_element_indent
 
 
-class ASTSequenceProcessor:
+class ASTSequenceProcessor(LiteralProcessor):
     """
     Processes sequence literals using AST-based element extraction.
 
