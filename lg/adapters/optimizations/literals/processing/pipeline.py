@@ -2,7 +2,7 @@
 Literal optimization pipeline.
 
 This module serves as the single entry point for literal optimization.
-Orchestrates the two-pass literal processing workflow.
+Orchestrates the literal processing workflow.
 """
 
 from __future__ import annotations
@@ -39,15 +39,13 @@ class LiteralPipeline:
     (strings, sequences, mappings, factories, and block initializations).
     """
 
-    def __init__(self, cfg: LiteralConfig, adapter):
+    def __init__(self, adapter):
         """
         Initialize pipeline.
 
         Args:
-            cfg: Literal configuration
             adapter: Language adapter
         """
-        self.cfg = cfg
         from ....code_base import CodeAdapter
         self.adapter = cast(CodeAdapter, adapter)
 
@@ -102,15 +100,16 @@ class LiteralPipeline:
             ),
         ]
 
-    def apply(self, context: ProcessingContext) -> None:
+    def apply(self, context: ProcessingContext, cfg: LiteralConfig) -> None:
         """
         Apply literal optimization using unified single-pass approach.
 
         Args:
             context: Processing context with document
+            cfg: Literal configuration
         """
         # Get max_tokens from config
-        max_tokens = self.cfg.max_tokens
+        max_tokens = cfg.max_tokens
         if max_tokens is None:
             return  # Optimization disabled
 

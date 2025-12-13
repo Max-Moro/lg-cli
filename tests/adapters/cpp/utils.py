@@ -20,6 +20,12 @@ def make_adapter(cfg: CppCfg) -> CppAdapter:
     """
     adapter = CppAdapter().bind(None, stub_tokenizer())
     adapter._cfg = cfg
+    # Initialize literal pipeline after config override
+    if cfg.literals.max_tokens is not None:
+        from lg.adapters.optimizations import LiteralPipeline
+        adapter.literal_pipeline = LiteralPipeline(adapter)
+    else:
+        adapter.literal_pipeline = None
     return adapter
 
 
@@ -31,6 +37,12 @@ def make_adapter_real(cfg: CppCfg) -> CppAdapter:
     """
     adapter = CppAdapter().bind(None, default_tokenizer())
     adapter._cfg = cfg
+    # Initialize literal pipeline after config override
+    if cfg.literals.max_tokens is not None:
+        from lg.adapters.optimizations import LiteralPipeline
+        adapter.literal_pipeline = LiteralPipeline(adapter)
+    else:
+        adapter.literal_pipeline = None
     return adapter
 
 

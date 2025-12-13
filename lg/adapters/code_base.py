@@ -32,6 +32,33 @@ class CodeAdapter(BaseAdapter[C], ABC):
     Provides common methods for code processing and placeholder system.
     """
 
+    @classmethod
+    def bind(cls, raw_cfg: dict | None, tokenizer):
+        """
+        Factory for a "bound" adapter with literal pipeline initialization.
+
+        Overrides BaseAdapter.bind() to add literal pipeline initialization
+        only for code adapters and only when literals optimization is enabled.
+
+        Args:
+            raw_cfg: Raw configuration dictionary
+            tokenizer: Token counting service
+
+        Returns:
+            Bound CodeAdapter instance with initialized literal pipeline
+        """
+        # Call parent bind() to create instance and load config
+        inst = super().bind(raw_cfg, tokenizer)
+
+        # Initialize literal pipeline only if literals optimization is enabled
+        # This avoids heavy initialization when max_tokens is None
+        if inst.cfg.literals.max_tokens is not None:
+            inst.literal_pipeline = LiteralPipeline(inst)
+        else:
+            inst.literal_pipeline = None
+
+        return inst
+
     @abstractmethod
     def create_document(self, text: str, ext: str) -> TreeSitterDocument:
         """Create a parsed Tree-sitter document."""
@@ -120,6 +147,7 @@ class CodeAdapter(BaseAdapter[C], ABC):
 
         return text, meta
 
+    # noinspection PyUnresolvedReferences
     def _apply_optimizations(self, context: ProcessingContext, code_cfg: C) -> None:
         """
         Apply optimizations via specialized modules.
@@ -143,9 +171,9 @@ class CodeAdapter(BaseAdapter[C], ABC):
         import_optimizer = ImportOptimizer(code_cfg.imports, self)
         import_optimizer.apply(context)
 
-        # Process literals - delegated to LiteralPipeline
-        pipeline = LiteralPipeline(code_cfg.literals, self)
-        pipeline.apply(context)
+        # Process literals - only if pipeline was initialized
+        if self.literal_pipeline is not None:
+            self.literal_pipeline.apply(context, code_cfg.literals)
 
     def _finalize_placeholders(self, context: ProcessingContext, ph_cfg: PlaceholderConfig) -> Tuple[str, Dict[str, Any]]:
         """

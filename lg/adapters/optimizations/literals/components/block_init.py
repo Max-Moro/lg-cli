@@ -8,7 +8,6 @@ Provides common functionality for different initialization patterns:
 
 from __future__ import annotations
 
-from abc import abstractmethod
 from typing import List, Optional, Callable
 
 from lg.adapters.tree_sitter_support import Node, TreeSitterDocument
@@ -52,23 +51,6 @@ class BlockInitProcessorBase(LiteralProcessor):
         self.block_comment = comment_style[1]
         self.source_text = None
         self.doc = None
-
-    @abstractmethod
-    def can_handle(self, profile: LiteralProfile, node, doc) -> bool:
-        """Check if this component can handle the pattern."""
-        pass
-
-    @abstractmethod
-    def process(
-        self,
-        node,
-        doc,
-        source_text: str,
-        profile: BlockInitProfile,
-        token_budget: int,
-    ) -> Optional[TrimResult]:
-        """Process the block initialization pattern."""
-        pass
 
     def _optimize_statement_recursive(
         self,
