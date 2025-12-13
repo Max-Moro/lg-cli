@@ -46,7 +46,6 @@ JAVA_ARRAY_PROFILE = SequenceProfile(
     separator=",",
     placeholder_position=PlaceholderPosition.END,
     placeholder_template='"…"',
-    min_elements=1,
     comment_name="array",
 )
 
@@ -68,7 +67,6 @@ JAVA_MAP_OF_PROFILE = FactoryProfile(
     separator=",",
     placeholder_position=PlaceholderPosition.MIDDLE_COMMENT,
     placeholder_template='"…", "…"',
-    min_elements=1,
     comment_name="map",
     tuple_size=2,
 )
@@ -89,7 +87,6 @@ JAVA_MAP_OF_ENTRIES_PROFILE = FactoryProfile(
     separator=",",
     placeholder_position=PlaceholderPosition.MIDDLE_COMMENT,
     placeholder_template='Map.entry("…", "…")',
-    min_elements=1,
     comment_name="map",
 )
 
@@ -109,7 +106,6 @@ JAVA_LIST_SET_OF_PROFILE = FactoryProfile(
     separator=",",
     placeholder_position=PlaceholderPosition.MIDDLE_COMMENT,
     placeholder_template='"…"',
-    min_elements=1,
     comment_name="array",
 )
 
@@ -129,7 +125,6 @@ JAVA_ARRAYS_ASLIST_PROFILE = FactoryProfile(
     separator=",",
     placeholder_position=PlaceholderPosition.MIDDLE_COMMENT,
     placeholder_template='"…"',
-    min_elements=1,
     comment_name="array",
 )
 
@@ -149,7 +144,6 @@ JAVA_STREAM_OF_PROFILE = FactoryProfile(
     separator=",",
     placeholder_position=PlaceholderPosition.MIDDLE_COMMENT,
     placeholder_template='"…"',
-    min_elements=1,
     comment_name="stream",
 )
 
@@ -163,7 +157,6 @@ JAVA_DOUBLE_BRACE_PROFILE = BlockInitProfile(
     block_selector="class_body/block",
     statement_pattern="*/method_invocation",
     placeholder_position=PlaceholderPosition.MIDDLE_COMMENT,
-    min_elements=1,
     comment_name="double-brace init",
 )
 

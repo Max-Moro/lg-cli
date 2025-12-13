@@ -76,7 +76,6 @@ RUST_ARRAY_PROFILE = SequenceProfile(
     separator=",",
     placeholder_position=PlaceholderPosition.END,
     placeholder_template='"…"',
-    min_elements=1,
     comment_name="array",
 )
 
@@ -95,7 +94,6 @@ RUST_VEC_PROFILE = FactoryProfile(
     separator=",",
     placeholder_position=PlaceholderPosition.END,
     placeholder_template='"…"',
-    min_elements=1,
     comment_name="vec",
 )
 
@@ -109,10 +107,8 @@ RUST_HASHMAP_INIT_PROFILE = BlockInitProfile(
           name: (identifier) @method_name)
         (#eq? @method_name "new"))) @lit
     """,
-    block_selector=None,  # No block selector for let_declaration
     statement_pattern="*/call_expression",
     placeholder_position=PlaceholderPosition.MIDDLE_COMMENT,
-    min_elements=1,
     comment_name="hashmap init",
 )
 

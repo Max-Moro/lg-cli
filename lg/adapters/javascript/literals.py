@@ -58,7 +58,6 @@ JS_ARRAY_PROFILE = SequenceProfile(
     separator=",",
     placeholder_position=PlaceholderPosition.END,
     placeholder_template='"…"',
-    min_elements=1,
     comment_name="array",
 )
 
@@ -71,7 +70,6 @@ JS_OBJECT_PROFILE = MappingProfile(
     kv_separator=":",
     placeholder_position=PlaceholderPosition.MIDDLE_COMMENT,
     placeholder_template='"…": "…"',
-    min_elements=1,
     comment_name="object",
 )
 

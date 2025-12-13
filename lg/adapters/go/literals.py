@@ -59,7 +59,6 @@ GO_MAP_PROFILE = MappingProfile(
     wrapper_match=r"^map\[",
     placeholder_position=PlaceholderPosition.MIDDLE_COMMENT,
     placeholder_template='"…": "…"',
-    min_elements=1,
     comment_name="map",
 )
 
@@ -77,7 +76,6 @@ GO_SLICE_PROFILE = FactoryProfile(
     separator=",",
     placeholder_position=PlaceholderPosition.END,
     placeholder_template='"…"',
-    min_elements=1,
     comment_name="slice",
 )
 

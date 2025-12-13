@@ -51,7 +51,6 @@ C_CONCATENATED_STRING_PROFILE = SequenceProfile(
     separator="",
     placeholder_position=PlaceholderPosition.END,
     placeholder_template="…",
-    min_elements=1,
     comment_name="literal string",
     requires_ast_extraction=True,
 )
@@ -64,7 +63,6 @@ C_INITIALIZER_LIST_PROFILE = SequenceProfile(
     separator=",",
     placeholder_position=PlaceholderPosition.MIDDLE_COMMENT,
     placeholder_template='"…"',
-    min_elements=1,
     comment_name="array",
 )
 

@@ -30,7 +30,6 @@ TS_OBJECT_TYPE_PROFILE = MappingProfile(
     kv_separator=":",
     placeholder_position=PlaceholderPosition.END,
     placeholder_template='"…": "…"',
-    min_elements=1,
 )
 
 

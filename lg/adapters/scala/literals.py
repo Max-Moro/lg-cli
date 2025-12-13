@@ -65,7 +65,6 @@ SCALA_MAP_PROFILE = MappingProfile(
     wrapper_match=r"(Map|mutableMap|HashMap|LinkedHashMap)$",
     placeholder_position=PlaceholderPosition.MIDDLE_COMMENT,
     placeholder_template='"…" -> "…"',
-    min_elements=1,
     comment_name="object",
 )
 
@@ -83,7 +82,6 @@ SCALA_LIST_PROFILE = FactoryProfile(
     separator=",",
     placeholder_position=PlaceholderPosition.MIDDLE_COMMENT,
     placeholder_template='"…"',
-    min_elements=1,
     comment_name="array",
 )
 
@@ -100,7 +98,6 @@ SCALA_SET_PROFILE = FactoryProfile(
     separator=",",
     placeholder_position=PlaceholderPosition.MIDDLE_COMMENT,
     placeholder_template='"…"',
-    min_elements=1,
     comment_name="set",
 )
 

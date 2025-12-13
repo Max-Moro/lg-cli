@@ -57,7 +57,6 @@ KOTLIN_MAP_PROFILE = MappingProfile(
     wrapper_match=r"(mapOf|mutableMapOf|hashMapOf|linkedMapOf)$",
     placeholder_position=PlaceholderPosition.MIDDLE_COMMENT,
     placeholder_template='"…" to "…"',
-    min_elements=1,
     comment_name="object",
 )
 
@@ -74,7 +73,6 @@ KOTLIN_LIST_OF_PROFILE = FactoryProfile(
     separator=",",
     placeholder_position=PlaceholderPosition.MIDDLE_COMMENT,
     placeholder_template='"…"',
-    min_elements=1,
     comment_name="array",
 )
 
@@ -90,7 +88,6 @@ KOTLIN_SET_OF_PROFILE = FactoryProfile(
     separator=",",
     placeholder_position=PlaceholderPosition.MIDDLE_COMMENT,
     placeholder_template='"…"',
-    min_elements=1,
     comment_name="set",
 )
 
