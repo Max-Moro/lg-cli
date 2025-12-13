@@ -18,8 +18,8 @@ from ..patterns import (
     LiteralProfile,
     BlockInitProfile,
     StringProfile,
-    TrimResult,
     SequenceProfile,
+    TrimResult,
 )
 from ..utils.comment_formatter import CommentFormatter
 from ....code_model import LiteralConfig
@@ -82,6 +82,14 @@ class LiteralPipeline:
                 self.adapter.tokenizer,
                 self.literal_parser,
                 self.comment_formatter
+            ),
+            # C++ initializer_list with entry filtering (before StandardCollectionsProcessor)
+            CppInitializerListProcessor(
+                self.adapter.tokenizer,
+                self.literal_parser,
+                self.selector,
+                self.comment_formatter,
+                self.descriptor
             ),
             StandardCollectionsProcessor(
                 self.adapter.tokenizer,

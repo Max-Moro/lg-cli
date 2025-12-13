@@ -12,6 +12,7 @@ from .java_double_brace import JavaDoubleBraceProcessor
 from .rust_let_group import RustLetGroupProcessor
 from .string_literal import StringLiteralProcessor
 from .standard_collections import StandardCollectionsProcessor
+from .cpp_initializer_list import CppInitializerListProcessor
 
 __all__ = [
     'LiteralProcessor',
@@ -21,4 +22,5 @@ __all__ = [
     'RustLetGroupProcessor',
     'StringLiteralProcessor',
     'StandardCollectionsProcessor',
+    'CppInitializerListProcessor',
 ]
