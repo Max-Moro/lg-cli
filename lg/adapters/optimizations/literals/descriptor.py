@@ -7,15 +7,10 @@ Declarative definitions of literal patterns and behavior for each language.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import List, Optional
+from typing import List
 
 from .patterns import (
     LiteralProfile,
-    StringProfile,
-    SequenceProfile,
-    MappingProfile,
-    FactoryProfile,
-    BlockInitProfile,
 )
 
 

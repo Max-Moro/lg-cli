@@ -11,7 +11,7 @@ from dataclasses import dataclass, field
 from typing import List, Optional, Tuple
 
 from ..descriptor import LanguageLiteralDescriptor
-from ..patterns import CollectionProfile, MappingProfile, FactoryProfile
+from ..patterns import MappingProfile, FactoryProfile
 
 
 @dataclass
@@ -34,42 +34,6 @@ class ParseConfig:
     # Factory method wrappers (for detecting () as nested in factory calls)
     # Examples: ["List.of", "Map.of", "Map.ofEntries", "Set.of"]
     factory_wrappers: List[str] = field(default_factory=list)
-
-    @classmethod
-    def from_profile_and_descriptor(
-        cls,
-        profile: CollectionProfile,
-        descriptor: LanguageLiteralDescriptor
-    ) -> ParseConfig:
-        """
-        Создать ParseConfig из профиля и дескриптора.
-
-        Автоматически извлекает:
-        - separator из профиля
-        - kv_separator из профиля (если MappingProfile/FactoryProfile)
-        - factory_wrappers из дескриптора
-
-        Args:
-            profile: CollectionProfile (SequenceProfile, MappingProfile, FactoryProfile)
-            descriptor: LanguageLiteralDescriptor
-
-        Returns:
-            Сконфигурированный ParseConfig
-        """
-        separator = profile.separator
-        kv_separator = None
-
-        if isinstance(profile, (MappingProfile, FactoryProfile)):
-            kv_separator = profile.kv_separator
-
-        factory_wrappers = ElementParser.collect_factory_wrappers_from_descriptor(descriptor)
-
-        return cls(
-            separator=separator,
-            kv_separator=kv_separator,
-            preserve_whitespace=False,
-            factory_wrappers=factory_wrappers,
-        )
 
 
 @dataclass

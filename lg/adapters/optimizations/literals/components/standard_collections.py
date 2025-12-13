@@ -50,6 +50,10 @@ class StandardCollectionsProcessor(LiteralProcessor):
         """
         Initialize processor.
 
+        Factory wrappers are pre-computed once during initialization
+        for performance (avoids O(N × P) recalculation where N is number
+        of literals and P is number of profiles).
+
         Args:
             tokenizer: Token counting service
             literal_parser: Shared LiteralParser instance
@@ -62,6 +66,11 @@ class StandardCollectionsProcessor(LiteralProcessor):
         self.selector = selector
         self.collection_formatter = CollectionFormatter(tokenizer, comment_formatter)
         self.descriptor = descriptor
+
+        self.factory_wrappers = ElementParser.collect_factory_wrappers_from_descriptor(
+            self.descriptor
+        )
+
         # Cache parsers for different patterns
         self._parsers: dict[str, ElementParser] = {}
 
@@ -192,8 +201,13 @@ class StandardCollectionsProcessor(LiteralProcessor):
         key = f"{separator}:{kv_separator}:{tuple_size}"
 
         if key not in self._parsers:
-            # Use factory method to create config with automatic wrapper collection
-            config = ParseConfig.from_profile_and_descriptor(profile, self.descriptor)
+            # Use factory method with pre-computed factory_wrappers
+            config = ParseConfig(
+                separator=separator,
+                kv_separator=kv_separator,
+                preserve_whitespace=False,
+                factory_wrappers=self.factory_wrappers,
+            )
             self._parsers[key] = ElementParser(config)
 
         return self._parsers[key]
