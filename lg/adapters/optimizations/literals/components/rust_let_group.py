@@ -40,8 +40,6 @@ class RustLetGroupProcessor(BlockInitProcessorBase):
         token_budget: int,
     ) -> Optional[TrimResult]:
         """Process Rust let-group initialization."""
-        self.source_text = source_text
-        self.doc = doc
         base_indent = detect_base_indent(source_text, node.start_byte)
 
         return self._process_let_group(profile, node, doc, token_budget, base_indent)
@@ -219,14 +217,14 @@ class RustLetGroupProcessor(BlockInitProcessorBase):
         base_indent: str,
         token_budget: int,
     ) -> str:
-        """Reconstruct let group with trimmed inserts and DFS optimization."""
-        let_text = self._optimize_statement_recursive(let_node, doc, token_budget)
+        """Reconstruct let group with trimmed inserts."""
+        let_text = doc.get_node_text(let_node)
 
         separator = "\n" + base_indent
 
         insert_parts = []
         for insert in keep_inserts:
-            insert_text = self._optimize_statement_recursive(insert, doc, token_budget)
+            insert_text = doc.get_node_text(insert)
             insert_parts.append(insert_text)
 
         if remove_inserts and profile.placeholder_position.value == "middle":

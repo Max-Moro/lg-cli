@@ -70,14 +70,10 @@ class LiteralPipeline:
             ),
             JavaDoubleBraceProcessor(
                 self.adapter.tokenizer,
-                self.descriptor.profiles,
-                self._process_literal,
                 comment_style
             ),
             RustLetGroupProcessor(
                 self.adapter.tokenizer,
-                self.descriptor.profiles,
-                self._process_literal,
                 comment_style
             ),
 
@@ -149,31 +145,35 @@ class LiteralPipeline:
                 seen_coords.add(coords)
                 unique_nodes.append(node)
 
-        # Find top-level collections
-        top_level = []
-        for i, node in enumerate(unique_nodes):
-            start_byte, end_byte = context.doc.get_node_range(node)
+        # Process all nodes (not just top-level) in inside-out order
+        # This allows add_replacement_composing_nested to compose correctly:
+        # inner nodes are processed first, outer nodes compose with their edits
 
-            # For StringProfile: skip strings that are children of AST-extraction sequences
+        def node_depth(node):
+            """Calculate nesting depth of a node (distance from root)."""
+            depth = 0
+            current = node.parent
+            while current:
+                depth += 1
+                current = current.parent
+            return depth
+
+        # For StringProfile: skip strings that are children of AST-extraction sequences
+        # (they will be processed as part of the whole sequence)
+        nodes_to_process = []
+        for node in unique_nodes:
             if isinstance(profile, StringProfile) and node.parent:
                 parent_range = (node.parent.start_byte, node.parent.end_byte)
                 if parent_range in ast_extraction_nodes_set:
                     continue  # Skip - will be processed as whole sequence
+            nodes_to_process.append(node)
 
-            # Check if nested in another collection
-            is_nested = any(
-                j != i and
-                unique_nodes[j].start_byte <= start_byte and
-                unique_nodes[j].end_byte >= end_byte
-                for j in range(len(unique_nodes))
-            )
-            if is_nested:
-                continue
+        # Sort by depth (deepest first), then by position (left to right)
+        # Deepest-first ensures nested edits are created before parent edits
+        nodes_to_process.sort(key=lambda n: (-node_depth(n), n.start_byte))
 
-            top_level.append(node)
-
-        # Process each top-level collection
-        for node in top_level:
+        # Process each node in inside-out order
+        for node in nodes_to_process:
             literal_text = context.doc.get_node_text(node)
             token_count = self.adapter.tokenizer.count_text_cached(literal_text)
 

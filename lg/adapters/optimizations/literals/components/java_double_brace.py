@@ -41,8 +41,6 @@ class JavaDoubleBraceProcessor(BlockInitProcessorBase):
         token_budget: int,
     ) -> Optional[TrimResult]:
         """Process Java double-brace initialization."""
-        self.source_text = source_text
-        self.doc = doc
         base_indent = detect_base_indent(source_text, node.start_byte)
 
         result = self._process_block(profile, node, doc, token_budget, base_indent)
@@ -196,7 +194,7 @@ class JavaDoubleBraceProcessor(BlockInitProcessorBase):
 
         stmt_parts = []
         for i, stmt in enumerate(keep_stmts):
-            stmt_text = self._optimize_statement_recursive(stmt, doc, token_budget)
+            stmt_text = doc.get_node_text(stmt)
 
             if i == 0:
                 stmt_parts.append(stmt_text)
