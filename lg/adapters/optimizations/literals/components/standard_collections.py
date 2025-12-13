@@ -2,8 +2,7 @@
 Standard collections processor component.
 
 Handles processing of standard collection literals with:
-- DFS element selection
-- Recursive nested structure optimization
+- Budget-aware element selection
 - Multiline/single-line formatting
 """
 
@@ -31,12 +30,12 @@ from ..utils.element_parser import ElementParser, ParseConfig
 
 class StandardCollectionsProcessor(LiteralProcessor):
     """
-    Processes standard collection literals with DFS optimization.
+    Processes standard collection literals.
 
     Autonomous component that:
     - Parses collection structure
-    - Applies DFS selection with budget
-    - Formats result with nested handling
+    - Applies budget-aware selection
+    - Formats result
     """
 
     def __init__(
@@ -117,7 +116,7 @@ class StandardCollectionsProcessor(LiteralProcessor):
         Component itself:
         - Uses LiteralParser to extract structure
         - Parses elements
-        - Applies DFS selection
+        - Applies budget-aware selection
         - Formats result
 
         Args:
@@ -151,11 +150,11 @@ class StandardCollectionsProcessor(LiteralProcessor):
         if not elements:
             return None
 
-        # Select elements with DFS
+        # Select elements
         tuple_size = profile.tuple_size if isinstance(profile, FactoryProfile) else 1
         preserve_keys = profile.preserve_all_keys if isinstance(profile, MappingProfile) else False
 
-        selection = self.selector.select_dfs(
+        selection = self.selector.select(
             elements, content_budget,
             parser,
             min_keep=profile.min_elements,
@@ -167,7 +166,7 @@ class StandardCollectionsProcessor(LiteralProcessor):
             return None
 
         # Format result
-        formatted = self.collection_formatter.format_dfs(parsed, selection, parser)
+        formatted = self.collection_formatter.format(parsed, selection, parser)
 
         # Build final result
         trimmed_tokens = self.tokenizer.count_text_cached(formatted.text)
