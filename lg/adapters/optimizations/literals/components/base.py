@@ -10,6 +10,7 @@ from abc import ABC, abstractmethod
 from typing import Optional
 
 from ..patterns import LiteralProfile, TrimResult
+from ....tree_sitter_support import TreeSitterDocument, Node
 
 
 class LiteralProcessor(ABC):
@@ -22,7 +23,7 @@ class LiteralProcessor(ABC):
     """
 
     @abstractmethod
-    def can_handle(self, profile: LiteralProfile, node, doc) -> bool:
+    def can_handle(self, profile: LiteralProfile, node: Node, doc: TreeSitterDocument) -> bool:
         """
         Check if this component can handle the given literal pattern.
 
@@ -39,8 +40,8 @@ class LiteralProcessor(ABC):
     @abstractmethod
     def process(
         self,
-        node,
-        doc,
+        node: Node,
+        doc: TreeSitterDocument,
         source_text: str,
         profile: LiteralProfile,
         token_budget: int,

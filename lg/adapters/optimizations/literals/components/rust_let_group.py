@@ -11,16 +11,16 @@ from __future__ import annotations
 
 from typing import List, Optional
 
-from lg.adapters.tree_sitter_support import Node, TreeSitterDocument
 from .block_init import BlockInitProcessorBase
 from ..patterns import BlockInitProfile, TrimResult, LiteralProfile
 from ..utils.indentation import detect_base_indent
+from ....tree_sitter_support import TreeSitterDocument, Node
 
 
 class RustLetGroupProcessor(BlockInitProcessorBase):
     """Processes Rust let-group initialization patterns."""
 
-    def can_handle(self, profile: LiteralProfile, node, doc) -> bool:
+    def can_handle(self, profile: LiteralProfile, node: Node, doc: TreeSitterDocument) -> bool:
         """
         Check applicability.
 
@@ -33,8 +33,8 @@ class RustLetGroupProcessor(BlockInitProcessorBase):
 
     def process(
         self,
-        node,
-        doc,
+        node: Node,
+        doc: TreeSitterDocument,
         source_text: str,
         profile: BlockInitProfile,
         token_budget: int,

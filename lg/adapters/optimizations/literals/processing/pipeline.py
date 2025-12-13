@@ -9,18 +9,11 @@ from __future__ import annotations
 
 from typing import cast, Optional, List
 
-from lg.adapters.code_model import LiteralConfig
-from lg.adapters.context import ProcessingContext
+from tree_sitter._binding import Node
+
 from .parser import LiteralParser
 from .selector import BudgetSelector
-from ..components import (
-    LiteralProcessor,
-    ASTSequenceProcessor,
-    JavaDoubleBraceProcessor,
-    RustLetGroupProcessor,
-    StringLiteralProcessor,
-    StandardCollectionsProcessor,
-)
+from ..components import *
 from ..patterns import (
     LiteralProfile,
     BlockInitProfile,
@@ -29,6 +22,9 @@ from ..patterns import (
     SequenceProfile,
 )
 from ..utils.comment_formatter import CommentFormatter
+from ....code_model import LiteralConfig
+from ....context import ProcessingContext
+from ....tree_sitter_support import TreeSitterDocument, Node
 
 
 class LiteralPipeline:
@@ -194,8 +190,8 @@ class LiteralPipeline:
 
     def _process_literal(
         self,
-        node,
-        doc,
+        node: Node,
+        doc: TreeSitterDocument,
         source_text: str,
         profile: LiteralProfile,
         budget: int

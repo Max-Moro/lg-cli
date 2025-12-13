@@ -10,13 +10,13 @@ from __future__ import annotations
 
 from typing import List, Optional, Callable
 
-from lg.adapters.tree_sitter_support import Node, TreeSitterDocument
 from .base import LiteralProcessor
 from ..patterns import TrimResult, BlockInitProfile, LiteralProfile
+from ....tree_sitter_support import TreeSitterDocument, Node
 
 # Type alias for literal processing callback
 ProcessLiteralCallback = Callable[
-    [object, object, str, LiteralProfile, int],
+    [Node, TreeSitterDocument, str, LiteralProfile, int],
     Optional[TrimResult]
 ]
 
