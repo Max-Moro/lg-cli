@@ -66,10 +66,6 @@ class StandardCollectionsProcessor(LiteralProcessor):
         self.collection_formatter = CollectionFormatter(tokenizer, comment_formatter)
         self.descriptor = descriptor
 
-        self.factory_wrappers = ElementParser.collect_factory_wrappers_from_descriptor(
-            self.descriptor
-        )
-
         # Cache parsers for different patterns
         self._parsers: dict[str, ElementParser] = {}
 
@@ -191,18 +187,14 @@ class StandardCollectionsProcessor(LiteralProcessor):
         """
         # Create cache key from profile attributes
         separator = profile.separator
-        kv_separator = profile.kv_separator if isinstance(profile, (MappingProfile, FactoryProfile)) else None
-        tuple_size = profile.tuple_size if isinstance(profile, FactoryProfile) else 1
 
-        key = f"{separator}:{kv_separator}:{tuple_size}"
+        key = separator
 
         if key not in self._parsers:
-            # Use factory method with pre-computed factory_wrappers
+            # Create parser with minimal config (inside-out architecture handles nesting)
             config = ParseConfig(
                 separator=separator,
-                kv_separator=kv_separator,
                 preserve_whitespace=False,
-                factory_wrappers=self.factory_wrappers,
             )
             self._parsers[key] = ElementParser(config)
 

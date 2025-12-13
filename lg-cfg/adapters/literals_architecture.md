@@ -64,7 +64,7 @@ lg/adapters/optimizations/literals/
 
 **6 процессоров**:
 - **StringLiteralProcessor** — строки с интерполяцией
-- **StandardCollectionsProcessor** — коллекции с DFS (инкапсулирует кэш ElementParser)
+- **StandardCollectionsProcessor** — коллекции (инкапсулирует кэш ElementParser)
 - **ASTSequenceProcessor** — C/C++ concatenated strings
 - **BlockInitProcessorBase** — базовый для императивной инициализации
   - **JavaDoubleBraceProcessor** — `new HashMap() {{ put(...); }}`
@@ -136,6 +136,8 @@ Node + CollectionProfile
 
 **ParsedLiteral** — результат парсинга (original_text, opening, closing, content, is_multiline, base_indent, wrapper, profile)
 
+**Element** — простой текстовый фрагмент (text, raw_text, start_offset, end_offset). В inside-out архитектуре элементы не хранят информацию о вложенности — pipeline обрабатывает её автоматически
+
 **Selection** — выбор элементов (kept_elements, removed_elements, tokens_kept/removed)
 
 **FormattedResult** — отформатированный текст (text, start/end_byte, comment, comment_byte)
@@ -162,8 +164,9 @@ Node + CollectionProfile
 - Возврат TrimResult
 
 **Shared сервисы**:
-- **LiteralParser** — парсинг структуры
-- **BudgetSelector** — выбор элементов
+- **LiteralParser** — парсинг структуры литерала (границы, delimiters, wrapper)
+- **ElementParser** — парсинг элементов коллекции с учетом separators, скобок и строк
+- **BudgetSelector** — выбор элементов по токен-бюджету
 - **CommentFormatter** — комментирование
 - **StringFormatter/CollectionFormatter** — специализированное форматирование
 
@@ -197,4 +200,4 @@ Node + CollectionProfile
 5. **Единопроходность** — все типы литералов в одном проходе
 6. **Типизация** — явная ER-модель, `List[LiteralProcessor]` для static анализа
 7. **Специализация** — отдельные форматтеры для строк и коллекций
-8. **DFS оптимизация** — рекурсивная обработка вложенных структур
+8. **Упрощенная модель Element** — элементы не хранят информацию о вложенности; вся вложенность обрабатывается pipeline через inside-out архитектуру

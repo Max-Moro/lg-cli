@@ -6,14 +6,10 @@ Handles C++ initializer_list nodes with special filtering to skip intermediate e
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
-
 from .standard_collections import StandardCollectionsProcessor
+from ..patterns import LiteralProfile
 from ..patterns import SequenceProfile
-
-if TYPE_CHECKING:
-    from ....tree_sitter_support import Node, TreeSitterDocument
-    from ..patterns import LiteralProfile
+from ....tree_sitter_support import Node, TreeSitterDocument
 
 
 class CppInitializerListProcessor(StandardCollectionsProcessor):
