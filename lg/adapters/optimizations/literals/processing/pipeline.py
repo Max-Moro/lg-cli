@@ -113,49 +113,8 @@ class LiteralPipeline:
         if max_tokens is None:
             return  # Optimization disabled
 
-        # Process all profiles in single pass
-        for profile in self.descriptor.profiles:
-            self._process_profile(context, profile, max_tokens)
-
-
-    def _process_profile(
-        self,
-        context: ProcessingContext,
-        profile: LiteralProfile,
-        max_tokens: int,
-    ) -> None:
-        """
-        Common pipeline logic for processing any profile type.
-
-        Args:
-            context: Processing context
-            profile: Profile to process
-            max_tokens: Token budget
-        """
-        # Collect AST-extraction collection nodes to skip their children
-        ast_extraction_nodes_set = set()
-
-        # Only SequenceProfile can have requires_ast_extraction=True
-        for p in self.descriptor.profiles:
-            if isinstance(p, SequenceProfile) and p.requires_ast_extraction:
-                seq_nodes = context.doc.query_nodes(p.query, "lit")
-                for seq_node in seq_nodes:
-                    ast_extraction_nodes_set.add((seq_node.start_byte, seq_node.end_byte))
-
-        nodes = context.doc.query_nodes(profile.query, "lit")
-
-        # Deduplicate by coordinates
-        seen_coords = set()
-        unique_nodes = []
-        for node in nodes:
-            coords = (node.start_byte, node.end_byte)
-            if coords not in seen_coords:
-                seen_coords.add(coords)
-                unique_nodes.append(node)
-
-        # Process all nodes (not just top-level) in inside-out order
-        # This allows add_replacement_composing_nested to compose correctly:
-        # inner nodes are processed first, outer nodes compose with their edits
+        # NEW ARCHITECTURE: Collect all nodes from all profiles and process in depth order
+        # This ensures deepest nodes are processed first, regardless of profile type
 
         def node_depth(node):
             """Calculate nesting depth of a node (distance from root)."""
@@ -166,35 +125,77 @@ class LiteralPipeline:
                 current = current.parent
             return depth
 
-        # For StringProfile: skip strings that are children of AST-extraction sequences
-        # (they will be processed as part of the whole sequence)
-        nodes_to_process = []
-        for node in unique_nodes:
-            if isinstance(profile, StringProfile) and node.parent:
-                parent_range = (node.parent.start_byte, node.parent.end_byte)
-                if parent_range in ast_extraction_nodes_set:
-                    continue  # Skip - will be processed as whole sequence
-            nodes_to_process.append(node)
+        # Collect AST-extraction collection nodes to skip their children
+        ast_extraction_nodes_set = set()
+        for p in self.descriptor.profiles:
+            if isinstance(p, SequenceProfile) and p.requires_ast_extraction:
+                seq_nodes = context.doc.query_nodes(p.query, "lit")
+                for seq_node in seq_nodes:
+                    ast_extraction_nodes_set.add((seq_node.start_byte, seq_node.end_byte))
 
-        # Sort by depth (deepest first), then by position (left to right)
-        # Deepest-first ensures nested edits are created before parent edits
-        nodes_to_process.sort(key=lambda n: (-node_depth(n), n.start_byte))
+        # Collect all (node, profile) pairs from all profiles
+        all_node_profile_pairs = []
 
-        # Process each node in inside-out order
-        for node in nodes_to_process:
-            literal_text = context.doc.get_node_text(node)
-            token_count = self.adapter.tokenizer.count_text_cached(literal_text)
+        for profile in self.descriptor.profiles:
+            nodes = context.doc.query_nodes(profile.query, "lit")
 
-            # Skip budget check for BLOCK_INIT (handles budget internally)
-            if token_count > max_tokens or isinstance(profile, BlockInitProfile):
-                # Call unified processing entry point
-                result = self._process_literal(
-                    node, context.doc, context.raw_text, profile, max_tokens
-                )
+            # Deduplicate by coordinates
+            seen_coords = set()
+            unique_nodes = []
+            for node in nodes:
+                coords = (node.start_byte, node.end_byte)
+                if coords not in seen_coords:
+                    seen_coords.add(coords)
+                    unique_nodes.append(node)
 
-                # Apply if tokens saved
-                if result and result.saved_tokens > 0:
-                    self._apply_result(context, node, result, literal_text)
+            # Filter nodes
+            for node in unique_nodes:
+                # Skip strings that are children of AST-extraction sequences
+                if isinstance(profile, StringProfile) and node.parent:
+                    parent_range = (node.parent.start_byte, node.parent.end_byte)
+                    if parent_range in ast_extraction_nodes_set:
+                        continue  # Skip - will be processed as whole sequence
+
+                all_node_profile_pairs.append((node, profile))
+
+        # Sort ALL nodes by depth (deepest first), then by position
+        # This ensures inside-out processing across ALL profile types
+        all_node_profile_pairs.sort(key=lambda pair: (-node_depth(pair[0]), pair[0].start_byte))
+
+        # Process all nodes in unified depth order
+        for node, profile in all_node_profile_pairs:
+            self._process_node(context, node, profile, max_tokens)
+
+
+    def _process_node(
+        self,
+        context: ProcessingContext,
+        node: Node,
+        profile: LiteralProfile,
+        max_tokens: int,
+    ) -> None:
+        """
+        Process a single node with its associated profile.
+
+        Args:
+            context: Processing context
+            node: Tree-sitter node to process
+            profile: Profile for this node
+            max_tokens: Token budget
+        """
+        literal_text = context.doc.get_node_text(node)
+        token_count = self.adapter.tokenizer.count_text_cached(literal_text)
+
+        # Skip budget check for BLOCK_INIT (handles budget internally)
+        if token_count > max_tokens or isinstance(profile, BlockInitProfile):
+            # Call unified processing entry point
+            result = self._process_literal(
+                node, context.doc, context.raw_text, profile, max_tokens
+            )
+
+            # Apply if tokens saved
+            if result and result.saved_tokens > 0:
+                self._apply_result(context, node, result, literal_text)
 
     def _process_literal(
         self,
