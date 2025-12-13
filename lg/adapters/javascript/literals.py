@@ -90,5 +90,5 @@ def create_javascript_descriptor() -> LanguageLiteralDescriptor:
             JS_REGEX_PROFILE,             # Regex literals
             JS_ARRAY_PROFILE,
             JS_OBJECT_PROFILE,
-        ],
+        ]
     )

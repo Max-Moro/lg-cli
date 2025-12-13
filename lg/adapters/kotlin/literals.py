@@ -103,5 +103,5 @@ def create_kotlin_descriptor() -> LanguageLiteralDescriptor:
             KOTLIN_MAP_PROFILE,
             KOTLIN_LIST_OF_PROFILE,  # listOf variants
             KOTLIN_SET_OF_PROFILE,   # setOf variants
-        ],
+        ]
     )

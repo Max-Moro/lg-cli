@@ -179,7 +179,5 @@ def create_java_descriptor() -> LanguageLiteralDescriptor:
             JAVA_ARRAYS_ASLIST_PROFILE,
             JAVA_STREAM_OF_PROFILE,
             JAVA_DOUBLE_BRACE_PROFILE,
-        ],
-
-        nested_factory_wrappers=["Map.entry"],  # Nested wrappers for DFS detection
+        ]
     )

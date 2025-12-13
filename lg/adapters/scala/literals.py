@@ -113,5 +113,5 @@ def create_scala_descriptor() -> LanguageLiteralDescriptor:
             SCALA_MAP_PROFILE,
             SCALA_LIST_PROFILE,
             SCALA_SET_PROFILE,
-        ],
+        ]
     )

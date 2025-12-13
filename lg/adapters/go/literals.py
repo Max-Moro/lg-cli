@@ -89,5 +89,5 @@ def create_go_descriptor() -> LanguageLiteralDescriptor:
             GO_STRING_PROFILE,
             GO_MAP_PROFILE,
             GO_SLICE_PROFILE,
-        ],
+        ]
     )

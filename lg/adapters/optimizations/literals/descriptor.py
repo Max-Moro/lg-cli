@@ -29,8 +29,3 @@ class LanguageLiteralDescriptor:
     # All literal profiles (strings, sequences, mappings, factories, blocks)
     # Unified collection of all profile types for flexible processing
     profiles: List[LiteralProfile] = field(default_factory=list)
-
-    # Additional factory wrappers for nested detection (not patterns themselves)
-    # Example: ["Map.entry"] for Java - not optimized directly but needs DFS detection
-    nested_factory_wrappers: List[str] = field(default_factory=list)
-

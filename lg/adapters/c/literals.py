@@ -76,5 +76,5 @@ def create_c_descriptor() -> LanguageLiteralDescriptor:
             C_STRING_PROFILE,
             C_CONCATENATED_STRING_PROFILE,
             C_INITIALIZER_LIST_PROFILE,
-        ],
+        ]
     )

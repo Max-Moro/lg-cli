@@ -61,21 +61,6 @@ class Element:
     nested_prefix: Optional[str] = None     # Prefix before nested structure (for tuple elements like {"key", {...}})
     is_multiline: bool = False              # Whether this element spans multiple lines
 
-    @property
-    def is_kv_pair(self) -> bool:
-        """Check if this is a key-value pair."""
-        return self.key is not None
-
-    @property
-    def has_nested_structure(self) -> bool:
-        """Check if this element has a parseable nested structure."""
-        return self.is_nested and self.nested_content is not None
-
-    @property
-    def is_multiline_nested(self) -> bool:
-        """Check if this is a multiline nested structure suitable for DFS."""
-        return self.has_nested_structure and self.is_multiline
-
 
 class ElementParser:
     """
@@ -133,11 +118,6 @@ class ElementParser:
                         wrapper = alt.replace("\\.", ".")
                         if wrapper and wrapper not in wrappers:
                             wrappers.append(wrapper)
-
-        # Add additional wrappers from descriptor
-        for wrapper in descriptor.nested_factory_wrappers:
-            if wrapper not in wrappers:
-                wrappers.append(wrapper)
 
         return wrappers
 
@@ -532,42 +512,3 @@ class ElementParser:
                 return key, value
 
         return None, None
-
-    def parse_with_positions(
-        self,
-        content: str,
-        base_offset: int = 0
-    ) -> List[Element]:
-        """
-        Parse content and return elements with absolute positions.
-
-        Args:
-            content: Content to parse
-            base_offset: Offset to add to all positions
-
-        Returns:
-            List of elements with adjusted positions
-        """
-        elements = self.parse(content)
-
-        for elem in elements:
-            elem.start_offset += base_offset
-            elem.end_offset += base_offset
-
-        return elements
-
-    def parse_nested(self, element: Element) -> Optional[List[Element]]:
-        """
-        Recursively parse nested content of an element.
-
-        Args:
-            element: Element with nested structure
-
-        Returns:
-            List of nested elements, or None if not nested
-        """
-        if not element.has_nested_structure:
-            return None
-
-        # Parse the nested content
-        return self.parse(element.nested_content)

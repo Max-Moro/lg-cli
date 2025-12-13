@@ -111,5 +111,5 @@ def create_python_descriptor() -> LanguageLiteralDescriptor:
             PYTHON_TUPLE_PROFILE,
             PYTHON_SET_PROFILE,
             PYTHON_DICT_PROFILE,
-        ],
+        ]
     )

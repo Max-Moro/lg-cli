@@ -78,5 +78,5 @@ def create_cpp_descriptor() -> LanguageLiteralDescriptor:
             CPP_STRING_PROFILE,
             C_CONCATENATED_STRING_PROFILE,  # Reuse C concatenated strings
             C_INITIALIZER_LIST_PROFILE,      # Reuse C initializer lists
-        ],
+        ]
     )

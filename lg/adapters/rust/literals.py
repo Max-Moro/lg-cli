@@ -123,5 +123,5 @@ def create_rust_descriptor() -> LanguageLiteralDescriptor:
             RUST_ARRAY_PROFILE,
             RUST_VEC_PROFILE,
             RUST_HASHMAP_INIT_PROFILE,
-        ],
+        ]
     )

@@ -54,5 +54,5 @@ def create_typescript_descriptor() -> LanguageLiteralDescriptor:
             # Mapping profiles (JavaScript + TypeScript-specific)
             TS_OBJECT_TYPE_PROFILE,  # TypeScript-specific object types
             JS_OBJECT_PROFILE,       # JavaScript objects
-        ],
+        ]
     )
