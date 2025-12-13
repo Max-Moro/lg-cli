@@ -15,14 +15,11 @@ lg/adapters/optimizations/literals/
 │   ├── string_formatter.py     # StringFormatter
 │   └── collection_formatter.py # CollectionFormatter
 │
-├── components/                 # Автономные процессоры
-│   ├── base.py                 # LiteralProcessor (интерфейс)
+├── components/                 # Универсальные процессоры
 │   ├── string_literal.py       # StringLiteralProcessor
 │   ├── standard_collections.py # StandardCollectionsProcessor
 │   ├── ast_sequence.py         # ASTSequenceProcessor
-│   ├── block_init.py           # BlockInitProcessorBase
-│   ├── java_double_brace.py    # JavaDoubleBraceProcessor
-│   └── rust_let_group.py       # RustLetGroupProcessor
+│   └── block_init.py           # BlockInitProcessorBase
 │
 ├── utils/                      # Утилиты
 │   ├── element_parser.py
@@ -30,8 +27,21 @@ lg/adapters/optimizations/literals/
 │   ├── indentation.py
 │   └── comment_formatter.py
 │
+├── processor.py                # LiteralProcessor (базовый интерфейс)
 ├── descriptor.py               # LanguageLiteralDescriptor
 └── patterns.py                 # Иерархия профилей
+
+lg/adapters/java/
+├── literals.py                 # Профили и дескриптор
+└── literals_component.py       # JavaDoubleBraceProcessor
+
+lg/adapters/rust/
+├── literals.py                 # Профили и дескриптор
+└── literals_component.py       # RustLetGroupProcessor
+
+lg/adapters/cpp/
+├── literals.py                 # Профили и дескриптор
+└── literals_component.py       # CppInitializerListProcessor
 ```
 
 ---
@@ -58,17 +68,22 @@ lg/adapters/optimizations/literals/
 
 ### 2. Компонентная архитектура
 
-Все компоненты наследуют единый интерфейс `LiteralProcessor`:
+Все компоненты наследуют единый интерфейс `LiteralProcessor` (определен в `processor.py`):
 - `can_handle(profile, node, doc) -> bool` — проверка применимости
 - `process(...) -> Optional[TrimResult]` — полная обработка
 
-**6 процессоров**:
+**Универсальные процессоры** (в `components/`):
 - **StringLiteralProcessor** — строки с интерполяцией
 - **StandardCollectionsProcessor** — коллекции (инкапсулирует кэш ElementParser)
-- **ASTSequenceProcessor** — C/C++ concatenated strings
-- **BlockInitProcessorBase** — базовый для императивной инициализации
-  - **JavaDoubleBraceProcessor** — `new HashMap() {{ put(...); }}`
-  - **RustLetGroupProcessor** — `let mut m = HashMap::new(); m.insert(...);`
+- **ASTSequenceProcessor** — concatenated strings
+- **BlockInitProcessorBase** — базовый класс для императивной инициализации
+
+**Языково-специфичные процессоры** (в пакетах языков):
+- **JavaDoubleBraceProcessor** (`java/literals_component.py`) — `new HashMap() {{ put(...); }}`
+- **RustLetGroupProcessor** (`rust/literals_component.py`) — `let mut m = HashMap::new(); m.insert(...);`
+- **CppInitializerListProcessor** (`cpp/literals_component.py`) — фильтрация C++ initializer_list entries
+
+Языково-специфичные процессоры регистрируются через поле `custom_processor` в `LanguageLiteralDescriptor`.
 
 ### 3. Pipeline как минималистичный координатор
 
@@ -177,12 +192,23 @@ Node + CollectionProfile
 **Новый язык**:
 1. Создать дескриптор `lg/adapters/<язык>/literals.py`
 2. Определить профили (StringProfile, SequenceProfile, MappingProfile, FactoryProfile)
-3. При необходимости создать специальный компонент в `components/`
+3. При необходимости создать языково-специфичный компонент:
+   - Создать `lg/adapters/<язык>/literals_component.py`
+   - Наследовать `LiteralProcessor` или `BlockInitProcessorBase`
+   - Зарегистрировать через `custom_processor` в дескрипторе
 
-**Новый компонент**:
+**Новый языково-специфичный компонент**:
+1. Создать файл `lg/adapters/<язык>/literals_component.py`
+2. Импортировать базовые классы из `lg.adapters.optimizations.literals`
+3. Наследовать `LiteralProcessor` (или `BlockInitProcessorBase`, `StandardCollectionsProcessor`)
+4. Реализовать `can_handle()` и `process()`
+5. Зарегистрировать в дескрипторе
+
+**Новый универсальный компонент**:
+- Создать в `lg/adapters/optimizations/literals/components/`
 - Наследовать `LiteralProcessor`
 - Реализовать `can_handle()` и `process()`
-- Зарегистрировать в pipeline в priority order
+- Зарегистрировать в pipeline (`pipeline.py`) в priority order
 
 **Новый тип профиля**:
 1. Создать класс в `patterns.py` (наследник `LiteralProfile`)

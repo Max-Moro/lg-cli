@@ -12,7 +12,7 @@ from __future__ import annotations
 from typing import Optional
 
 from lg.stats.tokenizer import TokenService
-from .base import LiteralProcessor
+from ..processor import LiteralProcessor
 from ..patterns import LiteralProfile, StringProfile, TrimResult
 from ..processing.parser import LiteralParser
 from ..processing.selector import Selection

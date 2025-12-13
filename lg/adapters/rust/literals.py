@@ -16,6 +16,7 @@ Format strings (`"{}..."`) exist but can't be reliably detected without runtime 
 from __future__ import annotations
 
 from ..optimizations.literals import *
+from .literals_component import RustLetGroupProcessor
 
 
 def _rust_raw_closing(text: str, opening: str) -> str:
@@ -123,5 +124,6 @@ def create_rust_descriptor() -> LanguageLiteralDescriptor:
             RUST_ARRAY_PROFILE,
             RUST_VEC_PROFILE,
             RUST_HASHMAP_INIT_PROFILE,
-        ]
+        ],
+        custom_processor=RustLetGroupProcessor,
     )

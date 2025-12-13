@@ -9,8 +9,8 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 from typing import Optional
 
-from ..patterns import LiteralProfile, TrimResult
-from ....tree_sitter_support import TreeSitterDocument, Node
+from .patterns import LiteralProfile, TrimResult
+from ...tree_sitter_support import TreeSitterDocument, Node
 
 
 class LiteralProcessor(ABC):

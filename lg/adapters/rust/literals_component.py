@@ -11,10 +11,14 @@ from __future__ import annotations
 
 from typing import List, Optional
 
-from .block_init import BlockInitProcessorBase
-from ..patterns import BlockInitProfile, TrimResult, LiteralProfile
-from ..utils.indentation import detect_base_indent
-from ....tree_sitter_support import TreeSitterDocument, Node
+from ..optimizations.literals import (
+    BlockInitProcessorBase,
+    BlockInitProfile,
+    TrimResult,
+    LiteralProfile,
+)
+from ..optimizations.literals.utils.indentation import detect_base_indent
+from ..tree_sitter_support import TreeSitterDocument, Node
 
 
 class RustLetGroupProcessor(BlockInitProcessorBase):

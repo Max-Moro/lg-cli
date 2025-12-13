@@ -14,6 +14,7 @@ import re
 
 from ..c.literals import C_INITIALIZER_LIST_PROFILE, C_CONCATENATED_STRING_PROFILE
 from ..optimizations.literals import *
+from .literals_component import CppInitializerListProcessor
 
 
 def _cpp_raw_closing(text: str, opening: str) -> str:
@@ -78,5 +79,6 @@ def create_cpp_descriptor() -> LanguageLiteralDescriptor:
             CPP_STRING_PROFILE,
             C_CONCATENATED_STRING_PROFILE,  # Reuse C concatenated strings
             C_INITIALIZER_LIST_PROFILE,      # Reuse C initializer lists
-        ]
+        ],
+        custom_processor=CppInitializerListProcessor,
     )

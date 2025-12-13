@@ -18,7 +18,7 @@ import re
 from typing import Optional, List
 
 from lg.stats.tokenizer import TokenService
-from .base import LiteralProcessor
+from ..processor import LiteralProcessor
 from ..patterns import LiteralProfile, SequenceProfile, TrimResult, StringProfile
 from ..utils.indentation import detect_base_indent, detect_element_indent
 

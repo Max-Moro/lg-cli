@@ -14,6 +14,7 @@ Note: Java has no string interpolation, so no interpolation_markers are needed.
 from __future__ import annotations
 
 from ..optimizations.literals import *
+from .literals_component import JavaDoubleBraceProcessor
 
 JAVA_DELIMITER_CONFIG = DelimiterConfig(
     string_prefixes=[],  # No prefixes in Java
@@ -179,5 +180,6 @@ def create_java_descriptor() -> LanguageLiteralDescriptor:
             JAVA_ARRAYS_ASLIST_PROFILE,
             JAVA_STREAM_OF_PROFILE,
             JAVA_DOUBLE_BRACE_PROFILE,
-        ]
+        ],
+        custom_processor=JavaDoubleBraceProcessor,
     )

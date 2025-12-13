@@ -7,11 +7,10 @@ Declarative definitions of literal patterns and behavior for each language.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import List
+from typing import List, Optional, Type
 
-from .patterns import (
-    LiteralProfile,
-)
+from .patterns import LiteralProfile
+from .processor import LiteralProcessor
 
 
 @dataclass
@@ -29,3 +28,6 @@ class LanguageLiteralDescriptor:
     # All literal profiles (strings, sequences, mappings, factories, blocks)
     # Unified collection of all profile types for flexible processing
     profiles: List[LiteralProfile] = field(default_factory=list)
+
+    # Optional language-specific processor component
+    custom_processor: Optional[Type[LiteralProcessor]] = None

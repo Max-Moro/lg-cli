@@ -6,10 +6,12 @@ Handles C++ initializer_list nodes with special filtering to skip intermediate e
 
 from __future__ import annotations
 
-from .standard_collections import StandardCollectionsProcessor
-from ..patterns import LiteralProfile
-from ..patterns import SequenceProfile
-from ....tree_sitter_support import Node, TreeSitterDocument
+from ..optimizations.literals import (
+    StandardCollectionsProcessor,
+    LiteralProfile,
+    SequenceProfile,
+)
+from ..tree_sitter_support import Node, TreeSitterDocument
 
 
 class CppInitializerListProcessor(StandardCollectionsProcessor):

@@ -21,6 +21,7 @@ from ..patterns import (
     SequenceProfile,
     TrimResult,
 )
+from ..processor import LiteralProcessor
 from ..utils.comment_formatter import CommentFormatter
 from ....code_model import LiteralConfig
 from ....context import ProcessingContext
@@ -68,28 +69,39 @@ class LiteralPipeline:
                 self.adapter.tokenizer,
                 [p for p in self.descriptor.profiles if isinstance(p, StringProfile)]
             ),
-            JavaDoubleBraceProcessor(
-                self.adapter.tokenizer,
-                comment_style
-            ),
-            RustLetGroupProcessor(
-                self.adapter.tokenizer,
-                comment_style
-            ),
+        ]
 
-            # Standard cases
+        # Add language-specific processor if provided by descriptor
+        if self.descriptor.custom_processor:
+            # Check which base class to determine constructor signature
+            if issubclass(self.descriptor.custom_processor, BlockInitProcessorBase):
+                # BlockInit-based processors need tokenizer + comment_style
+                processor_instance = self.descriptor.custom_processor(
+                    self.adapter.tokenizer,
+                    comment_style
+                )
+            elif issubclass(self.descriptor.custom_processor, StandardCollectionsProcessor):
+                # StandardCollections-based processors need full set of services
+                processor_instance = self.descriptor.custom_processor(
+                    self.adapter.tokenizer,
+                    self.literal_parser,
+                    self.selector,
+                    self.comment_formatter,
+                    self.descriptor
+                )
+            else:
+                # Unknown processor type - skip
+                processor_instance = None
+
+            if processor_instance:
+                self.special_components.append(processor_instance)
+
+        # Standard cases (append after custom)
+        self.special_components.extend([
             StringLiteralProcessor(
                 self.adapter.tokenizer,
                 self.literal_parser,
                 self.comment_formatter
-            ),
-            # C++ initializer_list with entry filtering (before StandardCollectionsProcessor)
-            CppInitializerListProcessor(
-                self.adapter.tokenizer,
-                self.literal_parser,
-                self.selector,
-                self.comment_formatter,
-                self.descriptor
             ),
             StandardCollectionsProcessor(
                 self.adapter.tokenizer,
@@ -98,7 +110,7 @@ class LiteralPipeline:
                 self.comment_formatter,
                 self.descriptor
             ),
-        ]
+        ])
 
     def apply(self, context: ProcessingContext, cfg: LiteralConfig) -> None:
         """

@@ -8,7 +8,7 @@ Provides common functionality for different initialization patterns:
 
 from __future__ import annotations
 
-from .base import LiteralProcessor
+from ..processor import LiteralProcessor
 from ....tree_sitter_support import TreeSitterDocument, Node
 
 
