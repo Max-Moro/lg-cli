@@ -44,3 +44,9 @@ exclude:
   - name: PyPep8NamingInspection
     paths:
       - lg/migrate/migrations
+
+  # PyTypeHintsInspection: New in Qodana 252.28456.347 - incorrectly flags valid type hints like "-> None"
+  - name: PyTypeHintsInspection
+
+  # PyClassHasNoInitInspection: New in Qodana 252.28456.347 - incorrectly flags @dataclass without __init__
+  - name: PyClassHasNoInitInspection

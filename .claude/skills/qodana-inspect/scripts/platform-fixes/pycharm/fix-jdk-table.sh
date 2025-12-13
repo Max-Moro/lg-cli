@@ -17,19 +17,19 @@ BLUE='\033[0;34m'
 NC='\033[0m'
 
 log_info() {
-    echo -e "${BLUE}[PyCharm Fix]${NC} $1" >&2
+    printf "${BLUE}[PyCharm Fix]${NC} %s\n" "$1" >&2
 }
 
 log_success() {
-    echo -e "${GREEN}[PyCharm Fix]${NC} $1" >&2
+    printf "${GREEN}[PyCharm Fix]${NC} %s\n" "$1" >&2
 }
 
 log_warn() {
-    echo -e "${YELLOW}[PyCharm Fix]${NC} $1" >&2
+    printf "${YELLOW}[PyCharm Fix]${NC} %s\n" "$1" >&2
 }
 
 log_error() {
-    echo -e "${RED}[PyCharm Fix]${NC} $1" >&2
+    printf "${RED}[PyCharm Fix]${NC} %s\n" "$1" >&2
 }
 
 # Find Qodana config directory
@@ -157,12 +157,12 @@ detect_python_paths() {
     stdlib="${stdlib//\\//}"
     dlls="${dlls//\\//}"
 
-    echo "$sdk_name"
-    echo "$python_version"
-    echo "$python_exe"
-    echo "$site_packages"
-    echo "$stdlib"
-    echo "$dlls"
+    printf '%s\n' "$sdk_name"
+    printf '%s\n' "$python_version"
+    printf '%s\n' "$python_exe"
+    printf '%s\n' "$site_packages"
+    printf '%s\n' "$stdlib"
+    printf '%s\n' "$dlls"
 }
 
 # Generate jdk.table.xml from template
