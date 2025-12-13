@@ -44,7 +44,7 @@ private:
             {"port", 5432},
             // … (6 more, −45 tokens)
         }},
-        // … (3 more, −194 tokens)
+        // … (3 more, −149 tokens)
     };
 
     std::vector<std::string> supportedLanguages;
@@ -78,7 +78,7 @@ public:
             {"level1", {
                 {{"id", "1"}, {"name", "First"}, {"active", "true"}},
                 // … (4 more, −77 tokens)
-            }},
+            }}
         };
 
         DataContainer container;

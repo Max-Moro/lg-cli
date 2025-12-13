@@ -47,10 +47,10 @@ class LiteralDataManager {
 
   private val largeConfig = Map(
     "database" -> Map(
-        "host" -> "localhost",
-        // … (5 more, −101 tokens)
+      "host" -> "localhost",
+      // … (5 more, −101 tokens)
     ),
-    // … (3 more, −304 tokens)
+    // … (3 more, −203 tokens)
   )
 
   private val supportedLanguages: List[String] = List(
@@ -74,16 +74,16 @@ class LiteralDataManager {
 
     val nestedData = Map(
       "level1" -> Map(
-          "level2" -> Map(
-              "level3" -> Map(
-                  "data" -> List(
-                      Map("id" -> 1, "name" -> "First", "active" -> true),
-                      // … (4 more, −85 tokens)
-                  ),
-                  // … (1 more, −137 tokens)
-              ),
-          ),
-      ),
+        "level2" -> Map(
+          "level3" -> Map(
+            "data" -> List(
+              Map("id" -> 1,  /* … (2 more, −11 tokens) */)
+              // … (4 more, −85 tokens)
+            ),
+            // … (1 more, −52 tokens)
+          )
+        )
+      )
     )
 
     DataContainer(

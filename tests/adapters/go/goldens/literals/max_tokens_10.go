@@ -49,25 +49,25 @@ type LiteralDataManager struct {
 func NewLiteralDataManager() *LiteralDataManager {
 	return &LiteralDataManager{
 		smallConfig: map[string]interface{}{
-		    "debug":   true,
-		    // … (1 more, −10 tokens)
+			"debug":   true,
+			"version": "1.0.0",
 		},
 		largeConfig: map[string]interface{}{
-		    "database": map[string]interface{}{
-		        "host": "localhost",
-		        // … (5 more, −107 tokens)
-		    },
-		    // … (3 more, −334 tokens)
+			"database": map[string]interface{}{
+				"host": "localhost",
+				// … (5 more, −107 tokens)
+			},
+			// … (3 more, −227 tokens)
 		},
 		supportedLanguages: []string{
-		    "english",
-		    // … (23 more, −89 tokens)
-		},
+			"english",
+			"…"
+		}, // literal slice (−89 tokens)
 		allowedExtensions: []string{
-		    ".go",
-		    // … (20 more, −62 tokens)
-		},
-	} // literal struct (−495 tokens)
+			".go",
+			"…"
+		}, // literal slice (−62 tokens)
+	}
 }
 
 // ProcessData creates a data container with various literals
@@ -81,15 +81,15 @@ func (m *LiteralDataManager) ProcessData() *DataContainer {
 
 	nestedData := map[string]interface{}{
 		"level1": map[string]interface{}{
-		    "level2": map[string]interface{}{
-		        "level3": map[string]interface{}{
-		            "data": []map[string]interface{}{
-		                {"id": 1, "name": "First", "active": true},
-		                // … (4 more, −69 tokens)
-		            },
-		            // … (1 more, −126 tokens)
-		        },
-		    },
+			"level2": map[string]interface{}{
+				"level3": map[string]interface{}{
+					"data": []map[string]interface{}{
+						{"id": 1, "name": "First", "active": true},
+						"…"
+					} // literal slice (−69 tokens),
+					// … (1 more, −57 tokens)
+				},
+			},
 		},
 	}
 

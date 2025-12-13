@@ -104,6 +104,9 @@ class LiteralPipeline:
         """
         Apply literal optimization using unified single-pass approach.
 
+        Collect all nodes from all profiles and process in depth order.
+        This ensures deepest nodes are processed first, regardless of profile type.
+
         Args:
             context: Processing context with document
             cfg: Literal configuration
@@ -112,9 +115,6 @@ class LiteralPipeline:
         max_tokens = cfg.max_tokens
         if max_tokens is None:
             return  # Optimization disabled
-
-        # NEW ARCHITECTURE: Collect all nodes from all profiles and process in depth order
-        # This ensures deepest nodes are processed first, regardless of profile type
 
         def node_depth(node):
             """Calculate nesting depth of a node (distance from root)."""

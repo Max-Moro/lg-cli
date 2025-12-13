@@ -11,7 +11,7 @@ from dataclasses import dataclass
 from typing import List
 
 from lg.stats.tokenizer import TokenService
-from ..utils.element_parser import Element, ElementParser
+from ..utils.element_parser import Element
 
 
 @dataclass
@@ -114,10 +114,8 @@ class BudgetSelector:
         self,
         elements: List[Element],
         budget: int,
-        parser: ElementParser,
         min_keep: int = 1,
         tuple_size: int = 1,
-        preserve_top_level_keys: bool = False,
     ) -> Selection:
         """
         Select elements using simple budget-aware strategy.
@@ -127,10 +125,8 @@ class BudgetSelector:
         Args:
             elements: List of elements at current level
             budget: Token budget
-            parser: ElementParser (unused, kept for compatibility)
             min_keep: Minimum elements to keep
             tuple_size: Group elements into tuples
-            preserve_top_level_keys: Keep all keys (for typed structs)
 
         Returns:
             Selection with kept/removed elements
@@ -162,9 +158,8 @@ class BudgetSelector:
 
             # Determine if we must keep this group
             must_keep = groups_kept < min_keep
-            must_preserve = preserve_top_level_keys  # For typed structs
 
-            if group_tokens <= budget - tokens_used or must_keep or must_preserve:
+            if group_tokens <= budget - tokens_used or must_keep:
                 # Keep this group
                 kept.extend(group)
                 tokens_used += group_tokens

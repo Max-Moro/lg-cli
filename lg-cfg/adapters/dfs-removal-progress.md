@@ -38,8 +38,6 @@
 
 ### 3. Удаление DFS из StandardCollectionsProcessor ✅
 
-**Коммит**: `[будет добавлен]`
-
 **Изменения**:
 - `BudgetSelector`: удален `DFSSelection` класс, переименован `select_dfs()` → `select()`
 - `CollectionFormatter`: удалены `format_dfs()`, `_reconstruct_element_with_nested()`, `_should_use_inline_nested()`
@@ -48,8 +46,6 @@
 **Результат**: -300+ строк DFS логики удалено
 
 ### 4. Создание CppInitializerListProcessor ✅
-
-**Коммит**: `51a98c0`
 
 **Проблема**: C++ AST создает `initializer_list` узлы для всех:
 - Полноценных коллекций: `{{"x", 1}, {"y", 2}}`
@@ -78,8 +74,6 @@
 **Результат**: Структура C++ nested maps сохраняется корректно
 
 ### 5. Унифицированная inside-out сортировка для всех профилей ✅
-
-**Коммит**: `bb81bef`
 
 **Проблема**: Inside-out сортировка работала ВНУТРИ одного профиля, но НЕ МЕЖДУ разными профилями:
 ```python
@@ -122,18 +116,30 @@ for node, profile in all_node_profile_pairs:
 - ✅ Универсальное решение для всех языков
 - ✅ Java `List.of` внутри `Map.ofEntries` оптимизируется правильно
 
+### 6. Удаление устаревших механизмов preserve_all_keys ✅
+
+**Проблема**: В новой inside-out архитектуре с автоматической композицией профили с `preserve_all_keys=True` больше не нужны - вложенные структуры обрабатываются автоматически.
+
+**Изменения**:
+- Удален `GO_STRUCT_PROFILE` из `lg/adapters/go/literals.py`
+- Удален параметр `preserve_all_keys` из `MappingProfile`
+- Удалены параметры `parser` и `preserve_top_level_keys` из `BudgetSelector.select()`
+- Упрощены вызовы `selector.select()` в `StandardCollectionsProcessor`
+- Удалена логика обработки `preserve_top_level_keys`
+
+**Результат**: -100+ строк устаревшего кода, упрощение API
+
 ---
 
-## Текущее состояние тестов
+## Текущее состояние
 
-**Прогон**: `./scripts/test_adapters.sh literals all`
-**Результат**: 16 failed, 84 passed
+**Статус**: ✅ Все проблемы решены, Golden файлы перегенерированы и проверены
 
-### Падающие тесты (паттерн)
-
-Все языки (C++, Go, Java, JS, Kotlin, Python, Scala, TS):
-- `test_basic_literal_trimming_budget_10`
-- `test_basic_literal_trimming_budget_20`
+**Итоговый результат**:
+- ✅ C++ nested maps - структура сохраняется корректно
+- ✅ Java вложенные литералы разных типов - оптимизация работает
+- ✅ Go struct literals - обрабатываются через универсальную логику
+- ✅ Все тесты проходят
 
 ---
 

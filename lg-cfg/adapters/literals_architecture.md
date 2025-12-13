@@ -85,11 +85,19 @@ lg/adapters/optimizations/literals/
 
 ### 4. Специализация форматтеров
 
-**StringFormatter** — только строки, simple truncation, без DFS
+**StringFormatter** — только строки, simple truncation
 
-**CollectionFormatter** — только коллекции, полная DFS рекурсия, multiline/single-line
+**CollectionFormatter** — только коллекции, greedy selection, multiline/single-line
 
 **CommentFormatter** — shared утилита для обоих форматтеров
+
+### 5. Inside-Out Processing
+
+**Принцип**: Все узлы от всех профилей сортируются вместе по глубине (deepest-first), затем обрабатываются в едином проходе.
+
+**Композиция**: Глубокие узлы создают edits первыми, родительские узлы автоматически композируют их через `add_replacement_composing_nested`.
+
+**Преимущество**: Depth важнее порядка профилей в дескрипторе - вложенные литералы разных типов обрабатываются корректно.
 
 ---
 
@@ -115,12 +123,12 @@ Node + StringProfile
 Node + CollectionProfile
   → LiteralParser.parse_from_node() → ParsedLiteral
   → ElementParser.parse() → List[Element]
-  → BudgetSelector.select_dfs() → DFSSelection (nested)
-  → CollectionFormatter.format_dfs() → FormattedResult
+  → BudgetSelector.select() → Selection (greedy)
+  → CollectionFormatter.format() → FormattedResult
   → TrimResult
 ```
 
-**Единопроходная архитектура**: все типы литералов (строки, коллекции, фабрики, блоки) в одном проходе.
+**Inside-Out архитектура**: все типы литералов (строки, коллекции, фабрики, блоки) обрабатываются в едином проходе, отсортированном по глубине (deepest-first).
 
 ---
 
@@ -129,8 +137,6 @@ Node + CollectionProfile
 **ParsedLiteral** — результат парсинга (original_text, opening, closing, content, is_multiline, base_indent, wrapper, profile)
 
 **Selection** — выбор элементов (kept_elements, removed_elements, tokens_kept/removed)
-
-**DFSSelection** — с рекурсией (nested_selections, remaining_budget, budget_exhausted)
 
 **FormattedResult** — отформатированный текст (text, start/end_byte, comment, comment_byte)
 

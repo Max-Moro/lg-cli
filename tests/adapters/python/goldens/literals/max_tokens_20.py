@@ -54,7 +54,7 @@ def process_data():
             "host": "localhost",
             # … (3 more, −38 tokens)
         },
-        # … (2 more, −142 tokens)
+        # … (2 more, −104 tokens)
     }
     
     # Very long single-line string

@@ -204,13 +204,6 @@ class MappingProfile(CollectionProfile):
     placeholder_template: str = '"…": "…"'
 
     """
-    For typed structures: preserve all keys/fields at top level.
-    When True: all top-level keys are kept, optimization applied to nested values.
-    Useful for struct literals where field names must be preserved.
-    """
-    preserve_all_keys: bool = False
-
-    """
     Regex pattern to match wrapper name (for factory-style mappings).
     Used to distinguish between different mapping factories when multiple patterns
     match the same tree-sitter node type.

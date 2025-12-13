@@ -44,28 +44,6 @@ GO_STRING_PROFILE = StringProfile(
     interpolation_markers=[],
 )
 
-# Mapping profile for struct literals (typed, preserve fields)
-# Struct literals: Type{field: value, ...}
-# Match: type names (not starting with "map[")
-GO_STRUCT_PROFILE = MappingProfile(
-    query="""
-    (composite_literal
-      type: (type_identifier) @type_name
-      (#not-match? @type_name "^map")
-      body: (literal_value)) @lit
-    """,
-    opening="{",
-    closing="}",
-    separator=",",
-    kv_separator=":",
-    wrapper_match=r"^(?!map\[)(?!\[\]).*",
-    placeholder_position=PlaceholderPosition.END,
-    placeholder_template='"…"',
-    preserve_all_keys=True,
-    min_elements=1,
-    comment_name="struct",
-)
-
 # Mapping profile for map literals
 # Map literals: map[K]V{key: value, ...}
 GO_MAP_PROFILE = MappingProfile(
@@ -109,7 +87,6 @@ def create_go_descriptor() -> LanguageLiteralDescriptor:
     return LanguageLiteralDescriptor(
         profiles=[
             GO_STRING_PROFILE,
-            GO_STRUCT_PROFILE,
             GO_MAP_PROFILE,
             GO_SLICE_PROFILE,
         ],

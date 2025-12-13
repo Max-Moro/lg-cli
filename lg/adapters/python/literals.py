@@ -95,7 +95,6 @@ PYTHON_DICT_PROFILE = MappingProfile(
     placeholder_template='"…": "…"',
     min_elements=1,
     comment_name="object",
-    preserve_all_keys=False,
 )
 
 def create_python_descriptor() -> LanguageLiteralDescriptor:

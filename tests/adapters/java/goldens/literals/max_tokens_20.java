@@ -71,11 +71,11 @@ public class LiteralDataManager {
     );
 
     private final Map<String, Object> largeConfig = Map.ofEntries(
-        Map.entry(
-            "database",
-            // … (1 more, −140 tokens)
-        )
-        // … (3 more, −379 tokens)
+        Map.entry("database", Map.ofEntries(
+            Map.entry("host", "localhost")
+            // … (5 more, −120 tokens)
+        ))
+        // … (3 more, −239 tokens)
     );
 
     private final List<String> supportedLanguages;
@@ -112,8 +112,15 @@ public class LiteralDataManager {
 
         Map<String, Object> nestedData = Map.of(
             "level1", Map.of(
-                "level2",
-                // … (1 more, −188 tokens)
+                "level2", Map.of(
+                    "level3", Map.ofEntries(
+                        Map.entry("data", List.of(
+                            Map.of("id", 1, "name", "First", "active", true)
+                            // … (4 more, −77 tokens)
+                        ))
+                        // … (1 more, −59 tokens)
+                    )
+                )
             )
         );
 

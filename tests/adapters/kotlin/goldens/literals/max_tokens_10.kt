@@ -41,7 +41,7 @@ class LiteralDataManager {
             "host" to "localhost",
             // … (5 more, −103 tokens)
         ),
-        // … (3 more, −312 tokens)
+        // … (3 more, −209 tokens)
     )
     
     private val supportedLanguages: List<String>
@@ -75,13 +75,13 @@ class LiteralDataManager {
                 "level2" to mapOf(
                     "level3" to mapOf(
                         "data" to listOf(
-                            mapOf("id" to 1, "name" to "First", "active" to true),
+                            mapOf("id" to 1,  /* … (2 more, −11 tokens) */)
                             // … (4 more, −89 tokens)
                         ),
-                        // … (1 more, −142 tokens)
-                    ),
-                ),
-            ),
+                        // … (1 more, −53 tokens)
+                    )
+                )
+            )
         )
         
         return DataContainer(
@@ -111,7 +111,7 @@ val LARGE_CONSTANTS = mapOf(
         "CONTINUE" to 100,
         // … (40 more, −319 tokens)
     ),
-    // … (1 more, −459 tokens)
+    // … (1 more, −140 tokens)
 )
 
 // Helper functions that use literal data

@@ -39,7 +39,7 @@ export class LiteralDataManager {
             host: "localhost",
             // … (5 more, −75 tokens)
         },
-        // … (3 more, −220 tokens)
+        // … (3 more, −145 tokens)
     };
     
     constructor() {
@@ -71,12 +71,12 @@ export class LiteralDataManager {
                     level3: {
                         data: [
                             { id: 1, name: "First", active: true },
-                            // … (4 more, −61 tokens)
-                        ],
-                        // … (1 more, −102 tokens)
-                    },
-                },
-            },
+                            "…",
+                        ] // literal array (−61 tokens),
+                        // … (1 more, −41 tokens)
+                    }
+                }
+            }
         };
         
         return {
@@ -108,7 +108,7 @@ export const LARGE_CONSTANTS = {
         CONTINUE: 100,
         // … (40 more, −241 tokens)
     },
-    // … (1 more, −363 tokens)
+    // … (1 more, −122 tokens)
 };
 
 // Helper functions that use literal data

@@ -152,14 +152,11 @@ class StandardCollectionsProcessor(LiteralProcessor):
 
         # Select elements
         tuple_size = profile.tuple_size if isinstance(profile, FactoryProfile) else 1
-        preserve_keys = profile.preserve_all_keys if isinstance(profile, MappingProfile) else False
 
         selection = self.selector.select(
             elements, content_budget,
-            parser,
             min_keep=profile.min_elements,
             tuple_size=tuple_size,
-            preserve_top_level_keys=preserve_keys,
         )
 
         if not selection.has_removals:
