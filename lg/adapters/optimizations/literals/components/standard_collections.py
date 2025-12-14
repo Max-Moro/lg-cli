@@ -159,7 +159,7 @@ class StandardCollectionsProcessor(LiteralProcessor):
             return None
 
         # Format result
-        formatted = self.collection_formatter.format(parsed, selection, parser)
+        formatted = self.collection_formatter.format(parsed, selection)
 
         # Build final result
         trimmed_tokens = self.tokenizer.count_text_cached(formatted.text)

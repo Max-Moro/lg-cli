@@ -17,7 +17,7 @@ from ..optimizations.literals import *
 from .literals_component import CppInitializerListProcessor
 
 
-def _cpp_raw_closing(text: str, opening: str) -> str:
+def _cpp_raw_closing(opening: str) -> str:
     """
     Compute closing delimiter for C++ raw strings.
 
@@ -25,7 +25,6 @@ def _cpp_raw_closing(text: str, opening: str) -> str:
     Closing is )delimiter" where delimiter matches opening.
 
     Args:
-        text: Full string text (unused, kept for signature consistency)
         opening: Matched opening delimiter (e.g., 'R"(', 'R"delim(')
 
     Returns:

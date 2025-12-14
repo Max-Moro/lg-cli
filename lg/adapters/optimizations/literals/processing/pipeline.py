@@ -9,8 +9,6 @@ from __future__ import annotations
 
 from typing import cast, Optional, List
 
-from tree_sitter._binding import Node
-
 from .parser import LiteralParser
 from .selector import BudgetSelector
 from ..components import *

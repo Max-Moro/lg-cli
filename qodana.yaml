@@ -50,3 +50,6 @@ exclude:
 
   # PyClassHasNoInitInspection: New in Qodana 252.28456.347 - incorrectly flags @dataclass without __init__
   - name: PyClassHasNoInitInspection
+
+  # This inspection is not yet operational in Qodana. Adding 'ABC' to the signature does not fix it.
+  - name: PyAbstractClassInspection

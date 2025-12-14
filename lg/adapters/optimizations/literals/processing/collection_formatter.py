@@ -20,7 +20,6 @@ from ..patterns import (
     PlaceholderPosition,
 )
 from ..utils.comment_formatter import CommentFormatter
-from ..utils.element_parser import ElementParser
 
 
 @dataclass
@@ -51,7 +50,6 @@ class CollectionFormatter:
         self,
         parsed: ParsedLiteral[CollectionProfile],
         selection: Selection,
-        parser: ElementParser,
         placeholder_text: Optional[str] = None,
     ) -> FormattedResult:
         """
@@ -62,7 +60,6 @@ class CollectionFormatter:
         Args:
             parsed: Parsed collection literal
             selection: Selection with kept/removed elements
-            parser: Element parser (unused, kept for compatibility)
             placeholder_text: Custom placeholder
 
         Returns:

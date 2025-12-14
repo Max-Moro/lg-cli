@@ -6,7 +6,7 @@ from typing import Callable, Iterable, List, Optional, Set
 
 import pathspec
 
-
+# noinspection PyInconsistentReturns
 def read_text(path: Path) -> str:
     with path.open(encoding="utf-8", errors="ignore") as f:
         return f.read()

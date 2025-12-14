@@ -158,7 +158,6 @@ class ASTSequenceProcessor(LiteralProcessor):
         if not kept_strings:
             # Keep first string even if it exceeds budget
             kept_strings = [doc.get_node_text(child_strings[0])]
-            running_tokens = self.tokenizer.count_text_cached(kept_strings[0])
 
         # If we kept all strings, no optimization needed
         if len(kept_strings) == len(child_strings):

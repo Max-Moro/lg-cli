@@ -61,7 +61,7 @@ class JavaDoubleBraceProcessor(BlockInitProcessorBase):
         base_indent: str,
     ) -> Optional[TrimResult]:
         """Process a block-based initialization."""
-        statements_node = self._find_statements_block(node, profile, doc)
+        statements_node = self._find_statements_block(node, profile)
         if not statements_node:
             return None
 
@@ -86,7 +86,7 @@ class JavaDoubleBraceProcessor(BlockInitProcessorBase):
         original_tokens = self.tokenizer.count_text_cached(original_text)
 
         trimmed_text = self._reconstruct_block(
-            node, keep_stmts, remove_stmts, profile, doc, base_indent, token_budget
+            node, keep_stmts, remove_stmts, profile, doc, base_indent
         )
 
         trimmed_tokens = self.tokenizer.count_text_cached(trimmed_text)
@@ -104,7 +104,7 @@ class JavaDoubleBraceProcessor(BlockInitProcessorBase):
         )
 
     def _find_statements_block(
-        self, node: Node, profile: BlockInitProfile, doc: TreeSitterDocument
+        self, node: Node, profile: BlockInitProfile
     ) -> Optional[Node]:
         """Find the block containing statements to process."""
         if not profile.block_selector:
@@ -167,12 +167,11 @@ class JavaDoubleBraceProcessor(BlockInitProcessorBase):
         profile: BlockInitProfile,
         doc: TreeSitterDocument,
         base_indent: str,
-        token_budget: int,
     ) -> str:
         """Reconstruct block with kept statements and placeholder."""
         original_text = doc.get_node_text(original_node)
 
-        statements_block = self._find_statements_block(original_node, profile, doc)
+        statements_block = self._find_statements_block(original_node, profile)
         all_statements = self._get_child_statements(statements_block)
 
         if keep_stmts:

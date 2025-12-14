@@ -27,10 +27,10 @@ from .range_edits import RangeEditor
 from .optimizations import (
     ImportOptimizer,
     CommentOptimizer,
-    LiteralOptimizer,
     FunctionBodyOptimizer,
     PublicApiOptimizer,
 )
+from .optimizations.literals import LiteralPipeline
 
 
 Cc = TypeVar("Cc", bound=CodeCfg)
@@ -259,7 +259,7 @@ class BudgetController(Generic[Cc]):
 
         # Imports and literals always safe to run (no-op if default)
         ImportOptimizer(cfg.imports, self.adapter).apply(ctx)
-        LiteralOptimizer(cfg.literals, self.adapter).apply(ctx)
+        LiteralPipeline(self.adapter).apply(ctx, cfg.literals)
 
         new_text, _ = ctx.editor.apply_edits()
         return new_text
@@ -279,7 +279,7 @@ class BudgetController(Generic[Cc]):
     def _apply_literals(self, lightweight_ctx, text: str, *, max_tokens: Optional[int]) -> str:
         ctx = self._make_sandbox_context(lightweight_ctx, text)
         cfg = LiteralConfig(max_tokens=max_tokens)
-        LiteralOptimizer(cfg, self.adapter).apply(ctx)
+        LiteralPipeline(self.adapter).apply(ctx, cfg)
         return self._generate_new_text(ctx)
 
     def _apply_comments(self, lightweight_ctx, text: str, *, policy: str, max_tokens: Optional[int]) -> str:

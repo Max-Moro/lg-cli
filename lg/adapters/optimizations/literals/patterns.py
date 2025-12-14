@@ -133,10 +133,10 @@ class StringProfile(LiteralProfile):
 
     """
     Optional callback to check if interpolation markers are active.
-    Signature: (opening: str, content: str) -> bool
+    Signature: (opening: str) -> bool
     Used for conditional activation (e.g., Python f-strings, Rust format strings).
     """
-    interpolation_active: Optional[Callable[[str, str], bool]] = None
+    interpolation_active: Optional[Callable[[str], bool]] = None
 
 
 @dataclass

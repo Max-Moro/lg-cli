@@ -43,6 +43,8 @@ SENTENCEPIECE_CANDIDATES = [
     "google/mt5-base",
 ]
 
+
+# noinspection PyTestUnpassedFixture
 def check_tokenizer(repo_id: str, verbose: bool = True) -> dict:
     """
     Checks availability of tokenizers model.
@@ -99,7 +101,7 @@ def check_tokenizer(repo_id: str, verbose: bool = True) -> dict:
     
     return result
 
-
+# noinspection PyTestUnpassedFixture
 def check_sentencepiece(repo_id: str, verbose: bool = True) -> dict:
     """
     Checks availability of SentencePiece model.

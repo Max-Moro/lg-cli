@@ -22,8 +22,8 @@ class DelimiterConfig:
 
     # Raw string patterns: [(regex_pattern, closing_callback)]
     # For complex cases like Rust r#"..."#, C++ R"delimiter(...)delimiter"
-    # Callback signature: (text: str, opening: str) -> str
-    raw_string_patterns: List[Tuple[str, Callable[[str, str], str]]] = field(default_factory=list)
+    # Callback signature: (opening: str) -> str
+    raw_string_patterns: List[Tuple[str, Callable[[str], str]]] = field(default_factory=list)
 
     # Default delimiter if detection fails
     default_delimiter: str = '"'
@@ -97,7 +97,7 @@ class DelimiterDetector:
                 # Get opening that was matched
                 opening = match.group(0)
                 # Call callback to compute closing
-                return closing_callback(stripped, opening)
+                return closing_callback(opening)
 
         # 2. Check triple quotes
         for triple in self.config.triple_quote_styles:

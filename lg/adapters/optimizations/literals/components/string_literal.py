@@ -121,7 +121,7 @@ class StringLiteralProcessor(LiteralProcessor):
 
         # Adjust for interpolation
         markers = self.interpolation.get_active_markers(
-            profile, parsed.opening, parsed.content
+            profile, parsed.opening
         )
         if markers:
             truncated = self.interpolation.adjust_truncation(

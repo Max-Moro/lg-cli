@@ -15,7 +15,7 @@ from .protocols import TemplateRegistryProtocol
 # Import custom types
 from .types import PluginPriority, TokenSpec, ParsingRule, ProcessorRule, ResolverRule, TokenContext
 
-
+# noinspection PyPropertyDefinition
 class TemplatePlugin(ABC):
     """
     Base interface for template engine plugins.

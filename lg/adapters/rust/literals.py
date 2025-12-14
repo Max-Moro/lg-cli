@@ -19,7 +19,7 @@ from ..optimizations.literals import *
 from .literals_component import RustLetGroupProcessor
 
 
-def _rust_raw_closing(text: str, opening: str) -> str:
+def _rust_raw_closing(opening: str) -> str:
     """
     Compute closing delimiter for Rust raw strings.
 
@@ -27,7 +27,6 @@ def _rust_raw_closing(text: str, opening: str) -> str:
     Closing mirrors the number of hashes in opening.
 
     Args:
-        text: Full string text (unused, kept for signature consistency)
         opening: Matched opening delimiter (e.g., 'r#"', 'r##"')
 
     Returns:

@@ -18,13 +18,12 @@ PYTHON_DELIMITER_CONFIG = DelimiterConfig(
 _python_detector = DelimiterDetector(PYTHON_DELIMITER_CONFIG)
 
 
-def _is_f_string(opening: str, content: str) -> bool:
+def _is_f_string(opening: str) -> bool:
     """
     Check if string is an f-string (supports {} interpolation).
 
     Args:
         opening: String opening delimiter with f/F prefix
-        content: String content (not used, signature required by pattern)
 
     Returns:
         True if the string is an f-string (opening contains f or F)

@@ -64,7 +64,7 @@ class RustLetGroupProcessor(BlockInitProcessorBase):
         if not var_name:
             return None
 
-        insert_stmts = self._collect_insert_statements(node, var_name, profile, doc)
+        insert_stmts = self._collect_insert_statements(node, var_name, doc)
         if len(insert_stmts) < profile.min_elements:
             return None
 
@@ -98,7 +98,7 @@ class RustLetGroupProcessor(BlockInitProcessorBase):
             return None
 
         trimmed_text = self._reconstruct_let_group(
-            node, keep_stmts, remove_stmts, profile, doc, base_indent, token_budget
+            node, keep_stmts, remove_stmts, profile, doc, base_indent
         )
 
         trimmed_tokens = self.tokenizer.count_text_cached(trimmed_text)
@@ -155,7 +155,7 @@ class RustLetGroupProcessor(BlockInitProcessorBase):
         return None
 
     def _collect_insert_statements(
-        self, let_node: Node, var_name: str, profile: BlockInitProfile, doc: TreeSitterDocument
+        self, let_node: Node, var_name: str, doc: TreeSitterDocument
     ) -> List[Node]:
         """Collect following statements that call methods on var_name."""
         parent = let_node.parent
@@ -219,7 +219,6 @@ class RustLetGroupProcessor(BlockInitProcessorBase):
         profile: BlockInitProfile,
         doc: TreeSitterDocument,
         base_indent: str,
-        token_budget: int,
     ) -> str:
         """Reconstruct let group with trimmed inserts."""
         let_text = doc.get_node_text(let_node)

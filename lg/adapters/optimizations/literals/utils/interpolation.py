@@ -40,7 +40,6 @@ class InterpolationHandler:
         self,
         profile: StringProfile,
         opening: str,
-        content: str,
     ) -> List[Tuple[str, str, str]]:
         """
         Determine which interpolation markers are active for this string.
@@ -57,14 +56,13 @@ class InterpolationHandler:
         Args:
             profile: The StringProfile containing interpolation marker definitions
             opening: The string opening delimiter (e.g., "'", '"', f"', `...)
-            content: The string content (used by callback if needed)
 
         Returns:
             List of active interpolation markers as (prefix, opening, closing) tuples
 
         Example:
             >>> handler = InterpolationHandler()
-            >>> markers = handler.get_active_markers(profile, 'f"', "hello {name}")
+            >>> markers = handler.get_active_markers(profile, 'f"')
             >>> # Returns [("", "{", "}")] for f-string
         """
         # Get interpolation markers from profile
@@ -84,7 +82,7 @@ class InterpolationHandler:
             else:
                 # Empty prefix markers - use callback if available
                 if activation_callback is not None:
-                    if activation_callback(opening, content):
+                    if activation_callback(opening):
                         active_markers.append(marker)
                 else:
                     # No callback - assume marker is always active

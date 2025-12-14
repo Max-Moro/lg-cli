@@ -124,10 +124,6 @@ Recommendation: These may require architectural decisions.
 
 **PyRedundantParenthesesInspection** - Remove unnecessary parentheses
 
-**PyUnusedLocalInspection** - Either:
-- Remove if truly unused
-- Prefix with underscore if required by interface: `param` → `_param`
-
 **PyIncorrectDocstringInspection** - Add missing parameter to docstring
 
 **PyListCreationInspection** - Use list literal instead of append sequence
@@ -138,28 +134,103 @@ Recommendation: These may require architectural decisions.
 
 **PyTypeHintsInspection** - Add missing type imports (Dict, List, Optional)
 
-## Contextual (May Need Suppression)
+## Complex (Requires Analysis)
 
-Some inspections may be false positives. Use `# noinspection InspectionId` comment when:
+These inspections require critical thinking and cannot be fixed mechanically:
 
-**PyAbstractClass** - Stub classes intended for future implementation
-**PyProtectedMember** - Legitimate tight coupling in delegation patterns
-**PyTypeHints** - In generated files (already excluded in configuration)
+**PyUnusedLocalInspection** - Unused parameter/variable requires investigation:
 
-Format: Place suppression comment immediately before the flagged line:
+**NEVER mechanically add underscore prefix.** This is a complex inspection requiring analysis:
+
+1. **Check if parameter is truly unnecessary:**
+   - Is it used in other implementations of the same interface/protocol?
+   - Is it part of a callback signature that must match a specific contract?
+   - Can the signature be simplified (apply YAGNI principle)?
+
+2. **Decision tree:**
+   - If parameter is unused in ALL implementations → **Remove it** from signature and update docstring
+   - If parameter is required by interface contract but unused here → Consider if interface is well-designed
+   - If it's a callback that may use parameter in future implementations → **Only then** use underscore prefix as last resort
+   - If it's a dead variable assignment → **Delete the line**
+
+3. **When to use underscore prefix (rare cases):**
+   - Callback signatures where other implementations DO use the parameter
+   - Protocol/interface requirements where parameter must exist but isn't used in this specific implementation
+   - Framework hooks with fixed signatures
+
+**PyProtectedMemberInspection** - Before suppressing, investigate:
+
+1. **Check for public alternatives:**
+   - Is there a public import/API that provides the same functionality?
+   - Many protected member accesses exist because developer didn't know about public API
+
+2. **Common example:** Importing from internal `._binding` modules when public API exists
+
+3. **Only suppress if:**
+   - No public alternative exists
+   - Protected access is truly necessary for the functionality
+   - Use `# noinspection PyProtectedMember` locally, NOT global qodana.yaml exclusion
+
+**PyAbstractClassInspection** - Abstract base classes:
+
+1. **First try fixing properly:**
+   - Add `ABC` to class inheritance if missing
+   - Ensure abstract methods are properly decorated with `@abstractmethod`
+
+2. **Only suppress if:**
+   - Qodana has a known bug with this inspection (check if adding ABC doesn't help)
+   - Use global qodana.yaml exclusion, NOT per-file suppression
+
+## Suppression Strategy
+
+When an inspection is a false positive, choose the correct suppression method:
+
+**Local suppression (`# noinspection`)** - Use for specific cases:
+- Place comment immediately before the flagged line/class/method
+- Use when the issue is legitimate in this specific context
+- Examples: intentional protected member access, abstract properties in ABC, false positive on return statements
+
 ```python
-# noinspection PyProtectedMember
-return self._internal_method()
+# noinspection PyPropertyDefinition
+@property
+@abstractmethod
+def name(self) -> str:
+    ...
 ```
+
+**Global suppression (qodana.yaml)** - Use ONLY for:
+- Entire inspection types that are systematically problematic (not per-file!)
+- Known Qodana bugs that affect the whole project
+- Inspections disabled by architectural decision
+
+**NEVER add per-file exclusions to qodana.yaml:**
+```yaml
+# ❌ WRONG - Do not add specific file paths
+- name: PyAbstractClassInspection
+  paths:
+    - some/specific/file.py
+
+# ✅ CORRECT - Global exclusion for systematic issues
+- name: PyAbstractClassInspection
+```
+
+**Why no per-file exclusions:**
+- qodana.yaml becomes unmaintainable as codebase grows
+- Every new file would need manual addition
+- Defeats the purpose of automated inspection
+- Use local `# noinspection` comments instead
 
 # Fix Guidelines
 
 ## General Principles
 
-1. **Preserve functionality** - Never change logic, only fix quality issues
-2. **Minimal changes** - Make the smallest change that resolves the issue
-3. **Sequential processing** - Fix in order presented, don't reorganize
-4. **Verify with context** - Read file before fixing to understand intent
+1. **Think critically** - Not all inspections have mechanical fixes. Analyze each case.
+2. **Prefer removal over suppression** - If code is truly unused, delete it (YAGNI principle)
+3. **Preserve functionality** - Never change logic, only fix quality issues
+4. **Minimal changes** - Make the smallest change that resolves the issue
+5. **Check for better alternatives** - Before suppressing protected member access, look for public API
+6. **Sequential processing** - Fix in order presented, don't reorganize
+7. **Verify with context** - Read file AND check usage in other files before removing parameters
 
 ## What to Fix
 
@@ -180,15 +251,45 @@ return self._internal_method()
 - Do NOT run tests (handled by test agent later in pipeline)
 - Do NOT fix generated files (already excluded)
 
-## Before Removing "Unused" Code
+## Analysis Before Fixes
 
-Quick verification for seemingly unused code:
+**For PyUnusedLocalInspection (unused parameters):**
+
+1. **Search for other implementations:**
+   ```bash
+   # Find method/function name in codebase
+   grep -r "def method_name" . --include="*.py"
+   ```
+
+2. **Check if it's part of interface/protocol:**
+   ```bash
+   # Search for callback type or protocol definition
+   grep -r "Callable\[.*param_type" . --include="*.py"
+   ```
+
+3. **Apply YAGNI:**
+   - If parameter is unused in ALL implementations → Remove it
+   - If used in some but not others → Keep it (interface contract)
+   - If callback signature → Check if other callbacks use it
+
+**For PyUnusedImportsInspection:**
+
 ```bash
-# Check if imported/used elsewhere
-grep -r "ClassName\|function_name" lg/ --include="*.py"
+# Verify import is truly unused
+grep -r "ClassName\|function_name" . --include="*.py"
 ```
 
-Only remove if truly unused across the codebase.
+**For PyProtectedMemberInspection:**
+
+1. **Search for public alternative:**
+   ```bash
+   # Look for public imports in __init__.py or public modules
+   grep -r "from.*import.*ClassName" . --include="*.py"
+   ```
+
+2. **Check package's public API documentation**
+
+Only apply fixes after verification.
 
 # Scope Boundaries
 
@@ -208,9 +309,12 @@ Only remove if truly unused across the codebase.
 # Important Notes
 
 - **Pipeline awareness**: You are step 2 of N in the pipeline. Other agents handle testing, building, and deployment.
-- **Mechanical fixes only**: Apply fixes systematically without overthinking
+- **Critical thinking required**: Some inspections (PyUnusedLocalInspection, PyProtectedMemberInspection) require analysis, not mechanical fixes
+- **YAGNI principle**: Prefer removing unused code over adding underscore prefixes
+- **Suppression strategy**: Local `# noinspection` for specific cases, global qodana.yaml only for systematic issues
+- **No per-file paths in qodana.yaml**: Use local suppressions instead
 - **Trust the configuration**: Qodana is pre-configured; problematic inspections are already disabled
 - **Concise reporting**: Report numbers and categories, not verbose details
 - **Maximum efficiency**: 3 iterations maximum before reporting
 
-Remember: You are the code quality step in a larger automated pipeline. Fix what you can mechanically, report what requires human decision, and let the next agent continue the pipeline.
+Remember: You are the code quality step in a larger automated pipeline. Think critically about complex inspections, apply YAGNI principle, and use proper suppression strategies. Report what requires architectural decisions to the orchestrator.

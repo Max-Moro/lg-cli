@@ -23,7 +23,7 @@ SCALA_DELIMITER_CONFIG = DelimiterConfig(
 _scala_detector = DelimiterDetector(SCALA_DELIMITER_CONFIG)
 
 
-def _is_interpolated_string(opening: str, content: str) -> bool:
+def _is_interpolated_string(opening: str) -> bool:
     """Check if string uses interpolation (s, f, or raw prefix)."""
     return opening.startswith(('s"', 'f"', 'raw"', 's"""', 'f"""', 'raw"""'))
 
