@@ -41,7 +41,9 @@ class TestGoCommentOptimization:
         result, meta = adapter.process(lctx(do_comments))
 
         assert meta.get("go.removed.comment", 0) > 0
-        assert "// Single-line comment at module level" not in result
+        # Doc comments before exported declarations should be preserved
+        assert "// Single-line comment at module level" in result
+        assert "// User represents a user with documentation comments." in result
 
         assert_golden_match(result, "comments", "keep_doc", language="go")
 
@@ -107,9 +109,8 @@ var config = Config{
     def test_doc_comment_detection(self):
         """Test Go comment handling with keep_doc policy.
 
-        Note: Go has no syntactic distinction between doc comments and regular comments.
-        All use //. Without complex positional analysis, we treat all // comments uniformly.
-        Therefore, keep_doc policy removes all comments in Go files.
+        With GoCommentAnalyzer, we can now distinguish doc comments from regular comments
+        using positional analysis. Doc comments before exported declarations are preserved.
         """
         code = '''package main
 
@@ -126,10 +127,12 @@ func ProcessData(data string) {
 
         result, meta = adapter.process(lctx(code))
 
-        # In Go, keep_doc cannot distinguish doc comments from regular comments
-        # so all comments are removed
-        assert "ProcessData processes the input data." not in result
-        assert "// … comment omitted" in result
+        # Doc comment before exported function should be preserved
+        assert "ProcessData processes the input data." in result
+        assert "This is a documentation comment." in result
+        # Regular comments inside function should be removed
+        assert "This is a regular multi-line comment" not in result
+        assert "This is a single-line comment" not in result
         assert meta.get("go.removed.comment", 0) > 0
 
     def test_multiline_comment_styles(self):

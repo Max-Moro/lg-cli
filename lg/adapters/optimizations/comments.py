@@ -27,25 +27,79 @@ class CommentOptimizer:
     def apply(self, context: ProcessingContext) -> None:
         """
         Apply comment processing based on policy.
-        
+
         Args:
             context: Processing context with document and editor
         """
         # If policy is keep_all, nothing to do
         if isinstance(self.cfg, str) and self.cfg == "keep_all":
             return
-        
+
+        # Check if we need special group handling for Go keep_first_sentence
+        policy = self.cfg if isinstance(self.cfg, str) else getattr(self.cfg, 'policy', None)
+        needs_group_handling = (
+            policy == "keep_first_sentence" and
+            hasattr(self.adapter, '_get_comment_analyzer')
+        )
+
+        # Track processed nodes to avoid double-processing in group handling
+        processed_positions = set()
+
         # Find comments in the code
         comments = context.doc.query("comments")
 
         for node, capture_name in comments:
+            # Skip if already processed (as part of a group)
+            position = (node.start_byte, node.end_byte)
+            if position in processed_positions:
+                continue
+
             comment_text = context.doc.get_node_text(node)
 
-            should_remove, replacement = self._should_process_comment(
-                capture_name, comment_text, context
+            # Determine if this is a docstring using multiple strategies:
+            # 1. capture_name from Tree-sitter query (for languages with syntactic docstrings like Python)
+            # 2. Text-based check (for JSDoc-style /** ... */)
+            # 3. Position-based check using is_docstring_node (for Go and similar languages)
+            # This must be computed BEFORE _should_process_comment for keep_doc policy
+            is_docstring = (
+                capture_name == "docstring" or
+                self.adapter.is_documentation_comment(comment_text) or
+                self.adapter.is_docstring_node(node, context.doc)
             )
 
-            is_docstring = capture_name == "docstring" or self.adapter.is_documentation_comment(comment_text)
+            # Special handling for Go doc comment groups with keep_first_sentence
+            if needs_group_handling and is_docstring:
+                group = self.adapter._get_comment_analyzer(context.doc).get_comment_group_for_node(node)
+                if group and len(group) > 1:
+                    # Keep only first node of the group, remove the rest
+                    for i, group_node in enumerate(group):
+                        group_pos = (group_node.start_byte, group_node.end_byte)
+                        processed_positions.add(group_pos)
+
+                        if i == 0:
+                            # First node: keep as is
+                            continue
+                        else:
+                            # Rest of nodes: remove completely including trailing newline
+                            start_char, end_char = context.doc.get_node_range(group_node)
+
+                            # Extend to include trailing newline if present (handle \r\n and \n)
+                            if end_char < len(context.doc.text):
+                                if context.doc.text[end_char:end_char+2] == '\r\n':
+                                    end_char += 2
+                                elif context.doc.text[end_char] == '\n':
+                                    end_char += 1
+
+                            context.editor.add_replacement(
+                                start_char, end_char, "",
+                                edit_type="docstring_truncated"
+                            )
+                            context.metrics.mark_element_removed("docstring")
+                    continue
+
+            should_remove, replacement = self._should_process_comment(
+                capture_name, comment_text, is_docstring, context
+            )
 
             if should_remove:
                 self.remove_comment(
@@ -88,19 +142,21 @@ class CommentOptimizer:
         return True
 
     def _should_process_comment(
-        self, 
+        self,
         capture_name: str,
-        comment_text: str, 
+        comment_text: str,
+        is_docstring: bool,
         context: ProcessingContext
     ) -> Tuple[bool, str]:
         """
         Determine how to process a comment based on policy.
-        
+
         Args:
             capture_name: Type of comment (comment, docstring, etc.)
             comment_text: Text content of the comment
+            is_docstring: Whether this is a documentation comment (determined by multiple strategies)
             context: Processing context
-            
+
         Returns:
             Tuple of (should_remove, replacement_text)
         """
@@ -114,13 +170,14 @@ class CommentOptimizer:
                 return True, None
             elif policy == "keep_doc":
                 # Remove regular comments, keep docstrings
-                if capture_name == "comment" and not self.adapter.is_documentation_comment(comment_text):
+                # Use is_docstring parameter which includes all detection strategies
+                if not is_docstring:
                     return True, None
                 else:
                     return False, ""
             elif policy == "keep_first_sentence":
-                # For documentation comments (JSDoc, etc.), keep first sentence only
-                if capture_name == "docstring" or self.adapter.is_documentation_comment(comment_text):
+                # For documentation comments, keep first sentence only
+                if is_docstring:
                     first_sentence = self.adapter.hook__extract_first_sentence(self, comment_text)
                     if first_sentence != comment_text:
                         return True, first_sentence
@@ -131,24 +188,24 @@ class CommentOptimizer:
         
         # Complex policy (CommentConfig object)
         elif hasattr(self.cfg, 'policy'):
-            return self._process_complex_comment_policy(capture_name, comment_text, context)
+            return self._process_complex_comment_policy(comment_text, is_docstring, context)
         
         return False, ""
     
     def _process_complex_comment_policy(
         self,
-        capture_name: str,
         comment_text: str,
+        is_docstring: bool,
         context: ProcessingContext
     ) -> Tuple[bool, str]:
         """
         Process comments using complex configuration.
-        
+
         Args:
-            capture_name: Type of comment
             comment_text: Comment text content
+            is_docstring: Whether this is a documentation comment
             context: Processing context
-            
+
         Returns:
             Tuple of (should_remove, replacement_text)
         """
@@ -190,16 +247,16 @@ class CommentOptimizer:
             return True, None  # Use default placeholder
         
         elif base_policy == "keep_doc":
-            if capture_name == "comment" and not self.adapter.is_documentation_comment(comment_text):
+            if not is_docstring:
                 return True, None  # Use default placeholder
             else:  # docstring
                 if complex_cfg.max_tokens is not None and context.tokenizer.count_text_cached(comment_text) > complex_cfg.max_tokens:
                     truncated = self.adapter.hook__smart_truncate_comment(self, comment_text, complex_cfg.max_tokens, context.tokenizer)
                     return True, truncated
                 return False, ""
-        
+
         elif base_policy == "keep_first_sentence":
-            if capture_name == "docstring" or self.adapter.is_documentation_comment(comment_text):
+            if is_docstring:
                 first_sentence = self.adapter.hook__extract_first_sentence(self, comment_text)
                 # Apply max_tokens to extracted sentence
                 if complex_cfg.max_tokens is not None and context.tokenizer.count_text_cached(first_sentence) > complex_cfg.max_tokens:

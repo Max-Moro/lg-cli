@@ -7,10 +7,13 @@ import (
 	"time"
 )
 
-// … comment omitted
-const ModuleVersion = "1.0.0" // … comment omitted
+// … docstring omitted
 
-// … comment omitted
+const ModuleVersion = "1.0.0" // … docstring omitted
+
+
+// … docstring omitted
+
 type User struct {
 	ID      int    // … comment omitted
 	Name    string // … comment omitted
@@ -18,19 +21,22 @@ type User struct {
 	Profile *Profile // … comment omitted
 }
 
-// … comment omitted
+// … docstring omitted
+
 type Profile struct {
 	Bio    string
 	Avatar string
 }
 
-// … comment omitted
+// … docstring omitted
+
 type CommentedService struct {
 	config interface{} // … comment omitted
 	logger interface{} // … comment omitted
 }
 
-// … comment omitted
+// … docstring omitted
+
 func NewCommentedService(config, logger interface{}) *CommentedService {
 	service := &CommentedService{
 		config: config,
@@ -42,7 +48,8 @@ func NewCommentedService(config, logger interface{}) *CommentedService {
 	return service
 }
 
-// … comment omitted
+// … docstring omitted
+
 func ProcessUser(userData *User) (*User, error) {
 	// … comment omitted
 	if userData == nil {
@@ -123,7 +130,8 @@ func saveUser(user *User) (*User, error) {
 	return user, nil // … comment omitted
 }
 
-// … comment omitted
+// … docstring omitted
+
 func ProcessString(input string) string {
 	// … comment omitted
 	if input == "" {
@@ -147,20 +155,23 @@ func undocumentedHelper() {
 	fmt.Println(data) // … comment omitted
 }
 
-// … comment omitted
+// … docstring omitted
+
 type ValidationResult struct {
 	IsValid bool     // … comment omitted
 	Errors  []string // … comment omitted
 }
 
-// … comment omitted
+// … docstring omitted
+
 type ServiceConfig struct {
 	Timeout int    // … comment omitted
 	Retries int    // … comment omitted
 	BaseURL string // … comment omitted
 }
 
-// … comment omitted
+// … docstring omitted
+
 var DefaultConfig = ServiceConfig{
 	Timeout: 5000,                    // … comment omitted
 	Retries: 3,                       // … comment omitted

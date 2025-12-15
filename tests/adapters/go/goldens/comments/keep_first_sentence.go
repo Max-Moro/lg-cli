@@ -7,10 +7,10 @@ import (
 	"time"
 )
 
-// … comment omitted
-const ModuleVersion = "1.0.0" // … comment omitted
+// Single-line comment at module level.
+const ModuleVersion = "1.0.0" // TODO: Move to config file.
 
-// … comment omitted
+// User represents a user with documentation comments.
 type User struct {
 	ID      int    // … comment omitted
 	Name    string // … comment omitted
@@ -18,19 +18,19 @@ type User struct {
 	Profile *Profile // … comment omitted
 }
 
-// … comment omitted
+// Profile contains user profile information.
 type Profile struct {
 	Bio    string
 	Avatar string
 }
 
-// … comment omitted
+// CommentedService provides various operations with extensive comments.
 type CommentedService struct {
 	config interface{} // … comment omitted
 	logger interface{} // … comment omitted
 }
 
-// … comment omitted
+// NewCommentedService creates a new service instance with detailed documentation.
 func NewCommentedService(config, logger interface{}) *CommentedService {
 	service := &CommentedService{
 		config: config,
@@ -42,7 +42,7 @@ func NewCommentedService(config, logger interface{}) *CommentedService {
 	return service
 }
 
-// … comment omitted
+// ProcessUser processes user data with validation.
 func ProcessUser(userData *User) (*User, error) {
 	// … comment omitted
 	if userData == nil {
@@ -123,7 +123,7 @@ func saveUser(user *User) (*User, error) {
 	return user, nil // … comment omitted
 }
 
-// … comment omitted
+// ProcessString is a utility function with comprehensive documentation.
 func ProcessString(input string) string {
 	// … comment omitted
 	if input == "" {
@@ -147,20 +147,21 @@ func undocumentedHelper() {
 	fmt.Println(data) // … comment omitted
 }
 
-// … comment omitted
+// ValidationResult holds validation results.
 type ValidationResult struct {
 	IsValid bool     // … comment omitted
 	Errors  []string // … comment omitted
 }
 
-// … comment omitted
+// ServiceConfig holds service configuration.
 type ServiceConfig struct {
 	Timeout int    // … comment omitted
 	Retries int    // … comment omitted
 	BaseURL string // … comment omitted
 }
 
-// … comment omitted
+/* * DefaultConfig is the default configuration
+ * This is used when no custom config is provided. */
 var DefaultConfig = ServiceConfig{
 	Timeout: 5000,                    // … comment omitted
 	Retries: 3,                       // … comment omitted
