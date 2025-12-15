@@ -211,7 +211,7 @@ jobs:
           EOF
 
       - name: Create Pull Request
-        uses: peter-evans/create-pull-request@v7
+        uses: peter-evans/create-pull-request@v8
         with:
           token: ${{ secrets.GH_PAT }}
           branch: changelog-update-v${{ needs.build.outputs.version }}
