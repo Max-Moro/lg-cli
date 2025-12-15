@@ -41,7 +41,7 @@ class CommentedClass:
         This is an internal utility method.
         Should not be used externally.
         """
-        # … 3 comments omitted
+        # … comment omitted
         temp = self.name.upper()
         return temp  # … comment omitted
     
@@ -50,7 +50,7 @@ class CommentedClass:
         # … comment omitted
         value = "test"
         
-        # … 2 comments omitted
+        # … comment omitted
         processed = value.strip()
         
         # … comment omitted
@@ -58,7 +58,7 @@ class CommentedClass:
             # … comment omitted
             return None
             
-        # … 2 comments omitted
+        # … comment omitted
         return processed.lower()
 
 def standalone_function():
@@ -68,7 +68,7 @@ def standalone_function():
 
 # … comment omitted
 def undocumented_function():
-    # … 2 comments omitted
+    # … comment omitted
     x = 1  # … comment omitted
     y = 2  # … comment omitted
     return x + y  # … comment omitted

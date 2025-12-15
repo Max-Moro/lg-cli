@@ -67,11 +67,9 @@ class GoAdapter(CodeAdapter[GoCfg]):
         from .code_analysis import GoCodeAnalyzer
         return GoCodeAnalyzer(doc)
 
-    def is_documentation_comment(self, comment_text: str) -> bool:
-        """Check if comment is Go documentation."""
-        stripped = comment_text.strip()
-        # Go uses single-line comments starting with // for documentation
-        return stripped.startswith('//')
+    def get_comment_style(self) -> tuple[str, tuple[str, str], tuple[str, str]]:
+        """Comment style for Go (single-line, multi-line, docstring)."""
+        return "//", ("/*", "*/"), ("//", "")
 
     def create_literal_descriptor(self) -> LanguageLiteralDescriptor:
         """Create Go literal descriptor."""

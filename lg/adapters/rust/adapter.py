@@ -67,11 +67,14 @@ class RustAdapter(CodeAdapter[RustCfg]):
         from .code_analysis import RustCodeAnalyzer
         return RustCodeAnalyzer(doc)
 
+    def get_comment_style(self) -> tuple[str, tuple[str, str], tuple[str, str]]:
+        """Comment style for Rust (single-line, multi-line, docstring)."""
+        return "//", ("/*", "*/"), ("///", "")
+
     def is_documentation_comment(self, comment_text: str) -> bool:
         """Check if comment is Rust documentation."""
-        stripped = comment_text.strip()
-        # Rust uses /// and //! for documentation
-        return stripped.startswith('///') or stripped.startswith('//!')
+        from .comments import is_documentation_comment
+        return is_documentation_comment(comment_text)
 
     def create_literal_descriptor(self):
         """Create Rust literal descriptor."""

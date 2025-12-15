@@ -89,7 +89,7 @@ class CommentedService(
             errors.add("Email is required")
         }
         
-        // … 2 comments omitted
+        // … comment omitted
         val emailRegex = Regex("^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$")
         val email = userData["email"] as? String
         if (email != null && !emailRegex.matches(email)) {
@@ -124,7 +124,7 @@ class CommentedService(
     
     // TODO: Implement proper persistence layer
     private suspend fun saveUser(user: User): User {
-        // … 3 comments omitted
+        // … comment omitted
         logger?.info("Saving user: ${user.id}")
         
         // … comment omitted
@@ -134,7 +134,7 @@ class CommentedService(
     }
     
     private fun initialize() {
-        // … 2 comments omitted
+        // … comment omitted
         
         // TODO: Add proper initialization logic
         // … comment omitted
@@ -163,7 +163,7 @@ fun processString(input: String): String {
 
 // … comment omitted
 fun undocumentedHelper() {
-    // … 3 comments omitted
+    // … comment omitted
     val data = "helper data"
     
     // … comment omitted

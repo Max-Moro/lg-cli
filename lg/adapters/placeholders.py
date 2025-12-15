@@ -67,9 +67,9 @@ class PlaceholderSpec:
         if self.placeholder_type != other.placeholder_type:
             return False
 
-        # Can collapse placeholders for imports, comments, functions, methods, classes, interfaces and types.
-        # Cannot collapse placeholders for literals, function/method bodies, docstrings.
-        if self.placeholder_type in ["function_body", "method_body", "docstring"]:
+        # Can collapse placeholders for imports, comments, docstrings, functions, methods, classes, interfaces and types.
+        # Cannot collapse placeholders for literals, function/method bodies.
+        if self.placeholder_type in ["function_body", "method_body"]:
             return False
 
         # Check content between placeholders
@@ -271,7 +271,12 @@ class PlaceholderManager:
 
         # For docstrings always use native language wrapping
         if spec.placeholder_type == "docstring":
-            return f"{spec.placeholder_prefix}{self.comment_style.docstring_start} {content} {self.comment_style.docstring_end}"
+            if self.comment_style.docstring_end:
+                return f"{spec.placeholder_prefix}{self.comment_style.docstring_start} {content} {self.comment_style.docstring_end}"
+            else:
+                # Single-line docstring style (e.g., /// for Rust, // for Go)
+                # Need to preserve newline since these are typically line-based comments
+                return f"{spec.placeholder_prefix}{self.comment_style.docstring_start} {content}\n"
 
         # Standard logic for regular comments
         if self.placeholder_style == "inline":
@@ -300,10 +305,7 @@ class PlaceholderManager:
                 return "… method body omitted"
         
         elif ptype == "comment":
-            if count > 1:
-                return f"… {count} comments omitted"
-            else:
-                return "… comment omitted"
+            return "… comment omitted"
 
         elif ptype == "docstring":
             return "… docstring omitted"

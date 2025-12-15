@@ -20,7 +20,7 @@ class TestRustCommentOptimization:
         assert meta.get("rust.removed.comment", 0) == 0
         assert "// Single-line comment at module level" in result
         assert "Multi-line comment explaining" in result
-        assert "/// Documentation comment" in result
+        assert "/// User represents" in result
 
         assert_golden_match(result, "comments", "keep_all", language="rust")
 

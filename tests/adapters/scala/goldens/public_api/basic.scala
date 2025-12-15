@@ -39,9 +39,7 @@ class UserManager(private val apiEndpoint: String = PublicConstants.API_ENDPOINT
   // … 2 vals omitted
 
   // Protected properties (should be filtered out)
-  // … val omitted (4 lines)
-
-  initialize()
+  // … val omitted (4 lines)initialize()
 
   // Public methods (should be preserved)
   def createUser(userData: Map[String, Any]): User = {

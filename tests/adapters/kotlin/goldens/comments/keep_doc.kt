@@ -43,7 +43,7 @@ class CommentedService(
         // … comment omitted
         initialize()
         
-        // … 2 comments omitted
+        // … comment omitted
     }
     
     /**
@@ -74,7 +74,7 @@ class CommentedService(
         // … comment omitted
         val transformedData = transformUserData(userData)
         
-        // … 2 comments omitted
+        // … comment omitted
         val savedUser = saveUser(transformedData)
         
         return savedUser  // … comment omitted
@@ -93,7 +93,7 @@ class CommentedService(
             errors.add("Email is required")
         }
         
-        // … 2 comments omitted
+        // … comment omitted
         val emailRegex = Regex("^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$")
         val email = userData["email"] as? String
         if (email != null && !emailRegex.matches(email)) {
@@ -128,7 +128,7 @@ class CommentedService(
     
     // … comment omitted
     private suspend fun saveUser(user: User): User {
-        // … 3 comments omitted
+        // … comment omitted
         logger?.info("Saving user: ${user.id}")
         
         // … comment omitted
@@ -138,7 +138,7 @@ class CommentedService(
     }
     
     private fun initialize() {
-        // … 4 comments omitted
+        // … comment omitted
     }
 }
 
@@ -164,7 +164,7 @@ fun processString(input: String): String {
 
 // … comment omitted
 fun undocumentedHelper() {
-    // … 3 comments omitted
+    // … comment omitted
     val data = "helper data"
     
     // … comment omitted
