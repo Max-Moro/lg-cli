@@ -136,7 +136,7 @@ jobs:
       id-token: write  # Required for Trusted Publishing
     steps:
       - name: Download Build Artifacts
-        uses: actions/download-artifact@v6
+        uses: actions/download-artifact@v7
         with:
           name: distributions
           path: dist
