@@ -8,39 +8,37 @@ from __future__ import annotations
 import re
 from typing import cast, Tuple, Union
 
+from .comment_analysis import CommentAnalyzer
 from ..code_model import CommentConfig, CommentPolicy
 from ..context import ProcessingContext
 from ..tree_sitter_support import Node
-from .comment_analysis import CommentAnalyzer
 
 
 class CommentOptimizer:
     """Handles comment processing optimization."""
     
-    def __init__(self, cfg: Union[CommentPolicy, CommentConfig], adapter):
-        """
-        Initialize with parent adapter for language-specific checks.
-        """
-        self.cfg = cfg
+    def __init__(self, adapter):
+        """Initialize with parent adapter."""
         from ..code_base import CodeAdapter
         self.adapter = cast(CodeAdapter, adapter)
     
-    def apply(self, context: ProcessingContext) -> None:
+    def apply(self, context: ProcessingContext, cfg: Union[CommentPolicy, CommentConfig]) -> None:
         """
         Apply comment processing based on policy.
 
         Args:
             context: Processing context with document and editor
+            cfg: Configuration for comment processing
         """
         # If policy is keep_all, nothing to do
-        if isinstance(self.cfg, str) and self.cfg == "keep_all":
+        if isinstance(cfg, str) and cfg == "keep_all":
             return
 
         # Get language-specific comment analyzer
-        analyzer = self.adapter.create_comment_analyzer(context.doc)
+        analyzer = self.adapter.create_comment_analyzer(context.doc, context.code_analyzer)
 
         # Get policy for group handling check
-        policy = self.cfg if isinstance(self.cfg, str) else getattr(self.cfg, 'policy', None)
+        policy = cfg if isinstance(cfg, str) else getattr(cfg, 'policy', None)
 
         # Track processed nodes to avoid double-processing in group handling
         processed_positions = set()
@@ -92,7 +90,7 @@ class CommentOptimizer:
 
             # Standard processing
             should_remove, replacement = self._should_process_comment(
-                capture_name, comment_text, is_docstring, context, analyzer
+                cfg, capture_name, comment_text, is_docstring, context, analyzer
             )
 
             if should_remove:
@@ -137,6 +135,7 @@ class CommentOptimizer:
 
     def _should_process_comment(
         self,
+        cfg: Union[CommentPolicy, CommentConfig],
         capture_name: str,
         comment_text: str,
         is_docstring: bool,
@@ -147,6 +146,7 @@ class CommentOptimizer:
         Determine how to process a comment based on policy.
 
         Args:
+            cfg: Configuration for comment processing
             capture_name: Type of comment (comment, docstring, etc.)
             comment_text: Text content of the comment
             is_docstring: Whether this is a documentation comment (determined by multiple strategies)
@@ -157,8 +157,8 @@ class CommentOptimizer:
             Tuple of (should_remove, replacement_text)
         """
         # Simple string policy
-        if isinstance(self.cfg, str):
-            policy: str = self.cfg
+        if isinstance(cfg, str):
+            policy: str = cfg
             if policy == "keep_all":
                 return False, ""
             elif policy == "strip_all":
@@ -183,13 +183,14 @@ class CommentOptimizer:
                     return True, None
 
         # Complex policy (CommentConfig object)
-        elif hasattr(self.cfg, 'policy'):
-            return self._process_complex_comment_policy(comment_text, is_docstring, context, analyzer)
+        elif hasattr(cfg, 'policy'):
+            return self._process_complex_comment_policy(cfg, comment_text, is_docstring, context, analyzer)
 
         return False, ""
     
     def _process_complex_comment_policy(
         self,
+        cfg: Union[CommentPolicy, CommentConfig],
         comment_text: str,
         is_docstring: bool,
         context: ProcessingContext,
@@ -199,6 +200,7 @@ class CommentOptimizer:
         Process comments using complex configuration.
 
         Args:
+            cfg: Configuration for comment processing
             comment_text: Comment text content
             is_docstring: Whether this is a documentation comment
             context: Processing context
@@ -207,7 +209,7 @@ class CommentOptimizer:
         Returns:
             Tuple of (should_remove, replacement_text)
         """
-        complex_cfg: CommentConfig = cast(CommentConfig, self.cfg)
+        complex_cfg: CommentConfig = cast(CommentConfig, cfg)
 
         # Check for forced removal patterns
         for pattern in complex_cfg.strip_patterns:

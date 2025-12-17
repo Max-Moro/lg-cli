@@ -9,6 +9,7 @@ from typing import Dict, Any, List, Optional
 
 from tree_sitter import Language
 
+from ..code_analysis import CodeAnalyzer
 from ..code_base import CodeAdapter
 from ..code_model import CodeCfg
 from ..context import LightweightContext
@@ -78,7 +79,7 @@ class TypeScriptAdapter(CodeAdapter[TypeScriptCfg]):
         from .code_analysis import TypeScriptCodeAnalyzer
         return TypeScriptCodeAnalyzer(doc)
 
-    def create_comment_analyzer(self, doc: TreeSitterDocument):
+    def create_comment_analyzer(self, doc: TreeSitterDocument, code_analyzer: CodeAnalyzer):
         """Create TypeScript-specific comment analyzer."""
         from .comment_analysis import TypeScriptCommentAnalyzer
         return TypeScriptCommentAnalyzer(doc)

@@ -102,59 +102,57 @@ class ImportOptimizer:
     Handles all import optimization policies.
     """
     
-    def __init__(self, cfg: ImportConfig, adapter):
-        """
-        Initialize with parent adapter for language-specific operations.
-        """
-        self.cfg = cfg
+    def __init__(self, adapter):
+        """Initialize with parent adapter."""
         from ..code_base import CodeAdapter
         self.adapter = cast(CodeAdapter, adapter)
     
-    def apply(self, context: ProcessingContext) -> None:
+    def apply(self, context: ProcessingContext, cfg: ImportConfig) -> None:
         """
         Apply import processing based on policy.
-        
+
         Args:
             context: Processing context with document and editor
+            cfg: Configuration for import processing
         """
 
         # If policy is keep_all, nothing to do (except maybe summarize_long)
-        if self.cfg.policy == "keep_all" and not self.cfg.summarize_long:
+        if cfg.policy == "keep_all" and not cfg.summarize_long:
             return
-        
+
         # Get language-specific analyzer
-        classifier = self.adapter.create_import_classifier(self.cfg.external_patterns)
+        classifier = self.adapter.create_import_classifier(cfg.external_patterns)
         analyzer = self.adapter.create_import_analyzer(classifier)
-        
+
         # Analyze all imports using Tree-sitter
         imports = analyzer.analyze_imports(context.doc)
         if not imports:
             return
-        
+
         # Group by type
         grouped = analyzer.group_imports(imports)
-        
+
         # Apply policy-specific processing
-        if self.cfg.policy == "strip_all":
+        if cfg.policy == "strip_all":
             self._process_strip(imports, context)
-        elif self.cfg.policy == "strip_external":
+        elif cfg.policy == "strip_external":
             self._process_strip(grouped["external"], context)
-        elif self.cfg.policy == "strip_local":
+        elif cfg.policy == "strip_local":
             self._process_strip(grouped["local"], context)
-        
+
         # Apply summarize_long if enabled (works in addition to policies)
-        if self.cfg.summarize_long:
+        if cfg.summarize_long:
             # Re-analyze remaining imports after policy processing
             remaining_imports = analyzer.analyze_imports(context.doc)
             if remaining_imports:
-                self._process_summarize_long(remaining_imports, context)
+                self._process_summarize_long(remaining_imports, context, cfg)
     
     def _process_strip(self, imports: List[ImportInfo], context: ProcessingContext) -> None:
         """Remove specified imports."""
         for imp in imports:
             self._remove_import(context, imp)
     
-    def _process_summarize_long(self, imports: List[ImportInfo], context: ProcessingContext) -> None:
+    def _process_summarize_long(self, imports: List[ImportInfo], context: ProcessingContext, cfg: ImportConfig) -> None:
         """
         Summarize imports with too many items.
 
@@ -165,7 +163,7 @@ class ImportOptimizer:
         - Group consecutive imports from one base module
         - Summarize groups exceeding threshold
         """
-        max_items = self.cfg.max_items_before_summary
+        max_items = cfg.max_items_before_summary
 
         # First check imports with multiple items (Python/TS style)
         for imp in imports:

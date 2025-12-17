@@ -9,6 +9,7 @@ from abc import ABC, abstractmethod
 from typing import Dict, List, Tuple, Any, TypeVar, Optional, cast
 
 from .base import BaseAdapter
+from .budget import BudgetController
 from .code_analysis import CodeAnalyzer
 from .code_model import CodeCfg, PlaceholderConfig
 from .context import ProcessingContext, LightweightContext
@@ -22,7 +23,7 @@ from .optimizations import (
     TreeSitterImportAnalyzer,
     ImportClassifier
 )
-from .optimizations.comment_analysis import CommentAnalyzer, CommentStyle
+from .optimizations.comment_analysis import CommentAnalyzer
 from .tree_sitter_support import TreeSitterDocument, Node
 
 C = TypeVar("C", bound=CodeCfg)
@@ -36,14 +37,30 @@ class CodeAdapter(BaseAdapter[C], ABC):
     def _post_bind(self) -> None:
         """
         Post-bind initialization for code adapters.
-        Initializes literal pipeline when literals optimization is enabled.
+        Creates optimizer instances based on configuration.
+
+        If budget is enabled, all optimizers are created (budget may use any of them).
+        Otherwise, only optimizers needed by current config are created.
         """
-        # Initialize literal pipeline only if literals optimization is enabled
-        # This avoids heavy initialization when max_tokens is None
-        if self.cfg.literals.max_tokens is not None:
-            self.literal_pipeline = LiteralPipeline(self)
-        else:
-            self.literal_pipeline = None
+        cfg = self.cfg
+        has_budget = cfg.budget and cfg.budget.max_tokens_per_file
+
+        # Determine which optimizers are needed
+        needs_public_api = has_budget or cfg.public_api_only
+        needs_function_bodies = has_budget or bool(cfg.strip_function_bodies)
+        needs_comments = has_budget or cfg.comment_policy != "keep_all"
+        needs_imports = has_budget or cfg.imports.policy != "keep_all" or cfg.imports.summarize_long
+        needs_literals = has_budget or cfg.literals.max_tokens is not None
+
+        # Create optimizer instances (only those that are needed)
+        self.public_api_optimizer = PublicApiOptimizer(self) if needs_public_api else None
+        self.function_body_optimizer = FunctionBodyOptimizer(self) if needs_function_bodies else None
+        self.comment_optimizer = CommentOptimizer(self) if needs_comments else None
+        self.import_optimizer = ImportOptimizer(self) if needs_imports else None
+        self.literal_pipeline = LiteralPipeline(self) if needs_literals else None
+
+        # Create budget controller if budgeting is enabled
+        self.budget_controller = BudgetController(self, self.tokenizer, cfg.budget) if has_budget else None
 
     @abstractmethod
     def create_document(self, text: str, ext: str) -> TreeSitterDocument:
@@ -66,7 +83,7 @@ class CodeAdapter(BaseAdapter[C], ABC):
         pass
 
     @abstractmethod
-    def create_comment_analyzer(self, doc: TreeSitterDocument) -> CommentAnalyzer:
+    def create_comment_analyzer(self, doc: TreeSitterDocument, code_analyzer: CodeAnalyzer) -> CommentAnalyzer:
         """Create language-specific comment analyzer for the document."""
         pass
 
@@ -116,10 +133,8 @@ class CodeAdapter(BaseAdapter[C], ABC):
         # Select effective config with active budget (sandbox without placeholders)
         effective_cfg = self.cfg
         budget_metrics: dict[str, int] | None = None
-        if self.cfg.budget and self.cfg.budget.max_tokens_per_file:
-            from .budget import BudgetController
-            controller = BudgetController[C](self, self.tokenizer, self.cfg.budget)
-            effective_cfg, budget_metrics = controller.fit_config(lightweight_ctx, self.cfg)
+        if self.budget_controller is not None:
+            effective_cfg, budget_metrics = self.budget_controller.fit_config(lightweight_ctx, self.cfg)
 
         # Get full context from lightweight context for actual run
         context = lightweight_ctx.get_full_context(self, self.tokenizer)
@@ -144,25 +159,23 @@ class CodeAdapter(BaseAdapter[C], ABC):
         Each module is responsible for its type of optimization.
         """
         # Filter by public API
-        if code_cfg.public_api_only:
-            public_api_optimizer = PublicApiOptimizer(self)
-            public_api_optimizer.apply(context)
+        if code_cfg.public_api_only and self.public_api_optimizer:
+            self.public_api_optimizer.apply(context)
 
         # Process function bodies
-        if code_cfg.strip_function_bodies:
-            function_body_optimizer = FunctionBodyOptimizer(code_cfg.strip_function_bodies, self)
-            function_body_optimizer.apply(context)
+        if code_cfg.strip_function_bodies and self.function_body_optimizer:
+            self.function_body_optimizer.apply(context, code_cfg.strip_function_bodies)
 
         # Process comments
-        comment_optimizer = CommentOptimizer(code_cfg.comment_policy, self)
-        comment_optimizer.apply(context)
+        if self.comment_optimizer:
+            self.comment_optimizer.apply(context, code_cfg.comment_policy)
 
         # Process imports
-        import_optimizer = ImportOptimizer(code_cfg.imports, self)
-        import_optimizer.apply(context)
+        if self.import_optimizer:
+            self.import_optimizer.apply(context, code_cfg.imports)
 
-        # Process literals - only if pipeline was initialized
-        if self.literal_pipeline is not None:
+        # Process literals
+        if code_cfg.literals.max_tokens is not None and self.literal_pipeline:
             self.literal_pipeline.apply(context, code_cfg.literals)
 
     def _finalize_placeholders(self, context: ProcessingContext, ph_cfg: PlaceholderConfig) -> Tuple[str, Dict[str, Any]]:

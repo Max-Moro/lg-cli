@@ -24,13 +24,6 @@ from .code_model import (
 )
 from .context import ProcessingContext
 from .range_edits import RangeEditor
-from .optimizations import (
-    ImportOptimizer,
-    CommentOptimizer,
-    FunctionBodyOptimizer,
-    PublicApiOptimizer,
-)
-from .optimizations.literals import LiteralPipeline
 
 
 Cc = TypeVar("Cc", bound=CodeCfg)
@@ -228,6 +221,7 @@ class BudgetController(Generic[Cc]):
         # Build ProcessingContext manually to force placeholder style "none"
         doc = self.adapter.create_document(text, lightweight_ctx.ext)
         editor = RangeEditor(text)
+        code_analyzer = self.adapter.create_code_analyzer(doc)
         # Construct a placeholder manager directly with style "none"
         from .placeholders import create_placeholder_manager
         placeholders = create_placeholder_manager(text, self.adapter.comment_style, "none")
@@ -241,6 +235,7 @@ class BudgetController(Generic[Cc]):
             editor=editor,
             placeholders=placeholders,
             tokenizer=self.tokenizer,
+            code_analyzer=code_analyzer,
         )
 
     def _apply_user_policies(self, lightweight_ctx, text: str, cfg: CodeCfg) -> str:
@@ -248,18 +243,18 @@ class BudgetController(Generic[Cc]):
 
         # Respect user's base settings as the starting point
         if cfg.public_api_only:
-            PublicApiOptimizer(self.adapter).apply(ctx)
+            self.adapter.public_api_optimizer.apply(ctx)
 
         if cfg.strip_function_bodies:
-            FunctionBodyOptimizer(cfg.strip_function_bodies, self.adapter).apply(ctx)
+            self.adapter.function_body_optimizer.apply(ctx, cfg.strip_function_bodies)
 
         # Comments
         if cfg.comment_policy != "keep_all":
-            CommentOptimizer(cfg.comment_policy, self.adapter).apply(ctx)
+            self.adapter.comment_optimizer.apply(ctx, cfg.comment_policy)
 
         # Imports and literals always safe to run (no-op if default)
-        ImportOptimizer(cfg.imports, self.adapter).apply(ctx)
-        LiteralPipeline(self.adapter).apply(ctx, cfg.literals)
+        self.adapter.import_optimizer.apply(ctx, cfg.imports)
+        self.adapter.literal_pipeline.apply(ctx, cfg.literals)
 
         new_text, _ = ctx.editor.apply_edits()
         return new_text
@@ -273,30 +268,30 @@ class BudgetController(Generic[Cc]):
     def _apply_imports(self, lightweight_ctx, text: str, *, policy: str, summarize_long: bool) -> str:
         ctx = self._make_sandbox_context(lightweight_ctx, text)
         cfg = ImportConfig(policy=cast(ImportPolicy, policy), summarize_long=summarize_long)
-        ImportOptimizer(cfg, self.adapter).apply(ctx)
+        self.adapter.import_optimizer.apply(ctx, cfg)
         return self._generate_new_text(ctx)
 
     def _apply_literals(self, lightweight_ctx, text: str, *, max_tokens: Optional[int]) -> str:
         ctx = self._make_sandbox_context(lightweight_ctx, text)
         cfg = LiteralConfig(max_tokens=max_tokens)
-        LiteralPipeline(self.adapter).apply(ctx, cfg)
+        self.adapter.literal_pipeline.apply(ctx, cfg)
         return self._generate_new_text(ctx)
 
     def _apply_comments(self, lightweight_ctx, text: str, *, policy: str, max_tokens: Optional[int]) -> str:
         ctx = self._make_sandbox_context(lightweight_ctx, text)
         cfg = CommentConfig(policy=cast(CommentPolicy, policy), max_tokens=max_tokens)
-        CommentOptimizer(cfg, self.adapter).apply(ctx)
+        self.adapter.comment_optimizer.apply(ctx, cfg)
         return self._generate_new_text(ctx)
 
     def _apply_function_bodies(self, lightweight_ctx, text: str, *, mode: str) -> str:
         ctx = self._make_sandbox_context(lightweight_ctx, text)
         cfg = FunctionBodyConfig(mode=cast(FunctionBodyStrip, mode))
-        FunctionBodyOptimizer(cfg, self.adapter).apply(ctx)
+        self.adapter.function_body_optimizer.apply(ctx, cfg)
         return self._generate_new_text(ctx)
 
     def _apply_public_api_only(self, lightweight_ctx, text: str) -> str:
         ctx = self._make_sandbox_context(lightweight_ctx, text)
-        PublicApiOptimizer(self.adapter).apply(ctx)
+        self.adapter.public_api_optimizer.apply(ctx)
         return self._generate_new_text(ctx)
 
     def _compute_levels_for_limit(self, user_level: Optional[int]) -> List[int]:

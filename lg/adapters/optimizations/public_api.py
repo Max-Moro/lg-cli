@@ -28,15 +28,12 @@ class PublicApiOptimizer:
         Args:
             context: Processing context with document and editor
         """
-        # Get unified code analyzer for language
-        code_analyzer = self.adapter.create_code_analyzer(context.doc)
-
         # Collect all private elements using analyzer
-        private_elements = code_analyzer.collect_private_elements_for_public_api()
+        private_elements = context.code_analyzer.collect_private_elements_for_public_api()
 
         # First compute ranges with decorators for all elements
         element_ranges = [
-            (code_analyzer.get_element_range_with_decorators(elem), elem)
+            (context.code_analyzer.get_element_range_with_decorators(elem), elem)
             for elem in private_elements
         ]
 

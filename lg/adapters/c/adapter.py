@@ -9,6 +9,7 @@ from typing import Dict, Any, List, Optional
 
 from tree_sitter import Language
 
+from ..code_analysis import CodeAnalyzer
 from ..code_base import CodeAdapter
 from ..code_model import CodeCfg
 from ..optimizations import ImportClassifier, TreeSitterImportAnalyzer, LanguageLiteralDescriptor
@@ -67,7 +68,7 @@ class CAdapter(CodeAdapter[CCfg]):
         from .code_analysis import CCodeAnalyzer
         return CCodeAnalyzer(doc)
 
-    def create_comment_analyzer(self, doc: TreeSitterDocument):
+    def create_comment_analyzer(self, doc: TreeSitterDocument, code_analyzer: CodeAnalyzer):
         """Create C-specific comment analyzer."""
         from .comment_analysis import CStyleCommentAnalyzer
         return CStyleCommentAnalyzer(doc)

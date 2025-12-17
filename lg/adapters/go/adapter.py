@@ -10,6 +10,7 @@ from typing import Dict, Any, List, Optional, cast
 from tree_sitter import Language
 
 from .code_analysis import GoCodeAnalyzer
+from ..code_analysis import CodeAnalyzer
 from ..code_base import CodeAdapter
 from ..code_model import CodeCfg
 from ..optimizations import ImportClassifier, TreeSitterImportAnalyzer, LanguageLiteralDescriptor
@@ -67,11 +68,10 @@ class GoAdapter(CodeAdapter[GoCfg]):
         """Create Go-specific unified code analyzer."""
         return GoCodeAnalyzer(doc)
 
-    def create_comment_analyzer(self, doc: TreeSitterDocument):
+    def create_comment_analyzer(self, doc: TreeSitterDocument, code_analyzer: CodeAnalyzer):
         """Create Go-specific comment analyzer."""
         from .comment_analysis import GoCommentAnalyzer
-        code_analyzer = cast(GoCodeAnalyzer, self.create_code_analyzer(doc))
-        return GoCommentAnalyzer(doc, code_analyzer)
+        return GoCommentAnalyzer(doc, cast(GoCodeAnalyzer, code_analyzer))
 
     def _get_comment_analyzer_class(self):
         """Get the Go comment analyzer class."""

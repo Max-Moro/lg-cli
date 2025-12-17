@@ -8,6 +8,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Optional
 
+from .code_analysis import CodeAnalyzer
 from .metrics import MetricsCollector
 from .placeholders import PlaceholderManager, create_placeholder_manager
 from .range_edits import RangeEditor
@@ -85,6 +86,7 @@ class ProcessingContext(LightState):
         editor: RangeEditor,
         placeholders: PlaceholderManager,
         tokenizer: TokenService,
+        code_analyzer: CodeAnalyzer,
     ):
         super().__init__(file_path, raw_text, group_size)
 
@@ -93,6 +95,7 @@ class ProcessingContext(LightState):
         self.placeholders = placeholders
         self.metrics = MetricsCollector(adapter_name)
         self.tokenizer = tokenizer
+        self.code_analyzer = code_analyzer
 
     def add_placeholder(self, element_type: str, start_char: int, end_char: int, start_line: int, end_line: int,
                         placeholder_prefix: str = "", count: int = 1) -> None:
@@ -130,6 +133,7 @@ class ProcessingContext(LightState):
         # Create components for full context
         doc = adapter.create_document(lightweight_ctx.raw_text, lightweight_ctx.ext)
         editor = RangeEditor(lightweight_ctx.raw_text)
+        code_analyzer = adapter.create_code_analyzer(doc)
 
         # Create PlaceholderManager with settings from adapter
         placeholders = create_placeholder_manager(
@@ -147,4 +151,5 @@ class ProcessingContext(LightState):
             editor,
             placeholders,
             tokenizer,
+            code_analyzer,
         )

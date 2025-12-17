@@ -9,6 +9,7 @@ from typing import Dict, Any, List, Optional
 
 from tree_sitter import Language
 
+from ..code_analysis import CodeAnalyzer
 from ..code_base import CodeAdapter
 from ..code_model import CodeCfg
 from ..optimizations import ImportClassifier, TreeSitterImportAnalyzer
@@ -68,7 +69,7 @@ class ScalaAdapter(CodeAdapter[ScalaCfg]):
         from .code_analysis import ScalaCodeAnalyzer
         return ScalaCodeAnalyzer(doc)
 
-    def create_comment_analyzer(self, doc: TreeSitterDocument):
+    def create_comment_analyzer(self, doc: TreeSitterDocument, code_analyzer: CodeAnalyzer):
         """Create Scala-specific comment analyzer."""
         from .comment_analysis import ScalaCommentAnalyzer
         return ScalaCommentAnalyzer(doc)

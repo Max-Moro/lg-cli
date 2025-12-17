@@ -9,10 +9,11 @@ from typing import Dict, Any, List, Optional
 
 from tree_sitter import Language
 
+from ..code_analysis import CodeAnalyzer
 from ..code_base import CodeAdapter
 from ..code_model import CodeCfg
 from ..context import LightweightContext
-from ..optimizations import ImportClassifier, TreeSitterImportAnalyzer, CommentOptimizer
+from ..optimizations import ImportClassifier, TreeSitterImportAnalyzer
 from ..optimizations.literals import LanguageLiteralDescriptor
 from ..tree_sitter_support import TreeSitterDocument
 
@@ -71,7 +72,7 @@ class PythonAdapter(CodeAdapter[PythonCfg]):
         from .code_analysis import PythonCodeAnalyzer
         return PythonCodeAnalyzer(doc)
 
-    def create_comment_analyzer(self, doc: TreeSitterDocument):
+    def create_comment_analyzer(self, doc: TreeSitterDocument, code_analyzer: CodeAnalyzer):
         """Create Python-specific comment analyzer."""
         from .comment_analysis import PythonCommentAnalyzer
         return PythonCommentAnalyzer(doc)

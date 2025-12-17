@@ -18,15 +18,7 @@ def make_adapter(cfg: KotlinCfg) -> KotlinAdapter:
 
     Use this for most tests to ensure deterministic behavior.
     """
-    adapter = KotlinAdapter().bind(None, stub_tokenizer())
-    adapter._cfg = cfg
-    # Initialize literal pipeline after config override
-    if cfg.literals.max_tokens is not None:
-        from lg.adapters.optimizations import LiteralPipeline
-        adapter.literal_pipeline = LiteralPipeline(adapter)
-    else:
-        adapter.literal_pipeline = None
-    return adapter
+    return KotlinAdapter.bind_with_cfg(cfg, stub_tokenizer())
 
 
 def make_adapter_real(cfg: KotlinCfg) -> KotlinAdapter:
@@ -35,15 +27,7 @@ def make_adapter_real(cfg: KotlinCfg) -> KotlinAdapter:
 
     Use this when testing actual token counting/mathematics.
     """
-    adapter = KotlinAdapter().bind(None, default_tokenizer())
-    adapter._cfg = cfg
-    # Initialize literal pipeline after config override
-    if cfg.literals.max_tokens is not None:
-        from lg.adapters.optimizations import LiteralPipeline
-        adapter.literal_pipeline = LiteralPipeline(adapter)
-    else:
-        adapter.literal_pipeline = None
-    return adapter
+    return KotlinAdapter.bind_with_cfg(cfg, default_tokenizer())
 
 
 def lctx(

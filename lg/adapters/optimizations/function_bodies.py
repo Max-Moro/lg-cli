@@ -15,29 +15,24 @@ from ..tree_sitter_support import Node
 class FunctionBodyOptimizer:
     """Handles function body stripping optimization."""
     
-    def __init__(self, cfg: Union[bool, FunctionBodyConfig], adapter):
-        """
-        Initialize with parent adapter for language-specific checks.
-        """
-        self.cfg = cfg
+    def __init__(self, adapter):
+        """Initialize with parent adapter."""
         from ..code_base import CodeAdapter
         self.adapter = cast(CodeAdapter, adapter)
     
-    def apply(self, context: ProcessingContext) -> None:
+    def apply(self, context: ProcessingContext, cfg: Union[bool, FunctionBodyConfig]) -> None:
         """
         Apply function body stripping based on configuration.
-        
+
         Args:
             context: Processing context with document and editor
+            cfg: Configuration for function body stripping
         """
-        if not self.cfg:
+        if not cfg:
             return
-        
-        # Get language-specific unified code analyzer
-        analyzer = self.adapter.create_code_analyzer(context.doc)
 
         # Collect all function and method groups
-        function_groups = analyzer.collect_function_like_elements()
+        function_groups = context.code_analyzer.collect_function_like_elements()
 
         # Process each function group
         for func_def, func_group in function_groups.items():
@@ -51,7 +46,7 @@ class FunctionBodyOptimizer:
             lines_count = end_line - start_line + 1
             
             # Check if this body should be stripped
-            should_strip = self.should_strip_function_body(func_group.element_info.in_public_api, lines_count)
+            should_strip = self.should_strip_function_body(cfg, func_group.element_info.in_public_api, lines_count)
             
             if should_strip:
                 self.adapter.hook__remove_function_body(
@@ -107,29 +102,31 @@ class FunctionBodyOptimizer:
 
     def should_strip_function_body(
         self,
+        cfg: Union[bool, FunctionBodyConfig],
         in_public_api: bool,
         lines_count: int,
     ) -> bool:
         """
         Determine if a function body should be stripped based on configuration.
-        
+
         Args:
+            cfg: Configuration for function body stripping
             in_public_api: A function or method is part of a public API
             lines_count: Number of lines in the function body
 
         Returns:
             True if body should be stripped, False otherwise
         """
-        if isinstance(self.cfg, bool):
+        if isinstance(cfg, bool):
             # For boolean True, apply smart logic:
             # don't strip single-line bodies (important for arrow functions)
             # But allow override for complex config modes
-            if self.cfg and lines_count <= 1:
+            if cfg and lines_count <= 1:
                 return False
-            return self.cfg
-        
+            return cfg
+
         # If config is an object, apply complex logic
-        complex_cfg: FunctionBodyConfig = cast(FunctionBodyConfig, self.cfg)
+        complex_cfg: FunctionBodyConfig = cast(FunctionBodyConfig, cfg)
         mode = complex_cfg.mode
 
         if mode == "none":
