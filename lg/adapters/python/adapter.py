@@ -71,6 +71,16 @@ class PythonAdapter(CodeAdapter[PythonCfg]):
         from .code_analysis import PythonCodeAnalyzer
         return PythonCodeAnalyzer(doc)
 
+    def create_comment_analyzer(self, doc: TreeSitterDocument):
+        """Create Python-specific comment analyzer."""
+        from .comment_analysis import PythonCommentAnalyzer
+        return PythonCommentAnalyzer(doc)
+
+    def _get_comment_analyzer_class(self):
+        """Get the Python comment analyzer class."""
+        from .comment_analysis import PythonCommentAnalyzer
+        return PythonCommentAnalyzer
+
     def create_literal_descriptor(self) -> LanguageLiteralDescriptor:
         """Create Python literal descriptor."""
         from .literals import create_python_descriptor
@@ -88,22 +98,4 @@ class PythonAdapter(CodeAdapter[PythonCfg]):
     def hook__remove_function_body(self, *args, **kwargs) -> None:
         from .function_bodies import remove_function_body_with_definition
         remove_function_body_with_definition(*args, **kwargs)
-
-    def get_comment_style(self) -> tuple[str, tuple[str, str], tuple[str, str]]:
-        return "#", ('"""', '"""'), ('"""', '"""')
-
-    def is_documentation_comment(self, comment_text: str) -> bool:
-        return False # Use explicit capture in `QUERIES["comments"]` — capture_name == "docstring"
-
-    def is_docstring_node(self, node, doc: TreeSitterDocument) -> bool:
-        from .comments import is_docstring_node
-        return is_docstring_node(node, doc)
-
-    def hook__extract_first_sentence(self, root_optimizer: CommentOptimizer, text: str) -> str:
-        from .comments import extract_first_sentence
-        return extract_first_sentence(text)
-
-    def hook__smart_truncate_comment(self, root_optimizer: CommentOptimizer, comment_text: str, max_tokens: int, tokenizer) -> str:
-        from .comments import smart_truncate_comment
-        return smart_truncate_comment(comment_text, max_tokens, tokenizer)
 

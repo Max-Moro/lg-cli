@@ -230,7 +230,7 @@ class BudgetController(Generic[Cc]):
         editor = RangeEditor(text)
         # Construct a placeholder manager directly with style "none"
         from .placeholders import create_placeholder_manager
-        placeholders = create_placeholder_manager(text, self.adapter.get_comment_style(), "none")
+        placeholders = create_placeholder_manager(text, self.adapter.comment_style, "none")
 
         return ProcessingContext(
             file_path=lightweight_ctx.file_path,

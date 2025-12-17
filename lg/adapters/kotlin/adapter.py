@@ -67,6 +67,16 @@ class KotlinAdapter(CodeAdapter[KotlinCfg]):
         from .code_analysis import KotlinCodeAnalyzer
         return KotlinCodeAnalyzer(doc)
 
+    def create_comment_analyzer(self, doc: TreeSitterDocument):
+        """Create Kotlin-specific comment analyzer."""
+        from .comment_analysis import KotlinCommentAnalyzer
+        return KotlinCommentAnalyzer(doc)
+
+    def _get_comment_analyzer_class(self):
+        """Get the Kotlin comment analyzer class."""
+        from .comment_analysis import KotlinCommentAnalyzer
+        return KotlinCommentAnalyzer
+
     # == Hooks used by Kotlin adapter ==
 
     def hook__remove_function_body(self, *args, **kwargs) -> None:

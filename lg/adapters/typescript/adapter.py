@@ -78,6 +78,16 @@ class TypeScriptAdapter(CodeAdapter[TypeScriptCfg]):
         from .code_analysis import TypeScriptCodeAnalyzer
         return TypeScriptCodeAnalyzer(doc)
 
+    def create_comment_analyzer(self, doc: TreeSitterDocument):
+        """Create TypeScript-specific comment analyzer."""
+        from .comment_analysis import TypeScriptCommentAnalyzer
+        return TypeScriptCommentAnalyzer(doc)
+
+    def _get_comment_analyzer_class(self):
+        """Get the TypeScript comment analyzer class."""
+        from .comment_analysis import TypeScriptCommentAnalyzer
+        return TypeScriptCommentAnalyzer
+
     def create_literal_descriptor(self) -> LanguageLiteralDescriptor:
         """Create TypeScript literal descriptor."""
         from .literals import create_typescript_descriptor

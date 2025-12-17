@@ -67,6 +67,16 @@ class JavaAdapter(CodeAdapter[JavaCfg]):
         from .code_analysis import JavaCodeAnalyzer
         return JavaCodeAnalyzer(doc)
 
+    def create_comment_analyzer(self, doc: TreeSitterDocument):
+        """Create Java-specific comment analyzer."""
+        from .comment_analysis import JavaCommentAnalyzer
+        return JavaCommentAnalyzer(doc)
+
+    def _get_comment_analyzer_class(self):
+        """Get the Java comment analyzer class."""
+        from .comment_analysis import JavaCommentAnalyzer
+        return JavaCommentAnalyzer
+
     def create_literal_descriptor(self) -> LanguageLiteralDescriptor:
         """Create Java literal descriptor."""
         from .literals import create_java_descriptor

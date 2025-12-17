@@ -134,7 +134,7 @@ class ProcessingContext(LightState):
         # Create PlaceholderManager with settings from adapter
         placeholders = create_placeholder_manager(
             lightweight_ctx.raw_text,
-            adapter.get_comment_style(),
+            adapter.comment_style,
             adapter.cfg.placeholders.style,
         )
 

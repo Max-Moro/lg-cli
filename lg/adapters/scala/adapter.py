@@ -68,6 +68,16 @@ class ScalaAdapter(CodeAdapter[ScalaCfg]):
         from .code_analysis import ScalaCodeAnalyzer
         return ScalaCodeAnalyzer(doc)
 
+    def create_comment_analyzer(self, doc: TreeSitterDocument):
+        """Create Scala-specific comment analyzer."""
+        from .comment_analysis import ScalaCommentAnalyzer
+        return ScalaCommentAnalyzer(doc)
+
+    def _get_comment_analyzer_class(self):
+        """Get the Scala comment analyzer class."""
+        from .comment_analysis import ScalaCommentAnalyzer
+        return ScalaCommentAnalyzer
+
     def create_literal_descriptor(self) -> LanguageLiteralDescriptor:
         """Create Scala literal descriptor."""
         from .literals import create_scala_descriptor

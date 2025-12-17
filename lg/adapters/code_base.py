@@ -22,6 +22,7 @@ from .optimizations import (
     TreeSitterImportAnalyzer,
     ImportClassifier
 )
+from .optimizations.comment_analysis import CommentAnalyzer, CommentStyle
 from .tree_sitter_support import TreeSitterDocument, Node
 
 C = TypeVar("C", bound=CodeCfg)
@@ -79,9 +80,33 @@ class CodeAdapter(BaseAdapter[C], ABC):
         """Create language-specific unified code analyzer."""
         pass
 
+    @abstractmethod
+    def create_comment_analyzer(self, doc: TreeSitterDocument) -> CommentAnalyzer:
+        """Create language-specific comment analyzer for the document."""
+        pass
+
     def create_literal_descriptor(self) -> LanguageLiteralDescriptor:
         """Create language-specific literal descriptor."""
         pass
+
+    @property
+    def comment_style(self) -> tuple[str, tuple[str, str], tuple[str, str]]:
+        """
+        Get comment style as tuple for backward compatibility.
+
+        Returns:
+            Tuple of (single_line, multi_line, doc_markers) in the legacy format.
+        """
+        # Get analyzer class (not instance) to access STYLE
+        # This is a workaround - we need the style without creating a document
+        # Subclasses should use their analyzer's STYLE directly
+        analyzer_cls = self._get_comment_analyzer_class()
+        style = analyzer_cls.STYLE
+        return style.single_line, style.multi_line, style.doc_markers
+
+    def _get_comment_analyzer_class(self) -> type[CommentAnalyzer]:
+        """Get the comment analyzer class for this adapter. Override in subclasses."""
+        return CommentAnalyzer
 
     # ============= HOOKS for injecting into optimization process ===========
 
@@ -95,26 +120,6 @@ class CodeAdapter(BaseAdapter[C], ABC):
     ) -> None:
         """Hook for customizing function body removal."""
         root_optimizer.remove_function_body(context, body_node, func_type)
-
-    def get_comment_style(self) -> Tuple[str, tuple[str, str], tuple[str, str]]:
-        """Comment style for language (single-line, multi-line, docstring)."""
-        return "//", ("/*", "*/"), ('/**', '*/')
-
-    def is_documentation_comment(self, comment_text: str) -> bool:
-        """Is this comment part of the documentation system."""
-        return comment_text.strip().startswith('/**')
-
-    def is_docstring_node(self, node, doc: TreeSitterDocument) -> bool:
-        """Check if node is a docstring."""
-        return False
-
-    def hook__extract_first_sentence(self, root_optimizer: CommentOptimizer, text: str) -> str:
-        """Hook for extracting first sentence from comment text."""
-        return root_optimizer.extract_first_sentence(text)
-
-    def hook__smart_truncate_comment(self, root_optimizer: CommentOptimizer, comment_text: str, max_tokens: int, tokenizer) -> str:
-        """Hook for correctly closing multi-line comments and docstrings after truncation."""
-        return root_optimizer.smart_truncate_comment(comment_text, max_tokens, tokenizer)
 
     # ============= Main pipeline for language optimizer operations ===========
 

@@ -48,7 +48,7 @@ class LiteralPipeline:
         self.descriptor = self.adapter.create_literal_descriptor()
 
         # Get comment style from adapter
-        comment_style: tuple[str, tuple[str, str]] = cast(tuple[str, tuple[str, str]], self.adapter.get_comment_style()[:2])
+        comment_style: tuple[str, tuple[str, str]] = cast(tuple[str, tuple[str, str]], self.adapter.comment_style[:2])
 
         # Shared services
         self.selector = BudgetSelector(self.adapter.tokenizer)

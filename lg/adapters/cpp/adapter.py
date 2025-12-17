@@ -67,10 +67,15 @@ class CppAdapter(CodeAdapter[CppCfg]):
         from .code_analysis import CppCodeAnalyzer
         return CppCodeAnalyzer(doc)
 
-    def is_documentation_comment(self, comment_text: str) -> bool:
-        """Check if comment is Doxygen documentation."""
-        stripped = comment_text.strip()
-        return stripped.startswith('/**') or stripped.startswith('///')
+    def create_comment_analyzer(self, doc: TreeSitterDocument):
+        """Create C++-specific comment analyzer (reuses C-style analyzer)."""
+        from ..c.comment_analysis import CStyleCommentAnalyzer
+        return CStyleCommentAnalyzer(doc)
+
+    def _get_comment_analyzer_class(self):
+        """Get the C++ comment analyzer class (reuses C-style analyzer)."""
+        from ..c.comment_analysis import CStyleCommentAnalyzer
+        return CStyleCommentAnalyzer
 
     def create_literal_descriptor(self) -> LanguageLiteralDescriptor:
         """Create C++ literal descriptor."""

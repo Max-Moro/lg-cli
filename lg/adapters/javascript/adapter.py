@@ -68,6 +68,16 @@ class JavaScriptAdapter(CodeAdapter[JavaScriptCfg]):
         from .code_analysis import JavaScriptCodeAnalyzer
         return JavaScriptCodeAnalyzer(doc)
 
+    def create_comment_analyzer(self, doc: TreeSitterDocument):
+        """Create JavaScript-specific comment analyzer."""
+        from .comment_analysis import JavaScriptCommentAnalyzer
+        return JavaScriptCommentAnalyzer(doc)
+
+    def _get_comment_analyzer_class(self):
+        """Get the JavaScript comment analyzer class."""
+        from .comment_analysis import JavaScriptCommentAnalyzer
+        return JavaScriptCommentAnalyzer
+
     def create_literal_descriptor(self) -> LanguageLiteralDescriptor:
         """Create JavaScript literal descriptor."""
         from .literals import create_javascript_descriptor

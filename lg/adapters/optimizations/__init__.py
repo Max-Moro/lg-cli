@@ -9,6 +9,7 @@ from .comments import CommentOptimizer
 from .imports import ImportOptimizer, TreeSitterImportAnalyzer, ImportClassifier
 from .literals import LiteralPipeline
 from .literals.descriptor import LanguageLiteralDescriptor
+from .comment_analysis import CommentAnalyzer, CommentStyle
 
 __all__ = [
     "PublicApiOptimizer",
@@ -19,4 +20,6 @@ __all__ = [
     "LanguageLiteralDescriptor",
     "TreeSitterImportAnalyzer",
     "ImportClassifier",
+    "CommentAnalyzer",
+    "CommentStyle",
 ]

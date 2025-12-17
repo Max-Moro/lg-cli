@@ -5,14 +5,15 @@ Go adapter core: configuration, document and adapter classes.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Dict, Any, List, Optional
+from typing import Dict, Any, List, Optional, cast
 
 from tree_sitter import Language
 
+from .code_analysis import GoCodeAnalyzer
 from ..code_base import CodeAdapter
 from ..code_model import CodeCfg
 from ..optimizations import ImportClassifier, TreeSitterImportAnalyzer, LanguageLiteralDescriptor
-from ..tree_sitter_support import TreeSitterDocument, Node
+from ..tree_sitter_support import TreeSitterDocument
 
 
 @dataclass
@@ -64,53 +65,20 @@ class GoAdapter(CodeAdapter[GoCfg]):
 
     def create_code_analyzer(self, doc: TreeSitterDocument):
         """Create Go-specific unified code analyzer."""
-        from .code_analysis import GoCodeAnalyzer
         return GoCodeAnalyzer(doc)
 
-    def get_comment_style(self) -> tuple[str, tuple[str, str], tuple[str, str]]:
-        """Comment style for Go (single-line, multi-line, docstring)."""
-        return "//", ("/*", "*/"), ("//", "")
+    def create_comment_analyzer(self, doc: TreeSitterDocument):
+        """Create Go-specific comment analyzer."""
+        from .comment_analysis import GoCommentAnalyzer
+        code_analyzer = cast(GoCodeAnalyzer, self.create_code_analyzer(doc))
+        return GoCommentAnalyzer(doc, code_analyzer)
+
+    def _get_comment_analyzer_class(self):
+        """Get the Go comment analyzer class."""
+        from .comment_analysis import GoCommentAnalyzer
+        return GoCommentAnalyzer
 
     def create_literal_descriptor(self) -> LanguageLiteralDescriptor:
         """Create Go literal descriptor."""
         from .literals import create_go_descriptor
         return create_go_descriptor()
-
-    def is_docstring_node(self, node: Node, doc: TreeSitterDocument) -> bool:
-        """
-        Check if a comment node is a documentation comment in Go.
-
-        In Go, doc comments are regular // comments that immediately precede
-        exported declarations.
-
-        Args:
-            node: Comment node to check
-            doc: Document for context analysis
-
-        Returns:
-            True if node is a documentation comment
-        """
-        from .comments import GoCommentAnalyzer
-
-        # Cache the comment analyzer on the document object to avoid re-analysis
-        # Each document is processed only once, so this is safe
-        if not hasattr(doc, '_go_comment_analyzer'):
-            code_analyzer = self.create_code_analyzer(doc)
-            doc._go_comment_analyzer = GoCommentAnalyzer(doc, code_analyzer)
-
-        # Check if this specific node is a doc comment
-        return doc._go_comment_analyzer.is_documentation_comment(node)
-
-    def _get_comment_analyzer(self, doc: TreeSitterDocument):
-        """
-        Get cached comment analyzer for the document.
-
-        Used internally by CommentOptimizer for group-based processing.
-        """
-        from .comments import GoCommentAnalyzer
-
-        if not hasattr(doc, '_go_comment_analyzer'):
-            code_analyzer = self.create_code_analyzer(doc)
-            doc._go_comment_analyzer = GoCommentAnalyzer(doc, code_analyzer)
-
-        return doc._go_comment_analyzer
