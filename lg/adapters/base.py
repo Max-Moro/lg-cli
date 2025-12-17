@@ -42,13 +42,41 @@ class BaseAdapter(Generic[C]):
     @classmethod
     def bind(cls: Type[A], raw_cfg: dict | None, tokenizer: TokenService) -> A:
         """
-        Factory for a "bound" adapter: creates instance and applies config.
+        Factory for a "bound" adapter: creates instance from raw config dict.
         External code doesn't see the config type — full encapsulation.
+
+        This method is final and should not be overridden. Use _post_bind() for customization.
+        """
+        cfg = cls._load_cfg(raw_cfg)
+        return cls.bind_with_cfg(cfg, tokenizer)
+
+    @classmethod
+    def bind_with_cfg(cls: Type[A], cfg: C, tokenizer: TokenService) -> A:
+        """
+        Factory for a "bound" adapter with pre-loaded typed config.
+        Useful for tests where config is constructed programmatically.
+
+        Args:
+            cfg: Already deserialized and typed configuration object
+            tokenizer: Token counting service
+
+        Returns:
+            Bound adapter instance
         """
         inst = cls()
-        inst._cfg = cls._load_cfg(raw_cfg)
+        inst._cfg = cfg
         inst.tokenizer = tokenizer
+        inst._post_bind()
         return inst
+
+    def _post_bind(self) -> None:
+        """
+        Hook called after basic initialization in bind_with_cfg().
+        Override this method (not bind()) to add custom post-initialization logic.
+
+        At this point self.cfg and self.tokenizer are available.
+        """
+        pass
 
     @classmethod
     def _load_cfg(cls, raw_cfg: dict | None) -> C:

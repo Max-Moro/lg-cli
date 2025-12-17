@@ -33,32 +33,17 @@ class CodeAdapter(BaseAdapter[C], ABC):
     Provides common methods for code processing and placeholder system.
     """
 
-    @classmethod
-    def bind(cls, raw_cfg: dict | None, tokenizer):
+    def _post_bind(self) -> None:
         """
-        Factory for a "bound" adapter with literal pipeline initialization.
-
-        Overrides BaseAdapter.bind() to add literal pipeline initialization
-        only for code adapters and only when literals optimization is enabled.
-
-        Args:
-            raw_cfg: Raw configuration dictionary
-            tokenizer: Token counting service
-
-        Returns:
-            Bound CodeAdapter instance with initialized literal pipeline
+        Post-bind initialization for code adapters.
+        Initializes literal pipeline when literals optimization is enabled.
         """
-        # Call parent bind() to create instance and load config
-        inst = super().bind(raw_cfg, tokenizer)
-
         # Initialize literal pipeline only if literals optimization is enabled
         # This avoids heavy initialization when max_tokens is None
-        if inst.cfg.literals.max_tokens is not None:
-            inst.literal_pipeline = LiteralPipeline(inst)
+        if self.cfg.literals.max_tokens is not None:
+            self.literal_pipeline = LiteralPipeline(self)
         else:
-            inst.literal_pipeline = None
-
-        return inst
+            self.literal_pipeline = None
 
     @abstractmethod
     def create_document(self, text: str, ext: str) -> TreeSitterDocument:
