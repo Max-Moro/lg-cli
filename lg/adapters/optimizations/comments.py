@@ -90,7 +90,7 @@ class CommentOptimizer:
 
             # Standard processing
             should_remove, replacement = self._should_process_comment(
-                cfg, capture_name, comment_text, is_docstring, context, analyzer
+                cfg, comment_text, is_docstring, context, analyzer
             )
 
             if should_remove:
@@ -136,7 +136,6 @@ class CommentOptimizer:
     def _should_process_comment(
         self,
         cfg: Union[CommentPolicy, CommentConfig],
-        capture_name: str,
         comment_text: str,
         is_docstring: bool,
         context: ProcessingContext,
@@ -147,7 +146,6 @@ class CommentOptimizer:
 
         Args:
             cfg: Configuration for comment processing
-            capture_name: Type of comment (comment, docstring, etc.)
             comment_text: Text content of the comment
             is_docstring: Whether this is a documentation comment (determined by multiple strategies)
             context: Processing context

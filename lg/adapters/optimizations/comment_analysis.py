@@ -6,30 +6,15 @@ Provides base classes and utilities for analyzing and processing comments.
 from __future__ import annotations
 
 import re
-from abc import ABC, abstractmethod
-from dataclasses import dataclass
-from typing import ClassVar, List, Optional
+from typing import List, Optional
 
 from tree_sitter import Node
 
+from ..comment_style import CommentStyle
 from ..tree_sitter_support import TreeSitterDocument
 
 
-@dataclass(frozen=True)
-class CommentStyle:
-    """Comment style description for a language."""
-
-    single_line: str
-    """Single-line comment marker (e.g., '//' or '#')."""
-
-    multi_line: tuple[str, str]
-    """Multi-line comment markers (e.g., ('/*', '*/'))."""
-
-    doc_markers: tuple[str, str]
-    """Documentation comment markers (e.g., ('/**', '*/') or ('///', ''))."""
-
-
-class CommentAnalyzer(ABC):
+class CommentAnalyzer:
     """
     Base class for language-specific comment analyzers.
 
@@ -37,31 +22,17 @@ class CommentAnalyzer(ABC):
     according to language-specific conventions.
     """
 
-    STYLE: ClassVar[CommentStyle] = CommentStyle(
-        single_line="//",
-        multi_line=("/*", "*/"),
-        doc_markers=("/**", "*/")
-    )
-
-    def __init__(self, doc: TreeSitterDocument):
+    def __init__(self, doc: TreeSitterDocument, style: CommentStyle):
         """
         Initialize the analyzer for a document.
 
         Args:
             doc: TreeSitterDocument instance to analyze
+            style: CommentStyle instance with comment markers for this language
         """
         self.doc = doc
+        self.style = style
         self._analyzed = False
-
-    @classmethod
-    def get_style(cls) -> CommentStyle:
-        """
-        Returns comment style for the language.
-
-        Returns:
-            CommentStyle instance with comment markers for this language
-        """
-        return cls.STYLE
 
     def is_documentation_comment(self, node: Node, text: str, capture_name: str = "") -> bool:
         """
@@ -87,7 +58,7 @@ class CommentAnalyzer(ABC):
 
         # Strategy 2: Text-based check using doc markers
         stripped = text.strip()
-        doc_start, doc_end = self.STYLE.doc_markers
+        doc_start, doc_end = self.style.doc_markers
         if doc_start and stripped.startswith(doc_start):
             return True
 
@@ -266,4 +237,4 @@ class CommentAnalyzer(ABC):
             return f"{truncated}…"
 
 
-__all__ = ["CommentStyle", "CommentAnalyzer"]
+__all__ = ["CommentAnalyzer"]

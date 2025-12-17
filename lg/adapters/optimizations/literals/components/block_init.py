@@ -9,6 +9,7 @@ Provides common functionality for different initialization patterns:
 from __future__ import annotations
 
 from ..processor import LiteralProcessor
+from ....comment_style import CommentStyle
 from ....tree_sitter_support import TreeSitterDocument, Node
 
 
@@ -23,18 +24,18 @@ class BlockInitProcessorBase(LiteralProcessor):
     def __init__(
         self,
         tokenizer,
-        comment_style: tuple[str, tuple[str, str]],
+        comment_style: CommentStyle,
     ):
         """
         Initialize base processor.
 
         Args:
             tokenizer: Token counting service
-            comment_style: Comment syntax (single_line, (block_open, block_close))
+            comment_style: CommentStyle instance with comment markers
         """
         self.tokenizer = tokenizer
-        self.single_comment = comment_style[0]
-        self.block_comment = comment_style[1]
+        self.single_comment = comment_style.single_line
+        self.block_comment = comment_style.multi_line
 
     def _matches_pattern(self, node: Node, pattern: str, doc: TreeSitterDocument) -> bool:
         """Check if node matches a pattern."""

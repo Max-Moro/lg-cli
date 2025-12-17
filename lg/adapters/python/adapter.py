@@ -5,7 +5,7 @@ Python adapter core: configuration, document and adapter classes.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Dict, Any, List, Optional
+from typing import Dict, Any, List, Optional, ClassVar
 
 from tree_sitter import Language
 
@@ -14,6 +14,7 @@ from ..code_base import CodeAdapter
 from ..code_model import CodeCfg
 from ..context import LightweightContext
 from ..optimizations import ImportClassifier, TreeSitterImportAnalyzer
+from ..comment_style import CommentStyle
 from ..optimizations.literals import LanguageLiteralDescriptor
 from ..tree_sitter_support import TreeSitterDocument
 
@@ -54,6 +55,12 @@ class PythonAdapter(CodeAdapter[PythonCfg]):
     name = "python"
     extensions = {".py"}
 
+    COMMENT_STYLE: ClassVar[CommentStyle] = CommentStyle(
+        single_line="#",
+        multi_line=('"""', '"""'),
+        doc_markers=('"""', '"""')
+    )
+
     def create_document(self, text: str, ext: str) -> TreeSitterDocument:
         return PythonDocument(text, ext)
 
@@ -75,12 +82,7 @@ class PythonAdapter(CodeAdapter[PythonCfg]):
     def create_comment_analyzer(self, doc: TreeSitterDocument, code_analyzer: CodeAnalyzer):
         """Create Python-specific comment analyzer."""
         from .comment_analysis import PythonCommentAnalyzer
-        return PythonCommentAnalyzer(doc)
-
-    def _get_comment_analyzer_class(self):
-        """Get the Python comment analyzer class."""
-        from .comment_analysis import PythonCommentAnalyzer
-        return PythonCommentAnalyzer
+        return PythonCommentAnalyzer(doc, self.COMMENT_STYLE)
 
     def create_literal_descriptor(self) -> LanguageLiteralDescriptor:
         """Create Python literal descriptor."""

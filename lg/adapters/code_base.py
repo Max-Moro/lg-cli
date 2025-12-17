@@ -6,7 +6,7 @@ Provides common functionality for code processing and optimization orchestration
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from typing import Dict, List, Tuple, Any, TypeVar, Optional, cast
+from typing import Dict, List, Tuple, Any, TypeVar, Optional, cast, ClassVar
 
 from .base import BaseAdapter
 from .budget import BudgetController
@@ -24,6 +24,7 @@ from .optimizations import (
     ImportClassifier
 )
 from .optimizations.comment_analysis import CommentAnalyzer
+from .comment_style import CommentStyle
 from .tree_sitter_support import TreeSitterDocument, Node
 
 C = TypeVar("C", bound=CodeCfg)
@@ -33,6 +34,13 @@ class CodeAdapter(BaseAdapter[C], ABC):
     Base class for all language programming adapters.
     Provides common methods for code processing and placeholder system.
     """
+
+    # Default comment style - subclasses should override
+    COMMENT_STYLE: ClassVar[CommentStyle] = CommentStyle(
+        single_line="//",
+        multi_line=("/*", "*/"),
+        doc_markers=("/**", "*/")
+    )
 
     def _post_bind(self) -> None:
         """
@@ -82,33 +90,23 @@ class CodeAdapter(BaseAdapter[C], ABC):
         """Create language-specific unified code analyzer."""
         pass
 
-    @abstractmethod
     def create_comment_analyzer(self, doc: TreeSitterDocument, code_analyzer: CodeAnalyzer) -> CommentAnalyzer:
         """Create language-specific comment analyzer for the document."""
-        pass
+        return CommentAnalyzer(doc, self.COMMENT_STYLE)
 
     def create_literal_descriptor(self) -> LanguageLiteralDescriptor:
         """Create language-specific literal descriptor."""
         pass
 
     @property
-    def comment_style(self) -> tuple[str, tuple[str, str], tuple[str, str]]:
+    def comment_style(self) -> CommentStyle:
         """
-        Get comment style as tuple for backward compatibility.
+        Get comment style for this language adapter.
 
         Returns:
-            Tuple of (single_line, multi_line, doc_markers) in the legacy format.
+            CommentStyle instance with comment markers for this language.
         """
-        # Get analyzer class (not instance) to access STYLE
-        # This is a workaround - we need the style without creating a document
-        # Subclasses should use their analyzer's STYLE directly
-        analyzer_cls = self._get_comment_analyzer_class()
-        style = analyzer_cls.STYLE
-        return style.single_line, style.multi_line, style.doc_markers
-
-    def _get_comment_analyzer_class(self) -> type[CommentAnalyzer]:
-        """Get the comment analyzer class for this adapter. Override in subclasses."""
-        return CommentAnalyzer
+        return self.COMMENT_STYLE
 
     # ============= HOOKS for injecting into optimization process ===========
 

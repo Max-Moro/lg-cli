@@ -5,14 +5,14 @@ JavaScript adapter core: configuration, document and adapter classes.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Dict, Any, List, Optional
+from typing import Dict, Any, List, Optional, ClassVar
 
 from tree_sitter import Language
 
-from ..code_analysis import CodeAnalyzer
 from ..code_base import CodeAdapter
 from ..code_model import CodeCfg
 from ..optimizations import ImportClassifier, TreeSitterImportAnalyzer
+from ..comment_style import CommentStyle
 from ..optimizations.literals import LanguageLiteralDescriptor
 from ..tree_sitter_support import TreeSitterDocument
 
@@ -51,6 +51,12 @@ class JavaScriptAdapter(CodeAdapter[JavaScriptCfg]):
     name = "javascript"
     extensions = {".js", ".jsx", ".mjs", ".cjs"}
 
+    COMMENT_STYLE: ClassVar[CommentStyle] = CommentStyle(
+        single_line="//",
+        multi_line=("/*", "*/"),
+        doc_markers=("/**", "*/")
+    )
+
     def create_document(self, text: str, ext: str) -> TreeSitterDocument:
         return JavaScriptDocument(text, ext)
 
@@ -68,16 +74,6 @@ class JavaScriptAdapter(CodeAdapter[JavaScriptCfg]):
         """Create JavaScript-specific unified code analyzer."""
         from .code_analysis import JavaScriptCodeAnalyzer
         return JavaScriptCodeAnalyzer(doc)
-
-    def create_comment_analyzer(self, doc: TreeSitterDocument, code_analyzer: CodeAnalyzer):
-        """Create JavaScript-specific comment analyzer."""
-        from .comment_analysis import JavaScriptCommentAnalyzer
-        return JavaScriptCommentAnalyzer(doc)
-
-    def _get_comment_analyzer_class(self):
-        """Get the JavaScript comment analyzer class."""
-        from .comment_analysis import JavaScriptCommentAnalyzer
-        return JavaScriptCommentAnalyzer
 
     def create_literal_descriptor(self) -> LanguageLiteralDescriptor:
         """Create JavaScript literal descriptor."""

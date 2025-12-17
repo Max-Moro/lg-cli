@@ -8,10 +8,11 @@ exported (public) declarations with no blank lines between them.
 
 from __future__ import annotations
 
-from typing import ClassVar, List, Optional, Set
+from typing import List, Optional, Set
 
 from .code_analysis import GoCodeAnalyzer
-from ..optimizations.comment_analysis import CommentAnalyzer, CommentStyle
+from ..optimizations.comment_analysis import CommentAnalyzer
+from ..comment_style import CommentStyle
 from ..tree_sitter_support import TreeSitterDocument, Node
 
 
@@ -25,22 +26,16 @@ class GoCommentAnalyzer(CommentAnalyzer):
     3. There are no blank lines between the comment and the declaration
     """
 
-    # Go comment style: // for single-line and doc, /* */ for multi-line
-    STYLE: ClassVar[CommentStyle] = CommentStyle(
-        single_line="//",
-        multi_line=("/*", "*/"),
-        doc_markers=("//", "")  # Go doc comments are just // comments
-    )
-
-    def __init__(self, doc: TreeSitterDocument, code_analyzer: GoCodeAnalyzer):
+    def __init__(self, doc: TreeSitterDocument, code_analyzer: GoCodeAnalyzer, style: CommentStyle):
         """
         Initialize the Go comment analyzer.
 
         Args:
             doc: Parsed Tree-sitter document
             code_analyzer: Go code analyzer for determining element visibility
+            style: CommentStyle instance with comment markers
         """
-        super().__init__(doc)
+        super().__init__(doc, style)
         self.code_analyzer = code_analyzer
 
         # Cache for analysis results (lazy initialization)

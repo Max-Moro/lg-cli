@@ -5,14 +5,14 @@ Scala adapter core: configuration, document and adapter classes.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Dict, Any, List, Optional
+from typing import Dict, Any, List, Optional, ClassVar
 
 from tree_sitter import Language
 
-from ..code_analysis import CodeAnalyzer
 from ..code_base import CodeAdapter
 from ..code_model import CodeCfg
 from ..optimizations import ImportClassifier, TreeSitterImportAnalyzer
+from ..comment_style import CommentStyle
 from ..optimizations.literals import LanguageLiteralDescriptor
 from ..tree_sitter_support import TreeSitterDocument
 
@@ -51,6 +51,12 @@ class ScalaAdapter(CodeAdapter[ScalaCfg]):
     name = "scala"
     extensions = {".scala", ".sc"}
 
+    COMMENT_STYLE: ClassVar[CommentStyle] = CommentStyle(
+        single_line="//",
+        multi_line=("/*", "*/"),
+        doc_markers=("/**", "*/")
+    )
+
     def create_document(self, text: str, ext: str) -> TreeSitterDocument:
         return ScalaDocument(text, ext)
 
@@ -68,16 +74,6 @@ class ScalaAdapter(CodeAdapter[ScalaCfg]):
         """Create Scala-specific unified code analyzer."""
         from .code_analysis import ScalaCodeAnalyzer
         return ScalaCodeAnalyzer(doc)
-
-    def create_comment_analyzer(self, doc: TreeSitterDocument, code_analyzer: CodeAnalyzer):
-        """Create Scala-specific comment analyzer."""
-        from .comment_analysis import ScalaCommentAnalyzer
-        return ScalaCommentAnalyzer(doc)
-
-    def _get_comment_analyzer_class(self):
-        """Get the Scala comment analyzer class."""
-        from .comment_analysis import ScalaCommentAnalyzer
-        return ScalaCommentAnalyzer
 
     def create_literal_descriptor(self) -> LanguageLiteralDescriptor:
         """Create Scala literal descriptor."""

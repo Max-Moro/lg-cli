@@ -5,14 +5,14 @@ Java adapter core: configuration, document and adapter classes.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Dict, Any, List, Optional
+from typing import Dict, Any, List, Optional, ClassVar
 
 from tree_sitter import Language
 
-from ..code_analysis import CodeAnalyzer
 from ..code_base import CodeAdapter
 from ..code_model import CodeCfg
 from ..optimizations import ImportClassifier, TreeSitterImportAnalyzer, LanguageLiteralDescriptor
+from ..comment_style import CommentStyle
 from ..tree_sitter_support import TreeSitterDocument
 
 
@@ -50,6 +50,12 @@ class JavaAdapter(CodeAdapter[JavaCfg]):
     name = "java"
     extensions = {".java"}
 
+    COMMENT_STYLE: ClassVar[CommentStyle] = CommentStyle(
+        single_line="//",
+        multi_line=("/*", "*/"),
+        doc_markers=("/**", "*/")
+    )
+
     def create_document(self, text: str, ext: str) -> TreeSitterDocument:
         return JavaDocument(text, ext)
 
@@ -67,16 +73,6 @@ class JavaAdapter(CodeAdapter[JavaCfg]):
         """Create Java-specific unified code analyzer."""
         from .code_analysis import JavaCodeAnalyzer
         return JavaCodeAnalyzer(doc)
-
-    def create_comment_analyzer(self, doc: TreeSitterDocument, code_analyzer: CodeAnalyzer):
-        """Create Java-specific comment analyzer."""
-        from .comment_analysis import JavaCommentAnalyzer
-        return JavaCommentAnalyzer(doc)
-
-    def _get_comment_analyzer_class(self):
-        """Get the Java comment analyzer class."""
-        from .comment_analysis import JavaCommentAnalyzer
-        return JavaCommentAnalyzer
 
     def create_literal_descriptor(self) -> LanguageLiteralDescriptor:
         """Create Java literal descriptor."""

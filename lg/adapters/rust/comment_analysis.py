@@ -11,11 +11,10 @@ Rust has several types of documentation comments:
 
 from __future__ import annotations
 
-from typing import ClassVar
-
 from tree_sitter import Node
 
-from ..optimizations.comment_analysis import CommentAnalyzer, CommentStyle
+from ..optimizations.comment_analysis import CommentAnalyzer
+from ..comment_style import CommentStyle
 
 
 class RustCommentAnalyzer(CommentAnalyzer):
@@ -28,13 +27,6 @@ class RustCommentAnalyzer(CommentAnalyzer):
     - /** - outer block doc comment
     - /*! - inner block doc comment
     """
-
-    # Rust comment style
-    STYLE: ClassVar[CommentStyle] = CommentStyle(
-        single_line="//",
-        multi_line=("/*", "*/"),
-        doc_markers=("///", "")  # Primary doc marker
-    )
 
     # All Rust doc comment markers
     DOC_MARKERS = ("///", "//!", "/**", "/*!")

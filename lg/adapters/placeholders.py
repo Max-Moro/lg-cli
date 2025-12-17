@@ -9,6 +9,7 @@ from dataclasses import dataclass
 from typing import Dict, List, Tuple, Any
 
 from .tree_sitter_support import Node
+from .comment_style import CommentStyle
 
 
 @dataclass
@@ -172,16 +173,6 @@ class PlaceholderSpec:
         )
 
 
-@dataclass
-class CommentStyle:
-    """Comment style for language."""
-    single_line: str  # "#", "//", etc.
-    multi_line_start: str  # "/*", '"""', etc.
-    multi_line_end: str   # "*/", '"""', etc.
-    docstring_start: str
-    docstring_end: str
-
-
 class PlaceholderManager:
     """
     Central manager for placeholder management.
@@ -271,18 +262,19 @@ class PlaceholderManager:
 
         # For docstrings always use native language wrapping
         if spec.placeholder_type == "docstring":
-            if self.comment_style.docstring_end:
-                return f"{spec.placeholder_prefix}{self.comment_style.docstring_start} {content} {self.comment_style.docstring_end}"
+            doc_start, doc_end = self.comment_style.doc_markers
+            if doc_end:
+                return f"{spec.placeholder_prefix}{doc_start} {content} {doc_end}"
             else:
                 # Single-line docstring style (e.g., /// for Rust, // for Go)
-                # Need to preserve newline since these are typically line-based comments
-                return f"{spec.placeholder_prefix}{self.comment_style.docstring_start} {content}\n"
+                return f"{spec.placeholder_prefix}{doc_start} {content}\n"
 
         # Standard logic for regular comments
         if self.placeholder_style == "inline":
             return f"{spec.placeholder_prefix}{self.comment_style.single_line} {content}"
-        else: # self.placeholder_style == "block"
-            return f"{spec.placeholder_prefix}{self.comment_style.multi_line_start} {content} {self.comment_style.multi_line_end}"
+        else:  # self.placeholder_style == "block"
+            block_start, block_end = self.comment_style.multi_line
+            return f"{spec.placeholder_prefix}{block_start} {content} {block_end}"
 
     def _get_placeholder_content(self, spec: PlaceholderSpec) -> str:
         """Generate placeholder content based on type and metrics."""
@@ -448,25 +440,15 @@ class PlaceholderManager:
 
 def create_placeholder_manager(
     raw_text: str,
-    comment_style_tuple: Tuple[str, Tuple[str, str], Tuple[str, str]],
+    comment_style: CommentStyle,
     placeholder_style: str
 ) -> PlaceholderManager:
     """
-    Create PlaceholderManager from comment style tuple.
+    Create PlaceholderManager from CommentStyle.
 
     Args:
         raw_text: source text of document
-        comment_style_tuple: (single_line, (multi_start, multi_end), (docstring_start, docstring_end))
+        comment_style: CommentStyle instance with comment markers
         placeholder_style: Placeholder style
     """
-    single_line, (multi_start, multi_end), (docstring_start, docstring_end) = comment_style_tuple
-    
-    comment_style = CommentStyle(
-        single_line=single_line,
-        multi_line_start=multi_start,
-        multi_line_end=multi_end,
-        docstring_start=docstring_start,
-        docstring_end=docstring_end
-    )
-    
     return PlaceholderManager(raw_text, comment_style, placeholder_style)

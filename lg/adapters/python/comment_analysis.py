@@ -5,22 +5,14 @@ Python-specific comment analyzer with docstring support.
 from __future__ import annotations
 
 import re
-from typing import ClassVar
 
 from tree_sitter import Node
 
-from ..optimizations.comment_analysis import CommentAnalyzer, CommentStyle
+from ..optimizations.comment_analysis import CommentAnalyzer
 
 
 class PythonCommentAnalyzer(CommentAnalyzer):
     """Python-specific comment analyzer with docstring support."""
-
-    # Python comment style: # for single-line, """ for multi-line and docstrings
-    STYLE: ClassVar[CommentStyle] = CommentStyle(
-        single_line="#",
-        multi_line=('"""', '"""'),
-        doc_markers=('"""', '"""')
-    )
 
     def is_documentation_comment(self, node: Node, text: str, capture_name: str = "") -> bool:
         """
@@ -97,7 +89,7 @@ class PythonCommentAnalyzer(CommentAnalyzer):
 
         Args:
             text: Docstring text to process
-            quote: Quote marker (""" or ''')
+            quote: Quote marker (triple double or single quotes)
 
         Returns:
             First sentence with proper formatting
@@ -167,7 +159,7 @@ class PythonCommentAnalyzer(CommentAnalyzer):
 
         Args:
             text: Docstring text to truncate
-            quote: Quote marker (""" or ''')
+            quote: Quote marker (triple double or single quotes)
             max_tokens: Maximum allowed tokens
             tokenizer: TokenService for counting and truncating tokens
 

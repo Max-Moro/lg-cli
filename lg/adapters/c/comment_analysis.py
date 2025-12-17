@@ -7,9 +7,8 @@ Supports Doxygen documentation markers (/** and ///).
 
 from __future__ import annotations
 
-from typing import ClassVar
-
-from ..optimizations.comment_analysis import CommentAnalyzer, CommentStyle
+from ..optimizations.comment_analysis import CommentAnalyzer
+from ..comment_style import CommentStyle
 from ..tree_sitter_support import TreeSitterDocument, Node
 
 
@@ -21,13 +20,6 @@ class CStyleCommentAnalyzer(CommentAnalyzer):
     - /** - block doc comment
     - /// - line doc comment
     """
-
-    # C-style comment style with explicit Doxygen markers
-    STYLE: ClassVar[CommentStyle] = CommentStyle(
-        single_line="//",
-        multi_line=("/*", "*/"),
-        doc_markers=("/**", "*/")
-    )
 
     # Doxygen doc comment markers
     DOC_MARKERS = ("/**", "///")

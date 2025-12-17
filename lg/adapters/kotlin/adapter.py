@@ -5,14 +5,14 @@ Kotlin adapter core: configuration, document and adapter classes.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Dict, Any, List, Optional
+from typing import Dict, Any, List, Optional, ClassVar
 
 from tree_sitter import Language
 
-from ..code_analysis import CodeAnalyzer
 from ..code_base import CodeAdapter
 from ..code_model import CodeCfg
 from ..optimizations import ImportClassifier, TreeSitterImportAnalyzer
+from ..comment_style import CommentStyle
 from ..optimizations.literals import LanguageLiteralDescriptor
 from ..tree_sitter_support import TreeSitterDocument
 
@@ -50,6 +50,12 @@ class KotlinAdapter(CodeAdapter[KotlinCfg]):
     name = "kotlin"
     extensions = {".kt", ".kts"}
 
+    COMMENT_STYLE: ClassVar[CommentStyle] = CommentStyle(
+        single_line="//",
+        multi_line=("/*", "*/"),
+        doc_markers=("/**", "*/")
+    )
+
     def create_document(self, text: str, ext: str) -> TreeSitterDocument:
         return KotlinDocument(text, ext)
 
@@ -67,16 +73,6 @@ class KotlinAdapter(CodeAdapter[KotlinCfg]):
         """Create a Kotlin-specific unified code analyzer."""
         from .code_analysis import KotlinCodeAnalyzer
         return KotlinCodeAnalyzer(doc)
-
-    def create_comment_analyzer(self, doc: TreeSitterDocument, code_analyzer: CodeAnalyzer):
-        """Create Kotlin-specific comment analyzer."""
-        from .comment_analysis import KotlinCommentAnalyzer
-        return KotlinCommentAnalyzer(doc)
-
-    def _get_comment_analyzer_class(self):
-        """Get the Kotlin comment analyzer class."""
-        from .comment_analysis import KotlinCommentAnalyzer
-        return KotlinCommentAnalyzer
 
     # == Hooks used by Kotlin adapter ==
 

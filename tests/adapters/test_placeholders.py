@@ -1,6 +1,7 @@
 import pytest
 
 from lg.adapters.placeholders import create_placeholder_manager, PlaceholderSpec
+from lg.adapters.comment_style import CommentStyle
 
 
 def make_manager(text: str, style: str = "inline"):
@@ -8,9 +9,14 @@ def make_manager(text: str, style: str = "inline"):
 
     single: '#', block: '/* */', docstring: '""" """'
     """
+    comment_style = CommentStyle(
+        single_line="#",
+        multi_line=("/*", "*/"),
+        doc_markers=('"""', '"""')
+    )
     return create_placeholder_manager(
         raw_text=text,
-        comment_style_tuple=("#", ("/*", "*/"), ('"""', '"""')),
+        comment_style=comment_style,
         placeholder_style=style,
     )
 

@@ -16,6 +16,7 @@ src:
           - "/context.py"
           - "/code_model.py"
           - "/code_base.py"
+          - "/comment_style.py"
           - "/optimizations/"
         when:
           - condition: "TAGSET:adapters-optimizations:core"

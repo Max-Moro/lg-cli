@@ -11,6 +11,7 @@ from __future__ import annotations
 
 from typing import Optional
 
+from ....comment_style import CommentStyle
 from ..patterns import ParsedLiteral, PlaceholderPosition
 from ..processing.selector import SelectionBase
 
@@ -22,15 +23,15 @@ class CommentFormatter:
     Shared by both string and collection formatters.
     """
 
-    def __init__(self, comment_style: tuple[str, tuple[str, str]]):
+    def __init__(self, comment_style: CommentStyle):
         """
         Initialize with language comment syntax.
 
         Args:
-            comment_style: (single_line_prefix, (block_open, block_close))
+            comment_style: CommentStyle instance with comment markers
         """
-        self.single_comment = comment_style[0]
-        self.block_comment = comment_style[1]
+        self.single_comment = comment_style.single_line
+        self.block_comment = comment_style.multi_line
 
     def generate_comment(
         self,
