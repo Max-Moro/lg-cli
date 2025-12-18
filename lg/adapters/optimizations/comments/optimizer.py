@@ -159,7 +159,7 @@ class CommentOptimizer:
             transformer: Max tokens transformer
             comment_text: Comment text content
             is_docstring: Whether this is a documentation comment
-            context: Processing context
+            context: Processing context (for transformer)
             analyzer: Language-specific comment analyzer
 
         Returns:
@@ -167,9 +167,7 @@ class CommentOptimizer:
         """
         # Run evaluators in priority order
         for evaluator in evaluators:
-            decision = evaluator.evaluate(
-                comment_text, is_docstring, context, analyzer
-            )
+            decision = evaluator.evaluate(comment_text, is_docstring, analyzer)
             if decision is not None:
                 # Apply max_tokens transformation if needed
                 return transformer.transform(decision, context, analyzer)

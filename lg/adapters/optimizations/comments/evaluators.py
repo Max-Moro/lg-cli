@@ -10,14 +10,14 @@ import re
 from typing import List, Optional
 
 from .analyzer import CommentAnalyzer
-from .decision import CommentDecision
+from .decision import CommentDecision, PolicyEvaluator
 from ...code_model import CommentPolicy
 from ...context import ProcessingContext
 
 logger = logging.getLogger(__name__)
 
 
-class StripPatternEvaluator:
+class StripPatternEvaluator(PolicyEvaluator):
     """Evaluates strip_patterns for forced comment removal."""
 
     def __init__(self, patterns: List[str]):
@@ -33,7 +33,6 @@ class StripPatternEvaluator:
         self,
         text: str,
         is_docstring: bool,
-        context: ProcessingContext,
         analyzer: CommentAnalyzer
     ) -> Optional[CommentDecision]:
         """
@@ -42,7 +41,6 @@ class StripPatternEvaluator:
         Args:
             text: Comment text content
             is_docstring: Whether this is a documentation comment
-            context: Processing context
             analyzer: Language-specific comment analyzer
 
         Returns:
@@ -62,7 +60,7 @@ class StripPatternEvaluator:
         return None  # Not applicable
 
 
-class KeepAnnotationEvaluator:
+class KeepAnnotationEvaluator(PolicyEvaluator):
     """Evaluates keep_annotations for forced comment preservation."""
 
     def __init__(self, patterns: List[str]):
@@ -78,7 +76,6 @@ class KeepAnnotationEvaluator:
         self,
         text: str,
         is_docstring: bool,
-        context: ProcessingContext,
         analyzer: CommentAnalyzer
     ) -> Optional[CommentDecision]:
         """
@@ -87,7 +84,6 @@ class KeepAnnotationEvaluator:
         Args:
             text: Comment text content
             is_docstring: Whether this is a documentation comment
-            context: Processing context
             analyzer: Language-specific comment analyzer
 
         Returns:
@@ -108,7 +104,7 @@ class KeepAnnotationEvaluator:
         return None  # Not applicable
 
 
-class BasePolicyEvaluator:
+class BasePolicyEvaluator(PolicyEvaluator):
     """Evaluates base comment policy (keep_all, strip_all, keep_doc, keep_first_sentence)."""
 
     def __init__(self, policy: CommentPolicy):
@@ -124,7 +120,6 @@ class BasePolicyEvaluator:
         self,
         text: str,
         is_docstring: bool,
-        context: ProcessingContext,
         analyzer: CommentAnalyzer
     ) -> Optional[CommentDecision]:
         """
@@ -133,7 +128,6 @@ class BasePolicyEvaluator:
         Args:
             text: Comment text content
             is_docstring: Whether this is a documentation comment
-            context: Processing context
             analyzer: Language-specific comment analyzer
 
         Returns:

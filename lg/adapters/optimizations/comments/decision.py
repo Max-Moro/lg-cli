@@ -6,10 +6,9 @@ Provides normalized representation of comment processing decisions.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Literal, Optional, Protocol
+from typing import Literal, Optional, Protocol, runtime_checkable
 
 from .analyzer import CommentAnalyzer
-from ...context import ProcessingContext
 
 
 @dataclass
@@ -19,6 +18,7 @@ class CommentDecision:
     replacement: Optional[str] = None  # None = use placeholder
 
 
+@runtime_checkable
 class PolicyEvaluator(Protocol):
     """Protocol for comment policy evaluators."""
 
@@ -26,7 +26,6 @@ class PolicyEvaluator(Protocol):
         self,
         text: str,
         is_docstring: bool,
-        context: ProcessingContext,
         analyzer: CommentAnalyzer
     ) -> Optional[CommentDecision]:
         """
@@ -35,7 +34,6 @@ class PolicyEvaluator(Protocol):
         Args:
             text: Comment text content
             is_docstring: Whether this is a documentation comment
-            context: Processing context
             analyzer: Language-specific comment analyzer
 
         Returns:
