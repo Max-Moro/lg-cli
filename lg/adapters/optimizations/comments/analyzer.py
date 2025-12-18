@@ -6,12 +6,23 @@ Provides base classes and utilities for analyzing and processing comments.
 from __future__ import annotations
 
 import re
+from dataclasses import dataclass
 from typing import List, Optional
 
 from tree_sitter import Node
 
 from ...comment_style import CommentStyle
 from ...tree_sitter_support import TreeSitterDocument
+
+
+@dataclass
+class TruncationStyle:
+    """Description of comment style for truncation."""
+    start_marker: str           # Opening marker (e.g., "/**", '"""', "//")
+    end_marker: str = ""        # Closing marker (e.g., "*/", '"""', "")
+    is_multiline: bool = False  # Whether this is a multiline block comment
+    base_indent: str = ""       # Indentation for multiline closing (e.g., " * ")
+    ellipsis: str = "…"         # Ellipsis character
 
 
 class CommentAnalyzer:
@@ -39,8 +50,9 @@ class CommentAnalyzer:
         Determine if a comment is a documentation comment.
 
         Uses multiple strategies:
-        1. Check if capture_name from Tree-sitter query is "docstring"
-        2. Check if text starts with documentation markers (e.g., "/**")
+        1. Check if capture_name from Tree-sitter query is "docstring" or "comment.doc"
+        2. Check if text starts with block documentation markers (e.g., "/**")
+        3. Check if text starts with line documentation markers (e.g., "///")
 
         Can be overridden for language-specific logic (e.g., Go position-based detection).
 
@@ -53,14 +65,20 @@ class CommentAnalyzer:
             True if the comment is a documentation comment, False otherwise
         """
         # Strategy 1: Tree-sitter capture name
-        if capture_name == "docstring":
+        if capture_name in ("docstring", "comment.doc"):
             return True
 
-        # Strategy 2: Text-based check using doc markers
         stripped = text.strip()
-        doc_start, doc_end = self.style.doc_markers
+
+        # Strategy 2: Block doc markers (e.g., /** ... */)
+        doc_start, _ = self.style.doc_markers
         if doc_start and stripped.startswith(doc_start):
             return True
+
+        # Strategy 3: Line doc markers (e.g., ///, //!)
+        for marker in self.style.line_doc_markers:
+            if stripped.startswith(marker):
+                return True
 
         return False
 
@@ -177,11 +195,6 @@ class CommentAnalyzer:
         """
         Truncate comment while preserving proper closing tags.
 
-        Intelligently truncates comments based on token budget while maintaining
-        syntactically correct closing markers.
-
-        Can be overridden for language-specific comment formats.
-
         Args:
             text: Comment text to truncate
             max_tokens: Maximum allowed tokens
@@ -190,71 +203,107 @@ class CommentAnalyzer:
         Returns:
             Properly truncated comment with correct closing tags
         """
+        # Check if already within budget
         if tokenizer.count_text_cached(text) <= max_tokens:
             return text
 
-        # JSDoc/TypeScript style comments (/** ... */)
-        if text.strip().startswith('/**'):
-            # Preserve indentation from original
-            lines = text.split('\n')
-            if len(lines) > 1:
-                second_line = lines[1] if len(lines) > 1 else ''
-                indent_match = re.match(r'^(\s*)\*', second_line)
-                base_indent = indent_match.group(1) if indent_match else '     '
-            else:
-                base_indent = '     '
+        # Detect comment style
+        style = self._detect_truncation_style(text)
 
-            # Reserve space for closing with proper indentation
-            closing = f'\n{base_indent}*/'
-            closing_tokens = tokenizer.count_text_cached(closing)
-            ellipsis_tokens = tokenizer.count_text_cached('…')
-            content_budget = max(1, max_tokens - closing_tokens - ellipsis_tokens)
-
-            if content_budget < 1:
-                return f"/**\n{base_indent}* …\n{base_indent}*/"
-
-            # Truncate using tokenizer
-            truncated = tokenizer.truncate_to_tokens(text, content_budget)
-            return f"{truncated}…{closing}"
-
-        # Regular multiline comment (/* … */)
-        elif text.startswith('/*') and text.rstrip().endswith('*/'):
-            # Reserve space for ' … */'
-            closing = ' … */'
-            closing_tokens = tokenizer.count_text_cached(closing)
-            content_budget = max(1, max_tokens - closing_tokens)
-
-            if content_budget < 1:
-                return "/* … */"
-
-            # Truncate using tokenizer
-            truncated = tokenizer.truncate_to_tokens(text, content_budget)
-            return f"{truncated} … */"
-
-        # Single line comments
-        elif text.startswith('//'):
-            # Simple truncation with ellipsis
-            ellipsis_tokens = tokenizer.count_text_cached('…')
+        if style is None:
+            # Fallback: simple truncation with ellipsis
+            ellipsis_tokens = tokenizer.count_text_cached("…")
             content_budget = max(1, max_tokens - ellipsis_tokens)
-
-            if content_budget < 1:
-                return f"//…"
-
-            # Truncate using tokenizer
-            truncated = tokenizer.truncate_to_tokens(text, content_budget)
-            return f"{truncated}…"
-
-        # Fallback: simple truncation
-        else:
-            ellipsis_tokens = tokenizer.count_text_cached('…')
-            content_budget = max(1, max_tokens - ellipsis_tokens)
-
             if content_budget < 1:
                 return "…"
-
-            # Truncate using tokenizer
             truncated = tokenizer.truncate_to_tokens(text, content_budget)
             return f"{truncated}…"
 
+        # Build closing sequence based on comment type
+        if style.end_marker:
+            if style.is_multiline and style.base_indent:
+                # Multiline block comment: "…\n<indent>*/"
+                closing = f"\n{style.base_indent}{style.end_marker}"
+                ellipsis_tokens = tokenizer.count_text_cached(style.ellipsis)
+                closing_tokens = tokenizer.count_text_cached(closing)
+                content_budget = max(1, max_tokens - closing_tokens - ellipsis_tokens)
 
-__all__ = ["CommentAnalyzer"]
+                if content_budget < 1:
+                    return f"{style.start_marker}\n{style.base_indent}* {style.ellipsis}\n{style.base_indent}{style.end_marker}"
+
+                truncated = tokenizer.truncate_to_tokens(text, content_budget)
+                return f"{truncated}{style.ellipsis}{closing}"
+            else:
+                # Single-line block: "content…<end_marker>"
+                closing = f"{style.ellipsis}{style.end_marker}"
+        else:
+            # Line comment (no closing marker): just ellipsis
+            closing = style.ellipsis
+
+        closing_tokens = tokenizer.count_text_cached(closing)
+        content_budget = max(1, max_tokens - closing_tokens)
+
+        if content_budget < 1:
+            # Not enough budget even for minimal content
+            if style.end_marker:
+                return f"{style.start_marker}{style.ellipsis}{style.end_marker}"
+            else:
+                return f"{style.start_marker}{style.ellipsis}"
+
+        # Truncate content
+        truncated = tokenizer.truncate_to_tokens(text, content_budget)
+        return f"{truncated}{closing}"
+
+    def _detect_truncation_style(self, text: str) -> Optional[TruncationStyle]:
+        """
+        Detect comment style for truncation.
+
+        Override in subclasses for language-specific styles.
+        Default implementation handles C-style comments.
+        """
+        from .text_utils import detect_base_indent
+
+        stripped = text.strip()
+
+        # JSDoc/block doc comments (/** ... */)
+        if stripped.startswith('/**'):
+            is_multiline = '\n' in text
+            base_indent = detect_base_indent(text, ' ') if is_multiline else ''
+            return TruncationStyle(
+                start_marker='/**',
+                end_marker='*/',
+                is_multiline=is_multiline,
+                base_indent=base_indent
+            )
+
+        # Regular multiline comments (/* ... */)
+        if stripped.startswith('/*') and stripped.endswith('*/'):
+            is_multiline = '\n' in text
+            base_indent = detect_base_indent(text, ' ') if is_multiline else ''
+            return TruncationStyle(
+                start_marker='/*',
+                end_marker='*/',
+                is_multiline=is_multiline,
+                base_indent=base_indent
+            )
+
+        # Single line comments (//)
+        if text.startswith('//'):
+            return TruncationStyle(
+                start_marker='//',
+                end_marker='',
+                is_multiline=False
+            )
+
+        # Hash comments (#)
+        if text.startswith('#'):
+            return TruncationStyle(
+                start_marker='#',
+                end_marker='',
+                is_multiline=False
+            )
+
+        return None  # Unknown style, use fallback
+
+
+__all__ = ["CommentAnalyzer", "TruncationStyle"]

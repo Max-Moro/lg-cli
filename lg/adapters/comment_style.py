@@ -14,7 +14,10 @@ class CommentStyle:
     """Multi-line comment markers (e.g., ('/*', '*/'))."""
 
     doc_markers: tuple[str, str]
-    """Documentation comment markers (e.g., ('/**', '*/') or ('///', ''))."""
+    """Block documentation comment markers (e.g., ('/**', '*/') or ('\"\"\"', '\"\"\"'))."""
+
+    line_doc_markers: tuple[str, ...] = ()
+    """Line-based documentation comment markers (e.g., ('///',) or ('///', '//!'))."""
 
 
 # Shared comment style constants for common language families
@@ -23,26 +26,32 @@ class CommentStyle:
 C_STYLE_COMMENTS = CommentStyle(
     single_line="//",
     multi_line=("/*", "*/"),
-    doc_markers=("/**", "*/")
+    doc_markers=("/**", "*/"),
+    line_doc_markers=("///",)
 )
 
 # Hash-style comments: Python, Ruby, Shell
 HASH_STYLE_COMMENTS = CommentStyle(
     single_line="#",
     multi_line=('"""', '"""'),
-    doc_markers=('"""', '"""')
+    doc_markers=('"""', '"""'),
+    line_doc_markers=()
 )
 
 # Go uses // for doc comments (no special marker like /** */)
 GO_STYLE_COMMENTS = CommentStyle(
     single_line="//",
     multi_line=("/*", "*/"),
-    doc_markers=("//", "")
+    doc_markers=("//", ""),
+    line_doc_markers=()
 )
 
 # Rust uses /// for outer doc and //! for inner doc comments
+# doc_markers is set to ("///", "") for placeholder generation (line-based style)
+# line_doc_markers covers all Rust doc comment variants for is_documentation_comment()
 RUST_STYLE_COMMENTS = CommentStyle(
     single_line="//",
     multi_line=("/*", "*/"),
-    doc_markers=("///", "")
+    doc_markers=("///", ""),
+    line_doc_markers=("///", "//!", "/**", "/*!",)
 )

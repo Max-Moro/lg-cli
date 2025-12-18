@@ -6,7 +6,7 @@ capabilities across multiple programming languages.
 """
 
 from .optimizer import CommentOptimizer
-from .analyzer import CommentAnalyzer
+from .analyzer import CommentAnalyzer, TruncationStyle
 from .text_utils import (
     extract_sentence,
     clean_multiline_comment_content,
@@ -17,6 +17,7 @@ from .text_utils import (
 __all__ = [
     "CommentOptimizer",
     "CommentAnalyzer",
+    "TruncationStyle",
     "extract_sentence",
     "clean_multiline_comment_content",
     "get_line_range",

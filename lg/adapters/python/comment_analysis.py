@@ -5,10 +5,11 @@ Python-specific comment analyzer with docstring support.
 from __future__ import annotations
 
 import re
+from typing import Optional
 
 from tree_sitter import Node
 
-from ..optimizations.comments import CommentAnalyzer, extract_sentence
+from ..optimizations.comments import CommentAnalyzer, TruncationStyle, extract_sentence
 
 
 class PythonCommentAnalyzer(CommentAnalyzer):
@@ -103,73 +104,35 @@ class PythonCommentAnalyzer(CommentAnalyzer):
         first = extract_sentence(content)
         return f'{quote}{first}.{quote}'
 
-    def truncate_comment(self, text: str, max_tokens: int, tokenizer) -> str:
+    def _detect_truncation_style(self, text: str) -> Optional[TruncationStyle]:
         """
-        Truncate Python comment while preserving proper closing.
-
-        Args:
-            text: Comment text to truncate
-            max_tokens: Maximum allowed tokens
-            tokenizer: TokenService for counting and truncating tokens
-
-        Returns:
-            Properly truncated comment with correct closing tags
+        Detect Python-specific comment style for truncation.
         """
-        if tokenizer.count_text_cached(text) <= max_tokens:
-            return text
-
         # Python docstring (triple double quotes)
         if text.startswith('"""'):
-            return self._truncate_docstring(text, '"""', max_tokens, tokenizer)
+            return TruncationStyle(
+                start_marker='"""',
+                end_marker='"""',
+                is_multiline='\n' in text
+            )
 
         # Python docstring (triple single quotes)
-        elif text.startswith("'''"):
-            return self._truncate_docstring(text, "'''", max_tokens, tokenizer)
+        if text.startswith("'''"):
+            return TruncationStyle(
+                start_marker="'''",
+                end_marker="'''",
+                is_multiline='\n' in text
+            )
 
-        # Single line comments
-        elif text.startswith('#'):
-            ellipsis_tokens = tokenizer.count_text_cached('…')
-            content_budget = max(1, max_tokens - ellipsis_tokens)
+        # Hash comments
+        if text.startswith('#'):
+            return TruncationStyle(
+                start_marker='#',
+                end_marker='',
+                is_multiline=False
+            )
 
-            if content_budget < 1:
-                return "#…"
-
-            truncated = tokenizer.truncate_to_tokens(text, content_budget)
-            return f"{truncated}…"
-
-        # Fallback
-        else:
-            ellipsis_tokens = tokenizer.count_text_cached('…')
-            content_budget = max(1, max_tokens - ellipsis_tokens)
-
-            if content_budget < 1:
-                return "…"
-
-            truncated = tokenizer.truncate_to_tokens(text, content_budget)
-            return f"{truncated}…"
-
-    def _truncate_docstring(self, text: str, quote: str, max_tokens: int, tokenizer) -> str:
-        """
-        Truncate triple-quoted docstring with proper closing.
-
-        Args:
-            text: Docstring text to truncate
-            quote: Quote marker (triple double or single quotes)
-            max_tokens: Maximum allowed tokens
-            tokenizer: TokenService for counting and truncating tokens
-
-        Returns:
-            Properly truncated docstring with correct closing quotes
-        """
-        closing = f'…{quote}'
-        closing_tokens = tokenizer.count_text_cached(closing)
-        content_budget = max(1, max_tokens - closing_tokens)
-
-        if content_budget < 1:
-            return f'{quote}…{quote}'
-
-        truncated = tokenizer.truncate_to_tokens(text, content_budget)
-        return f'{truncated}…{quote}'
+        return None  # Unknown style
 
 
 __all__ = ["PythonCommentAnalyzer"]

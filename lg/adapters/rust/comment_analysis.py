@@ -40,12 +40,6 @@ class RustCommentAnalyzer(CommentAnalyzer):
     Consecutive /// or //! comments that form a single documentation block are grouped together.
     """
 
-    # All Rust doc comment markers
-    DOC_MARKERS = ("///", "//!", "/**", "/*!")
-
-    # Line-based doc markers that need grouping
-    LINE_DOC_MARKERS = ("///", "//!")
-
     def __init__(self, doc: TreeSitterDocument, style: CommentStyle):
         """
         Initialize the Rust comment analyzer.
@@ -58,34 +52,6 @@ class RustCommentAnalyzer(CommentAnalyzer):
         # Cache for analysis results (lazy initialization)
         self._comment_groups: Optional[List[List[Node]]] = None
         self._doc_comment_positions: Optional[Set[tuple[int, int]]] = None
-
-    def is_documentation_comment(self, node: Node, text: str, capture_name: str = "") -> bool:
-        """
-        Determine if a comment is a documentation comment in Rust.
-
-        Uses two strategies:
-        1. Check if capture_name from Tree-sitter query is "docstring"
-        2. Check if text starts with any Rust doc comment marker (///, //!, /**, /*!
-
-        Args:
-            node: AST node representing the comment
-            text: Comment text content
-            capture_name: Capture name from Tree-sitter query (optional)
-
-        Returns:
-            True if the comment is a documentation comment, False otherwise
-        """
-        # Strategy 1: Tree-sitter capture name
-        if capture_name in ("docstring", "comment.doc"):
-            return True
-
-        # Strategy 2: Text-based check for Rust doc markers
-        stripped = text.strip()
-        for marker in self.DOC_MARKERS:
-            if stripped.startswith(marker):
-                return True
-
-        return False
 
     def get_comment_group(self, node: Node) -> Optional[List[Node]]:
         """
@@ -234,7 +200,7 @@ class RustCommentAnalyzer(CommentAnalyzer):
 
             # Check if this is a line-based doc comment
             marker = None
-            for m in self.LINE_DOC_MARKERS:
+            for m in self.style.line_doc_markers:
                 if node_text.startswith(m):
                     marker = m
                     break
