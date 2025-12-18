@@ -117,6 +117,10 @@ class CCodeAnalyzer(CodeAnalyzer):
         Returns:
             Export status of element
         """
+        # Header files - all elements are exported (public API)
+        if self.doc.ext in ('h', 'hpp', 'hh', 'hxx'):
+            return ExportStatus.EXPORTED
+
         # Static elements are not exported
         if self._has_static_specifier(node):
             return ExportStatus.NOT_EXPORTED

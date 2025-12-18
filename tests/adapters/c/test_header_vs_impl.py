@@ -46,7 +46,7 @@ typedef struct {
 '''
 
         cfg = CCfg(
-            strip_function_bodies=True,
+            strip_function_bodies=FunctionBodyConfig(mode="non_public"),
             comment_policy="keep_first_sentence",
         )
 
@@ -141,7 +141,7 @@ int complex_operation(int x, int y);
 #endif /* UTILS_H */
 '''
 
-        cfg = CCfg(strip_function_bodies=True)
+        cfg = CCfg(strip_function_bodies=FunctionBodyConfig(mode="non_public"))
 
         adapter = make_adapter(cfg)
 

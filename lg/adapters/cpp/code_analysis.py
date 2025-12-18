@@ -130,6 +130,10 @@ class CppCodeAnalyzer(CodeAnalyzer):
         Returns:
             Export status of element
         """
+        # Header files - all elements are exported (public API)
+        if self.doc.ext in ('h', 'hpp', 'hh', 'hxx'):
+            return ExportStatus.EXPORTED
+
         # Check for static storage class specifier
         if self._has_static_specifier(node):
             return ExportStatus.NOT_EXPORTED
