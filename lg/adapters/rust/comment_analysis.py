@@ -13,12 +13,17 @@ Multi-line doc comments (consecutive /// or //! comments) are grouped and treate
 
 from __future__ import annotations
 
+import re
 from typing import List, Optional, Set
 
 from tree_sitter import Node
 
-from ..optimizations.comment_analysis import CommentAnalyzer
 from ..comment_style import CommentStyle
+from ..optimizations.comment_analysis import CommentAnalyzer
+from ..optimizations.text_utils import (
+    extract_sentence,
+    clean_multiline_comment_content,
+)
 from ..tree_sitter_support import TreeSitterDocument
 
 
@@ -119,27 +124,19 @@ class RustCommentAnalyzer(CommentAnalyzer):
         Returns:
             First sentence with appropriate punctuation and formatting
         """
-        import re
-
         stripped = text.strip()
 
         # Handle /// doc comments
         if stripped.startswith('///'):
             clean_text = stripped[3:].strip()
-            sentences = re.split(r'[.!?]+', clean_text)
-            if sentences and sentences[0].strip():
-                first = sentences[0].strip()
-                return f"/// {first}."
-            return text
+            first = extract_sentence(clean_text)
+            return f"/// {first}."
 
         # Handle //! inner doc comments
         if stripped.startswith('//!'):
             clean_text = stripped[3:].strip()
-            sentences = re.split(r'[.!?]+', clean_text)
-            if sentences and sentences[0].strip():
-                first = sentences[0].strip()
-                return f"//! {first}."
-            return text
+            first = extract_sentence(clean_text)
+            return f"//! {first}."
 
         # Handle /** block doc comments
         if stripped.startswith('/**'):
@@ -164,27 +161,22 @@ class RustCommentAnalyzer(CommentAnalyzer):
         Returns:
             First sentence with proper block comment formatting
         """
-        import re
-
         # Extract content between markers
         pattern = rf'{re.escape(start_marker)}\s*(.*?)\s*{re.escape(end_marker)}'
         match = re.match(pattern, text, re.DOTALL)
         if match:
             content = match.group(1)
-            # Remove leading * from each line
-            lines = content.split('\n')
-            clean_lines = []
-            for line in lines:
-                clean_line = re.sub(r'^\s*\*\s?', '', line)
-                if clean_line.strip():
-                    clean_lines.append(clean_line.strip())
+            clean_lines = clean_multiline_comment_content(content)
 
             if clean_lines:
                 full_text = ' '.join(clean_lines)
-                sentences = re.split(r'[.!?]+', full_text)
-                if sentences and sentences[0].strip():
-                    first = sentences[0].strip()
-                    return f"{start_marker} {first}. {end_marker}"
+                first = extract_sentence(full_text)
+
+                # If no sentence terminator found, use first line
+                if first == full_text and clean_lines:
+                    first = clean_lines[0].rstrip('.')
+
+                return f"{start_marker} {first}. {end_marker}"
 
         return text
 

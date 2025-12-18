@@ -9,6 +9,7 @@ import re
 from tree_sitter import Node
 
 from ..optimizations.comment_analysis import CommentAnalyzer
+from ..optimizations.text_utils import extract_sentence
 
 
 class PythonCommentAnalyzer(CommentAnalyzer):
@@ -75,10 +76,8 @@ class PythonCommentAnalyzer(CommentAnalyzer):
         # Handle single-line comments
         elif text.startswith('#'):
             clean_text = text[1:].strip()
-            sentences = re.split(r'[.!?]+', clean_text)
-            if sentences and sentences[0].strip():
-                first = sentences[0].strip()
-                return f"# {first}."
+            first = extract_sentence(clean_text)
+            return f"# {first}."
 
         # Fallback
         return text
@@ -102,11 +101,8 @@ class PythonCommentAnalyzer(CommentAnalyzer):
         else:
             content = text[3:].strip()
 
-        sentences = re.split(r'[.!?]+', content)
-        if sentences and sentences[0].strip():
-            first = sentences[0].strip()
-            return f'{quote}{first}.{quote}'
-        return text
+        first = extract_sentence(content)
+        return f'{quote}{first}.{quote}'
 
     def truncate_comment(self, text: str, max_tokens: int, tokenizer) -> str:
         """

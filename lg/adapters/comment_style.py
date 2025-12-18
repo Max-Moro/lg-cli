@@ -15,3 +15,34 @@ class CommentStyle:
 
     doc_markers: tuple[str, str]
     """Documentation comment markers (e.g., ('/**', '*/') or ('///', ''))."""
+
+
+# Shared comment style constants for common language families
+
+# C-family languages: C, C++, Java, JavaScript, TypeScript, Scala, Kotlin
+C_STYLE_COMMENTS = CommentStyle(
+    single_line="//",
+    multi_line=("/*", "*/"),
+    doc_markers=("/**", "*/")
+)
+
+# Hash-style comments: Python, Ruby, Shell
+HASH_STYLE_COMMENTS = CommentStyle(
+    single_line="#",
+    multi_line=('"""', '"""'),
+    doc_markers=('"""', '"""')
+)
+
+# Go uses // for doc comments (no special marker like /** */)
+GO_STYLE_COMMENTS = CommentStyle(
+    single_line="//",
+    multi_line=("/*", "*/"),
+    doc_markers=("//", "")
+)
+
+# Rust uses /// for outer doc and //! for inner doc comments
+RUST_STYLE_COMMENTS = CommentStyle(
+    single_line="//",
+    multi_line=("/*", "*/"),
+    doc_markers=("///", "")
+)

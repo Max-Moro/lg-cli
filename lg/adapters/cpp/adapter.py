@@ -13,7 +13,7 @@ from ..code_analysis import CodeAnalyzer
 from ..code_base import CodeAdapter
 from ..code_model import CodeCfg
 from ..optimizations import ImportClassifier, TreeSitterImportAnalyzer, LanguageLiteralDescriptor
-from ..comment_style import CommentStyle
+from ..comment_style import CommentStyle, C_STYLE_COMMENTS
 from ..tree_sitter_support import TreeSitterDocument
 
 
@@ -51,11 +51,7 @@ class CppAdapter(CodeAdapter[CppCfg]):
     name = "cpp"
     extensions = {".cpp", ".hpp", ".cc", ".hh", ".cxx", ".hxx"}
 
-    COMMENT_STYLE: ClassVar[CommentStyle] = CommentStyle(
-        single_line="//",
-        multi_line=("/*", "*/"),
-        doc_markers=("/**", "*/")
-    )
+    COMMENT_STYLE: ClassVar[CommentStyle] = C_STYLE_COMMENTS
 
     def create_document(self, text: str, ext: str) -> TreeSitterDocument:
         return CppDocument(text, ext)

@@ -14,7 +14,7 @@ from ..code_base import CodeAdapter
 from ..code_model import CodeCfg
 from ..context import LightweightContext
 from ..optimizations import ImportClassifier, TreeSitterImportAnalyzer
-from ..comment_style import CommentStyle
+from ..comment_style import CommentStyle, HASH_STYLE_COMMENTS
 from ..optimizations.literals import LanguageLiteralDescriptor
 from ..tree_sitter_support import TreeSitterDocument
 
@@ -55,11 +55,7 @@ class PythonAdapter(CodeAdapter[PythonCfg]):
     name = "python"
     extensions = {".py"}
 
-    COMMENT_STYLE: ClassVar[CommentStyle] = CommentStyle(
-        single_line="#",
-        multi_line=('"""', '"""'),
-        doc_markers=('"""', '"""')
-    )
+    COMMENT_STYLE: ClassVar[CommentStyle] = HASH_STYLE_COMMENTS
 
     def create_document(self, text: str, ext: str) -> TreeSitterDocument:
         return PythonDocument(text, ext)

@@ -96,115 +96,82 @@ class CommentAnalyzer:
         Returns:
             First sentence with appropriate punctuation and formatting
         """
-        # Handle JSDoc comments (/** ... */) with proper indentation
-        if text.strip().startswith('/**'):
-            # Extract the original indentation by looking at the first line
-            lines = text.split('\n')
-            if len(lines) > 1:
-                # Get indentation from the second line (first content line)
-                second_line = lines[1] if len(lines) > 1 else ''
-                indent_match = re.match(r'^(\s*)\*', second_line)
-                base_indent = indent_match.group(1) if indent_match else '     '
-            else:
-                base_indent = '     '  # Default JSDoc indentation
+        from .text_utils import (
+            extract_sentence,
+            clean_multiline_comment_content,
+            detect_base_indent,
+        )
 
-            # Extract content between /** and */
-            match = re.match(r'/\*\*\s*(.*?)\s*\*/', text, re.DOTALL)
-            if match:
-                content = match.group(1)
-                # Remove leading * from each line
-                lines = content.split('\n')
-                clean_lines = []
-                for line in lines:
-                    clean_line = re.sub(r'^\s*\*\s?', '', line)
-                    if clean_line.strip():
-                        clean_lines.append(clean_line)
+        stripped = text.strip()
 
-                if clean_lines:
-                    # Find first sentence in the cleaned content
-                    full_text = ' '.join(clean_lines)
-
-                    # Try to split by sentence terminators
-                    sentences = re.split(r'[.!?]+', full_text)
-                    if sentences and len(sentences) > 1 and sentences[0].strip():
-                        # Found sentence terminator - use first sentence
-                        first = sentences[0].strip()
-                    elif clean_lines:
-                        # No sentence terminators found - use first line only
-                        first = clean_lines[0].strip()
-                    else:
-                        return text
-
-                    # Return with proper JSDoc formatting and indentation
-                    return f'/**\n{base_indent}* {first}.\n{base_indent}*/'
-
-            return text  # Fallback if parsing fails
+        # Handle JSDoc comments (/** ... */)
+        if stripped.startswith('/**'):
+            return self._extract_first_sentence_block(text, '/**', '*/', extract_sentence, clean_multiline_comment_content, detect_base_indent)
 
         # Handle regular single-line comments
         elif text.startswith('//'):
-            # Remove comment markers and find first sentence
             clean_text = text[2:].strip()
-            sentences = re.split(r'[.!?]+', clean_text)
-            if sentences and sentences[0].strip():
-                first = sentences[0].strip()
-                return f"// {first}."
+            first = extract_sentence(clean_text)
+            return f"// {first}."
 
         # Handle regular multiline comments (/* ... */)
         elif text.startswith('/*') and text.rstrip().endswith('*/'):
-            # Check if this is a multiline comment (contains newlines)
-            is_multiline = '\n' in text
-
-            if is_multiline:
-                # Preserve multiline format with proper indentation
-                lines = text.split('\n')
-                if len(lines) > 1:
-                    # Get indentation from the second line
-                    second_line = lines[1] if len(lines) > 1 else ''
-                    indent_match = re.match(r'^(\s*)\*', second_line)
-                    base_indent = indent_match.group(1) if indent_match else ' '
-                else:
-                    base_indent = ' '
-
-                # Extract content between /* and */
-                match = re.match(r'/\*\s*(.*?)\s*\*/', text, re.DOTALL)
-                if match:
-                    content = match.group(1)
-                    # Remove leading * from each line
-                    lines = content.split('\n')
-                    clean_lines = []
-                    for line in lines:
-                        clean_line = re.sub(r'^\s*\*\s?', '', line)
-                        if clean_line.strip():
-                            clean_lines.append(clean_line)
-
-                    if clean_lines:
-                        # Find first sentence in the cleaned content
-                        full_text = ' '.join(clean_lines)
-
-                        # Try to split by sentence terminators
-                        sentences = re.split(r'[.!?]+', full_text)
-                        if sentences and len(sentences) > 1 and sentences[0].strip():
-                            # Found sentence terminator - use first sentence
-                            first = sentences[0].strip()
-                        elif clean_lines:
-                            # No sentence terminators found - use first line only
-                            first = clean_lines[0].strip()
-                        else:
-                            return text
-
-                        # Return with proper multiline formatting and indentation
-                        return f'/*\n{base_indent}* {first}.\n{base_indent}*/'
-            else:
-                # Single-line format: /* ... */
-                match = re.match(r'/\*\s*(.*?)\s*\*/', text, re.DOTALL)
-                if match:
-                    content = match.group(1)
-                    sentences = re.split(r'[.!?]+', content)
-                    if sentences and sentences[0].strip():
-                        first = sentences[0].strip()
-                        return f"/* {first}. */"
+            return self._extract_first_sentence_block(text, '/*', '*/', extract_sentence, clean_multiline_comment_content, detect_base_indent)
 
         return text  # Fallback to original text
+
+    def _extract_first_sentence_block(
+        self,
+        text: str,
+        start_marker: str,
+        end_marker: str,
+        extract_sentence,
+        clean_content,
+        detect_indent
+    ) -> str:
+        """
+        Extract first sentence from block comment (/* */ or /** */).
+
+        Args:
+            text: Full comment text
+            start_marker: Opening marker (/* or /**)
+            end_marker: Closing marker (*/)
+            extract_sentence: Utility function for sentence extraction
+            clean_content: Utility function for cleaning multiline content
+            detect_indent: Utility function for detecting indentation
+
+        Returns:
+            First sentence with proper block comment formatting
+        """
+        is_multiline = '\n' in text
+        base_indent = detect_indent(text, ' ') if is_multiline else ' '
+
+        # Extract content between markers
+        pattern = rf'{re.escape(start_marker)}\s*(.*?)\s*{re.escape(end_marker)}'
+        match = re.match(pattern, text, re.DOTALL)
+
+        if not match:
+            return text
+
+        content = match.group(1)
+        clean_lines = clean_content(content)
+
+        if not clean_lines:
+            return text
+
+        # Get first sentence from cleaned content
+        full_text = ' '.join(clean_lines)
+        first = extract_sentence(full_text)
+
+        # If no sentence terminator found (utility returned full text), use first line
+        if first == full_text and clean_lines:
+            first = clean_lines[0].rstrip('.')
+
+        # Format output based on style
+        if is_multiline:
+            return f'{start_marker}\n{base_indent}* {first}.\n{base_indent}*/'
+        else:
+            return f"{start_marker} {first}. {end_marker}"
 
     def truncate_comment(self, text: str, max_tokens: int, tokenizer) -> str:
         """

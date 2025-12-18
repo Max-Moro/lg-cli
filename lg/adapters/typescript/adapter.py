@@ -13,7 +13,7 @@ from ..code_base import CodeAdapter
 from ..code_model import CodeCfg
 from ..context import LightweightContext
 from ..optimizations import ImportClassifier, TreeSitterImportAnalyzer
-from ..comment_style import CommentStyle
+from ..comment_style import CommentStyle, C_STYLE_COMMENTS
 from ..optimizations.literals import LanguageLiteralDescriptor
 from ..tree_sitter_support import TreeSitterDocument
 
@@ -61,11 +61,7 @@ class TypeScriptAdapter(CodeAdapter[TypeScriptCfg]):
     name = "typescript"
     extensions = {".ts", ".tsx"}
 
-    COMMENT_STYLE: ClassVar[CommentStyle] = CommentStyle(
-        single_line="//",
-        multi_line=("/*", "*/"),
-        doc_markers=("/**", "*/")
-    )
+    COMMENT_STYLE: ClassVar[CommentStyle] = C_STYLE_COMMENTS
 
     def create_document(self, text: str, ext: str) -> TreeSitterDocument:
         return TypeScriptDocument(text, ext)

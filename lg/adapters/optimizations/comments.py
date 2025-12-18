@@ -5,8 +5,11 @@ Processes comments and docstrings according to policy.
 
 from __future__ import annotations
 
+import logging
 import re
 from typing import cast, Tuple, Union
+
+logger = logging.getLogger(__name__)
 
 from .comment_analysis import CommentAnalyzer
 from ..code_model import CommentConfig, CommentPolicy
@@ -192,8 +195,8 @@ class CommentOptimizer:
             try:
                 if re.search(pattern, comment_text, re.IGNORECASE):
                     return True, None  # Use default placeholder
-            except re.error:
-                # Ignore invalid regex patterns
+            except re.error as e:
+                logger.warning("Invalid regex pattern in strip_patterns '%s': %s", pattern, e)
                 continue
 
         # Check for preservation patterns
@@ -206,8 +209,8 @@ class CommentOptimizer:
                         truncated = analyzer.truncate_comment(comment_text, complex_cfg.max_tokens, context.tokenizer)
                         return True, truncated
                     return False, ""  # Keep as is
-            except re.error:
-                # Ignore invalid regex patterns
+            except re.error as e:
+                logger.warning("Invalid regex pattern in keep_annotations '%s': %s", pattern, e)
                 continue
 
         # Apply base policy with max_tokens consideration
@@ -270,6 +273,8 @@ class CommentOptimizer:
             True if group was handled (first node should fall through to standard processing),
             False if no group or single-node group
         """
+        from .text_utils import get_line_range
+
         group = analyzer.get_comment_group(node)
         if not group or len(group) <= 1:
             return False
@@ -282,25 +287,17 @@ class CommentOptimizer:
             if i == 0:
                 # First node: will be processed normally below (fall through)
                 continue
-            else:
-                # Rest of nodes: remove the entire line (including leading indent)
-                start_char, end_char = context.doc.get_node_range(group_node)
 
-                # Extend start_char back to beginning of line (after previous newline)
-                while start_char > 0 and context.doc.text[start_char - 1] not in '\r\n':
-                    start_char -= 1
+            # Rest of nodes: remove the entire line (including leading indent and trailing newline)
+            start_char, end_char = context.doc.get_node_range(group_node)
 
-                # Extend to include trailing newline if present
-                if end_char < len(context.doc.text):
-                    if context.doc.text[end_char:end_char+2] == '\r\n':
-                        end_char += 2
-                    elif context.doc.text[end_char] == '\n':
-                        end_char += 1
+            # Extend to full line boundaries using utility
+            start_char, end_char = get_line_range(context.doc.text, start_char, end_char)
 
-                context.editor.add_replacement(
-                    start_char, end_char, "",
-                    edit_type="docstring_truncated"
-                )
-                context.metrics.mark_element_removed("docstring")
+            context.editor.add_replacement(
+                start_char, end_char, "",
+                edit_type="docstring_truncated"
+            )
+            context.metrics.mark_element_removed("docstring")
 
         return True
