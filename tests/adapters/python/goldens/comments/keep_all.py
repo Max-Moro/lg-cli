@@ -75,7 +75,7 @@ def undocumented_function():
     # No docstring, just comments
     # This function doesn't have proper documentation
     x = 1  # Simple assignment
-    y = 2  # Another assignment  
+    y = 2  # Another assignment
     return x + y  # Return sum
 
 # TODO: Implement better error handling

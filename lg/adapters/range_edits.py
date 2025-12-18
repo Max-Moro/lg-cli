@@ -307,10 +307,24 @@ class RangeEditor:
             else:
                 # For replacement/deletion: standard logic
                 original_chunk = result_text[edit.range.start_char:edit.range.end_char]
-                result_text = result_text[:edit.range.start_char] + edit.replacement + result_text[edit.range.end_char:]
+
+                # Preserve trailing whitespace (spaces, tabs, newlines) from original chunk
+                replacement_text = edit.replacement
+                if replacement_text:  # Only preserve whitespace if replacement is not empty
+                    # Extract all trailing whitespace from original chunk
+                    i = len(original_chunk) - 1
+                    while i >= 0 and original_chunk[i] in ' \t\n\r':
+                        i -= 1
+                    trailing_whitespace = original_chunk[i + 1:]
+
+                    # Append trailing whitespace if replacement doesn't already end with it
+                    if trailing_whitespace and not replacement_text.endswith(trailing_whitespace):
+                        replacement_text += trailing_whitespace
+
+                result_text = result_text[:edit.range.start_char] + replacement_text + result_text[edit.range.end_char:]
 
                 stats["bytes_removed"] += len(original_chunk.encode('utf-8'))
-                stats["bytes_added"] += len(edit.replacement.encode('utf-8'))
+                stats["bytes_added"] += len(replacement_text.encode('utf-8'))
                 stats["lines_removed"] += original_chunk.count('\n')
 
         # Calculate net change
