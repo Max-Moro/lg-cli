@@ -14,20 +14,18 @@ Multi-line doc comments (consecutive /// or //! comments) are grouped and treate
 from __future__ import annotations
 
 import re
-from typing import List, Optional, Set
+from typing import List, Set
 
 from tree_sitter import Node
 
-from ..comment_style import CommentStyle
 from ..optimizations.comments import (
-    CommentAnalyzer,
+    GroupingCommentAnalyzer,
     extract_sentence,
     clean_multiline_comment_content,
 )
-from ..tree_sitter_support import TreeSitterDocument
 
 
-class RustCommentAnalyzer(CommentAnalyzer):
+class RustCommentAnalyzer(GroupingCommentAnalyzer):
     """
     Rust-specific comment analyzer with doc comment detection and grouping.
 
@@ -39,44 +37,6 @@ class RustCommentAnalyzer(CommentAnalyzer):
 
     Consecutive /// or //! comments that form a single documentation block are grouped together.
     """
-
-    def __init__(self, doc: TreeSitterDocument, style: CommentStyle):
-        """
-        Initialize the Rust comment analyzer.
-
-        Args:
-            doc: Parsed Tree-sitter document
-            style: CommentStyle instance with comment markers
-        """
-        super().__init__(doc, style)
-        # Cache for analysis results (lazy initialization)
-        self._comment_groups: Optional[List[List[Node]]] = None
-        self._doc_comment_positions: Optional[Set[tuple[int, int]]] = None
-
-    def get_comment_group(self, node: Node) -> Optional[List[Node]]:
-        """
-        Get the comment group that contains the given comment node.
-
-        In Rust, consecutive /// or //! comments form a single documentation block.
-
-        Args:
-            node: Comment node to find group for
-
-        Returns:
-            List of comment nodes in the same group, or None if not a doc comment group
-        """
-        if not self._analyzed:
-            self._analyze_all_comments()
-
-        # Use position-based comparison
-        target_position = (node.start_byte, node.end_byte)
-
-        for group in self._comment_groups:
-            for group_node in group:
-                if (group_node.start_byte, group_node.end_byte) == target_position:
-                    return group
-
-        return None
 
     def extract_first_sentence(self, text: str) -> str:
         """
@@ -180,7 +140,8 @@ class RustCommentAnalyzer(CommentAnalyzer):
         """
         Group consecutive line-based doc comments (/// or //!).
 
-        Comments are consecutive if separated only by whitespace (no blank lines).
+        Comments are consecutive if separated only by whitespace (no blank lines)
+        and have the same marker type.
 
         Args:
             comment_nodes: List of comment nodes from Tree-sitter
@@ -216,17 +177,14 @@ class RustCommentAnalyzer(CommentAnalyzer):
             # Check if this continues the current group
             if current_group and current_marker == marker:
                 prev_node = current_group[-1]
-                text_between = self.doc.text[prev_node.end_byte:node.start_byte]
-
-                # A blank line breaks the group
-                if '\n\n' in text_between or '\r\n\r\n' in text_between:
+                if self._has_blank_line_between(prev_node, node):
                     groups.append(current_group)
                     current_group = [node]
                     current_marker = marker
                 else:
                     current_group.append(node)
             else:
-                # Start new group
+                # Start new group (different marker or first node)
                 if current_group:
                     groups.append(current_group)
                 current_group = [node]

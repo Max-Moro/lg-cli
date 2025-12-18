@@ -7,6 +7,7 @@ capabilities across multiple programming languages.
 
 from .optimizer import CommentOptimizer
 from .analyzer import CommentAnalyzer, TruncationStyle
+from .grouping import GroupingCommentAnalyzer
 from .text_utils import (
     extract_sentence,
     clean_multiline_comment_content,
@@ -17,6 +18,7 @@ from .text_utils import (
 __all__ = [
     "CommentOptimizer",
     "CommentAnalyzer",
+    "GroupingCommentAnalyzer",
     "TruncationStyle",
     "extract_sentence",
     "clean_multiline_comment_content",

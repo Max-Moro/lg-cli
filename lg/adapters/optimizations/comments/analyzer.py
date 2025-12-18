@@ -86,8 +86,8 @@ class CommentAnalyzer:
         """
         Get group of consecutive comments that form a single documentation block.
 
-        Default returns None (no grouping). Override for languages like Go
-        where multiple // comments form one doc block.
+        Default returns None (no grouping). Override in GroupingCommentAnalyzer
+        for languages like Go and Rust where multiple line comments form one doc block.
 
         Args:
             node: Comment node to check

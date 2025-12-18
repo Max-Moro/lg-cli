@@ -8,15 +8,15 @@ exported (public) declarations with no blank lines between them.
 
 from __future__ import annotations
 
-from typing import List, Optional, Set
+from typing import List, Optional
 
 from .code_analysis import GoCodeAnalyzer
 from ..comment_style import CommentStyle
-from ..optimizations.comments import CommentAnalyzer
+from ..optimizations.comments import GroupingCommentAnalyzer
 from ..tree_sitter_support import TreeSitterDocument, Node
 
 
-class GoCommentAnalyzer(CommentAnalyzer):
+class GoCommentAnalyzer(GroupingCommentAnalyzer):
     """
     Go-specific comment analyzer with position-based doc comment detection.
 
@@ -38,20 +38,17 @@ class GoCommentAnalyzer(CommentAnalyzer):
         super().__init__(doc, style)
         self.code_analyzer = code_analyzer
 
-        # Cache for analysis results (lazy initialization)
-        self._comment_groups: Optional[List[List[Node]]] = None
-        self._doc_comment_positions: Optional[Set[tuple[int, int]]] = None
-
     def is_documentation_comment(self, node: Node, text: str, capture_name: str = "") -> bool:
         """
-        Check if a comment node is a documentation comment.
+        Check if a comment is a documentation comment.
 
-        Uses position-based analysis: comment must precede an exported declaration.
+        Go uses position-based detection: a comment is a doc comment if it
+        immediately precedes an exported declaration with no blank lines.
 
         Args:
             node: AST node representing the comment
             text: Comment text content (unused, kept for interface compatibility)
-            capture_name: Capture name from Tree-sitter query (unused, kept for interface compatibility)
+            capture_name: Capture name from Tree-sitter query (unused)
 
         Returns:
             True if this is a documentation comment, False otherwise
@@ -60,34 +57,9 @@ class GoCommentAnalyzer(CommentAnalyzer):
         if not self._analyzed:
             self._analyze_all_comments()
 
-        # Check if this comment node's position is in the doc comments set
+        # Check if this comment's position is in the doc comments set
         position = (node.start_byte, node.end_byte)
         return position in self._doc_comment_positions
-
-    def get_comment_group(self, node: Node) -> Optional[List[Node]]:
-        """
-        Get the comment group that contains the given comment node.
-
-        In Go, consecutive // comments form a single documentation block.
-
-        Args:
-            node: Comment node to find group for
-
-        Returns:
-            List of comment nodes in the same group, or None if not found
-        """
-        if not self._analyzed:
-            self._analyze_all_comments()
-
-        # Use position-based comparison to avoid node identity issues
-        target_position = (node.start_byte, node.end_byte)
-
-        for group in self._comment_groups:
-            for group_node in group:
-                if (group_node.start_byte, group_node.end_byte) == target_position:
-                    return group
-
-        return None
 
     def _analyze_all_comments(self) -> None:
         """
@@ -136,15 +108,18 @@ class GoCommentAnalyzer(CommentAnalyzer):
             prev_node = comment_nodes[i - 1]
             curr_node = comment_nodes[i]
 
-            # Get text between comments
-            text_between = self.doc.text[prev_node.end_byte:curr_node.start_byte]
-
-            # A blank line (two consecutive newlines) breaks the group
-            if '\n\n' not in text_between and text_between.strip() == '':
-                current_group.append(curr_node)
-            else:
+            # Check for blank line between comments
+            if self._has_blank_line_between(prev_node, curr_node):
                 groups.append(current_group)
                 current_group = [curr_node]
+            else:
+                # Also check that there's only whitespace between
+                text_between = self.doc.text[prev_node.end_byte:curr_node.start_byte]
+                if text_between.strip() == '':
+                    current_group.append(curr_node)
+                else:
+                    groups.append(current_group)
+                    current_group = [curr_node]
 
         if current_group:
             groups.append(current_group)
