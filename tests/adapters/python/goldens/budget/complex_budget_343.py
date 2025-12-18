@@ -2,11 +2,7 @@
 
 Includes:
 - Many external/local imports
-- Large literals (strings, lists, dicts)
-- Mixed comments and docstrings
-- Public/private functions, classes, methods
-- If __name__ == '__main__' guard
-"""
+- Large literals (strings, lists…"""
 
 
 
@@ -24,7 +20,8 @@ contains enough co…"""
 BIG_LIST = [f"item_{i:04d}" for i in range(200)]
 
 BIG_DICT = {
-    "…": "…",
+    "users": [{"id": i, "name": f"User {i}", "active": i % 2 == 0} for i in range(50)],
+    # … (1 more, −60 tokens)
 }
 
 
