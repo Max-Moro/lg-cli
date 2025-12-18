@@ -86,37 +86,6 @@ class CommentOptimizer:
             )
             self._apply_decision(context, node, decision, is_docstring)
 
-    @staticmethod
-    def remove_comment(
-            context: ProcessingContext,
-            comment_node: Node,
-            is_docstring: bool,
-            replacement: str = None
-    ) -> bool:
-        """
-        Remove comment with automatic metrics accounting.
-
-        Args:
-            context: Processing context with document access
-            comment_node: Comment node to remove
-            is_docstring: Whether this comment is a docstring
-            replacement: Custom replacement (if None, placeholder is used)
-        """
-        element_type = "docstring" if is_docstring else "comment"
-
-        if replacement is None:
-            # Use placeholder API
-            context.add_placeholder_for_node(element_type, comment_node)
-        else:
-            # Custom replacement
-            start_char, end_char = context.doc.get_node_range(comment_node)
-            context.editor.add_replacement(
-                start_char, end_char, replacement,
-                edit_type=f"{element_type}_truncated",
-            )
-            context.metrics.mark_element_removed(element_type)
-
-        return True
 
     def _normalize_config(self, cfg: Union[CommentPolicy, CommentConfig]) -> CommentConfig:
         """
@@ -224,18 +193,24 @@ class CommentOptimizer:
             decision: Decision from evaluation pipeline
             is_docstring: Whether this is a documentation comment
         """
+        element_type = "docstring" if is_docstring else "comment"
+
         if decision.action == "keep":
             # Nothing to do
             return
 
-        elif decision.action in ("remove", "transform"):
-            # Use existing remove_comment infrastructure
-            self.remove_comment(
-                context,
-                node,
-                is_docstring=is_docstring,
-                replacement=decision.replacement
+        elif decision.action == "remove":
+            # Remove with placeholder
+            context.add_placeholder_for_node(element_type, node)
+
+        elif decision.action == "transform":
+            # Replace with transformed text
+            start_char, end_char = context.doc.get_node_range(node)
+            context.editor.add_replacement(
+                start_char, end_char, decision.replacement,
+                edit_type=f"{element_type}_truncated",
             )
+            context.metrics.mark_element_removed(element_type)
 
     def _handle_comment_group_for_first_sentence(
         self,
