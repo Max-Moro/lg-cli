@@ -1,4 +1,4 @@
-// … comment omitted
+// Go module for testing comment optimization.
 package main
 
 import (
@@ -160,8 +160,9 @@ type ServiceConfig struct {
 	BaseURL string // … comment omitted
 }
 
-/* * DefaultConfig is the default configuration
- * This is used when no custom config is provided. */
+/*
+ * DefaultConfig is the default configuration.
+ */
 var DefaultConfig = ServiceConfig{
 	Timeout: 5000,                    // … comment omitted
 	Retries: 3,                       // … comment omitted

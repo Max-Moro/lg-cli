@@ -57,36 +57,14 @@ class CommentOptimizer:
             # Determine if this is a docstring using the analyzer
             is_docstring = analyzer.is_documentation_comment(node, comment_text, capture_name)
 
-            # Handle comment groups (e.g., Go consecutive // comments)
-            # Only for keep_first_sentence policy
+            # Handle comment groups for keep_first_sentence policy
             if policy == "keep_first_sentence" and is_docstring:
-                group = analyzer.get_comment_group(node)
-                if group and len(group) > 1:
-                    # Process the group: keep first node, remove rest
-                    for i, group_node in enumerate(group):
-                        group_pos = (group_node.start_byte, group_node.end_byte)
-                        processed_positions.add(group_pos)
-
-                        if i == 0:
-                            # First node: will be processed normally below
-                            continue
-                        else:
-                            # Rest of nodes: remove completely including trailing newline
-                            start_char, end_char = context.doc.get_node_range(group_node)
-
-                            # Extend to include trailing newline if present
-                            if end_char < len(context.doc.text):
-                                if context.doc.text[end_char:end_char+2] == '\r\n':
-                                    end_char += 2
-                                elif context.doc.text[end_char] == '\n':
-                                    end_char += 1
-
-                            context.editor.add_replacement(
-                                start_char, end_char, "",
-                                edit_type="docstring_truncated"
-                            )
-                            context.metrics.mark_element_removed("docstring")
-                    continue
+                group_handled = self._handle_comment_group_for_first_sentence(
+                    node, analyzer, context, processed_positions
+                )
+                if group_handled:
+                    # Group was processed, first node falls through to standard processing
+                    pass
 
             # Standard processing
             should_remove, replacement = self._should_process_comment(
@@ -266,3 +244,63 @@ class CommentOptimizer:
                 return True, None  # Use default placeholder
 
         return False, ""
+
+    def _handle_comment_group_for_first_sentence(
+        self,
+        node: Node,
+        analyzer: CommentAnalyzer,
+        context: ProcessingContext,
+        processed_positions: set
+    ) -> bool:
+        """
+        Handle comment groups for keep_first_sentence policy.
+
+        For grouped comments (e.g., consecutive // in Go, /// in Rust):
+        - Marks all nodes in group as processed
+        - Removes all lines except the first one
+        - First line will be processed normally to extract first sentence
+
+        Args:
+            node: Current comment node
+            analyzer: Language-specific comment analyzer
+            context: Processing context
+            processed_positions: Set to track processed node positions
+
+        Returns:
+            True if group was handled (first node should fall through to standard processing),
+            False if no group or single-node group
+        """
+        group = analyzer.get_comment_group(node)
+        if not group or len(group) <= 1:
+            return False
+
+        # Process the group: first node gets first sentence, rest removed
+        for i, group_node in enumerate(group):
+            group_pos = (group_node.start_byte, group_node.end_byte)
+            processed_positions.add(group_pos)
+
+            if i == 0:
+                # First node: will be processed normally below (fall through)
+                continue
+            else:
+                # Rest of nodes: remove the entire line (including leading indent)
+                start_char, end_char = context.doc.get_node_range(group_node)
+
+                # Extend start_char back to beginning of line (after previous newline)
+                while start_char > 0 and context.doc.text[start_char - 1] not in '\r\n':
+                    start_char -= 1
+
+                # Extend to include trailing newline if present
+                if end_char < len(context.doc.text):
+                    if context.doc.text[end_char:end_char+2] == '\r\n':
+                        end_char += 2
+                    elif context.doc.text[end_char] == '\n':
+                        end_char += 1
+
+                context.editor.add_replacement(
+                    start_char, end_char, "",
+                    edit_type="docstring_truncated"
+                )
+                context.metrics.mark_element_removed("docstring")
+
+        return True

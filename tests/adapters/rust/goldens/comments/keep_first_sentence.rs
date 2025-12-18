@@ -1,13 +1,11 @@
-// … comment omitted
-
+//! Rust module for testing comment optimization.
 use std::fmt;
 use regex::Regex;
 
 // … comment omitted
 const MODULE_VERSION: &str = "1.0.0"; // … comment omitted
 
-// / User represents a user with documentation comments.
-// / This should be preserved when keeping documentation comments.
+/// User represents a user with documentation comments.
 #[derive(Debug, Clone)]
 struct User {
     id: i32,            // … comment omitted
@@ -16,24 +14,21 @@ struct User {
     profile: Option<Profile>, // … comment omitted
 }
 
-// / Profile contains user profile information.
+/// Profile contains user profile information.
 #[derive(Debug, Clone)]
 struct Profile {
     bio: String,
     avatar: String,
 }
 
-// / CommentedService provides various operations with extensive comments.
+/// CommentedService provides various operations with extensive comments.
 struct CommentedService {
     config: Box<dyn std::any::Any>, // … comment omitted
     logger: Option<Box<dyn std::any::Any>>, // … comment omitted
 }
 
 impl CommentedService {
-    // / Creates a new service instance with detailed documentation.
-    // /.
-    // / Initializes the service with the provided configuration.
-    // / and sets up the logging system if logger is provided.
+    /// Creates a new service instance with detailed documentation.
     fn new(config: Box<dyn std::any::Any>, logger: Option<Box<dyn std::any::Any>>) -> Self {
         let service = Self { config, logger };
 
@@ -42,11 +37,7 @@ impl CommentedService {
         service
     }
 
-    // / Processes user data with validation.
-    // /.
-    // / This function performs comprehensive user data processing including.
-    // / validation, transformation, and persistence operations.
-    // / various edge cases and provides detailed error reporting.
+    /// Processes user data with validation.
     fn process_user(&self, user_data: User) -> Result<User, String> {
         // … comment omitted
         if user_data.name.is_empty() {
@@ -105,7 +96,7 @@ impl CommentedService {
         }
     }
 
-    // / Generates unique user ID.
+    /// Generates unique user ID.
     fn generate_user_id(&self) -> i32 {
         // … comment omitted
         use std::time::{SystemTime, UNIX_EPOCH};
@@ -124,9 +115,7 @@ impl CommentedService {
     }
 }
 
-// / Utility function with comprehensive documentation.
-// /.
-// / It processes the input string according to specific rules.
+/// Utility function with comprehensive documentation.
 fn process_string(input: &str) -> String {
     // … comment omitted
     if input.is_empty() {
@@ -150,13 +139,13 @@ fn undocumented_helper() {
     println!("{}", data); // … comment omitted
 }
 
-// / ValidationResult holds validation results.
+/// ValidationResult holds validation results.
 struct ValidationResult {
     is_valid: bool,     // … comment omitted
     errors: Vec<String>, // … comment omitted
 }
 
-// / ServiceConfig holds service configuration.
+/// ServiceConfig holds service configuration.
 struct ServiceConfig {
     timeout: i32,    // … comment omitted
     retries: i32,    // … comment omitted

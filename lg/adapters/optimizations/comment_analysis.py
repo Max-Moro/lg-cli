@@ -123,11 +123,20 @@ class CommentAnalyzer:
                 if clean_lines:
                     # Find first sentence in the cleaned content
                     full_text = ' '.join(clean_lines)
+
+                    # Try to split by sentence terminators
                     sentences = re.split(r'[.!?]+', full_text)
-                    if sentences and sentences[0].strip():
+                    if sentences and len(sentences) > 1 and sentences[0].strip():
+                        # Found sentence terminator - use first sentence
                         first = sentences[0].strip()
-                        # Return with proper JSDoc formatting and indentation
-                        return f'/**\n{base_indent}* {first}.\n{base_indent}*/'
+                    elif clean_lines:
+                        # No sentence terminators found - use first line only
+                        first = clean_lines[0].strip()
+                    else:
+                        return text
+
+                    # Return with proper JSDoc formatting and indentation
+                    return f'/**\n{base_indent}* {first}.\n{base_indent}*/'
 
             return text  # Fallback if parsing fails
 
@@ -142,14 +151,58 @@ class CommentAnalyzer:
 
         # Handle regular multiline comments (/* ... */)
         elif text.startswith('/*') and text.rstrip().endswith('*/'):
-            # Extract content between /* and */
-            match = re.match(r'/\*\s*(.*?)\s*\*/', text, re.DOTALL)
-            if match:
-                content = match.group(1)
-                sentences = re.split(r'[.!?]+', content)
-                if sentences and sentences[0].strip():
-                    first = sentences[0].strip()
-                    return f"/* {first}. */"
+            # Check if this is a multiline comment (contains newlines)
+            is_multiline = '\n' in text
+
+            if is_multiline:
+                # Preserve multiline format with proper indentation
+                lines = text.split('\n')
+                if len(lines) > 1:
+                    # Get indentation from the second line
+                    second_line = lines[1] if len(lines) > 1 else ''
+                    indent_match = re.match(r'^(\s*)\*', second_line)
+                    base_indent = indent_match.group(1) if indent_match else ' '
+                else:
+                    base_indent = ' '
+
+                # Extract content between /* and */
+                match = re.match(r'/\*\s*(.*?)\s*\*/', text, re.DOTALL)
+                if match:
+                    content = match.group(1)
+                    # Remove leading * from each line
+                    lines = content.split('\n')
+                    clean_lines = []
+                    for line in lines:
+                        clean_line = re.sub(r'^\s*\*\s?', '', line)
+                        if clean_line.strip():
+                            clean_lines.append(clean_line)
+
+                    if clean_lines:
+                        # Find first sentence in the cleaned content
+                        full_text = ' '.join(clean_lines)
+
+                        # Try to split by sentence terminators
+                        sentences = re.split(r'[.!?]+', full_text)
+                        if sentences and len(sentences) > 1 and sentences[0].strip():
+                            # Found sentence terminator - use first sentence
+                            first = sentences[0].strip()
+                        elif clean_lines:
+                            # No sentence terminators found - use first line only
+                            first = clean_lines[0].strip()
+                        else:
+                            return text
+
+                        # Return with proper multiline formatting and indentation
+                        return f'/*\n{base_indent}* {first}.\n{base_indent}*/'
+            else:
+                # Single-line format: /* ... */
+                match = re.match(r'/\*\s*(.*?)\s*\*/', text, re.DOTALL)
+                if match:
+                    content = match.group(1)
+                    sentences = re.split(r'[.!?]+', content)
+                    if sentences and sentences[0].strip():
+                        first = sentences[0].strip()
+                        return f"/* {first}. */"
 
         return text  # Fallback to original text
 

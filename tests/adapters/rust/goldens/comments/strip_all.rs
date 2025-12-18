@@ -1,4 +1,4 @@
-// … comment omitted
+/// … docstring omitted
 
 use std::fmt;
 use regex::Regex;

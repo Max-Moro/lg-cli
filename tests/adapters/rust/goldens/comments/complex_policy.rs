@@ -1,4 +1,7 @@
-// … comment omitted
+//! Rust module for testing comment optimization.
+//!
+//! This module contains various types of comments to test
+//! different comment processing policies and edge cases.
 
 use std::fmt;
 use regex::Regex;

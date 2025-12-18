@@ -1,4 +1,5 @@
-// … comment omitted
+// … docstring omitted
+
 package main
 
 import (

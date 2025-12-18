@@ -155,13 +155,14 @@ class GoCommentAnalyzer(CommentAnalyzer):
         """
         Check if a comment group is a documentation comment.
 
-        A group is a doc comment if it immediately precedes an exported declaration.
+        A group is a doc comment if it immediately precedes an exported declaration
+        or package clause.
 
         Args:
             comment_group: List of consecutive comment nodes
 
         Returns:
-            True if this group documents an exported declaration
+            True if this group documents an exported declaration or package
         """
         if not comment_group:
             return False
@@ -171,6 +172,10 @@ class GoCommentAnalyzer(CommentAnalyzer):
 
         if not following_decl:
             return False
+
+        # Package clause is always documented (package-level doc comment)
+        if following_decl.type == 'package_clause':
+            return True
 
         # Check if it's a declaration type we care about
         decl_types = {

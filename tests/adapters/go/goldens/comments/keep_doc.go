@@ -1,4 +1,7 @@
-// … comment omitted
+// Go module for testing comment optimization.
+//
+// This module contains various types of comments to test
+// different comment processing policies and edge cases.
 package main
 
 import (
