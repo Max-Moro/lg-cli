@@ -74,7 +74,7 @@ src:
               - condition: "TAGSET:adapters-optimizations:function-bodies"
                 allow: ["/function_bodies.py", "/code_analysis.py"]
               - condition: "TAGSET:adapters-optimizations:comments"
-                allow: ["/comments.py"]
+                allow: ["/comment_analysis.py"]
               - condition: "TAGSET:adapters-optimizations:imports"
                 allow: ["/imports.py"]
               - condition: "TAGSET:adapters-optimizations:public-api"
@@ -91,6 +91,8 @@ src:
             when:
               - condition: "TAGSET:adapters-optimizations:function-bodies"
                 allow: ["/code_analysis.py"]
+              - condition: "TAGSET:adapters-optimizations:comments"
+                allow: ["/comment_analysis.py"]
               - condition: "TAGSET:adapters-optimizations:imports"
                 allow: ["/imports.py"]
               - condition: "TAGSET:adapters-optimizations:public-api"
@@ -106,6 +108,8 @@ src:
             when:
               - condition: "TAGSET:adapters-optimizations:function-bodies"
                 allow: ["/code_analysis.py"]
+              - condition: "TAGSET:adapters-optimizations:comments"
+                allow: ["/comment_analysis.py"]
               - condition: "TAGSET:adapters-optimizations:imports"
                 allow: ["/imports.py"]
               - condition: "TAGSET:adapters-optimizations:public-api"
@@ -121,6 +125,8 @@ src:
             when:
               - condition: "TAGSET:adapters-optimizations:function-bodies"
                 allow: ["/code_analysis.py"]
+              - condition: "TAGSET:adapters-optimizations:comments"
+                allow: ["/comment_analysis.py"]
               - condition: "TAGSET:adapters-optimizations:imports"
                 allow: ["/imports.py"]
               - condition: "TAGSET:adapters-optimizations:public-api"
@@ -136,6 +142,8 @@ src:
             when:
               - condition: "TAGSET:adapters-optimizations:function-bodies"
                 allow: ["/code_analysis.py"]
+              - condition: "TAGSET:adapters-optimizations:comments"
+                allow: ["/comment_analysis.py"]
               - condition: "TAGSET:adapters-optimizations:imports"
                 allow: ["/imports.py"]
               - condition: "TAGSET:adapters-optimizations:public-api"
@@ -151,6 +159,8 @@ src:
             when:
               - condition: "TAGSET:adapters-optimizations:function-bodies"
                 allow: ["/code_analysis.py"]
+              - condition: "TAGSET:adapters-optimizations:comments"
+                allow: ["/comment_analysis.py"]
               - condition: "TAGSET:adapters-optimizations:imports"
                 allow: ["/imports.py"]
               - condition: "TAGSET:adapters-optimizations:public-api"
@@ -166,6 +176,8 @@ src:
             when:
               - condition: "TAGSET:adapters-optimizations:function-bodies"
                 allow: ["/code_analysis.py"]
+              - condition: "TAGSET:adapters-optimizations:comments"
+                allow: ["/comment_analysis.py"]
               - condition: "TAGSET:adapters-optimizations:imports"
                 allow: ["/imports.py"]
               - condition: "TAGSET:adapters-optimizations:public-api"
@@ -181,6 +193,8 @@ src:
             when:
               - condition: "TAGSET:adapters-optimizations:function-bodies"
                 allow: ["/code_analysis.py"]
+              - condition: "TAGSET:adapters-optimizations:comments"
+                allow: ["/comment_analysis.py"]
               - condition: "TAGSET:adapters-optimizations:imports"
                 allow: ["/imports.py"]
               - condition: "TAGSET:adapters-optimizations:public-api"
@@ -196,6 +210,8 @@ src:
             when:
               - condition: "TAGSET:adapters-optimizations:function-bodies"
                 allow: ["/code_analysis.py"]
+              - condition: "TAGSET:adapters-optimizations:comments"
+                allow: ["/comment_analysis.py"]
               - condition: "TAGSET:adapters-optimizations:imports"
                 allow: ["/imports.py"]
               - condition: "TAGSET:adapters-optimizations:public-api"
@@ -211,6 +227,8 @@ src:
             when:
               - condition: "TAGSET:adapters-optimizations:function-bodies"
                 allow: ["/code_analysis.py"]
+              - condition: "TAGSET:adapters-optimizations:comments"
+                allow: ["/comment_analysis.py"]
               - condition: "TAGSET:adapters-optimizations:imports"
                 allow: ["/imports.py"]
               - condition: "TAGSET:adapters-optimizations:public-api"
