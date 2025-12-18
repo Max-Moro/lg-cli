@@ -10,8 +10,8 @@ from typing import List, Optional
 
 from tree_sitter import Node
 
-from ..comment_style import CommentStyle
-from ..tree_sitter_support import TreeSitterDocument
+from ...comment_style import CommentStyle
+from ...tree_sitter_support import TreeSitterDocument
 
 
 class CommentAnalyzer:

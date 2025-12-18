@@ -12,19 +12,9 @@ from .base import BaseAdapter
 from .budget import BudgetController
 from .code_analysis import CodeAnalyzer
 from .code_model import CodeCfg, PlaceholderConfig
-from .context import ProcessingContext, LightweightContext
-from .optimizations import (
-    PublicApiOptimizer,
-    FunctionBodyOptimizer,
-    CommentOptimizer,
-    ImportOptimizer,
-    LiteralPipeline,
-    LanguageLiteralDescriptor,
-    TreeSitterImportAnalyzer,
-    ImportClassifier
-)
-from .optimizations.comment_analysis import CommentAnalyzer
 from .comment_style import CommentStyle
+from .context import ProcessingContext, LightweightContext
+from .optimizations import *
 from .tree_sitter_support import TreeSitterDocument, Node
 
 C = TypeVar("C", bound=CodeCfg)

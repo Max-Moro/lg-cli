@@ -11,8 +11,8 @@ from __future__ import annotations
 from typing import List, Optional, Set
 
 from .code_analysis import GoCodeAnalyzer
-from ..optimizations.comment_analysis import CommentAnalyzer
 from ..comment_style import CommentStyle
+from ..optimizations.comments import CommentAnalyzer
 from ..tree_sitter_support import TreeSitterDocument, Node
 
 

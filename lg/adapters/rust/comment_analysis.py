@@ -19,8 +19,8 @@ from typing import List, Optional, Set
 from tree_sitter import Node
 
 from ..comment_style import CommentStyle
-from ..optimizations.comment_analysis import CommentAnalyzer
-from ..optimizations.text_utils import (
+from ..optimizations.comments import (
+    CommentAnalyzer,
     extract_sentence,
     clean_multiline_comment_content,
 )

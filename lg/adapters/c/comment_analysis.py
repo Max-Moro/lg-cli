@@ -7,9 +7,8 @@ Supports Doxygen documentation markers (/** and ///).
 
 from __future__ import annotations
 
-from ..optimizations.comment_analysis import CommentAnalyzer
-from ..comment_style import CommentStyle
-from ..tree_sitter_support import TreeSitterDocument, Node
+from ..optimizations.comments import CommentAnalyzer
+from ..tree_sitter_support import Node
 
 
 class CStyleCommentAnalyzer(CommentAnalyzer):

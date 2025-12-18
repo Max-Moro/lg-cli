@@ -56,7 +56,7 @@ src:
               - condition: "TAGSET:adapters-optimizations:function-bodies"
                 allow: ["/function_bodies.py"]
               - condition: "TAGSET:adapters-optimizations:comments"
-                allow: ["/comments.py", "/comment_analysis.py"]
+                allow: ["/comments/"]
               - condition: "TAGSET:adapters-optimizations:literals"
                 allow: ["/literals/"]
               - condition: "TAGSET:adapters-optimizations:imports"

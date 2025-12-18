@@ -8,8 +8,7 @@ import re
 
 from tree_sitter import Node
 
-from ..optimizations.comment_analysis import CommentAnalyzer
-from ..optimizations.text_utils import extract_sentence
+from ..optimizations.comments import CommentAnalyzer, extract_sentence
 
 
 class PythonCommentAnalyzer(CommentAnalyzer):
