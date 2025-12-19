@@ -16,7 +16,7 @@
 
 /// PublicService provides public API operations.
 pub struct PublicService {
-    // … field omitted,
+    // … field omitted
 }
 
 impl PublicService {

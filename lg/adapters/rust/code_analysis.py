@@ -549,6 +549,52 @@ class RustCodeAnalyzer(CodeAnalyzer):
 
         return False
 
+    def get_element_range_with_decorators(self, elem: ElementInfo) -> Tuple[int, int]:
+        """
+        Gets the range of element including its decorators/annotations.
+
+        For Rust struct fields, also includes trailing comma for proper placeholder merging.
+
+        Args:
+            elem: Element
+
+        Returns:
+            Tuple (start_char, end_char) including all related decorators and trailing comma (for fields)
+        """
+        # Get base range from parent implementation
+        start_char, end_char = super().get_element_range_with_decorators(elem)
+
+        # For struct fields, extend range to include trailing comma
+        if elem.element_type == "field":
+            end_char = self._extend_to_trailing_comma(end_char)
+
+        return start_char, end_char
+
+    def _extend_to_trailing_comma(self, end_char: int) -> int:
+        """
+        Extend end position to include trailing comma if present.
+
+        This is important for proper placeholder merging when removing multiple
+        consecutive struct fields.
+
+        Args:
+            end_char: Current end character position
+
+        Returns:
+            Extended end position including trailing comma (if found)
+        """
+        text = self.doc.text
+        # Look ahead for comma, skipping only whitespace (not newlines)
+        pos = end_char
+        while pos < len(text) and text[pos] in ' \t':
+            pos += 1
+
+        # If we found a comma, include it
+        if pos < len(text) and text[pos] == ',':
+            return pos + 1
+
+        return end_char
+
     def _is_whitespace_or_comment(self, node: Node) -> bool:
         """
         Check if node is whitespace or comment in Rust.

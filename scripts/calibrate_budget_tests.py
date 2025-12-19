@@ -105,7 +105,7 @@ def calibrate_budget_steps(language: str) -> Tuple[List[int], Dict[str, int]]:
     make_adapter, lctx, load_sample_code, cfg_class = import_language_utils(language)
 
     # Load sample code using golden_utils
-    code = load_sample_code("budget_complex", language=language)
+    code = load_sample_code("complex", language=language)
 
     # Create config with minimal budget to trigger all steps
     cfg = cfg_class()

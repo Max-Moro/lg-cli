@@ -42,9 +42,7 @@ pub struct UserManager {
     pub is_initialized: bool,
 
     // Private fields (should be filtered out with public_api_only)
-    // … field omitted,
-    // … field omitted,
-    // … field omitted,
+    // … 3 fields omitted
 }
 
 impl UserManager {
