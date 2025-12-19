@@ -12,6 +12,7 @@ from .evaluators import (
     KeepAnnotatedEvaluator,
     BasePolicyEvaluator,
 )
+from .trimmer import FunctionBodyTrimmer
 
 __all__ = [
     "FunctionBodyOptimizer",
@@ -19,4 +20,5 @@ __all__ = [
     "ExceptPatternEvaluator",
     "KeepAnnotatedEvaluator",
     "BasePolicyEvaluator",
+    "FunctionBodyTrimmer",
 ]

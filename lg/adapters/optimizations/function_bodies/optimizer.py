@@ -5,14 +5,14 @@ Removes or minimizes function/method bodies based on configuration.
 
 from __future__ import annotations
 
-from typing import cast, List, Tuple, Union
+from typing import cast, List, Optional, Tuple, Union
 
 from .decision import FunctionBodyDecision
 from .evaluators import ExceptPatternEvaluator, KeepAnnotatedEvaluator, BasePolicyEvaluator
+from .trimmer import FunctionBodyTrimmer
 from ...code_analysis import ElementInfo, FunctionGroup
 from ...code_model import FunctionBodyConfig
 from ...context import ProcessingContext
-from ...tree_sitter_support import Node
 
 
 class FunctionBodyOptimizer:
@@ -37,8 +37,9 @@ class FunctionBodyOptimizer:
         # Normalize config
         normalized_cfg = self._normalize_config(cfg)
 
-        # Create evaluator pipeline
+        # Create evaluator pipeline and trimmer
         evaluators = self._create_evaluators(normalized_cfg)
+        trimmer = FunctionBodyTrimmer(normalized_cfg.max_tokens) if normalized_cfg.max_tokens else None
 
         # Collect all function and method groups
         function_groups = context.code_analyzer.collect_function_like_elements()
@@ -55,8 +56,13 @@ class FunctionBodyOptimizer:
             # Evaluate decision
             decision = self._evaluate(evaluators, func_group.element_info, lines_count)
 
+            # Apply max_tokens post-processing
+            if trimmer and decision.action == "keep":
+                if trimmer.should_trim(context, func_group):
+                    decision = FunctionBodyDecision(action="trim", max_tokens=normalized_cfg.max_tokens)
+
             # Apply decision
-            self._apply_decision(context, decision, func_group)
+            self._apply_decision(context, decision, func_group, trimmer)
 
     def _normalize_config(self, cfg: Union[bool, FunctionBodyConfig]) -> FunctionBodyConfig:
         """Normalize configuration to FunctionBodyConfig."""
@@ -105,7 +111,8 @@ class FunctionBodyOptimizer:
         self,
         context: ProcessingContext,
         decision: FunctionBodyDecision,
-        func_group: FunctionGroup
+        func_group: FunctionGroup,
+        trimmer: Optional[FunctionBodyTrimmer]
     ) -> None:
         """Apply the decision for a function body."""
         if decision.action == "keep":
@@ -114,7 +121,8 @@ class FunctionBodyOptimizer:
         if decision.action == "strip":
             self._apply_strip(context, func_group)
 
-        # "trim" action will be implemented in Phase 5
+        elif decision.action == "trim" and trimmer:
+            self._apply_trim(context, func_group, trimmer)
 
     def _apply_strip(
         self,
@@ -156,3 +164,50 @@ class FunctionBodyOptimizer:
             start_line,
             end_line
         )
+
+    def _apply_trim(
+        self,
+        context: ProcessingContext,
+        func_group: FunctionGroup,
+        trimmer: FunctionBodyTrimmer
+    ) -> None:
+        """
+        Trim function body to token budget.
+
+        Keeps protected content, trims code after it to fit budget.
+        """
+        result = trimmer.trim(context, func_group)
+        if result is None:
+            return
+
+        start_char, end_char, trimmed_text = result
+        func_type = func_group.element_info.element_type
+
+        if trimmed_text:
+            # Replace with trimmed text + placeholder for removed part
+            start_line = context.doc.get_line_number(start_char)
+            end_line = context.doc.get_line_number(end_char)
+
+            # Calculate where trimmed text ends
+            trimmed_end = start_char + len(trimmed_text)
+
+            # Add placeholder for the removed portion
+            context.add_placeholder(
+                func_type + "_body",
+                trimmed_end,
+                end_char,
+                context.doc.get_line_number(trimmed_end),
+                end_line
+            )
+        else:
+            # Nothing left after trim - full strip
+            start_line = context.doc.get_line_number(start_char)
+            end_line = context.doc.get_line_number(end_char)
+
+            context.add_placeholder(
+                func_type + "_body",
+                start_char,
+                end_char,
+                start_line,
+                end_line
+            )
