@@ -72,7 +72,7 @@ class PublicService {
 
 private class InternalOnly {
   
-  def doWork(): Unit = { /* noop */ }
+  def doWork(): Unit = {  }
 }
 
 object Functions {

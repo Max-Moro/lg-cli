@@ -4,7 +4,7 @@ Tests for literal trimming in Kotlin adapter.
 
 from lg.adapters.kotlin import KotlinCfg
 from lg.adapters.code_model import LiteralConfig
-from .utils import lctx, make_adapter_real
+from .utils import lctx, make_adapter
 from ..golden_utils import assert_golden_match
 
 
@@ -15,7 +15,7 @@ class TestKotlinLiteralOptimizationGolden:
         """Test basic string literal trimming with 10 tokens budget."""
         literal_config = LiteralConfig(max_tokens=10)
 
-        adapter = make_adapter_real(KotlinCfg(literals=literal_config))
+        adapter = make_adapter(KotlinCfg(literals=literal_config))
 
         result, meta = adapter.process(lctx(do_literals))
 
@@ -27,7 +27,7 @@ class TestKotlinLiteralOptimizationGolden:
         """Test basic string literal trimming with 20 tokens budget."""
         literal_config = LiteralConfig(max_tokens=20)
 
-        adapter = make_adapter_real(KotlinCfg(literals=literal_config))
+        adapter = make_adapter(KotlinCfg(literals=literal_config))
 
         result, meta = adapter.process(lctx(do_literals))
 

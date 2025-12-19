@@ -56,11 +56,11 @@ def import_language_utils(language: str):
     Dynamically import test utils for a language.
 
     Returns:
-        Tuple of (make_adapter_real, lctx, load_sample_code, cfg_class)
+        Tuple of (make_adapter, lctx, load_sample_code, cfg_class)
     """
     # Import language-specific utilities
     utils_module = importlib.import_module(f"tests.adapters.{language}.utils")
-    make_adapter_real = getattr(utils_module, "make_adapter_real")
+    make_adapter = getattr(utils_module, "make_adapter")
     lctx = getattr(utils_module, "lctx")
 
     # Import golden utils
@@ -89,7 +89,7 @@ def import_language_utils(language: str):
     adapter_module = importlib.import_module(f"lg.adapters.{language}")
     cfg_class = getattr(adapter_module, cfg_class_name)
 
-    return make_adapter_real, lctx, load_sample_code, cfg_class
+    return make_adapter, lctx, load_sample_code, cfg_class
 
 
 def calibrate_budget_steps(language: str) -> Tuple[List[int], Dict[str, int]]:
@@ -102,7 +102,7 @@ def calibrate_budget_steps(language: str) -> Tuple[List[int], Dict[str, int]]:
     print(f"\n=== Calibrating {language} ===")
 
     # Import language utilities
-    make_adapter_real, lctx, load_sample_code, cfg_class = import_language_utils(language)
+    make_adapter, lctx, load_sample_code, cfg_class = import_language_utils(language)
 
     # Load sample code using golden_utils
     code = load_sample_code("budget_complex", language=language)
@@ -113,7 +113,7 @@ def calibrate_budget_steps(language: str) -> Tuple[List[int], Dict[str, int]]:
     cfg.placeholders.style = "none"
 
     # Create adapter with real tokenizer
-    adapter = make_adapter_real(cfg)
+    adapter = make_adapter(cfg)
 
     # Create lightweight context
     context = lctx(code)

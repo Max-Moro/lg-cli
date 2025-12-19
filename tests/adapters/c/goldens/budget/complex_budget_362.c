@@ -71,14 +71,14 @@ void* public_service_process(PublicService* service, void** list, int count) {
 
 
 
-// Public function
+
 char* public_function(const char* name) {
     if (!name) return NULL;
     
     return strdup(name);
 }
 
-// Private function
+
 
 
 int main(void) {

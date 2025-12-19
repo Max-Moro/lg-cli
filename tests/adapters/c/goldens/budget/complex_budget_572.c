@@ -49,7 +49,7 @@ void* public_service_get_user(PublicService* service, int id) {
 
 static void* normalize_user(void* u) {
     if (!u) return NULL;
-    // Normalization logic
+    
     return u;
 }
 
@@ -77,17 +77,17 @@ typedef struct {
 
 static void internal_only_do_work(InternalOnly* obj) {
     if (!obj) return;
-    // noop
+    
 }
 
-// Public function
+
 char* public_function(const char* name) {
     if (!name) return NULL;
     
     return strdup(name);
 }
 
-// Private function
+
 static char** private_function(char** data, int count) {
     if (!data) return NULL;
     

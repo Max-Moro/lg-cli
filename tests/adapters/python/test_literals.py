@@ -4,7 +4,7 @@ Tests for literal trimming in Python adapter.
 
 from lg.adapters.python import PythonCfg
 from lg.adapters.code_model import LiteralConfig
-from .utils import lctx, make_adapter_real
+from .utils import lctx, make_adapter
 from ..golden_utils import assert_golden_match
 
 
@@ -15,7 +15,7 @@ class TestPythonLiteralOptimizationGolden:
         """Test basic literal trimming with 10 tokens budget."""
         literal_config = LiteralConfig(max_tokens=10)
 
-        adapter = make_adapter_real(PythonCfg(literals=literal_config))
+        adapter = make_adapter(PythonCfg(literals=literal_config))
 
         result, meta = adapter.process(lctx(do_literals))
 
@@ -27,7 +27,7 @@ class TestPythonLiteralOptimizationGolden:
         """Test basic literal trimming with 20 tokens budget."""
         literal_config = LiteralConfig(max_tokens=20)
 
-        adapter = make_adapter_real(PythonCfg(literals=literal_config))
+        adapter = make_adapter(PythonCfg(literals=literal_config))
 
         result, meta = adapter.process(lctx(do_literals))
 

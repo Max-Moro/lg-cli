@@ -10,7 +10,7 @@ import pytest
 
 from lg.adapters.code_model import BudgetConfig
 from lg.adapters.javascript import JavaScriptCfg
-from .utils import make_adapter_real, lctx
+from .utils import make_adapter, lctx
 from ..golden_utils import assert_golden_match, load_sample_code
 
 
@@ -26,7 +26,7 @@ def test_javascript_budget_progression_golden(budget: int):
     cfg.budget = BudgetConfig(max_tokens_per_file=budget)
     cfg.placeholders.style = "none"
 
-    adapter = make_adapter_real(cfg)
+    adapter = make_adapter(cfg)
     result, meta = adapter.process(lctx(code))
 
     assert any(k.endswith(".budget.tokens_before") for k in meta.keys())
@@ -49,7 +49,7 @@ def test_javascript_budget_is_monotonic_shrink():
         cfg = JavaScriptCfg()
         cfg.budget = BudgetConfig(max_tokens_per_file=budget)
         cfg.placeholders.style = "none"
-        adapter = make_adapter_real(cfg)
+        adapter = make_adapter(cfg)
         result, _ = adapter.process(lctx(code))
         lengths.append(len(result))
 

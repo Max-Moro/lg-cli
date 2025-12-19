@@ -73,14 +73,14 @@ typedef struct {
 
 static void internal_only_do_work(InternalOnly* obj) 
 
-// Public function
+
 char* public_function(const char* name) {
     if (!name) return NULL;
     
     return strdup(name);
 }
 
-// Private function
+
 static char** private_function(char** data, int count) 
 
 int main(void) {

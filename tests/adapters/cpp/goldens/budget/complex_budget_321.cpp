@@ -60,10 +60,10 @@ namespace {
     ;
 }
 
-// Public functions
+
 std::string publicFunction(const std::string& name) 
 
-// Private function
+
 namespace {
     
 }

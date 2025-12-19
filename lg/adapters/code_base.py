@@ -179,15 +179,11 @@ class CodeAdapter(BaseAdapter[C], ABC):
             # Get original text for range
             src = context.raw_text[spec.start_char:spec.end_char]
 
-            # Determine "empty" replacement flag
-            is_none = (repl == "")
-
             # Check feasibility
             if not self.tokenizer.is_economical(
                     src,
                     repl,
                     min_ratio=min_savings_ratio,
-                    replacement_is_none=is_none,
                     min_abs_savings_if_none=min_abs_savings_if_none,
             ):
                 # Skip replacement, keep original

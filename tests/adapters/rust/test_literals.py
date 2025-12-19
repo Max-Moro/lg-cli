@@ -4,7 +4,7 @@ Tests for literal trimming in Rust adapter.
 
 from lg.adapters.rust import RustCfg
 from lg.adapters.code_model import LiteralConfig
-from .utils import lctx, make_adapter_real
+from .utils import lctx, make_adapter
 from ..golden_utils import assert_golden_match
 
 
@@ -15,7 +15,7 @@ class TestRustLiteralOptimizationGolden:
         """Test basic string literal trimming with 10 tokens budget."""
         literal_config = LiteralConfig(max_tokens=10)
 
-        adapter = make_adapter_real(RustCfg(literals=literal_config))
+        adapter = make_adapter(RustCfg(literals=literal_config))
 
         result, meta = adapter.process(lctx(do_literals))
 
@@ -27,7 +27,7 @@ class TestRustLiteralOptimizationGolden:
         """Test basic string literal trimming with 20 tokens budget."""
         literal_config = LiteralConfig(max_tokens=20)
 
-        adapter = make_adapter_real(RustCfg(literals=literal_config))
+        adapter = make_adapter(RustCfg(literals=literal_config))
 
         result, meta = adapter.process(lctx(do_literals))
 
@@ -47,7 +47,7 @@ const LONG_MSG: &str = "This is a very long message that should be trimmed becau
 
         literal_config = LiteralConfig(max_tokens=10)
 
-        adapter = make_adapter_real(RustCfg(literals=literal_config))
+        adapter = make_adapter(RustCfg(literals=literal_config))
 
         result, meta = adapter.process(lctx(code))
 
@@ -67,7 +67,7 @@ let large_vec = vec![
 
         literal_config = LiteralConfig(max_tokens=15)
 
-        adapter = make_adapter_real(RustCfg(literals=literal_config))
+        adapter = make_adapter(RustCfg(literals=literal_config))
 
         result, meta = adapter.process(lctx(code))
 
@@ -88,7 +88,7 @@ const LARGE_ARRAY: [i32; 30] = [
 
         literal_config = LiteralConfig(max_tokens=15)
 
-        adapter = make_adapter_real(RustCfg(literals=literal_config))
+        adapter = make_adapter(RustCfg(literals=literal_config))
 
         result, meta = adapter.process(lctx(code))
 
@@ -119,7 +119,7 @@ let large_items = vec![
 
         literal_config = LiteralConfig(max_tokens=20)
 
-        adapter = make_adapter_real(RustCfg(literals=literal_config))
+        adapter = make_adapter(RustCfg(literals=literal_config))
 
         result, meta = adapter.process(lctx(code))
 
@@ -139,7 +139,7 @@ when the token limit is exceeded.
 
         literal_config = LiteralConfig(max_tokens=10)
 
-        adapter = make_adapter_real(RustCfg(literals=literal_config))
+        adapter = make_adapter(RustCfg(literals=literal_config))
 
         result, meta = adapter.process(lctx(code))
 
@@ -154,7 +154,7 @@ const LARGE_BYTES: &[u8] = b"This is a very long byte string that should be trim
 
         literal_config = LiteralConfig(max_tokens=10)
 
-        adapter = make_adapter_real(RustCfg(literals=literal_config))
+        adapter = make_adapter(RustCfg(literals=literal_config))
 
         result, meta = adapter.process(lctx(code))
 

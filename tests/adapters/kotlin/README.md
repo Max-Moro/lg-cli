@@ -124,8 +124,7 @@ PYTEST_UPDATE_GOLDENS=1 pytest tests/adapters/kotlin/
 1. Add new code sample to `goldens/do/your_test.kt`
 2. Create test file `test_your_feature.py`
 3. Use fixtures from `conftest.py`:
-   - `make_adapter(cfg)` - create adapter with stub
-   - `make_adapter_real(cfg)` - create adapter with real tokenizer
+   - `make_adapter(cfg)` - create adapter
    - `lctx_kt(code)` - create context for processing
    - `assert_golden_match()` - compare with reference
    - `load_sample_code()` - load code sample

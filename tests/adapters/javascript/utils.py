@@ -1,20 +1,16 @@
 """Utilities for JavaScript adapter tests."""
 
 from pathlib import Path
-from lg.adapters.javascript import JavaScriptAdapter
-from lg.adapters.code_model import CodeCfg
+
 from lg.adapters.context import LightweightContext
+from lg.adapters.javascript import JavaScriptAdapter, JavaScriptCfg
 from lg.stats.tokenizer import default_tokenizer
-from tests.infrastructure import stub_tokenizer
 
 
-def make_adapter(cfg: CodeCfg) -> JavaScriptAdapter:
+def make_adapter(cfg: JavaScriptCfg) -> JavaScriptAdapter:
     """Create JavaScript adapter with stub tokenizer."""
-    return JavaScriptAdapter.bind_with_cfg(cfg, stub_tokenizer())
-
-
-def make_adapter_real(cfg: CodeCfg) -> JavaScriptAdapter:
-    """Create JavaScript adapter with real tokenizer."""
+    cfg.placeholders.min_savings_ratio = 0.0
+    cfg.placeholders.min_abs_savings_if_none = 0
     return JavaScriptAdapter.bind_with_cfg(cfg, default_tokenizer())
 
 
@@ -32,4 +28,4 @@ def lctx(code: str, file_path: Path | None = None, group_size: int = 1) -> Light
     )
 
 
-__all__ = ["make_adapter", "make_adapter_real", "lctx"]
+__all__ = ["make_adapter", "lctx"]

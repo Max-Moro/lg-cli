@@ -4,7 +4,7 @@ Tests for literal trimming in C adapter.
 
 from lg.adapters.c import CCfg
 from lg.adapters.code_model import LiteralConfig
-from .utils import lctx, make_adapter_real
+from .utils import lctx, make_adapter
 from ..golden_utils import assert_golden_match
 
 
@@ -15,7 +15,7 @@ class TestCLiteralOptimizationGolden:
         """Test basic string literal trimming with 10 tokens budget."""
         literal_config = LiteralConfig(max_tokens=10)
 
-        adapter = make_adapter_real(CCfg(literals=literal_config))
+        adapter = make_adapter(CCfg(literals=literal_config))
 
         result, meta = adapter.process(lctx(do_literals))
 
@@ -27,7 +27,7 @@ class TestCLiteralOptimizationGolden:
         """Test basic string literal trimming with 20 tokens budget."""
         literal_config = LiteralConfig(max_tokens=20)
 
-        adapter = make_adapter_real(CCfg(literals=literal_config))
+        adapter = make_adapter(CCfg(literals=literal_config))
 
         result, meta = adapter.process(lctx(do_literals))
 
@@ -47,7 +47,7 @@ const char* long_msg = "This is a very long message that should be trimmed becau
 
         literal_config = LiteralConfig(max_tokens=10)
 
-        adapter = make_adapter_real(CCfg(literals=literal_config))
+        adapter = make_adapter(CCfg(literals=literal_config))
 
         result, meta = adapter.process(lctx(code))
 
@@ -67,7 +67,7 @@ int large_array[] = {
 
         literal_config = LiteralConfig(max_tokens=15)
 
-        adapter = make_adapter_real(CCfg(literals=literal_config))
+        adapter = make_adapter(CCfg(literals=literal_config))
 
         result, meta = adapter.process(lctx(code))
 
@@ -92,7 +92,7 @@ Item large_items[] = {
 
         literal_config = LiteralConfig(max_tokens=20)
 
-        adapter = make_adapter_real(CCfg(literals=literal_config))
+        adapter = make_adapter(CCfg(literals=literal_config))
 
         result, meta = adapter.process(lctx(code))
 

@@ -75,18 +75,18 @@ namespace {
     class InternalOnly {
     public:
         void doWork() {
-            // noop
+            
         }
     };
 }
 
-// Public functions
+
 std::string publicFunction(const std::string& name) {
     
     return name;
 }
 
-// Private function
+
 namespace {
     std::vector<std::string> privateFunction(const std::vector<std::string>& data) 
 }

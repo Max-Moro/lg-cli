@@ -45,10 +45,10 @@ void* public_service_process(PublicService* service, void** list, int count)
 
 
 
-// Public function
+
 char* public_function(const char* name) 
 
-// Private function
+
 
 
 int main(void)

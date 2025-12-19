@@ -77,7 +77,7 @@ public class PublicService {
 
 class InternalOnly {
     
-    public void doWork() { /* noop */ }
+    public void doWork() {  }
 }
 
 public class Functions {

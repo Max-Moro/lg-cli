@@ -12,7 +12,7 @@ import (
 	
 )
 
-// Third-party imports
+
 import (
 	
 )
@@ -100,7 +100,7 @@ type internalOnly struct {
 }
 
 func (i *internalOnly) doWork() {
-	// noop
+	
 }
 
 // PublicFunction is an exported function

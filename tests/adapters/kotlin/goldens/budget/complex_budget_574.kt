@@ -79,7 +79,7 @@ class PublicService {
 
 private class InternalOnly {
     
-    fun doWork() { /* noop */ }
+    fun doWork() {  }
 }
 
 fun publicFunction(name: String): String {

@@ -75,13 +75,13 @@ namespace {
     ;
 }
 
-// Public functions
+
 std::string publicFunction(const std::string& name) {
     
     return name;
 }
 
-// Private function
+
 namespace {
     
 }

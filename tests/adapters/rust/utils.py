@@ -6,10 +6,9 @@ All Rust-specific test utilities are here.
 
 from pathlib import Path
 
-from lg.adapters.rust import RustAdapter, RustCfg
 from lg.adapters.context import LightweightContext
+from lg.adapters.rust import RustAdapter, RustCfg
 from lg.stats.tokenizer import default_tokenizer
-from tests.infrastructure import stub_tokenizer
 
 
 def make_adapter(cfg: RustCfg) -> RustAdapter:
@@ -18,15 +17,8 @@ def make_adapter(cfg: RustCfg) -> RustAdapter:
 
     Use this for most tests to ensure deterministic behavior.
     """
-    return RustAdapter.bind_with_cfg(cfg, stub_tokenizer())
-
-
-def make_adapter_real(cfg: RustCfg) -> RustAdapter:
-    """
-    Create Rust adapter with real tokenizer.
-
-    Use this when testing actual token counting/mathematics.
-    """
+    cfg.placeholders.min_savings_ratio = 0.0
+    cfg.placeholders.min_abs_savings_if_none = 0
     return RustAdapter.bind_with_cfg(cfg, default_tokenizer())
 
 
@@ -58,4 +50,4 @@ def lctx(
     )
 
 
-__all__ = ["make_adapter", "make_adapter_real", "lctx"]
+__all__ = ["make_adapter", "lctx"]

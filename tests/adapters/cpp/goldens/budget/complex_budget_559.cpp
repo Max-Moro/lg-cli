@@ -56,7 +56,7 @@ public:
 private:
     
     void* normalize(std::map<std::string, std::string> u) {
-        // Normalization logic
+        
         return nullptr;
     }
 
@@ -81,18 +81,18 @@ namespace {
     class InternalOnly {
     public:
         void doWork() {
-            // noop
+            
         }
     };
 }
 
-// Public functions
+
 std::string publicFunction(const std::string& name) {
     
     return name;
 }
 
-// Private function
+
 namespace {
     std::vector<std::string> privateFunction(const std::vector<std::string>& data) {
         

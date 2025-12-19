@@ -4,7 +4,7 @@ Tests for literal trimming in Go adapter.
 
 from lg.adapters.go import GoCfg
 from lg.adapters.code_model import LiteralConfig
-from .utils import lctx, make_adapter_real
+from .utils import lctx, make_adapter
 from ..golden_utils import assert_golden_match
 
 
@@ -15,7 +15,7 @@ class TestGoLiteralOptimizationGolden:
         """Test basic string literal trimming with 10 tokens budget."""
         literal_config = LiteralConfig(max_tokens=10)
 
-        adapter = make_adapter_real(GoCfg(literals=literal_config))
+        adapter = make_adapter(GoCfg(literals=literal_config))
 
         result, meta = adapter.process(lctx(do_literals))
 
@@ -27,7 +27,7 @@ class TestGoLiteralOptimizationGolden:
         """Test basic string literal trimming with 20 tokens budget."""
         literal_config = LiteralConfig(max_tokens=20)
 
-        adapter = make_adapter_real(GoCfg(literals=literal_config))
+        adapter = make_adapter(GoCfg(literals=literal_config))
 
         result, meta = adapter.process(lctx(do_literals))
 
@@ -49,7 +49,7 @@ const longMsg = "This is a very long message that should be trimmed because it e
 
         literal_config = LiteralConfig(max_tokens=10)
 
-        adapter = make_adapter_real(GoCfg(literals=literal_config))
+        adapter = make_adapter(GoCfg(literals=literal_config))
 
         result, meta = adapter.process(lctx(code))
 
@@ -71,7 +71,7 @@ var largeSlice = []int{
 
         literal_config = LiteralConfig(max_tokens=15)
 
-        adapter = make_adapter_real(GoCfg(literals=literal_config))
+        adapter = make_adapter(GoCfg(literals=literal_config))
 
         result, meta = adapter.process(lctx(code))
 
@@ -99,7 +99,7 @@ var largeItems = []Item{
 
         literal_config = LiteralConfig(max_tokens=20)
 
-        adapter = make_adapter_real(GoCfg(literals=literal_config))
+        adapter = make_adapter(GoCfg(literals=literal_config))
 
         result, meta = adapter.process(lctx(code))
 
@@ -140,7 +140,7 @@ var largeConfig = map[string]interface{}{
 
         literal_config = LiteralConfig(max_tokens=30)
 
-        adapter = make_adapter_real(GoCfg(literals=literal_config))
+        adapter = make_adapter(GoCfg(literals=literal_config))
 
         result, meta = adapter.process(lctx(code))
 

@@ -56,7 +56,7 @@ export class PublicService {
 
 class _InternalOnly {
     
-    doWork() { /* noop */ }
+    doWork() {  }
 }
 
 export function publicFunction(name) {

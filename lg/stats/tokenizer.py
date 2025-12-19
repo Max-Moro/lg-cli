@@ -138,8 +138,7 @@ class TokenService:
         ratio = savings / float(max(repl, 1))
         return orig, repl, savings, ratio
 
-    def is_economical(self, original: str, replacement: str, *, min_ratio: float, replacement_is_none: bool,
-                       min_abs_savings_if_none: int) -> bool:
+    def is_economical(self, original: str, replacement: str, *, min_ratio: float, min_abs_savings_if_none: int) -> bool:
         """
         Check if replacement is economical.
 
@@ -149,7 +148,7 @@ class TokenService:
         """
         orig, repl, savings, ratio = self.compare_texts(original, replacement)
 
-        if replacement_is_none and savings < min_abs_savings_if_none:
+        if replacement == "" and min_abs_savings_if_none > 0 and savings < min_abs_savings_if_none:
             return False
 
         return ratio >= float(min_ratio)
