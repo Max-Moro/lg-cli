@@ -20,7 +20,7 @@ from .code_model import (
     FunctionBodyConfig,
     ImportPolicy,
     CommentPolicy,
-    FunctionBodyStrip,
+    FunctionBodyPolicy,
 )
 from .context import ProcessingContext
 from .range_edits import RangeEditor
@@ -142,31 +142,31 @@ class BudgetController(Generic[Cc]):
                 effective_cfg.imports = replace(effective_cfg.imports, policy="strip_all", summarize_long=True)
 
             elif step == "private_bodies":
-                step_after_text = self._apply_function_bodies(lightweight_ctx, text_current, mode="non_public")
+                step_after_text = self._apply_function_bodies(lightweight_ctx, text_current, policy="keep_public")
                 # Strengthen function body config
                 eff_sfb = effective_cfg.strip_function_bodies
                 if isinstance(eff_sfb, bool) and eff_sfb is True:
-                    # Upgrade to a structured config prioritizing non_public
-                    effective_cfg.strip_function_bodies = FunctionBodyConfig(mode=cast(FunctionBodyStrip, "non_public"))
+                    # Upgrade to a structured config prioritizing keep_public
+                    effective_cfg.strip_function_bodies = FunctionBodyConfig(policy=cast(FunctionBodyPolicy, "keep_public"))
                 elif isinstance(eff_sfb, FunctionBodyConfig):
-                    effective_cfg.strip_function_bodies = replace(eff_sfb, mode=cast(FunctionBodyStrip, "non_public"))
+                    effective_cfg.strip_function_bodies = replace(eff_sfb, policy=cast(FunctionBodyPolicy, "keep_public"))
                 else:
-                    effective_cfg.strip_function_bodies = FunctionBodyConfig(mode=cast(FunctionBodyStrip, "non_public"))
+                    effective_cfg.strip_function_bodies = FunctionBodyConfig(policy=cast(FunctionBodyPolicy, "keep_public"))
 
             elif step == "public_api_only":
                 step_after_text = self._apply_public_api_only(lightweight_ctx, text_current)
                 effective_cfg.public_api_only = True
 
             elif step == "public_bodies":
-                # "non_public" + "public_only" together give "all", so use "all" instead of "public_only"
-                step_after_text = self._apply_function_bodies(lightweight_ctx, text_current, mode="all")
+                # "keep_public" + "strip_all" together give "strip_all", so use "strip_all" instead of "keep_public"
+                step_after_text = self._apply_function_bodies(lightweight_ctx, text_current, policy="strip_all")
                 eff_sfb = effective_cfg.strip_function_bodies
                 if isinstance(eff_sfb, bool) and eff_sfb is True:
-                    effective_cfg.strip_function_bodies = FunctionBodyConfig(mode=cast(FunctionBodyStrip, "all"))
+                    effective_cfg.strip_function_bodies = FunctionBodyConfig(policy=cast(FunctionBodyPolicy, "strip_all"))
                 elif isinstance(eff_sfb, FunctionBodyConfig):
-                    effective_cfg.strip_function_bodies = replace(eff_sfb, mode=cast(FunctionBodyStrip, "all"))
+                    effective_cfg.strip_function_bodies = replace(eff_sfb, policy=cast(FunctionBodyPolicy, "strip_all"))
                 else:
-                    effective_cfg.strip_function_bodies = FunctionBodyConfig(mode=cast(FunctionBodyStrip, "all"))
+                    effective_cfg.strip_function_bodies = FunctionBodyConfig(policy=cast(FunctionBodyPolicy, "strip_all"))
 
             elif step == "docstrings_first_sentence":
                 step_after_text = self._apply_comments(lightweight_ctx, text_current, policy="keep_first_sentence", max_tokens=None)
@@ -201,12 +201,12 @@ class BudgetController(Generic[Cc]):
                 sfb = base_cfg.strip_function_bodies
                 if isinstance(sfb, bool):
                     return bool(sfb)
-                return getattr(sfb, "mode", "none") in ("public_only", "all")
+                return getattr(sfb, "policy", "keep_all") in ("strip_all",)
             if step == "private_bodies":
                 sfb = base_cfg.strip_function_bodies
                 if isinstance(sfb, bool):
                     return bool(sfb)
-                return getattr(sfb, "mode", "none") in ("non_public", "all")
+                return getattr(sfb, "policy", "keep_all") in ("keep_public", "strip_all")
             if step == "comments":
                 cp = base_cfg.comment_policy
                 if isinstance(cp, str):
@@ -283,9 +283,9 @@ class BudgetController(Generic[Cc]):
         self.adapter.comment_optimizer.apply(ctx, cfg)
         return self._generate_new_text(ctx)
 
-    def _apply_function_bodies(self, lightweight_ctx, text: str, *, mode: str) -> str:
+    def _apply_function_bodies(self, lightweight_ctx, text: str, *, policy: str) -> str:
         ctx = self._make_sandbox_context(lightweight_ctx, text)
-        cfg = FunctionBodyConfig(mode=cast(FunctionBodyStrip, mode))
+        cfg = FunctionBodyConfig(policy=cast(FunctionBodyPolicy, policy))
         self.adapter.function_body_optimizer.apply(ctx, cfg)
         return self._generate_new_text(ctx)
 

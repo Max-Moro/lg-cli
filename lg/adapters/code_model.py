@@ -11,7 +11,7 @@ from typing import Dict, List, Optional, Literal, Union, Any
 # ---- Types for configuration ----
 
 VisibilityLevel = Literal["public", "protected", "private", "internal", "exported"]
-FunctionBodyStrip = Literal["none", "all", "public_only", "non_public", "large_only"]
+FunctionBodyPolicy = Literal["keep_all", "strip_all", "keep_public"]
 CommentPolicy = Literal["keep_all", "strip_all", "keep_doc", "keep_first_sentence"]
 ImportPolicy = Literal["keep_all", "strip_all", "strip_external", "strip_local"]
 PlaceholderStyle = Literal["inline", "block", "none"]
@@ -20,10 +20,10 @@ PlaceholderStyle = Literal["inline", "block", "none"]
 @dataclass
 class FunctionBodyConfig:
     """Configuration for function/method body removal."""
-    mode: FunctionBodyStrip = "none"
-    min_lines: int = 5  # minimum number of lines for removal when mode="large_only"
+    policy: FunctionBodyPolicy = "keep_all"
+    max_tokens: Optional[int] = None  # trim body to fit token budget
     except_patterns: List[str] = field(default_factory=list)  # regex for exception function names
-    keep_annotated: List[str] = field(default_factory=list)  # regex annotations for preservation
+    keep_annotated: List[str] = field(default_factory=list)  # regex for decorator/annotation preservation
 
 
 @dataclass
@@ -100,8 +100,8 @@ class CodeCfg:
             self.strip_function_bodies = sfb
         elif isinstance(sfb, dict):
             self.strip_function_bodies = FunctionBodyConfig(
-                mode=sfb.get("mode", "none"),
-                min_lines=int(sfb.get("min_lines", 5)),
+                policy=sfb.get("policy", "keep_all"),
+                max_tokens=sfb.get("max_tokens"),
                 except_patterns=list(sfb.get("except_patterns", [])),
                 keep_annotated=list(sfb.get("keep_annotated", []))
             )

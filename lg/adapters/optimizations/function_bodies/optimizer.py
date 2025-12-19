@@ -120,26 +120,20 @@ class FunctionBodyOptimizer:
         if isinstance(cfg, bool):
             # For boolean True, apply smart logic:
             # don't strip single-line bodies (important for arrow functions)
-            # But allow override for complex config modes
             if cfg and lines_count <= 1:
                 return False
             return cfg
 
-        # If config is an object, apply complex logic
+        # If config is an object, apply policy-based logic
         complex_cfg: FunctionBodyConfig = cast(FunctionBodyConfig, cfg)
-        mode = complex_cfg.mode
+        policy = complex_cfg.policy
 
-        if mode == "none":
+        if policy == "keep_all":
             return False
-        elif mode == "all":
+        elif policy == "strip_all":
             return True
-        elif mode == "large_only":
-            return lines_count >= complex_cfg.min_lines
-        elif mode == "public_only":
-            # Strip bodies only for public functions
-            return in_public_api
-        elif mode == "non_public":
-            # Strip bodies only for private functions
+        elif policy == "keep_public":
+            # Strip bodies only for private functions (keep public)
             return not in_public_api
 
         return False
