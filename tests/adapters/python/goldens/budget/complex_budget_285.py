@@ -1,8 +1,4 @@
-"""Comprehensive sample for Budget System tests (Python).
-
-Includes:
-- Many external/local imports
-- Large literals (strings, lists…"""
+"""Comprehensive sample for Budget System tests (Python)."""
 
 
 

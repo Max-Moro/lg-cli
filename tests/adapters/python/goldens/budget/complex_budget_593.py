@@ -2,7 +2,11 @@
 
 Includes:
 - Many external/local imports
-- Large literals (strings, lists…"""
+- Large literals (strings, lists, dicts)
+- Mixed comments and docstrings
+- Public/private functions, classes, methods
+- If __name__ == '__main__' guard
+"""
 
 
 
@@ -35,7 +39,8 @@ def public_function(data: str) -> str:
     return data.upper()
 
 
-
+def _private_helper(text: str) -> str:
+    """Private helper that should be removed in public_api_only."""
 
 
 class PublicClass:
@@ -52,17 +57,24 @@ class PublicClass:
         """Add two numbers and return the result."""
         return x + y
 
-    
+    def _private_method(self, data: List[str]) -> List[str]:
+        """Private method not part of public API."""
 
     @property
     def public_property(self) -> str:
         """Public property."""
         return self.name
 
-    
+    @property
+    def _private_property(self) -> Dict[str, Any]:
+        """Private property."""
 
 
+class _InternalOnly:
+    """Private class that should not appear in public API view."""
 
+    def work(self) -> None:
+        pass
 
 
 def huge_processing_pipeline(values: List[int]) -> Tuple[int, int, int]:

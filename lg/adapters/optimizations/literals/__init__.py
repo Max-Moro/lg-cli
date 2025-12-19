@@ -16,6 +16,7 @@ from .utils import DelimiterConfig, DelimiterDetector
 from .processor import LiteralProcessor
 from .components.block_init import BlockInitProcessorBase
 from .components.standard_collections import StandardCollectionsProcessor
+from .components.string_literal import StringLiteralProcessor
 
 __all__ = [
     # Descriptor and types
@@ -42,4 +43,5 @@ __all__ = [
     "LiteralProcessor",
     "BlockInitProcessorBase",
     "StandardCollectionsProcessor",
+    "StringLiteralProcessor",
 ]

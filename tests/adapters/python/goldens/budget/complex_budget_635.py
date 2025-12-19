@@ -2,7 +2,11 @@
 
 Includes:
 - Many external/local imports
-- Large literals (strings, lists…"""
+- Large literals (strings, lists, dicts)
+- Mixed comments and docstrings
+- Public/private functions, classes, methods
+- If __name__ == '__main__' guard
+"""
 
 
 

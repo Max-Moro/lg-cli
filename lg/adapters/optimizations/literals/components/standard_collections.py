@@ -11,7 +11,6 @@ from __future__ import annotations
 from typing import Optional
 
 from lg.stats.tokenizer import TokenService
-from ..processor import LiteralProcessor
 from ..descriptor import LanguageLiteralDescriptor
 from ..patterns import (
     LiteralProfile,
@@ -24,8 +23,10 @@ from ..patterns import (
 from ..processing.collection_formatter import CollectionFormatter
 from ..processing.parser import LiteralParser
 from ..processing.selector import BudgetSelector
+from ..processor import LiteralProcessor
 from ..utils import CommentFormatter
 from ..utils.element_parser import ElementParser, ParseConfig
+from ....tree_sitter_support import TreeSitterDocument, Node
 
 
 class StandardCollectionsProcessor(LiteralProcessor):
@@ -69,12 +70,7 @@ class StandardCollectionsProcessor(LiteralProcessor):
         # Cache parsers for different patterns
         self._parsers: dict[str, ElementParser] = {}
 
-    def can_handle(
-        self,
-        profile: LiteralProfile,
-        node,
-        doc,
-    ) -> bool:
+    def can_handle(self, profile: LiteralProfile, node: Node, doc: TreeSitterDocument) -> bool:
         """
         Check if this component is applicable to the given literal.
 
@@ -98,10 +94,9 @@ class StandardCollectionsProcessor(LiteralProcessor):
         # MappingProfile и FactoryProfile
         return isinstance(profile, (MappingProfile, FactoryProfile))
 
-    def process(
-        self,
-        node,
-        doc,
+    def process(self,
+        node: Node,
+        doc: TreeSitterDocument,
         source_text: str,
         profile: CollectionProfile,
         token_budget: int,

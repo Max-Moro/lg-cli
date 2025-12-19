@@ -12,14 +12,15 @@ from __future__ import annotations
 from typing import Optional
 
 from lg.stats.tokenizer import TokenService
-from ..processor import LiteralProcessor
 from ..patterns import LiteralProfile, StringProfile, TrimResult
 from ..processing.parser import LiteralParser
 from ..processing.selector import Selection
 from ..processing.string_formatter import StringFormatter
+from ..processor import LiteralProcessor
 from ..utils import CommentFormatter
 from ..utils.element_parser import Element
 from ..utils.interpolation import InterpolationHandler
+from ....tree_sitter_support import TreeSitterDocument, Node
 
 
 class StringLiteralProcessor(LiteralProcessor):
@@ -52,12 +53,7 @@ class StringLiteralProcessor(LiteralProcessor):
         self.parser = literal_parser
         self.string_formatter = StringFormatter(tokenizer, comment_formatter)
 
-    def can_handle(
-        self,
-        profile: LiteralProfile,
-        node,
-        doc,
-    ) -> bool:
+    def can_handle(self, profile: LiteralProfile, node: Node, doc: TreeSitterDocument) -> bool:
         """
         Check if this component is applicable to the given literal.
 
@@ -75,8 +71,8 @@ class StringLiteralProcessor(LiteralProcessor):
 
     def process(
         self,
-        node,
-        doc,
+        node: Node,
+        doc: TreeSitterDocument,
         source_text: str,
         profile: StringProfile,
         token_budget: int,

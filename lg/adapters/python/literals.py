@@ -7,6 +7,7 @@ Defines patterns for Python literals: strings, lists, tuples, dicts, sets.
 from __future__ import annotations
 
 from ..optimizations.literals import *
+from .literals_component import PythonStringLiteralProcessor
 
 PYTHON_DELIMITER_CONFIG = DelimiterConfig(
     string_prefixes=["f", "F", "r", "R", "b", "B", "u", "U"],
@@ -101,5 +102,6 @@ def create_python_descriptor() -> LanguageLiteralDescriptor:
             PYTHON_TUPLE_PROFILE,
             PYTHON_SET_PROFILE,
             PYTHON_DICT_PROFILE,
-        ]
+        ],
+        custom_processor=PythonStringLiteralProcessor,
     )

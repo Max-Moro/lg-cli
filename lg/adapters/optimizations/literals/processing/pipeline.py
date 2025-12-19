@@ -11,7 +11,12 @@ from typing import cast, Optional, List
 
 from .parser import LiteralParser
 from .selector import BudgetSelector
-from ..components import *
+from ..components import (
+    ASTSequenceProcessor,
+    BlockInitProcessorBase,
+    StandardCollectionsProcessor,
+    StringLiteralProcessor,
+)
 from ..patterns import (
     LiteralProfile,
     BlockInitProfile,
@@ -86,6 +91,13 @@ class LiteralPipeline:
                     self.selector,
                     self.comment_formatter,
                     self.descriptor
+                )
+            elif issubclass(self.descriptor.custom_processor, StringLiteralProcessor):
+                # StringLiteral-based processors need tokenizer, parser, comment_formatter
+                processor_instance = self.descriptor.custom_processor(
+                    self.adapter.tokenizer,
+                    self.literal_parser,
+                    self.comment_formatter
                 )
             else:
                 # Unknown processor type - skip

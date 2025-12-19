@@ -30,22 +30,12 @@ class CppInitializerListProcessor(StandardCollectionsProcessor):
     to StandardCollectionsProcessor.
     """
 
-    def can_handle(
-        self,
-        profile: LiteralProfile,
-        node: Node,
-        doc: TreeSitterDocument
-    ) -> bool:
+    def can_handle(self, profile: LiteralProfile, node: Node, doc: TreeSitterDocument) -> bool:
         """
         Check if this processor can handle the node.
 
         Handles ALL C++ initializer_list nodes.
         Entries will be filtered in process() to return None.
-
-        Args:
-            profile: Literal profile
-            node: Tree-sitter node
-            doc: Document
 
         Returns:
             True if can handle, False otherwise
@@ -64,13 +54,6 @@ class CppInitializerListProcessor(StandardCollectionsProcessor):
         Process C++ initializer_list node.
 
         Filters out entries and delegates to parent StandardCollectionsProcessor.
-
-        Args:
-            node: Tree-sitter node
-            doc: Document
-            source_text: Source text
-            profile: Literal profile
-            budget: Token budget
 
         Returns:
             TrimResult if optimization applied, None if entry or no optimization
