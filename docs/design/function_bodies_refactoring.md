@@ -388,11 +388,81 @@ lg/adapters/optimizations/function_bodies.py # Replaced by package
 
 ---
 
-## 8. Definition of Done
+## 8. Implementation Status
 
-- [ ] All 5 phases completed
+### Completed (as of current session):
+
+- [x] **Phase 1**: Package structure created
+- [x] **Phase 2**: Policy renaming + config model updated
+- [x] **Phase 3-4**: Decision architecture + evaluators implemented
+- [x] **Phase 5**: Token-based trimming (max_tokens) implemented
+- [x] **Tests updated**: All 10 languages updated with new config
+
+### Remaining:
+
+- [ ] Run `./scripts/test_adapters.sh function_bodies all`
+- [ ] Debug and fix any failing tests
+- [ ] Regenerate golden files as needed
+- [ ] Final stable commit
+
+### Key Architectural Decisions Made:
+
+#### Protected Content (replaces hooks)
+
+Instead of hooks for language-specific customization, we introduced `protected_content` field in `FunctionGroup`:
+
+```python
+@dataclass(frozen=True)
+class FunctionGroup:
+    definition: Node
+    element_info: ElementInfo
+    name_node: Optional[Node] = None
+    body_node: Optional[Node] = None
+    protected_content: Optional[Node] = None  # e.g., docstring in Python
+```
+
+- `CodeAnalyzer.find_protected_content(body_node)` returns `None` by default
+- `PythonCodeAnalyzer` overrides to find docstrings
+- All strip/trim logic in `optimizer.py` respects `protected_content`
+- No hooks needed - cleaner architecture
+
+#### Files Created/Modified:
+
+**New package:**
+```
+lg/adapters/optimizations/function_bodies/
+├── __init__.py
+├── optimizer.py      # Main orchestrator with _apply_strip, _apply_trim
+├── decision.py       # FunctionBodyDecision(action, max_tokens)
+├── evaluators.py     # ExceptPatternEvaluator, KeepAnnotatedEvaluator, BasePolicyEvaluator
+└── trimmer.py        # FunctionBodyTrimmer for max_tokens
+```
+
+**Modified:**
+- `lg/adapters/code_model.py` - FunctionBodyPolicy, FunctionBodyConfig
+- `lg/adapters/code_analysis.py` - FunctionGroup.protected_content, find_protected_content()
+- `lg/adapters/python/code_analysis.py` - find_protected_content() for docstrings
+- `lg/adapters/code_base.py` - removed old hook
+
+**Deleted:**
+- `lg/adapters/python/function_bodies.py` - no longer needed
+
+### Git Commits (branch: function-bodies-v2):
+
+1. `docs: add function body optimization refactoring plan`
+2. `WIP: phase 1 - convert function_bodies module to package`
+3. `WIP: phase 2 - update config model with new policies`
+4. `WIP: phase 3-4 - decision architecture with protected_content`
+5. `WIP: phase 5 - token-based trimming (max_tokens)`
+6. `WIP: update function_bodies tests for new config model`
+
+---
+
+## 9. Definition of Done
+
+- [x] All 5 phases completed
 - [ ] All existing tests pass
-- [ ] New tests for all new features
+- [x] New tests for all new features
 - [ ] Documentation updated
 - [ ] No regressions in golden tests
 - [ ] Code review passed
