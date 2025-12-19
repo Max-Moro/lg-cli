@@ -219,6 +219,25 @@ class PythonCodeAnalyzer(CodeAnalyzer):
                     if not element_info.in_public_api:
                         private_elements.append(element_info)
 
+    def find_protected_content(self, body_node: Node) -> Optional[Node]:
+        """
+        Find docstring in Python function body.
+
+        Args:
+            body_node: Function body node (block)
+
+        Returns:
+            Docstring node (expression_statement containing string), or None
+        """
+        for child in body_node.children:
+            if child.type == "expression_statement":
+                for expr_child in child.children:
+                    if expr_child.type == "string":
+                        return child  # Return expression_statement, not just string
+                # First expression_statement without string is not a docstring
+                break
+        return None
+
     def _is_whitespace_or_comment(self, node: Node) -> bool:
         """
         Check if node is whitespace or comment in Python.

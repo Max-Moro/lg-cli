@@ -92,9 +92,3 @@ class PythonAdapter(CodeAdapter[PythonCfg]):
         from .file_heuristics import should_skip_python_file
         return should_skip_python_file(lightweight_ctx, self.cfg.skip_trivial_inits)
 
-    # == HOOKS used by Python adapter ==
-
-    def hook__remove_function_body(self, *args, **kwargs) -> None:
-        from .function_bodies import remove_function_body_with_definition
-        remove_function_body_with_definition(*args, **kwargs)
-

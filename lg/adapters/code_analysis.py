@@ -85,6 +85,7 @@ class FunctionGroup:
     element_info: ElementInfo
     name_node: Optional[Node] = None
     body_node: Optional[Node] = None
+    protected_content: Optional[Node] = None  # e.g., docstring in Python
 
 # ============= Main analyzer =============
 
@@ -257,11 +258,13 @@ class CodeAnalyzer(ABC):
                 func_def = self.find_function_definition_in_parents(node)
                 if func_def and func_def in function_groups:
                     old_group = function_groups[func_def]
+                    protected = self.find_protected_content(node)
                     function_groups[func_def] = FunctionGroup(
                         definition=old_group.definition,
                         element_info=old_group.element_info,
                         name_node=old_group.name_node,
-                        body_node=node
+                        body_node=node,
+                        protected_content=protected
                     )
 
             elif self.is_function_name_capture(capture_name):
@@ -298,6 +301,20 @@ class CodeAnalyzer(ABC):
         """
         functions = self.doc.query("functions")
         return self._group_function_captures(functions)
+
+    def find_protected_content(self, body_node: Node) -> Optional[Node]:
+        """
+        Find protected content in function body that should not be stripped.
+
+        Override in language-specific analyzers (e.g., Python for docstrings).
+
+        Args:
+            body_node: Function body node
+
+        Returns:
+            Node containing protected content, or None if no protection needed
+        """
+        return None
 
     def find_decorators_for_element(self, node: Node) -> List[Node]:
         """

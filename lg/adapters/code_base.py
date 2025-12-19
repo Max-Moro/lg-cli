@@ -98,18 +98,6 @@ class CodeAdapter(BaseAdapter[C], ABC):
         """
         return self.COMMENT_STYLE
 
-    # ============= HOOKS for injecting into optimization process ===========
-
-    def hook__remove_function_body(
-            self,
-            root_optimizer: FunctionBodyOptimizer,
-            context: ProcessingContext,
-            func_def: Optional[Node],
-            body_node: Node,
-            func_type: str
-    ) -> None:
-        """Hook for customizing function body removal."""
-        root_optimizer.remove_function_body(context, body_node, func_type)
 
     # ============= Main pipeline for language optimizer operations ===========
 

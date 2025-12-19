@@ -5,11 +5,14 @@ Removes or minimizes function/method bodies based on configuration.
 
 from __future__ import annotations
 
-from typing import cast, Union
+from typing import cast, List, Tuple, Union
 
-from ..code_model import FunctionBodyConfig
-from ..context import ProcessingContext
-from ..tree_sitter_support import Node
+from .decision import FunctionBodyDecision
+from .evaluators import ExceptPatternEvaluator, KeepAnnotatedEvaluator, BasePolicyEvaluator
+from ...code_analysis import ElementInfo, FunctionGroup
+from ...code_model import FunctionBodyConfig
+from ...context import ProcessingContext
+from ...tree_sitter_support import Node
 
 
 class FunctionBodyOptimizer:
@@ -17,7 +20,7 @@ class FunctionBodyOptimizer:
 
     def __init__(self, adapter):
         """Initialize with parent adapter."""
-        from ..code_base import CodeAdapter
+        from ...code_base import CodeAdapter
         self.adapter = cast(CodeAdapter, adapter)
 
     def apply(self, context: ProcessingContext, cfg: Union[bool, FunctionBodyConfig]) -> None:
@@ -31,109 +34,125 @@ class FunctionBodyOptimizer:
         if not cfg:
             return
 
+        # Normalize config
+        normalized_cfg = self._normalize_config(cfg)
+
+        # Create evaluator pipeline
+        evaluators = self._create_evaluators(normalized_cfg)
+
         # Collect all function and method groups
         function_groups = context.code_analyzer.collect_function_like_elements()
 
         # Process each function group
         for func_def, func_group in function_groups.items():
             if func_group.body_node is None:
-                continue  # Skip if no body found
+                continue
 
-            body_node = func_group.body_node
-            element_type = func_group.element_info.element_type
-
-            start_line, end_line = context.doc.get_line_range(body_node)
+            # Get line count for single-line protection
+            start_line, end_line = context.doc.get_line_range(func_group.body_node)
             lines_count = end_line - start_line + 1
 
-            # Check if this body should be stripped
-            should_strip = self.should_strip_function_body(cfg, func_group.element_info.in_public_api, lines_count)
+            # Evaluate decision
+            decision = self._evaluate(evaluators, func_group.element_info, lines_count)
 
-            if should_strip:
-                self.adapter.hook__remove_function_body(
-                    root_optimizer=self,
-                    context=context,
-                    func_def=func_def,
-                    body_node=body_node,
-                    func_type=element_type
-                )
+            # Apply decision
+            self._apply_decision(context, decision, func_group)
 
-    @staticmethod
-    def remove_function_body(
-            context: ProcessingContext,
-            body_node: Node,
-            func_type: str
-    ) -> None:
-        """
-        Remove function/method body with automatic metrics accounting.
-        """
-        start_char, end_char = context.doc.get_node_range(body_node)
-
-        FunctionBodyOptimizer.apply_function_body_removal(
-            context=context,
-            start_char=start_char,
-            end_char=end_char,
-            func_type=func_type,
-        )
-
-    @staticmethod
-    def apply_function_body_removal(
-            context: ProcessingContext,
-            start_char: int,
-            end_char: int,
-            func_type: str,
-            placeholder_prefix: str = ""
-    ) -> None:
-        """
-        Common helper for applying function body removal with placeholders and metrics.
-
-        Args:
-            context: Processing context
-            start_char: Starting position for removal
-            end_char: Ending position for removal
-            func_type: Function type ("function" or "method")
-            placeholder_prefix: Prefix for placeholder (e.g. "\n    ")
-        """
-        start_line = context.doc.get_line_number(start_char)
-        end_line = context.doc.get_line_number(end_char)
-
-        context.add_placeholder(func_type + "_body", start_char, end_char, start_line, end_line,
-            placeholder_prefix=placeholder_prefix
-        )
-
-    def should_strip_function_body(
-        self,
-        cfg: Union[bool, FunctionBodyConfig],
-        in_public_api: bool,
-        lines_count: int,
-    ) -> bool:
-        """
-        Determine if a function body should be stripped based on configuration.
-
-        Args:
-            cfg: Configuration for function body stripping
-            in_public_api: A function or method is part of a public API
-            lines_count: Number of lines in the function body
-
-        Returns:
-            True if body should be stripped, False otherwise
-        """
+    def _normalize_config(self, cfg: Union[bool, FunctionBodyConfig]) -> FunctionBodyConfig:
+        """Normalize configuration to FunctionBodyConfig."""
         if isinstance(cfg, bool):
-            # For boolean True, apply smart logic:
-            # don't strip single-line bodies (important for arrow functions)
-            if cfg and lines_count <= 1:
-                return False
-            return cfg
+            return FunctionBodyConfig(policy="strip_all")
+        return cfg
 
-        # If config is an object, apply policy-based logic
-        complex_cfg: FunctionBodyConfig = cast(FunctionBodyConfig, cfg)
-        policy = complex_cfg.policy
+    def _create_evaluators(
+        self,
+        cfg: FunctionBodyConfig
+    ) -> Tuple[List, BasePolicyEvaluator]:
+        """Create evaluator pipeline based on configuration."""
+        preservation_evaluators = []
 
-        if policy == "keep_all":
-            return False
-        elif policy == "strip_all":
-            return True
-        elif policy == "keep_public":
-            # Strip bodies only for private functions (keep public)
-            return not in_public_api
+        if cfg.except_patterns:
+            preservation_evaluators.append(ExceptPatternEvaluator(cfg.except_patterns))
 
-        return False
+        if cfg.keep_annotated:
+            preservation_evaluators.append(KeepAnnotatedEvaluator(cfg.keep_annotated))
+
+        base_evaluator = BasePolicyEvaluator(cfg.policy)
+        return preservation_evaluators, base_evaluator
+
+    def _evaluate(
+        self,
+        evaluators: Tuple[List, BasePolicyEvaluator],
+        element: ElementInfo,
+        lines_count: int
+    ) -> FunctionBodyDecision:
+        """Run evaluation pipeline and return final decision."""
+        preservation_evaluators, base_evaluator = evaluators
+
+        # Single-line protection
+        if lines_count <= 1:
+            return FunctionBodyDecision(action="keep")
+
+        # Run preservation evaluators first
+        for evaluator in preservation_evaluators:
+            decision = evaluator.evaluate(element)
+            if decision is not None:
+                return decision
+
+        return base_evaluator.evaluate(element)
+
+    def _apply_decision(
+        self,
+        context: ProcessingContext,
+        decision: FunctionBodyDecision,
+        func_group: FunctionGroup
+    ) -> None:
+        """Apply the decision for a function body."""
+        if decision.action == "keep":
+            return
+
+        if decision.action == "strip":
+            self._apply_strip(context, func_group)
+
+        # "trim" action will be implemented in Phase 5
+
+    def _apply_strip(
+        self,
+        context: ProcessingContext,
+        func_group: FunctionGroup
+    ) -> None:
+        """
+        Strip function body, respecting protected content.
+
+        Protected content (e.g., Python docstrings) is preserved.
+        Everything after protected content is removed.
+        """
+        body_node = func_group.body_node
+        protected = func_group.protected_content
+        func_type = func_group.element_info.element_type
+
+        _, body_end_char = context.doc.get_node_range(body_node)
+
+        if protected is not None:
+            # Strip after protected content
+            protected_end_char = context.doc.byte_to_char_position(protected.end_byte)
+
+            # Nothing to remove if protected content ends at body end
+            if protected_end_char >= body_end_char:
+                return
+
+            start_char = protected_end_char
+        else:
+            # No protected content - strip entire body
+            start_char, _ = context.doc.get_node_range(body_node)
+
+        start_line = context.doc.get_line_number(start_char)
+        end_line = context.doc.get_line_number(body_end_char)
+
+        context.add_placeholder(
+            func_type + "_body",
+            start_char,
+            body_end_char,
+            start_line,
+            end_line
+        )
