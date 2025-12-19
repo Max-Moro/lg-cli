@@ -22,18 +22,18 @@ class TestJavaFunctionBodyOptimization:
 
         assert_golden_match(result, "function_bodies", "basic_strip")
 
-    def test_large_only_method_stripping(self, do_function_bodies):
-        """Test stripping only large methods."""
+    def test_max_tokens_trimming(self, do_function_bodies):
+        """Test trimming method bodies to token budget."""
         adapter = make_adapter(JavaCfg(
             strip_function_bodies=FunctionBodyConfig(
-                mode="large_only",
-                min_lines=4
+                policy="keep_all",
+                max_tokens=20
             )
         ))
 
         result, meta = adapter.process(lctx(do_function_bodies))
 
-        assert_golden_match(result, "function_bodies", "large_only_strip")
+        assert_golden_match(result, "function_bodies", "max_tokens_trim")
 
     def test_class_method_preservation(self):
         """Test that class structure is preserved while stripping method bodies."""
@@ -80,8 +80,8 @@ public class Calculator {
         assert "return 42;" in result
         assert meta.get("java.removed.method_body", 0) == 0
 
-    def test_public_only_method_stripping(self):
-        """Test public_only mode for Java method body stripping."""
+    def test_keep_public_policy(self):
+        """Test keep_public policy - strips private, keeps public."""
         code = '''public class Calculator {
     public int add(int a, int b) {
         int result = a + b;
@@ -97,17 +97,20 @@ public class Calculator {
 }
 '''
 
-        function_config = FunctionBodyConfig(mode="public_only")
-        adapter = make_adapter(JavaCfg(strip_function_bodies=function_config))
+        adapter = make_adapter(JavaCfg(
+            strip_function_bodies=FunctionBodyConfig(policy="keep_public")
+        ))
 
         result, meta = adapter.process(lctx(code))
 
+        # Public method body should be preserved
         assert "public int add(int a, int b)" in result
-        assert "// … method body omitted" in result
-        assert "int result = a + b;" not in result
+        assert "int result = a + b;" in result
 
+        # Private method body should be stripped
         assert "private int multiply(int a, int b)" in result
-        assert "int result = a * b;" in result
+        assert "// … method body omitted" in result
+
 
 
 class TestJavaFunctionBodyEdgeCases:

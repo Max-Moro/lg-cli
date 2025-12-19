@@ -26,19 +26,18 @@ class TestJavaScriptFunctionBodyOptimization:
         # Golden file test
         assert_golden_match(result, "function_bodies", "basic_strip")
 
-    def test_large_only_method_stripping(self, do_function_bodies):
-        """Test stripping only large methods."""
+    def test_max_tokens_trimming(self, do_function_bodies):
+        """Test trimming function bodies to token budget."""
         adapter = make_adapter(JavaScriptCfg(
             strip_function_bodies=FunctionBodyConfig(
-                mode="large_only",
-                min_lines=4
+                policy="keep_all",
+                max_tokens=20
             )
         ))
 
         result, meta = adapter.process(lctx(do_function_bodies))
 
-        # Should have fewer removals than basic test
-        assert_golden_match(result, "function_bodies", "large_only_strip")
+        assert_golden_match(result, "function_bodies", "max_tokens_trim")
 
     def test_arrow_function_handling(self):
         """Test handling of arrow functions."""
@@ -122,36 +121,35 @@ export class Calculator {
         assert meta.get("javascript.removed.function_body", 0) == 0
         assert meta.get("javascript.removed.method_bodies", 0) == 0
 
-    def test_public_only_method_stripping(self):
-        """Test public_only mode for JavaScript method body stripping."""
-        code = '''export class Calculator {
-    add(a, b) {
-        const result = a + b;
-        console.log("Adding", a, b);
-        return result;
-    }
+    def test_keep_public_policy(self):
+        """Test keep_public policy - strips private, keeps public."""
+        code = '''export function publicFunction() {
+    const x = 1;
+    const y = 2;
+    return x + y;
+}
 
-    #multiply(a, b) {
-        const result = a * b;
-        console.log("Multiplying", a, b);
-        return result;
-    }
+function privateFunction() {
+    const a = 10;
+    const b = 20;
+    return a * b;
 }
 '''
 
-        function_config = FunctionBodyConfig(mode="public_only")
-        adapter = make_adapter(JavaScriptCfg(strip_function_bodies=function_config))
+        adapter = make_adapter(JavaScriptCfg(
+            strip_function_bodies=FunctionBodyConfig(policy="keep_public")
+        ))
 
         result, meta = adapter.process(lctx(code))
 
-        # Public method body should be stripped
-        assert "add(a, b)" in result
-        assert "// … method body omitted" in result
-        assert "const result = a + b;" not in result
+        # Exported function body should be preserved
+        assert "export function publicFunction()" in result
+        assert "const x = 1;" in result
 
-        # Private method body should be preserved (it's not public)
-        assert "#multiply(a, b)" in result
-        assert "const result = a * b;" in result
+        # Non-exported function body should be stripped
+        assert "function privateFunction()" in result
+        assert "// … function body omitted" in result
+
 
 
 class TestJavaScriptFunctionBodyEdgeCases:

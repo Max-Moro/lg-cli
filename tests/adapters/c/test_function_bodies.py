@@ -22,18 +22,18 @@ class TestCFunctionBodyOptimization:
 
         assert_golden_match(result, "function_bodies", "basic_strip")
 
-    def test_large_only_function_stripping(self, do_function_bodies):
-        """Test stripping only large functions."""
+    def test_max_tokens_trimming(self, do_function_bodies):
+        """Test trimming function bodies to token budget."""
         adapter = make_adapter(CCfg(
             strip_function_bodies=FunctionBodyConfig(
-                mode="large_only",
-                min_lines=5
+                policy="keep_all",
+                max_tokens=20
             )
         ))
 
         result, meta = adapter.process(lctx(do_function_bodies))
 
-        assert_golden_match(result, "function_bodies", "large_only_strip")
+        assert_golden_match(result, "function_bodies", "max_tokens_trim")
 
     def test_static_function_handling(self):
         """Test handling of static functions."""

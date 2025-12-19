@@ -24,18 +24,18 @@ class TestScalaFunctionBodyOptimization:
 
         assert_golden_match(result, "function_bodies", "basic_strip")
 
-    def test_large_only_method_stripping(self, do_function_bodies):
-        """Test stripping only large methods."""
+    def test_max_tokens_trimming(self, do_function_bodies):
+        """Test trimming function bodies to token budget."""
         adapter = make_adapter(ScalaCfg(
             strip_function_bodies=FunctionBodyConfig(
-                mode="large_only",
-                min_lines=4
+                policy="keep_all",
+                max_tokens=20
             )
         ))
 
         result, meta = adapter.process(lctx(do_function_bodies))
 
-        assert_golden_match(result, "function_bodies", "large_only_strip")
+        assert_golden_match(result, "function_bodies", "max_tokens_trim")
 
     def test_class_method_preservation(self):
         """Test that class structure is preserved while stripping method bodies."""
@@ -77,34 +77,35 @@ class Calculator(val name: String) {
         assert meta.get("scala.removed.function_body", 0) == 0
         assert meta.get("scala.removed.method_bodies", 0) == 0
 
-    def test_public_only_method_stripping(self):
-        """Test public_only mode for Scala method body stripping."""
-        code = '''class Calculator {
-  def add(a: Int, b: Int): Int = {
-    val result = a + b
-    println(s"Adding $a, $b")
-    result
-  }
+    def test_keep_public_policy(self):
+        """Test keep_public policy - strips private, keeps public."""
+        code = '''def publicFunction(): Int = {
+    val x = 1
+    val y = 2
+    x + y
+}
 
-  private def multiply(a: Int, b: Int): Int = {
-    val result = a * b
-    println(s"Multiplying $a, $b")
-    result
-  }
+private def privateFunction(): Int = {
+    val a = 10
+    val b = 20
+    a * b
 }
 '''
 
-        function_config = FunctionBodyConfig(mode="public_only")
-        adapter = make_adapter(ScalaCfg(strip_function_bodies=function_config))
+        adapter = make_adapter(ScalaCfg(
+            strip_function_bodies=FunctionBodyConfig(policy="keep_public")
+        ))
 
         result, meta = adapter.process(lctx(code))
 
-        assert "def add(a: Int, b: Int): Int" in result
-        assert "// … method body omitted" in result
-        assert "val result = a + b" not in result
+        # Public function body should be preserved
+        assert "def publicFunction()" in result
+        assert "val x = 1" in result
 
-        assert "private def multiply(a: Int, b: Int): Int" in result
-        assert "val result = a * b" in result
+        # Private function body should be stripped
+        assert "private def privateFunction()" in result
+        assert "// … function body omitted" in result
+
 
 
 class TestScalaFunctionBodyEdgeCases:

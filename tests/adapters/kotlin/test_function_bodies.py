@@ -26,19 +26,18 @@ class TestKotlinFunctionBodyOptimization:
         # Golden file test
         assert_golden_match(result, "function_bodies", "basic_strip")
     
-    def test_large_only_method_stripping(self, do_function_bodies):
-        """Test stripping only large methods."""
+    def test_max_tokens_trimming(self, do_function_bodies):
+        """Test trimming function bodies to token budget."""
         adapter = make_adapter(KotlinCfg(
             strip_function_bodies=FunctionBodyConfig(
-                mode="large_only",
-                min_lines=4  # Higher threshold for Kotlin
+                policy="keep_all",
+                max_tokens=20
             )
         ))
-        
+
         result, meta = adapter.process(lctx(do_function_bodies))
-        
-        # Should have fewer removals than basic test
-        assert_golden_match(result, "function_bodies", "large_only_strip")
+
+        assert_golden_match(result, "function_bodies", "max_tokens_trim")
     
     def test_lambda_function_handling(self):
         """Test handling of lambda functions."""
@@ -107,46 +106,45 @@ class Calculator(private val name: String) {
     def test_no_stripping_preserves_original(self):
         """Test that disabling stripping preserves original code."""
         code = "fun test(): Int { return 42 }"
-        
+
         adapter = make_adapter(KotlinCfg(strip_function_bodies=False))
-        
+
         result, meta = adapter.process(lctx(code))
-        
+
         # Should be nearly identical to original
         assert "return 42" in result
         assert meta.get("kotlin.removed.function_body", 0) == 0
         assert meta.get("kotlin.removed.method_bodies", 0) == 0
 
-    def test_public_only_method_stripping(self):
-        """Test public_only mode for Kotlin method body stripping."""
-        code = '''class Calculator {
-    fun add(a: Int, b: Int): Int {
-        val result = a + b
-        println("Adding $a, $b")
-        return result
-    }
-    
-    private fun multiply(a: Int, b: Int): Int {
-        val result = a * b
-        println("Multiplying $a, $b")
-        return result
-    }
+    def test_keep_public_policy(self):
+        """Test keep_public policy - strips private, keeps public."""
+        code = '''fun publicFunction(): Int {
+    val x = 1
+    val y = 2
+    return x + y
+}
+
+private fun privateFunction(): Int {
+    val a = 10
+    val b = 20
+    return a * b
 }
 '''
-        
-        function_config = FunctionBodyConfig(mode="public_only")
-        adapter = make_adapter(KotlinCfg(strip_function_bodies=function_config))
-        
+
+        adapter = make_adapter(KotlinCfg(
+            strip_function_bodies=FunctionBodyConfig(policy="keep_public")
+        ))
+
         result, meta = adapter.process(lctx(code))
-        
-        # Public method body should be stripped
-        assert "fun add(a: Int, b: Int): Int" in result
-        assert "// … method body omitted" in result
-        assert "val result = a + b" not in result
-        
-        # Private method body should be preserved (it's not public)
-        assert "private fun multiply(a: Int, b: Int): Int" in result
-        assert "val result = a * b" in result
+
+        # Public function body should be preserved
+        assert "fun publicFunction()" in result
+        assert "val x = 1" in result
+
+        # Private function body should be stripped
+        assert "private fun privateFunction()" in result
+        assert "// … function body omitted" in result
+
 
 
 class TestKotlinFunctionBodyEdgeCases:
