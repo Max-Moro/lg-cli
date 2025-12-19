@@ -9,15 +9,15 @@ import pytest
 from lg.adapters.code_model import BudgetConfig
 from lg.adapters.java import JavaCfg
 from .utils import make_adapter, lctx
-from ..golden_utils import assert_golden_match, load_sample_code
+from ..golden_utils import assert_golden_match
 
 
 BUDGET_STEPS = [970, 950, 868, 787, 761, 697, 401, 293, 213]
 
 
 @pytest.mark.parametrize("budget", BUDGET_STEPS)
-def test_java_budget_progression_golden(budget: int):
-    code = load_sample_code("budget_complex", language="java")
+def test_java_budget_progression_golden(budget: int, do_complex):
+    code = do_complex
 
     cfg = JavaCfg()
     cfg.budget = BudgetConfig(max_tokens_per_file=budget)
@@ -37,9 +37,9 @@ def test_java_budget_progression_golden(budget: int):
     )
 
 
-def test_java_budget_is_monotonic_shrink():
+def test_java_budget_is_monotonic_shrink(do_complex):
     """Verify that result length decreases as budget tightens."""
-    code = load_sample_code("budget_complex", language="java")
+    code = do_complex
 
     lengths: list[int] = []
     for budget in BUDGET_STEPS:

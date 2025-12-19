@@ -11,15 +11,15 @@ import pytest
 from lg.adapters.code_model import BudgetConfig
 from lg.adapters.python import PythonCfg
 from .utils import make_adapter, lctx
-from ..golden_utils import assert_golden_match, load_sample_code
+from ..golden_utils import assert_golden_match
 
 
 BUDGET_STEPS = [829, 797, 706, 635, 621, 593, 494, 373, 285]
 
 
 @pytest.mark.parametrize("budget", BUDGET_STEPS)
-def test_python_budget_progression_golden(budget: int):
-    code = load_sample_code("budget_complex")
+def test_python_budget_progression_golden(budget: int, do_complex):
+    code = do_complex
 
     # Configure adapter with only budget varying
     cfg = PythonCfg()
@@ -43,9 +43,9 @@ def test_python_budget_progression_golden(budget: int):
     )
 
 
-def test_python_budget_is_monotonic_shrink():
+def test_python_budget_is_monotonic_shrink(do_complex):
     """Non-golden functional check: result length should not increase when budget tightens."""
-    code = load_sample_code("budget_complex")
+    code = do_complex
 
     lengths: list[int] = []
     for budget in BUDGET_STEPS:

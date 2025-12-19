@@ -9,15 +9,15 @@ import pytest
 from lg.adapters.code_model import BudgetConfig
 from lg.adapters.go import GoCfg
 from .utils import make_adapter, lctx
-from ..golden_utils import assert_golden_match, load_sample_code
+from ..golden_utils import assert_golden_match
 
 
 BUDGET_STEPS = [927, 914, 767, 628, 615, 522, 492, 349, 284]
 
 
 @pytest.mark.parametrize("budget", BUDGET_STEPS)
-def test_go_budget_progression_golden(budget: int):
-    code = load_sample_code("budget_complex", language="go")
+def test_go_budget_progression_golden(budget: int, do_complex):
+    code = do_complex
 
     cfg = GoCfg()
     cfg.budget = BudgetConfig(max_tokens_per_file=budget)
@@ -37,9 +37,9 @@ def test_go_budget_progression_golden(budget: int):
     )
 
 
-def test_go_budget_is_monotonic_shrink():
+def test_go_budget_is_monotonic_shrink(do_complex):
     """Verify that result length decreases as budget tightens."""
-    code = load_sample_code("budget_complex", language="go")
+    code = do_complex
 
     lengths: list[int] = []
     for budget in BUDGET_STEPS:

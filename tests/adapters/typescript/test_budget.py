@@ -11,15 +11,15 @@ import pytest
 from lg.adapters.code_model import BudgetConfig
 from lg.adapters.typescript import TypeScriptCfg
 from .utils import make_adapter, lctx
-from ..golden_utils import assert_golden_match, load_sample_code
+from ..golden_utils import assert_golden_match
 
 
 BUDGET_STEPS = [642, 608, 560, 481, 460, 393, 365, 269, 189]
 
 
 @pytest.mark.parametrize("budget", BUDGET_STEPS)
-def test_typescript_budget_progression_golden(budget: int):
-    code = load_sample_code("budget_complex")
+def test_typescript_budget_progression_golden(budget: int, do_complex):
+    code = do_complex
 
     cfg = TypeScriptCfg()
     cfg.budget = BudgetConfig(max_tokens_per_file=budget)
@@ -39,8 +39,8 @@ def test_typescript_budget_progression_golden(budget: int):
     )
 
 
-def test_typescript_budget_is_monotonic_shrink():
-    code = load_sample_code("budget_complex")
+def test_typescript_budget_is_monotonic_shrink(do_complex):
+    code = do_complex
 
     lengths: list[int] = []
     for budget in BUDGET_STEPS:

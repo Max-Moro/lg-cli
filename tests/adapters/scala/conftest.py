@@ -39,4 +39,4 @@ def do_public_api():
 @pytest.fixture
 def do_complex():
     """Sample Scala code for testing complex combined optimization."""
-    return load_sample_code("budget_complex", language="scala")
+    return load_sample_code("complex", language="scala")
