@@ -14,12 +14,12 @@ from ..tree_sitter_support import Node
 
 class FunctionBodyOptimizer:
     """Handles function body stripping optimization."""
-    
+
     def __init__(self, adapter):
         """Initialize with parent adapter."""
         from ..code_base import CodeAdapter
         self.adapter = cast(CodeAdapter, adapter)
-    
+
     def apply(self, context: ProcessingContext, cfg: Union[bool, FunctionBodyConfig]) -> None:
         """
         Apply function body stripping based on configuration.
@@ -38,16 +38,16 @@ class FunctionBodyOptimizer:
         for func_def, func_group in function_groups.items():
             if func_group.body_node is None:
                 continue  # Skip if no body found
-                
+
             body_node = func_group.body_node
             element_type = func_group.element_info.element_type
-            
+
             start_line, end_line = context.doc.get_line_range(body_node)
             lines_count = end_line - start_line + 1
-            
+
             # Check if this body should be stripped
             should_strip = self.should_strip_function_body(cfg, func_group.element_info.in_public_api, lines_count)
-            
+
             if should_strip:
                 self.adapter.hook__remove_function_body(
                     root_optimizer=self,
