@@ -163,13 +163,6 @@ class FunctionBodyOptimizer:
             placeholder_prefix=indent_prefix
         )
 
-    def _find_line_start(self, text: str, pos: int) -> int:
-        """Find the start of the line containing position pos."""
-        line_start = text.rfind('\n', 0, pos)
-        if line_start == -1:
-            return 0
-        return line_start + 1
-
     def _apply_trim(
         self,
         context: ProcessingContext,
@@ -217,3 +210,10 @@ class FunctionBodyOptimizer:
                 context.doc.get_line_number(end_char),
                 placeholder_prefix=indent_prefix
             )
+
+    def _find_line_start(self, text: str, pos: int) -> int:
+        """Find the start of the line containing position pos."""
+        line_start = text.rfind('\n', 0, pos)
+        if line_start == -1:
+            return 0
+        return line_start + 1
