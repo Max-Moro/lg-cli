@@ -49,20 +49,16 @@ class FunctionBodyTrimmer:
         Returns:
             Tuple of (start_char, end_char, trimmed_text) or None if no trimming needed
         """
-        body_node = func_group.body_node
-        protected = func_group.protected_content
+        # Use pre-computed strippable range
+        start_byte, end_byte = func_group.strippable_range
+        start_char = context.doc.byte_to_char_position(start_byte)
+        end_char = context.doc.byte_to_char_position(end_byte)
 
-        _, body_end_char = context.doc.get_node_range(body_node)
-
-        if protected is not None:
-            start_char = context.doc.byte_to_char_position(protected.end_byte)
-            if start_char >= body_end_char:
-                return None
-        else:
-            start_char, _ = context.doc.get_node_range(body_node)
+        if start_char >= end_char:
+            return None
 
         # Get text to trim
-        body_text = context.raw_text[start_char:body_end_char]
+        body_text = context.raw_text[start_char:end_char]
         if not body_text.strip():
             return None
 
@@ -78,27 +74,20 @@ class FunctionBodyTrimmer:
 
         if not truncated.strip():
             # If nothing left after trimming, return full range for placeholder
-            return start_char, body_end_char, ""
+            return start_char, end_char, ""
 
-        return start_char, body_end_char, truncated
+        return start_char, end_char, truncated
 
     def _get_strippable_text(
         self,
         context: ProcessingContext,
         func_group: FunctionGroup
     ) -> str:
-        """Get the text portion that can be stripped (excluding protected content)."""
-        body_node = func_group.body_node
-        protected = func_group.protected_content
-
-        _, body_end_char = context.doc.get_node_range(body_node)
-
-        if protected is not None:
-            start_char = context.doc.byte_to_char_position(protected.end_byte)
-        else:
-            start_char, _ = context.doc.get_node_range(body_node)
-
-        return context.raw_text[start_char:body_end_char]
+        """Get the text portion that can be stripped."""
+        start_byte, end_byte = func_group.strippable_range
+        start_char = context.doc.byte_to_char_position(start_byte)
+        end_char = context.doc.byte_to_char_position(end_byte)
+        return context.raw_text[start_char:end_char]
 
     def _trim_to_complete_line(self, text: str) -> str:
         """Remove incomplete last line if truncation happened mid-line."""

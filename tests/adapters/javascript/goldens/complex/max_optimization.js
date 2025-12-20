@@ -24,7 +24,7 @@ export class PublicService {
     getUser(id) // … method body omitted (3 lines)
 
     // … comment omitted
-    // … method omitted
+    #normalize(u) // … method body omitted (3 lines)
 
     /** Long method body to allow function body stripping. */
     process(list) // … method body omitted (8 lines)

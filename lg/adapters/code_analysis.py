@@ -85,7 +85,12 @@ class FunctionGroup:
     element_info: ElementInfo
     name_node: Optional[Node] = None
     body_node: Optional[Node] = None
-    protected_content: Optional[Node] = None  # e.g., docstring in Python
+    # Byte range for stripping (start_byte, end_byte).
+    # Computed by language-specific analyzer, accounts for:
+    # - Protected content (docstrings) that should be preserved
+    # - Leading comments that should be included in stripping
+    # Default (0, 0) means "use entire body_node range"
+    strippable_range: Tuple[int, int] = (0, 0)
 
 # ============= Main analyzer =============
 
@@ -258,13 +263,14 @@ class CodeAnalyzer(ABC):
                 func_def = self.find_function_definition_in_parents(node)
                 if func_def and func_def in function_groups:
                     old_group = function_groups[func_def]
-                    protected = self.find_protected_content(node)
+                    # Compute strippable range using language-specific logic
+                    strip_range = self.compute_strippable_range(func_def, node)
                     function_groups[func_def] = FunctionGroup(
                         definition=old_group.definition,
                         element_info=old_group.element_info,
                         name_node=old_group.name_node,
                         body_node=node,
-                        protected_content=protected
+                        strippable_range=strip_range
                     )
 
             elif self.is_function_name_capture(capture_name):
@@ -275,7 +281,8 @@ class CodeAnalyzer(ABC):
                         definition=old_group.definition,
                         element_info=old_group.element_info,
                         name_node=node,
-                        body_node=old_group.body_node
+                        body_node=old_group.body_node,
+                        strippable_range=old_group.strippable_range
                     )
 
         # Handle cases where there's no explicit definition in captures
@@ -302,19 +309,23 @@ class CodeAnalyzer(ABC):
         functions = self.doc.query("functions")
         return self._group_function_captures(functions)
 
-    def find_protected_content(self, body_node: Node) -> Optional[Node]:
+    def compute_strippable_range(self, func_def: Node, body_node: Node) -> Tuple[int, int]:
         """
-        Find protected content in function body that should not be stripped.
+        Compute the byte range that can be stripped from a function body.
 
-        Override in language-specific analyzers (e.g., Python for docstrings).
+        Default implementation: strip entire body.
+        Override in language-specific analyzers to handle:
+        - Protected content (docstrings) that should be preserved
+        - Leading comments that should be included in stripping
 
         Args:
+            func_def: Function definition node
             body_node: Function body node
 
         Returns:
-            Node containing protected content, or None if no protection needed
+            Tuple of (start_byte, end_byte) for the strippable range
         """
-        return None
+        return (body_node.start_byte, body_node.end_byte)
 
     def find_decorators_for_element(self, node: Node) -> List[Node]:
         """

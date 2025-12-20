@@ -5,7 +5,7 @@ Combines structure analysis and visibility analysis functionality for Python.
 
 from __future__ import annotations
 
-from typing import List, Optional, Set
+from typing import List, Optional, Set, Tuple
 
 from ..code_analysis import CodeAnalyzer, Visibility, ExportStatus, ElementInfo
 from ..tree_sitter_support import Node
@@ -219,24 +219,81 @@ class PythonCodeAnalyzer(CodeAnalyzer):
                     if not element_info.in_public_api:
                         private_elements.append(element_info)
 
-    def find_protected_content(self, body_node: Node) -> Optional[Node]:
+    def compute_strippable_range(self, func_def: Node, body_node: Node) -> Tuple[int, int]:
         """
-        Find docstring in Python function body.
+        Compute strippable range for Python function body.
+
+        Handles:
+        - Leading comments between ':' and body (include in stripping)
+        - Docstrings at start of body (exclude from stripping)
 
         Args:
+            func_def: Function definition node
             body_node: Function body node (block)
 
         Returns:
-            Docstring node (expression_statement containing string), or None
+            Tuple of (start_byte, end_byte) for stripping
         """
+        # Find start position: include leading comments
+        start_byte = self._find_strippable_start(func_def, body_node)
+
+        # Find end position: exclude docstring if present
+        docstring = self._find_docstring(body_node)
+        if docstring is not None:
+            # Start after docstring, at first content on next line
+            start_byte = self._find_next_content_byte(docstring.end_byte)
+
+        return (start_byte, body_node.end_byte)
+
+    def _find_strippable_start(self, func_def: Node, body_node: Node) -> int:
+        """
+        Find where stripping should start, including leading comments.
+
+        In Python, comments between ':' and block are siblings of block,
+        not children. We need to include them in the strippable range.
+        """
+        # Look for comment siblings before body_node
+        earliest_start = body_node.start_byte
+
+        for child in func_def.children:
+            if child.type == "comment":
+                # Check if this comment is between ':' and block
+                if child.start_byte < body_node.start_byte:
+                    earliest_start = min(earliest_start, child.start_byte)
+            elif child == body_node:
+                break
+
+        return earliest_start
+
+    def _find_docstring(self, body_node: Node) -> Optional[Node]:
+        """Find docstring at the start of function body."""
         for child in body_node.children:
             if child.type == "expression_statement":
                 for expr_child in child.children:
                     if expr_child.type == "string":
-                        return child  # Return expression_statement, not just string
+                        return child  # Return expression_statement
                 # First expression_statement without string is not a docstring
                 break
         return None
+
+    def _find_next_content_byte(self, pos: int) -> int:
+        """
+        Find the first non-whitespace character on the next line after position.
+
+        This ensures strippable_range starts at content, allowing optimizer
+        to correctly compute indentation from line_start to range_start.
+        """
+        text = self.doc.text
+        newline_pos = text.find('\n', pos)
+        if newline_pos == -1:
+            return pos
+
+        # Skip past newline and find first non-whitespace
+        i = newline_pos + 1
+        while i < len(text) and text[i] in ' \t':
+            i += 1
+
+        return i
 
     def _is_whitespace_or_comment(self, node: Node) -> bool:
         """

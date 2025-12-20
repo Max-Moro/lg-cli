@@ -54,7 +54,7 @@ src:
             mode: allow
             when:
               - condition: "TAGSET:adapters-optimizations:function-bodies"
-                allow: ["/function_bodies.py"]
+                allow: ["/function_bodies/"]
               - condition: "TAGSET:adapters-optimizations:comments"
                 allow: ["/comments/"]
               - condition: "TAGSET:adapters-optimizations:literals"

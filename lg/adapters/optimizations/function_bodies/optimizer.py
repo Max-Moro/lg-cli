@@ -130,40 +130,45 @@ class FunctionBodyOptimizer:
         func_group: FunctionGroup
     ) -> None:
         """
-        Strip function body, respecting protected content.
+        Strip function body using pre-computed strippable_range.
 
-        Protected content (e.g., Python docstrings) is preserved.
-        Everything after protected content is removed.
+        The strippable_range is computed by the language-specific analyzer
+        and already accounts for protected content (docstrings) and
+        leading comments.
         """
-        body_node = func_group.body_node
-        protected = func_group.protected_content
         func_type = func_group.element_info.element_type
 
-        _, body_end_char = context.doc.get_node_range(body_node)
+        # Get strippable range (in bytes) and convert to chars
+        start_byte, end_byte = func_group.strippable_range
+        start_char = context.doc.byte_to_char_position(start_byte)
+        end_char = context.doc.byte_to_char_position(end_byte)
 
-        if protected is not None:
-            # Strip after protected content
-            protected_end_char = context.doc.byte_to_char_position(protected.end_byte)
+        # Nothing to strip if range is empty
+        if start_char >= end_char:
+            return
 
-            # Nothing to remove if protected content ends at body end
-            if protected_end_char >= body_end_char:
-                return
-
-            start_char = protected_end_char
-        else:
-            # No protected content - strip entire body
-            start_char, _ = context.doc.get_node_range(body_node)
+        # Find line start and compute indentation
+        line_start = self._find_line_start(context.raw_text, start_char)
+        indent_prefix = context.raw_text[line_start:start_char]
 
         start_line = context.doc.get_line_number(start_char)
-        end_line = context.doc.get_line_number(body_end_char)
+        end_line = context.doc.get_line_number(end_char)
 
         context.add_placeholder(
             func_type + "_body",
-            start_char,
-            body_end_char,
+            line_start,  # Start from line beginning
+            end_char,
             start_line,
-            end_line
+            end_line,
+            placeholder_prefix=indent_prefix
         )
+
+    def _find_line_start(self, text: str, pos: int) -> int:
+        """Find the start of the line containing position pos."""
+        line_start = text.rfind('\n', 0, pos)
+        if line_start == -1:
+            return 0
+        return line_start + 1
 
     def _apply_trim(
         self,
@@ -174,7 +179,7 @@ class FunctionBodyOptimizer:
         """
         Trim function body to token budget.
 
-        Keeps protected content, trims code after it to fit budget.
+        Keeps some code, replaces rest with placeholder.
         """
         result = trimmer.trim(context, func_group)
         if result is None:
@@ -183,31 +188,32 @@ class FunctionBodyOptimizer:
         start_char, end_char, trimmed_text = result
         func_type = func_group.element_info.element_type
 
-        if trimmed_text:
-            # Replace with trimmed text + placeholder for removed part
-            start_line = context.doc.get_line_number(start_char)
-            end_line = context.doc.get_line_number(end_char)
+        # Get indent from start of strippable range (consistent with function body)
+        line_start = self._find_line_start(context.raw_text, start_char)
+        indent_prefix = context.raw_text[line_start:start_char]
 
-            # Calculate where trimmed text ends
+        if trimmed_text:
+            # Trimmed text ends at a complete line, placeholder starts on next line
             trimmed_end = start_char + len(trimmed_text)
 
-            # Add placeholder for the removed portion
+            # Placeholder replaces from trimmed_end to end
+            # Since trimmed_text ends with \n, trimmed_end is at line start
+            # Use indent from original body
             context.add_placeholder(
                 func_type + "_body",
                 trimmed_end,
                 end_char,
                 context.doc.get_line_number(trimmed_end),
-                end_line
+                context.doc.get_line_number(end_char),
+                placeholder_prefix=indent_prefix
             )
         else:
-            # Nothing left after trim - full strip
-            start_line = context.doc.get_line_number(start_char)
-            end_line = context.doc.get_line_number(end_char)
-
+            # Nothing left after trim - full strip (same as _apply_strip)
             context.add_placeholder(
                 func_type + "_body",
-                start_char,
+                line_start,
                 end_char,
-                start_line,
-                end_line
+                context.doc.get_line_number(start_char),
+                context.doc.get_line_number(end_char),
+                placeholder_prefix=indent_prefix
             )

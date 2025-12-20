@@ -39,7 +39,7 @@ class PublicService {
     fun getUser(id: Long): User? // … method body omitted (3 lines)
 
     // … comment omitted
-    // … method omitted
+    private fun normalize(u: Map<String, Any?>): User // … method body omitted (7 lines)
 
     /** Long method body to allow function body stripping. */
     fun process(list: List<User>): ApiResponse<List<User>> // … method body omitted (14 lines)
@@ -56,4 +56,4 @@ fun main() // … function body omitted (4 lines)
 // … comment omitted
 data class User(val id: Long, val name: String, val email: String)
 data class ApiResponse<T>(val success: Boolean, val data: T)
-fun toTitle(text: String): String // … function body omitted
+fun toTitle(text: String): String = text.replaceFirstChar { it.uppercase() }

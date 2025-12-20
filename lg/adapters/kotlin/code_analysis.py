@@ -265,13 +265,17 @@ class KotlinCodeAnalyzer(CodeAnalyzer):
 
                 # For lambdas extract body specially
                 body_node = None
+                strip_range = (0, 0)
                 if node.type == "lambda_literal":
                     body_node = self.extract_lambda_body(node)
+                    if body_node:
+                        strip_range = self.compute_strippable_range(node, body_node)
 
                 function_groups[node] = FunctionGroup(
                     definition=node,
                     element_info=element_info,
-                    body_node=body_node
+                    body_node=body_node,
+                    strippable_range=strip_range
                 )
 
         # For normal functions look for bodies using standard logic
@@ -282,11 +286,13 @@ class KotlinCodeAnalyzer(CodeAnalyzer):
                     # Only for function_declaration, not for lambda
                     if func_def.type == "function_declaration":
                         old_group = function_groups[func_def]
+                        strip_range = self.compute_strippable_range(func_def, node)
                         function_groups[func_def] = FunctionGroup(
                             definition=old_group.definition,
                             element_info=old_group.element_info,
                             name_node=old_group.name_node,
-                            body_node=node
+                            body_node=node,
+                            strippable_range=strip_range
                         )
 
             elif self.is_function_name_capture(capture_name):
@@ -297,7 +303,8 @@ class KotlinCodeAnalyzer(CodeAnalyzer):
                         definition=old_group.definition,
                         element_info=old_group.element_info,
                         name_node=node,
-                        body_node=old_group.body_node
+                        body_node=old_group.body_node,
+                        strippable_range=old_group.strippable_range
                     )
 
         return function_groups
@@ -524,4 +531,78 @@ class KotlinCodeAnalyzer(CodeAnalyzer):
                 self.type = "lambda_body"
 
         return LambdaBodyRange(first_statement, last_statement)
+
+    def compute_strippable_range(self, func_def: Node, body_node: Node) -> Tuple[int, int]:
+        """
+        Compute strippable range for Kotlin function body.
+
+        Handles KDoc preservation:
+        - KDoc before function (sibling) is preserved automatically
+        - KDoc inside body is excluded from stripping
+
+        Args:
+            func_def: Function definition node
+            body_node: Function body node
+
+        Returns:
+            Tuple of (start_byte, end_byte) for stripping
+        """
+        # For lambda, strip entire body (no KDoc inside lambda)
+        if func_def.type == "lambda_literal":
+            return (body_node.start_byte, body_node.end_byte)
+
+        # Check for KDoc inside function body
+        kdoc_inside = self._find_kdoc_in_body(body_node)
+
+        if kdoc_inside is None:
+            # No KDoc inside - strip entire body
+            return (body_node.start_byte, body_node.end_byte)
+
+        # KDoc inside body - strip only after it
+        # Find first non-whitespace content after KDoc
+        start_byte = self._find_next_content_byte(kdoc_inside.end_byte)
+        return (start_byte, body_node.end_byte)
+
+    def _find_kdoc_in_body(self, body_node: Node) -> Optional[Node]:
+        """
+        Find KDoc comment at start of function body.
+
+        Args:
+            body_node: function_body node
+
+        Returns:
+            block_comment node with KDoc or None
+        """
+        # Function body in Kotlin is function_body -> block -> statements
+        block_node = None
+        for child in body_node.children:
+            if child.type == "block":
+                block_node = child
+                break
+
+        if not block_node:
+            return None
+
+        # Look for first block_comment in block
+        for child in block_node.children:
+            if child.type in ("{", "}"):
+                continue
+
+            if child.type == "block_comment":
+                text = self.doc.get_node_text(child)
+                if text.startswith("/**"):
+                    return child
+
+            # If we encounter something else - KDoc should be first
+            break
+
+        return None
+
+    def _find_next_content_byte(self, pos: int) -> int:
+        """Find first non-whitespace character after position."""
+        text = self.doc.text
+        i = pos
+        while i < len(text) and text[i] in ' \t\n\r':
+            i += 1
+        return i
 

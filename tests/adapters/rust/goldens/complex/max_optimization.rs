@@ -27,7 +27,7 @@ impl PublicService {
     pub fn get_user(&self, id: i32) -> Option<&User> // … method body omitted (4 lines)
 
     /// normalize is a private helper — should not be visible with public_api_only.
-    // … method omitted
+    fn normalize(&self, u: &mut User) -> &User // … method body omitted (5 lines)
 
     /// Process is a long method body to allow function body stripping.
     pub fn process(&mut self, list: Vec<User>) -> Result<Vec<User>> // … method body omitted (13 lines)

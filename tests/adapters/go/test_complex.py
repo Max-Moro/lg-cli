@@ -23,7 +23,7 @@ def test_go_maximum_optimization(do_complex):
     # Configure adapter with all optimizations enabled
     cfg = GoCfg()
     cfg.public_api_only = True
-    cfg.strip_function_bodies = FunctionBodyConfig(mode="all")
+    cfg.strip_function_bodies = FunctionBodyConfig(policy="strip_all")
     cfg.comment_policy = CommentConfig(policy="keep_first_sentence")
     cfg.imports = ImportConfig(policy="strip_all")
     cfg.literals = LiteralConfig(max_tokens=32)

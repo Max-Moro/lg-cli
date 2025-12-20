@@ -70,13 +70,6 @@ class KotlinAdapter(CodeAdapter[KotlinCfg]):
         from .code_analysis import KotlinCodeAnalyzer
         return KotlinCodeAnalyzer(doc)
 
-    # == Hooks used by Kotlin adapter ==
-
-    def hook__remove_function_body(self, *args, **kwargs) -> None:
-        """Kotlin-specific function body removal with KDoc preservation."""
-        from .function_bodies import remove_function_body_with_kdoc
-        remove_function_body_with_kdoc(*args, **kwargs)
-
     def create_literal_descriptor(self) -> LanguageLiteralDescriptor:
         """Create Kotlin literal descriptor."""
         from .literals import create_kotlin_descriptor

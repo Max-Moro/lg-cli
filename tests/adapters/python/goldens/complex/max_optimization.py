@@ -23,7 +23,7 @@ BIG_DICT = {
 
 def public_function(data: str) -> str:
     """Public API function."""
-    # … function body omitted (3 lines)
+    # … function body omitted (2 lines)
 
 
 # … function omitted
@@ -33,18 +33,18 @@ class PublicClass:
     """Public class exposed to users."""
 
     def __init__(self, name: str):
-        # … method body omitted (3 lines)
+        # … method body omitted (2 lines)
 
     def public_method(self, x: int, y: int) -> int:
         """Add two numbers and return the result."""
-        # … method body omitted (2 lines)
+        # … method body omitted
 
     # … method omitted
 
     @property
     def public_property(self) -> str:
         """Public property."""
-        # … method body omitted (2 lines)
+        # … method body omitted
 
     # … method omitted
 
@@ -54,12 +54,12 @@ class PublicClass:
 
 def huge_processing_pipeline(values: List[int]) -> Tuple[int, int, int]:
     """A long body that can be stripped when budgets are tight."""
-    # … function body omitted (10 lines)
+    # … function body omitted (9 lines)
 
 
 def another_long_function():
     """Another long function body to enable stripping heuristics."""
-    # … function body omitted (5 lines)
+    # … function body omitted (4 lines)
 
 
 if __name__ == "__main__":

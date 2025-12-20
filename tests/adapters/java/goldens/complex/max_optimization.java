@@ -41,7 +41,7 @@ public class PublicService {
     public User getUser(long id) // … method body omitted (3 lines)
 
     // … comment omitted
-    // … method omitted
+    private User normalize(Map<String, Object> u) // … method body omitted (7 lines)
 
     /** Long method body to allow function body stripping. */
     public ApiResponse<List<User>> process(List<User> list) // … method body omitted (12 lines)
@@ -52,7 +52,7 @@ public class PublicService {
 public class Functions {
     public static String publicFunction(String name) // … method body omitted (4 lines)
 
-    // … method omitted
+    private static List<String> privateFunction(List<String> data) // … method body omitted (6 lines)
 
     public static void main(String[] args) // … method body omitted (4 lines)
 }

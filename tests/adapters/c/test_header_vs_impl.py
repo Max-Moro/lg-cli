@@ -46,7 +46,7 @@ typedef struct {
 '''
 
         cfg = CCfg(
-            strip_function_bodies=FunctionBodyConfig(mode="non_public"),
+            strip_function_bodies=FunctionBodyConfig(policy="keep_public"),
             comment_policy="keep_first_sentence",
         )
 
@@ -99,7 +99,7 @@ int calculate_sum(int a, int b) {
 '''
 
         cfg = CCfg(
-            strip_function_bodies=FunctionBodyConfig(mode="all"),
+            strip_function_bodies=FunctionBodyConfig(policy="strip_all"),
             comment_policy="strip_all",
             imports=ImportConfig(policy="strip_local"),
         )
@@ -141,7 +141,7 @@ int complex_operation(int x, int y);
 #endif /* UTILS_H */
 '''
 
-        cfg = CCfg(strip_function_bodies=FunctionBodyConfig(mode="non_public"))
+        cfg = CCfg(strip_function_bodies=FunctionBodyConfig(policy="keep_public"))
 
         adapter = make_adapter(cfg)
 

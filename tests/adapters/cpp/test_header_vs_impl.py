@@ -47,7 +47,7 @@ struct Data {
 '''
 
         cfg = CppCfg(
-            strip_function_bodies=FunctionBodyConfig(mode="non_public"),
+            strip_function_bodies=FunctionBodyConfig(policy="keep_public"),
             comment_policy="keep_first_sentence",
         )
 
@@ -100,7 +100,7 @@ int calculateSum(int a, int b) {
 '''
 
         cfg = CppCfg(
-            strip_function_bodies=FunctionBodyConfig(mode="all"),
+            strip_function_bodies=FunctionBodyConfig(policy="strip_all"),
             comment_policy="strip_all",
             imports=ImportConfig(policy="strip_local"),
         )
@@ -142,7 +142,7 @@ int complexOperation(int x, int y);
 #endif // UTILS_HPP
 '''
 
-        cfg = CppCfg(strip_function_bodies=FunctionBodyConfig(mode="non_public"))
+        cfg = CppCfg(strip_function_bodies=FunctionBodyConfig(policy="keep_public"))
 
         adapter = make_adapter(cfg)
 
@@ -188,7 +188,7 @@ T max(T a, T b) {
 '''
 
         cfg = CppCfg(
-            strip_function_bodies=FunctionBodyConfig(mode="non_public"),
+            strip_function_bodies=FunctionBodyConfig(policy="keep_public"),
             comment_policy="strip_all",
         )
 
@@ -324,7 +324,7 @@ public:
 };
 '''
 
-        cfg = CppCfg(strip_function_bodies=FunctionBodyConfig(mode="non_public"))
+        cfg = CppCfg(strip_function_bodies=FunctionBodyConfig(policy="keep_public"))
 
         adapter = make_adapter(cfg)
 

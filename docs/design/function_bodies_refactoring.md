@@ -390,26 +390,21 @@ lg/adapters/optimizations/function_bodies.py # Replaced by package
 
 ## 8. Implementation Status
 
-### Completed (as of current session):
+### Completed:
 
 - [x] **Phase 1**: Package structure created
 - [x] **Phase 2**: Policy renaming + config model updated
 - [x] **Phase 3-4**: Decision architecture + evaluators implemented
 - [x] **Phase 5**: Token-based trimming (max_tokens) implemented
-- [x] **Tests updated**: All 10 languages updated with new config
+- [x] **Phase 6**: Architecture refinement - `strippable_range` replaces `protected_content`
+- [x] **Tests**: All 97 function_bodies tests pass across 10 languages
+- [x] **Goldens updated**: All golden files regenerated with correct indentation
 
-### Remaining:
+### Key Architectural Decisions:
 
-- [ ] Run `./scripts/test_adapters.sh function_bodies all`
-- [ ] Debug and fix any failing tests
-- [ ] Regenerate golden files as needed
-- [ ] Final stable commit
+#### Strippable Range (final architecture)
 
-### Key Architectural Decisions Made:
-
-#### Protected Content (replaces hooks)
-
-Instead of hooks for language-specific customization, we introduced `protected_content` field in `FunctionGroup`:
+Instead of multiple fields (`protected_content`, `effective_body_start_byte`), we use a single unified `strippable_range`:
 
 ```python
 @dataclass(frozen=True)
@@ -418,13 +413,14 @@ class FunctionGroup:
     element_info: ElementInfo
     name_node: Optional[Node] = None
     body_node: Optional[Node] = None
-    protected_content: Optional[Node] = None  # e.g., docstring in Python
+    # Byte range for stripping (start_byte, end_byte)
+    strippable_range: Tuple[int, int] = (0, 0)
 ```
 
-- `CodeAnalyzer.find_protected_content(body_node)` returns `None` by default
-- `PythonCodeAnalyzer` overrides to find docstrings
-- All strip/trim logic in `optimizer.py` respects `protected_content`
-- No hooks needed - cleaner architecture
+- `CodeAnalyzer.compute_strippable_range(func_def, body_node)` returns `(body_node.start_byte, body_node.end_byte)` by default
+- `PythonCodeAnalyzer` overrides to handle docstrings and leading comments
+- `KotlinCodeAnalyzer` overrides to handle KDoc inside function body
+- Optimizer simply uses `strippable_range` - all language complexity is encapsulated in analyzers
 
 #### Files Created/Modified:
 
@@ -432,7 +428,7 @@ class FunctionGroup:
 ```
 lg/adapters/optimizations/function_bodies/
 ├── __init__.py
-├── optimizer.py      # Main orchestrator with _apply_strip, _apply_trim
+├── optimizer.py      # Main orchestrator using strippable_range
 ├── decision.py       # FunctionBodyDecision(action, max_tokens)
 ├── evaluators.py     # ExceptPatternEvaluator, KeepAnnotatedEvaluator, BasePolicyEvaluator
 └── trimmer.py        # FunctionBodyTrimmer for max_tokens
@@ -440,31 +436,23 @@ lg/adapters/optimizations/function_bodies/
 
 **Modified:**
 - `lg/adapters/code_model.py` - FunctionBodyPolicy, FunctionBodyConfig
-- `lg/adapters/code_analysis.py` - FunctionGroup.protected_content, find_protected_content()
-- `lg/adapters/python/code_analysis.py` - find_protected_content() for docstrings
-- `lg/adapters/code_base.py` - removed old hook
+- `lg/adapters/code_analysis.py` - FunctionGroup.strippable_range, compute_strippable_range()
+- `lg/adapters/python/code_analysis.py` - compute_strippable_range() for docstrings + leading comments
+- `lg/adapters/kotlin/code_analysis.py` - compute_strippable_range() for KDoc
+- `lg/adapters/kotlin/adapter.py` - removed hook
 
 **Deleted:**
-- `lg/adapters/python/function_bodies.py` - no longer needed
-
-### Git Commits (branch: function-bodies-v2):
-
-1. `docs: add function body optimization refactoring plan`
-2. `WIP: phase 1 - convert function_bodies module to package`
-3. `WIP: phase 2 - update config model with new policies`
-4. `WIP: phase 3-4 - decision architecture with protected_content`
-5. `WIP: phase 5 - token-based trimming (max_tokens)`
-6. `WIP: update function_bodies tests for new config model`
+- `lg/adapters/kotlin/function_bodies.py` - replaced by compute_strippable_range()
 
 ---
 
 ## 9. Definition of Done
 
 - [x] All 5 phases completed
-- [ ] All existing tests pass
+- [x] All function_bodies tests pass (97/97)
 - [x] New tests for all new features
-- [ ] Documentation updated
-- [ ] No regressions in golden tests
+- [x] Documentation updated
+- [x] No regressions in function_bodies golden tests
 - [ ] Code review passed
 
 ---

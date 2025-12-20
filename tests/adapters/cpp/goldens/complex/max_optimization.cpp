@@ -41,7 +41,7 @@ public:
 
 private:
     // … comment omitted
-    // … method omitted
+    void* normalize(std::map<std::string, std::string> u) // … method body omitted (4 lines)
 
 public:
     /** Long method body to allow function body stripping. */
@@ -58,7 +58,7 @@ std::string publicFunction(const std::string& name) // … function body omitted
 
 // … comment omitted
 namespace {
-    // … function omitted
+    std::vector<std::string> privateFunction(const std::vector<std::string>& data) // … function body omitted (8 lines)
 }
 
 int main() // … function body omitted (8 lines)

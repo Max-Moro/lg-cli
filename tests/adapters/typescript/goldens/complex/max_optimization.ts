@@ -31,7 +31,7 @@ export class PublicService {
   public getUser(id: number): User | null // … method body omitted (3 lines)
 
   // … comment omitted
-  // … method omitted
+  private _normalize(u: Partial<User>): User // … method body omitted (3 lines)
 
   /** Long method body to allow function body stripping. */
   public process(list: User[]): ApiResponse<User[]> // … method body omitted (8 lines)

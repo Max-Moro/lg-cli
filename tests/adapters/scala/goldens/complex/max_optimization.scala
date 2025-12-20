@@ -40,7 +40,7 @@ class PublicService {
   def getUser(id: Long): Option[User] = // … method body omitted (3 lines)
 
   // … comment omitted
-  // … method omitted
+  private def normalize(u: Map[String, Any]): User = // … method body omitted (7 lines)
 
   /** Long method body to allow function body stripping. */
   def process(list: List[User]): ApiResponse[List[User]] = // … method body omitted (14 lines)
@@ -51,7 +51,7 @@ class PublicService {
 object Functions {
   def publicFunction(name: String): String = // … method body omitted (4 lines)
 
-  // … method omitted
+  private def privateFunction(data: List[String]): List[String] = // … method body omitted (4 lines)
 }
 
 object Main extends App {
