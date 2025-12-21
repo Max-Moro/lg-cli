@@ -10,7 +10,7 @@ from enum import Enum
 from typing import Dict, List, Tuple, Any
 
 from .comment_style import CommentStyle
-from .tree_sitter_support import Node
+from .tree_sitter_support import Node, TreeSitterDocument
 
 
 class PlaceholderAction(Enum):
@@ -199,8 +199,8 @@ class PlaceholderManager:
     Provides unified API and handles collapsing.
     """
 
-    def __init__(self, raw_text: str, comment_style: CommentStyle, placeholder_style: str):
-        self.raw_text = raw_text
+    def __init__(self, doc: TreeSitterDocument, comment_style: CommentStyle, placeholder_style: str):
+        self.doc = doc
         self.comment_style = comment_style
         self.placeholder_style = placeholder_style
         self.placeholders: List[PlaceholderSpec] = []
@@ -216,7 +216,6 @@ class PlaceholderManager:
         action: PlaceholderAction = PlaceholderAction.OMIT,
         placeholder_prefix: str = "",
         count: int = 1,
-        lines_removed: int = 0,
     ) -> None:
         """
         Add placeholder with explicit coordinates.
@@ -228,8 +227,10 @@ class PlaceholderManager:
             action: OMIT for complete removal, TRUNCATE for partial reduction
             placeholder_prefix: Indentation prefix for placeholder text
             count: Number of elements (for merging similar placeholders)
-            lines_removed: Explicit line count (only for body types)
         """
+        # Calculate lines_removed automatically
+        lines_removed = self.doc.count_removed_lines(start_char, end_char)
+
         spec = PlaceholderSpec(
             start_char=start_char,
             end_char=end_char,
@@ -245,7 +246,6 @@ class PlaceholderManager:
         self,
         element_type: str,
         node: Node,
-        doc,
         *,
         action: PlaceholderAction = PlaceholderAction.OMIT,
         count: int = 1,
@@ -256,17 +256,21 @@ class PlaceholderManager:
         Args:
             element_type: Type of element
             node: Tree-sitter node to replace
-            doc: TreeSitterDocument for coordinate conversion
             action: OMIT or TRUNCATE
             count: Number of elements
         """
-        start_char, end_char = doc.get_node_range(node)
+        start_char, end_char = self.doc.get_node_range(node)
+
+        # Calculate lines_removed automatically
+        lines_removed = self.doc.count_removed_lines(start_char, end_char)
+
         spec = PlaceholderSpec(
             start_char=start_char,
             end_char=end_char,
             element_type=element_type,
             action=action,
             count=count,
+            lines_removed=lines_removed,
         )
         self._add_placeholder_with_priority(spec)
 
@@ -333,7 +337,7 @@ class PlaceholderManager:
         2. Add count if > 1 (except for comments/docstrings - they represent semantic units)
         3. Add element type (pluralized if count > 1)
         4. Add action word (omitted/truncated)
-        5. Add lines suffix for body types with lines_removed > 1
+        5. Add lines suffix when count == 1 and lines_removed > 1
         """
         parts = ["…"]
 
@@ -353,8 +357,8 @@ class PlaceholderManager:
         # Action word
         parts.append(spec.action.value)
 
-        # Lines suffix (only for body types with explicit lines_removed > 1)
-        if spec.lines_removed > 1 and element_type.endswith("_body"):
+        # If the elements are not single-line, the lines suffix is added
+        if spec.lines_removed > 1 and spec.lines_removed != spec.count:
             parts.append(f"({spec.lines_removed} lines)")
 
         return " ".join(parts)
@@ -404,7 +408,7 @@ class PlaceholderManager:
 
         for placeholder in sorted_placeholders[1:]:
             # Check if can merge with current group
-            if current_group and current_group[-1].can_merge_with(placeholder, self.raw_text):
+            if current_group and current_group[-1].can_merge_with(placeholder, self.doc.text):
                 current_group.append(placeholder)
             else:
                 # Finalize current group
@@ -425,7 +429,7 @@ class PlaceholderManager:
         # Sequentially merge all placeholders in group
         result = group[0]
         for placeholder in group[1:]:
-            result = result.merge_with(placeholder, self.raw_text)
+            result = result.merge_with(placeholder, self.doc.text)
 
         return result
 
@@ -445,21 +449,3 @@ class PlaceholderManager:
             stats["placeholders_by_type"][etype] += spec.count
 
         return stats
-
-
-# ============= Factory functions =============
-
-def create_placeholder_manager(
-    raw_text: str,
-    comment_style: CommentStyle,
-    placeholder_style: str
-) -> PlaceholderManager:
-    """
-    Create PlaceholderManager from CommentStyle.
-
-    Args:
-        raw_text: source text of document
-        comment_style: CommentStyle instance with comment markers
-        placeholder_style: Placeholder style
-    """
-    return PlaceholderManager(raw_text, comment_style, placeholder_style)

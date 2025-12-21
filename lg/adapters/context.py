@@ -10,7 +10,7 @@ from typing import Optional
 
 from .code_analysis import CodeAnalyzer
 from .metrics import MetricsCollector
-from .placeholders import PlaceholderManager, PlaceholderAction, create_placeholder_manager
+from .placeholders import PlaceholderManager, PlaceholderAction
 from .range_edits import RangeEditor
 from .tree_sitter_support import TreeSitterDocument, Node
 from ..stats import TokenService
@@ -106,7 +106,6 @@ class ProcessingContext(LightState):
         action: PlaceholderAction = PlaceholderAction.OMIT,
         placeholder_prefix: str = "",
         count: int = 1,
-        lines_removed: int = 0,
     ) -> None:
         """
         Add placeholder with explicit coordinates.
@@ -118,14 +117,12 @@ class ProcessingContext(LightState):
             action: OMIT for complete removal, TRUNCATE for partial reduction
             placeholder_prefix: Indentation prefix for placeholder text
             count: Number of elements
-            lines_removed: Explicit line count (only for body types)
         """
         self.placeholders.add_placeholder(
             element_type, start_char, end_char,
             action=action,
             placeholder_prefix=placeholder_prefix,
             count=count,
-            lines_removed=lines_removed,
         )
         self.metrics.mark_element_removed(element_type, count)
         self.metrics.mark_placeholder_inserted()
@@ -148,7 +145,7 @@ class ProcessingContext(LightState):
             count: Number of elements
         """
         self.placeholders.add_placeholder_for_node(
-            element_type, node, self.doc,
+            element_type, node,
             action=action,
             count=count,
         )
@@ -179,8 +176,8 @@ class ProcessingContext(LightState):
         code_analyzer = adapter.create_code_analyzer(doc)
 
         # Create PlaceholderManager with settings from adapter
-        placeholders = create_placeholder_manager(
-            lightweight_ctx.raw_text,
+        placeholders = PlaceholderManager(
+            doc,
             adapter.comment_style,
             adapter.cfg.placeholders.style,
         )

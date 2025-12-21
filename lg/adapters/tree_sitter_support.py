@@ -310,3 +310,21 @@ class TreeSitterDocument(ABC):
                 continue
         # If couldn't decode any slice, return 0
         return 0
+
+    def count_removed_lines(self, start_char: int, end_char: int) -> int:
+        """
+        Count non-empty lines in the text range.
+
+        Args:
+            start_char: Start position in characters
+            end_char: End position in characters
+
+        Returns:
+            Number of non-empty lines in the range
+        """
+        if start_char >= end_char:
+            return 0
+
+        removed_text = self.text[start_char:end_char]
+        lines = removed_text.split('\n')
+        return sum(1 for line in lines if line.strip())

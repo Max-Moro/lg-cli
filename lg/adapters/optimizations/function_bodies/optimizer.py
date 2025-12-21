@@ -159,16 +159,12 @@ class FunctionBodyOptimizer:
         if stripped_text.startswith('\n'):
             placeholder_prefix = "\n" + indent_prefix
 
-        # Calculate actual lines removed (non-empty content lines)
-        lines_removed = self._count_content_lines(stripped_text)
-
         context.add_placeholder(
             func_type + "_body",
             start_char,
             end_char,
             action=PlaceholderAction.OMIT,
             placeholder_prefix=placeholder_prefix,
-            lines_removed=lines_removed,
         )
 
     def _get_content_lines_count(self, context: ProcessingContext, func_group: FunctionGroup) -> int:
@@ -257,7 +253,6 @@ class FunctionBodyOptimizer:
             result.placeholder_end_char,
             action=PlaceholderAction.TRUNCATE,
             placeholder_prefix=placeholder_prefix,
-            lines_removed=result.lines_removed,
         )
 
     def _find_line_start(self, text: str, pos: int) -> int:

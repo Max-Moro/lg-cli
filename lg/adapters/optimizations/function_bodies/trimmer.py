@@ -23,8 +23,6 @@ class TrimResult:
     kept_suffix: str
     # Indentation for the placeholder
     indent: str
-    # Number of lines removed (for placeholder text)
-    lines_removed: int
 
 
 class FunctionBodyTrimmer:
@@ -113,16 +111,12 @@ class FunctionBodyTrimmer:
         if prefix_end_char >= placeholder_end_char:
             return None
 
-        # Count removed lines and check if there's actual content to remove
+        # Check if there's actual content to remove
         removed_text = context.raw_text[prefix_end_char:placeholder_end_char]
 
         # If removed text is only whitespace, no need for placeholder
         if not removed_text.strip():
             return None
-
-        lines_removed = removed_text.count('\n')
-        if removed_text and not removed_text.endswith('\n'):
-            lines_removed += 1
 
         # Compute indentation from first content line
         indent = self._compute_indent(body_text)
@@ -132,8 +126,7 @@ class FunctionBodyTrimmer:
             placeholder_end_char=placeholder_end_char,
             kept_prefix=prefix_text,
             kept_suffix=suffix_text,
-            indent=indent,
-            lines_removed=lines_removed
+            indent=indent
         )
 
     def _compute_suffix(
