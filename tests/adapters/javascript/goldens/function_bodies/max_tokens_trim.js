@@ -45,7 +45,7 @@ const simpleArrow = () => "simple";
 
 const complexArrow = (data) => {
     const processed = data
-    // … arrow_function_body_truncated omitted (4 lines)
+    // … arrow function body truncated (4 lines)
 
     return processed.join(', ');
 };
@@ -53,7 +53,7 @@ const complexArrow = (data) => {
 const asyncArrow = async (url) => {
     try {
         const response = await fetch(url);
-    // … arrow_function_body_truncated omitted (11 lines)
+    // … arrow function body truncated (11 lines)
 };
 
 // Function with multiple overloads (via JSDoc)

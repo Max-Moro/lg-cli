@@ -22,45 +22,45 @@ struct Calculator {
 
 impl Calculator {
     fn new() -> Self {
-        // … method body omitted (3 lines)
+        Self::with_name("default")
     }
 
     fn with_name(name: &str) -> Self {
-        // … method body omitted (6 lines)
+        // … method body omitted (4 lines)
     }
 
     fn add(&mut self, a: i32, b: i32) -> i32 {
-        // … method body omitted (7 lines)
+        // … method body omitted (5 lines)
     }
 
     fn multiply(&mut self, a: i32, b: i32) -> i32 {
-        // … method body omitted (6 lines)
+        // … method body omitted (4 lines)
     }
 
     fn get_history(&self) -> Vec<String> {
-        // … method body omitted (3 lines)
+        self.history.clone()
     }
 
     fn validate_input(&self, value: i32) -> bool {
-        // … method body omitted (17 lines)
+        // … method body omitted (12 lines)
     }
 }
 
 fn process_user_data(users: Vec<User>) -> ProcessingResult {
-    // … function body omitted (16 lines)
+    // … function body omitted (12 lines)
 }
 
 fn process_array<T, F>(items: Vec<T>, processor: F) -> Vec<T>
 where
     F: Fn(T) -> T,
 {
-    // … function body omitted (10 lines)
+    // … function body omitted (6 lines)
 }
 
 fn filter_positive(numbers: Vec<i32>) -> Vec<i32> {
-    // … function body omitted (3 lines)
+    numbers.into_iter().filter(|&n| n > 0).collect()
 }
 
 fn main() {
-    // … function body omitted (21 lines)
+    // … function body omitted (17 lines)
 }

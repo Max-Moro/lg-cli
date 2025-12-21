@@ -1,14 +1,14 @@
 
 export class Calculator {
     constructor(name) {
-        // … method body omitted (4 lines)
+        // … method body omitted (2 lines)
     }
 
     add(a, b) {
-        // … method body omitted (5 lines)
+        // … method body omitted (3 lines)
     }
 
     getHistory() {
-        // … method body omitted (3 lines)
+        return [...this.history];
     }
 }

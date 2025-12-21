@@ -42,19 +42,19 @@ public class Calculator {
     }
 
     public int add(int a, int b) {
-        // … method body omitted (6 lines)
+        // … method body omitted (4 lines)
     }
 
     public int multiply(int a, int b) {
-        // … method body omitted (5 lines)
-    }
-
-    public List<String> getHistory() {
         // … method body omitted (3 lines)
     }
 
+    public List<String> getHistory() {
+        return new ArrayList<>(history);
+    }
+
     private boolean validateInput(int value) {
-        // … method body omitted (11 lines)
+        // … method body omitted (7 lines)
     }
 }
 
@@ -73,14 +73,14 @@ public class ProcessingResult {
 
 public class UserProcessor {
     public static ProcessingResult processUserData(List<User> users) {
-        // … method body omitted (16 lines)
+        // … method body omitted (12 lines)
     }
 }
 
 // Generic function
 public class ArrayProcessor {
     public static <T> List<T> processArray(List<T> items, Processor<T> processor) {
-        // … method body omitted (14 lines)
+        // … method body omitted (10 lines)
     }
 }
 
@@ -92,6 +92,6 @@ interface Processor<T> {
 // Default export function equivalent
 public class Main {
     public static void main(String[] args) {
-        // … method body omitted (13 lines)
+        // … method body omitted (9 lines)
     }
 }

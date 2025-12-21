@@ -6,10 +6,10 @@ public:
     Calculator() : value(0) {}
 
     int add(int x) {
-        // … method body omitted (4 lines)
+        // … method body omitted (2 lines)
     }
 
     int get() const {
-        // … method body omitted (3 lines)
+        return value;
     }
 };

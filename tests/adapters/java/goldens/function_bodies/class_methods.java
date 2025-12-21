@@ -8,10 +8,10 @@ public class Calculator {
     }
 
     public int add(int a, int b) {
-        // … method body omitted (5 lines)
+        // … method body omitted (3 lines)
     }
 
     public List<String> getHistory() {
-        // … method body omitted (3 lines)
+        return new ArrayList<>(history);
     }
 }

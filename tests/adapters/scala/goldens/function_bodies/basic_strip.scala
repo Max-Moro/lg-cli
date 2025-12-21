@@ -20,17 +20,17 @@ class Calculator(val name: String = "default") {
     scala.collection.mutable.ListBuffer.empty
 
   def add(a: Int, b: Int): Int = {
-    // … method body omitted (6 lines)
+    // … method body omitted (4 lines)
   }
 
   def multiply(a: Int, b: Int): Int = {
-    // … method body omitted (5 lines)
+    // … method body omitted (3 lines)
   }
 
   def getHistory: List[String] = history.toList
 
   private def validateInput(value: Int): Boolean = {
-    // … method body omitted (11 lines)
+    // … method body omitted (7 lines)
   }
 }
 
@@ -41,7 +41,7 @@ case class ProcessingResult(
 
 object UserProcessor {
   def processUserData(users: List[User]): ProcessingResult = {
-    // … method body omitted (9 lines)
+    // … method body omitted (6 lines)
   }
 }
 
@@ -50,13 +50,13 @@ def processValue(value: Any): String = // … function body omitted (6 lines)
 
 // Higher-order function
 def processArray[T](items: List[T])(processor: T => T): List[T] = {
-  // … function body omitted (11 lines)
+  // … function body omitted (9 lines)
 }
 
 // Implicit class (extension method)
 implicit class StringOps(val s: String) extends AnyVal {
   def toTitleCase: String = {
-    // … method body omitted (5 lines)
+    // … method body omitted (3 lines)
   }
 }
 
@@ -78,7 +78,7 @@ object Main extends App {
 // Companion object
 class Service private(val config: String) {
   def process(): Unit = {
-    // … method body omitted (3 lines)
+    println(s"Processing with config: $config")
   }
 }
 

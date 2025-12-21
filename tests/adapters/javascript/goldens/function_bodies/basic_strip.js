@@ -4,39 +4,39 @@
 
 class Calculator {
     constructor(name = "default") {
-        // … method body omitted (4 lines)
+        // … method body omitted (2 lines)
     }
 
     add(a, b) {
-        // … method body omitted (6 lines)
+        // … method body omitted (4 lines)
     }
 
     multiply(a, b) {
-        // … method body omitted (5 lines)
-    }
-
-    getHistory() {
         // … method body omitted (3 lines)
     }
 
+    getHistory() {
+        return [...this.history];
+    }
+
     #validateInput(value) {
-        // … method body omitted (11 lines)
+        // … method body omitted (7 lines)
     }
 }
 
 export function processUserData(users) {
-    // … function body omitted (13 lines)
+    // … function body omitted (9 lines)
 }
 
 // Arrow functions for testing different function types
 const simpleArrow = () => "simple";
 
 const complexArrow = (data) => {
-    // … arrow_function_body omitted (8 lines)
+    // … arrow_function_body omitted (5 lines)
 };
 
 const asyncArrow = async (url) => {
-    // … arrow_function_body omitted (15 lines)
+    // … arrow_function_body omitted (11 lines)
 };
 
 // Function with multiple overloads (via JSDoc)
@@ -51,7 +51,7 @@ const asyncArrow = async (url) => {
  * @returns {number}
  */
 function overloadedFunction(value) {
-    // … function body omitted (7 lines)
+    // … function body omitted (5 lines)
 }
 
 // Generic function (via JSDoc)
@@ -62,10 +62,10 @@ function overloadedFunction(value) {
  * @returns {T[]}
  */
 function processArray(items, processor) {
-    // … function body omitted (14 lines)
+    // … function body omitted (10 lines)
 }
 
 // Default export function
 export default function main() {
-    // … function body omitted (13 lines)
+    // … function body omitted (9 lines)
 }
