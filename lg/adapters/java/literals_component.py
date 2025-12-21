@@ -99,8 +99,6 @@ class JavaDoubleBraceProcessor(BlockInitProcessorBase):
             saved_tokens=saved_tokens,
             elements_kept=len(keep_stmts),
             elements_removed=len(remove_stmts),
-            comment_text=None,
-            comment_position=None,
         )
 
     def _find_statements_block(

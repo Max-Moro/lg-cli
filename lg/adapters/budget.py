@@ -34,9 +34,9 @@ class BudgetController(Generic[Cc]):
     Controller that simulates optimizations in a sandbox to select an
     effective configuration that respects a per-file token budget.
 
-    In sandbox mode, placeholders are disabled (style = "none") to avoid
-    adding any extra tokens while we measure savings. The controller never
-    mutates the real ProcessingContext or calls CodeAdapter._apply_optimizations.
+    In sandbox mode, we use raw deletions to measure savings without generating
+    placeholder text. The controller never mutates the real ProcessingContext
+    or calls CodeAdapter._apply_optimizations.
     It only returns an adjusted CodeCfg and budget metrics.
     """
 
@@ -218,13 +218,12 @@ class BudgetController(Generic[Cc]):
         return [s for s in self.order if not already_covers(s)]
 
     def _make_sandbox_context(self, lightweight_ctx, text: str) -> ProcessingContext:
-        # Build ProcessingContext manually to force placeholder style "none"
+        # Build ProcessingContext manually for sandbox evaluation
         doc = self.adapter.create_document(text, lightweight_ctx.ext)
         editor = RangeEditor(text)
         code_analyzer = self.adapter.create_code_analyzer(doc)
-        # Construct a placeholder manager directly with style "none"
         from .placeholders import PlaceholderManager
-        placeholders = PlaceholderManager(doc, self.adapter.comment_style, "none")
+        placeholders = PlaceholderManager(doc, self.adapter.comment_style)
 
         return ProcessingContext(
             file_path=lightweight_ctx.file_path,

@@ -158,35 +158,19 @@ class CodeAdapter(BaseAdapter[C], ABC):
         """
         Finalize placeholders and apply them to editor, get final metrics.
         """
-        collapsed_edits, placeholder_stats = context.placeholders.finalize_edits()
-
+        # Create economy check callback
         min_savings_ratio = ph_cfg.min_savings_ratio
         min_abs_savings_if_none = ph_cfg.min_abs_savings_if_none
 
-        for spec, repl in collapsed_edits:
-            # Get original text for range
-            src = context.raw_text[spec.start_char:spec.end_char]
-
-            # Check feasibility
-            if not self.tokenizer.is_economical(
-                    src,
-                    repl,
-                    min_ratio=min_savings_ratio,
-                    min_abs_savings_if_none=min_abs_savings_if_none,
-            ):
-                # Skip replacement, keep original
-                continue
-
-            # Apply relevant placeholders to editor
-            context.editor.add_replacement(spec.start_char, spec.end_char, repl,
-                # Type not specified as context collects metadata itself about placeholders
-                edit_type=None
+        def is_economical(src: str, repl: str) -> bool:
+            return self.tokenizer.is_economical(
+                src, repl,
+                min_ratio=min_savings_ratio,
+                min_abs_savings_if_none=min_abs_savings_if_none,
             )
 
-        # Update metrics from placeholders
-        for key, value in placeholder_stats.items():
-            if isinstance(value, (int, float)):
-                context.metrics.set(key, value)
+        # Apply all placeholders to editor
+        context.placeholders.apply_to_editor(is_economical)
 
         # Apply all changes in text editor and return statistics
         result_text, edit_stats = context.editor.apply_edits()

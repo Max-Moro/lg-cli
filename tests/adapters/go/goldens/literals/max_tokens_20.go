@@ -9,13 +9,13 @@ import (
 const ShortMessage = "Hello, World!"
 
 // Long string literal (candidate for trimming)
-const LongMessage = "This is an extremely long message that contains a substantial amount of text content which might be considered…" // literal string (−54 tokens)
+const LongMessage = "This is an extremely long message that contains a substantial amount of text content which might be considered…" // literal string (−53 tokens)
 
 // Multi-line string with formatting
 const TemplateWithData = `User Information:
 - Name: %s
 - Email: %s
-- Registr…` // literal string (−35 tokens)
+- Registr…` // literal string (−32 tokens)
 
 // DataContainer holds various literal types
 type DataContainer struct {
@@ -66,13 +66,13 @@ func NewLiteralDataManager() *LiteralDataManager {
 			"spanish",
 			"french",
 			"…"
-		}, // literal slice (−82 tokens)
+		}, // literal slice (−83 tokens)
 		allowedExtensions: []string{
 			".go",
 			".py",
 			".js",
 			"…"
-		}, // literal slice (−56 tokens)
+		}, // literal slice (−57 tokens)
 	}
 }
 
@@ -84,7 +84,7 @@ func (m *LiteralDataManager) ProcessData() *DataContainer {
 		"item_001",
 		"item_002",
 		"…"
-	} // literal slice (−140 tokens)
+	} // literal slice (−143 tokens)
 
 	nestedData := map[string]interface{}{
 		"level1": map[string]interface{}{
@@ -93,7 +93,7 @@ func (m *LiteralDataManager) ProcessData() *DataContainer {
 					"data": []map[string]interface{}{
 						{"id": 1, "name": "First", "active": true},
 						"…"
-					} // literal slice (−69 tokens),
+					}, // literal slice (−72 tokens)
 					// … (1 more, −57 tokens)
 				},
 			},
@@ -113,7 +113,7 @@ func (m *LiteralDataManager) GetLongQuery() string {
 	return `
 		SELECT
 			users.id, users.username, users.email, users.created_at,
-			pro…` // literal string (−173 tokens)
+			pro…` // literal string (−171 tokens)
 }
 
 // Module-level constants with different sizes

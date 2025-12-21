@@ -7,9 +7,10 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from enum import Enum
-from typing import Dict, List, Tuple, Any
+from typing import Callable, Dict, List, Tuple, Any, Optional
 
 from .comment_style import CommentStyle
+from .range_edits import RangeEditor
 from .tree_sitter_support import Node, TreeSitterDocument
 
 
@@ -63,7 +64,19 @@ class PlaceholderSpec:
 
     # Lines removed - only meaningful for body types, explicitly passed by optimizer
     lines_removed: int = 0
-    
+
+    # For TRUNCATE action — the shortened content
+    replacement_text: Optional[str] = None
+
+    # Flag to add suffix comment after element
+    add_suffix_comment: bool = False
+
+    # Tokens saved by this placeholder (for literal_* types, shown instead of lines)
+    tokens_saved: Optional[int] = None
+
+    # Flag to use composing_nested for replacement (for nested structures like literals)
+    use_composing_nested: bool = False
+
     @property
     def width(self) -> int:
         """Width of placeholder in characters."""
@@ -86,11 +99,16 @@ class PlaceholderSpec:
         - Same element type and action
         - Suitable types (not bodies)
         - No significant content between placeholders
+        - TRUNCATE with replacement_text should not be collapsed (unique content)
         """
         if self.element_type != other.element_type:
             return False
 
         if self.action != other.action:
+            return False
+
+        # TRUNCATE with explicit replacement_text should not be collapsed
+        if self.replacement_text is not None:
             return False
 
         # Cannot collapse body placeholders - they represent distinct function/method bodies
@@ -199,10 +217,11 @@ class PlaceholderManager:
     Provides unified API and handles collapsing.
     """
 
-    def __init__(self, doc: TreeSitterDocument, comment_style: CommentStyle, placeholder_style: str):
+    def __init__(self, doc: TreeSitterDocument, comment_style: CommentStyle, editor: Optional[RangeEditor] = None):
         self.doc = doc
         self.comment_style = comment_style
-        self.placeholder_style = placeholder_style
+        self.editor = editor
+        self.source_text = doc.text
         self.placeholders: List[PlaceholderSpec] = []
 
     # ============= Public API for adding placeholders =============
@@ -216,17 +235,25 @@ class PlaceholderManager:
         action: PlaceholderAction = PlaceholderAction.OMIT,
         placeholder_prefix: str = "",
         count: int = 1,
+        replacement_text: Optional[str] = None,
+        add_suffix_comment: bool = False,
+        tokens_saved: Optional[int] = None,
+        use_composing_nested: bool = False,
     ) -> None:
         """
         Add placeholder with explicit coordinates.
 
         Args:
-            element_type: Type of element ("function_body", "import", "comment", etc.)
+            element_type: Type of element ("function_body", "literal_string", etc.)
             start_char: Start position in characters
             end_char: End position in characters
             action: OMIT for complete removal, TRUNCATE for partial reduction
             placeholder_prefix: Indentation prefix for placeholder text
             count: Number of elements (for merging similar placeholders)
+            replacement_text: For TRUNCATE action — the shortened content
+            add_suffix_comment: Flag to add suffix comment after element
+            tokens_saved: Tokens saved (for literal_* types, shown instead of lines)
+            use_composing_nested: Use composing_nested for nested structures (literals)
         """
         # Calculate lines_removed automatically
         lines_removed = self.doc.count_removed_lines(start_char, end_char)
@@ -239,6 +266,10 @@ class PlaceholderManager:
             placeholder_prefix=placeholder_prefix,
             count=count,
             lines_removed=lines_removed,
+            replacement_text=replacement_text,
+            add_suffix_comment=add_suffix_comment,
+            tokens_saved=tokens_saved,
+            use_composing_nested=use_composing_nested,
         )
         self._add_placeholder_with_priority(spec)
 
@@ -249,6 +280,10 @@ class PlaceholderManager:
         *,
         action: PlaceholderAction = PlaceholderAction.OMIT,
         count: int = 1,
+        replacement_text: Optional[str] = None,
+        add_suffix_comment: bool = False,
+        tokens_saved: Optional[int] = None,
+        use_composing_nested: bool = False,
     ) -> None:
         """
         Add placeholder for Tree-sitter node.
@@ -258,6 +293,10 @@ class PlaceholderManager:
             node: Tree-sitter node to replace
             action: OMIT or TRUNCATE
             count: Number of elements
+            replacement_text: For TRUNCATE action — the shortened content
+            add_suffix_comment: Flag to add suffix comment after element
+            tokens_saved: Tokens saved (for literal_* types)
+            use_composing_nested: Use composing_nested for nested structures (literals)
         """
         start_char, end_char = self.doc.get_node_range(node)
 
@@ -271,6 +310,10 @@ class PlaceholderManager:
             action=action,
             count=count,
             lines_removed=lines_removed,
+            replacement_text=replacement_text,
+            add_suffix_comment=add_suffix_comment,
+            tokens_saved=tokens_saved,
+            use_composing_nested=use_composing_nested,
         )
         self._add_placeholder_with_priority(spec)
 
@@ -278,18 +321,34 @@ class PlaceholderManager:
 
     def _add_placeholder_with_priority(self, spec: PlaceholderSpec) -> None:
         """
-        Add placeholder applying priority policy for wider edits.
+        Add placeholder applying priority policy.
+
+        For use_composing_nested=True placeholders (literals):
+        - Keep all overlapping placeholders - they will be composed in apply_to_editor
+        - Smaller ones are applied first, then larger ones compose them
+
+        For regular placeholders:
+        - Wider placeholders always win (absorb narrower ones)
 
         Args:
             spec: Placeholder specification to add
         """
-        # New policy: wider placeholders always win
+        # For composing_nested placeholders, keep all - they will be sorted and composed
+        if spec.use_composing_nested:
+            self.placeholders.append(spec)
+            return
+
+        # Regular placeholders: wider always wins
         new_width = spec.width
 
         # Check all existing placeholders
         placeholders_to_remove = []
         for i, existing in enumerate(self.placeholders):
             if spec.overlaps(existing):
+                # Skip composing_nested placeholders - they're handled separately
+                if existing.use_composing_nested:
+                    continue
+
                 existing_width = existing.width
 
                 if new_width > existing_width:
@@ -309,10 +368,10 @@ class PlaceholderManager:
         self.placeholders.append(spec)
 
     def _generate_placeholder_text(self, spec: PlaceholderSpec) -> str:
-        """Generate placeholder text based on type and style."""
+        """Generate placeholder text for main placeholders (always inline style)."""
         content = self._get_placeholder_content(spec)
 
-        # For docstrings always use native language wrapping
+        # For docstrings use native language wrapping
         if spec.element_type == "docstring":
             doc_start, doc_end = self.comment_style.doc_markers
             if doc_end:
@@ -321,48 +380,125 @@ class PlaceholderManager:
                 # Single-line docstring style (e.g., /// for Rust, // for Go)
                 return f"{spec.placeholder_prefix}{doc_start} {content}\n"
 
-        # Standard logic for regular comments
-        if self.placeholder_style == "inline":
-            return f"{spec.placeholder_prefix}{self.comment_style.single_line} {content}"
-        else:  # self.placeholder_style == "block"
-            block_start, block_end = self.comment_style.multi_line
-            return f"{spec.placeholder_prefix}{block_start} {content} {block_end}"
+        # Standard inline comment
+        return f"{spec.placeholder_prefix}{self.comment_style.single_line} {content}"
 
     def _get_placeholder_content(self, spec: PlaceholderSpec) -> str:
         """
-        Generate placeholder content based on element type and action.
+        Generate placeholder content based on metrics.
 
-        Universal algorithm:
-        1. Start with ellipsis "…"
-        2. Add count if > 1 (except for comments/docstrings - they represent semantic units)
-        3. Add element type (pluralized if count > 1)
-        4. Add action word (omitted/truncated)
-        5. Add lines suffix when count == 1 and lines_removed > 1
+        Universal rules (metrics-based, not type-based):
+        - If tokens_saved > 0: "type (−X tokens)" (simplified format)
+        - Otherwise standard format: "… N type(s) action (X lines)"
+          - count > 1: add count, pluralize type
+          - lines_removed > 1 and != count: add lines suffix
         """
-        parts = ["…"]
-
         element_type = spec.element_type
+        display_type = element_type.replace("_", " ")
+
+        # Token-based metric: simplified format without ellipsis/action
+        # Example: "literal string (−X tokens)"
+        if spec.tokens_saved is not None and spec.tokens_saved > 0:
+            return f"{display_type} (−{spec.tokens_saved} tokens)"
+
+        # Standard format: "… N type(s) action (X lines)"
+        parts = ["…"]
 
         # Count prefix for multiple elements
         # Skip count for comments/docstrings - consecutive comments form a semantic unit
         show_count = spec.count > 1 and element_type not in ("comment", "docstring")
         if show_count:
             parts.append(str(spec.count))
+            display_type = _pluralize(display_type, spec.count)
 
-        # Element type with proper formatting
-        display_type = element_type.replace("_", " ")
-        display_type = _pluralize(display_type, spec.count) if show_count else display_type
         parts.append(display_type)
-
-        # Action word
         parts.append(spec.action.value)
 
-        # If the elements are not single-line, the lines suffix is added
+        # Lines suffix when lines > 1 and differs from count
         if spec.lines_removed > 1 and spec.lines_removed != spec.count:
             parts.append(f"({spec.lines_removed} lines)")
 
         return " ".join(parts)
-    
+
+    def _build_full_replacement(self, spec: PlaceholderSpec) -> Tuple[str, int]:
+        """
+        Build complete replacement text including suffix comment if needed.
+
+        For suffix comments, extends the replacement range to include trailing
+        punctuation (brackets, semicolons, commas) so the comment appears after them.
+
+        Args:
+            spec: Placeholder specification
+
+        Returns:
+            (full_replacement_text, extended_end_char)
+        """
+        # Build base replacement
+        if spec.replacement_text is not None:
+            base_text = spec.replacement_text
+        else:
+            base_text = self._generate_placeholder_text(spec)
+
+        # If no suffix comment needed, return as-is
+        if not spec.add_suffix_comment:
+            return base_text, spec.end_char
+
+        # Analyze context after element for suffix comment positioning
+        text_after = self.source_text[spec.end_char:] if spec.end_char < len(self.source_text) else ""
+        line_remainder = text_after.split('\n')[0]
+
+        offset, needs_block = self._find_comment_insertion_point(line_remainder)
+
+        # Build suffix comment
+        content = self._get_placeholder_content(spec)
+        if needs_block:
+            block_start, block_end = self.comment_style.multi_line
+            suffix = f" {block_start} {content} {block_end}"
+        else:
+            suffix = f" {self.comment_style.single_line} {content}"
+
+        # Include trailing punctuation before comment
+        trailing_punct = line_remainder[:offset]
+        full_replacement = base_text + trailing_punct + suffix
+        extended_end = spec.end_char + offset
+
+        return full_replacement, extended_end
+
+    def _find_comment_insertion_point(self, line_remainder: str) -> Tuple[int, bool]:
+        """
+        Find insertion point for suffix comment.
+
+        Returns:
+            (offset_to_include, needs_block_comment)
+            - offset_to_include: how many chars of punctuation to absorb
+            - needs_block_comment: True if code follows on same line
+        """
+        if not line_remainder.strip():
+            return 0, False
+
+        offset = 0
+
+        # Skip closing brackets
+        while offset < len(line_remainder) and line_remainder[offset] in ')]}':
+            offset += 1
+
+        # Check semicolon
+        if offset < len(line_remainder) and line_remainder[offset] == ';':
+            offset += 1
+            after_semi = line_remainder[offset:].strip()
+            return offset, bool(after_semi)
+
+        # Check comma
+        if offset < len(line_remainder) and line_remainder[offset] == ',':
+            offset += 1
+            after_comma = line_remainder[offset:].strip()
+            needs_block = bool(after_comma) and after_comma[0] not in ')]}'
+            return offset, needs_block
+
+        # Check for remaining code
+        remaining = line_remainder[offset:].strip()
+        return offset, bool(remaining)
+
     # ============= Collapsing and finalization =============
 
     def raw_edits(self) -> List[PlaceholderSpec]:
@@ -371,26 +507,47 @@ class PlaceholderManager:
         """
         return self.placeholders
 
-    def finalize_edits(self) -> Tuple[List[Tuple[PlaceholderSpec, str]], Dict[str, Any]]:
+    def apply_to_editor(
+        self,
+        is_economical: Optional[Callable[[str, str], bool]] = None
+    ) -> None:
         """
-        Finalize all edits with collapsing.
+        Apply all placeholders to editor (side-effect only).
 
-        Returns:
-            (collapsed_edits, stats)
+        Args:
+            is_economical: Optional callback (original_text, replacement) -> bool.
+                           Returns True if replacement should be applied.
+                           If None, all replacements are applied.
         """
-        # Perform placeholder collapsing
+        # Collapse placeholders
         collapsed_specs = self._collapse_placeholders()
 
-        # Generate edits based on collapsed placeholders
-        collapsed_edits = [
-            (spec, self._generate_placeholder_text(spec) if self.placeholder_style != "none" else "")
-            for spec in collapsed_specs
-        ]
+        # Sort by width (smaller first) for proper nesting support
+        # This ensures nested literals are applied before their parents
+        sorted_specs = sorted(collapsed_specs, key=lambda s: s.width)
 
-        # Collect statistics
-        stats = self._calculate_stats(collapsed_specs)
+        for spec in sorted_specs:
+            # Build full replacement (including suffix comment with punctuation if needed)
+            replacement, end_char = self._build_full_replacement(spec)
 
-        return collapsed_edits, stats
+            # Get original text for economy check
+            original = self.source_text[spec.start_char:end_char]
+
+            # Check if replacement is economical
+            if is_economical is not None and not is_economical(original, replacement):
+                continue
+
+            # Single editor call per placeholder
+            if spec.use_composing_nested:
+                self.editor.add_replacement_composing_nested(
+                    spec.start_char, end_char, replacement,
+                    edit_type=None
+                )
+            else:
+                self.editor.add_replacement(
+                    spec.start_char, end_char, replacement,
+                    edit_type=None
+                )
 
     def _collapse_placeholders(self) -> List[PlaceholderSpec]:
         """

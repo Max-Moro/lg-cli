@@ -221,10 +221,6 @@ class ASTSequenceProcessor(LiteralProcessor):
         trimmed_tokens = self.tokenizer.count_text_cached(trimmed_text)
         saved_tokens = original_tokens - trimmed_tokens
 
-        # Create comment
-        comment_name = profile.comment_name or 'literal'
-        comment_text = f"{comment_name} (−{saved_tokens} tokens)"
-
         return TrimResult(
             trimmed_text=trimmed_text,
             original_tokens=original_tokens,
@@ -232,5 +228,4 @@ class ASTSequenceProcessor(LiteralProcessor):
             saved_tokens=saved_tokens,
             elements_kept=len(kept_strings),
             elements_removed=len(child_strings) - len(kept_strings),
-            comment_text=comment_text,
         )

@@ -23,12 +23,14 @@ from ..patterns import (
     StringProfile,
     SequenceProfile,
     TrimResult,
+    PlaceholderPosition,
 )
 from ..processor import LiteralProcessor
 from ..utils.comment_formatter import CommentFormatter
 from ....code_model import LiteralConfig
 from ....context import ProcessingContext
 from ....tree_sitter_support import TreeSitterDocument, Node
+from ....placeholders import PlaceholderAction
 
 
 class LiteralPipeline:
@@ -93,11 +95,10 @@ class LiteralPipeline:
                     self.descriptor
                 )
             elif issubclass(self.descriptor.custom_processor, StringLiteralProcessor):
-                # StringLiteral-based processors need tokenizer, parser, comment_formatter
+                # StringLiteral-based processors need tokenizer, parser
                 processor_instance = self.descriptor.custom_processor(
                     self.adapter.tokenizer,
                     self.literal_parser,
-                    self.comment_formatter
                 )
             else:
                 # Unknown processor type - skip
@@ -111,7 +112,6 @@ class LiteralPipeline:
             StringLiteralProcessor(
                 self.adapter.tokenizer,
                 self.literal_parser,
-                self.comment_formatter
             ),
             StandardCollectionsProcessor(
                 self.adapter.tokenizer,
@@ -217,7 +217,7 @@ class LiteralPipeline:
 
             # Apply if tokens saved
             if result and result.saved_tokens > 0:
-                self._apply_result(context, node, result, literal_text)
+                self._apply_result(context, node, result, literal_text, profile)
 
     def _process_literal(
         self,
@@ -262,49 +262,54 @@ class LiteralPipeline:
         context: ProcessingContext,
         node,
         result: TrimResult,
-        original_text: str
+        original_text: str,
+        profile: LiteralProfile,
     ) -> None:
         """
-        Unified result application.
+        Unified result application using PlaceholderManager.
 
         Args:
             context: Processing context
             node: Tree-sitter node
             result: Trim result to apply
             original_text: Original text for metrics
+            profile: Literal profile for element type
         """
-        # Determine nodes to replace from result or from node parameter
+        # Determine position based on result or node
         if result.nodes_to_replace:
-            # Use nodes from TrimResult (composing replacement)
+            # Use nodes from TrimResult (composing replacement - e.g., block init)
             nodes = result.nodes_to_replace
             start_byte = nodes[0].start_byte
             end_byte = nodes[-1].end_byte
-
-            context.editor.add_replacement_composing_nested(
-                start_byte, end_byte, result.trimmed_text,
-                edit_type="literal_trimmed"
-            )
         else:
             # Simple single-node replacement
-            start_byte, end_byte = context.doc.get_node_range(node)
-            context.editor.add_replacement_composing_nested(
-                start_byte, end_byte, result.trimmed_text,
-                edit_type="literal_trimmed"
-            )
+            start_byte, end_byte = node.start_byte, node.end_byte
 
-        # Add comment if needed
-        placeholder_style = self.adapter.cfg.placeholders.style
-        if placeholder_style != "none" and result.comment_text:
-            text_after = context.raw_text[end_byte:]
-            formatted_comment, offset = self.comment_formatter.format_for_context(
-                text_after, result.comment_text
-            )
-            context.editor.add_insertion(
-                end_byte + offset,
-                formatted_comment,
-                edit_type="literal_comment"
-            )
+        # Convert to char positions
+        start_char = context.doc.byte_to_char_position(start_byte)
+        end_char = context.doc.byte_to_char_position(end_byte)
 
-        # Update metrics
-        context.metrics.mark_element_removed("literal")
+        # Build element type: "literal_string", "literal_dict", etc.
+        element_type = f"literal_{profile.get_category_name()}"
+
+        # Determine if suffix comment is needed based on PlaceholderPosition
+        # END/INLINE → need suffix comment (info not in replacement_text)
+        # MIDDLE_COMMENT/NONE → no suffix comment (info already embedded)
+        placeholder_pos = profile.placeholder_position
+        needs_suffix = placeholder_pos in (PlaceholderPosition.END, PlaceholderPosition.INLINE)
+
+        # Use PlaceholderManager for main replacement
+        # use_composing_nested=True for proper nesting support (literals can be nested)
+        context.add_placeholder(
+            element_type,
+            start_char,
+            end_char,
+            action=PlaceholderAction.TRUNCATE,
+            replacement_text=result.trimmed_text,
+            add_suffix_comment=needs_suffix,
+            tokens_saved=result.saved_tokens if needs_suffix else None,
+            use_composing_nested=True,
+        )
+
+        # Update additional metrics (chars saved)
         context.metrics.add_chars_saved(len(original_text) - len(result.trimmed_text))

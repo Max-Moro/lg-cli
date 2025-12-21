@@ -10,12 +10,12 @@
 const char* SHORT_MESSAGE = "Hello, World!";
 
 // Long string literal (candidate for trimming)
-const char* LONG_MESSAGE = "This is an extremely long message that contains a substantial amount of text content which might be considered…"; // literal string (−54 tokens)
+const char* LONG_MESSAGE = "This is an extremely long message that contains a substantial amount of text content which might be considered…"; // literal string (−53 tokens)
 
 // Multi-line string with formatting
 const char* TEMPLATE_WITH_DATA =
     "User Information:\n"
-    "- Name: %s\n…"; // literal string (−55 tokens)
+    "- Name: %s\n…"; // literal literal string (−55 tokens)
 
 typedef struct {
     // Small array (should be preserved)
@@ -105,7 +105,7 @@ const char* get_long_query(void) {
     // Very long SQL-like query string
     return
         "SELECT "
-        "    users.id, users.username, users.email, users.created_at, …"; // literal string (−196 tokens)
+        "    users.id, users.username, users.email, users.created_at, …"; // literal literal string (−196 tokens)
 }
 
 // Module-level constants with different sizes

@@ -13,7 +13,7 @@ public class LegacyLiterals {
 
     // Large map with double-brace (candidate for trimming)
     private static final Map<String, String> ERROR_MESSAGES = new HashMap<String, String>() {{
-        put("VALIDATION_FAILED", "Input validation failed. Please check you…" // literal string (−6 tokens));
+        put("VALIDATION_FAILED", "Input validation failed. Please check you…"); // literal string (−4 tokens)
         // … (7 more, −124 tokens)
     }};
 

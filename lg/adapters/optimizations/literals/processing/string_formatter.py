@@ -13,7 +13,6 @@ from typing import Optional
 from lg.stats.tokenizer import TokenService
 from .selector import Selection
 from ..patterns import ParsedLiteral, StringProfile
-from ..utils.comment_formatter import CommentFormatter
 
 
 @dataclass
@@ -22,8 +21,6 @@ class FormattedResult:
     text: str
     start_byte: int
     end_byte: int
-    comment: Optional[str] = None
-    comment_byte: Optional[int] = None
 
 
 class StringFormatter:
@@ -33,14 +30,12 @@ class StringFormatter:
     Simple, focused implementation:
     - Truncates string content
     - Adds ellipsis (…)
-    - Generates external comment if needed
 
     No DFS, no nested structures, no recursion.
     """
 
-    def __init__(self, tokenizer: TokenService, comment_formatter: CommentFormatter):
+    def __init__(self, tokenizer: TokenService):
         self.tokenizer = tokenizer
-        self.comment_formatter = comment_formatter
 
     def format(
         self,
@@ -74,15 +69,8 @@ class StringFormatter:
             # Wrap with delimiters
             text = f"{parsed.opening}{truncated}{parsed.closing}"
 
-        # Generate comment if needed
-        comment, comment_byte = self.comment_formatter.generate_comment(
-            parsed, selection
-        )
-
         return FormattedResult(
             text=text,
             start_byte=parsed.start_byte,
             end_byte=parsed.end_byte,
-            comment=comment,
-            comment_byte=comment_byte,
         )

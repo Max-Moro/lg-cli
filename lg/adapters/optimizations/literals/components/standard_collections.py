@@ -166,8 +166,6 @@ class StandardCollectionsProcessor(LiteralProcessor):
             saved_tokens=parsed.original_tokens - trimmed_tokens,
             elements_kept=selection.kept_count,
             elements_removed=selection.removed_count,
-            comment_text=formatted.comment,
-            comment_position=formatted.comment_byte,
         )
 
     def _get_parser_for_profile(self, profile: CollectionProfile) -> ElementParser:

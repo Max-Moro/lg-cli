@@ -9,11 +9,11 @@ import (
 const ShortMessage = "Hello, World!"
 
 // Long string literal (candidate for trimming)
-const LongMessage = "This is an extremely long message that contains a…" // literal string (−63 tokens)
+const LongMessage = "This is an extremely long message that contains a…" // literal string (−62 tokens)
 
 // Multi-line string with formatting
 const TemplateWithData = `User Information:
--…` // literal string (−48 tokens)
+-…` // literal string (−45 tokens)
 
 // DataContainer holds various literal types
 type DataContainer struct {
@@ -62,11 +62,11 @@ func NewLiteralDataManager() *LiteralDataManager {
 		supportedLanguages: []string{
 			"english",
 			"…"
-		}, // literal slice (−89 tokens)
+		}, // literal slice (−94 tokens)
 		allowedExtensions: []string{
 			".go",
 			"…"
-		}, // literal slice (−62 tokens)
+		}, // literal slice (−67 tokens)
 	}
 }
 
@@ -77,7 +77,7 @@ func (m *LiteralDataManager) ProcessData() *DataContainer {
 	largeSlice := []string{
 		"item_001",
 		"…"
-	} // literal slice (−145 tokens)
+	} // literal slice (−150 tokens)
 
 	nestedData := map[string]interface{}{
 		"level1": map[string]interface{}{
@@ -86,7 +86,7 @@ func (m *LiteralDataManager) ProcessData() *DataContainer {
 					"data": []map[string]interface{}{
 						{"id": 1, "name": "First", "active": true},
 						"…"
-					} // literal slice (−69 tokens),
+					}, // literal slice (−72 tokens)
 					// … (1 more, −57 tokens)
 				},
 			},
@@ -105,7 +105,7 @@ func (m *LiteralDataManager) ProcessData() *DataContainer {
 func (m *LiteralDataManager) GetLongQuery() string {
 	return `
 		SELECT
-			users.id, users.us…` // literal string (−184 tokens)
+			users.id, users.us…` // literal string (−182 tokens)
 }
 
 // Module-level constants with different sizes
@@ -123,7 +123,7 @@ var HTTPStatusCodes = map[string]int{
 }
 
 var ErrorMessages = map[string]string{
-	"VALIDATION_FAILED":      "Input validation failed. Please check you…" // literal string (−6 tokens),
+	"VALIDATION_FAILED":      "Input validation failed. Please check you…", // literal string (−4 tokens)
 	// … (6 more, −102 tokens)
 }
 

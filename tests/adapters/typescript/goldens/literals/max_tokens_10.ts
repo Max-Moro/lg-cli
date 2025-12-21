@@ -6,12 +6,12 @@
 const SHORT_MESSAGE = "Hello, World!";
 
 // Long string literal (candidate for trimming)
-const LONG_MESSAGE = `This is an extremely long message that conta…`; // literal string (−65 tokens)
+const LONG_MESSAGE = `This is an extremely long message that conta…`; // literal string (−62 tokens)
 
 // Multi-line template literal with embedded expressions
 const TEMPLATE_WITH_DATA = `
 User Information:
-- Name: ${getUserName()}…`; // literal string (−57 tokens)
+- Name: ${getUserName()}…`; // literal string (−55 tokens)
 
 interface DataContainer {
     // Small array (should be preserved)
@@ -47,13 +47,13 @@ export class LiteralDataManager {
         this.supportedLanguages = [
             "english",
             "…",
-        ]; // literal array (−89 tokens)
+        ]; // literal array (−94 tokens)
         
         // Set with many elements
         this.allowedExtensions = new Set([
             ".js",
             "…",
-        ]); // literal array (−56 tokens)
+        ]); // literal array (−54 tokens)
     }
     
     public processData(): DataContainer {
@@ -63,7 +63,7 @@ export class LiteralDataManager {
         const largeArray = [
             "item_001",
             "…",
-        ]; // literal array (−145 tokens)
+        ]; // literal array (−146 tokens)
         
         const nestedData = {
             level1: {
@@ -72,7 +72,7 @@ export class LiteralDataManager {
                         data: [
                             { id: 1, name: "First", active: true },
                             "…",
-                        ] // literal array (−61 tokens),
+                        ], // literal array (−61 tokens)
                         // … (1 more, −41 tokens)
                     }
                 }
@@ -89,7 +89,7 @@ export class LiteralDataManager {
         // Very long SQL-like query string
         return `
             SELECT 
-                use…`; // literal string (−183 tokens)
+                use…`; // literal string (−181 tokens)
     }
     
     // Properties with literal data
@@ -116,5 +116,5 @@ function getUserName(): string { return "John Doe"; }
 function getUserEmail(): string { return "john.doe@example.com"; }
 function getAccountStatus(): string { return "active"; }
 function getPermissions(): string[] { return ["read", "write", "admin"]; }
-function getLastLogin(): string { const date = "2024-01-15T1…"; /* literal string (−7 tokens) */ return date; }
+function getLastLogin(): string { const date = "2024-01-15T1…"; /* literal string (−5 tokens) */ return date; }
 function getProfileCompleteness(): number { return 85; }

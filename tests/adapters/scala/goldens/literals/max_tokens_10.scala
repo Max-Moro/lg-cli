@@ -9,19 +9,19 @@ object Constants {
   val SHORT_MESSAGE = "Hello, World!"
 
   // Long string literal (candidate for trimming)
-  val LONG_MESSAGE = """This is an extremely long message that cont…""" // literal string (−65 tokens)
+  val LONG_MESSAGE = """This is an extremely long message that cont…""" // literal string (−62 tokens)
 
   // Multi-line string with interpolation
   def getUserName(): String = "John Doe"
   def getUserEmail(): String = "john.doe@example.com"
   def getAccountStatus(): String = "active"
   def getPermissions(): List[String] = List("read", "write", "admin")
-  def getLastLogin(): String = "2024-01-15T1…" // literal string (−7 tokens)
+  def getLastLogin(): String = "2024-01-15T1…" // literal string (−5 tokens)
   def getProfileCompleteness(): Int = 85
 
   val TEMPLATE_WITH_DATA = s"""
 User Information:
-- Name…""" // literal string (−66 tokens)
+- Name…""" // literal string (−63 tokens)
 }
 
 case class DataContainer(
@@ -98,7 +98,7 @@ class LiteralDataManager {
     // Very long SQL-like query string
     """
       SELECT
-        users.id, use…""" /* literal string (−179 tokens) */.stripMargin
+        users.id, use…""" /* literal string (−177 tokens) */.stripMargin
   }
 }
 
@@ -117,7 +117,7 @@ object LargeConstants {
   )
 
   val ERROR_MESSAGES = Map(
-    "VALIDATION_FAILED" -> "Input validation failed. Please check you…" // literal string (−6 tokens),
+    "VALIDATION_FAILED" -> "Input validation failed. Please check you…", // literal string (−4 tokens)
     // … (6 more, −104 tokens)
   )
 }

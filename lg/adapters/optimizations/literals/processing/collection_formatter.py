@@ -28,8 +28,6 @@ class FormattedResult:
     text: str
     start_byte: int
     end_byte: int
-    comment: Optional[str] = None
-    comment_byte: Optional[int] = None
 
 
 class CollectionFormatter:
@@ -74,17 +72,10 @@ class CollectionFormatter:
         else:
             text = self._format_single_line(parsed, selection, placeholder)
 
-        # Generate comment if needed
-        comment, comment_byte = self.comment_formatter.generate_comment(
-            parsed, selection
-        )
-
         return FormattedResult(
             text=text,
             start_byte=parsed.start_byte,
             end_byte=parsed.end_byte,
-            comment=comment,
-            comment_byte=comment_byte,
         )
 
     def _format_single_line(

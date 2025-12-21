@@ -6,13 +6,13 @@ use std::collections::HashMap;
 const SHORT_MESSAGE: &str = "Hello, World!";
 
 // Long string literal (candidate for trimming)
-const LONG_MESSAGE: &str = "This is an extremely long message that contains a substantial amount of text content which might be considered…"; // literal string (−54 tokens)
+const LONG_MESSAGE: &str = "This is an extremely long message that contains a substantial amount of text content which might be considered…"; // literal string (−53 tokens)
 
 // Multi-line string with formatting
 const TEMPLATE_WITH_DATA: &str = r#"User Information:
 - Name: {}
 - Email: {}
-- Registration Date:…"#; // literal string (−27 tokens)
+- Registration Date:…"#; // literal string (−23 tokens)
 
 #[derive(Debug)]
 struct DataContainer {
@@ -80,7 +80,7 @@ impl LiteralDataManager {
             "spanish",
             "french",
             "…"
-        ] /* literal vec (−82 tokens) */.into_iter().map(String::from).collect();
+        ] /* literal vec (−84 tokens) */.into_iter().map(String::from).collect();
 
         let allowed_extensions = vec![
             ".rs",
@@ -88,7 +88,7 @@ impl LiteralDataManager {
             ".js",
             ".ts",
             "…"
-        ] /* literal vec (−56 tokens) */.into_iter().map(String::from).collect();
+        ] /* literal vec (−54 tokens) */.into_iter().map(String::from).collect();
 
         Self {
             small_config,
@@ -123,7 +123,7 @@ impl LiteralDataManager {
         r#"
 SELECT
     users.id, users.username, users.email, users.created_at,
-    prof…"# // literal string (−162 tokens)
+    prof…"# // literal string (−158 tokens)
     }
 }
 

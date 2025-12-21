@@ -6,11 +6,11 @@ use std::collections::HashMap;
 const SHORT_MESSAGE: &str = "Hello, World!";
 
 // Long string literal (candidate for trimming)
-const LONG_MESSAGE: &str = "This is an extremely long message that contains a…"; // literal string (−63 tokens)
+const LONG_MESSAGE: &str = "This is an extremely long message that contains a…"; // literal string (−62 tokens)
 
 // Multi-line string with formatting
 const TEMPLATE_WITH_DATA: &str = r#"User Information:
-- Nam…"#; // literal string (−37 tokens)
+- Nam…"#; // literal string (−33 tokens)
 
 #[derive(Debug)]
 struct DataContainer {
@@ -76,12 +76,12 @@ impl LiteralDataManager {
         let supported_languages = vec![
             "english",
             "…"
-        ] /* literal vec (−89 tokens) */.into_iter().map(String::from).collect();
+        ] /* literal vec (−94 tokens) */.into_iter().map(String::from).collect();
 
         let allowed_extensions = vec![
             ".rs",
             "…"
-        ] /* literal vec (−65 tokens) */.into_iter().map(String::from).collect();
+        ] /* literal vec (−66 tokens) */.into_iter().map(String::from).collect();
 
         Self {
             small_config,
@@ -92,12 +92,12 @@ impl LiteralDataManager {
     }
 
     fn process_data(&self) -> DataContainer {
-        let small_vec = vec!["one".to_string(), "…"]; // literal vec (−12 tokens)
+        let small_vec = vec!["one".to_string(), "…"]; // literal vec (−9 tokens)
 
         let large_vec = vec![
             "item_001",
             "…"
-        ] /* literal vec (−145 tokens) */.into_iter().map(String::from).collect();
+        ] /* literal vec (−146 tokens) */.into_iter().map(String::from).collect();
 
         let mut metadata = HashMap::new();
         metadata.insert("type".to_string(), "test".to_string());
@@ -114,7 +114,7 @@ impl LiteralDataManager {
     fn get_long_query(&self) -> &str {
         r#"
 SELECT
-    users.id, users.u…"# // literal string (−172 tokens)
+    users.id, users.u…"# // literal string (−168 tokens)
     }
 }
 

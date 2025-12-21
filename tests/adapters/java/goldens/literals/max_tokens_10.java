@@ -12,11 +12,11 @@ class Constants {
     public static final String SHORT_MESSAGE = "Hello, World!";
 
     // Long string literal (candidate for trimming)
-    public static final String LONG_MESSAGE = "This is an extremely long message that contains a…"; // literal string (−63 tokens)
+    public static final String LONG_MESSAGE = "This is an extremely long message that contains a…"; // literal string (−62 tokens)
 
     // Multi-line string with embedded expressions (Java 15+ text blocks)
     public static final String TEMPLATE_WITH_DATA = String.format("""
-        User Information:…""", // literal string (−56 tokens)
+        User Information:…""", // literal string (−54 tokens)
         getUserName(),
         getUserEmail(),
         Instant.now().toString(),
@@ -30,7 +30,7 @@ class Constants {
     private static String getUserEmail() { return "john.doe@example.com"; }
     private static String getAccountStatus() { return "active"; }
     private static List<String> getPermissions() { return List.of("read", "write", "admin"); }
-    private static String getLastLogin() { return "2024-01-15T1…"; /* literal string (−7 tokens) */ }
+    private static String getLastLogin() { return "2024-01-15T1…"; /* literal string (−5 tokens) */ }
     private static int getProfileCompleteness() { return 85; }
 }
 
@@ -128,7 +128,7 @@ public class LiteralDataManager {
         // Very long SQL-like query string
         return """
             SELECT
-                user…"""; // literal string (−182 tokens)
+                user…"""; // literal string (−180 tokens)
     }
 
     public List<String> getSupportedLanguages() { return supportedLanguages; }
@@ -150,7 +150,7 @@ class LargeConstants {
     );
 
     public static final Map<String, String> ERROR_MESSAGES = Map.ofEntries(
-        Map.entry("VALIDATION_FAILED", "Input validation failed. Please check you…" // literal string (−6 tokens))
+        Map.entry("VALIDATION_FAILED", "Input validation failed. Please check your data and try again.")
         // … (6 more, −110 tokens)
     );
 }

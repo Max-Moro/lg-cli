@@ -151,9 +151,13 @@ class RangeEditor:
         char_range = TextRange(start_char, end_char)
 
         # Find all edits that are completely nested inside this range
+        # Exclude zero-width insertions at boundaries (they're not truly inside)
         nested_edits = []
         for i, edit in enumerate(self.edits):
             if char_range.contains(edit.range):
+                # Skip insertions at boundaries - they should stay separate
+                if edit.is_insertion and (edit.range.start_char == start_char or edit.range.start_char == end_char):
+                    continue
                 nested_edits.append((i, edit))
 
         if not nested_edits:

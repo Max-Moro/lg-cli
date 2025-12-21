@@ -10,11 +10,11 @@
 const char* SHORT_MESSAGE = "Hello, World!";
 
 // Long string literal (candidate for trimming)
-const char* LONG_MESSAGE = "This is an extremely long message that contains a…"; // literal string (−63 tokens)
+const char* LONG_MESSAGE = "This is an extremely long message that contains a…"; // literal string (−62 tokens)
 
 // Multi-line string with formatting
 const char* TEMPLATE_WITH_DATA =
-    "User Information:\n…"; // literal string (−63 tokens)
+    "User Information:\n…"; // literal literal string (−63 tokens)
 
 typedef struct {
     // Small array (should be preserved)
@@ -97,7 +97,7 @@ DataContainer* process_data(void) {
 const char* get_long_query(void) {
     // Very long SQL-like query string
     return
-        "SELECT …"; // literal string (−213 tokens)
+        "SELECT …"; // literal literal string (−213 tokens)
 }
 
 // Module-level constants with different sizes
@@ -167,6 +167,6 @@ struct {
     const char* RATE_LIMIT_EXCEEDED;
     const char* INVALID_REQUEST_FORMAT;
 } ERROR_MESSAGES = {
-    "Input validation failed. Please check you…" // literal string (−6 tokens),
+    "Input validation failed. Please check you…", // literal string (−4 tokens)
     // … (6 more, −65 tokens)
 };

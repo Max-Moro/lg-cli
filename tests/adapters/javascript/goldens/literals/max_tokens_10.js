@@ -6,12 +6,12 @@
 const SHORT_MESSAGE = "Hello, World!";
 
 // Long string literal (candidate for trimming)
-const LONG_MESSAGE = `This is an extremely long message that conta…`; // literal string (−65 tokens)
+const LONG_MESSAGE = `This is an extremely long message that conta…`; // literal string (−62 tokens)
 
 // Multi-line template literal with embedded expressions
 const TEMPLATE_WITH_DATA = `
 User Information:
-- Name: ${getUserName()}…`; // literal string (−57 tokens)
+- Name: ${getUserName()}…`; // literal string (−55 tokens)
 
 export class LiteralDataManager {
     // Class properties with various literal types
@@ -33,13 +33,13 @@ export class LiteralDataManager {
         this.supportedLanguages = [
             "english",
             "…",
-        ]; // literal array (−89 tokens)
+        ]; // literal array (−94 tokens)
 
         // Set with many elements
         this.allowedExtensions = new Set([
             ".js",
             "…",
-        ]); // literal array (−56 tokens)
+        ]); // literal array (−54 tokens)
     }
 
     processData() {
@@ -49,7 +49,7 @@ export class LiteralDataManager {
         const largeArray = [
             "item_001",
             "…",
-        ]; // literal array (−145 tokens)
+        ]; // literal array (−146 tokens)
 
         const nestedData = {
             level1: {
@@ -58,7 +58,7 @@ export class LiteralDataManager {
                         data: [
                             { id: 1, name: "First", active: true },
                             "…",
-                        ] // literal array (−61 tokens),
+                        ], // literal array (−61 tokens)
                         // … (1 more, −41 tokens)
                     }
                 }
@@ -75,7 +75,7 @@ export class LiteralDataManager {
         // Very long SQL-like query string
         return `
             SELECT
-                use…`; // literal string (−182 tokens)
+                use…`; // literal string (−180 tokens)
     }
 }
 
@@ -98,5 +98,5 @@ function getUserName() { return "John Doe"; }
 function getUserEmail() { return "john.doe@example.com"; }
 function getAccountStatus() { return "active"; }
 function getPermissions() { return ["read", "write", "admin"]; }
-function getLastLogin() { return "2024-01-15T1…"; /* literal string (−7 tokens) */ }
+function getLastLogin() { return "2024-01-15T1…"; /* literal string (−5 tokens) */ }
 function getProfileCompleteness() { return 85; }

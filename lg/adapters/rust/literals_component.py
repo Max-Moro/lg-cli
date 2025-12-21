@@ -116,8 +116,6 @@ class RustLetGroupProcessor(BlockInitProcessorBase):
             saved_tokens=saved_tokens,
             elements_kept=len(keep_stmts) + 1,
             elements_removed=len(remove_stmts),
-            comment_text=None,
-            comment_position=None,
             nodes_to_replace=nodes_to_replace,
         )
 

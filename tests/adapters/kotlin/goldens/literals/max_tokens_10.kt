@@ -8,12 +8,12 @@ package com.example.literals
 const val SHORT_MESSAGE = "Hello, World!"
 
 // Long string literal (candidate for trimming)
-const val LONG_MESSAGE = """This is an extremely long message that cont…""" // literal string (−66 tokens)
+const val LONG_MESSAGE = """This is an extremely long message that cont…""" // literal string (−63 tokens)
 
 // Multi-line raw string with embedded expressions
 val TEMPLATE_WITH_DATA = """
 User Information:
-- Name: ${getUserName()}…""" // literal string (−58 tokens)
+- Name: ${getUserName()}…""" // literal string (−56 tokens)
 
 data class DataContainer(
     // Small array (should be preserved)
@@ -96,7 +96,7 @@ class LiteralDataManager {
         // Very long SQL-like query string
         return """
             SELECT 
-                use…""" /* literal string (−183 tokens) */.trimIndent()
+                use…""" /* literal string (−181 tokens) */.trimIndent()
     }
 }
 
@@ -119,5 +119,5 @@ fun getUserName(): String = "John Doe"
 fun getUserEmail(): String = "john.doe@example.com"
 fun getAccountStatus(): String = "active"
 fun getPermissions(): List<String> = listOf("read", "write", "admin")
-fun getLastLogin(): String = "2024-01-15T1…" // literal string (−7 tokens)
+fun getLastLogin(): String = "2024-01-15T1…" // literal string (−5 tokens)
 fun getProfileCompleteness(): Int = 85

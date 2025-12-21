@@ -11,14 +11,14 @@
 const char* SHORT_MESSAGE = "Hello, World!";
 
 // Long string literal (candidate for trimming)
-const char* LONG_MESSAGE = "This is an extremely long message that contains a substantial amount of text content which might be considere…"; // literal string (−54 tokens)
+const char* LONG_MESSAGE = "This is an extremely long message that contains a substantial amount of text content which might be considere…"; // literal string (−53 tokens)
 
 // Multi-line string with formatting (C++11 raw string literal)
 const char* TEMPLATE_WITH_DATA = R"(
 User Information:
 - Name: %s
 - Email: %s
-- Reg…)"; // literal string (−36 tokens)
+- Reg…)"; // literal string (−32 tokens)
 
 struct DataContainer {
     // Small array (should be preserved)
@@ -103,7 +103,7 @@ public:
         return R"(
 SELECT
     users.id, users.username, users.email, users.created_at,
-    prof…)"; // literal string (−162 tokens)
+    prof…)"; // literal string (−158 tokens)
     }
 
     const std::vector<std::string>& getSupportedLanguages() const {

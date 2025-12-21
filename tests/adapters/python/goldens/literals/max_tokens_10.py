@@ -6,12 +6,12 @@ import json
 SHORT_STRING = "hello"
 
 # Long string literal (candidate for trimming)
-LONG_STRING = """This is a very long string that contains…""" # literal string (−55 tokens)
+LONG_STRING = """This is a very long string that contains…""" # literal string (−52 tokens)
 
 # Multi-line string with data
 DATA_STRING = """
 {
-    "users": […""" # literal string (−115 tokens)
+    "users": […""" # literal string (−114 tokens)
 
 class DataContainer:
     """Class with various literal types."""
@@ -41,7 +41,7 @@ def process_data():
     categories = [
         "Technology",
         "…",
-    ] # literal array (−47 tokens)
+    ] # literal array (−45 tokens)
     
     # Nested data structure
     config = {
@@ -53,7 +53,7 @@ def process_data():
     }
     
     # Very long single-line string
-    sql_query = "SELECT users.id, users.username, users.e…" # literal string (−67 tokens)
+    sql_query = "SELECT users.id, users.username, users.e…" # literal string (−65 tokens)
     
     return categories, config, sql_query
 
@@ -61,10 +61,10 @@ def process_data():
 TAGS = {
     "python",
     "…",
-} # literal set (−42 tokens)
+} # literal set (−43 tokens)
 
 # Tuple with many elements
 COORDINATES = (
     (0, 0),
     "…",
-) # literal tuple (−66 tokens)
+) # literal tuple (−63 tokens)

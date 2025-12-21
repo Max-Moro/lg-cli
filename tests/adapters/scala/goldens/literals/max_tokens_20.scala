@@ -9,7 +9,7 @@ object Constants {
   val SHORT_MESSAGE = "Hello, World!"
 
   // Long string literal (candidate for trimming)
-  val LONG_MESSAGE = """This is an extremely long message that contains a substantial amount of text content which might be consi…""" // literal string (−54 tokens)
+  val LONG_MESSAGE = """This is an extremely long message that contains a substantial amount of text content which might be consi…""" // literal string (−51 tokens)
 
   // Multi-line string with interpolation
   def getUserName(): String = "John Doe"
@@ -22,7 +22,7 @@ object Constants {
   val TEMPLATE_WITH_DATA = s"""
 User Information:
 - Name: ${getUserName()}
-- Email: ${getUserEmail()}…""" // literal string (−54 tokens)
+- Email: ${getUserEmail()}…""" // literal string (−51 tokens)
 }
 
 case class DataContainer(
@@ -105,7 +105,7 @@ class LiteralDataManager {
     // Very long SQL-like query string
     """
       SELECT
-        users.id, users.username, users.email, users.created_at,…""" /* literal string (−170 tokens) */.stripMargin
+        users.id, users.username, users.email, users.created_at,…""" /* literal string (−169 tokens) */.stripMargin
   }
 }
 

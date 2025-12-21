@@ -12,13 +12,13 @@ class Constants {
     public static final String SHORT_MESSAGE = "Hello, World!";
 
     // Long string literal (candidate for trimming)
-    public static final String LONG_MESSAGE = "This is an extremely long message that contains a substantial amount of text content which might be considered…"; // literal string (−54 tokens)
+    public static final String LONG_MESSAGE = "This is an extremely long message that contains a substantial amount of text content which might be considered…"; // literal string (−53 tokens)
 
     // Multi-line string with embedded expressions (Java 15+ text blocks)
     public static final String TEMPLATE_WITH_DATA = String.format("""
         User Information:
         - Name: %s
-        - Email:…""", // literal string (−45 tokens)
+        - Email:…""", // literal string (−43 tokens)
         getUserName(),
         getUserEmail(),
         Instant.now().toString(),
@@ -136,7 +136,7 @@ public class LiteralDataManager {
         // Very long SQL-like query string
         return """
             SELECT
-                users.id, users.username, users.email, users.created_at,…"""; // literal string (−170 tokens)
+                users.id, users.username, users.email, users.created_at,…"""; // literal string (−169 tokens)
     }
 
     public List<String> getSupportedLanguages() { return supportedLanguages; }

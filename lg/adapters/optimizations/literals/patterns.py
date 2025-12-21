@@ -343,10 +343,6 @@ class TrimResult:
     elements_kept: int
     elements_removed: int
 
-    # Comment to add (if placeholder_position requires it)
-    comment_text: Optional[str] = None
-    comment_position: Optional[int] = None  # Byte offset for comment insertion
-
     # For composing replacements (e.g., BLOCK_INIT with group of nodes)
     # If set, these nodes should be replaced as a group instead of single node
     nodes_to_replace: Optional[list] = None  # List[Node] when needed

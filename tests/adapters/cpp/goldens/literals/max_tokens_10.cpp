@@ -11,11 +11,11 @@
 const char* SHORT_MESSAGE = "Hello, World!";
 
 // Long string literal (candidate for trimming)
-const char* LONG_MESSAGE = "This is an extremely long message that contains…"; // literal string (−65 tokens)
+const char* LONG_MESSAGE = "This is an extremely long message that contains…"; // literal string (−64 tokens)
 
 // Multi-line string with formatting (C++11 raw string literal)
 const char* TEMPLATE_WITH_DATA = R"(
-User Information…)"; // literal string (−51 tokens)
+User Information…)"; // literal string (−47 tokens)
 
 struct DataContainer {
     // Small array (should be preserved)
@@ -93,7 +93,7 @@ public:
         // Very long SQL-like query string (C++11 raw string)
         return R"(
 SELECT
-    users.id, users.u…)"; // literal string (−172 tokens)
+    users.id, users.u…)"; // literal string (−168 tokens)
     }
 
     const std::vector<std::string>& getSupportedLanguages() const {
@@ -135,15 +135,15 @@ struct HttpStatusCodes {
 
 struct ErrorMessages {
     static constexpr const char* VALIDATION_FAILED =
-        "Input validation failed. Please check you…"; // literal string (−6 tokens)
+        "Input validation failed. Please check you…"; // literal string (−4 tokens)
     static constexpr const char* AUTHENTICATION_REQUIRED =
         "Authentication is required to access this resource.";
     static constexpr const char* AUTHORIZATION_FAILED =
         "You do not have permission to perform this action.";
     static constexpr const char* RESOURCE_NOT_FOUND =
-        "The requested resource could not be foun…"; // literal string (−3 tokens)
+        "The requested resource could not be foun…"; // literal string (−2 tokens)
     static constexpr const char* INTERNAL_ERROR =
-        "An internal server error occurred. Please…"; // literal string (−5 tokens)
+        "An internal server error occurred. Please…"; // literal string (−3 tokens)
     static constexpr const char* RATE_LIMIT_EXCEEDED =
-        "Rate limit exceeded. Please wait before makin…"; // literal string (−3 tokens)
+        "Rate limit exceeded. Please wait before makin…"; // literal string (−1 tokens)
 };

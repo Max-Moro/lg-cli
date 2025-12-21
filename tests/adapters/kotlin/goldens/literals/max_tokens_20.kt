@@ -8,14 +8,14 @@ package com.example.literals
 const val SHORT_MESSAGE = "Hello, World!"
 
 // Long string literal (candidate for trimming)
-const val LONG_MESSAGE = """This is an extremely long message that contains a substantial amount of text content which might be consi…""" // literal string (−55 tokens)
+const val LONG_MESSAGE = """This is an extremely long message that contains a substantial amount of text content which might be consi…""" // literal string (−52 tokens)
 
 // Multi-line raw string with embedded expressions
 val TEMPLATE_WITH_DATA = """
 User Information:
 - Name: ${getUserName()}
 - Email: ${getUserEmail()}
--…""" // literal string (−50 tokens)
+-…""" // literal string (−48 tokens)
 
 data class DataContainer(
     // Small array (should be preserved)
@@ -104,7 +104,7 @@ class LiteralDataManager {
         // Very long SQL-like query string
         return """
             SELECT 
-                users.id, users.username, users.email, users.created_at,…""" /* literal string (−171 tokens) */.trimIndent()
+                users.id, users.username, users.email, users.created_at,…""" /* literal string (−170 tokens) */.trimIndent()
     }
 }
 

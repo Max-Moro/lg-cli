@@ -6,14 +6,14 @@
 const SHORT_MESSAGE = "Hello, World!";
 
 // Long string literal (candidate for trimming)
-const LONG_MESSAGE = `This is an extremely long message that contains a substantial amount of text content which might be conside…`; // literal string (−54 tokens)
+const LONG_MESSAGE = `This is an extremely long message that contains a substantial amount of text content which might be conside…`; // literal string (−51 tokens)
 
 // Multi-line template literal with embedded expressions
 const TEMPLATE_WITH_DATA = `
 User Information:
 - Name: ${getUserName()}
 - Email: ${getUserEmail()}
-- Re…`; // literal string (−48 tokens)
+- Re…`; // literal string (−46 tokens)
 
 interface DataContainer {
     // Small array (should be preserved)
@@ -52,7 +52,7 @@ export class LiteralDataManager {
             "spanish",
             "french",
             "…",
-        ]; // literal array (−82 tokens)
+        ]; // literal array (−84 tokens)
         
         // Set with many elements
         this.allowedExtensions = new Set([
@@ -61,7 +61,7 @@ export class LiteralDataManager {
             ".jsx",
             ".tsx",
             "…",
-        ]); // literal array (−47 tokens)
+        ]); // literal array (−42 tokens)
     }
     
     public processData(): DataContainer {
@@ -81,7 +81,7 @@ export class LiteralDataManager {
                         data: [
                             { id: 1, name: "First", active: true },
                             "…",
-                        ] // literal array (−61 tokens),
+                        ], // literal array (−61 tokens)
                         // … (1 more, −41 tokens)
                     }
                 }
@@ -99,7 +99,7 @@ export class LiteralDataManager {
         // Very long SQL-like query string
         return `
             SELECT 
-                users.id, users.username, users.email, users.created_at,…`; // literal string (−171 tokens)
+                users.id, users.username, users.email, users.created_at,…`; // literal string (−170 tokens)
     }
     
     // Properties with literal data

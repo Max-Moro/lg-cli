@@ -14,7 +14,6 @@ VisibilityLevel = Literal["public", "protected", "private", "internal", "exporte
 FunctionBodyPolicy = Literal["keep_all", "strip_all", "keep_public"]
 CommentPolicy = Literal["keep_all", "strip_all", "keep_doc", "keep_first_sentence"]
 ImportPolicy = Literal["keep_all", "strip_all", "strip_external", "strip_local"]
-PlaceholderStyle = Literal["inline", "block", "none"]
 
 
 @dataclass
@@ -59,10 +58,9 @@ class BudgetConfig:
 @dataclass
 class PlaceholderConfig:
     """Configuration for placeholders of removed code."""
-    style: PlaceholderStyle = "inline"
     # Token savings threshold: savings / placeholder >= min_savings_ratio
     min_savings_ratio: float = 2.0
-    # Absolute savings threshold for style=="none" (complete removal).
+    # Absolute savings threshold when placeholder fully replaces code
     min_abs_savings_if_none: int = 5
 
 

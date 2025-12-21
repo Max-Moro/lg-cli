@@ -17,7 +17,6 @@ from ..processing.parser import LiteralParser
 from ..processing.selector import Selection
 from ..processing.string_formatter import StringFormatter
 from ..processor import LiteralProcessor
-from ..utils import CommentFormatter
 from ..utils.element_parser import Element
 from ..utils.interpolation import InterpolationHandler
 from ....tree_sitter_support import TreeSitterDocument, Node
@@ -38,7 +37,6 @@ class StringLiteralProcessor(LiteralProcessor):
         self,
         tokenizer: TokenService,
         literal_parser: LiteralParser,
-        comment_formatter: CommentFormatter,
     ):
         """
         Initialize processor.
@@ -46,12 +44,11 @@ class StringLiteralProcessor(LiteralProcessor):
         Args:
             tokenizer: Token counting service
             literal_parser: Shared LiteralParser instance
-            comment_formatter: Shared CommentFormatter instance
         """
         self.tokenizer = tokenizer
         self.interpolation = InterpolationHandler()
         self.parser = literal_parser
-        self.string_formatter = StringFormatter(tokenizer, comment_formatter)
+        self.string_formatter = StringFormatter(tokenizer)
 
     def can_handle(self, profile: LiteralProfile, node: Node, doc: TreeSitterDocument) -> bool:
         """
@@ -154,6 +151,4 @@ class StringLiteralProcessor(LiteralProcessor):
             saved_tokens=parsed.original_tokens - trimmed_tokens,
             elements_kept=selection.kept_count,
             elements_removed=selection.removed_count,
-            comment_text=formatted.comment,
-            comment_position=formatted.comment_byte,
         )

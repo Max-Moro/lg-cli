@@ -156,34 +156,6 @@ This enables:
 - `lg/adapters/optimizations/imports/optimizer.py` — no changes needed
 - `lg/adapters/optimizations/public_api.py` — no changes needed
 
-## Implementation Steps
-
-### Phase 1: Core Placeholder Changes (~40% of work)
-1. Add new fields to PlaceholderSpec (replacement_text, add_suffix_comment)
-2. Add editor reference to PlaceholderManager
-3. Implement `apply_to_editor()` method with `_find_insertion_point()` logic
-4. Update context.py to pass editor and accept new parameters
-5. Update code_base.py to use new API
-
-### Phase 2: Migrate Function Bodies (~15% of work)
-1. Update `_apply_trim()` to compose replacement_text
-2. Simplify trimmer interface if needed
-3. Run function_bodies tests
-
-### Phase 3: Migrate Comments (~15% of work)
-1. Update `_apply_decision()` transform case
-2. Run comments tests
-
-### Phase 4: Migrate Literals (~25% of work)
-1. Update `_apply_result()` in pipeline.py
-2. Ensure composing works correctly for nested literals
-3. Run literals tests (including nested cases)
-
-### Phase 5: Cleanup & Testing (~5% of work)
-1. Run full test suite: `./scripts/test_adapters.sh all all`
-2. Verify no golden changes (backward compatibility)
-3. Code inspection via Qodana
-
 ## Design Details
 
 ### Unified Placeholder/Comment Generation

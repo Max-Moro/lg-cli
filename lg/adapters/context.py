@@ -106,25 +106,39 @@ class ProcessingContext(LightState):
         action: PlaceholderAction = PlaceholderAction.OMIT,
         placeholder_prefix: str = "",
         count: int = 1,
+        replacement_text: Optional[str] = None,
+        add_suffix_comment: bool = False,
+        tokens_saved: Optional[int] = None,
+        use_composing_nested: bool = False,
     ) -> None:
         """
         Add placeholder with explicit coordinates.
 
         Args:
-            element_type: Type of element ("function_body", "import", "comment", etc.)
+            element_type: Type of element ("function_body", "literal_string", etc.)
             start_char: Start position in characters
             end_char: End position in characters
             action: OMIT for complete removal, TRUNCATE for partial reduction
             placeholder_prefix: Indentation prefix for placeholder text
             count: Number of elements
+            replacement_text: For TRUNCATE action — the shortened content
+            add_suffix_comment: Flag to add suffix comment after element
+            tokens_saved: Tokens saved (for literal_* types)
+            use_composing_nested: Use composing_nested for nested structures (literals)
         """
         self.placeholders.add_placeholder(
             element_type, start_char, end_char,
             action=action,
             placeholder_prefix=placeholder_prefix,
             count=count,
+            replacement_text=replacement_text,
+            add_suffix_comment=add_suffix_comment,
+            tokens_saved=tokens_saved,
+            use_composing_nested=use_composing_nested,
         )
-        self.metrics.mark_element_removed(element_type, count)
+        # Normalize literal_* types to "literal" for metrics
+        metrics_type = "literal" if element_type.startswith("literal_") else element_type
+        self.metrics.mark_element_removed(metrics_type, count)
         self.metrics.mark_placeholder_inserted()
 
     def add_placeholder_for_node(
@@ -134,6 +148,10 @@ class ProcessingContext(LightState):
         *,
         action: PlaceholderAction = PlaceholderAction.OMIT,
         count: int = 1,
+        replacement_text: Optional[str] = None,
+        add_suffix_comment: bool = False,
+        tokens_saved: Optional[int] = None,
+        use_composing_nested: bool = False,
     ) -> None:
         """
         Add placeholder exactly at node boundaries.
@@ -143,13 +161,23 @@ class ProcessingContext(LightState):
             node: Tree-sitter node to replace
             action: OMIT or TRUNCATE
             count: Number of elements
+            replacement_text: For TRUNCATE action — the shortened content
+            add_suffix_comment: Flag to add suffix comment after element
+            tokens_saved: Tokens saved (for literal_* types)
+            use_composing_nested: Use composing_nested for nested structures (literals)
         """
         self.placeholders.add_placeholder_for_node(
             element_type, node,
             action=action,
             count=count,
+            replacement_text=replacement_text,
+            add_suffix_comment=add_suffix_comment,
+            tokens_saved=tokens_saved,
+            use_composing_nested=use_composing_nested,
         )
-        self.metrics.mark_element_removed(element_type, count)
+        # Normalize literal_* types to "literal" for metrics
+        metrics_type = "literal" if element_type.startswith("literal_") else element_type
+        self.metrics.mark_element_removed(metrics_type, count)
         self.metrics.mark_placeholder_inserted()
 
     @classmethod
@@ -179,7 +207,7 @@ class ProcessingContext(LightState):
         placeholders = PlaceholderManager(
             doc,
             adapter.comment_style,
-            adapter.cfg.placeholders.style,
+            editor,  # Pass editor for apply_to_editor() support
         )
 
         return cls(

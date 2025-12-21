@@ -203,13 +203,14 @@ class CommentOptimizer:
             context.add_placeholder_for_node(element_type, node, action = PlaceholderAction.OMIT)
 
         elif decision.action == "transform":
-            # Replace with transformed text
-            start_char, end_char = context.doc.get_node_range(node)
-            context.editor.add_replacement(
-                start_char, end_char, decision.replacement,
-                edit_type=f"{element_type}_truncated",
+            # Replace with transformed (shortened) text
+            context.add_placeholder_for_node(
+                element_type,
+                node,
+                action=PlaceholderAction.TRUNCATE,
+                replacement_text=decision.replacement,
+                add_suffix_comment=False,  # Shortened comment doesn't need extra indication
             )
-            context.metrics.mark_element_removed(element_type)
 
     def _handle_comment_group_for_first_sentence(
         self,
