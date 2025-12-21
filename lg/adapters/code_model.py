@@ -136,7 +136,6 @@ class CodeCfg:
         if "placeholders" in d:
             pc = d["placeholders"]
             self.placeholders = PlaceholderConfig(
-                style=pc.get("style", "inline"),
                 min_savings_ratio=float(pc.get("min_savings_ratio", 2.0)),
                 min_abs_savings_if_none=int(pc.get("min_abs_savings_if_none", 5)),
             )

@@ -7,7 +7,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from enum import Enum
-from typing import Callable, Dict, List, Tuple, Any, Optional
+from typing import Callable, Dict, List, Tuple, Optional
 
 from .comment_style import CommentStyle
 from .range_edits import RangeEditor
@@ -367,22 +367,6 @@ class PlaceholderManager:
 
         self.placeholders.append(spec)
 
-    def _generate_placeholder_text(self, spec: PlaceholderSpec) -> str:
-        """Generate placeholder text for main placeholders (always inline style)."""
-        content = self._get_placeholder_content(spec)
-
-        # For docstrings use native language wrapping
-        if spec.element_type == "docstring":
-            doc_start, doc_end = self.comment_style.doc_markers
-            if doc_end:
-                return f"{spec.placeholder_prefix}{doc_start} {content} {doc_end}"
-            else:
-                # Single-line docstring style (e.g., /// for Rust, // for Go)
-                return f"{spec.placeholder_prefix}{doc_start} {content}\n"
-
-        # Standard inline comment
-        return f"{spec.placeholder_prefix}{self.comment_style.single_line} {content}"
-
     def _get_placeholder_content(self, spec: PlaceholderSpec) -> str:
         """
         Generate placeholder content based on metrics.
@@ -433,15 +417,20 @@ class PlaceholderManager:
         Returns:
             (full_replacement_text, extended_end_char)
         """
-        # Build base replacement
-        if spec.replacement_text is not None:
-            base_text = spec.replacement_text
-        else:
-            base_text = self._generate_placeholder_text(spec)
-
         # If no suffix comment needed, return as-is
         if not spec.add_suffix_comment:
-            return base_text, spec.end_char
+            return spec.replacement_text, spec.end_char
+
+        content = self._get_placeholder_content(spec)
+
+        # For docstrings use native language wrapping
+        if spec.element_type == "docstring":
+            doc_start, doc_end = self.comment_style.doc_markers
+            if doc_end:
+                return f"{spec.placeholder_prefix}{doc_start} {content} {doc_end}", spec.end_char
+            else:
+                # Single-line docstring style (e.g., /// for Rust, // for Go)
+                return f"{spec.placeholder_prefix}{doc_start} {content}\n", spec.end_char
 
         # Analyze context after element for suffix comment positioning
         text_after = self.source_text[spec.end_char:] if spec.end_char < len(self.source_text) else ""
@@ -450,7 +439,6 @@ class PlaceholderManager:
         offset, needs_block = self._find_comment_insertion_point(line_remainder)
 
         # Build suffix comment
-        content = self._get_placeholder_content(spec)
         if needs_block:
             block_start, block_end = self.comment_style.multi_line
             suffix = f" {block_start} {content} {block_end}"
@@ -459,7 +447,7 @@ class PlaceholderManager:
 
         # Include trailing punctuation before comment
         trailing_punct = line_remainder[:offset]
-        full_replacement = base_text + trailing_punct + suffix
+        full_replacement = (spec.replacement_text or "") + trailing_punct + suffix
         extended_end = spec.end_char + offset
 
         return full_replacement, extended_end
@@ -589,20 +577,3 @@ class PlaceholderManager:
             result = result.merge_with(placeholder, self.doc.text)
 
         return result
-
-    def _calculate_stats(self, specs: List[PlaceholderSpec]) -> Dict[str, Any]:
-        """Calculate placeholder statistics."""
-        stats: Dict[str, Any] = {
-            "placeholders_inserted": len(specs),
-            "total_lines_removed": sum(spec.lines_removed for spec in specs),
-            "placeholders_by_type": {}
-        }
-
-        # Group by types
-        for spec in specs:
-            etype = spec.element_type
-            if etype not in stats["placeholders_by_type"]:
-                stats["placeholders_by_type"][etype] = 0
-            stats["placeholders_by_type"][etype] += spec.count
-
-        return stats

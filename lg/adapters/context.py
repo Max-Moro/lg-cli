@@ -107,7 +107,7 @@ class ProcessingContext(LightState):
         placeholder_prefix: str = "",
         count: int = 1,
         replacement_text: Optional[str] = None,
-        add_suffix_comment: bool = False,
+        add_suffix_comment: bool = True,
         tokens_saved: Optional[int] = None,
         use_composing_nested: bool = False,
     ) -> None:
