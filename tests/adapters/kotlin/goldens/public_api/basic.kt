@@ -11,7 +11,7 @@ const val PUBLIC_VERSION = "1.0.0"
 const val API_ENDPOINT = "https://api.example.com"
 
 // Private module-level constants (should be filtered out)
-// … 2 propertys omitted
+// … 2 properties omitted
 
 // Public data class (should be preserved)
 data class User(
@@ -34,7 +34,7 @@ class UserManager(private val apiEndpoint: String = API_ENDPOINT) {
     var isInitialized: Boolean = false
     
     // Private properties (should be filtered out with public_api_only)
-    // … 2 propertys omitted
+    // … 2 properties omitted
     
     // Protected properties (should be filtered out)
     // … property omitted
@@ -83,7 +83,7 @@ class UserManager(private val apiEndpoint: String = API_ENDPOINT) {
         get() = internalCache.size
     
     // Private readonly property with getter (should be filtered out)
-    // … property omitted (5 lines)
+    // … property omitted
     
     companion object {
         // Public static methods (should be preserved)
@@ -165,7 +165,7 @@ object UserUtils {
 }
 
 // Private object (not exported, should be filtered out)
-// … object omitted (15 lines)
+// … object omitted
 
 // ============= Examples with Kotlin annotations =============
 

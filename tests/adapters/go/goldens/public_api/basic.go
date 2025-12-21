@@ -14,7 +14,7 @@ const APIEndpoint = "https://api.example.com"
 // Private module-level constants (should be filtered out)
 // … const omitted
 
-// … var omitted (7 lines)
+// … var omitted
 
 // User is a public structure (should be preserved)
 type User struct {
@@ -25,7 +25,7 @@ type User struct {
 }
 
 // internalMetrics is a private structure (should be filtered out)
-// … struct omitted (4 lines)
+// … struct omitted
 
 // UserRole is a public type alias (should be preserved)
 type UserRole string
@@ -39,7 +39,7 @@ const (
 // internalEventType is a private type (should be filtered out)
 // … type omitted
 
-// … const omitted (5 lines)
+// … const omitted
 
 // UserManager is a public class with mixed visibility members
 type UserManager struct {
@@ -149,7 +149,7 @@ func CreateDefaultUser() *User {
 // … function omitted
 
 // internalLogger is a private structure (should be filtered out)
-// … struct omitted (3 lines)
+// … struct omitted
 
 // newInternalLogger is a private constructor (should be filtered out)
 // … function omitted

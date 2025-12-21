@@ -6,10 +6,36 @@ Provides unified API and intelligent placeholder collapsing.
 from __future__ import annotations
 
 from dataclasses import dataclass
+from enum import Enum
 from typing import Dict, List, Tuple, Any
 
-from .tree_sitter_support import Node
 from .comment_style import CommentStyle
+from .tree_sitter_support import Node
+
+
+class PlaceholderAction(Enum):
+    """Action type for placeholder - determines text suffix."""
+    OMIT = "omitted"       # Complete removal of element
+    TRUNCATE = "truncated"  # Partial reduction/trimming
+
+
+# Pluralization rules for element types
+_PLURAL_FORMS: Dict[str, str] = {
+    "class": "classes",
+    "property": "properties",
+    "body": "bodies",
+}
+
+
+def _pluralize(word: str, count: int) -> str:
+    """Pluralize word based on count."""
+    if count == 1:
+        return word
+    # Check special forms
+    if word in _PLURAL_FORMS:
+        return _PLURAL_FORMS[word]
+    # Default: add 's'
+    return word + "s"
 
 
 @dataclass
@@ -18,29 +44,25 @@ class PlaceholderSpec:
     Placeholder specification with metadata.
     Stores structured placeholder information without binding to a specific format.
     """
-    # Position in file
+    # Position in file (required)
     start_char: int
     end_char: int
-    start_line: int
-    end_line: int
 
-    # Placeholder type
-    placeholder_type: str  # "function_body", "method_body", "import", "comment", "literal", etc.
+    # Element type: "function", "method", "import", "comment", "literal", etc.
+    # For bodies use: "function_body", "method_body", "getter_body", etc.
+    element_type: str
 
-    # Placeholder indentation (tabulation)
+    # Action: OMIT (complete removal) or TRUNCATE (partial reduction)
+    action: PlaceholderAction = PlaceholderAction.OMIT
+
+    # Placeholder indentation prefix
     placeholder_prefix: str = ""
 
-    # Metrics
+    # Number of elements (for imports, comments that can be merged)
+    count: int = 1
+
+    # Lines removed - only meaningful for body types, explicitly passed by optimizer
     lines_removed: int = 0
-    chars_removed: int = 0
-    count: int = 1  # Number of elements (for imports, comments)
-    
-    def __post_init__(self):
-        # Calculate metrics if not passed
-        if self.lines_removed == 0:
-            self.lines_removed = max(0, self.end_line - self.start_line + 1)
-        if self.chars_removed == 0:
-            self.chars_removed = max(0, self.end_char - self.start_char)
     
     @property
     def width(self) -> int:
@@ -54,23 +76,25 @@ class PlaceholderSpec:
     @property
     def position_key(self) -> Tuple[int, int]:
         """Key for sorting by position."""
-        return self.start_line, self.start_char
-    
+        return self.start_char, self.end_char
+
     def can_merge_with(self, other: PlaceholderSpec, source_text: str) -> bool:
         """
         Check if this placeholder can be merged with another.
 
         Merge conditions:
-        - Same placeholder type
-        - Suitable types
+        - Same element type and action
+        - Suitable types (not bodies)
         - No significant content between placeholders
         """
-        if self.placeholder_type != other.placeholder_type:
+        if self.element_type != other.element_type:
             return False
 
-        # Can collapse placeholders for imports, comments, docstrings, functions, methods, classes, interfaces and types.
-        # Cannot collapse placeholders for literals, function/method bodies.
-        if self.placeholder_type in ["function_body", "method_body"]:
+        if self.action != other.action:
+            return False
+
+        # Cannot collapse body placeholders - they represent distinct function/method bodies
+        if self.element_type.endswith("_body"):
             return False
 
         # Check content between placeholders
@@ -149,7 +173,7 @@ class PlaceholderSpec:
         # If '\n' not found, we're at the beginning of file
         return char_position
     
-    def merge_with(self, other: PlaceholderSpec, source_text) -> PlaceholderSpec:
+    def merge_with(self, other: PlaceholderSpec, source_text: str) -> PlaceholderSpec:
         """Create merged placeholder."""
         if not self.can_merge_with(other, source_text):
             raise ValueError("Cannot merge incompatible placeholders")
@@ -157,19 +181,15 @@ class PlaceholderSpec:
         # Merged boundaries
         start_char = min(self.start_char, other.start_char)
         end_char = max(self.end_char, other.end_char)
-        start_line = min(self.start_line, other.start_line)
-        end_line = max(self.end_line, other.end_line)
-        
+
         return PlaceholderSpec(
             start_char=start_char,
             end_char=end_char,
-            start_line=start_line,
-            end_line=end_line,
-            placeholder_type=self.placeholder_type,
+            element_type=self.element_type,
+            action=self.action,
             placeholder_prefix=self.placeholder_prefix,
-            lines_removed=self.lines_removed + other.lines_removed,
-            chars_removed=self.chars_removed + other.chars_removed,
             count=self.count + other.count,
+            lines_removed=self.lines_removed + other.lines_removed,
         )
 
 
@@ -178,34 +198,76 @@ class PlaceholderManager:
     Central manager for placeholder management.
     Provides unified API and handles collapsing.
     """
-    
+
     def __init__(self, raw_text: str, comment_style: CommentStyle, placeholder_style: str):
         self.raw_text = raw_text
         self.comment_style = comment_style
         self.placeholder_style = placeholder_style
         self.placeholders: List[PlaceholderSpec] = []
-    
-    # ============= Simple API for adding placeholders =============
 
-    def add_placeholder(self, placeholder_type: str, start_char: int, end_char: int, start_line: int, end_line: int,
-                        placeholder_prefix: str = "", count: int = 1, lines_removed: int = 0) -> None:
-        """Add custom placeholder with explicit coordinates."""
+    # ============= Public API for adding placeholders =============
+
+    def add_placeholder(
+        self,
+        element_type: str,
+        start_char: int,
+        end_char: int,
+        *,
+        action: PlaceholderAction = PlaceholderAction.OMIT,
+        placeholder_prefix: str = "",
+        count: int = 1,
+        lines_removed: int = 0,
+    ) -> None:
+        """
+        Add placeholder with explicit coordinates.
+
+        Args:
+            element_type: Type of element ("function_body", "import", "comment", etc.)
+            start_char: Start position in characters
+            end_char: End position in characters
+            action: OMIT for complete removal, TRUNCATE for partial reduction
+            placeholder_prefix: Indentation prefix for placeholder text
+            count: Number of elements (for merging similar placeholders)
+            lines_removed: Explicit line count (only for body types)
+        """
         spec = PlaceholderSpec(
             start_char=start_char,
             end_char=end_char,
-            start_line=start_line,
-            end_line=end_line,
-            placeholder_type=placeholder_type,
+            element_type=element_type,
+            action=action,
             placeholder_prefix=placeholder_prefix,
             count=count,
             lines_removed=lines_removed,
         )
-
         self._add_placeholder_with_priority(spec)
 
-    def add_placeholder_for_node(self, placeholder_type: str, node: Node, doc, count: int = 1) -> None:
-        """Add placeholder for node."""
-        spec = self._create_spec_from_node(node, doc, placeholder_type, count=count)
+    def add_placeholder_for_node(
+        self,
+        element_type: str,
+        node: Node,
+        doc,
+        *,
+        action: PlaceholderAction = PlaceholderAction.OMIT,
+        count: int = 1,
+    ) -> None:
+        """
+        Add placeholder for Tree-sitter node.
+
+        Args:
+            element_type: Type of element
+            node: Tree-sitter node to replace
+            doc: TreeSitterDocument for coordinate conversion
+            action: OMIT or TRUNCATE
+            count: Number of elements
+        """
+        start_char, end_char = doc.get_node_range(node)
+        spec = PlaceholderSpec(
+            start_char=start_char,
+            end_char=end_char,
+            element_type=element_type,
+            action=action,
+            count=count,
+        )
         self._add_placeholder_with_priority(spec)
 
     # ============= Internal methods =============
@@ -241,28 +303,13 @@ class PlaceholderManager:
             del self.placeholders[i]
 
         self.placeholders.append(spec)
-    
-    def _create_spec_from_node(self, node: Node, doc, placeholder_type: str, count: int = 1) -> PlaceholderSpec:
-        """Create PlaceholderSpec from Tree-sitter node."""
-        start_char, end_char = doc.get_node_range(node)
-        start_line, end_line = doc.get_line_range(node)
-
-        return PlaceholderSpec(
-            start_char=start_char,
-            end_char=end_char,
-            start_line=start_line,
-            end_line=end_line,
-            placeholder_type=placeholder_type,
-            placeholder_prefix="",
-            count=count,
-        )
 
     def _generate_placeholder_text(self, spec: PlaceholderSpec) -> str:
         """Generate placeholder text based on type and style."""
         content = self._get_placeholder_content(spec)
 
         # For docstrings always use native language wrapping
-        if spec.placeholder_type == "docstring":
+        if spec.element_type == "docstring":
             doc_start, doc_end = self.comment_style.doc_markers
             if doc_end:
                 return f"{spec.placeholder_prefix}{doc_start} {content} {doc_end}"
@@ -278,96 +325,39 @@ class PlaceholderManager:
             return f"{spec.placeholder_prefix}{block_start} {content} {block_end}"
 
     def _get_placeholder_content(self, spec: PlaceholderSpec) -> str:
-        """Generate placeholder content based on type and metrics."""
-        ptype = spec.placeholder_type
-        count = spec.count
-        lines = spec.lines_removed
-        _chars_removed = spec.chars_removed
+        """
+        Generate placeholder content based on element type and action.
 
-        # Basic templates for different types
-        if ptype == "function_body":
-            if lines > 1:
-                return f"… function body omitted ({lines} lines)"
-            else:
-                return "… function body omitted"
+        Universal algorithm:
+        1. Start with ellipsis "…"
+        2. Add count if > 1 (except for comments/docstrings - they represent semantic units)
+        3. Add element type (pluralized if count > 1)
+        4. Add action word (omitted/truncated)
+        5. Add lines suffix for body types with lines_removed > 1
+        """
+        parts = ["…"]
 
-        elif ptype == "function_body_truncated":
-            if lines > 1:
-                return f"… function body truncated ({lines} lines)"
-            else:
-                return "… function body truncated"
+        element_type = spec.element_type
 
-        elif ptype == "method_body":
-            if lines > 1:
-                return f"… method body omitted ({lines} lines)"
-            else:
-                return "… method body omitted"
+        # Count prefix for multiple elements
+        # Skip count for comments/docstrings - consecutive comments form a semantic unit
+        show_count = spec.count > 1 and element_type not in ("comment", "docstring")
+        if show_count:
+            parts.append(str(spec.count))
 
-        elif ptype == "method_body_truncated":
-            if lines > 1:
-                return f"… method body truncated ({lines} lines)"
-            else:
-                return "… method body truncated"
-        
-        elif ptype == "comment":
-            return "… comment omitted"
+        # Element type with proper formatting
+        display_type = element_type.replace("_", " ")
+        display_type = _pluralize(display_type, spec.count) if show_count else display_type
+        parts.append(display_type)
 
-        elif ptype == "docstring":
-            return "… docstring omitted"
-        
-        elif ptype == "import":
-            if count > 1:
-                return f"… {count} imports omitted"
-            else:
-                return "… import omitted"
-        
-        elif ptype == "function":
-            if count > 1:
-                return f"… {count} functions omitted"
-            else:
-                return "… function omitted"
-        
-        elif ptype == "method":
-            if count > 1:
-                return f"… {count} methods omitted"
-            else:
-                return "… method omitted"
-        
-        elif ptype == "class":
-            if count > 1:
-                return f"… {count} classes omitted"
-            else:
-                return "… class omitted"
-        
-        elif ptype == "interface":
-            if count > 1:
-                return f"… {count} interfaces omitted"
-            else:
-                return "… interface omitted"
-        
-        elif ptype == "type":
-            if count > 1:
-                return f"… {count} types omitted"
-            else:
-                return "… type omitted"
-        
-        else:
-            # Handle *_truncated types (e.g., getter_body_truncated, init_body_truncated)
-            if ptype.endswith("_truncated"):
-                # Convert "getter_body_truncated" -> "getter body truncated"
-                base_type = ptype.replace("_", " ")
-                if lines > 1:
-                    return f"… {base_type} ({lines} lines)"
-                else:
-                    return f"… {base_type}"
+        # Action word
+        parts.append(spec.action.value)
 
-            # Generic template for unknown types
-            if count > 1:
-                return f"… {count} {ptype}s omitted"
-            elif lines > 1:
-                return f"… {ptype} omitted ({lines} lines)"
-            else:
-                return f"… {ptype} omitted"
+        # Lines suffix (only for body types with explicit lines_removed > 1)
+        if spec.lines_removed > 1 and element_type.endswith("_body"):
+            parts.append(f"({spec.lines_removed} lines)")
+
+        return " ".join(parts)
     
     # ============= Collapsing and finalization =============
 
@@ -441,19 +431,18 @@ class PlaceholderManager:
 
     def _calculate_stats(self, specs: List[PlaceholderSpec]) -> Dict[str, Any]:
         """Calculate placeholder statistics."""
-        stats = {
+        stats: Dict[str, Any] = {
             "placeholders_inserted": len(specs),
             "total_lines_removed": sum(spec.lines_removed for spec in specs),
-            "total_chars_removed": sum(spec.chars_removed for spec in specs),
             "placeholders_by_type": {}
         }
 
         # Group by types
         for spec in specs:
-            ptype = spec.placeholder_type
-            if ptype not in stats["placeholders_by_type"]:
-                stats["placeholders_by_type"][ptype] = 0
-            stats["placeholders_by_type"][ptype] += spec.count
+            etype = spec.element_type
+            if etype not in stats["placeholders_by_type"]:
+                stats["placeholders_by_type"][etype] = 0
+            stats["placeholders_by_type"][etype] += spec.count
 
         return stats
 

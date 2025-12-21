@@ -10,7 +10,7 @@ from typing import Optional
 
 from .code_analysis import CodeAnalyzer
 from .metrics import MetricsCollector
-from .placeholders import PlaceholderManager, create_placeholder_manager
+from .placeholders import PlaceholderManager, PlaceholderAction, create_placeholder_manager
 from .range_edits import RangeEditor
 from .tree_sitter_support import TreeSitterDocument, Node
 from ..stats import TokenService
@@ -97,18 +97,61 @@ class ProcessingContext(LightState):
         self.tokenizer = tokenizer
         self.code_analyzer = code_analyzer
 
-    def add_placeholder(self, element_type: str, start_char: int, end_char: int, start_line: int, end_line: int,
-                        placeholder_prefix: str = "", count: int = 1, lines_removed: int = 0) -> None:
-        """Add placeholder."""
+    def add_placeholder(
+        self,
+        element_type: str,
+        start_char: int,
+        end_char: int,
+        *,
+        action: PlaceholderAction = PlaceholderAction.OMIT,
+        placeholder_prefix: str = "",
+        count: int = 1,
+        lines_removed: int = 0,
+    ) -> None:
+        """
+        Add placeholder with explicit coordinates.
+
+        Args:
+            element_type: Type of element ("function_body", "import", "comment", etc.)
+            start_char: Start position in characters
+            end_char: End position in characters
+            action: OMIT for complete removal, TRUNCATE for partial reduction
+            placeholder_prefix: Indentation prefix for placeholder text
+            count: Number of elements
+            lines_removed: Explicit line count (only for body types)
+        """
         self.placeholders.add_placeholder(
-            element_type, start_char, end_char, start_line, end_line, placeholder_prefix, count, lines_removed
+            element_type, start_char, end_char,
+            action=action,
+            placeholder_prefix=placeholder_prefix,
+            count=count,
+            lines_removed=lines_removed,
         )
         self.metrics.mark_element_removed(element_type, count)
         self.metrics.mark_placeholder_inserted()
 
-    def add_placeholder_for_node(self, element_type: str, node: Node, count: int = 1) -> None:
-        """Add placeholder exactly at node boundaries."""
-        self.placeholders.add_placeholder_for_node(element_type, node, self.doc, count=count)
+    def add_placeholder_for_node(
+        self,
+        element_type: str,
+        node: Node,
+        *,
+        action: PlaceholderAction = PlaceholderAction.OMIT,
+        count: int = 1,
+    ) -> None:
+        """
+        Add placeholder exactly at node boundaries.
+
+        Args:
+            element_type: Type of element
+            node: Tree-sitter node to replace
+            action: OMIT or TRUNCATE
+            count: Number of elements
+        """
+        self.placeholders.add_placeholder_for_node(
+            element_type, node, self.doc,
+            action=action,
+            count=count,
+        )
         self.metrics.mark_element_removed(element_type, count)
         self.metrics.mark_placeholder_inserted()
 

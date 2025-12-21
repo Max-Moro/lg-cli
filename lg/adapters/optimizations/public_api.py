@@ -42,6 +42,4 @@ class PublicApiOptimizer:
 
         # Remove private elements with appropriate placeholders
         for (start_char, end_char), private_element in element_ranges:
-            start_line = context.doc.get_line_number(start_char)
-            end_line = context.doc.get_line_number(end_char)
-            context.add_placeholder(private_element.element_type, start_char, end_char, start_line, end_line)
+            context.add_placeholder(private_element.element_type, start_char, end_char)

@@ -39,7 +39,7 @@ class UserManager(private val apiEndpoint: String = PublicConstants.API_ENDPOINT
   // … 2 vals omitted
 
   // Protected properties (should be filtered out)
-  // … val omitted (4 lines)
+  // … val omitted
 
   initialize()
 
@@ -125,7 +125,7 @@ trait UserService {
 }
 
 // Private trait (should be filtered out)
-// … trait omitted (4 lines)
+// … trait omitted
 
 // Public sealed trait with case objects (should be preserved)
 sealed trait UserStatus
@@ -138,7 +138,7 @@ object UserStatus {
 
 // Private sealed trait (should be filtered out)
 // … trait omitted
-// … object omitted (5 lines)
+// … object omitted
 
 // Public functions (should be preserved)
 def createUserManager(endpoint: Option[String] = None): UserManager = {
@@ -169,7 +169,7 @@ object UserUtils {
 }
 
 // Private object (should be filtered out)
-// … object omitted (15 lines)
+// … object omitted
 
 // ============= Examples with Scala annotations =============
 

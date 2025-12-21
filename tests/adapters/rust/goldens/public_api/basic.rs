@@ -10,7 +10,7 @@ pub const API_ENDPOINT: &str = "https://api.example.com";
 // Private module-level constants (should be filtered out)
 // … const omitted
 
-// … macro omitted (8 lines)
+// … macro omitted
 
 // Public structure (should be preserved)
 #[derive(Debug, Clone)]
@@ -22,7 +22,7 @@ pub struct User {
 }
 
 // Private structure (should be filtered out)
-// … struct omitted (4 lines)
+// … struct omitted
 
 // Public enum (should be preserved)
 #[derive(Debug, Clone, Copy)]
@@ -33,7 +33,7 @@ pub enum UserRole {
 }
 
 // Private enum (should be filtered out)
-// … enum omitted (5 lines)
+// … enum omitted
 
 // Public struct with mixed visibility members
 pub struct UserManager {
@@ -116,9 +116,9 @@ impl UserManager {
 }
 
 // Private struct (should be filtered out)
-// … struct omitted (3 lines)
+// … struct omitted
 
-// … impl omitted (17 lines)
+// … impl omitted
 
 // Public trait (should be preserved)
 pub trait BaseService {
@@ -171,6 +171,6 @@ impl UserUtils {
 // Private utility struct (should be filtered out)
 // … struct omitted
 
-// … impl omitted (18 lines)
+// … impl omitted
 
 // … function omitted

@@ -136,7 +136,7 @@ export enum UserStatus {
 }
 
 // Private enum (not exported, should be filtered out)
-// … enum omitted (5 lines)
+// … enum omitted
 
 // Public functions (should be preserved)
 export function createUserManager(endpoint?: string): UserManager {
@@ -167,7 +167,7 @@ export namespace UserUtils {
 }
 
 // Private namespace (not exported, should be filtered out)
-// … namespace omitted (15 lines)
+// … namespace omitted
 
 // Default export (should be preserved)
 export default UserManager;

@@ -13,6 +13,7 @@ from .trimmer import FunctionBodyTrimmer
 from ...code_analysis import ElementInfo, FunctionGroup
 from ...code_model import FunctionBodyConfig
 from ...context import ProcessingContext
+from ...placeholders import PlaceholderAction
 
 
 class FunctionBodyOptimizer:
@@ -158,20 +159,16 @@ class FunctionBodyOptimizer:
         if stripped_text.startswith('\n'):
             placeholder_prefix = "\n" + indent_prefix
 
-        start_line = context.doc.get_line_number(start_char)
-        end_line = context.doc.get_line_number(end_char)
-
         # Calculate actual lines removed (non-empty content lines)
         lines_removed = self._count_content_lines(stripped_text)
 
         context.add_placeholder(
             func_type + "_body",
-            start_char,  # Start from strippable range, not line beginning
+            start_char,
             end_char,
-            start_line,
-            end_line,
+            action=PlaceholderAction.OMIT,
             placeholder_prefix=placeholder_prefix,
-            lines_removed=lines_removed
+            lines_removed=lines_removed,
         )
 
     def _get_content_lines_count(self, context: ProcessingContext, func_group: FunctionGroup) -> int:
@@ -245,9 +242,6 @@ class FunctionBodyOptimizer:
 
         func_type = func_group.element_info.element_type
 
-        # Use "truncated" suffix to distinguish from complete body removal
-        placeholder_type = func_type + "_body_truncated"
-
         # Compute placeholder prefix with proper newline handling
         # If placeholder starts right after '{' (no prefix kept), add newline
         placeholder_prefix = result.indent
@@ -256,20 +250,15 @@ class FunctionBodyOptimizer:
             # Need newline before indent
             placeholder_prefix = "\n" + result.indent
 
-        # Add placeholder for the removed middle section
-        # Pass explicit lines_removed from TrimResult for accurate count
-        context.placeholders.add_placeholder(
-            placeholder_type,
+        # Add placeholder for the removed middle section with TRUNCATE action
+        context.add_placeholder(
+            func_type + "_body",
             result.placeholder_start_char,
             result.placeholder_end_char,
-            context.doc.get_line_number(result.placeholder_start_char),
-            context.doc.get_line_number(result.placeholder_end_char),
+            action=PlaceholderAction.TRUNCATE,
             placeholder_prefix=placeholder_prefix,
-            lines_removed=result.lines_removed
+            lines_removed=result.lines_removed,
         )
-        # Update metrics
-        context.metrics.mark_element_removed(func_type + "_body", 1)
-        context.metrics.mark_placeholder_inserted()
 
     def _find_line_start(self, text: str, pos: int) -> int:
         """Find the start of the line containing position pos."""

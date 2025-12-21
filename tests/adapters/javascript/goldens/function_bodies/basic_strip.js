@@ -32,11 +32,11 @@ export function processUserData(users) {
 const simpleArrow = () => "simple";
 
 const complexArrow = (data) => {
-    // … arrow_function_body omitted (5 lines)
+    // … arrow function body omitted (5 lines)
 };
 
 const asyncArrow = async (url) => {
-    // … arrow_function_body omitted (11 lines)
+    // … arrow function body omitted (11 lines)
 };
 
 // Function with multiple overloads (via JSDoc)

@@ -25,7 +25,7 @@ struct User {
 
 // Package-private structure (should be filtered out)
 namespace {
-    // … struct omitted (4 lines);
+    // … struct omitted;
 }
 
 // Public enum (should be preserved)
@@ -37,7 +37,7 @@ enum class UserRole {
 
 // Private enum (should be filtered out)
 namespace {
-    // … enum omitted (5 lines);
+    // … enum omitted;
 }
 
 // Public class with mixed visibility members

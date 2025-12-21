@@ -135,7 +135,7 @@ public abstract class BaseService {
 }
 
 // Private enum (should be filtered out)
-// … enum omitted (5 lines)
+// … enum omitted
 
 // Public functions (should be preserved)
 public class UserManagerFactory {

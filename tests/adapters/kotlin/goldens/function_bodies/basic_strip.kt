@@ -37,12 +37,12 @@ class TaskService(repository: TaskRepository) {
 
     // init block
     init {
-        // … init_body omitted (3 lines)
+        // … init body omitted (3 lines)
     }
 
     // secondary constructor
     constructor(repository: TaskRepository, initialTasks: List<Task>) : this(repository) {
-        // … constructor_body omitted (4 lines)
+        // … constructor body omitted (4 lines)
     }
 
     private val pendingTasks = mutableSetOf<String>()
@@ -82,16 +82,16 @@ class TaskNotificationService {
     // custom getter & setter
     var enabled: Boolean
         get() {
-            // … getter_body omitted (2 lines)
+            // … getter body omitted (2 lines)
         }
         set(value) {
-            // … setter_body omitted (2 lines)
+            // … setter body omitted (2 lines)
         }
 
     // computed property with getter
     val statusMessage: String
         get() {
-            // … getter_body omitted (2 lines)
+            // … getter body omitted (2 lines)
         }
 
     fun notifyAssignment(task: Task, assignee: String) {
@@ -151,17 +151,17 @@ suspend fun <T> retryOperation(times: Int, block: suspend () -> T): T {
 
 // multiline lambda with Comparator
 val priorityComparator: Comparator<Task> = Comparator { a, b ->
-    // … lambda_body omitted (2 lines)
+    // … lambda body omitted (2 lines)
 }
 
 // multiline lambda as function type
 val taskValidator: (Task) -> Boolean = { task ->
-    // … lambda_body omitted (3 lines)
+    // … lambda body omitted (3 lines)
 }
 
 // lambda with receiver
 val taskTransformer: Task.() -> Task = {
-    // … lambda_body omitted (2 lines)
+    // … lambda body omitted (2 lines)
 }
 
 // single-line lambda (should not be stripped)

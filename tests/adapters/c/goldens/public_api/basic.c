@@ -23,7 +23,7 @@ typedef struct {
 } User;
 
 // Private structure (should be filtered out)
-// … typedef omitted (4 lines)
+// … typedef omitted
 
 // Public enum (should be preserved)
 typedef enum {
@@ -33,7 +33,7 @@ typedef enum {
 } UserRole;
 
 // Private enum (should be filtered out)
-// … typedef omitted (5 lines)
+// … typedef omitted
 
 // Public structure with mixed visibility members
 typedef struct {
@@ -153,7 +153,7 @@ User* user_manager_create_default_user(void) {
 // … function omitted
 
 // Private structure (should be filtered out)
-// … typedef omitted (5 lines)
+// … typedef omitted
 
 // … 3 functions omitted
 
