@@ -104,8 +104,6 @@ lg/adapters/cpp/
 
 **CollectionFormatter** — только коллекции, greedy selection, multiline/single-line
 
-**CommentFormatter** — shared утилита для обоих форматтеров
-
 ### 5. Inside-Out Processing
 
 **Принцип**: Все узлы от всех профилей сортируются вместе по глубине (deepest-first), затем обрабатываются в едином проходе.
@@ -182,7 +180,6 @@ Node + CollectionProfile
 - **LiteralParser** — парсинг структуры литерала (границы, delimiters, wrapper)
 - **ElementParser** — парсинг элементов коллекции с учетом separators, скобок и строк
 - **BudgetSelector** — выбор элементов по токен-бюджету
-- **CommentFormatter** — комментирование
 - **StringFormatter/CollectionFormatter** — специализированное форматирование
 
 ---

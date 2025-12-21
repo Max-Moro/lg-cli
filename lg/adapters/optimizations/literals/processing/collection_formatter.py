@@ -19,7 +19,7 @@ from ..patterns import (
     FactoryProfile,
     PlaceholderPosition,
 )
-from ..utils.comment_formatter import CommentFormatter
+from ....comment_style import CommentStyle
 
 
 @dataclass
@@ -40,9 +40,10 @@ class CollectionFormatter:
     - Separator and wrapper handling
     """
 
-    def __init__(self, tokenizer: TokenService, comment_formatter: CommentFormatter):
+    def __init__(self, tokenizer: TokenService, comment_style: CommentStyle):
         self.tokenizer = tokenizer
-        self.comment_formatter = comment_formatter
+        self.single_comment = comment_style.single_line
+        self.block_comment = comment_style.multi_line
 
     def format(
         self,
@@ -106,7 +107,7 @@ class CollectionFormatter:
             if selection.removed_count > 0 and len(elements_text) >= 1:
                 removed_count = selection.removed_count
                 comment_text = f"… ({removed_count} more, −{tokens_saved} tokens)"
-                block_comment = self.comment_formatter.format_block(comment_text)
+                block_comment = f" {self.block_comment[0]} {comment_text} {self.block_comment[1]}"
                 elements_text.append(block_comment)
             content = f"{separator} ".join(elements_text)
         else:
@@ -168,7 +169,7 @@ class CollectionFormatter:
                 if removed_count > 0:
                     comment_text = f"… ({removed_count} more, −{tokens_saved} tokens)"
                     # Standalone comment: use direct formatting without leading space
-                    lines.append(f"{elem_indent}{self.comment_formatter.single_comment} {comment_text}")
+                    lines.append(f"{elem_indent}{self.single_comment} {comment_text}")
 
         # Closing
         lines.append(f"{base_indent}{parsed.closing}")

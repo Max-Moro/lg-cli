@@ -24,8 +24,8 @@ from ..processing.collection_formatter import CollectionFormatter
 from ..processing.parser import LiteralParser
 from ..processing.selector import BudgetSelector
 from ..processor import LiteralProcessor
-from ..utils import CommentFormatter
 from ..utils.element_parser import ElementParser, ParseConfig
+from ....comment_style import CommentStyle
 from ....tree_sitter_support import TreeSitterDocument, Node
 
 
@@ -44,7 +44,7 @@ class StandardCollectionsProcessor(LiteralProcessor):
         tokenizer: TokenService,
         literal_parser: LiteralParser,
         selector: BudgetSelector,
-        comment_formatter: CommentFormatter,
+        comment_style: CommentStyle,
         descriptor: LanguageLiteralDescriptor,
     ):
         """
@@ -58,13 +58,12 @@ class StandardCollectionsProcessor(LiteralProcessor):
             tokenizer: Token counting service
             literal_parser: Shared LiteralParser instance
             selector: BudgetSelector instance
-            comment_formatter: Shared CommentFormatter instance
             descriptor: Language literal descriptor (for ElementParser factory)
         """
         self.tokenizer = tokenizer
         self.parser = literal_parser
         self.selector = selector
-        self.collection_formatter = CollectionFormatter(tokenizer, comment_formatter)
+        self.collection_formatter = CollectionFormatter(tokenizer, comment_style)
         self.descriptor = descriptor
 
         # Cache parsers for different patterns

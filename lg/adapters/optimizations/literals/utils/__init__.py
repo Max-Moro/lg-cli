@@ -5,7 +5,6 @@ Reusable, self-contained components for handling specific aspects
 of literal string processing.
 """
 
-from .comment_formatter import CommentFormatter
 from .delimiter_detection import DelimiterConfig, DelimiterDetector
 from .element_parser import ElementParser, Element, ParseConfig
 from .indentation import detect_base_indent, detect_element_indent
@@ -18,7 +17,6 @@ __all__ = [
     'InterpolationHandler',
     'detect_base_indent',
     'detect_element_indent',
-    'CommentFormatter',
     'DelimiterConfig',
     'DelimiterDetector',
 ]

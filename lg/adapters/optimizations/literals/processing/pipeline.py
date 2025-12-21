@@ -26,7 +26,6 @@ from ..patterns import (
     PlaceholderPosition,
 )
 from ..processor import LiteralProcessor
-from ..utils.comment_formatter import CommentFormatter
 from ....code_model import LiteralConfig
 from ....context import ProcessingContext
 from ....tree_sitter_support import TreeSitterDocument, Node
@@ -59,7 +58,6 @@ class LiteralPipeline:
 
         # Shared services
         self.selector = BudgetSelector(self.adapter.tokenizer)
-        self.comment_formatter = CommentFormatter(comment_style)
         self.literal_parser = LiteralParser(self.adapter.tokenizer)
 
         # =================================
@@ -91,7 +89,7 @@ class LiteralPipeline:
                     self.adapter.tokenizer,
                     self.literal_parser,
                     self.selector,
-                    self.comment_formatter,
+                    comment_style,
                     self.descriptor
                 )
             elif issubclass(self.descriptor.custom_processor, StringLiteralProcessor):
@@ -117,7 +115,7 @@ class LiteralPipeline:
                 self.adapter.tokenizer,
                 self.literal_parser,
                 self.selector,
-                self.comment_formatter,
+                comment_style,
                 self.descriptor
             ),
         ])
