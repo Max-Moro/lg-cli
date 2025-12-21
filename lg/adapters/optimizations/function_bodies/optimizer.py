@@ -49,9 +49,9 @@ class FunctionBodyOptimizer:
             if func_group.body_node is None:
                 continue
 
-            # Get line count for single-line protection
-            start_line, end_line = context.doc.get_line_range(func_group.body_node)
-            lines_count = end_line - start_line + 1
+            # Get content lines count for single-line protection
+            # Use strippable_range to count only content lines (excluding braces)
+            lines_count = self._get_content_lines_count(context, func_group)
 
             # Evaluate decision
             decision = self._evaluate(evaluators, func_group.element_info, lines_count)
@@ -161,14 +161,60 @@ class FunctionBodyOptimizer:
         start_line = context.doc.get_line_number(start_char)
         end_line = context.doc.get_line_number(end_char)
 
+        # Calculate actual lines removed (non-empty content lines)
+        lines_removed = self._count_content_lines(stripped_text)
+
         context.add_placeholder(
             func_type + "_body",
             start_char,  # Start from strippable range, not line beginning
             end_char,
             start_line,
             end_line,
-            placeholder_prefix=placeholder_prefix
+            placeholder_prefix=placeholder_prefix,
+            lines_removed=lines_removed
         )
+
+    def _get_content_lines_count(self, context: ProcessingContext, func_group: FunctionGroup) -> int:
+        """
+        Get count of content lines in function body for single-line protection.
+
+        Uses strippable_range to count only actual content lines,
+        excluding braces and empty lines. This ensures single-line functions
+        like `fun f() { return x }` are protected from stripping.
+
+        Args:
+            context: Processing context
+            func_group: Function group with strippable range
+
+        Returns:
+            Number of non-empty content lines
+        """
+        start_byte, end_byte = func_group.strippable_range
+        if start_byte >= end_byte:
+            return 0
+
+        start_char = context.doc.byte_to_char_position(start_byte)
+        end_char = context.doc.byte_to_char_position(end_byte)
+        content_text = context.raw_text[start_char:end_char]
+
+        return self._count_content_lines(content_text)
+
+    def _count_content_lines(self, text: str) -> int:
+        """
+        Count non-empty content lines in text.
+
+        For brace-based languages, strippable text typically starts with
+        newline (after '{') and ends before '}'. We count only lines with
+        actual content, not empty lines or lines with only whitespace.
+
+        Args:
+            text: Text to count lines in
+
+        Returns:
+            Number of non-empty lines
+        """
+        lines = text.split('\n')
+        return sum(1 for line in lines if line.strip())
 
     def _compute_indent_from_text(self, text: str) -> str:
         """
@@ -202,6 +248,14 @@ class FunctionBodyOptimizer:
         # Use "truncated" suffix to distinguish from complete body removal
         placeholder_type = func_type + "_body_truncated"
 
+        # Compute placeholder prefix with proper newline handling
+        # If placeholder starts right after '{' (no prefix kept), add newline
+        placeholder_prefix = result.indent
+        if not result.kept_prefix:
+            # No prefix kept - placeholder goes right after opening brace
+            # Need newline before indent
+            placeholder_prefix = "\n" + result.indent
+
         # Add placeholder for the removed middle section
         # Pass explicit lines_removed from TrimResult for accurate count
         context.placeholders.add_placeholder(
@@ -210,7 +264,7 @@ class FunctionBodyOptimizer:
             result.placeholder_end_char,
             context.doc.get_line_number(result.placeholder_start_char),
             context.doc.get_line_number(result.placeholder_end_char),
-            placeholder_prefix=result.indent,
+            placeholder_prefix=placeholder_prefix,
             lines_removed=result.lines_removed
         )
         # Update metrics

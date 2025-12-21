@@ -207,24 +207,26 @@ interface UserRepository {
 }
 
 fun processUser(user: User): User {
-    return user.copy(name = user.name.uppercase())
+    val normalized = user.name.uppercase()
+    val updated = user.copy(name = normalized)
+    return updated
 }
 '''
-        
+
         adapter = make_adapter(KotlinCfg(strip_function_bodies=True))
-        
+
         result, meta = adapter.process(lctx(code))
-        
+
         # Data classes and interfaces should be preserved
         assert "data class User" in result
         assert "interface UserRepository" in result
         assert "val id: Long" in result
         assert "val name: String" in result
-        
-        # Function body should be stripped
+
+        # Function body should be stripped (has multiple lines)
         assert "fun processUser(user: User): User" in result
         assert "// … function body omitted" in result
-        assert "return user.copy" not in result
+        assert "val normalized" not in result
 
 
 class TestKotlinDocstringPreservation:

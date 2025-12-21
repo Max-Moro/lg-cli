@@ -352,6 +352,15 @@ class PlaceholderManager:
                 return "… type omitted"
         
         else:
+            # Handle *_truncated types (e.g., getter_body_truncated, init_body_truncated)
+            if ptype.endswith("_truncated"):
+                # Convert "getter_body_truncated" -> "getter body truncated"
+                base_type = ptype.replace("_", " ")
+                if lines > 1:
+                    return f"… {base_type} ({lines} lines)"
+                else:
+                    return f"… {base_type}"
+
             # Generic template for unknown types
             if count > 1:
                 return f"… {count} {ptype}s omitted"

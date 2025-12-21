@@ -98,10 +98,10 @@ class ProcessingContext(LightState):
         self.code_analyzer = code_analyzer
 
     def add_placeholder(self, element_type: str, start_char: int, end_char: int, start_line: int, end_line: int,
-                        placeholder_prefix: str = "", count: int = 1) -> None:
+                        placeholder_prefix: str = "", count: int = 1, lines_removed: int = 0) -> None:
         """Add placeholder."""
         self.placeholders.add_placeholder(
-            element_type, start_char, end_char, start_line, end_line, placeholder_prefix, count
+            element_type, start_char, end_char, start_line, end_line, placeholder_prefix, count, lines_removed
         )
         self.metrics.mark_element_removed(element_type, count)
         self.metrics.mark_placeholder_inserted()

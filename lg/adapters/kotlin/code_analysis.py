@@ -8,11 +8,21 @@ from __future__ import annotations
 from typing import List, Optional, Set, Tuple, Dict
 
 from ..code_analysis import CodeAnalyzer, Visibility, ExportStatus, ElementInfo, FunctionGroup
-from ..tree_sitter_support import Node
+from ..tree_sitter_support import Node, TreeSitterDocument
 
 
 class KotlinCodeAnalyzer(CodeAnalyzer):
     """Kotlin-specific implementation of unified code analyzer."""
+
+    # Kotlin-specific node types that represent function-like elements
+    FUNCTION_DEFINITION_TYPES = {
+        "function_declaration",
+        "anonymous_initializer",
+        "secondary_constructor",
+        "getter",
+        "setter",
+        "lambda_literal",
+    }
 
     def determine_element_type(self, node: Node) -> str:
         """
@@ -22,10 +32,10 @@ class KotlinCodeAnalyzer(CodeAnalyzer):
             node: Tree-sitter node
 
         Returns:
-            String with element type: "function", "method", "class", "object", "property", "lambda"
+            String with element type: "function", "method", "class", "object", "property", "lambda", etc.
         """
         node_type = node.type
-        
+
         if node_type == "class_declaration":
             return "class"
         elif node_type == "object_declaration":
@@ -36,6 +46,12 @@ class KotlinCodeAnalyzer(CodeAnalyzer):
             return "property"
         elif node_type == "secondary_constructor":
             return "constructor"
+        elif node_type == "anonymous_initializer":
+            return "init"
+        elif node_type == "getter":
+            return "getter"
+        elif node_type == "setter":
+            return "setter"
         elif node_type == "lambda_literal":
             return "lambda"
         else:
@@ -189,7 +205,15 @@ class KotlinCodeAnalyzer(CodeAnalyzer):
 
     def find_function_definition_in_parents(self, node: Node) -> Optional[Node]:
         """
-        Find function_declaration or lambda_literal for given node by walking up tree.
+        Find function-like element for given node by walking up tree.
+
+        Supports all Kotlin function-like elements:
+        - function_declaration
+        - anonymous_initializer (init blocks)
+        - secondary_constructor
+        - getter
+        - setter
+        - lambda_literal
 
         Args:
             node: Node for searching parent function
@@ -199,7 +223,7 @@ class KotlinCodeAnalyzer(CodeAnalyzer):
         """
         current = node.parent
         while current:
-            if current.type in ("function_declaration", "lambda_literal"):
+            if current.type in self.FUNCTION_DEFINITION_TYPES:
                 return current
             current = current.parent
         return None
@@ -250,81 +274,6 @@ class KotlinCodeAnalyzer(CodeAnalyzer):
 
         return annotations
 
-    def _group_function_captures(self, captures: List[Tuple[Node, str]]) -> Dict[Node, FunctionGroup]:
-        """
-        Kotlin-specific grouping of functions and lambdas.
-
-        Overrides base method for correct handling of lambda_literal.
-        """
-        function_groups = {}
-
-        # Collect definitions
-        for node, capture_name in captures:
-            if self.is_function_definition_capture(capture_name):
-                element_info = self.analyze_element(node)
-
-                # For lambdas extract body specially
-                body_node = None
-                strip_range = (0, 0)
-                if node.type == "lambda_literal":
-                    body_node = self.extract_lambda_body(node)
-                    if body_node:
-                        strip_range = self.compute_strippable_range(node, body_node)
-
-                function_groups[node] = FunctionGroup(
-                    definition=node,
-                    element_info=element_info,
-                    body_node=body_node,
-                    strippable_range=strip_range
-                )
-
-        # For normal functions look for bodies using standard logic
-        for node, capture_name in captures:
-            if self.is_function_body_capture(capture_name):
-                func_def = self.find_function_definition_in_parents(node)
-                if func_def and func_def in function_groups:
-                    # Only for function_declaration, not for lambda
-                    if func_def.type == "function_declaration":
-                        old_group = function_groups[func_def]
-                        strip_range = self.compute_strippable_range(func_def, node)
-                        closing_brace = self._find_closing_brace_byte(node)
-                        return_node = self._find_return_statement(node)
-                        function_groups[func_def] = FunctionGroup(
-                            definition=old_group.definition,
-                            element_info=old_group.element_info,
-                            name_node=old_group.name_node,
-                            body_node=node,
-                            strippable_range=strip_range,
-                            closing_brace_byte=closing_brace,
-                            return_node=return_node
-                        )
-
-            elif self.is_function_name_capture(capture_name):
-                func_def = self.find_function_definition_in_parents(node)
-                if func_def and func_def in function_groups:
-                    old_group = function_groups[func_def]
-                    function_groups[func_def] = FunctionGroup(
-                        definition=old_group.definition,
-                        element_info=old_group.element_info,
-                        name_node=node,
-                        body_node=old_group.body_node,
-                        strippable_range=old_group.strippable_range,
-                        closing_brace_byte=old_group.closing_brace_byte,
-                        return_node=old_group.return_node
-                    )
-
-        return function_groups
-
-    def collect_function_like_elements(self) -> Dict[Node, FunctionGroup]:
-        """
-        Collect all functions and lambdas from document.
-
-        Returns:
-            Dictionary: function_node -> FunctionGroup with function information
-        """
-        functions = self.doc.query("functions")
-        return self._group_function_captures(functions)
-    
     def collect_language_specific_private_elements(self) -> List[ElementInfo]:
         """
         Collect Kotlin-specific private elements.
@@ -476,189 +425,257 @@ class KotlinCodeAnalyzer(CodeAnalyzer):
         """
         return node.type in ("line_comment", "multiline_comment", "newline", "\n", " ", "\t")
 
-    def extract_lambda_body(self, lambda_node: Node) -> Optional[Node]:
-        """
-        Extract Kotlin lambda function body.
-
-        Structure of lambda_literal:
-        - { opening brace
-        - lambda_parameters? (optional)
-        - -> (optional, if parameters present)
-        - body (statements)
-        - } closing brace
-
-        Args:
-            lambda_node: lambda_literal node
-
-        Returns:
-            Node representing lambda body (or None for single-line)
-        """
-        if lambda_node.type != "lambda_literal":
-            return None
-
-        # For single-line lambdas don't strip body
-        start_line, end_line = self.doc.get_line_range(lambda_node)
-        if start_line == end_line:
-            return None  # Single-line lambda, don't strip
-
-        # Create synthetic node for lambda body
-        # Body starts after -> (if present) or after {
-        body_start_idx = 0
-
-        for i, child in enumerate(lambda_node.children):
-            if child.type == "->":
-                body_start_idx = i + 1
-                break
-            elif child.type == "{":
-                body_start_idx = i + 1
-
-        # Body ends before }
-        body_end_idx = len(lambda_node.children) - 1
-        for i in range(len(lambda_node.children) - 1, -1, -1):
-            if lambda_node.children[i].type == "}":
-                body_end_idx = i
-                break
-
-        # If no body (empty lambda or only parameters)
-        if body_start_idx >= body_end_idx:
-            return None
-
-        # Return range from first statement to last
-        first_statement = lambda_node.children[body_start_idx]
-        last_statement = lambda_node.children[body_end_idx - 1]
-
-        # Create synthetic wrapper node
-        class LambdaBodyRange:
-            def __init__(self, start_node, end_node):
-                self.start_byte = start_node.start_byte
-                self.end_byte = end_node.end_byte
-                self.start_point = start_node.start_point
-                self.end_point = end_node.end_point
-                self.type = "lambda_body"
-
-        return LambdaBodyRange(first_statement, last_statement)
-
     def compute_strippable_range(self, func_def: Node, body_node: Node) -> Tuple[int, int]:
         """
-        Compute strippable range for Kotlin function body.
+        Compute the byte range that can be stripped from a Kotlin function body.
 
-        Handles:
-        - Nested structure: function_body -> block -> statements
-        - KDoc preservation inside body
-        - Brace exclusion for proper AST after stripping
+        Kotlin AST structure for function bodies:
+        - function_declaration/getter/setter: function_body -> block -> { ... }
+        - anonymous_initializer/secondary_constructor: block -> { ... }
+        - lambda_literal: body content is directly in lambda_literal
+
+        This method handles the nested structure and returns the inner content
+        range (after '{' and before '}').
 
         Args:
             func_def: Function definition node
-            body_node: Function body node (function_body wrapper)
+            body_node: Function body node (function_body or block)
 
         Returns:
-            Tuple of (start_byte, end_byte) for stripping
+            Tuple of (start_byte, end_byte) for the strippable range
         """
-        # For lambda, body_node is LambdaBodyRange (synthetic), return its byte range
+        # Handle lambda_literal specially - body is directly inside
         if func_def.type == "lambda_literal":
-            return (body_node.start_byte, body_node.end_byte)
+            return self._compute_lambda_strippable_range(func_def)
 
-        # Find the inner block node (function_body -> block)
-        block_node = self._get_inner_block(body_node)
-        if not block_node:
-            return (body_node.start_byte, body_node.end_byte)
+        # For function_body, the actual block is the first child
+        if body_node.type == "function_body":
+            # function_body -> block -> { content }
+            if body_node.children:
+                block_node = body_node.children[0]
+                if block_node.type == "block":
+                    return self._compute_block_inner_range(block_node)
 
-        # Check for KDoc inside function body
-        kdoc_inside = self._find_kdoc_in_body(body_node)
+        # For direct block nodes (anonymous_initializer, secondary_constructor)
+        if body_node.type == "block":
+            return self._compute_block_inner_range(body_node)
 
-        if kdoc_inside is None:
-            # No KDoc inside - use inner content range (exclude braces)
-            return self._compute_inner_body_range(block_node)
+        # Fallback to base implementation
+        return super().compute_strippable_range(func_def, body_node)
 
-        # KDoc inside body - strip only after it
-        # Find first non-whitespace content after KDoc
-        start_byte = self._find_next_content_byte(kdoc_inside.end_byte)
-        # End before closing brace
-        inner_start, inner_end = self._compute_inner_body_range(block_node)
-        return (start_byte, inner_end)
-
-    def _get_inner_block(self, body_node: Node) -> Optional[Node]:
+    def _compute_block_inner_range(self, block_node: Node) -> Tuple[int, int]:
         """
-        Get the inner block node from function_body wrapper.
+        Compute inner content range for a block node, excluding braces.
 
-        Kotlin AST structure: function_body -> block -> statements
-        """
-        for child in body_node.children:
-            if child.type == "block":
-                return child
-        return None
-
-    def _find_kdoc_in_body(self, body_node: Node) -> Optional[Node]:
-        """
-        Find KDoc comment at start of function body.
+        Also preserves KDoc comments at the beginning of the block.
+        KDoc inside function body is documentation that should be kept.
 
         Args:
-            body_node: function_body node
+            block_node: Block node with { ... } structure
 
         Returns:
-            block_comment node with KDoc or None
+            Tuple of (start_byte, end_byte) for inner content
         """
-        # Function body in Kotlin is function_body -> block -> statements
-        block_node = None
-        for child in body_node.children:
-            if child.type == "block":
-                block_node = child
-                break
+        if not block_node.children:
+            return (block_node.start_byte, block_node.end_byte)
 
-        if not block_node:
-            return None
+        first_child = block_node.children[0]
+        last_child = block_node.children[-1]
 
-        # Look for first block_comment in block
+        # Check if block is enclosed in braces
+        first_text = self.doc.get_node_text(first_child) if first_child else ""
+        last_text = self.doc.get_node_text(last_child) if last_child else ""
+
+        if first_text == "{" and last_text == "}":
+            # Start after opening brace
+            start_byte = first_child.end_byte
+            end_byte = last_child.start_byte
+
+            # Check for KDoc at the beginning of block body
+            # KDoc is a multiline_comment starting with /**
+            start_byte = self._skip_leading_kdoc(block_node, start_byte, end_byte)
+
+            return (start_byte, end_byte)
+
+        # No braces found, return entire block
+        return (block_node.start_byte, block_node.end_byte)
+
+    def _skip_leading_kdoc(self, block_node: Node, start_byte: int, end_byte: int) -> int:
+        """
+        Skip leading KDoc comment at the beginning of block body.
+
+        KDoc inside function body should be preserved as it's documentation.
+
+        Args:
+            block_node: Block node containing the body
+            start_byte: Current start byte (after opening brace)
+            end_byte: End byte (before closing brace)
+
+        Returns:
+            New start_byte after KDoc (if found), or original start_byte
+        """
+        # Comment node types in Kotlin (Tree-sitter may use different names)
+        comment_types = {"multiline_comment", "block_comment"}
+
+        # Look for KDoc among block's children
         for child in block_node.children:
-            if child.type in ("{", "}"):
+            # Skip the opening brace
+            if self.doc.get_node_text(child) == "{":
                 continue
 
-            if child.type == "block_comment":
-                text = self.doc.get_node_text(child)
-                if text.startswith("/**"):
-                    return child
+            # Check if first content node is a block comment (KDoc)
+            if child.type in comment_types:
+                comment_text = self.doc.get_node_text(child)
+                # KDoc starts with /**
+                if comment_text.startswith("/**"):
+                    # Skip past this KDoc - strippable content starts after it
+                    return child.end_byte
 
-            # If we encounter something else - KDoc should be first
-            break
+            # If first non-brace child is not a comment, stop looking
+            if child.type not in comment_types and child.type != "line_comment":
+                break
 
-        return None
-
-    def _find_next_content_byte(self, pos: int) -> int:
-        """
-        Find start of line containing first non-whitespace after position.
-
-        For proper indentation in placeholders, we need to return the start of
-        the line, not the first non-whitespace character.
-        """
-        text = self.doc.text
-        # Find newline after current position
-        newline_pos = text.find('\n', pos)
-        if newline_pos == -1:
-            return pos
-        # Return position after newline (start of next line)
-        return newline_pos + 1
-
-    def _find_closing_brace_byte(self, body_node: Node) -> Optional[int]:
-        """
-        Find closing brace byte position for Kotlin function body.
-
-        Handles nested structure: function_body -> block -> {statements}
-        """
-        # For Kotlin, body_node is function_body, need to look in inner block
-        block_node = self._get_inner_block(body_node)
-        if block_node:
-            return super()._find_closing_brace_byte(block_node)
-        return None
+        return start_byte
 
     def _find_return_statement(self, body_node: Node) -> Optional[Node]:
         """
         Find return statement at the end of Kotlin function body.
 
-        Handles nested structure: function_body -> block -> {statements}
+        Kotlin AST structure: function_body -> block -> { ... return_expression }
+        This method looks inside the nested block structure.
+
+        Args:
+            body_node: Function body node (function_body or block)
+
+        Returns:
+            Return statement node if found at end of body, None otherwise
         """
-        # For Kotlin, body_node is function_body, need to look in inner block
-        block_node = self._get_inner_block(body_node)
-        if block_node:
-            return super()._find_return_statement(block_node)
+        # For function_body, look inside the nested block
+        if body_node.type == "function_body":
+            if body_node.children:
+                block_node = body_node.children[0]
+                if block_node.type == "block":
+                    return self._find_return_in_block(block_node)
+            return None
+
+        # For direct block nodes (init, constructor)
+        if body_node.type == "block":
+            return self._find_return_in_block(body_node)
+
         return None
 
+    def _find_return_in_block(self, block_node: Node) -> Optional[Node]:
+        """
+        Find return statement as last statement in a block.
+
+        Args:
+            block_node: Block node with { ... } structure
+
+        Returns:
+            Return statement node if found at end, None otherwise
+        """
+        if not block_node.children:
+            return None
+
+        # Kotlin return types
+        return_types = {"return_expression", "return"}
+
+        # Find the last non-brace, non-comment child
+        for child in reversed(block_node.children):
+            child_text = self.doc.get_node_text(child) if child else ""
+            # Skip closing brace
+            if child_text == "}":
+                continue
+            # Skip comments
+            if child.type in ("line_comment", "block_comment", "multiline_comment"):
+                continue
+            # Check if it's a return statement
+            if child.type in return_types:
+                return child
+            # Found a non-return statement at end - no return to preserve
+            break
+
+        return None
+
+    def _compute_lambda_strippable_range(self, lambda_node: Node) -> Tuple[int, int]:
+        """
+        Compute strippable range for lambda_literal.
+
+        Lambda structure: { [params ->] body_content }
+        We need to find the content after '->' (if present) or after '{'.
+
+        Args:
+            lambda_node: Lambda literal node
+
+        Returns:
+            Tuple of (start_byte, end_byte) for strippable range
+        """
+        if not lambda_node.children:
+            return (lambda_node.start_byte, lambda_node.end_byte)
+
+        # Find opening brace and arrow
+        opening_brace = None
+        arrow_node = None
+        closing_brace = None
+
+        for child in lambda_node.children:
+            child_text = self.doc.get_node_text(child)
+            if child_text == "{":
+                opening_brace = child
+            elif child_text == "->":
+                arrow_node = child
+            elif child_text == "}":
+                closing_brace = child
+
+        if not opening_brace or not closing_brace:
+            return (lambda_node.start_byte, lambda_node.end_byte)
+
+        # Start after '->' if present, otherwise after '{'
+        if arrow_node:
+            start_byte = arrow_node.end_byte
+        else:
+            start_byte = opening_brace.end_byte
+
+        end_byte = closing_brace.start_byte
+
+        return (start_byte, end_byte)
+
+    def collect_function_like_elements(self) -> Dict[Node, FunctionGroup]:
+        """
+        Collect all functions and methods from document.
+
+        Kotlin-specific override to handle lambda_literal which doesn't have
+        a separate body node - the lambda itself serves as the body container.
+
+        Returns:
+            Dictionary: function_node -> FunctionGroup with function information
+        """
+        functions = self.doc.query("functions")
+        groups = self._group_function_captures(functions)
+
+        # Post-process lambda_literal: they don't have separate body_node in query
+        # The lambda itself is the body container
+        for func_def, func_group in list(groups.items()):
+            if func_def.type == "lambda_literal" and func_group.body_node is None:
+                # Lambda uses itself as body container
+                element_info = func_group.element_info
+                strip_range = self._compute_lambda_strippable_range(func_def)
+
+                # Find closing brace for lambda
+                closing_brace = None
+                for child in func_def.children:
+                    if self.doc.get_node_text(child) == "}":
+                        closing_brace = child.start_byte
+                        break
+
+                groups[func_def] = FunctionGroup(
+                    definition=func_group.definition,
+                    element_info=element_info,
+                    name_node=func_group.name_node,
+                    body_node=func_def,  # Lambda is its own body
+                    strippable_range=strip_range,
+                    closing_brace_byte=closing_brace,
+                    return_node=None
+                )
+
+        return groups

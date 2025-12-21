@@ -109,14 +109,23 @@ class FunctionBodyTrimmer:
         prefix_end_char = start_char + len(prefix_text) if prefix_text else start_char
         placeholder_end_char = suffix_start_char if suffix_text else end_char
 
-        # Compute indentation from first content line
-        indent = self._compute_indent(body_text)
+        # If nothing to remove (entire body is prefix + suffix), skip trimming
+        if prefix_end_char >= placeholder_end_char:
+            return None
 
-        # Count removed lines
+        # Count removed lines and check if there's actual content to remove
         removed_text = context.raw_text[prefix_end_char:placeholder_end_char]
+
+        # If removed text is only whitespace, no need for placeholder
+        if not removed_text.strip():
+            return None
+
         lines_removed = removed_text.count('\n')
         if removed_text and not removed_text.endswith('\n'):
             lines_removed += 1
+
+        # Compute indentation from first content line
+        indent = self._compute_indent(body_text)
 
         return TrimResult(
             placeholder_start_char=prefix_end_char,
