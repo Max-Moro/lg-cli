@@ -20,6 +20,7 @@ from .evaluators import (
 from .analyzer import CommentAnalyzer
 from ...code_model import CommentConfig, CommentPolicy
 from ...context import ProcessingContext
+from ...placeholders import PlaceholderAction
 from ...tree_sitter_support import Node
 
 
@@ -199,7 +200,7 @@ class CommentOptimizer:
 
         elif decision.action == "remove":
             # Remove with placeholder
-            context.add_placeholder_for_node(element_type, node)
+            context.add_placeholder_for_node(element_type, node, action = PlaceholderAction.OMIT)
 
         elif decision.action == "transform":
             # Replace with transformed text
