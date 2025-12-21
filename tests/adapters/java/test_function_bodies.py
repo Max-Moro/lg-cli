@@ -151,7 +151,8 @@ public abstract class BaseService {
 
 public class UserService {
     public User processUser(User user) {
-        return user;
+        User processed = user;
+        return processed;
     }
 }
 '''

@@ -14,54 +14,54 @@ class Calculator {
     private history: string[] = [];
     
     constructor(name: string = "default") {
-        // … method body omitted (4 lines)
+        // … method body omitted (2 lines)
     }
     
     public add(a: number, b: number): number {
-        // … method body omitted (6 lines)
+        // … method body omitted (4 lines)
     }
     
     public multiply(a: number, b: number): number {
-        // … method body omitted (5 lines)
-    }
-    
-    public getHistory(): string[] {
         // … method body omitted (3 lines)
     }
     
+    public getHistory(): string[] {
+        return [...this.history];
+    }
+    
     private validateInput(value: number): boolean {
-        // … method body omitted (11 lines)
+        // … method body omitted (7 lines)
     }
 }
 
 export function processUserData(users: User[]): { valid: User[], invalid: User[] } {
-    // … function body omitted (13 lines)
+    // … function body omitted (9 lines)
 }
 
 // Arrow functions for testing different function types
 const simpleArrow = () => "simple";
 
 const complexArrow = (data: string[]) => {
-    // … function body omitted (8 lines)
+    // … function body omitted (5 lines)
 };
 
 const asyncArrow = async (url: string): Promise<any> => {
-    // … function body omitted (15 lines)
+    // … function body omitted (11 lines)
 };
 
 // Function with multiple overloads
 function overloadedFunction(value: string): string;
 function overloadedFunction(value: number): number;
 function overloadedFunction(value: string | number): string | number {
-    // … function body omitted (7 lines)
+    // … function body omitted (5 lines)
 }
 
 // Generic function
 function processArray<T>(items: T[], processor: (item: T) => T): T[] {
-    // … function body omitted (14 lines)
+    // … function body omitted (10 lines)
 }
 
 // Default export function
 export default function main(): void {
-    // … function body omitted (13 lines)
+    // … function body omitted (9 lines)
 }

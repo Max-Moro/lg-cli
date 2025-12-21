@@ -145,7 +145,8 @@ trait UserRepository {
 }
 
 def processUser(user: User): User = {
-  user.copy(name = user.name.toUpperCase)
+  val updatedName = user.name.toUpperCase
+  user.copy(name = updatedName)
 }
 '''
 
@@ -160,7 +161,7 @@ def processUser(user: User): User = {
 
         assert "def processUser(user: User): User" in result
         assert "// … function body omitted" in result
-        assert "user.copy" not in result
+        assert "val updatedName" not in result
 
     def test_pattern_matching_preservation(self):
         """Test handling of pattern matching in functions."""

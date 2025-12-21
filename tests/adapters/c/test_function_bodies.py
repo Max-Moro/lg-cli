@@ -38,11 +38,13 @@ class TestCFunctionBodyOptimization:
     def test_static_function_handling(self):
         """Test handling of static functions."""
         code = '''static int helper(int x) {
-    return x * 2;
+    int doubled = x * 2;
+    return doubled;
 }
 
 int public_function(int x) {
-    return helper(x);
+    int result = helper(x);
+    return result;
 }
 '''
 
