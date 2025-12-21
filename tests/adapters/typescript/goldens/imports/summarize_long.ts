@@ -51,10 +51,10 @@ import fs2, { readFile, writeFile } from 'fs';
 import path2, { join, resolve, dirname } from 'path';
 
 // Long import lists (candidates for summarization)
-// … 47 imports omitted
+// … 47 imports omitted (53 lines)
 
 // Local imports with long lists
-// … 23 imports omitted
+// … 23 imports omitted (27 lines)
 
 // Dynamic imports (should be preserved as-is)
 const dynamicModule = async () => {

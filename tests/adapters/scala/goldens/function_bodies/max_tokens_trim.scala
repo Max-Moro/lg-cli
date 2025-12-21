@@ -21,19 +21,19 @@ class Calculator(val name: String = "default") {
 
   def add(a: Int, b: Int): Int = {
     val result = a + b
-    // … method body truncated (4 lines)
+    // … method body truncated (3 lines)
   }
 
   def multiply(a: Int, b: Int): Int = {
     val result = a * b
-    // … method body truncated (3 lines)
+    // … method body truncated (2 lines)
   }
 
   def getHistory: List[String] = history.toList
 
   private def validateInput(value: Int): Boolean = {
     if (!value.toString.matches("^-?\\d+$")) {
-    // … method body truncated (9 lines)
+    // … method body truncated (6 lines)
   }
 }
 
@@ -46,7 +46,7 @@ object UserProcessor {
   def processUserData(users: List[User]): ProcessingResult = {
     val (valid, invalid) = users.partition { user =>
       user.id > 0 &&
-    // … method body truncated (6 lines)
+    // … method body truncated (4 lines)
   }
 }
 

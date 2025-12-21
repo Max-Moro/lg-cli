@@ -22,7 +22,7 @@ data class User(
 )
 
 // Private data class (not exported, should be filtered out)
-// … class omitted
+// … class omitted (4 lines)
 
 // Public type alias (should be preserved)
 typealias UserRole = String
@@ -73,17 +73,17 @@ class UserManager(private val apiEndpoint: String = API_ENDPOINT) {
     }
     
     // Private methods (should be filtered out)
-    // … 4 methods omitted
+    // … 4 methods omitted (25 lines)
     
     // Protected methods (should be filtered out)
-    // … 2 methods omitted
+    // … 2 methods omitted (7 lines)
     
     // Public readonly property with getter
     val userCount: Int
         get() = internalCache.size
     
     // Private readonly property with getter (should be filtered out)
-    // … property omitted
+    // … property omitted (5 lines)
     
     companion object {
         // Public static methods (should be preserved)
@@ -101,12 +101,12 @@ class UserManager(private val apiEndpoint: String = API_ENDPOINT) {
         }
         
         // Private static methods (should be filtered out)
-        // … method omitted
+        // … method omitted (3 lines)
     }
 }
 
 // Private class (not exported, should be filtered out)
-// … class omitted
+// … class omitted (12 lines)
 
 // Public abstract class (should be preserved)
 abstract class BaseService {
@@ -134,7 +134,7 @@ enum class UserStatus {
 }
 
 // Private enum (not exported, should be filtered out)
-// … class omitted
+// … class omitted (5 lines)
 
 // Public functions (should be preserved)
 fun createUserManager(endpoint: String? = null): UserManager {
@@ -146,7 +146,7 @@ fun isValidUserRole(role: Any): Boolean {
 }
 
 // Private functions (not exported, should be filtered out)
-// … 2 functions omitted
+// … 2 functions omitted (7 lines)
 
 // Public object (should be preserved)
 object UserUtils {
@@ -161,11 +161,11 @@ object UserUtils {
     }
     
     // Private object member (should be filtered out)
-    // … method omitted
+    // … method omitted (3 lines)
 }
 
 // Private object (not exported, should be filtered out)
-// … object omitted
+// … object omitted (14 lines)
 
 // ============= Examples with Kotlin annotations =============
 
@@ -176,7 +176,7 @@ annotation class Logged
 @Target(AnnotationTarget.FUNCTION)
 annotation class Validate
 
-// … class omitted
+// … class omitted (11 lines)
 
 @Logged
 @Validate
@@ -192,11 +192,11 @@ class PublicAnnotatedClass {
         return data.uppercase()
     }
     
-    // … method omitted
+    // … method omitted (4 lines)
 }
 
 // Annotated functions
-// … function omitted
+// … function omitted (7 lines)
 
 @Logged
 @Validate
@@ -214,11 +214,11 @@ class MixedAnnotatedClass {
         // Public method with annotation - should preserve both
     }
     
-    // … 2 methods omitted
+    // … 2 methods omitted (9 lines)
 }
 
 // Multiple stacked annotations on private elements
-// … class omitted
+// … class omitted (12 lines)
 
 @Logged
 @Validate

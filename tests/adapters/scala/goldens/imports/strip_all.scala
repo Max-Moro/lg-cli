@@ -5,13 +5,13 @@
 package com.example.imports
 
 // Standard library imports (external)
-// … 16 imports omitted
+// … 16 imports omitted (12 lines)
 
 // Third-party library imports (external)
-// … 16 imports omitted
+// … 16 imports omitted (13 lines)
 
 // Local/relative imports (should be considered local)
-// … 9 imports omitted
+// … 9 imports omitted (5 lines)
 
 // Imports from different package levels
 // … 3 imports omitted
@@ -23,10 +23,10 @@ package com.example.imports
 // … 2 imports omitted
 
 // Long import lists from single package (candidates for summarization)
-// … 18 imports omitted
+// … 18 imports omitted (8 lines)
 
 // Local imports with long lists
-// … 23 imports omitted
+// … 23 imports omitted (27 lines)
 
 class ImportTestService(
   userService: UserService,

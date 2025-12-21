@@ -5,10 +5,10 @@
 package com.example.imports
 
 // Standard library imports (external)
-// … 16 imports omitted
+// … 16 imports omitted (12 lines)
 
 // Third-party library imports (external)
-// … 16 imports omitted
+// … 16 imports omitted (13 lines)
 
 // Local/relative imports (should be considered local)
 import com.example.imports.services.UserService
@@ -36,7 +36,7 @@ import spray.json.DefaultJsonProtocol._
 import spray.json._
 import spray.json.{JsValue, JsObject, JsArray, JsString, JsNumber, JsBoolean, JsNull}
 
-// … 9 imports omitted
+// … 9 imports omitted (5 lines)
 
 // Local imports with long lists
 import com.example.imports.services.{

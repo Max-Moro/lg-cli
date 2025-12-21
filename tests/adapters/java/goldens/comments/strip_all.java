@@ -1,4 +1,4 @@
-/** … docstring omitted */
+/** … docstring omitted (6 lines) */
 
 package com.example.comments;
 
@@ -10,7 +10,7 @@ public class Constants {
     public static final String MODULE_VERSION = "1.0.0"; // … comment omitted
 }
 
-/** … docstring omitted */
+/** … docstring omitted (4 lines) */
 public class User {
     private final long id;        // … comment omitted
     private final String name;    // … comment omitted
@@ -48,7 +48,7 @@ public class CommentedService {
     private final ServiceConfig config;  // … comment omitted
     private final Logger logger;         // … comment omitted
 
-    /** … docstring omitted */
+    /** … docstring omitted (9 lines) */
     public CommentedService(ServiceConfig config, Logger logger) {
         this.config = config;
         this.logger = logger;
@@ -59,14 +59,14 @@ public class CommentedService {
         // … comment omitted
     }
 
-    /** … docstring omitted */
+    /** … docstring omitted (11 lines) */
     public User processUser(PartialUser userData) throws ValidationException {
         // … comment omitted
         if (userData == null) {
             throw new IllegalArgumentException("User data is required");
         }
 
-        // … comment omitted
+        // … comment omitted (5 lines)
         ValidationResult validationResult = validateUser(userData);
         if (!validationResult.isValid()) {
             // … comment omitted
@@ -109,7 +109,7 @@ public class CommentedService {
 
     // … comment omitted
     private User transformUserData(PartialUser userData) {
-        // … comment omitted
+        // … comment omitted (5 lines)
         return new User(
             generateUserId(),    // … comment omitted
             userData.getName().trim(),  // … comment omitted
@@ -118,7 +118,7 @@ public class CommentedService {
         );
     }
 
-    /** … docstring omitted */
+    /** … docstring omitted (4 lines) */
     private long generateUserId() {
         // … comment omitted
         return (long) (Math.random() * 1000000);
@@ -146,7 +146,7 @@ public class CommentedService {
     }
 }
 
-/** … docstring omitted */
+/** … docstring omitted (6 lines) */
 public class StringProcessor {
     public static String processString(String input) {
         // … comment omitted
@@ -154,7 +154,7 @@ public class StringProcessor {
             return "";  // … comment omitted
         }
 
-        // … comment omitted
+        // … comment omitted (5 lines)
         String trimmed = input.trim();
         String lowercase = trimmed.toLowerCase();
         String cleaned = lowercase.replaceAll("[^a-z0-9\\s]", "");
@@ -238,7 +238,7 @@ class PartialUser {
     public void setProfile(Profile profile) { this.profile = profile; }
 }
 
-// … comment omitted
+// … comment omitted (4 lines)
 class DefaultConfig {
     public static final ServiceConfig DEFAULT_CONFIG = new ServiceConfig(
         5000,    // … comment omitted

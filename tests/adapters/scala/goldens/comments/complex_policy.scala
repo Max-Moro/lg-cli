@@ -56,7 +56,7 @@ class CommentedService(
       throw new IllegalArgumentException("User data is required")
     }
 
-    // … comment omitted
+    // … comment omitted (5 lines)
     val validationResult = validateUser(userData)
     if (!validationResult.isValid) {
       // … comment omitted
@@ -103,7 +103,7 @@ class CommentedService(
 
   // … comment omitted
   private def transformUserData(userData: Map[String, Any]): User = {
-    // … comment omitted
+    // … comment omitted (5 lines)
     User(
       id = generateUserId(),    // … comment omitted
       name = userData("name").toString.trim,  // … comment omitted
@@ -153,7 +153,7 @@ def processString(input: String): String = {
     return ""  // … comment omitted
   }
 
-  // … comment omitted
+  // … comment omitted (5 lines)
   val trimmed = input.trim
   val lowercase = trimmed.toLowerCase
   val cleaned = lowercase.replaceAll("[^a-z0-9\\s]", "")
@@ -195,7 +195,7 @@ class ValidationException(val errors: List[String]) extends Exception {
   override def getMessage: String = s"Validation failed: ${errors.mkString(", ")}"
 }
 
-// … comment omitted
+// … comment omitted (4 lines)
 object DefaultConfig {
   val DEFAULT_CONFIG = ServiceConfig(
     timeout = 5000,    // … comment omitted

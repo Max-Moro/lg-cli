@@ -45,7 +45,7 @@ impl CommentedService {
             return Err("User data is required".to_string());
         }
 
-        // … comment omitted
+        // … comment omitted (5 lines)
         let validation_result = self.validate_user(&user_data);
         if !validation_result.is_valid {
             // … comment omitted
@@ -88,7 +88,7 @@ impl CommentedService {
     }
 
     fn transform_user_data(&self, user_data: User) -> User {
-        // … comment omitted
+        // … comment omitted (5 lines)
         User {
             id: self.generate_user_id(),           // … comment omitted
             name: user_data.name.trim().to_string(),  // … comment omitted
@@ -123,7 +123,7 @@ fn process_string(input: &str) -> String {
         return String::new(); // … comment omitted
     }
 
-    // … comment omitted
+    // … comment omitted (5 lines)
     let trimmed = input.trim();
     let lowercase = trimmed.to_lowercase();
     let cleaned = lowercase.chars().filter(|c| c.is_alphanumeric() || c.is_whitespace()).collect();
@@ -153,7 +153,7 @@ struct ServiceConfig {
     base_url: String, // … comment omitted
 }
 
-// … comment omitted
+// … comment omitted (4 lines)
 const DEFAULT_CONFIG: ServiceConfig = ServiceConfig {
     timeout: 5000,                    // … comment omitted
     retries: 3,                       // … comment omitted

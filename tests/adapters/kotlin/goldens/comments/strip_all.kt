@@ -1,4 +1,4 @@
-/** … docstring omitted */
+/** … docstring omitted (6 lines) */
 
 package com.example.comments
 
@@ -7,7 +7,7 @@ import kotlinx.coroutines.flow.Flow
 // … comment omitted
 const val MODULE_VERSION = "1.0.0" // … comment omitted
 
-/** … docstring omitted */
+/** … docstring omitted (4 lines) */
 data class User(
     val id: Long,        // … comment omitted
     val name: String,    // … comment omitted
@@ -25,7 +25,7 @@ class CommentedService(
     private val config: ServiceConfig,  // … comment omitted
     private val logger: Logger? = null  // … comment omitted
 ) {
-    /** … docstring omitted */
+    /** … docstring omitted (6 lines) */
     init {
         // … comment omitted
         initialize()
@@ -33,14 +33,14 @@ class CommentedService(
         // … comment omitted
     }
     
-    /** … docstring omitted */
+    /** … docstring omitted (11 lines) */
     suspend fun processUser(userData: Map<String, Any?>): User {
         // … comment omitted
         if (userData.isEmpty()) {
             throw IllegalArgumentException("User data is required")
         }
         
-        // … comment omitted
+        // … comment omitted (5 lines)
         val validationResult = validateUser(userData)
         if (!validationResult.isValid) {
             // … comment omitted
@@ -85,7 +85,7 @@ class CommentedService(
     
     // … comment omitted
     private fun transformUserData(userData: Map<String, Any?>): User {
-        // … comment omitted
+        // … comment omitted (5 lines)
         return User(
             id = generateUserId(),    // … comment omitted
             name = (userData["name"] as String).trim(),  // … comment omitted
@@ -94,7 +94,7 @@ class CommentedService(
         )
     }
     
-    /** … docstring omitted */
+    /** … docstring omitted (4 lines) */
     private fun generateUserId(): Long {
         // … comment omitted
         return (Math.random() * 1_000_000).toLong()
@@ -116,14 +116,14 @@ class CommentedService(
     }
 }
 
-/** … docstring omitted */
+/** … docstring omitted (6 lines) */
 fun processString(input: String): String {
     // … comment omitted
     if (input.isEmpty()) {
         return ""  // … comment omitted
     }
     
-    // … comment omitted
+    // … comment omitted (5 lines)
     val trimmed = input.trim()
     val lowercase = trimmed.lowercase()
     val cleaned = lowercase.replace(Regex("[^a-z0-9\\s]"), "")
@@ -166,7 +166,7 @@ class ValidationException(val errors: List<String>) : Exception() {
         get() = "Validation failed: ${errors.joinToString(", ")}"
 }
 
-// … comment omitted
+// … comment omitted (4 lines)
 val DEFAULT_CONFIG = ServiceConfig(
     timeout = 5000,    // … comment omitted
     retries = 3,       // … comment omitted

@@ -25,7 +25,7 @@ public interface User {
 }
 
 // Package-private interface (should be filtered out)
-// … interface omitted
+// … interface omitted (4 lines)
 
 // Public enum (should be preserved)
 public enum UserRole {
@@ -83,10 +83,10 @@ public class UserManager {
     }
 
     // Private methods (should be filtered out)
-    // … 4 methods omitted
+    // … 4 methods omitted (24 lines)
 
     // Protected methods (should be filtered out)
-    // … 2 methods omitted
+    // … 2 methods omitted (7 lines)
 
     // Public static methods (should be preserved)
     public static boolean validateUserRole(String role) {
@@ -103,7 +103,7 @@ public class UserManager {
     }
 
     // Private static methods (should be filtered out)
-    // … method omitted
+    // … method omitted (3 lines)
 
     // Public property with getter
     public int getUserCount() {
@@ -111,11 +111,11 @@ public class UserManager {
     }
 
     // Private property with getter (should be filtered out)
-    // … method omitted
+    // … method omitted (6 lines)
 }
 
 // Package-private class (should be filtered out)
-// … class omitted
+// … class omitted (12 lines)
 
 // Public abstract class (should be preserved)
 public abstract class BaseService {
@@ -135,7 +135,7 @@ public abstract class BaseService {
 }
 
 // Private enum (should be filtered out)
-// … enum omitted
+// … enum omitted (5 lines)
 
 // Public functions (should be preserved)
 public class UserManagerFactory {
@@ -152,7 +152,7 @@ public class UserManagerFactory {
     }
 
     // Private functions (should be filtered out)
-    // … 2 methods omitted
+    // … 2 methods omitted (7 lines)
 }
 
 // Public utility class (should be preserved)
@@ -168,22 +168,22 @@ public class UserUtils {
     }
 
     // Private utility member (should be filtered out)
-    // … method omitted
+    // … method omitted (3 lines)
 }
 
 // Package-private utility class (should be filtered out)
-// … class omitted
+// … class omitted (14 lines)
 
 // ============= Support classes =============
 
-// … 3 classes omitted
+// … 3 classes omitted (36 lines)
 
 // ============= Examples with Java annotations =============
 
 // Simple annotation examples
 // … 2 annotations omitted
 
-// … class omitted
+// … class omitted (11 lines)
 
 @Logged
 @Validate
@@ -199,7 +199,7 @@ public class PublicAnnotatedClass {
         return data.toUpperCase();
     }
 
-    // … method omitted
+    // … method omitted (4 lines)
 }
 
 // Class with mixed annotated members
@@ -209,11 +209,11 @@ public class MixedAnnotatedClass {
         // Public method with annotation - should preserve both
     }
 
-    // … 2 methods omitted
+    // … 2 methods omitted (9 lines)
 }
 
 // Multiple stacked annotations on private elements
-// … class omitted
+// … class omitted (12 lines)
 
 @Logged
 @Validate

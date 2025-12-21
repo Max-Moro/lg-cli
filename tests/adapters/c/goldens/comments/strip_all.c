@@ -1,4 +1,4 @@
-/** … docstring omitted */
+/** … docstring omitted (6 lines) */
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -7,7 +7,7 @@
 // … comment omitted
 #define MODULE_VERSION "1.0.0"  // TODO: Move to config file
 
-/** … docstring omitted */
+/** … docstring omitted (4 lines) */
 typedef struct {
     int id;           // … comment omitted
     char* name;       // … comment omitted
@@ -26,7 +26,7 @@ typedef struct {
     void* logger;     // … comment omitted
 } CommentedService;
 
-/** … docstring omitted */
+/** … docstring omitted (10 lines) */
 CommentedService* commented_service_new(void* config, void* logger) {
     CommentedService* service = (CommentedService*)malloc(sizeof(CommentedService));
     if (!service) return NULL;
@@ -39,7 +39,7 @@ CommentedService* commented_service_new(void* config, void* logger) {
     return service;
 }
 
-/** … docstring omitted */
+/** … docstring omitted (10 lines) */
 User* process_user(User* userData) {
     // … comment omitted
     if (!userData) {
@@ -47,7 +47,7 @@ User* process_user(User* userData) {
         return NULL;
     }
 
-    // … comment omitted
+    // … comment omitted (5 lines)
     int is_valid = 1;
     if (!userData->name || strlen(userData->name) == 0) {
         // … comment omitted
@@ -74,7 +74,7 @@ User* process_user(User* userData) {
 }
 
 static User* transform_user_data(User* userData) {
-    // … comment omitted
+    // … comment omitted (5 lines)
     User* user = (User*)malloc(sizeof(User));
     if (!user) return NULL;
 
@@ -86,7 +86,7 @@ static User* transform_user_data(User* userData) {
     return user;
 }
 
-/** … docstring omitted */
+/** … docstring omitted (4 lines) */
 static int generate_user_id(void) {
     // … comment omitted
     return rand() % 1000000;
@@ -104,14 +104,14 @@ static User* save_user(User* user) {
     return user;  // … comment omitted
 }
 
-/** … docstring omitted */
+/** … docstring omitted (6 lines) */
 char* process_string(const char* input) {
     // … comment omitted
     if (!input || strlen(input) == 0) {
         return strdup("");  // … comment omitted
     }
 
-    // … comment omitted
+    // … comment omitted (5 lines)
     size_t len = strlen(input);
     char* result = (char*)malloc(len + 1);
     if (!result) return NULL;
@@ -144,7 +144,7 @@ typedef struct {
     char* base_url;    // … comment omitted
 } ServiceConfig;
 
-// … comment omitted
+// … comment omitted (4 lines)
 ServiceConfig DEFAULT_CONFIG = {
     5000,              // … comment omitted
     3,                 // … comment omitted

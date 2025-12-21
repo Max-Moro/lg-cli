@@ -59,7 +59,7 @@ public class Calculator {
 
     private boolean validateInput(int value) {
         if (!String.valueOf(value).matches("^-?\\d+$")) {
-        // … method body truncated (7 lines)
+        // … method body truncated (5 lines)
 
         return true;
     }
@@ -80,7 +80,7 @@ public class ProcessingResult {
 
 public class UserProcessor {
     public static ProcessingResult processUserData(List<User> users) {
-        // … method body truncated (13 lines)
+        // … method body truncated (11 lines)
 
         return new ProcessingResult(valid, invalid);
     }
@@ -91,7 +91,7 @@ public class ArrayProcessor {
     public static <T> List<T> processArray(List<T> items, Processor<T> processor) {
         List<T> result = new ArrayList<>();
 
-        // … method body truncated (9 lines)
+        // … method body truncated (8 lines)
 
         return result;
     }
@@ -106,6 +106,6 @@ interface Processor<T> {
 public class Main {
     public static void main(String[] args) {
         Calculator calc = new Calculator("test");
-        // … method body truncated (11 lines)
+        // … method body truncated (8 lines)
     }
 }

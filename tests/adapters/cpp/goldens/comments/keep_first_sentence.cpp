@@ -52,7 +52,7 @@ public:
             throw std::runtime_error("User data is required");
         }
 
-        // … comment omitted
+        // … comment omitted (5 lines)
         bool isValid = true;
         if (userData.name.empty()) {
             // … comment omitted
@@ -80,7 +80,7 @@ public:
 
 private:
     User transformUserData(const User& userData) {
-        // … comment omitted
+        // … comment omitted (5 lines)
         User user;
         user.id = generateUserId();      // … comment omitted
         user.name = userData.name;       // … comment omitted
@@ -122,7 +122,7 @@ std::string processString(const std::string& input) {
         return "";  // … comment omitted
     }
 
-    // … comment omitted
+    // … comment omitted (5 lines)
     std::string trimmed = input;
     std::string lowercase = trimmed;
     std::transform(lowercase.begin(), lowercase.end(), lowercase.begin(), ::tolower);
@@ -154,7 +154,7 @@ struct ServiceConfig {
     std::string baseUrl;  // … comment omitted
 };
 
-// … comment omitted
+// … comment omitted (4 lines)
 ServiceConfig DEFAULT_CONFIG = {
     5000,                       // … comment omitted
     3,                          // … comment omitted

@@ -57,14 +57,14 @@ func validateInput(value int) bool {
 	str := strconv.Itoa(value)
 
 	for _, ch := range str {
-	// … function body truncated (12 lines)
+	// … function body truncated (10 lines)
 }
 
 // ProcessUserData validates and categorizes users
 func ProcessUserData(users []User) *ProcessingResult {
 	result := &ProcessingResult{
 		Valid:   make([]User, 0),
-	// … function body truncated (12 lines)
+	// … function body truncated (10 lines)
 }
 
 func contains(s, substr string) bool {
@@ -77,11 +77,11 @@ func ProcessArray(items []interface{}, processor func(interface{}) interface{}) 
 	result := make([]interface{}, 0)
 
 	for _, item := range items {
-	// … function body truncated (7 lines)
+	// … function body truncated (6 lines)
 }
 
 func main() {
 	calc := NewCalculator("test")
 
-	// … function body truncated (10 lines)
+	// … function body truncated (8 lines)
 }

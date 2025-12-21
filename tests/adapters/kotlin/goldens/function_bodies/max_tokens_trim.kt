@@ -39,14 +39,14 @@ class TaskService(repository: TaskRepository) {
     init {
         repo = repository
         createdAt = Instant.now()
-        // … init body truncated (2 lines)
+        // … init body truncated
     }
 
     // secondary constructor
     constructor(repository: TaskRepository, initialTasks: List<Task>) : this(repository) {
         for (task in initialTasks) {
             pendingTasks.add(task.id)
-        // … constructor body truncated (3 lines)
+        // … constructor body truncated (2 lines)
     }
 
     private val pendingTasks = mutableSetOf<String>()
@@ -63,7 +63,7 @@ class TaskService(repository: TaskRepository) {
     suspend fun createTask(title: String, description: String, priority: Priority): Task {
         require(title.isNotBlank()) { "Title cannot be blank" }
 
-        // … method body truncated (9 lines)
+        // … method body truncated (8 lines)
         return saved
     }
 
@@ -74,7 +74,7 @@ class TaskService(repository: TaskRepository) {
          * First validates the task exists, then checks assignee availability,
          * and finally performs the atomic assignment operation.
          */
-        // … method body truncated (3 lines)
+        // … method body truncated (2 lines)
         return repo.save(updated)
     }
 
@@ -108,12 +108,12 @@ class TaskNotificationService {
     fun notifyAssignment(task: Task, assignee: String) {
         if (!enabled) return
 
-        // … method body truncated (3 lines)
+        // … method body truncated (2 lines)
     }
 
     // nested function inside method
     private fun buildNotificationMessage(task: Task, assignee: String): String {
-        // … method body truncated (10 lines)
+        // … method body truncated (9 lines)
         return "$priorityText: ${task.title} assigned to $assignee"
     }
 
@@ -173,7 +173,7 @@ suspend fun <T> retryOperation(times: Int, block: suspend () -> T): T {
     var lastException: Exception? = null
 
     repeat(times) { attempt ->
-    // … function body truncated (9 lines)
+    // … function body truncated (8 lines)
 }
 
 // multiline lambda with Comparator

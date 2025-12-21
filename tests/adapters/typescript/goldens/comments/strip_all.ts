@@ -1,11 +1,11 @@
-/** … docstring omitted */
+/** … docstring omitted (6 lines) */
 
 import { Observable } from 'rxjs';
 
 // … comment omitted
 const MODULE_VERSION = '1.0.0'; // … comment omitted
 
-/** … docstring omitted */
+/** … docstring omitted (4 lines) */
 interface User {
     id: number;        // … comment omitted
     name: string;      // … comment omitted
@@ -18,7 +18,7 @@ interface User {
 }
 
 export class CommentedService {
-    /** … docstring omitted */
+    /** … docstring omitted (6 lines) */
     constructor(
         private config: ServiceConfig,  // … comment omitted
         private logger?: Logger         // … comment omitted
@@ -29,14 +29,14 @@ export class CommentedService {
         // … comment omitted
     }
     
-    /** … docstring omitted */
+    /** … docstring omitted (11 lines) */
     public async processUser(userData: Partial<User>): Promise<User> {
         // … comment omitted
         if (!userData) {
             throw new Error('User data is required');
         }
         
-        // … comment omitted
+        // … comment omitted (5 lines)
         const validationResult = this.validateUser(userData);
         if (!validationResult.isValid) {
             // … comment omitted
@@ -80,7 +80,7 @@ export class CommentedService {
     
     // … comment omitted
     private transformUserData(userData: Partial<User>): User {
-        // … comment omitted
+        // … comment omitted (5 lines)
         return {
             id: this.generateUserId(),    // … comment omitted
             name: userData.name!.trim(),  // … comment omitted
@@ -89,7 +89,7 @@ export class CommentedService {
         };
     }
     
-    /** … docstring omitted */
+    /** … docstring omitted (4 lines) */
     private generateUserId(): number {
         // … comment omitted
         return Math.floor(Math.random() * 1000000);
@@ -111,14 +111,14 @@ export class CommentedService {
     }
 }
 
-/** … docstring omitted */
+/** … docstring omitted (6 lines) */
 export function processString(input: string): string {
     // … comment omitted
     if (!input || typeof input !== 'string') {
         return '';  // … comment omitted
     }
     
-    // … comment omitted
+    // … comment omitted (5 lines)
     const trimmed = input.trim();
     const lowercase = trimmed.toLowerCase();
     const cleaned = lowercase.replace(/[^a-z0-9\s]/g, '');
@@ -162,7 +162,7 @@ class ValidationError extends Error {
     }
 }
 
-// … comment omitted
+// … comment omitted (4 lines)
 export const DEFAULT_CONFIG: ServiceConfig = {
     timeout: 5000,    // … comment omitted
     retries: 3,       // … comment omitted

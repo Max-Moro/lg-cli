@@ -25,7 +25,7 @@ import { EventEmitter } from 'events';
 import { Readable, Writable, Transform } from 'stream';
 
 // Local/relative imports (should be considered local)
-// … 9 imports omitted
+// … 9 imports omitted (5 lines)
 
 // Relative imports with different depth levels
 // … 3 imports omitted
@@ -34,7 +34,7 @@ import { Readable, Writable, Transform } from 'stream';
 // … 3 imports omitted
 
 // Type-only imports
-// … 7 imports omitted
+// … 7 imports omitted (3 lines)
 
 // Mixed import styles on single line
 import fs2, { readFile, writeFile } from 'fs';
@@ -98,7 +98,7 @@ import {
 } from 'class-validator';
 
 // Local imports with long lists
-// … 23 imports omitted
+// … 23 imports omitted (27 lines)
 
 // Dynamic imports (should be preserved as-is)
 const dynamicModule = async () => {

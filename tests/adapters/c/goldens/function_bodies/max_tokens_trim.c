@@ -27,7 +27,7 @@ typedef struct {
 } Calculator;
 
 Calculator* calculator_new(const char* name) {
-    // … function body truncated (10 lines)
+    // … function body truncated (7 lines)
 
     return calc;
 }
@@ -43,7 +43,7 @@ int calculator_add(Calculator* calc, int a, int b) {
 
     int result = a + b;
 
-    // … function body truncated (12 lines)
+    // … function body truncated (9 lines)
 
     return result;
 }
@@ -53,27 +53,27 @@ int calculator_multiply(Calculator* calc, int a, int b) {
 
     int result = a * b;
 
-    // … function body truncated (11 lines)
+    // … function body truncated (8 lines)
 
     return result;
 }
 
 char** calculator_get_history(Calculator* calc, int* count) {
     if (!calc || !count) {
-    // … function body truncated (11 lines)
+    // … function body truncated (8 lines)
 
     return copy;
 }
 
 static int validate_input(int value) {
     char buffer[20];
-    // … function body truncated (14 lines)
+    // … function body truncated (11 lines)
 
     return 1;
 }
 
 ProcessingResult* process_user_data(User* users, int count) {
-    // … function body truncated (18 lines)
+    // … function body truncated (15 lines)
 
     return result;
 }
@@ -87,14 +87,14 @@ void free_processing_result(ProcessingResult* result) {
 typedef void (*ItemProcessor)(void* item);
 
 void** process_array(void** items, int count, ItemProcessor processor) {
-    // … function body truncated (10 lines)
+    // … function body truncated (8 lines)
 
     return result;
 }
 
 int main(void) {
     Calculator* calc = calculator_new("test");
-    // … function body truncated (19 lines)
+    // … function body truncated (14 lines)
 
     return 0;
 }

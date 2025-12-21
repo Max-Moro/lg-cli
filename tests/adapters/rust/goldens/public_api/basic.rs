@@ -10,7 +10,7 @@ pub const API_ENDPOINT: &str = "https://api.example.com";
 // Private module-level constants (should be filtered out)
 // … const omitted
 
-// … macro omitted
+// … macro omitted (8 lines)
 
 // Public structure (should be preserved)
 #[derive(Debug, Clone)]
@@ -22,7 +22,7 @@ pub struct User {
 }
 
 // Private structure (should be filtered out)
-// … struct omitted
+// … struct omitted (4 lines)
 
 // Public enum (should be preserved)
 #[derive(Debug, Clone, Copy)]
@@ -33,7 +33,7 @@ pub enum UserRole {
 }
 
 // Private enum (should be filtered out)
-// … enum omitted
+// … enum omitted (5 lines)
 
 // Public struct with mixed visibility members
 pub struct UserManager {
@@ -109,16 +109,16 @@ impl UserManager {
     }
 
     // Private methods (should be filtered out)
-    // … 6 methods omitted
+    // … 6 methods omitted (26 lines)
 
     // Private static methods (should be filtered out)
-    // … method omitted
+    // … method omitted (3 lines)
 }
 
 // Private struct (should be filtered out)
-// … struct omitted
+// … struct omitted (3 lines)
 
-// … impl omitted
+// … impl omitted (14 lines)
 
 // Public trait (should be preserved)
 pub trait BaseService {
@@ -149,7 +149,7 @@ pub fn is_valid_user_role(role: &str) -> bool {
 }
 
 // Private functions (should be filtered out)
-// … 2 functions omitted
+// … 2 functions omitted (6 lines)
 
 // Public utility struct (should be preserved)
 pub struct UserUtils;
@@ -165,12 +165,12 @@ impl UserUtils {
         duration.as_secs() / (60 * 60 * 24)
     }
 
-    // … method omitted
+    // … method omitted (3 lines)
 }
 
 // Private utility struct (should be filtered out)
 // … struct omitted
 
-// … impl omitted
+// … impl omitted (17 lines)
 
-// … function omitted
+// … function omitted (7 lines)

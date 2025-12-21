@@ -56,7 +56,7 @@ export class UserManager {
     }
 
     // Private methods (should be filtered out)
-    // … 6 methods omitted
+    // … 6 methods omitted (33 lines)
 
     // Public static methods (should be preserved)
     static validateUserRole(role) {
@@ -73,7 +73,7 @@ export class UserManager {
     }
 
     // Private static methods (should be filtered out)
-    // … method omitted
+    // … method omitted (3 lines)
 
     // Public readonly property with getter
     get userCount() {
@@ -81,11 +81,11 @@ export class UserManager {
     }
 
     // Private readonly property with getter (should be filtered out)
-    // … method omitted
+    // … method omitted (6 lines)
 }
 
 // Private class (not exported, should be filtered out)
-// … class omitted
+// … class omitted (12 lines)
 
 // Public abstract-like class (should be preserved)
 export class BaseService {
@@ -107,7 +107,7 @@ export class BaseService {
     }
 
     // Protected-like method (should be filtered out in public API)
-    // … method omitted
+    // … method omitted (3 lines)
 }
 
 // Public enum-like object (should be preserved)
@@ -119,7 +119,7 @@ export const UserStatus = {
 };
 
 // Private enum-like object (not exported, should be filtered out)
-// … function omitted
+// … function omitted (5 lines)
 
 // Public functions (should be preserved)
 export function createUserManager(endpoint) {
@@ -131,7 +131,7 @@ export function isValidUserRole(role) {
 }
 
 // Private functions (not exported, should be filtered out)
-// … 2 functions omitted
+// … 2 functions omitted (7 lines)
 
 // Exported namespace-like object (should be preserved)
 export const UserUtils = {
@@ -146,11 +146,11 @@ export const UserUtils = {
     },
 
     // Private namespace member (should be filtered out)
-    // … method omitted
+    // … method omitted (3 lines)
 };
 
 // Private namespace-like object (not exported, should be filtered out)
-// … function omitted
+// … function omitted (14 lines)
 
 // Default export (should be preserved)
 export default UserManager;

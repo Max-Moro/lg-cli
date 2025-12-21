@@ -68,7 +68,7 @@ User* process_user(User* userData) {
         return NULL;
     }
 
-    // … comment omitted
+    // … comment omitted (5 lines)
     int is_valid = 1;
     if (!userData->name || strlen(userData->name) == 0) {
         // … comment omitted
@@ -96,7 +96,7 @@ User* process_user(User* userData) {
 }
 
 static User* transform_user_data(User* userData) {
-    // … comment omitted
+    // … comment omitted (5 lines)
     User* user = (User*)malloc(sizeof(User));
     if (!user) return NULL;
 
@@ -141,7 +141,7 @@ char* process_string(const char* input) {
         return strdup("");  // … comment omitted
     }
 
-    // … comment omitted
+    // … comment omitted (5 lines)
     size_t len = strlen(input);
     char* result = (char*)malloc(len + 1);
     if (!result) return NULL;
@@ -174,7 +174,7 @@ typedef struct {
     char* base_url;    // … comment omitted
 } ServiceConfig;
 
-// … comment omitted
+// … comment omitted (4 lines)
 ServiceConfig DEFAULT_CONFIG = {
     5000,              // … comment omitted
     3,                 // … comment omitted

@@ -48,7 +48,7 @@ public:
 
 private:
     bool validateInput(int value) {
-        // … method body truncated (14 lines)
+        // … method body truncated (11 lines)
 
         return true;
     }
@@ -57,7 +57,7 @@ private:
 ProcessingResult processUserData(const std::vector<User>& users) {
     ProcessingResult result;
 
-    // … function body truncated (10 lines)
+    // … function body truncated (9 lines)
 
     return result;
 }
@@ -67,7 +67,7 @@ template<typename T, typename Processor>
 std::vector<T> processArray(const std::vector<T>& items, Processor processor) {
     std::vector<T> result;
 
-    // … function body truncated (8 lines)
+    // … function body truncated (7 lines)
 
     return result;
 }
@@ -81,7 +81,7 @@ std::vector<int> filterPositive(const std::vector<int>& numbers) {
 
 int main() {
     Calculator calc("test");
-    // … function body truncated (11 lines)
+    // … function body truncated (8 lines)
 
     return 0;
 }

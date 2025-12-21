@@ -57,7 +57,7 @@ func ProcessUser(userData *User) (*User, error) {
 		return nil, fmt.Errorf("user data is required")
 	}
 
-	// … comment omitted
+	// … comment omitted (5 lines)
 	validationResult := validateUser(userData)
 	if !validationResult.IsValid {
 		// … comment omitted
@@ -104,7 +104,7 @@ func validateUser(userData *User) ValidationResult {
 
 // … comment omitted
 func transformUserData(userData *User) *User {
-	// … comment omitted
+	// … comment omitted (5 lines)
 	return &User{
 		ID:    generateUserID(),           // … comment omitted
 		Name:  trimString(userData.Name),  // … comment omitted
@@ -139,7 +139,7 @@ func ProcessString(input string) string {
 		return "" // … comment omitted
 	}
 
-	// … comment omitted
+	// … comment omitted (5 lines)
 	trimmed := trimString(input)
 	lowercase := toLowerCase(trimmed)
 	cleaned := removeSpecialChars(lowercase)
@@ -171,7 +171,7 @@ type ServiceConfig struct {
 	BaseURL string // … comment omitted
 }
 
-// … docstring omitted
+// … docstring omitted (4 lines)
 
 var DefaultConfig = ServiceConfig{
 	Timeout: 5000,                    // … comment omitted

@@ -52,7 +52,7 @@ use super::super::core::core_module;
 use super::super::super::config::app_config;
 
 // Long import lists from single module (candidates for summarization)
-// … 23 imports omitted
+// … 23 imports omitted (27 lines)
 
 struct ImportTestService {
     user_service: UserService,

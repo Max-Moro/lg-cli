@@ -14,7 +14,7 @@ const APIEndpoint = "https://api.example.com"
 // Private module-level constants (should be filtered out)
 // … const omitted
 
-// … var omitted
+// … var omitted (7 lines)
 
 // User is a public structure (should be preserved)
 type User struct {
@@ -25,7 +25,7 @@ type User struct {
 }
 
 // internalMetrics is a private structure (should be filtered out)
-// … struct omitted
+// … struct omitted (4 lines)
 
 // UserRole is a public type alias (should be preserved)
 type UserRole string
@@ -39,7 +39,7 @@ const (
 // internalEventType is a private type (should be filtered out)
 // … type omitted
 
-// … const omitted
+// … const omitted (5 lines)
 
 // UserManager is a public class with mixed visibility members
 type UserManager struct {
@@ -107,22 +107,22 @@ func (m *UserManager) GetAllUsers() []*User {
 }
 
 // validateUserData is a private method (should be filtered out)
-// … method omitted
+// … method omitted (9 lines)
 
 // generateID is a private method (should be filtered out)
-// … method omitted
+// … method omitted (3 lines)
 
 // isValidEmail is a private method (should be filtered out)
-// … method omitted
+// … method omitted (3 lines)
 
 // fetchUserFromAPI is a private method (should be filtered out)
-// … method omitted
+// … method omitted (4 lines)
 
 // initialize is a private method (should be filtered out)
-// … method omitted
+// … method omitted (3 lines)
 
 // logError is a private method (should be filtered out)
-// … method omitted
+// … method omitted (3 lines)
 
 // ValidateUserRole is a public function (should be preserved)
 func ValidateUserRole(role string) bool {
@@ -146,22 +146,22 @@ func CreateDefaultUser() *User {
 }
 
 // formatInternalID is a private function (should be filtered out)
-// … function omitted
+// … function omitted (3 lines)
 
 // internalLogger is a private structure (should be filtered out)
-// … struct omitted
+// … struct omitted (3 lines)
 
 // newInternalLogger is a private constructor (should be filtered out)
-// … function omitted
+// … function omitted (5 lines)
 
 // log is a private method (should be filtered out)
-// … method omitted
+// … method omitted (4 lines)
 
 // getLogs is a private method (should be filtered out)
-// … method omitted
+// … method omitted (3 lines)
 
 // clearLogs is a private method (should be filtered out)
-// … method omitted
+// … method omitted (3 lines)
 
 // UserUtils is a public namespace-like struct (should be preserved)
 type UserUtils struct{}
@@ -178,15 +178,15 @@ func (UserUtils) GetUserAge(user *User) int64 {
 }
 
 // internalFormatting is a private function (should be filtered out)
-// … function omitted
+// … function omitted (3 lines)
 
 // InternalUtils is a private namespace-like struct (should be filtered out)
 type InternalUtils struct{}
 
 // debugLog is a private method (should be filtered out)
-// … method omitted
+// … method omitted (5 lines)
 
 // measurePerformance is a private method (should be filtered out)
-// … method omitted
+// … method omitted (6 lines)
 
-// … function omitted
+// … function omitted (7 lines)

@@ -66,7 +66,7 @@ import akka.http.scaladsl.server.{Route, RouteResult}
 import akka.http.scaladsl.server.directives.{BasicDirectives, RouteDirectives}
 
 // Local imports with long lists
-// … 23 imports omitted
+// … 23 imports omitted (27 lines)
 
 class ImportTestService(
   userService: UserService,

@@ -92,7 +92,7 @@ public class CommentedService {
             throw new IllegalArgumentException("User data is required");
         }
 
-        // … comment omitted
+        // … comment omitted (5 lines)
         ValidationResult validationResult = validateUser(userData);
         if (!validationResult.isValid()) {
             // … comment omitted
@@ -135,7 +135,7 @@ public class CommentedService {
 
     // … comment omitted
     private User transformUserData(PartialUser userData) {
-        // … comment omitted
+        // … comment omitted (5 lines)
         return new User(
             generateUserId(),    // … comment omitted
             userData.getName().trim(),  // … comment omitted
@@ -188,7 +188,7 @@ public class StringProcessor {
             return "";  // … comment omitted
         }
 
-        // … comment omitted
+        // … comment omitted (5 lines)
         String trimmed = input.trim();
         String lowercase = trimmed.toLowerCase();
         String cleaned = lowercase.replaceAll("[^a-z0-9\\s]", "");
@@ -272,7 +272,7 @@ class PartialUser {
     public void setProfile(Profile profile) { this.profile = profile; }
 }
 
-// … comment omitted
+// … comment omitted (4 lines)
 class DefaultConfig {
     public static final ServiceConfig DEFAULT_CONFIG = new ServiceConfig(
         5000,    // … comment omitted

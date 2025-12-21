@@ -3,13 +3,13 @@
  */
 
 // External library imports (should be considered external)
-// … 16 imports omitted
+// … 16 imports omitted (7 lines)
 
 // Scoped package imports (external)
-// … 4 imports omitted
+// … 4 imports omitted (2 lines)
 
 // Node.js built-in modules (external/standard library)
-// … 7 imports omitted
+// … 7 imports omitted (5 lines)
 
 // Local/relative imports (should be considered local)
 import { UserService } from './services/user-service.js';
@@ -29,7 +29,7 @@ import { Config as AppConfig2 } from './config/app.config.js';
 import { default as HttpClient } from './http/client.js';
 
 // Mixed import styles on single line
-// … 7 imports omitted
+// … 7 imports omitted (2 lines)
 
 // Long import lists (candidates for summarization)
 import {

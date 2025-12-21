@@ -1,4 +1,4 @@
-/** … docstring omitted */
+/** … docstring omitted (6 lines) */
 
 #include <iostream>
 #include <string>
@@ -8,7 +8,7 @@
 // … comment omitted
 constexpr const char* MODULE_VERSION = "1.0.0";  // … comment omitted
 
-/** … docstring omitted */
+/** … docstring omitted (4 lines) */
 struct User {
     int id;            // … comment omitted
     std::string name;  // … comment omitted
@@ -28,7 +28,7 @@ private:
     void* logger;      // … comment omitted
 
 public:
-    /** … docstring omitted */
+    /** … docstring omitted (9 lines) */
     CommentedService(void* config, void* logger)
         : config(config), logger(logger) {
         // … comment omitted
@@ -37,14 +37,14 @@ public:
         // … comment omitted
     }
 
-    /** … docstring omitted */
+    /** … docstring omitted (11 lines) */
     User processUser(const User& userData) {
         // … comment omitted
         if (userData.name.empty()) {
             throw std::runtime_error("User data is required");
         }
 
-        // … comment omitted
+        // … comment omitted (5 lines)
         bool isValid = true;
         if (userData.name.empty()) {
             // … comment omitted
@@ -72,7 +72,7 @@ public:
 
 private:
     User transformUserData(const User& userData) {
-        // … comment omitted
+        // … comment omitted (5 lines)
         User user;
         user.id = generateUserId();      // … comment omitted
         user.name = userData.name;       // … comment omitted
@@ -82,7 +82,7 @@ private:
         return user;
     }
 
-    /** … docstring omitted */
+    /** … docstring omitted (4 lines) */
     int generateUserId() {
         // … comment omitted
         return rand() % 1000000;
@@ -103,14 +103,14 @@ private:
     }
 };
 
-/** … docstring omitted */
+/** … docstring omitted (6 lines) */
 std::string processString(const std::string& input) {
     // … comment omitted
     if (input.empty()) {
         return "";  // … comment omitted
     }
 
-    // … comment omitted
+    // … comment omitted (5 lines)
     std::string trimmed = input;
     std::string lowercase = trimmed;
     std::transform(lowercase.begin(), lowercase.end(), lowercase.begin(), ::tolower);
@@ -142,7 +142,7 @@ struct ServiceConfig {
     std::string baseUrl;  // … comment omitted
 };
 
-// … comment omitted
+// … comment omitted (4 lines)
 ServiceConfig DEFAULT_CONFIG = {
     5000,                       // … comment omitted
     3,                          // … comment omitted

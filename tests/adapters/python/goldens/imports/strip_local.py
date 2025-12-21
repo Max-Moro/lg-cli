@@ -21,7 +21,7 @@ from sqlalchemy import create_engine, Column, Integer, String
 from pydantic import BaseModel, Field, validator
 
 # Local/relative imports (should be considered local)
-# … 12 imports omitted
+# … 12 imports omitted (5 lines)
 
 # Mixed import styles
 import sqlite3, pickle, csv
@@ -52,7 +52,7 @@ from rest_framework.decorators import (
     throttle_classes, parser_classes, renderer_classes
 )
 
-# … 11 imports omitted
+# … 11 imports omitted (6 lines)
 
 class ImportTestClass:
     """Class that uses imported modules."""

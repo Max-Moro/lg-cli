@@ -3,16 +3,16 @@
  */
 
 // External library imports (should be considered external)
-// … 16 imports omitted
+// … 16 imports omitted (7 lines)
 
 // Scoped package imports (external)
-// … 4 imports omitted
+// … 4 imports omitted (2 lines)
 
 // Node.js built-in modules (external/standard library)
-// … 7 imports omitted
+// … 7 imports omitted (5 lines)
 
 // Local/relative imports (should be considered local)
-// … 9 imports omitted
+// … 9 imports omitted (5 lines)
 
 // Relative imports with different depth levels
 // … 3 imports omitted
@@ -21,10 +21,10 @@
 // … 3 imports omitted
 
 // Mixed import styles on single line
-// … 7 imports omitted
+// … 7 imports omitted (2 lines)
 
 // Long import lists (candidates for summarization)
-// … 23 imports omitted
+// … 23 imports omitted (27 lines)
 
 // Dynamic imports (should be preserved as-is)
 const dynamicModule = async () => {
@@ -90,7 +90,7 @@ export class ImportTestService {
 }
 
 // Re-exports (should be handled appropriately)
-// … import omitted
+// … import omitted (3 lines)
 
 // Default export
 export default ImportTestService;

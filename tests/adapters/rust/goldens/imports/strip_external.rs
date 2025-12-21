@@ -1,19 +1,19 @@
 // Rust module for testing import optimization.
 
 // Standard library imports (external)
-// … 23 imports omitted
+// … 23 imports omitted (9 lines)
 
 // More standard library
-// … 5 imports omitted
+// … 5 imports omitted (4 lines)
 
 // Third-party library imports (external)
-// … 16 imports omitted
+// … 16 imports omitted (9 lines)
 
 // Database crates
-// … 4 imports omitted
+// … 4 imports omitted (3 lines)
 
 // Web framework crates
-// … 7 imports omitted
+// … 7 imports omitted (3 lines)
 
 // Local/project imports (should be considered local)
 use crate::models::User;

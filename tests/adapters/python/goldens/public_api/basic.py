@@ -21,7 +21,7 @@ def public_function(data: str) -> str:
     processed = _private_helper(data)
     return processed.upper()
 
-# … 2 functions omitted
+# … 2 functions omitted (11 lines)
 
 class PublicClass:
     """Public class available to external users.
@@ -40,30 +40,30 @@ class PublicClass:
         """Public method accessible to all users."""
         return f"Public: {self.name}"
     
-    # … 2 methods omitted
+    # … 2 methods omitted (10 lines)
     
     @property
     def public_property(self) -> str:
         """Public property accessor."""
         return self.name
     
-    # … method omitted
+    # … method omitted (4 lines)
 
     @staticmethod
     def public_static_method() -> str:
         """Public static method."""
         return "Static public"
     
-    # … 2 methods omitted
+    # … 2 methods omitted (9 lines)
 
     @classmethod
     def public_class_method(cls) -> 'PublicClass':
         """Public class method."""
         return cls("default")
     
-    # … method omitted
+    # … method omitted (4 lines)
 
-# … 2 classes omitted
+# … 2 classes omitted (15 lines)
 
 # Special methods (dunder methods) - should be considered public
 class SpecialMethodsClass:
@@ -88,9 +88,9 @@ class SpecialMethodsClass:
         """Equality comparison - public special method."""
         return isinstance(other, SpecialMethodsClass) and self.value == other.value
     
-    # … method omitted
+    # … method omitted (3 lines)
 
-# … function omitted
+# … function omitted (3 lines)
 
 # Module execution guard - should be preserved as it's a common pattern
 if __name__ == "__main__":
@@ -103,4 +103,4 @@ def add_repr(cls):
     cls.__repr__ = lambda self: f"<{cls.__name__} {self.__dict__}>"
     return cls
 
-# … class omitted
+# … class omitted (5 lines)

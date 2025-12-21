@@ -21,7 +21,7 @@ export interface User {
 }
 
 // Private interface (not exported, should be filtered out)
-// … interface omitted
+// … interface omitted (4 lines)
 
 // Public type alias (should be preserved)
 export type UserRole = 'admin' | 'user' | 'guest';
@@ -73,10 +73,10 @@ export class UserManager {
     }
     
     // Private methods (should be filtered out)
-    // … 4 methods omitted
+    // … 4 methods omitted (26 lines)
     
     // Protected methods (should be filtered out)
-    // … 2 methods omitted
+    // … 2 methods omitted (7 lines)
     
     // Public static methods (should be preserved)
     public static validateUserRole(role: string): role is UserRole {
@@ -93,7 +93,7 @@ export class UserManager {
     }
     
     // Private static methods (should be filtered out)
-    // … method omitted
+    // … method omitted (3 lines)
     
     // Public readonly property with getter
     public get userCount(): number {
@@ -101,14 +101,14 @@ export class UserManager {
     }
     
     // Private readonly property with getter (should be filtered out)
-    // … method omitted
+    // … method omitted (6 lines)
     
     // Private property declaration
     // … field omitted
 }
 
 // Private class (not exported, should be filtered out)
-// … class omitted
+// … class omitted (12 lines)
 
 // Public abstract class (should be preserved)
 export abstract class BaseService {
@@ -136,7 +136,7 @@ export enum UserStatus {
 }
 
 // Private enum (not exported, should be filtered out)
-// … enum omitted
+// … enum omitted (5 lines)
 
 // Public functions (should be preserved)
 export function createUserManager(endpoint?: string): UserManager {
@@ -148,7 +148,7 @@ export function isValidUserRole(role: any): role is UserRole {
 }
 
 // Private functions (not exported, should be filtered out)
-// … 2 functions omitted
+// … 2 functions omitted (7 lines)
 
 // Exported namespace (should be preserved)
 export namespace UserUtils {
@@ -163,11 +163,11 @@ export namespace UserUtils {
     }
     
     // Private namespace member (should be filtered out)
-    // … function omitted
+    // … function omitted (3 lines)
 }
 
 // Private namespace (not exported, should be filtered out)
-// … namespace omitted
+// … namespace omitted (14 lines)
 
 // Default export (should be preserved)
 export default UserManager;
@@ -175,9 +175,9 @@ export default UserManager;
 // ============= Examples with TypeScript decorators =============
 
 // Simple decorator examples
-// … 2 functions omitted
+// … 2 functions omitted (10 lines)
 
-// … class omitted
+// … class omitted (11 lines)
 
 @logged
 @validate
@@ -193,12 +193,12 @@ export class PublicDecoratedClass {
         return this.data.toUpperCase();
     }
     
-    // … method omitted
+    // … method omitted (4 lines)
 }
 
 // Decorated functions
 @logged
-// … function omitted
+// … function omitted (6 lines)
 
 @logged
 @validate
@@ -211,7 +211,7 @@ export function publicDecoratedFunction(data: string): string {
 
 // Interface with decorators (if supported)
 @logged
-// … interface omitted
+// … interface omitted (6 lines)
 
 @validate
 export interface PublicDecoratedInterface {
@@ -228,11 +228,11 @@ export class MixedDecoratedClass {
         // Public method with decorator - should preserve both
     }
     
-    // … 2 methods omitted
+    // … 2 methods omitted (9 lines)
 }
 
 // Multiple stacked decorators on private elements
-// … class omitted
+// … class omitted (12 lines)
 
 @logged
 @validate

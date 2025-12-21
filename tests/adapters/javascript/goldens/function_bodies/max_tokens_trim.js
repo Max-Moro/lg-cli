@@ -26,7 +26,7 @@ class Calculator {
 
     #validateInput(value) {
         if (typeof value !== 'number') {
-        // … method body truncated (7 lines)
+        // … method body truncated (5 lines)
 
         return true;
     }
@@ -35,7 +35,7 @@ class Calculator {
 export function processUserData(users) {
     const result = { valid: [], invalid: [] };
 
-    // … function body truncated (8 lines)
+    // … function body truncated (7 lines)
 
     return result;
 }
@@ -45,7 +45,7 @@ const simpleArrow = () => "simple";
 
 const complexArrow = (data) => {
     const processed = data
-    // … arrow function body truncated (4 lines)
+    // … arrow function body truncated (3 lines)
 
     return processed.join(', ');
 };
@@ -53,7 +53,7 @@ const complexArrow = (data) => {
 const asyncArrow = async (url) => {
     try {
         const response = await fetch(url);
-    // … arrow function body truncated (11 lines)
+    // … arrow function body truncated (9 lines)
 };
 
 // Function with multiple overloads (via JSDoc)
@@ -84,7 +84,7 @@ function processArray(items, processor) {
     const result = [];
 
     for (const item of items) {
-    // … function body truncated (8 lines)
+    // … function body truncated (7 lines)
 
     return result;
 }
@@ -92,5 +92,5 @@ function processArray(items, processor) {
 // Default export function
 export default function main() {
     const calc = new Calculator("test");
-    // … function body truncated (10 lines)
+    // … function body truncated (8 lines)
 }

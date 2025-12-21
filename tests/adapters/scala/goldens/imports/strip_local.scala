@@ -34,7 +34,7 @@ import slick.jdbc.PostgresProfile.api._
 import com.typesafe.config.{Config, ConfigFactory}
 
 // Local/relative imports (should be considered local)
-// … 9 imports omitted
+// … 9 imports omitted (5 lines)
 
 // Imports from different package levels
 // … 3 imports omitted
@@ -46,7 +46,7 @@ import com.typesafe.config.{Config, ConfigFactory}
 // … 2 imports omitted
 
 // Long import lists from single package (candidates for summarization)
-// … 9 imports omitted
+// … 9 imports omitted (3 lines)
 
 import akka.http.scaladsl.marshallers.sprayjson.SprayJsonSupport
 import akka.http.scaladsl.marshalling.{Marshal, Marshaller}
@@ -55,7 +55,7 @@ import akka.http.scaladsl.server.{Route, RouteResult}
 import akka.http.scaladsl.server.directives.{BasicDirectives, RouteDirectives}
 
 // Local imports with long lists
-// … 23 imports omitted
+// … 23 imports omitted (27 lines)
 
 class ImportTestService(
   userService: UserService,

@@ -1,4 +1,4 @@
-/** … docstring omitted */
+/** … docstring omitted (6 lines) */
 
 package com.example.comments
 
@@ -7,7 +7,7 @@ object Constants {
   val MODULE_VERSION = "1.0.0" // … comment omitted
 }
 
-/** … docstring omitted */
+/** … docstring omitted (4 lines) */
 case class User(
   id: Long,        // … comment omitted
   name: String,    // … comment omitted
@@ -25,19 +25,19 @@ class CommentedService(
   private val config: ServiceConfig,  // … comment omitted
   private val logger: Option[Logger] = None  // … comment omitted
 ) {
-  /** … docstring omitted */
+  /** … docstring omitted (6 lines) */
   initialize()
 
   // … comment omitted
 
-  /** … docstring omitted */
+  /** … docstring omitted (11 lines) */
   def processUser(userData: Map[String, Any]): User = {
     // … comment omitted
     if (userData.isEmpty) {
       throw new IllegalArgumentException("User data is required")
     }
 
-    // … comment omitted
+    // … comment omitted (5 lines)
     val validationResult = validateUser(userData)
     if (!validationResult.isValid) {
       // … comment omitted
@@ -83,7 +83,7 @@ class CommentedService(
 
   // … comment omitted
   private def transformUserData(userData: Map[String, Any]): User = {
-    // … comment omitted
+    // … comment omitted (5 lines)
     User(
       id = generateUserId(),    // … comment omitted
       name = userData("name").toString.trim,  // … comment omitted
@@ -93,7 +93,7 @@ class CommentedService(
     )
   }
 
-  /** … docstring omitted */
+  /** … docstring omitted (4 lines) */
   private def generateUserId(): Long = {
     // … comment omitted
     (Math.random() * 1000000).toLong
@@ -115,14 +115,14 @@ class CommentedService(
   }
 }
 
-/** … docstring omitted */
+/** … docstring omitted (6 lines) */
 def processString(input: String): String = {
   // … comment omitted
   if (input.isEmpty) {
     return ""  // … comment omitted
   }
 
-  // … comment omitted
+  // … comment omitted (5 lines)
   val trimmed = input.trim
   val lowercase = trimmed.toLowerCase
   val cleaned = lowercase.replaceAll("[^a-z0-9\\s]", "")
@@ -164,7 +164,7 @@ class ValidationException(val errors: List[String]) extends Exception {
   override def getMessage: String = s"Validation failed: ${errors.mkString(", ")}"
 }
 
-// … comment omitted
+// … comment omitted (4 lines)
 object DefaultConfig {
   val DEFAULT_CONFIG = ServiceConfig(
     timeout = 5000,    // … comment omitted

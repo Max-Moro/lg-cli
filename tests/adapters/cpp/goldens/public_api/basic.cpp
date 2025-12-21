@@ -25,7 +25,7 @@ struct User {
 
 // Package-private structure (should be filtered out)
 namespace {
-    // … struct omitted;
+    // … struct omitted (4 lines);
 }
 
 // Public enum (should be preserved)
@@ -37,7 +37,7 @@ enum class UserRole {
 
 // Private enum (should be filtered out)
 namespace {
-    // … enum omitted;
+    // … enum omitted (5 lines);
 }
 
 // Public class with mixed visibility members
@@ -101,22 +101,22 @@ public:
 
 protected:
     // Protected methods (should be filtered out)
-    // … 2 methods omitted
+    // … 2 methods omitted (6 lines)
 
 private:
     // Private properties (should be filtered out with public_api_only)
     // … 3 fields omitted
 
     // Private methods (should be filtered out)
-    // … 4 methods omitted
+    // … 4 methods omitted (25 lines)
 
     // Private static methods (should be filtered out)
-    // … method omitted
+    // … method omitted (5 lines)
 };
 
 // Package-private class (should be filtered out)
 namespace {
-    // … class omitted;
+    // … class omitted (15 lines);
 }
 
 // Public abstract class (should be preserved)
@@ -151,7 +151,7 @@ bool isValidUserRole(const std::string& role) {
 
 // Private functions (should be filtered out)
 namespace {
-    // … 2 functions omitted
+    // … 2 functions omitted (6 lines)
 }
 
 // Public utility class (should be preserved)
@@ -167,10 +167,10 @@ public:
     }
 
 private:
-    // … method omitted
+    // … method omitted (5 lines)
 };
 
 // Package-private utility class (should be filtered out)
 namespace {
-    // … class omitted;
+    // … class omitted (17 lines);
 }

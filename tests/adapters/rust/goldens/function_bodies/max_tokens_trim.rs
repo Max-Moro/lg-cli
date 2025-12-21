@@ -28,17 +28,17 @@ impl Calculator {
     fn with_name(name: &str) -> Self {
         Self {
             name: name.to_string(),
-        // … method body truncated (3 lines)
+        // … method body truncated (2 lines)
     }
 
     fn add(&mut self, a: i32, b: i32) -> i32 {
         let result = a + b;
-        // … method body truncated (5 lines)
+        // … method body truncated (4 lines)
     }
 
     fn multiply(&mut self, a: i32, b: i32) -> i32 {
         let result = a * b;
-        // … method body truncated (4 lines)
+        // … method body truncated (3 lines)
     }
 
     fn get_history(&self) -> Vec<String> {
@@ -48,14 +48,14 @@ impl Calculator {
     fn validate_input(&self, value: i32) -> bool {
         let value_str = value.to_string();
 
-        // … method body truncated (14 lines)
+        // … method body truncated (11 lines)
     }
 }
 
 fn process_user_data(users: Vec<User>) -> ProcessingResult {
     let mut result = ProcessingResult {
         valid: Vec::new(),
-    // … function body truncated (12 lines)
+    // … function body truncated (10 lines)
 }
 
 fn process_array<T, F>(items: Vec<T>, processor: F) -> Vec<T>
@@ -65,7 +65,7 @@ where
     let mut result = Vec::new();
 
     for item in items {
-    // … function body truncated (5 lines)
+    // … function body truncated (4 lines)
 }
 
 fn filter_positive(numbers: Vec<i32>) -> Vec<i32> {
@@ -74,5 +74,5 @@ fn filter_positive(numbers: Vec<i32>) -> Vec<i32> {
 
 fn main() {
     let mut calc = Calculator::with_name("test");
-    // … function body truncated (18 lines)
+    // … function body truncated (16 lines)
 }

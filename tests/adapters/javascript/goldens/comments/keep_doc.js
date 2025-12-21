@@ -56,7 +56,7 @@ export class CommentedService {
             throw new Error('User data is required');
         }
 
-        // … comment omitted
+        // … comment omitted (5 lines)
         const validationResult = this.#validateUser(userData);
         if (!validationResult.isValid) {
             // … comment omitted
@@ -100,7 +100,7 @@ export class CommentedService {
 
     // … comment omitted
     #transformUserData(userData) {
-        // … comment omitted
+        // … comment omitted (5 lines)
         return new User(
             this.#generateUserId(),    // … comment omitted
             userData.name.trim(),      // … comment omitted
@@ -145,7 +145,7 @@ export function processString(input) {
         return '';  // … comment omitted
     }
 
-    // … comment omitted
+    // … comment omitted (5 lines)
     const trimmed = input.trim();
     const lowercase = trimmed.toLowerCase();
     const cleaned = lowercase.replace(/[^a-z0-9\s]/g, '');
@@ -170,7 +170,7 @@ class ValidationError extends Error {
     }
 }
 
-// … comment omitted
+// … comment omitted (4 lines)
 export const DEFAULT_CONFIG = {
     timeout: 5000,    // … comment omitted
     retries: 3,       // … comment omitted

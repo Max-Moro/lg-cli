@@ -1,4 +1,4 @@
-""" … docstring omitted """
+""" … docstring omitted (4 lines) """
 
 import os
 import sys  # … comment omitted
@@ -9,18 +9,18 @@ class CommentedClass:
     """ … docstring omitted """
     
     def __init__(self, name: str):
-        """ … docstring omitted """
+        """ … docstring omitted (6 lines) """
         # … comment omitted
         self.name = name
         self.data = []  # … comment omitted
     
     def public_method(self) -> str:
-        """ … docstring omitted """
+        """ … docstring omitted (5 lines) """
         # … comment omitted
         return self.name
     
     def _private_method(self):
-        """ … docstring omitted """
+        """ … docstring omitted (4 lines) """
         # … comment omitted
         temp = self.name.upper()
         return temp  # … comment omitted
@@ -55,7 +55,7 @@ def undocumented_function():
 
 # … comment omitted
 def function_with_annotations():
-    """ … docstring omitted """
+    """ … docstring omitted (3 lines) """
     # … comment omitted
     result = "placeholder"
     # … comment omitted

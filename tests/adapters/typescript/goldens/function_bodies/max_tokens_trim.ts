@@ -36,7 +36,7 @@ class Calculator {
     
     private validateInput(value: number): boolean {
         if (typeof value !== 'number') {
-        // … method body truncated (7 lines)
+        // … method body truncated (5 lines)
         
         return true;
     }
@@ -45,7 +45,7 @@ class Calculator {
 export function processUserData(users: User[]): { valid: User[], invalid: User[] } {
     const result = { valid: [], invalid: [] };
     
-    // … function body truncated (8 lines)
+    // … function body truncated (7 lines)
     
     return result;
 }
@@ -55,7 +55,7 @@ const simpleArrow = () => "simple";
 
 const complexArrow = (data: string[]) => {
     const processed = data
-    // … function body truncated (4 lines)
+    // … function body truncated (3 lines)
     
     return processed.join(', ');
 };
@@ -63,7 +63,7 @@ const complexArrow = (data: string[]) => {
 const asyncArrow = async (url: string): Promise<any> => {
     try {
         const response = await fetch(url);
-    // … function body truncated (11 lines)
+    // … function body truncated (9 lines)
 };
 
 // Function with multiple overloads
@@ -80,7 +80,7 @@ function processArray<T>(items: T[], processor: (item: T) => T): T[] {
     const result: T[] = [];
     
     for (const item of items) {
-    // … function body truncated (8 lines)
+    // … function body truncated (7 lines)
     
     return result;
 }
@@ -88,5 +88,5 @@ function processArray<T>(items: T[], processor: (item: T) => T): T[] {
 // Default export function
 export default function main(): void {
     const calc = new Calculator("test");
-    // … function body truncated (10 lines)
+    // … function body truncated (8 lines)
 }
