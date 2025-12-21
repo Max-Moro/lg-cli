@@ -134,7 +134,8 @@ class FunctionBodyOptimizer:
 
         The strippable_range is computed by the language-specific analyzer
         and already accounts for protected content (docstrings) and
-        leading comments.
+        leading comments. For brace-languages, it excludes opening '{' and
+        closing '}' to preserve valid AST structure.
         """
         func_type = func_group.element_info.element_type
 
@@ -147,21 +148,38 @@ class FunctionBodyOptimizer:
         if start_char >= end_char:
             return
 
-        # Find line start and compute indentation
-        line_start = self._find_line_start(context.raw_text, start_char)
-        indent_prefix = context.raw_text[line_start:start_char]
+        # Get the stripped text to compute indentation from first content line
+        stripped_text = context.raw_text[start_char:end_char]
+        indent_prefix = self._compute_indent_from_text(stripped_text)
+
+        # Check if strippable_range starts with newline (brace-languages after '{')
+        # In this case, preserve the newline and start placeholder on next line
+        placeholder_prefix = indent_prefix
+        if stripped_text.startswith('\n'):
+            placeholder_prefix = "\n" + indent_prefix
 
         start_line = context.doc.get_line_number(start_char)
         end_line = context.doc.get_line_number(end_char)
 
         context.add_placeholder(
             func_type + "_body",
-            line_start,  # Start from line beginning
+            start_char,  # Start from strippable range, not line beginning
             end_char,
             start_line,
             end_line,
-            placeholder_prefix=indent_prefix
+            placeholder_prefix=placeholder_prefix
         )
+
+    def _compute_indent_from_text(self, text: str) -> str:
+        """
+        Compute indentation from first non-empty line of text.
+        """
+        lines = text.split('\n')
+        for line in lines:
+            stripped = line.lstrip()
+            if stripped:
+                return line[:len(line) - len(stripped)]
+        return ""
 
     def _apply_trim(
         self,
@@ -172,44 +190,32 @@ class FunctionBodyOptimizer:
         """
         Trim function body to token budget.
 
-        Keeps some code, replaces rest with placeholder.
+        Keeps some code at the start, preserves return statement at the end,
+        replaces the middle section with placeholder.
         """
         result = trimmer.trim(context, func_group)
         if result is None:
             return
 
-        start_char, end_char, trimmed_text = result
         func_type = func_group.element_info.element_type
 
-        # Get indent from start of strippable range (consistent with function body)
-        line_start = self._find_line_start(context.raw_text, start_char)
-        indent_prefix = context.raw_text[line_start:start_char]
+        # Use "truncated" suffix to distinguish from complete body removal
+        placeholder_type = func_type + "_body_truncated"
 
-        if trimmed_text:
-            # Trimmed text ends at a complete line, placeholder starts on next line
-            trimmed_end = start_char + len(trimmed_text)
-
-            # Placeholder replaces from trimmed_end to end
-            # Since trimmed_text ends with \n, trimmed_end is at line start
-            # Use indent from original body
-            context.add_placeholder(
-                func_type + "_body",
-                trimmed_end,
-                end_char,
-                context.doc.get_line_number(trimmed_end),
-                context.doc.get_line_number(end_char),
-                placeholder_prefix=indent_prefix
-            )
-        else:
-            # Nothing left after trim - full strip (same as _apply_strip)
-            context.add_placeholder(
-                func_type + "_body",
-                line_start,
-                end_char,
-                context.doc.get_line_number(start_char),
-                context.doc.get_line_number(end_char),
-                placeholder_prefix=indent_prefix
-            )
+        # Add placeholder for the removed middle section
+        # Pass explicit lines_removed from TrimResult for accurate count
+        context.placeholders.add_placeholder(
+            placeholder_type,
+            result.placeholder_start_char,
+            result.placeholder_end_char,
+            context.doc.get_line_number(result.placeholder_start_char),
+            context.doc.get_line_number(result.placeholder_end_char),
+            placeholder_prefix=result.indent,
+            lines_removed=result.lines_removed
+        )
+        # Update metrics
+        context.metrics.mark_element_removed(func_type + "_body", 1)
+        context.metrics.mark_placeholder_inserted()
 
     def _find_line_start(self, text: str, pos: int) -> int:
         """Find the start of the line containing position pos."""

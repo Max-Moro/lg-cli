@@ -22,11 +22,15 @@ class Calculator(private val name: String = "default") {
     
     fun add(a: Int, b: Int): Int {
         val result = a + b
-    fun add(a: Int, b: Int): Int // … method body omitted (4 lines)
+        // … method body truncated (2 lines)
+        return result
+    }
     
     fun multiply(a: Int, b: Int): Int {
         val result = a * b
-    fun multiply(a: Int, b: Int): Int // … method body omitted (3 lines)
+        // … method body truncated
+        return result
+    }
     
     fun getHistory(): List<String> {
         return history.toList()
@@ -34,14 +38,18 @@ class Calculator(private val name: String = "default") {
     
     private fun validateInput(value: Int): Boolean {
         if (!value.toString().matches(Regex("^-?\\d+$"))) {
-    private fun validateInput(value: Int): Boolean // … method body omitted (9 lines)
+        // … method body truncated (7 lines)
+        
+        return true
+    }
 }
 
 fun processUserData(users: List<User>): Pair<List<User>, List<User>> {
     val valid = mutableListOf<User>()
-    val invalid = mutableListOf<User>()
+    // … function body truncated (10 lines)
     
-fun processUserData(users: List<User>): Pair<List<User>, List<User>> // … function body omitted (10 lines)
+    return Pair(valid, invalid)
+}
 
 // Lambda functions for testing different function types
 val simpleArrow = { "simple" }
@@ -49,14 +57,23 @@ val simpleArrow = { "simple" }
 val complexArrow: (List<String>) -> String = { data ->
     val processed = data
         .filter { it.isNotEmpty() }
-    // … lambda_body omitted (4 lines)
+// … lambda_body_truncated omitted (4 lines)
 }
 
-suspend fun asyncFunction(url: String): String {
+suspend fun asyncFunction(url: String): String {    // … function body truncated
     return try {
         val response = fetchData(url)
         
-suspend fun asyncFunction(url: String): String // … function body omitted (10 lines)
+        if (!response.isSuccessful) {
+            throw Exception("HTTP ${response.statusCode}")
+        }
+        
+        response.body
+    } catch (e: Exception) {
+        println("Fetch error: ${e.message}")
+        throw e
+    }
+}
 
 // Function with multiple overloads
 fun overloadedFunction(value: String): String {
@@ -71,20 +88,26 @@ fun overloadedFunction(value: Int): Int {
 fun <T> processArray(items: List<T>, processor: (T) -> T): List<T> {
     val result = mutableListOf<T>()
     
-    for (item in items) {
-fun <T> processArray(items: List<T>, processor: (T) -> T): List<T> // … function body omitted (10 lines)
+    // … function body truncated (9 lines)
+    
+    return result
+}
 
 // Extension function
-fun String.toTitleCase(): String {
+fun String.toTitleCase(): String {    // … function body truncated
     return split(" ")
         .joinToString(" ") { word ->
-fun String.toTitleCase(): String // … function body omitted (4 lines)
+            word.lowercase()
+                .replaceFirstChar { it.uppercase() }
+        }
+}
 
 // Default export function
 fun main() {
     val calc = Calculator("test")
     println(calc.add(2, 3))
-fun main() // … function body omitted (10 lines)
+    // … function body truncated (9 lines)
+}
 
 // Stub for example
 data class Response(val isSuccessful: Boolean, val statusCode: Int, val body: String)

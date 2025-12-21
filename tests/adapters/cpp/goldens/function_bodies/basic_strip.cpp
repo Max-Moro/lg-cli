@@ -26,25 +26,43 @@ private:
 public:
     Calculator() : Calculator("default") {}
 
-    Calculator(const std::string& name) : name(name) // … method body omitted (3 lines)
+    Calculator(const std::string& name) : name(name) {
+        // … method body omitted (3 lines)
+    }
 
-    int add(int a, int b) // … method body omitted (6 lines)
+    int add(int a, int b) {
+        // … method body omitted (6 lines)
+    }
 
-    int multiply(int a, int b) // … method body omitted (5 lines)
+    int multiply(int a, int b) {
+        // … method body omitted (5 lines)
+    }
 
-    std::vector<std::string> getHistory() const // … method body omitted (3 lines)
+    std::vector<std::string> getHistory() const {
+        // … method body omitted (3 lines)
+    }
 
 private:
-    bool validateInput(int value) // … method body omitted (17 lines)
+    bool validateInput(int value) {
+        // … method body omitted (17 lines)
+    }
 };
 
-ProcessingResult processUserData(const std::vector<User>& users) // … function body omitted (15 lines)
+ProcessingResult processUserData(const std::vector<User>& users) {
+    // … function body omitted (15 lines)
+}
 
 // Template function
 template<typename T, typename Processor>
-std::vector<T> processArray(const std::vector<T>& items, Processor processor) // … function body omitted (13 lines)
+std::vector<T> processArray(const std::vector<T>& items, Processor processor) {
+    // … function body omitted (13 lines)
+}
 
 // Lambda usage function
-std::vector<int> filterPositive(const std::vector<int>& numbers) // … function body omitted (6 lines)
+std::vector<int> filterPositive(const std::vector<int>& numbers) {
+    // … function body omitted (6 lines)
+}
 
-int main() // … function body omitted (15 lines)
+int main() {
+    // … function body omitted (15 lines)
+}

@@ -251,10 +251,14 @@ class PythonCodeAnalyzer(CodeAnalyzer):
 
         In Python, comments between ':' and block are siblings of block,
         not children. We need to include them in the strippable range.
+
+        Returns the start of the line containing the first strippable content,
+        preserving indentation for proper placeholder formatting.
         """
-        # Look for comment siblings before body_node
+        # Default: start from body
         earliest_start = body_node.start_byte
 
+        # Look for comment siblings before body_node
         for child in func_def.children:
             if child.type == "comment":
                 # Check if this comment is between ':' and block
@@ -263,7 +267,13 @@ class PythonCodeAnalyzer(CodeAnalyzer):
             elif child == body_node:
                 break
 
-        return earliest_start
+        # Find start of line containing earliest_start
+        # This preserves indentation in strippable_range
+        text = self.doc.text
+        line_start = text.rfind('\n', 0, earliest_start)
+        if line_start == -1:
+            return 0
+        return line_start + 1
 
     def _find_docstring(self, body_node: Node) -> Optional[Node]:
         """Find docstring at the start of function body."""
@@ -278,22 +288,19 @@ class PythonCodeAnalyzer(CodeAnalyzer):
 
     def _find_next_content_byte(self, pos: int) -> int:
         """
-        Find the first non-whitespace character on the next line after position.
+        Find the start of the next line after position that contains content.
 
-        This ensures strippable_range starts at content, allowing optimizer
-        to correctly compute indentation from line_start to range_start.
+        Returns the position right after the newline (start of line with content),
+        preserving indentation in the strippable_range for proper placeholder formatting.
         """
         text = self.doc.text
         newline_pos = text.find('\n', pos)
         if newline_pos == -1:
             return pos
 
-        # Skip past newline and find first non-whitespace
-        i = newline_pos + 1
-        while i < len(text) and text[i] in ' \t':
-            i += 1
-
-        return i
+        # Return position after newline (start of next line)
+        # This preserves indentation in strippable_range
+        return newline_pos + 1
 
     def _is_whitespace_or_comment(self, node: Node) -> bool:
         """

@@ -28,15 +28,18 @@ impl Calculator {
     fn with_name(name: &str) -> Self {
         Self {
             name: name.to_string(),
-    fn with_name(name: &str) -> Self // … method body omitted (3 lines)
+        // … method body truncated (3 lines)
+    }
 
     fn add(&mut self, a: i32, b: i32) -> i32 {
         let result = a + b;
-    fn add(&mut self, a: i32, b: i32) -> i32 // … method body omitted (5 lines)
+        // … method body truncated (5 lines)
+    }
 
     fn multiply(&mut self, a: i32, b: i32) -> i32 {
         let result = a * b;
-    fn multiply(&mut self, a: i32, b: i32) -> i32 // … method body omitted (4 lines)
+        // … method body truncated (4 lines)
+    }
 
     fn get_history(&self) -> Vec<String> {
         self.history.clone()
@@ -45,13 +48,15 @@ impl Calculator {
     fn validate_input(&self, value: i32) -> bool {
         let value_str = value.to_string();
 
-    fn validate_input(&self, value: i32) -> bool // … method body omitted (14 lines)
+        // … method body truncated (14 lines)
+    }
 }
 
 fn process_user_data(users: Vec<User>) -> ProcessingResult {
     let mut result = ProcessingResult {
         valid: Vec::new(),
-fn process_user_data(users: Vec<User>) -> ProcessingResult // … function body omitted (13 lines)
+    // … function body truncated (12 lines)
+}
 
 fn process_array<T, F>(items: Vec<T>, processor: F) -> Vec<T>
 where
@@ -60,7 +65,8 @@ where
     let mut result = Vec::new();
 
     for item in items {
-// … function body omitted (6 lines)
+    // … function body truncated (5 lines)
+}
 
 fn filter_positive(numbers: Vec<i32>) -> Vec<i32> {
     numbers.into_iter().filter(|&n| n > 0).collect()
@@ -68,4 +74,5 @@ fn filter_positive(numbers: Vec<i32>) -> Vec<i32> {
 
 fn main() {
     let mut calc = Calculator::with_name("test");
-fn main() // … function body omitted (19 lines)
+    // … function body truncated (18 lines)
+}

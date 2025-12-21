@@ -287,12 +287,16 @@ class KotlinCodeAnalyzer(CodeAnalyzer):
                     if func_def.type == "function_declaration":
                         old_group = function_groups[func_def]
                         strip_range = self.compute_strippable_range(func_def, node)
+                        closing_brace = self._find_closing_brace_byte(node)
+                        return_node = self._find_return_statement(node)
                         function_groups[func_def] = FunctionGroup(
                             definition=old_group.definition,
                             element_info=old_group.element_info,
                             name_node=old_group.name_node,
                             body_node=node,
-                            strippable_range=strip_range
+                            strippable_range=strip_range,
+                            closing_brace_byte=closing_brace,
+                            return_node=return_node
                         )
 
             elif self.is_function_name_capture(capture_name):
@@ -304,7 +308,9 @@ class KotlinCodeAnalyzer(CodeAnalyzer):
                         element_info=old_group.element_info,
                         name_node=node,
                         body_node=old_group.body_node,
-                        strippable_range=old_group.strippable_range
+                        strippable_range=old_group.strippable_range,
+                        closing_brace_byte=old_group.closing_brace_byte,
+                        return_node=old_group.return_node
                     )
 
         return function_groups
@@ -536,32 +542,51 @@ class KotlinCodeAnalyzer(CodeAnalyzer):
         """
         Compute strippable range for Kotlin function body.
 
-        Handles KDoc preservation:
-        - KDoc before function (sibling) is preserved automatically
-        - KDoc inside body is excluded from stripping
+        Handles:
+        - Nested structure: function_body -> block -> statements
+        - KDoc preservation inside body
+        - Brace exclusion for proper AST after stripping
 
         Args:
             func_def: Function definition node
-            body_node: Function body node
+            body_node: Function body node (function_body wrapper)
 
         Returns:
             Tuple of (start_byte, end_byte) for stripping
         """
-        # For lambda, strip entire body (no KDoc inside lambda)
+        # For lambda, body_node is LambdaBodyRange (synthetic), return its byte range
         if func_def.type == "lambda_literal":
+            return (body_node.start_byte, body_node.end_byte)
+
+        # Find the inner block node (function_body -> block)
+        block_node = self._get_inner_block(body_node)
+        if not block_node:
             return (body_node.start_byte, body_node.end_byte)
 
         # Check for KDoc inside function body
         kdoc_inside = self._find_kdoc_in_body(body_node)
 
         if kdoc_inside is None:
-            # No KDoc inside - strip entire body
-            return (body_node.start_byte, body_node.end_byte)
+            # No KDoc inside - use inner content range (exclude braces)
+            return self._compute_inner_body_range(block_node)
 
         # KDoc inside body - strip only after it
         # Find first non-whitespace content after KDoc
         start_byte = self._find_next_content_byte(kdoc_inside.end_byte)
-        return (start_byte, body_node.end_byte)
+        # End before closing brace
+        inner_start, inner_end = self._compute_inner_body_range(block_node)
+        return (start_byte, inner_end)
+
+    def _get_inner_block(self, body_node: Node) -> Optional[Node]:
+        """
+        Get the inner block node from function_body wrapper.
+
+        Kotlin AST structure: function_body -> block -> statements
+        """
+        for child in body_node.children:
+            if child.type == "block":
+                return child
+        return None
 
     def _find_kdoc_in_body(self, body_node: Node) -> Optional[Node]:
         """
@@ -599,10 +624,41 @@ class KotlinCodeAnalyzer(CodeAnalyzer):
         return None
 
     def _find_next_content_byte(self, pos: int) -> int:
-        """Find first non-whitespace character after position."""
+        """
+        Find start of line containing first non-whitespace after position.
+
+        For proper indentation in placeholders, we need to return the start of
+        the line, not the first non-whitespace character.
+        """
         text = self.doc.text
-        i = pos
-        while i < len(text) and text[i] in ' \t\n\r':
-            i += 1
-        return i
+        # Find newline after current position
+        newline_pos = text.find('\n', pos)
+        if newline_pos == -1:
+            return pos
+        # Return position after newline (start of next line)
+        return newline_pos + 1
+
+    def _find_closing_brace_byte(self, body_node: Node) -> Optional[int]:
+        """
+        Find closing brace byte position for Kotlin function body.
+
+        Handles nested structure: function_body -> block -> {statements}
+        """
+        # For Kotlin, body_node is function_body, need to look in inner block
+        block_node = self._get_inner_block(body_node)
+        if block_node:
+            return super()._find_closing_brace_byte(block_node)
+        return None
+
+    def _find_return_statement(self, body_node: Node) -> Optional[Node]:
+        """
+        Find return statement at the end of Kotlin function body.
+
+        Handles nested structure: function_body -> block -> {statements}
+        """
+        # For Kotlin, body_node is function_body, need to look in inner block
+        block_node = self._get_inner_block(body_node)
+        if block_node:
+            return super()._find_return_statement(block_node)
+        return None
 

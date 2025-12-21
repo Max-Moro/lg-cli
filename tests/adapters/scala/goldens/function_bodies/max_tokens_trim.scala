@@ -21,17 +21,20 @@ class Calculator(val name: String = "default") {
 
   def add(a: Int, b: Int): Int = {
     val result = a + b
-  def add(a: Int, b: Int): Int = // … method body omitted (4 lines)
+    // … method body truncated (4 lines)
+  }
 
   def multiply(a: Int, b: Int): Int = {
     val result = a * b
-  def multiply(a: Int, b: Int): Int = // … method body omitted (3 lines)
+    // … method body truncated (3 lines)
+  }
 
   def getHistory: List[String] = history.toList
 
   private def validateInput(value: Int): Boolean = {
     if (!value.toString.matches("^-?\\d+$")) {
-  private def validateInput(value: Int): Boolean = // … method body omitted (9 lines)
+    // … method body truncated (9 lines)
+  }
 }
 
 case class ProcessingResult(
@@ -42,13 +45,15 @@ case class ProcessingResult(
 object UserProcessor {
   def processUserData(users: List[User]): ProcessingResult = {
     val (valid, invalid) = users.partition { user =>
-  def processUserData(users: List[User]): ProcessingResult = // … method body omitted (7 lines)
+      user.id > 0 &&
+    // … method body truncated (6 lines)
+  }
 }
 
 // Function with pattern matching
 def processValue(value: Any): String = value match {
   case s: String => s.toUpperCase
-def processValue(value: Any): String = // … function body omitted (4 lines)
+// … function body truncated (4 lines)
 
 // Higher-order function
 def processArray[T](items: List[T])(processor: T => T): List[T] = {
@@ -56,14 +61,16 @@ def processArray[T](items: List[T])(processor: T => T): List[T] = {
     try {
       processor(item)
     } catch {
-def processArray[T](items: List[T])(processor: T => T): List[T] = // … function body omitted (6 lines)
+  // … function body truncated (5 lines)
+}
 
 // Implicit class (extension method)
 implicit class StringOps(val s: String) extends AnyVal {
   def toTitleCase: String = {
     s.split(" ")
       .map(_.toLowerCase.capitalize)
-  def toTitleCase: String = // … method body omitted (2 lines)
+      .mkString(" ")
+  }
 }
 
 // Object with apply method

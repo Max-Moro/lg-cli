@@ -41,13 +41,21 @@ public class Calculator {
         this.history = new ArrayList<>();
     }
 
-    public int add(int a, int b) // … method body omitted (6 lines)
+    public int add(int a, int b) {
+        // … method body omitted (6 lines)
+    }
 
-    public int multiply(int a, int b) // … method body omitted (5 lines)
+    public int multiply(int a, int b) {
+        // … method body omitted (5 lines)
+    }
 
-    public List<String> getHistory() // … method body omitted (3 lines)
+    public List<String> getHistory() {
+        // … method body omitted (3 lines)
+    }
 
-    private boolean validateInput(int value) // … method body omitted (11 lines)
+    private boolean validateInput(int value) {
+        // … method body omitted (11 lines)
+    }
 }
 
 public class ProcessingResult {
@@ -64,12 +72,16 @@ public class ProcessingResult {
 }
 
 public class UserProcessor {
-    public static ProcessingResult processUserData(List<User> users) // … method body omitted (16 lines)
+    public static ProcessingResult processUserData(List<User> users) {
+        // … method body omitted (16 lines)
+    }
 }
 
 // Generic function
 public class ArrayProcessor {
-    public static <T> List<T> processArray(List<T> items, Processor<T> processor) // … method body omitted (14 lines)
+    public static <T> List<T> processArray(List<T> items, Processor<T> processor) {
+        // … method body omitted (14 lines)
+    }
 }
 
 @FunctionalInterface
@@ -79,5 +91,7 @@ interface Processor<T> {
 
 // Default export function equivalent
 public class Main {
-    public static void main(String[] args) // … method body omitted (13 lines)
+    public static void main(String[] args) {
+        // … method body omitted (13 lines)
+    }
 }

@@ -188,7 +188,7 @@ class PlaceholderManager:
     # ============= Simple API for adding placeholders =============
 
     def add_placeholder(self, placeholder_type: str, start_char: int, end_char: int, start_line: int, end_line: int,
-                        placeholder_prefix: str = "", count: int = 1) -> None:
+                        placeholder_prefix: str = "", count: int = 1, lines_removed: int = 0) -> None:
         """Add custom placeholder with explicit coordinates."""
         spec = PlaceholderSpec(
             start_char=start_char,
@@ -198,8 +198,9 @@ class PlaceholderManager:
             placeholder_type=placeholder_type,
             placeholder_prefix=placeholder_prefix,
             count=count,
+            lines_removed=lines_removed,
         )
-        
+
         self._add_placeholder_with_priority(spec)
 
     def add_placeholder_for_node(self, placeholder_type: str, node: Node, doc, count: int = 1) -> None:
@@ -289,12 +290,24 @@ class PlaceholderManager:
                 return f"… function body omitted ({lines} lines)"
             else:
                 return "… function body omitted"
-        
+
+        elif ptype == "function_body_truncated":
+            if lines > 1:
+                return f"… function body truncated ({lines} lines)"
+            else:
+                return "… function body truncated"
+
         elif ptype == "method_body":
             if lines > 1:
                 return f"… method body omitted ({lines} lines)"
             else:
                 return "… method body omitted"
+
+        elif ptype == "method_body_truncated":
+            if lines > 1:
+                return f"… method body truncated ({lines} lines)"
+            else:
+                return "… method body truncated"
         
         elif ptype == "comment":
             return "… comment omitted"

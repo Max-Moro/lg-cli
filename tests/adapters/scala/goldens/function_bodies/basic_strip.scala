@@ -19,13 +19,19 @@ class Calculator(val name: String = "default") {
   private val history: scala.collection.mutable.ListBuffer[String] =
     scala.collection.mutable.ListBuffer.empty
 
-  def add(a: Int, b: Int): Int = // … method body omitted (6 lines)
+  def add(a: Int, b: Int): Int = {
+    // … method body omitted (6 lines)
+  }
 
-  def multiply(a: Int, b: Int): Int = // … method body omitted (5 lines)
+  def multiply(a: Int, b: Int): Int = {
+    // … method body omitted (5 lines)
+  }
 
   def getHistory: List[String] = history.toList
 
-  private def validateInput(value: Int): Boolean = // … method body omitted (11 lines)
+  private def validateInput(value: Int): Boolean = {
+    // … method body omitted (11 lines)
+  }
 }
 
 case class ProcessingResult(
@@ -34,18 +40,24 @@ case class ProcessingResult(
 )
 
 object UserProcessor {
-  def processUserData(users: List[User]): ProcessingResult = // … method body omitted (9 lines)
+  def processUserData(users: List[User]): ProcessingResult = {
+    // … method body omitted (9 lines)
+  }
 }
 
 // Function with pattern matching
 def processValue(value: Any): String = // … function body omitted (6 lines)
 
 // Higher-order function
-def processArray[T](items: List[T])(processor: T => T): List[T] = // … function body omitted (11 lines)
+def processArray[T](items: List[T])(processor: T => T): List[T] = {
+  // … function body omitted (11 lines)
+}
 
 // Implicit class (extension method)
 implicit class StringOps(val s: String) extends AnyVal {
-  def toTitleCase: String = // … method body omitted (5 lines)
+  def toTitleCase: String = {
+    // … method body omitted (5 lines)
+  }
 }
 
 // Object with apply method
@@ -65,7 +77,9 @@ object Main extends App {
 
 // Companion object
 class Service private(val config: String) {
-  def process(): Unit = // … method body omitted (3 lines)
+  def process(): Unit = {
+    // … method body omitted (3 lines)
+  }
 }
 
 object Service {

@@ -89,8 +89,16 @@ class FunctionGroup:
     # Computed by language-specific analyzer, accounts for:
     # - Protected content (docstrings) that should be preserved
     # - Leading comments that should be included in stripping
+    # - For brace-languages: excludes opening '{' and closing '}'
     # Default (0, 0) means "use entire body_node range"
     strippable_range: Tuple[int, int] = (0, 0)
+    # Closing brace position for brace-based languages (byte position).
+    # Used by trimmer to preserve closing brace when truncating body.
+    # None for languages without braces (e.g., Python).
+    closing_brace_byte: Optional[int] = None
+    # Return statement node if present at the end of function body.
+    # Used by trimmer to preserve return when truncating.
+    return_node: Optional[Node] = None
 
 # ============= Main analyzer =============
 
@@ -265,12 +273,17 @@ class CodeAnalyzer(ABC):
                     old_group = function_groups[func_def]
                     # Compute strippable range using language-specific logic
                     strip_range = self.compute_strippable_range(func_def, node)
+                    # Find closing brace and return statement
+                    closing_brace = self._find_closing_brace_byte(node)
+                    return_node = self._find_return_statement(node)
                     function_groups[func_def] = FunctionGroup(
                         definition=old_group.definition,
                         element_info=old_group.element_info,
                         name_node=old_group.name_node,
                         body_node=node,
-                        strippable_range=strip_range
+                        strippable_range=strip_range,
+                        closing_brace_byte=closing_brace,
+                        return_node=return_node
                     )
 
             elif self.is_function_name_capture(capture_name):
@@ -282,7 +295,9 @@ class CodeAnalyzer(ABC):
                         element_info=old_group.element_info,
                         name_node=node,
                         body_node=old_group.body_node,
-                        strippable_range=old_group.strippable_range
+                        strippable_range=old_group.strippable_range,
+                        closing_brace_byte=old_group.closing_brace_byte,
+                        return_node=old_group.return_node
                     )
 
         # Handle cases where there's no explicit definition in captures
@@ -313,7 +328,10 @@ class CodeAnalyzer(ABC):
         """
         Compute the byte range that can be stripped from a function body.
 
-        Default implementation: strip entire body.
+        Default implementation for brace-based languages:
+        - Returns inner content range (after '{' and before '}')
+        - Preserves structural braces for valid AST after stripping
+
         Override in language-specific analyzers to handle:
         - Protected content (docstrings) that should be preserved
         - Leading comments that should be included in stripping
@@ -325,7 +343,95 @@ class CodeAnalyzer(ABC):
         Returns:
             Tuple of (start_byte, end_byte) for the strippable range
         """
+        return self._compute_inner_body_range(body_node)
+
+    def _compute_inner_body_range(self, body_node: Node) -> Tuple[int, int]:
+        """
+        Compute inner content range for body node, excluding braces if present.
+
+        For brace-based languages (TypeScript, Java, etc.), body_node is typically
+        a statement_block with '{' as first child and '}' as last child.
+        This method returns the range of content between these braces.
+
+        Args:
+            body_node: Function/method body node
+
+        Returns:
+            Tuple of (start_byte, end_byte) for inner content
+        """
+        if not body_node.children:
+            return (body_node.start_byte, body_node.end_byte)
+
+        first_child = body_node.children[0]
+        last_child = body_node.children[-1]
+
+        # Check if body is enclosed in braces
+        first_text = self.doc.get_node_text(first_child) if first_child else ""
+        last_text = self.doc.get_node_text(last_child) if last_child else ""
+
+        if first_text == "{" and last_text == "}":
+            # Return range between braces (inner content)
+            return (first_child.end_byte, last_child.start_byte)
+
+        # No braces found, return entire body
         return (body_node.start_byte, body_node.end_byte)
+
+    def _find_closing_brace_byte(self, body_node: Node) -> Optional[int]:
+        """
+        Find closing brace byte position for brace-based function body.
+
+        Args:
+            body_node: Function/method body node
+
+        Returns:
+            Byte position of closing brace, or None if no brace found
+        """
+        if not body_node.children:
+            return None
+
+        last_child = body_node.children[-1]
+        last_text = self.doc.get_node_text(last_child) if last_child else ""
+
+        if last_text == "}":
+            return last_child.start_byte
+
+        return None
+
+    def _find_return_statement(self, body_node: Node) -> Optional[Node]:
+        """
+        Find return statement at the end of function body.
+
+        Searches for the last statement in the body that is a return.
+        This is used by trimmer to preserve return when truncating.
+
+        Args:
+            body_node: Function/method body node
+
+        Returns:
+            Return statement node if found at end of body, None otherwise
+        """
+        if not body_node.children:
+            return None
+
+        # Return statement types across languages
+        return_types = {"return_statement", "return", "return_expression"}
+
+        # Find the last non-brace child
+        for child in reversed(body_node.children):
+            child_text = self.doc.get_node_text(child) if child else ""
+            # Skip closing brace
+            if child_text == "}":
+                continue
+            # Skip whitespace/comments if they're nodes
+            if child.type in ("comment", "line_comment", "block_comment"):
+                continue
+            # Check if it's a return statement
+            if child.type in return_types:
+                return child
+            # Found a non-return statement at end - no return to preserve
+            break
+
+        return None
 
     def find_decorators_for_element(self, node: Node) -> List[Node]:
         """

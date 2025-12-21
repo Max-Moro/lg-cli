@@ -43,11 +43,15 @@ public class Calculator {
 
     public int add(int a, int b) {
         int result = a + b;
-    public int add(int a, int b) // … method body omitted (4 lines)
+        // … method body truncated (2 lines)
+        return result;
+    }
 
     public int multiply(int a, int b) {
         int result = a * b;
-    public int multiply(int a, int b) // … method body omitted (3 lines)
+        // … method body truncated
+        return result;
+    }
 
     public List<String> getHistory() {
         return new ArrayList<>(history);
@@ -55,7 +59,10 @@ public class Calculator {
 
     private boolean validateInput(int value) {
         if (!String.valueOf(value).matches("^-?\\d+$")) {
-    private boolean validateInput(int value) // … method body omitted (9 lines)
+        // … method body truncated (7 lines)
+
+        return true;
+    }
 }
 
 public class ProcessingResult {
@@ -73,8 +80,10 @@ public class ProcessingResult {
 
 public class UserProcessor {
     public static ProcessingResult processUserData(List<User> users) {
-        List<User> valid = new ArrayList<>();
-    public static ProcessingResult processUserData(List<User> users) // … method body omitted (14 lines)
+        // … method body truncated (13 lines)
+
+        return new ProcessingResult(valid, invalid);
+    }
 }
 
 // Generic function
@@ -82,8 +91,10 @@ public class ArrayProcessor {
     public static <T> List<T> processArray(List<T> items, Processor<T> processor) {
         List<T> result = new ArrayList<>();
 
-        for (T item : items) {
-    public static <T> List<T> processArray(List<T> items, Processor<T> processor) // … method body omitted (10 lines)
+        // … method body truncated (9 lines)
+
+        return result;
+    }
 }
 
 @FunctionalInterface
@@ -95,5 +106,6 @@ interface Processor<T> {
 public class Main {
     public static void main(String[] args) {
         Calculator calc = new Calculator("test");
-    public static void main(String[] args) // … method body omitted (11 lines)
+        // … method body truncated (11 lines)
+    }
 }

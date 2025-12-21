@@ -26,24 +26,44 @@ typedef struct {
     char name[50];
 } Calculator;
 
-Calculator* calculator_new(const char* name) // … function body omitted (13 lines)
+Calculator* calculator_new(const char* name) {
+    // … function body omitted (13 lines)
+}
 
-void calculator_free(Calculator* calc) // … function body omitted (9 lines)
+void calculator_free(Calculator* calc) {
+    // … function body omitted (9 lines)
+}
 
-int calculator_add(Calculator* calc, int a, int b) // … function body omitted (19 lines)
+int calculator_add(Calculator* calc, int a, int b) {
+    // … function body omitted (19 lines)
+}
 
-int calculator_multiply(Calculator* calc, int a, int b) // … function body omitted (18 lines)
+int calculator_multiply(Calculator* calc, int a, int b) {
+    // … function body omitted (18 lines)
+}
 
-char** calculator_get_history(Calculator* calc, int* count) // … function body omitted (15 lines)
+char** calculator_get_history(Calculator* calc, int* count) {
+    // … function body omitted (15 lines)
+}
 
-static int validate_input(int value) // … function body omitted (18 lines)
+static int validate_input(int value) {
+    // … function body omitted (18 lines)
+}
 
-ProcessingResult* process_user_data(User* users, int count) // … function body omitted (21 lines)
+ProcessingResult* process_user_data(User* users, int count) {
+    // … function body omitted (21 lines)
+}
 
-void free_processing_result(ProcessingResult* result) // … function body omitted (6 lines)
+void free_processing_result(ProcessingResult* result) {
+    // … function body omitted (6 lines)
+}
 
 typedef void (*ItemProcessor)(void* item);
 
-void** process_array(void** items, int count, ItemProcessor processor) // … function body omitted (13 lines)
+void** process_array(void** items, int count, ItemProcessor processor) {
+    // … function body omitted (13 lines)
+}
 
-int main(void) // … function body omitted (23 lines)
+int main(void) {
+    // … function body omitted (23 lines)
+}
