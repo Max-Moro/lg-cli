@@ -321,50 +321,11 @@ class PlaceholderManager:
 
     def _add_placeholder_with_priority(self, spec: PlaceholderSpec) -> None:
         """
-        Add placeholder applying priority policy.
-
-        For use_composing_nested=True placeholders (literals):
-        - Keep all overlapping placeholders - they will be composed in apply_to_editor
-        - Smaller ones are applied first, then larger ones compose them
-
-        For regular placeholders:
-        - Wider placeholders always win (absorb narrower ones)
+        Add placeholder to list.
 
         Args:
             spec: Placeholder specification to add
         """
-        # For composing_nested placeholders, keep all - they will be sorted and composed
-        if spec.use_composing_nested:
-            self.placeholders.append(spec)
-            return
-
-        # Regular placeholders: wider always wins
-        new_width = spec.width
-
-        # Check all existing placeholders
-        placeholders_to_remove = []
-        for i, existing in enumerate(self.placeholders):
-            if spec.overlaps(existing):
-                # Skip composing_nested placeholders - they're handled separately
-                if existing.use_composing_nested:
-                    continue
-
-                existing_width = existing.width
-
-                if new_width > existing_width:
-                    # New placeholder is wider - remove existing one
-                    placeholders_to_remove.append(i)
-                elif new_width < existing_width:
-                    # New placeholder is narrower - skip it
-                    return
-                else:
-                    # Same width - first wins (skip new one)
-                    return
-
-        # Remove absorbed placeholders (in reverse order to avoid index shift)
-        for i in reversed(placeholders_to_remove):
-            del self.placeholders[i]
-
         self.placeholders.append(spec)
 
     def _get_placeholder_content(self, spec: PlaceholderSpec) -> str:
@@ -558,7 +519,7 @@ class PlaceholderManager:
         if not self.placeholders:
             return []
 
-        # Sort by position
+        # Sort by position for correct adjacency check
         sorted_placeholders = sorted(self.placeholders, key=lambda p: p.position_key)
 
         collapsed = []

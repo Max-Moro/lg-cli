@@ -217,16 +217,19 @@ class JavaCodeAnalyzer(CodeAnalyzer):
         """
         Collect Java-specific private elements.
 
-        Includes classes, interfaces, enums, annotations, class members, and local variables.
+        Note: Classes and interfaces are already collected by base CodeAnalyzer.
+        This method collects only Java-specific elements:
+        - enums
+        - annotation types
+        - class members (fields)
+        - local variables
 
         Returns:
             List of Java-specific private elements
         """
         private_elements = []
 
-        # Java-specific elements
-        self._collect_classes(private_elements)
-        self._collect_interfaces(private_elements)
+        # Java-specific elements (classes/interfaces already collected by base)
         self._collect_enums(private_elements)
         self._collect_annotation_types(private_elements)
         self._collect_class_members(private_elements)

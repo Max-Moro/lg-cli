@@ -228,18 +228,23 @@ class TypeScriptCodeAnalyzer(CodeAnalyzer):
         """
         Collect TypeScript-specific private elements.
 
-        Includes interfaces, types, namespaces, enums, class fields, imports and variables.
+        Note: Classes, interfaces, types, and methods are already collected by base CodeAnalyzer.
+        This method collects only TypeScript-specific elements:
+        - namespaces
+        - enums
+        - class fields (properties)
+        - imports
+        - variables
 
         Returns:
             List of TypeScript-specific private elements
         """
         private_elements = []
 
-        # TypeScript-specific elements
+        # TypeScript-specific elements (classes/interfaces/methods already collected by base)
         self._collect_namespaces(private_elements)
-        self._collect_namespace_members(private_elements)
         self._collect_enums(private_elements)
-        self._collect_class_members(private_elements)
+        self._collect_class_fields(private_elements)
         self._collect_imports(private_elements)
         self._collect_variables(private_elements)
 
@@ -312,29 +317,28 @@ class TypeScriptCodeAnalyzer(CodeAnalyzer):
                     if not element_info.in_public_api:
                         private_elements.append(element_info)
 
-    def _collect_class_members(self, private_elements: List[ElementInfo]) -> None:
-        """Collect private/protected class members."""
+    def _collect_class_fields(self, private_elements: List[ElementInfo]) -> None:
+        """Collect private/protected class fields (properties only, not methods)."""
         class_fields = self.doc.query_opt("class_fields")
         for node, capture_name in class_fields:
-            if capture_name in ("field_name", "method_name"):
+            # Only collect fields, not methods (methods collected by base)
+            if capture_name == "field_name":
                 field_def = node.parent
                 if field_def:
                     element_info = self.analyze_element(field_def)
                     if not element_info.in_public_api:
-                        # For fields, extend range to include semicolon if present
-                        element_type = "field" if capture_name == "field_name" else "method"
-                        if element_type == "field":
-                            element_with_punctuation = self._extend_range_for_semicolon(field_def)
-                            # Create new ElementInfo with extended node (duck-typed, cast for type checker)
-                            element_info = ElementInfo(
-                                node=cast(Node, element_with_punctuation),
-                                element_type=element_info.element_type,
-                                name=element_info.name,
-                                visibility=element_info.visibility,
-                                export_status=element_info.export_status,
-                                is_method=element_info.is_method,
-                                decorators=element_info.decorators
-                            )
+                        # Extend range to include semicolon if present
+                        element_with_punctuation = self._extend_range_for_semicolon(field_def)
+                        # Create new ElementInfo with extended node (duck-typed, cast for type checker)
+                        element_info = ElementInfo(
+                            node=cast(Node, element_with_punctuation),
+                            element_type=element_info.element_type,
+                            name=element_info.name,
+                            visibility=element_info.visibility,
+                            export_status=element_info.export_status,
+                            is_method=element_info.is_method,
+                            decorators=element_info.decorators
+                        )
                         private_elements.append(element_info)
 
     def _collect_imports(self, private_elements: List[ElementInfo]) -> None:

@@ -136,15 +136,6 @@ class LiteralPipeline:
         if max_tokens is None:
             return  # Optimization disabled
 
-        def node_depth(node):
-            """Calculate nesting depth of a node (distance from root)."""
-            depth = 0
-            current = node.parent
-            while current:
-                depth += 1
-                current = current.parent
-            return depth
-
         # Collect AST-extraction collection nodes to skip their children
         ast_extraction_nodes_set = set()
         for p in self.descriptor.profiles:
@@ -178,11 +169,7 @@ class LiteralPipeline:
 
                 all_node_profile_pairs.append((node, profile))
 
-        # Sort ALL nodes by depth (deepest first), then by position
-        # This ensures inside-out processing across ALL profile types
-        all_node_profile_pairs.sort(key=lambda pair: (-node_depth(pair[0]), pair[0].start_byte))
-
-        # Process all nodes in unified depth order
+        # Process all nodes
         for node, profile in all_node_profile_pairs:
             self._process_node(context, node, profile, max_tokens)
 

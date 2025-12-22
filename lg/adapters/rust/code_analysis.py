@@ -291,18 +291,23 @@ class RustCodeAnalyzer(CodeAnalyzer):
         """
         Collect Rust-specific private elements.
 
-        Includes structs, enums, traits, modules, type aliases, variables, struct fields, macro invocations,
-        and impl blocks that contain only private methods.
+        Note: Structs, traits, and functions are already collected by base CodeAnalyzer.
+        This method collects only Rust-specific elements:
+        - enums
+        - modules
+        - type aliases
+        - variables (const, static, let)
+        - struct fields
+        - empty impl blocks
+        - macro invocations
 
         Returns:
             List of Rust-specific private elements
         """
         private_elements = []
 
-        # Rust-specific elements
-        self._collect_structs(private_elements)
+        # Rust-specific elements (structs/traits already collected by base)
         self._collect_enums(private_elements)
-        self._collect_traits(private_elements)
         self._collect_modules(private_elements)
         self._collect_type_aliases(private_elements)
         self._collect_variables(private_elements)

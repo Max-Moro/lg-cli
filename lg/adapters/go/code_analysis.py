@@ -235,6 +235,8 @@ class GoCodeAnalyzer(CodeAnalyzer):
         """Collect unexported module-level variables and constants."""
         # Collect var declarations
         variables = self.doc.query_opt("variables")
+        seen_positions = set()
+
         for node, capture_name in variables:
             if capture_name in ("var_name", "const_name"):
                 # Navigate to parent declaration
@@ -246,6 +248,12 @@ class GoCodeAnalyzer(CodeAnalyzer):
                     # Only collect module-level variables
                     if self._is_inside_function_body(var_decl):
                         continue
+
+                    # Deduplicate by position (Go grammar may return same const/var twice)
+                    pos_key = (var_decl.start_byte, var_decl.end_byte)
+                    if pos_key in seen_positions:
+                        continue
+                    seen_positions.add(pos_key)
 
                     element_info = self.analyze_element(var_decl)
                     if not element_info.in_public_api:

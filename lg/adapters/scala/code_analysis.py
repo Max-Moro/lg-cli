@@ -202,21 +202,25 @@ class ScalaCodeAnalyzer(CodeAnalyzer):
         """
         Collect Scala-specific private elements.
 
-        Includes objects, traits, case classes, classes, class members, type aliases, and variables.
+        Note: Regular classes are already collected by base CodeAnalyzer.
+        This method collects Scala-specific elements:
+        - traits (Scala-specific, not in base)
+        - case classes (Scala-specific, not in base)
+        - objects (Scala-specific singletons)
+        - class fields (val/var properties)
+        - type aliases
 
         Returns:
             List of Scala-specific private elements
         """
         private_elements = []
 
-        # Scala-specific elements
-        self._collect_objects(private_elements)
+        # Scala-specific elements (regular classes already collected by base)
         self._collect_traits(private_elements)
         self._collect_case_classes(private_elements)
-        self._collect_classes(private_elements)
-        self._collect_class_members(private_elements)
+        self._collect_objects(private_elements)
+        self._collect_class_fields(private_elements)
         self._collect_type_aliases(private_elements)
-        self._collect_variables(private_elements)
 
         return private_elements
 
@@ -234,10 +238,18 @@ class ScalaCodeAnalyzer(CodeAnalyzer):
     def _collect_traits(self, private_elements: List[ElementInfo]) -> None:
         """Collect non-public traits."""
         traits = self.doc.query_opt("traits")
+        seen_positions = set()
+
         for node, capture_name in traits:
             if capture_name == "trait_name":
                 trait_def = node.parent
                 if trait_def:
+                    # Deduplicate by position (traits query has multiple patterns)
+                    pos_key = (trait_def.start_byte, trait_def.end_byte)
+                    if pos_key in seen_positions:
+                        continue
+                    seen_positions.add(pos_key)
+
                     element_info = self.analyze_element(trait_def)
                     if not element_info.in_public_api:
                         private_elements.append(element_info)
@@ -245,10 +257,18 @@ class ScalaCodeAnalyzer(CodeAnalyzer):
     def _collect_case_classes(self, private_elements: List[ElementInfo]) -> None:
         """Collect non-public case classes."""
         case_classes = self.doc.query_opt("case_classes")
+        seen_positions = set()
+
         for node, capture_name in case_classes:
             if capture_name == "case_class_name":
                 case_class_def = node.parent
                 if case_class_def:
+                    # Deduplicate by position (case classes may also be in base classes query)
+                    pos_key = (case_class_def.start_byte, case_class_def.end_byte)
+                    if pos_key in seen_positions:
+                        continue
+                    seen_positions.add(pos_key)
+
                     element_info = self.analyze_element(case_class_def)
                     if not element_info.in_public_api:
                         private_elements.append(element_info)
@@ -287,11 +307,12 @@ class ScalaCodeAnalyzer(CodeAnalyzer):
                     if not element_info.in_public_api:
                         private_elements.append(element_info)
 
-    def _collect_class_members(self, private_elements: List[ElementInfo]) -> None:
-        """Collect private class members (fields and methods)."""
+    def _collect_class_fields(self, private_elements: List[ElementInfo]) -> None:
+        """Collect private class fields (val/var only, not methods)."""
         class_members = self.doc.query_opt("class_members")
         for node, capture_name in class_members:
-            if capture_name in ("method_name", "field_name"):
+            # Only collect fields, not methods (methods collected by base)
+            if capture_name == "field_name":
                 member_def = node.parent  # identifier -> definition
                 if member_def:
                     element_info = self.analyze_element(member_def)

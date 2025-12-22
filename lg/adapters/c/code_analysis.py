@@ -197,20 +197,21 @@ class CCodeAnalyzer(CodeAnalyzer):
         """
         Collect C-specific private elements.
 
-        Includes static functions, static declarations, named structs/unions,
-        typedefs, and enums.
+        Note: Functions are already collected by base CodeAnalyzer.
+        This method collects only C-specific elements:
+        - static declarations (not function definitions)
+        - typedefs (which include typedef enum, typedef struct, typedef union)
+
+        We don't collect enums/structs/unions separately because in C they're
+        typically wrapped in typedefs and would be duplicated.
 
         Returns:
             List of C-specific private elements
         """
         private_elements = []
 
-        # C-specific: collect static functions and declarations
-        self._collect_static_functions(private_elements)
+        # C-specific elements (functions already collected by base)
         self._collect_static_declarations(private_elements)
-        self._collect_enums(private_elements)
-        self._collect_structs(private_elements)
-        self._collect_unions(private_elements)
         self._collect_typedefs(private_elements)
 
         return private_elements
@@ -249,10 +250,18 @@ class CCodeAnalyzer(CodeAnalyzer):
     def _collect_typedefs(self, private_elements: List[ElementInfo]) -> None:
         """Collect private typedefs."""
         typedefs = self.doc.query_opt("typedefs")
+        seen_positions = set()
+
         for node, capture_name in typedefs:
             if capture_name == "typedef_name":
                 typedef_def = node.parent
                 if typedef_def:
+                    # Deduplicate by position (C grammar may return same typedef twice)
+                    pos_key = (typedef_def.start_byte, typedef_def.end_byte)
+                    if pos_key in seen_positions:
+                        continue
+                    seen_positions.add(pos_key)
+
                     element_info = self.analyze_element(typedef_def)
                     if not element_info.in_public_api:
                         private_elements.append(element_info)

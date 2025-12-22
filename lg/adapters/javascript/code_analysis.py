@@ -228,17 +228,20 @@ class JavaScriptCodeAnalyzer(CodeAnalyzer):
         """
         Collect JavaScript-specific private elements.
 
-        Includes class members, variables, classes, and non-re-exported imports.
+        Note: Classes and methods are already collected by base CodeAnalyzer.
+        This method collects only JavaScript-specific elements:
+        - class fields (including ES2022+ private fields with #)
+        - variables (const, let, var)
+        - non-re-exported imports
 
         Returns:
             List of JavaScript-specific private elements
         """
         private_elements = []
 
-        # JavaScript-specific elements
+        # JavaScript-specific elements (classes/methods already collected by base)
+        self._collect_class_fields(private_elements)
         self._collect_variables(private_elements)
-        self._collect_class_members(private_elements)
-        self._collect_classes(private_elements)
         self._collect_imports(private_elements)
 
         return private_elements
@@ -258,22 +261,15 @@ class JavaScriptCodeAnalyzer(CodeAnalyzer):
                     if not element_info.in_public_api:
                         private_elements.append(element_info)
 
-    def _collect_class_members(self, private_elements: List[ElementInfo]) -> None:
-        """Collect private class members (by convention or ES2022+ private fields)."""
+    def _collect_class_fields(self, private_elements: List[ElementInfo]) -> None:
+        """Collect private class fields (including ES2022+ private fields with #)."""
         class_members = self.doc.query_opt("class_members")
         for node, capture_name in class_members:
-            # Check field definitions
+            # Only collect field definitions (not methods - they're collected by base)
             if capture_name in ("field_name", "private_field_name"):
                 field_def = node.parent  # property_identifier -> field_definition
                 if field_def:
                     element_info = self.analyze_element(field_def)
-                    if not element_info.in_public_api:
-                        private_elements.append(element_info)
-            # Check method definitions
-            elif capture_name in ("method_name", "private_method_name"):
-                method_def = node.parent  # property_identifier -> method_definition
-                if method_def:
-                    element_info = self.analyze_element(method_def)
                     if not element_info.in_public_api:
                         private_elements.append(element_info)
 
