@@ -5,13 +5,11 @@ Combines structure analysis and visibility analysis functionality for Go.
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, List, Optional, Set
+from typing import Optional, Set
 
-from ..code_analysis import CodeAnalyzer, Visibility, ExportStatus, ElementInfo
+from ..code_analysis import CodeAnalyzer, Visibility, ExportStatus
+from ..optimizations.public_api import LanguageElementProfiles
 from ..tree_sitter_support import Node
-
-if TYPE_CHECKING:
-    from ..optimizations.public_api.profiles import LanguageElementProfiles
 
 
 class GoCodeAnalyzer(CodeAnalyzer):
@@ -223,7 +221,7 @@ class GoCodeAnalyzer(CodeAnalyzer):
                         return "interface"
         return "type"
 
-    def get_element_profiles(self) -> Optional[LanguageElementProfiles]:
+    def get_element_profiles(self) -> LanguageElementProfiles:
         """Return Go element profiles."""
         from ..optimizations.public_api.language_profiles.go import GO_PROFILES
         return GO_PROFILES

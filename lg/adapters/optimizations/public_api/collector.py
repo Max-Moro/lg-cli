@@ -158,7 +158,8 @@ class PublicApiCollector:
                 # Element is in public API if it's exported (export-based)
                 in_public_api = is_exported
         else:
-            # Fallback heuristic (same as ElementInfo.in_public_api)
+            # Default heuristic when uses_visibility_for_public_api not specified
+            # Members (methods, fields, etc.) use visibility, top-level elements use export
             member_types = {
                 "method", "field", "property", "val", "var", "constructor",
                 "getter", "setter"

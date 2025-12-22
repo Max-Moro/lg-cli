@@ -5,13 +5,11 @@ Combines structure analysis and visibility analysis functionality for C.
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, List, Optional, Set
+from typing import Optional, Set
 
-from ..code_analysis import CodeAnalyzer, Visibility, ExportStatus, ElementInfo
+from ..code_analysis import CodeAnalyzer, Visibility, ExportStatus
+from ..optimizations.public_api import LanguageElementProfiles
 from ..tree_sitter_support import Node
-
-if TYPE_CHECKING:
-    from ..optimizations.public_api.profiles import LanguageElementProfiles
 
 
 class CCodeAnalyzer(CodeAnalyzer):
@@ -226,7 +224,7 @@ class CCodeAnalyzer(CodeAnalyzer):
                     return name
         return None
 
-    def get_element_profiles(self) -> Optional[LanguageElementProfiles]:
+    def get_element_profiles(self) -> LanguageElementProfiles:
         """
         Return C element profiles for profile-based public API collection.
 

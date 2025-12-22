@@ -5,13 +5,11 @@ Combines structure analysis and visibility analysis functionality for Python.
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, List, Optional, Set, Tuple
+from typing import Optional, Set, Tuple
 
-from ..code_analysis import CodeAnalyzer, Visibility, ExportStatus, ElementInfo
+from ..code_analysis import CodeAnalyzer, Visibility, ExportStatus
+from ..optimizations.public_api import LanguageElementProfiles
 from ..tree_sitter_support import Node
-
-if TYPE_CHECKING:
-    from ..optimizations.public_api.profiles import LanguageElementProfiles
 
 
 class PythonCodeAnalyzer(CodeAnalyzer):
@@ -271,7 +269,7 @@ class PythonCodeAnalyzer(CodeAnalyzer):
         # This preserves indentation in strippable_range
         return newline_pos + 1
 
-    def get_element_profiles(self) -> Optional[LanguageElementProfiles]:
+    def get_element_profiles(self) -> LanguageElementProfiles:
         """
         Return Python element profiles for profile-based public API collection.
 

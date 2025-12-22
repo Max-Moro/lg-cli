@@ -5,13 +5,11 @@ Combines structure analysis and visibility analysis functionality for Java.
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, List, Optional, Set
+from typing import Optional, Set
 
-from ..code_analysis import CodeAnalyzer, Visibility, ExportStatus, ElementInfo
+from ..code_analysis import CodeAnalyzer, Visibility, ExportStatus
+from ..optimizations.public_api import LanguageElementProfiles
 from ..tree_sitter_support import Node
-
-if TYPE_CHECKING:
-    from ..optimizations.public_api.profiles import LanguageElementProfiles
 
 
 class JavaCodeAnalyzer(CodeAnalyzer):
@@ -275,7 +273,7 @@ class JavaCodeAnalyzer(CodeAnalyzer):
             current = current.parent
         return False
 
-    def get_element_profiles(self) -> Optional[LanguageElementProfiles]:
+    def get_element_profiles(self) -> LanguageElementProfiles:
         """Return Java element profiles."""
         from ..optimizations.public_api.language_profiles.java import JAVA_PROFILES
         return JAVA_PROFILES

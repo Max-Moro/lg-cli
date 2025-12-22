@@ -6,7 +6,7 @@ Provides common functionality for code processing and optimization orchestration
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from typing import Dict, List, Tuple, Any, TypeVar, Optional, cast, ClassVar
+from typing import Dict, List, Tuple, Any, TypeVar, cast, ClassVar
 
 from .base import BaseAdapter
 from .budget import BudgetController
@@ -15,7 +15,7 @@ from .code_model import CodeCfg, PlaceholderConfig
 from .comment_style import CommentStyle
 from .context import ProcessingContext, LightweightContext
 from .optimizations import *
-from .tree_sitter_support import TreeSitterDocument, Node
+from .tree_sitter_support import TreeSitterDocument
 
 C = TypeVar("C", bound=CodeCfg)
 

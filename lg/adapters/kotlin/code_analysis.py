@@ -5,13 +5,11 @@ Combines structure and visibility analysis functionality for Kotlin.
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, List, Optional, Set, Tuple, Dict
+from typing import Optional, Set, Tuple, Dict
 
-from ..code_analysis import CodeAnalyzer, Visibility, ExportStatus, ElementInfo, FunctionGroup
-from ..tree_sitter_support import Node, TreeSitterDocument
-
-if TYPE_CHECKING:
-    from ..optimizations.public_api.profiles import LanguageElementProfiles
+from ..code_analysis import CodeAnalyzer, Visibility, ExportStatus, FunctionGroup
+from ..optimizations.public_api import LanguageElementProfiles
+from ..tree_sitter_support import Node
 
 
 class KotlinCodeAnalyzer(CodeAnalyzer):
@@ -293,7 +291,7 @@ class KotlinCodeAnalyzer(CodeAnalyzer):
 
     # Legacy collection methods removed - using profile-based collection
 
-    def get_element_profiles(self) -> Optional[LanguageElementProfiles]:
+    def get_element_profiles(self) -> LanguageElementProfiles:
         """
         Return Kotlin element profiles for profile-based public API collection.
 

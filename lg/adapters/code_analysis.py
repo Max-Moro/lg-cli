@@ -8,12 +8,9 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from enum import Enum
-from typing import TYPE_CHECKING, Dict, List, Optional, Set, Tuple
+from typing import Dict, List, Optional, Set, Tuple
 
 from .tree_sitter_support import Node, TreeSitterDocument
-
-if TYPE_CHECKING:
-    from .optimizations.public_api.profiles import LanguageElementProfiles
 
 
 # ============= Data models =============
@@ -158,139 +155,28 @@ class CodeAnalyzer(ABC):
         """
         Collects all private elements for removal in public API mode.
 
-        New implementation via profiles. Falls back to legacy mode if profiles not available.
+        Uses profile-based collection via PublicApiCollector.
 
         Returns:
             List of private elements for removal
         """
-        # Get profiles for language
+        from .optimizations.public_api.collector import PublicApiCollector
+
         profiles = self.get_element_profiles()
-
-        if profiles:
-            # New path: via PublicApiCollector
-            from .optimizations.public_api.collector import PublicApiCollector
-
-            collector = PublicApiCollector(self.doc, self, profiles)
-            return collector.collect_private_elements()
-        else:
-            # Old path: via imperative methods (backward compatibility)
-            return self._collect_private_elements_legacy()
-
-    def _collect_private_elements_legacy(self) -> List[ElementInfo]:
-        """
-        Legacy imperative implementation (for backward compatibility).
-
-        Used when language doesn't have profiles yet.
-
-        Returns:
-            List of private elements for removal
-        """
-        private_elements = []
-
-        # 1. Analyze functions and methods
-        self._collect_private_functions_and_methods(private_elements)
-
-        # 2. Analyze classes
-        self._collect_classes(private_elements)
-
-        # 3. Analyze interfaces and types (if supported by language)
-        self._collect_interfaces_and_types(private_elements)
-
-        # 4. Collect language-specific elements
-        language_specific_elements = self.collect_language_specific_private_elements()
-        private_elements.extend(language_specific_elements)
-
-        return private_elements
+        collector = PublicApiCollector(self.doc, self, profiles)
+        return collector.collect_private_elements()
 
     @abstractmethod
-    def get_element_profiles(self) -> Optional[LanguageElementProfiles]:
+    def get_element_profiles(self) -> "LanguageElementProfiles":
         """
         Get element profiles for language.
 
-        Returns None to use legacy mode (backward compatibility during migration).
+        Each language must provide ElementProfile definitions for public API collection.
 
         Returns:
-            LanguageElementProfiles or None (if using legacy mode)
+            LanguageElementProfiles for the language
         """
         pass
-
-    # ============= Helper methods for collecting private elements =============
-
-    def _collect_private_functions_and_methods(self, private_elements: List[ElementInfo]) -> None:
-        """
-        Collects private functions and methods for removal in public API mode.
-
-        Args:
-            private_elements: List for adding found private elements
-        """
-        # Get all functions and methods using self-sufficient method
-        function_groups = self.collect_function_like_elements()
-
-        for func_def, func_group in function_groups.items():
-            element_info = func_group.element_info
-
-            # Universal logic based on element type
-            if element_info.is_method:
-                # Method is removed if private/protected
-                should_remove = not element_info.is_public
-            else:  # function, arrow_function, etc.
-                # Top-level function is removed if not exported
-                should_remove = not element_info.is_exported
-
-            if should_remove:
-                private_elements.append(element_info)
-
-    def _collect_classes(self, private_elements: List[ElementInfo]) -> None:
-        """
-        Collects non-exported classes for removal in public API mode.
-
-        Args:
-            private_elements: List for adding found private elements
-        """
-        # Check classes only if language supports them
-        if not self.doc.has_query("classes"):
-            return
-
-        classes = self.doc.query("classes")
-        for node, capture_name in classes:
-            if capture_name == "class_name":
-                class_def = node.parent
-                if class_def:
-                    element_info = self.analyze_element(class_def)
-
-                    # For top-level classes export is the main condition
-                    if not element_info.in_public_api:
-                        private_elements.append(element_info)
-
-    def _collect_interfaces_and_types(self, private_elements: List[ElementInfo]) -> None:
-        """
-        Collects non-exported interfaces and types for removal in public API mode.
-        This method is applicable to languages with type support (e.g., TypeScript).
-
-        Args:
-            private_elements: List for adding found private elements
-        """
-        # Collect interfaces if supported
-        if self.doc.has_query("interfaces"):
-            interfaces = self.doc.query("interfaces")
-            for node, capture_name in interfaces:
-                if capture_name == "interface_name":
-                    interface_def = node.parent
-                    if interface_def:
-                        element_info = self.analyze_element(interface_def)
-                        if not element_info.in_public_api:
-                            private_elements.append(element_info)
-
-        # Collect type aliases if supported
-        if self.doc.has_query("types"):
-            types = self.doc.query("types")
-            for node, capture_name in types:
-                if capture_name == "type_name":
-                    type_def = node.parent
-                    if type_def:
-                        element_info = self.analyze_element(type_def)
-                        if not element_info.in_public_api:
-                            private_elements.append(element_info)
 
     # ============= Structural analysis =============
 
@@ -576,18 +462,6 @@ class CodeAnalyzer(ABC):
     def get_decorator_types(self) -> Set[str]:
         """Return node types for individual decorators."""
         pass
-
-    def collect_language_specific_private_elements(self) -> List[ElementInfo]:
-        """
-        Collect language-specific private elements.
-
-        NOTE: This method is only used in legacy mode (when get_element_profiles() returns None).
-        For profile-based languages, this method is not called - profiles handle all collection.
-
-        Returns:
-            List of language-specific private elements
-        """
-        return []
 
     # ============= Helper methods =============
 

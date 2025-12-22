@@ -5,13 +5,11 @@ Combines structure analysis and visibility analysis functionality for JavaScript
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, List, Optional, Set
+from typing import Optional, Set
 
 from ..code_analysis import CodeAnalyzer, Visibility, ExportStatus, ElementInfo
 from ..tree_sitter_support import Node
-
-if TYPE_CHECKING:
-    from ..optimizations.public_api.profiles import LanguageElementProfiles
+from ..optimizations.public_api import LanguageElementProfiles
 
 
 class JavaScriptCodeAnalyzer(CodeAnalyzer):
@@ -321,8 +319,6 @@ class JavaScriptCodeAnalyzer(CodeAnalyzer):
 
         return ExtendedRangeNode(original_node, semicolon_node)
 
-    # Legacy collection methods removed - using profile-based collection
-
     def _check_export_in_source_line(self, node: Node) -> bool:
         """
         Check for 'export' in element's source line.
@@ -420,7 +416,7 @@ class JavaScriptCodeAnalyzer(CodeAnalyzer):
 
         return False
 
-    def get_element_profiles(self) -> Optional[LanguageElementProfiles]:
+    def get_element_profiles(self) -> LanguageElementProfiles:
         """
         Return JavaScript element profiles for profile-based public API collection.
 

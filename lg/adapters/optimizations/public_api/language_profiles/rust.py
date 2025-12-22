@@ -13,10 +13,7 @@ Methods in trait impls are always public.
 """
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
-
-if TYPE_CHECKING:
-    from ....tree_sitter_support import Node, TreeSitterDocument
+from ....tree_sitter_support import Node, TreeSitterDocument
 
 from ..profiles import ElementProfile, LanguageElementProfiles
 

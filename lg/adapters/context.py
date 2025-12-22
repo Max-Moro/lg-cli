@@ -8,7 +8,6 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Optional
 
-from .code_analysis import CodeAnalyzer
 from .metrics import MetricsCollector
 from .placeholders import PlaceholderManager, PlaceholderAction
 from .range_edits import RangeEditor
@@ -86,7 +85,7 @@ class ProcessingContext(LightState):
         editor: RangeEditor,
         placeholders: PlaceholderManager,
         tokenizer: TokenService,
-        code_analyzer: CodeAnalyzer,
+        code_analyzer, # CodeAnalyzer
     ):
         super().__init__(file_path, raw_text, group_size)
 

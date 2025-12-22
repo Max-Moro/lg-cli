@@ -5,13 +5,11 @@ Combines structure analysis and visibility analysis functionality for TypeScript
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, List, Optional, Set, cast
+from typing import Optional, Set, cast
 
 from ..code_analysis import CodeAnalyzer, Visibility, ExportStatus, ElementInfo
+from ..optimizations.public_api import LanguageElementProfiles
 from ..tree_sitter_support import Node
-
-if TYPE_CHECKING:
-    from ..optimizations.public_api.profiles import LanguageElementProfiles
 
 
 class TypeScriptCodeAnalyzer(CodeAnalyzer):
@@ -464,7 +462,7 @@ class TypeScriptCodeAnalyzer(CodeAnalyzer):
 
         return ExtendedRangeNode(original_node, semicolon_node)
 
-    def get_element_profiles(self) -> Optional[LanguageElementProfiles]:
+    def get_element_profiles(self) -> LanguageElementProfiles:
         """
         Return TypeScript element profiles for profile-based public API collection.
 

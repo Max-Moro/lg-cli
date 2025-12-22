@@ -5,13 +5,11 @@ Combines structure analysis and visibility analysis functionality for Scala.
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Optional, Set
+from typing import Optional, Set
 
 from ..code_analysis import CodeAnalyzer, Visibility, ExportStatus
+from ..optimizations.public_api import LanguageElementProfiles
 from ..tree_sitter_support import Node
-
-if TYPE_CHECKING:
-    from ..optimizations.public_api.profiles import LanguageElementProfiles
 
 
 class ScalaCodeAnalyzer(CodeAnalyzer):
@@ -219,7 +217,7 @@ class ScalaCodeAnalyzer(CodeAnalyzer):
                     return True
         return False
 
-    def get_element_profiles(self) -> Optional["LanguageElementProfiles"]:
+    def get_element_profiles(self) -> LanguageElementProfiles:
         """
         Return Scala element profiles.
 

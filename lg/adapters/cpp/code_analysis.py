@@ -5,13 +5,11 @@ Combines structure analysis and visibility analysis functionality for C++.
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, List, Optional, Set, Dict
+from typing import Optional, Set, Dict
 
-from ..code_analysis import CodeAnalyzer, Visibility, ExportStatus, ElementInfo, FunctionGroup
+from ..code_analysis import CodeAnalyzer, Visibility, ExportStatus, FunctionGroup
+from ..optimizations.public_api import LanguageElementProfiles
 from ..tree_sitter_support import Node
-
-if TYPE_CHECKING:
-    from ..optimizations.public_api.profiles import LanguageElementProfiles
 
 
 class CppCodeAnalyzer(CodeAnalyzer):
@@ -323,7 +321,7 @@ class CppCodeAnalyzer(CodeAnalyzer):
             current = current.parent
         return False
 
-    def get_element_profiles(self) -> Optional[LanguageElementProfiles]:
+    def get_element_profiles(self) -> LanguageElementProfiles:
         """
         Return C++ element profiles for profile-based public API collection.
 
