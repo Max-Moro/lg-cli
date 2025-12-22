@@ -7,7 +7,7 @@ Go uses naming convention for visibility:
 """
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Optional
 
 if TYPE_CHECKING:
     from ....tree_sitter_support import Node, TreeSitterDocument
@@ -16,28 +16,6 @@ from ..profiles import ElementProfile, LanguageElementProfiles
 
 
 # Helper functions
-
-def go_visibility_check(node: Node, doc: TreeSitterDocument) -> str:
-    """
-    Go visibility determined by case of first letter.
-    Uppercase = public, lowercase = private.
-    """
-    # Get element name
-    name_node = node.child_by_field_name("name")
-    if not name_node:
-        # Try to get name from node itself
-        name_text = doc.get_node_text(node)
-        if name_text:
-            return "public" if name_text[0].isupper() else "private"
-        return "public"
-
-    name = doc.get_node_text(name_node)
-    if not name:
-        return "public"
-
-    # Go convention: uppercase = exported
-    return "public" if name[0].isupper() else "private"
-
 
 def is_inside_function(node: Node) -> bool:
     """Check if node is inside function body."""
@@ -67,23 +45,98 @@ def is_in_exported_struct(node: Node, doc: TreeSitterDocument) -> bool:
     return False
 
 
-def is_type_alias_not_struct_or_interface(node: Node, doc: TreeSitterDocument) -> bool:
+def _get_declaration_visibility(node: Node, doc: TreeSitterDocument, identifier_type: str) -> str:
     """
-    Check if type_declaration is a type alias (not struct or interface).
+    Get visibility of declaration node by finding the name identifier.
 
-    Type aliases don't have struct_type or interface_type children.
+    Args:
+        node: Declaration node (function_declaration, var_declaration, etc.)
+        doc: TreeSitterDocument
+        identifier_type: Type of identifier to look for ("identifier", "field_identifier")
+
+    Returns:
+        "public" if exported (uppercase), "private" otherwise
     """
-    # node is type_identifier from query, parent is type_spec
-    type_spec = node.parent
-    if not type_spec or type_spec.type != "type_spec":
+    # Find identifier of specified type
+    def find_identifier(n: Node) -> Optional[Node]:
+        if n.type == identifier_type:
+            return n
+        for child in n.children:
+            result = find_identifier(child)
+            if result:
+                return result
+        return None
+
+    identifier = find_identifier(node)
+    if not identifier:
+        return "public"
+
+    name = doc.get_node_text(identifier)
+    if not name:
+        return "public"
+
+    # Go convention: uppercase = public
+    return "public" if name[0].isupper() else "private"
+
+
+def _get_type_visibility(node: Node, doc: TreeSitterDocument) -> str:
+    """
+    Get visibility of type_declaration by finding the type name identifier.
+
+    Args:
+        node: type_declaration node
+        doc: TreeSitterDocument
+
+    Returns:
+        "public" if exported (uppercase), "private" otherwise
+    """
+    # Find type_identifier in type_spec or type_alias
+    def find_type_identifier(n: Node) -> Optional[Node]:
+        if n.type == "type_identifier":
+            # Check if this is the name (first identifier in type_spec/type_alias)
+            parent = n.parent
+            if parent and parent.type in ("type_spec", "type_alias"):
+                # Get first type_identifier child (that's the name)
+                for child in parent.children:
+                    if child.type == "type_identifier":
+                        return child
+        for child in n.children:
+            result = find_type_identifier(child)
+            if result:
+                return result
+        return None
+
+    identifier = find_type_identifier(node)
+    if not identifier:
+        return "public"
+
+    name = doc.get_node_text(identifier)
+    if not name:
+        return "public"
+
+    # Go convention: uppercase = public
+    return "public" if name[0].isupper() else "private"
+
+
+def _has_struct_or_interface(node: Node) -> bool:
+    """
+    Check if type_declaration contains struct_type or interface_type.
+
+    Args:
+        node: type_declaration node
+
+    Returns:
+        True if this is struct or interface definition
+    """
+    def has_type_recursive(n: Node) -> bool:
+        if n.type in ("struct_type", "interface_type"):
+            return True
+        for child in n.children:
+            if has_type_recursive(child):
+                return True
         return False
 
-    # Check if type_spec has struct_type or interface_type
-    for child in type_spec.children:
-        if child.type in ("struct_type", "interface_type"):
-            return False  # This is struct or interface, not type alias
-
-    return True  # This is type alias
+    return has_type_recursive(node)
 
 
 # Go element profiles
@@ -95,61 +148,54 @@ GO_PROFILES = LanguageElementProfiles(
 
         ElementProfile(
             name="struct",
-            query="""
-            (type_declaration
-              (type_spec
-                name: (type_identifier) @element
-                type: (struct_type)
-              )
-            )
-            """,
-            visibility_check=go_visibility_check
+            query="(type_declaration (type_spec type: (struct_type))) @element",
+            visibility_check=lambda node, doc: _get_type_visibility(node, doc)
         ),
 
         # === Interfaces ===
 
         ElementProfile(
             name="interface",
-            query="""
-            (type_declaration
-              (type_spec
-                name: (type_identifier) @element
-                type: (interface_type)
-              )
-            )
-            """,
-            visibility_check=go_visibility_check
+            query="(type_declaration (type_spec type: (interface_type))) @element",
+            visibility_check=lambda node, doc: _get_type_visibility(node, doc)
         ),
 
         # === Type Aliases ===
+        # Go type aliases use type_alias node (with =)
+        # Example: type UserID = int
+
+        ElementProfile(
+            name="type",
+            query="(type_declaration (type_alias)) @element",
+            visibility_check=lambda node, doc: _get_type_visibility(node, doc)
+        ),
+
+        # === Type Definitions ===
+        # Go type definitions use type_spec node (without =)
+        # Example: type UserRole string
         # Exclude structs and interfaces (they have their own profiles)
 
         ElementProfile(
             name="type",
-            query="""
-            (type_declaration
-              (type_spec
-                name: (type_identifier) @element
-              )
-            )
-            """,
-            visibility_check=go_visibility_check,
-            additional_check=is_type_alias_not_struct_or_interface
+            query="(type_declaration (type_spec)) @element",
+            visibility_check=lambda node, doc: _get_type_visibility(node, doc),
+            additional_check=lambda node, doc: not _has_struct_or_interface(node)
         ),
 
         # === Functions ===
 
         ElementProfile(
             name="function",
-            query="(function_declaration name: (identifier) @element)",
-            visibility_check=go_visibility_check
+            query="(function_declaration) @element",
+            visibility_check=lambda node, doc: _get_declaration_visibility(node, doc, "identifier")
         ),
 
         # === Methods ===
 
         ElementProfile(
             name="method",
-            query="(method_declaration name: (field_identifier) @element)",
+            query="(method_declaration) @element",
+            visibility_check=lambda node, doc: _get_declaration_visibility(node, doc, "field_identifier"),
             # Methods never exported directly
             export_check=lambda node, doc: False
         ),
@@ -159,23 +205,15 @@ GO_PROFILES = LanguageElementProfiles(
 
         ElementProfile(
             name="variable",
-            query="""
-            (var_declaration
-              (var_spec name: (identifier) @element)
-            )
-            """,
-            visibility_check=go_visibility_check,
+            query="(var_declaration) @element",
+            visibility_check=lambda node, doc: _get_declaration_visibility(node, doc, "identifier"),
             additional_check=lambda node, doc: not is_inside_function(node)
         ),
 
         ElementProfile(
             name="constant",
-            query="""
-            (const_declaration
-              (const_spec name: (identifier) @element)
-            )
-            """,
-            visibility_check=go_visibility_check,
+            query="(const_declaration) @element",
+            visibility_check=lambda node, doc: _get_declaration_visibility(node, doc, "identifier"),
             additional_check=lambda node, doc: not is_inside_function(node)
         ),
 
@@ -184,12 +222,8 @@ GO_PROFILES = LanguageElementProfiles(
 
         ElementProfile(
             name="field",
-            query="""
-            (field_declaration
-              name: (field_identifier) @element
-            )
-            """,
-            visibility_check=go_visibility_check,
+            query="(field_declaration) @element",
+            visibility_check=lambda node, doc: _get_declaration_visibility(node, doc, "field_identifier"),
             additional_check=lambda node, doc: is_in_exported_struct(node, doc)
         ),
     ]

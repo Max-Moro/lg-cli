@@ -95,17 +95,18 @@ JAVA_PROFILES = LanguageElementProfiles(
 
         ElementProfile(
             name="field",
-            query="(field_declaration declarator: (variable_declarator name: (identifier) @element))",
+            query="(field_declaration) @element",
             additional_check=lambda node, doc: is_inside_class(node)
         ),
 
         # === Local Variables ===
-        # Variables inside methods AND top-level (Java tree-sitter parses top-level as local_variable_declaration)
-        # Visibility check will handle public vs private for top-level
+        # Only top-level variables (Java tree-sitter parses top-level as local_variable_declaration)
+        # NOT variables inside methods/constructors (they are implementation details, not API)
 
         ElementProfile(
             name="variable",
-            query="(local_variable_declaration) @element"
+            query="(local_variable_declaration) @element",
+            additional_check=lambda node, doc: not is_inside_method_or_constructor(node)
         ),
     ]
 )

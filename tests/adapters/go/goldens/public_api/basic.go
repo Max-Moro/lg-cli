@@ -12,9 +12,9 @@ const PublicVersion = "1.0.0"
 const APIEndpoint = "https://api.example.com"
 
 // Private module-level constants (should be filtered out)
-// … const omitted
+// … constant omitted
 
-// … var omitted (7 lines)
+// … variable omitted (7 lines)
 
 // User is a public structure (should be preserved)
 type User struct {
@@ -39,7 +39,7 @@ const (
 // internalEventType is a private type (should be filtered out)
 // … type omitted
 
-// … const omitted (5 lines)
+// … constant omitted (5 lines)
 
 // UserManager is a public class with mixed visibility members
 type UserManager struct {

@@ -48,7 +48,8 @@ class PublicApiCollector:
             elements = self._collect_by_profile(profile)
             private_elements.extend(elements)
 
-        return private_elements
+        # Filter out elements that are nested inside other private elements
+        return self._filter_nested_elements(private_elements)
 
     def _collect_by_profile(self, profile: ElementProfile) -> List[ElementInfo]:
         """
@@ -148,3 +149,49 @@ class PublicApiCollector:
 
         # Logic as in current CodeAnalyzer
         return not element_info.in_public_api
+
+    def _filter_nested_elements(self, elements: List[ElementInfo]) -> List[ElementInfo]:
+        """
+        Filter out elements that are nested inside other private elements.
+
+        If a class is private, we don't need to separately remove its private fields/methods -
+        they will be removed automatically with the class.
+
+        Args:
+            elements: List of all private elements
+
+        Returns:
+            Filtered list without nested elements
+        """
+        if not elements:
+            return []
+
+        # Get ranges for all elements
+        element_ranges = []
+        for elem in elements:
+            start_byte, end_byte = elem.node.start_byte, elem.node.end_byte
+            element_ranges.append((start_byte, end_byte, elem))
+
+        # Sort by start position
+        element_ranges.sort(key=lambda x: (x[0], x[1]))
+
+        # Filter: keep only elements that are NOT inside other elements
+        result = []
+
+        for i, (start_i, end_i, elem_i) in enumerate(element_ranges):
+            # Check if this element is inside any other element
+            is_nested = False
+
+            for j, (start_j, end_j, elem_j) in enumerate(element_ranges):
+                if i == j:
+                    continue
+
+                # Check if elem_i is strictly inside elem_j
+                if start_j <= start_i and end_i <= end_j and not (start_j == start_i and end_j == end_i):
+                    is_nested = True
+                    break
+
+            if not is_nested:
+                result.append(elem_i)
+
+        return result
