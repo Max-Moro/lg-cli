@@ -54,7 +54,7 @@ class CollectionFormatter:
         """
         Format collection with simple (non-DFS) logic.
 
-        Pipeline handles nesting via inside-out processing.
+        Nesting handled by PlaceholderManager via composing_nested.
 
         Args:
             parsed: Parsed collection literal

@@ -124,8 +124,8 @@ class LiteralPipeline:
         """
         Apply literal optimization using unified single-pass approach.
 
-        Collect all nodes from all profiles and process in depth order.
-        This ensures deepest nodes are processed first, regardless of profile type.
+        Process all nodes from all profiles directly.
+        PlaceholderManager handles composition of nested structures automatically.
 
         Args:
             context: Processing context with document
@@ -144,34 +144,18 @@ class LiteralPipeline:
                 for seq_node in seq_nodes:
                     ast_extraction_nodes_set.add((seq_node.start_byte, seq_node.end_byte))
 
-        # Collect all (node, profile) pairs from all profiles
-        all_node_profile_pairs = []
-
+        # Process nodes from each profile
         for profile in self.descriptor.profiles:
             nodes = context.doc.query_nodes(profile.query, "lit")
 
-            # Deduplicate by coordinates
-            seen_coords = set()
-            unique_nodes = []
             for node in nodes:
-                coords = (node.start_byte, node.end_byte)
-                if coords not in seen_coords:
-                    seen_coords.add(coords)
-                    unique_nodes.append(node)
-
-            # Filter nodes
-            for node in unique_nodes:
                 # Skip strings that are children of AST-extraction sequences
                 if isinstance(profile, StringProfile) and node.parent:
                     parent_range = (node.parent.start_byte, node.parent.end_byte)
                     if parent_range in ast_extraction_nodes_set:
                         continue  # Skip - will be processed as whole sequence
 
-                all_node_profile_pairs.append((node, profile))
-
-        # Process all nodes
-        for node, profile in all_node_profile_pairs:
-            self._process_node(context, node, profile, max_tokens)
+                self._process_node(context, node, profile, max_tokens)
 
 
     def _process_node(

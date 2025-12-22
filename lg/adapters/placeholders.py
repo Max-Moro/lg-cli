@@ -271,7 +271,7 @@ class PlaceholderManager:
             tokens_saved=tokens_saved,
             use_composing_nested=use_composing_nested,
         )
-        self._add_placeholder_with_priority(spec)
+        self.placeholders.append(spec)
 
     def add_placeholder_for_node(
         self,
@@ -315,18 +315,9 @@ class PlaceholderManager:
             tokens_saved=tokens_saved,
             use_composing_nested=use_composing_nested,
         )
-        self._add_placeholder_with_priority(spec)
+        self.placeholders.append(spec)
 
     # ============= Internal methods =============
-
-    def _add_placeholder_with_priority(self, spec: PlaceholderSpec) -> None:
-        """
-        Add placeholder to list.
-
-        Args:
-            spec: Placeholder specification to add
-        """
-        self.placeholders.append(spec)
 
     def _get_placeholder_content(self, spec: PlaceholderSpec) -> str:
         """

@@ -183,7 +183,7 @@ class StandardCollectionsProcessor(LiteralProcessor):
         key = separator
 
         if key not in self._parsers:
-            # Create parser with minimal config (inside-out architecture handles nesting)
+            # Create parser with minimal config
             config = ParseConfig(
                 separator=separator,
                 preserve_whitespace=False,

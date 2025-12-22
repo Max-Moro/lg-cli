@@ -33,8 +33,8 @@ class Element:
     """
     A parsed element from literal content.
 
-    In the inside-out architecture, elements are simple text fragments.
-    Pipeline handles all nesting through depth-first tree-sitter processing.
+    Elements are simple text fragments.
+    Nesting handled by PlaceholderManager through composing_nested mechanism.
     """
     text: str  # Element text (trimmed)
     raw_text: str  # Original text with whitespace

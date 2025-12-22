@@ -120,8 +120,6 @@ class BudgetSelector:
         """
         Select elements using simple budget-aware strategy.
 
-        No DFS - pipeline handles nesting via inside-out processing.
-
         Args:
             elements: List of elements at current level
             budget: Token budget
