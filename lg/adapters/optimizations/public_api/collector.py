@@ -126,6 +126,9 @@ class PublicApiCollector:
         """
         Check if element is private.
 
+        If profile has custom visibility_check or export_check, we need to recompute
+        in_public_api with those custom checks instead of using pre-analyzed values.
+
         Args:
             element_def: Definition node of element
             element_info: Element information
@@ -134,6 +137,11 @@ class PublicApiCollector:
         Returns:
             True if element is private and should be removed
         """
+        # If no custom checks, use element_info.in_public_api directly
+        if not profile.visibility_check and not profile.export_check:
+            return not element_info.in_public_api
+
+        # Custom checks present - need to recompute
         # Use custom visibility logic if specified
         if profile.visibility_check:
             visibility = profile.visibility_check(element_def, self.doc)
@@ -147,27 +155,11 @@ class PublicApiCollector:
         else:
             is_exported = element_info.is_exported
 
-        # Determine if element is in public API (duplicate logic from ElementInfo.in_public_api)
-        # Must use local is_public and is_exported (with custom checks applied)
-        uses_visibility = element_info.uses_visibility_for_public_api
-        if uses_visibility is not None:
-            if uses_visibility:
-                # Element is in public API if it's public (visibility-based)
-                in_public_api = is_public
-            else:
-                # Element is in public API if it's exported (export-based)
-                in_public_api = is_exported
+        # Apply the same logic as ElementInfo.in_public_api, but with custom values
+        if element_info.uses_visibility_for_public_api:
+            in_public_api = is_public
         else:
-            # Default heuristic when uses_visibility_for_public_api not specified
-            # Members (methods, fields, etc.) use visibility, top-level elements use export
-            member_types = {
-                "method", "field", "property", "val", "var", "constructor",
-                "getter", "setter"
-            }
-            if element_info.element_type in member_types:
-                in_public_api = is_public
-            else:
-                in_public_api = is_exported
+            in_public_api = is_exported
 
         return not in_public_api
 

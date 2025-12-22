@@ -40,7 +40,7 @@ class ElementInfo:
     export_status: ExportStatus = ExportStatus.UNKNOWN
     is_method: bool = False
     decorators: List[Node] = None
-    uses_visibility_for_public_api: Optional[bool] = None  # If None, uses heuristic
+    uses_visibility_for_public_api: bool = True  # True: use visibility, False: use export status
 
     def __post_init__(self):
         if self.decorators is None:
@@ -64,28 +64,11 @@ class ElementInfo:
     @property
     def in_public_api(self) -> bool:
         """Should the element be included in the public API."""
-        # If uses_visibility_for_public_api is explicitly set, use it
-        if self.uses_visibility_for_public_api is not None:
-            if self.uses_visibility_for_public_api:
-                # Element is in public API if it's public (visibility-based)
-                return self.is_public
-            else:
-                # Element is in public API if it's exported (export-based)
-                return self.is_exported
-
-        # Fallback: use heuristic based on element_type
-        # Member types (methods, fields, properties, constructors) use visibility
-        # Top-level types (classes, functions, interfaces) use export status
-        member_types = {
-            "method", "field", "property", "val", "var", "constructor",
-            "getter", "setter"
-        }
-
-        if self.element_type in member_types:
-            # For class/struct members, check visibility (public/private/protected)
+        if self.uses_visibility_for_public_api:
+            # Element is in public API if it's public (visibility-based)
             return self.is_public
         else:
-            # For top-level declarations, check export status
+            # Element is in public API if it's exported (export-based)
             return self.is_exported
 
 
@@ -140,6 +123,7 @@ class CodeAnalyzer(ABC):
         export_status = self.determine_export_status(node)
         is_method = self.is_method_context(node)
         decorators = self.find_decorators_for_element(node)
+        uses_visibility = self.get_uses_visibility_for_public_api(element_type)
 
         return ElementInfo(
             node=node,
@@ -148,7 +132,8 @@ class CodeAnalyzer(ABC):
             visibility=visibility,
             export_status=export_status,
             is_method=is_method,
-            decorators=decorators
+            decorators=decorators,
+            uses_visibility_for_public_api=uses_visibility
         )
 
     def collect_private_elements_for_public_api(self) -> List[ElementInfo]:
@@ -462,6 +447,28 @@ class CodeAnalyzer(ABC):
     def get_decorator_types(self) -> Set[str]:
         """Return node types for individual decorators."""
         pass
+
+    def get_uses_visibility_for_public_api(self, element_type: str) -> bool:
+        """
+        Determine if element type uses visibility or export for public API.
+
+        Uses element profiles as the source of truth for this information.
+
+        Args:
+            element_type: Element type (function, method, class, etc.)
+
+        Returns:
+            True if uses visibility, False if uses export status
+        """
+        profiles = self.get_element_profiles()
+
+        # Find first profile with matching element_type
+        for profile in profiles.profiles:
+            if profile.name == element_type:
+                return profile.uses_visibility_for_public_api
+
+        # Default if element_type not found in profiles
+        return True
 
     # ============= Helper methods =============
 
