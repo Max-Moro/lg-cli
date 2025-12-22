@@ -147,8 +147,28 @@ class PublicApiCollector:
         else:
             is_exported = element_info.is_exported
 
-        # Logic as in current CodeAnalyzer
-        return not element_info.in_public_api
+        # Determine if element is in public API (duplicate logic from ElementInfo.in_public_api)
+        # Must use local is_public and is_exported (with custom checks applied)
+        uses_visibility = element_info.uses_visibility_for_public_api
+        if uses_visibility is not None:
+            if uses_visibility:
+                # Element is in public API if it's public (visibility-based)
+                in_public_api = is_public
+            else:
+                # Element is in public API if it's exported (export-based)
+                in_public_api = is_exported
+        else:
+            # Fallback heuristic (same as ElementInfo.in_public_api)
+            member_types = {
+                "method", "field", "property", "val", "var", "constructor",
+                "getter", "setter"
+            }
+            if element_info.element_type in member_types:
+                in_public_api = is_public
+            else:
+                in_public_api = is_exported
+
+        return not in_public_api
 
     def _filter_nested_elements(self, elements: List[ElementInfo]) -> List[ElementInfo]:
         """

@@ -112,7 +112,7 @@ export class UserManager {
 
 // Public abstract class (should be preserved)
 export abstract class BaseService {
-    protected abstract serviceName: string;
+    // … field omitted
     
     public abstract initialize(): Promise<void>;
     

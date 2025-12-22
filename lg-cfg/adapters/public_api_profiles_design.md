@@ -236,19 +236,19 @@ class ScalaCodeAnalyzer(CodeAnalyzer):
 
 ## Migration Status
 
-### ✅ Completed Languages (19/19 tests)
+### ✅ Completed Languages (27/27 tests)
 
 | Language | Tests | Notes |
 |----------|-------|-------|
 | **Scala** | 5/5 | Modifiers на declaration node, нужны профили для function_declaration |
 | **Java** | 5/5 | Field query должен захватывать field_declaration целиком |
 | **Go** | 9/9 | Custom visibility check, type_alias vs type_spec distinction |
+| **Python** | 7/7 | Simple visibility (underscore prefix), no custom checks needed |
+| **TypeScript** | 6/6 | Semicolon extension via analyze_element(), namespace export checks |
 
 ### 🔄 Pending Languages
 
 - JavaScript
-- TypeScript
-- Python
 - Rust
 - C/C++
 - Kotlin
@@ -293,9 +293,125 @@ query="(function_definition) @element"
 
 **Три подхода к visibility:**
 
-1. **Standard** (Scala, Java): modifiers на declaration node → стандартная логика работает
+1. **Standard** (Scala, Java, Python, TypeScript): modifiers/conventions на declaration node → стандартная логика работает
 2. **Naming** (Go): по регистру имени → нужен custom `visibility_check`
-3. **Keyword** (TypeScript): `export` keyword → нужен custom `export_check`
+3. **Export-based** (TypeScript namespaces): `export` keyword в контексте → нужен custom `export_check`
+
+---
+
+## TypeScript Migration: Lessons Learned
+
+### Проблема 1: Semicolons в placeholders
+
+**Симптом**: Placeholder показывает `// … field omitted;` вместо `// … field omitted`
+
+**Причина**: Query захватывает только `public_field_definition`, без trailing semicolon. PlaceholderManager заменяет только declaration, semicolon остается.
+
+**Решение**: Override `analyze_element()` в TypeScriptCodeAnalyzer для расширения range:
+
+```python
+def analyze_element(self, node: Node) -> ElementInfo:
+    element_info = super().analyze_element(node)
+
+    # Extend range for fields to include semicolon
+    if element_info.element_type == "field":
+        extended_node = self._extend_range_for_semicolon(node)
+        element_info = ElementInfo(
+            node=extended_node,
+            # ... other fields
+        )
+
+    return element_info
+```
+
+**Урок**: Если язык требует специальной обработки ranges (semicolons, комментарии после), переопределяйте `analyze_element()`, не усложняйте профили.
+
+---
+
+### Проблема 2: Broken placeholder grouping
+
+**Симптом**: Два соседних приватных поля создают два отдельных placeholder вместо одного "2 fields omitted"
+
+**Причина**: Без расширения range на semicolon, PlaceholderManager видит разные ranges для соседних элементов:
+- Field 1: `private field1: string` (без `;`)
+- Semicolon: `;`
+- Field 2: `private field2: number` (без `;`)
+
+PlaceholderManager не может сгруппировать из-за content между элементами (semicolons).
+
+**Решение**: То же самое - extend range to include semicolons в `analyze_element()`.
+
+**Урок**: Группировка placeholders зависит от корректных ranges. Если элементы не группируются, проверьте что ranges включают все необходимое (punctuation, whitespace).
+
+---
+
+### Проблема 3: Protected members не удаляются
+
+**Симптом**: `protected config: any = {}` остается в коде вместо placeholder
+
+**Первоначальная ошибка**: Создал custom `visibility_check` который трактовал protected как public API в exported классах (логика наследования).
+
+**Причина**: Неправильное понимание требований - комментарии в golden файле четко говорят "should be filtered out".
+
+**Решение**: Удалил custom `visibility_check`, используется стандартная логика (protected = protected, удаляется).
+
+**Урок**:
+1. **Читайте golden files и комментарии в do-файлах** - они документируют ожидаемое поведение
+2. **Не делайте assumptions** о том как "должно быть" (inheritance API) - следуйте существующей логике
+3. **Начинайте с стандартной логики** - добавляйте custom checks только если явно нужно
+
+---
+
+### Проблема 4: Namespace members с некорректным export status
+
+**Симптом**: Приватные функции внутри exported namespace считаются exported
+
+**Причина**: Стандартная логика `determine_export_status()` ищет parent `export_statement`. Для namespace это дает:
+```
+export_statement
+  └─ internal_module (namespace)
+      └─ statement_block
+          └─ function_declaration  # parent is export_statement!
+```
+
+**Решение**: Custom `export_check` для namespace members:
+
+```python
+def has_export_keyword(node: Node, doc: TreeSitterDocument) -> bool:
+    """Check if node has 'export' keyword directly."""
+    node_text = doc.get_node_text(node).strip()
+    if node_text.startswith("export "):
+        return True
+    if node.parent and node.parent.type == "export_statement":
+        return True
+    return False
+```
+
+**Урок**: Для вложенных структур (namespaces, modules) стандартная export логика не работает. Используйте `export_check` для точной проверки.
+
+---
+
+### Ошибки в процессе отладки
+
+**Что делал неправильно:**
+1. Много времени на debug logging вместо систематического сравнения с legacy code
+2. Не изучил старую реализацию (`_collect_class_members()`) перед началом
+3. Не использовал простые debug scripts - сразу пошел в heavy Golden infrastructure
+4. Сделал assumptions (protected = public API) вместо чтения документации
+
+**Что нужно было сделать:**
+1. Прочитать `_collect_*` методы в старой реализации
+2. Найти и понять все edge cases (semicolons, namespace exports)
+3. Создать минимальные debug scripts для каждой проблемы
+4. Проверить golden files и комментарии в do-файлах
+
+**Правильный workflow:**
+1. Изучить legacy implementation (старые `_collect_*` методы)
+2. Найти все queries и их использование
+3. Понять edge cases (semicolons, extended ranges, custom checks)
+4. Написать профили следуя найденным паттернам
+5. Debug scripts для быстрой итерации
+6. Golden tests как финальная верификация
 
 ---
 
@@ -303,12 +419,10 @@ query="(function_definition) @element"
 
 ### Immediate (остальные языки)
 
-1. **TypeScript** - похож на JavaScript, export keyword
-2. **JavaScript** - convention-based visibility (_prefix)
-3. **Python** - convention-based (_ и __)
-4. **Rust** - pub keyword logic
-5. **C/C++** - static keyword
-6. **Kotlin** - modifiers как Scala
+1. **JavaScript** - похож на TypeScript, export keyword
+2. **Rust** - pub keyword logic
+3. **C/C++** - static keyword
+4. **Kotlin** - modifiers как Scala
 
 ### Strategy
 

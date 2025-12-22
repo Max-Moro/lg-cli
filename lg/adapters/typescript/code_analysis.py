@@ -227,32 +227,36 @@ class TypeScriptCodeAnalyzer(CodeAnalyzer):
             "decorator_expression",   # TypeScript decorator expressions
         }
 
-    def collect_language_specific_private_elements(self) -> List[ElementInfo]:
+    def analyze_element(self, node: Node) -> ElementInfo:
         """
-        Collect TypeScript-specific private elements.
+        Override to extend range for fields to include semicolons.
 
-        Note: Classes, interfaces, types, and methods are already collected by base CodeAnalyzer.
-        This method collects only TypeScript-specific elements:
-        - namespaces
-        - enums
-        - class fields (properties)
-        - imports
-        - variables
+        Args:
+            node: Tree-sitter node of element
 
         Returns:
-            List of TypeScript-specific private elements
+            ElementInfo with potentially extended node range for fields
         """
-        private_elements = []
+        # Get standard ElementInfo
+        element_info = super().analyze_element(node)
 
-        # TypeScript-specific elements (classes/interfaces/methods already collected by base)
-        self._collect_namespaces(private_elements)
-        self._collect_enums(private_elements)
-        self._collect_class_fields(private_elements)
-        self._collect_imports(private_elements)
-        self._collect_variables(private_elements)
+        # For fields, extend range to include trailing semicolon
+        if element_info.element_type == "field":
+            extended_node = self._extend_range_for_semicolon(node)
+            # Create new ElementInfo with extended node
+            element_info = ElementInfo(
+                node=cast(Node, extended_node),
+                element_type=element_info.element_type,
+                name=element_info.name,
+                visibility=element_info.visibility,
+                export_status=element_info.export_status,
+                is_method=element_info.is_method,
+                decorators=element_info.decorators
+            )
 
-        return private_elements
-    
+        return element_info
+
+
     def _collect_namespaces(self, private_elements: List[ElementInfo]) -> None:
         """Collect non-exported namespaces."""
         namespaces = self.doc.query_opt("namespaces")
@@ -462,12 +466,13 @@ class TypeScriptCodeAnalyzer(CodeAnalyzer):
 
     def get_element_profiles(self) -> Optional[LanguageElementProfiles]:
         """
-        Return None to use legacy mode (will be migrated in Phase 2).
+        Return TypeScript element profiles for profile-based public API collection.
 
         Returns:
-            None (backward compatibility during migration)
+            LanguageElementProfiles for TypeScript
         """
-        return None
+        from ..optimizations.public_api.language_profiles.typescript import TYPESCRIPT_PROFILES
+        return TYPESCRIPT_PROFILES
 
     def _is_whitespace_or_comment(self, node: Node) -> bool:
         """

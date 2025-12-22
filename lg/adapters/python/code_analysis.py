@@ -187,40 +187,6 @@ class PythonCodeAnalyzer(CodeAnalyzer):
             "decorator",              # Python @decorator
         }
 
-    def collect_language_specific_private_elements(self) -> List[ElementInfo]:
-        """
-        Collect Python-specific private elements.
-
-        Includes handling of variables/assignments and other Python-specific constructs.
-
-        Returns:
-            List of Python-specific private elements
-        """
-        private_elements = []
-
-        # Collect assignments (variables)
-        self._collect_variable_assignments(private_elements)
-
-        return private_elements
-    
-    def _collect_variable_assignments(self, private_elements: List[ElementInfo]) -> None:
-        """
-        Collect Python variables that should be removed in public API mode.
-
-        Args:
-            private_elements: List to add private elements to
-        """
-        assignments = self.doc.query_opt("assignments")
-        for node, capture_name in assignments:
-            if capture_name == "variable_name":
-                # Get assignment statement node
-                assignment_def = node.parent
-                if assignment_def:
-                    element_info = self.analyze_element(assignment_def)
-
-                    # For top-level variables check visibility and export
-                    if not element_info.in_public_api:
-                        private_elements.append(element_info)
 
     def compute_strippable_range(self, func_def: Node, body_node: Node) -> Tuple[int, int]:
         """
@@ -307,12 +273,13 @@ class PythonCodeAnalyzer(CodeAnalyzer):
 
     def get_element_profiles(self) -> Optional[LanguageElementProfiles]:
         """
-        Return None to use legacy mode (will be migrated in Phase 2).
+        Return Python element profiles for profile-based public API collection.
 
         Returns:
-            None (backward compatibility during migration)
+            LanguageElementProfiles for Python
         """
-        return None
+        from ..optimizations.public_api.language_profiles.python import PYTHON_PROFILES
+        return PYTHON_PROFILES
 
     def _is_whitespace_or_comment(self, node: Node) -> bool:
         """
