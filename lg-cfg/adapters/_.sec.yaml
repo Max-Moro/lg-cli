@@ -62,7 +62,7 @@ src:
               - condition: "TAGSET:adapters-optimizations:imports"
                 allow: ["/imports.py"]
               - condition: "TAGSET:adapters-optimizations:public-api"
-                allow: ["/public_api.py"]
+                allow: ["/public_api.py", "/public_api/"]
           python:
             mode: allow
             allow:

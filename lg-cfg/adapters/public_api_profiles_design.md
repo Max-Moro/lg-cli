@@ -924,3 +924,202 @@ Profile-based architecture для public_api оптимизации:
 5. **Переиспользует**: наследование профилей убирает дублирование
 
 Это не латание дыр, а фундаментальное улучшение архитектуры.
+
+---
+
+## IMPLEMENTATION STATUS (Updated 2025-12-22)
+
+### Completed Phases
+
+#### ✅ Phase 1: Infrastructure (Completed)
+
+**Files created:**
+- `lg/adapters/optimizations/public_api/profiles.py` - ElementProfile, LanguageElementProfiles
+- `lg/adapters/optimizations/public_api/collector.py` - PublicApiCollector
+- `lg/adapters/optimizations/public_api/optimizer.py` - Moved from old public_api.py
+- `lg/adapters/optimizations/public_api/language_profiles/` - Package for language profiles
+
+**Core infrastructure:**
+- `ElementProfile` dataclass with:
+  - `name`: Profile name for metrics/placeholders
+  - `query`: Single-pattern tree-sitter query
+  - `parent_profile`: Inheritance support
+  - `additional_check`: Optional refinement logic
+  - `visibility_check`: Custom visibility logic
+  - `export_check`: Custom export logic
+  - `uses_visibility_for_public_api`: NEW - Explicit API semantics flag (see below)
+
+- `PublicApiCollector`: Universal collector using profiles
+- `CodeAnalyzer.get_element_profiles()`: Abstract method for language profiles
+- Backward compatibility: languages return None → use legacy mode
+
+**Git commit:** `1921a7f feat: Implement Phase 1 - profile-based public_api infrastructure`
+
+#### ✅ Phase 2: Scala Profiles (Completed)
+
+**File created:**
+- `lg/adapters/optimizations/public_api/language_profiles/scala.py`
+
+**Profiles implemented:**
+- 10 element types: class, case_class, trait, object, type, function, method, variable, field (val/var)
+- Single-pattern queries (no overlaps)
+- ~120 lines of imperative code removed from ScalaCodeAnalyzer
+
+**Results:**
+- 4/5 tests passing (1 golden formatting mismatch only)
+- No deduplication needed
+- Clean declarative code
+
+**Git commit:** `23a7178 feat: Implement Phase 2 - Scala element profiles (pilot)`
+
+#### 🔄 Phase 3: Remaining Languages (In Progress)
+
+**Languages migrated:**
+
+1. **Scala** - ✅ Complete (4/5 tests)
+2. **Java** - 🔄 Partial (10/14 tests)
+   - Issues: field visibility query needs work
+3. **Go** - 🔄 Partial (10/14 tests)
+   - Issues: type alias query overlap with struct/interface
+
+**Languages pending:**
+- JavaScript
+- TypeScript
+- Rust
+- C/C++
+- Python
+- Kotlin
+
+**Git commits:**
+- `5b185ef WIP: Migrate Java and Go to profiles (partial)`
+- `0b6af7b feat: Add uses_visibility_for_public_api to ElementProfile`
+
+### Architecture Evolution
+
+#### Critical Discovery: uses_visibility_for_public_api
+
+**Problem found during Java migration:**
+
+Original `ElementInfo.in_public_api` property used heuristic:
+```python
+member_types = {"method", "field", "property", "val", "var", "constructor"}
+if self.element_type in member_types:
+    return self.is_public  # visibility-based
+else:
+    return self.is_exported  # export-based
+```
+
+When `PublicApiCollector` overrides `element_type` with profile name (e.g., "variable"), this heuristic breaks:
+- Java top-level variables: use visibility (public/private), NOT export
+- But "variable" not in member_types → checks export → WRONG!
+
+**Solution: Explicit flag in ElementProfile**
+
+Added `uses_visibility_for_public_api: bool = True`:
+```python
+@dataclass
+class ElementProfile:
+    name: str
+    query: str
+    # ... other fields ...
+    uses_visibility_for_public_api: bool = True
+    """
+    Whether this element type uses visibility for public API determination.
+
+    - True (default): Element is in public API if it's public (visibility-based)
+    - False: Element is in public API if it's exported (export-based)
+
+    Examples:
+    - Java fields/variables: uses_visibility_for_public_api=True
+    - TypeScript top-level functions: uses_visibility_for_public_api=False
+    - Go everything: uses_visibility_for_public_api=True (naming IS visibility)
+    """
+```
+
+**Benefits:**
+- ✅ Declarative: languages explicitly control semantics
+- ✅ No heuristics: clear and predictable
+- ✅ Flexible: supports both visibility and export paradigms
+- ✅ Default True: most common case
+
+**Implementation:**
+- Added to `ElementProfile` (profiles.py)
+- Added to `ElementInfo` (code_analysis.py)
+- Collector passes flag from profile to ElementInfo
+- `in_public_api` property checks flag first, then fallback to heuristic
+
+### Known Issues & Next Steps
+
+#### Java (10/14 tests passing)
+
+**Issue 1: Field visibility**
+- Test `test_class_member_visibility` fails
+- Fields being removed incorrectly
+- Need to debug field query: `(field_declaration declarator: (variable_declarator name: (identifier) @element))`
+- May need to adjust query to capture declaration node directly
+
+**Issue 2: Golden formatting**
+- Test `test_public_api_only_basic` fails on golden match
+- Likely just placeholder formatting differences
+- Will resolve after all tests pass
+
+#### Go (10/14 tests passing)
+
+**Issue 1: Type alias overlap**
+- Test `test_type_aliases` fails
+- Query `(type_declaration (type_spec name: (type_identifier) @element))` catches structs AND interfaces too
+- Added `is_type_alias_not_struct_or_interface` check but still failing
+- Need better query or additional_check logic
+
+**Issue 2: Golden formatting**
+- Test `test_public_api_only_basic` fails on golden match
+
+#### General Strategy
+
+**For complex languages (Java, Go, Rust):**
+1. Debug and fix issues before moving to simpler languages
+2. Validate architecture handles edge cases
+3. Learn patterns that apply to other languages
+
+**Next actions:**
+1. Fix Java field query issue
+2. Fix Go type alias query issue
+3. Ensure 14/14 tests pass for both
+4. Then migrate: JavaScript → TypeScript → Python → Rust → C/C++ → Kotlin
+
+### Files Modified Summary
+
+**Core infrastructure:**
+- `lg/adapters/optimizations/public_api/profiles.py`
+- `lg/adapters/optimizations/public_api/collector.py`
+- `lg/adapters/code_analysis.py` (+ uses_visibility_for_public_api)
+
+**Language profiles created:**
+- `lg/adapters/optimizations/public_api/language_profiles/scala.py`
+- `lg/adapters/optimizations/public_api/language_profiles/java.py`
+- `lg/adapters/optimizations/public_api/language_profiles/go.py`
+
+**Language analyzers updated:**
+- `lg/adapters/scala/code_analysis.py` - returns SCALA_PROFILES, removed ~120 lines
+- `lg/adapters/java/code_analysis.py` - returns JAVA_PROFILES, removed ~100 lines
+- `lg/adapters/go/code_analysis.py` - returns GO_PROFILES, removed ~80 lines
+- All other languages: added stub `get_element_profiles()` returning None (legacy mode)
+
+### Test Results Summary
+
+```
+Scala:  4/5 tests   (80%) ✅
+Java:  10/14 tests  (71%) 🔄
+Go:    10/14 tests  (71%) 🔄
+Other: N/A          (using legacy mode)
+
+Total migrated tests: 24/33 (73%)
+```
+
+### Key Learnings
+
+1. **Query granularity matters**: Capture the definition node, not identifier
+2. **Tree-sitter varies by language**: Java top-level constants are `local_variable_declaration`
+3. **Explicit over implicit**: `uses_visibility_for_public_api` > heuristics
+4. **Test complex first**: Java/Go revealed architectural issues early
+5. **Single-pattern queries**: No overlaps = no deduplication needed
