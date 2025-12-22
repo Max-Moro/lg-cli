@@ -38,6 +38,8 @@ class JavaScriptCodeAnalyzer(CodeAnalyzer):
             return "arrow_function"
         elif node_type == "method_definition":
             return "method"
+        elif node_type == "field_definition":
+            return "field"
         elif node_type == "variable_declaration":
             return "variable"
         elif node_type == "import_statement":
@@ -227,74 +229,99 @@ class JavaScriptCodeAnalyzer(CodeAnalyzer):
         """
         return set()
 
-    def collect_language_specific_private_elements(self) -> List[ElementInfo]:
+    def analyze_element(self, node: Node) -> ElementInfo:
         """
-        Collect JavaScript-specific private elements.
+        Override to extend range for fields to include semicolons.
 
-        Note: Classes and methods are already collected by base CodeAnalyzer.
-        This method collects only JavaScript-specific elements:
-        - class fields (including ES2022+ private fields with #)
-        - variables (const, let, var)
-        - non-re-exported imports
+        Args:
+            node: Tree-sitter node of element
 
         Returns:
-            List of JavaScript-specific private elements
+            ElementInfo with potentially extended node range for fields
         """
-        private_elements = []
+        # Get standard ElementInfo
+        element_info = super().analyze_element(node)
 
-        # JavaScript-specific elements (classes/methods already collected by base)
-        self._collect_class_fields(private_elements)
-        self._collect_variables(private_elements)
-        self._collect_imports(private_elements)
+        # For fields, extend range to include trailing semicolon
+        if element_info.element_type == "field":
+            extended_node = self._extend_range_for_semicolon(node)
+            # Create new ElementInfo with extended node
+            from ..code_analysis import ElementInfo as EI
+            element_info = EI(
+                node=extended_node,
+                element_type=element_info.element_type,
+                name=element_info.name,
+                visibility=element_info.visibility,
+                export_status=element_info.export_status,
+                is_method=element_info.is_method,
+                decorators=element_info.decorators
+            )
 
-        return private_elements
+        return element_info
 
-    def _collect_variables(self, private_elements: List[ElementInfo]) -> None:
-        """Collect non-exported variables."""
-        variables = self.doc.query_opt("variables")
-        for node, capture_name in variables:
-            if capture_name == "variable_name":
-                parent = node.parent
-                if parent and getattr(parent, "parent", None):
-                    variable_def = parent.parent  # variable_declarator -> variable_declaration
-                else:
-                    variable_def = None
-                if variable_def is not None:
-                    element_info = self.analyze_element(variable_def)
-                    if not element_info.in_public_api:
-                        private_elements.append(element_info)
+    def _extend_range_for_semicolon(self, node: Node) -> Node:
+        """
+        Extend node range to include trailing semicolon if present.
 
-    def _collect_class_fields(self, private_elements: List[ElementInfo]) -> None:
-        """Collect private class fields (including ES2022+ private fields with #)."""
-        class_members = self.doc.query_opt("class_members")
-        for node, capture_name in class_members:
-            # Only collect field definitions (not methods - they're collected by base)
-            if capture_name in ("field_name", "private_field_name"):
-                field_def = node.parent  # property_identifier -> field_definition
-                if field_def:
-                    element_info = self.analyze_element(field_def)
-                    if not element_info.in_public_api:
-                        private_elements.append(element_info)
+        Args:
+            node: Tree-sitter node
 
-    def _collect_classes(self, private_elements: List[ElementInfo]) -> None:
-        """Collect non-exported classes."""
-        classes = self.doc.query_opt("classes")
-        for node, capture_name in classes:
-            if capture_name == "class_name":
-                class_def = node.parent
-                if class_def:
-                    element_info = self.analyze_element(class_def)
-                    if not element_info.in_public_api:
-                        private_elements.append(element_info)
+        Returns:
+            Node with extended range or original node
+        """
+        # Check if there's a semicolon right after this node
+        parent = node.parent
+        if not parent:
+            return node
 
-    def _collect_imports(self, private_elements: List[ElementInfo]) -> None:
-        """Collect non-exported imports."""
-        imports = self.doc.query_opt("imports")
-        for node, capture_name in imports:
-            if capture_name == "import":
-                element_info = self.analyze_element(node)
-                if not element_info.in_public_api:
-                    private_elements.append(element_info)
+        # Find position of this node among siblings
+        siblings = parent.children
+        node_index = None
+        for i, sibling in enumerate(siblings):
+            if sibling == node:
+                node_index = i
+                break
+
+        if node_index is None:
+            return node
+
+        # Check if next sibling is a semicolon
+        if node_index + 1 < len(siblings):
+            next_sibling = siblings[node_index + 1]
+            if (next_sibling.type == ";" or
+                self.doc.get_node_text(next_sibling).strip() == ";"):
+                # Create synthetic range that includes the semicolon
+                return self._create_extended_range_node(node, next_sibling)
+
+        return node
+
+    def _create_extended_range_node(self, original_node: Node, semicolon_node: Node) -> Node:
+        """
+        Create synthetic node-like object with extended range.
+
+        Args:
+            original_node: Original node
+            semicolon_node: Semicolon node
+
+        Returns:
+            Object with extended range
+        """
+        class ExtendedRangeNode:
+            def __init__(self, start_node, end_node):
+                self.start_byte = start_node.start_byte
+                self.end_byte = end_node.end_byte
+                self.start_point = start_node.start_point
+                self.end_point = end_node.end_point
+                self.type = start_node.type
+                self.parent = start_node.parent
+                # Copy other frequently used attributes
+                for attr in ['children', 'text']:
+                    if hasattr(start_node, attr):
+                        setattr(self, attr, getattr(start_node, attr))
+
+        return ExtendedRangeNode(original_node, semicolon_node)
+
+    # Legacy collection methods removed - using profile-based collection
 
     def _check_export_in_source_line(self, node: Node) -> bool:
         """
@@ -395,12 +422,13 @@ class JavaScriptCodeAnalyzer(CodeAnalyzer):
 
     def get_element_profiles(self) -> Optional[LanguageElementProfiles]:
         """
-        Return None to use legacy mode (will be migrated in Phase 2).
+        Return JavaScript element profiles for profile-based public API collection.
 
         Returns:
-            None (backward compatibility during migration)
+            LanguageElementProfiles for JavaScript
         """
-        return None
+        from ..optimizations.public_api.language_profiles.javascript import JAVASCRIPT_PROFILES
+        return JAVASCRIPT_PROFILES
 
     def _is_whitespace_or_comment(self, node: Node) -> bool:
         """

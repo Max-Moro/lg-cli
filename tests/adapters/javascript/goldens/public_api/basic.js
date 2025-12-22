@@ -9,7 +9,7 @@ export const PUBLIC_VERSION = '1.0.0';
 export const API_ENDPOINT = 'https://api.example.com';
 
 // Private module-level constants (should be filtered out)
-// … 2 functions omitted
+// … 2 variables omitted
 
 // Public class with mixed visibility members
 export class UserManager {
@@ -18,8 +18,7 @@ export class UserManager {
     isInitialized = false;
 
     // Private properties (should be filtered out with public_api_only)
-    // … method omitted;
-    // … method omitted;
+    // … 2 fields omitted
 
     constructor(apiEndpoint = API_ENDPOINT) {
         this.apiEndpoint = apiEndpoint;
@@ -119,7 +118,7 @@ export const UserStatus = {
 };
 
 // Private enum-like object (not exported, should be filtered out)
-// … function omitted (5 lines)
+// … variable omitted (5 lines)
 
 // Public functions (should be preserved)
 export function createUserManager(endpoint) {
@@ -150,7 +149,7 @@ export const UserUtils = {
 };
 
 // Private namespace-like object (not exported, should be filtered out)
-// … function omitted (14 lines)
+// … variable omitted (14 lines)
 
 // Default export (should be preserved)
 export default UserManager;
