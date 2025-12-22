@@ -5,9 +5,9 @@ Combines structure analysis and visibility analysis functionality for Scala.
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, List, Optional, Set
+from typing import TYPE_CHECKING, Optional, Set
 
-from ..code_analysis import CodeAnalyzer, Visibility, ExportStatus, ElementInfo
+from ..code_analysis import CodeAnalyzer, Visibility, ExportStatus
 from ..tree_sitter_support import Node
 
 if TYPE_CHECKING:
@@ -201,126 +201,6 @@ class ScalaCodeAnalyzer(CodeAnalyzer):
             "annotation",
         }
 
-    def collect_language_specific_private_elements(self) -> List[ElementInfo]:
-        """
-        Collect Scala-specific private elements.
-
-        Note: Regular classes are already collected by base CodeAnalyzer.
-        This method collects Scala-specific elements:
-        - traits (Scala-specific, not in base)
-        - case classes (Scala-specific, not in base)
-        - objects (Scala-specific singletons)
-        - class fields (val/var properties)
-        - type aliases
-
-        Returns:
-            List of Scala-specific private elements
-        """
-        private_elements = []
-
-        # Scala-specific elements (regular classes already collected by base)
-        self._collect_traits(private_elements)
-        self._collect_case_classes(private_elements)
-        self._collect_objects(private_elements)
-        self._collect_class_fields(private_elements)
-        self._collect_type_aliases(private_elements)
-
-        return private_elements
-
-    def _collect_objects(self, private_elements: List[ElementInfo]) -> None:
-        """Collect non-public objects."""
-        objects = self.doc.query_opt("objects")
-        for node, capture_name in objects:
-            if capture_name == "object_name":
-                object_def = node.parent
-                if object_def:
-                    element_info = self.analyze_element(object_def)
-                    if not element_info.in_public_api:
-                        private_elements.append(element_info)
-
-    def _collect_traits(self, private_elements: List[ElementInfo]) -> None:
-        """Collect non-public traits."""
-        traits = self.doc.query_opt("traits")
-        seen_positions = set()
-
-        for node, capture_name in traits:
-            if capture_name == "trait_name":
-                trait_def = node.parent
-                if trait_def:
-                    # Deduplicate by position (traits query has multiple patterns)
-                    pos_key = (trait_def.start_byte, trait_def.end_byte)
-                    if pos_key in seen_positions:
-                        continue
-                    seen_positions.add(pos_key)
-
-                    element_info = self.analyze_element(trait_def)
-                    if not element_info.in_public_api:
-                        private_elements.append(element_info)
-
-    def _collect_case_classes(self, private_elements: List[ElementInfo]) -> None:
-        """Collect non-public case classes."""
-        case_classes = self.doc.query_opt("case_classes")
-        seen_positions = set()
-
-        for node, capture_name in case_classes:
-            if capture_name == "case_class_name":
-                case_class_def = node.parent
-                if case_class_def:
-                    # Deduplicate by position (case classes may also be in base classes query)
-                    pos_key = (case_class_def.start_byte, case_class_def.end_byte)
-                    if pos_key in seen_positions:
-                        continue
-                    seen_positions.add(pos_key)
-
-                    element_info = self.analyze_element(case_class_def)
-                    if not element_info.in_public_api:
-                        private_elements.append(element_info)
-
-    def _collect_type_aliases(self, private_elements: List[ElementInfo]) -> None:
-        """Collect non-public type aliases."""
-        type_aliases = self.doc.query_opt("type_aliases")
-        for node, capture_name in type_aliases:
-            if capture_name == "type_name":
-                type_def = node.parent
-                if type_def:
-                    element_info = self.analyze_element(type_def)
-                    if not element_info.in_public_api:
-                        private_elements.append(element_info)
-
-    def _collect_variables(self, private_elements: List[ElementInfo]) -> None:
-        """Collect non-public vals and vars."""
-        variables = self.doc.query_opt("variables")
-        for node, capture_name in variables:
-            if capture_name in ("val_name", "var_name", "given_name"):
-                # Navigate to val_definition or var_definition
-                var_def = node.parent
-                if var_def:
-                    element_info = self.analyze_element(var_def)
-                    if not element_info.in_public_api:
-                        private_elements.append(element_info)
-
-    def _collect_classes(self, private_elements: List[ElementInfo]) -> None:
-        """Collect non-public classes."""
-        classes = self.doc.query_opt("classes")
-        for node, capture_name in classes:
-            if capture_name == "class_name":
-                class_def = node.parent
-                if class_def:
-                    element_info = self.analyze_element(class_def)
-                    if not element_info.in_public_api:
-                        private_elements.append(element_info)
-
-    def _collect_class_fields(self, private_elements: List[ElementInfo]) -> None:
-        """Collect private class fields (val/var only, not methods)."""
-        class_members = self.doc.query_opt("class_members")
-        for node, capture_name in class_members:
-            # Only collect fields, not methods (methods collected by base)
-            if capture_name == "field_name":
-                member_def = node.parent  # identifier -> definition
-                if member_def:
-                    element_info = self.analyze_element(member_def)
-                    if not element_info.in_public_api:
-                        private_elements.append(element_info)
 
     def _is_case_class(self, node: Node) -> bool:
         """
@@ -339,14 +219,15 @@ class ScalaCodeAnalyzer(CodeAnalyzer):
                     return True
         return False
 
-    def get_element_profiles(self) -> Optional[LanguageElementProfiles]:
+    def get_element_profiles(self) -> Optional["LanguageElementProfiles"]:
         """
-        Return None to use legacy mode (will be migrated in Phase 2).
+        Return Scala element profiles.
 
         Returns:
-            None (backward compatibility during migration)
+            Scala element profiles for profile-based collection
         """
-        return None
+        from ..optimizations.public_api.language_profiles.scala import SCALA_PROFILES
+        return SCALA_PROFILES
 
     def _is_whitespace_or_comment(self, node: Node) -> bool:
         """

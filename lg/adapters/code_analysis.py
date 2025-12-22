@@ -566,10 +566,17 @@ class CodeAnalyzer(ABC):
         """Return node types for individual decorators."""
         pass
 
-    @abstractmethod
     def collect_language_specific_private_elements(self) -> List[ElementInfo]:
-        """Collect language-specific private elements."""
-        pass
+        """
+        Collect language-specific private elements.
+
+        NOTE: This method is only used in legacy mode (when get_element_profiles() returns None).
+        For profile-based languages, this method is not called - profiles handle all collection.
+
+        Returns:
+            List of language-specific private elements
+        """
+        return []
 
     # ============= Helper methods =============
 
