@@ -258,6 +258,7 @@ class KotlinCodeAnalyzer(CodeAnalyzer):
         Find all annotations for Kotlin code element.
 
         In Kotlin annotations are located inside modifiers node.
+        For misparsed classes (infix_expression), annotations are in parent annotated_expression nodes.
 
         Args:
             node: Element node
@@ -267,7 +268,7 @@ class KotlinCodeAnalyzer(CodeAnalyzer):
         """
         annotations = []
 
-        # Look for modifiers among child nodes
+        # Standard case: Look for modifiers among child nodes
         for child in node.children:
             if child.type == "modifiers":
                 # Collect all annotations inside modifiers
@@ -275,155 +276,32 @@ class KotlinCodeAnalyzer(CodeAnalyzer):
                     if modifier_child.type == "annotation":
                         annotations.append(modifier_child)
 
-        return annotations
-
-    def collect_language_specific_private_elements(self) -> List[ElementInfo]:
-        """
-        Collect Kotlin-specific private elements.
-
-        Includes object declarations, properties.
-
-        Returns:
-            List of Kotlin-specific private elements
-        """
-        private_elements = []
-
-        # Collect object declarations
-        self._collect_objects(private_elements)
-
-        # Collect properties (Kotlin properties)
-        self._collect_properties(private_elements)
-
-        # Collect misparsed classes (with multiple annotations)
-        self._collect_misparsed_classes(private_elements)
-
-        return private_elements
-
-    def _collect_objects(self, private_elements: List[ElementInfo]) -> None:
-        """Collect non-exported object declarations."""
-        objects = self.doc.query_opt("objects")
-        for node, capture_name in objects:
-            if capture_name == "object_name":
-                object_def = node.parent
-                if object_def:
-                    element_info = self.analyze_element(object_def)
-                    if not element_info.in_public_api:
-                        private_elements.append(element_info)
-
-    def _collect_properties(self, private_elements: List[ElementInfo]) -> None:
-        """Collect private/protected properties."""
-        properties = self.doc.query_opt("properties")
-        for node, capture_name in properties:
-            if capture_name == "property_name":
-                # Walk up to property_declaration
-                property_def = node.parent
-                if property_def:
-                    property_def = property_def.parent  # variable_declaration -> property_declaration
-                if property_def:
-                    element_info = self.analyze_element(property_def)
-                    if not element_info.in_public_api:
-                        private_elements.append(element_info)
-
-    def _collect_misparsed_classes(self, private_elements: List[ElementInfo]) -> None:
-        """
-        Collect classes that Tree-sitter misparsed.
-
-        Issue: Tree-sitter Kotlin sometimes misparsed classes with multiple
-        annotations on separate lines before visibility modifier.
-        Instead of class_declaration creates annotated_expression -> infix_expression.
-
-        This method searches for such constructs directly in text and checks visibility.
-        """
-        # Look for all "infix_expression" nodes which may be misparsed classes
-        def find_infix_expressions(node):
-            """Recursively find all infix_expression nodes"""
-            results = []
-            if node.type == "infix_expression":
-                results.append(node)
-            for child in node.children:
-                results.extend(find_infix_expressions(child))
-            return results
-
-        infix_nodes = find_infix_expressions(self.doc.root_node)
-
-        for infix_node in infix_nodes:
-            # Get node text
-            node_text = self.doc.get_node_text(infix_node)
-
-            # Normalize to string
-            if isinstance(node_text, bytes):
-                text_str = node_text.decode('utf-8', errors='ignore')
-            else:
-                text_str = node_text
-
-            # Check if text contains "private class" or "protected class"
-            if "private class" not in text_str and "protected class" not in text_str:
-                continue
-
-            # This is probably a misparsed class
-            # Determine visibility from text
-            if "private" in text_str:
-                visibility = Visibility.PRIVATE
-            elif "protected" in text_str:
-                visibility = Visibility.PROTECTED
-            else:
-                continue  # Not private/protected - skip
-
-            # Extract class name (after "class ")
-            import re
-            class_match = re.search(r'\b(?:private|protected)\s+class\s+(\w+)', text_str)
-            if class_match:
-                class_name = class_match.group(1)
-            else:
-                class_name = None
-
-            # Find annotations before this node
-            decorators = self._find_annotations_before_node(infix_node)
-
-            # Create ElementInfo
-            element_info = ElementInfo(
-                node=infix_node,
-                element_type="class",
-                name=class_name,
-                visibility=visibility,
-                export_status=ExportStatus.NOT_EXPORTED,
-                is_method=False,
-                decorators=decorators
-            )
-
-            private_elements.append(element_info)
-
-    def _find_annotations_before_node(self, node: Node) -> List[Node]:
-        """
-        Find annotations before node by walking up annotated_expression tree.
-
-        Args:
-            node: Node for finding annotations
-
-        Returns:
-            List of annotation nodes
-        """
-        annotations = []
-
-        # Walk up parents collecting annotated_expression
-        current = node.parent
-        while current and current.type == "annotated_expression":
-            # Look for annotations among children of annotated_expression
-            for child in current.children:
-                if child.type == "annotation":
-                    annotations.insert(0, child)  # Insert at start for correct order
-            current = current.parent
+        # Special case: misparsed classes (infix_expression with "private class" or "protected class")
+        if node.type == "infix_expression":
+            node_text = self.doc.get_node_text(node)
+            if "private class" in node_text or "protected class" in node_text:
+                # Walk up parents collecting annotated_expression annotations
+                current = node.parent
+                while current and current.type == "annotated_expression":
+                    # Look for annotations among children of annotated_expression
+                    for child in current.children:
+                        if child.type == "annotation":
+                            annotations.insert(0, child)  # Insert at start for correct order
+                    current = current.parent
 
         return annotations
+
+    # Legacy collection methods removed - using profile-based collection
 
     def get_element_profiles(self) -> Optional[LanguageElementProfiles]:
         """
-        Return None to use legacy mode (will be migrated in Phase 2).
+        Return Kotlin element profiles for profile-based public API collection.
 
         Returns:
-            None (backward compatibility during migration)
+            LanguageElementProfiles for Kotlin
         """
-        return None
+        from ..optimizations.public_api.language_profiles.kotlin import KOTLIN_PROFILES
+        return KOTLIN_PROFILES
 
     def _is_whitespace_or_comment(self, node: Node) -> bool:
         """

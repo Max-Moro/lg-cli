@@ -236,7 +236,7 @@ class ScalaCodeAnalyzer(CodeAnalyzer):
 
 ## Migration Status
 
-### ✅ Completed Languages (44/44 tests)
+### ✅ Completed Languages (48/48 tests)
 
 | Language | Tests | Notes |
 |----------|-------|-------|
@@ -247,11 +247,11 @@ class ScalaCodeAnalyzer(CodeAnalyzer):
 | **TypeScript** | 6/6 | Semicolon extension via analyze_element(), namespace export checks |
 | **JavaScript** | 6/6 | field_definition must be mapped in determine_element_type(), semicolon extension |
 | **Rust** | 11/11 | Custom visibility (pub variants), trait methods inheritance, empty impl removal, top-level macros |
+| **Kotlin** | 4/4 | Misparsed classes (infix_expression), custom decorator finding for annotated classes |
 
 ### 🔄 Pending Languages
 
 - C/C++
-- Kotlin
 
 ---
 
