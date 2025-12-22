@@ -236,7 +236,7 @@ class ScalaCodeAnalyzer(CodeAnalyzer):
 
 ## Migration Status
 
-### ✅ Completed Languages (48/48 tests)
+### ✅ ALL LANGUAGES MIGRATED! (57/57 tests) 🎉
 
 | Language | Tests | Notes |
 |----------|-------|-------|
@@ -248,10 +248,7 @@ class ScalaCodeAnalyzer(CodeAnalyzer):
 | **JavaScript** | 6/6 | field_definition must be mapped in determine_element_type(), semicolon extension |
 | **Rust** | 11/11 | Custom visibility (pub variants), trait methods inheritance, empty impl removal, top-level macros |
 | **Kotlin** | 4/4 | Misparsed classes (infix_expression), custom decorator finding for annotated classes |
-
-### 🔄 Pending Languages
-
-- C/C++
+| **C/C++** | 9/9 | Access specifiers (public:/private:/protected:), static keyword, anonymous namespaces |
 
 ---
 
@@ -415,14 +412,51 @@ def has_export_keyword(node: Node, doc: TreeSitterDocument) -> bool:
 
 ---
 
+## C++ Migration: Critical Bug - export_check Semantics
+
+### Problem: Incorrect export_check return value semantics
+
+**Symptom**: All classes removed, even public ones
+
+**Initial mistake**: Created `is_not_exported_cpp()` returning `True` when element should be removed:
+
+```python
+# ❌ WRONG - returns True when NOT exported
+def is_not_exported_cpp(node: Node, doc: TreeSitterDocument) -> bool:
+    if has_static_specifier(node, doc):
+        return True  # Not exported
+    if in_anonymous_namespace(node):
+        return True  # Not exported
+    return False  # Exported
+```
+
+**Root cause**: `export_check` parameter expects `True` = exported (keep), `False` = not exported (remove)
+
+**Fix**: Renamed and inverted logic:
+
+```python
+# ✅ CORRECT - returns True when exported (should keep)
+def is_exported_cpp(node: Node, doc: TreeSitterDocument) -> bool:
+    if has_static_specifier(node, doc):
+        return False  # Not exported → remove
+    if in_anonymous_namespace(node):
+        return False  # Not exported → remove
+    return True  # Exported → keep
+```
+
+**Урок**:
+1. **export_check семантика**: `True` = exported/public (keep), `False` = not exported/private (remove)
+2. **visibility_check семантика**: Returns string "public"/"private"/"protected"
+3. **additional_check семантика**: `True` = include this element, `False` = skip
+4. Всегда тестировать на минимальном примере перед полными тестами
+
+---
+
 ## Next Steps
 
-### Immediate (остальные языки)
+### ✅ Phase 3 Complete!
 
-1. **JavaScript** - похож на TypeScript, export keyword
-2. **Rust** - pub keyword logic
-3. **C/C++** - static keyword
-4. **Kotlin** - modifiers как Scala
+All languages migrated to profile-based architecture (57/57 tests passing)
 
 ### Strategy
 

@@ -232,94 +232,7 @@ class CppCodeAnalyzer(CodeAnalyzer):
 
         return function_groups
 
-    def collect_language_specific_private_elements(self) -> List[ElementInfo]:
-        """
-        Collect C++-specific private elements.
-
-        Includes namespaces, templates, enums, class members, structs, and static declarations.
-
-        Returns:
-            List of C++-specific private elements
-        """
-        private_elements = []
-
-        # C++-specific elements
-        self._collect_namespaces(private_elements)
-        self._collect_enums(private_elements)
-        self._collect_class_members(private_elements)
-        self._collect_structs(private_elements)
-        self._collect_static_declarations(private_elements)
-        self._collect_static_variables(private_elements)
-
-        return private_elements
-
-    def _collect_namespaces(self, private_elements: List[ElementInfo]) -> None:
-        """Collect anonymous or internal namespaces."""
-        namespaces = self.doc.query_opt("namespaces")
-        for node, capture_name in namespaces:
-            if capture_name == "namespace_name":
-                namespace_def = node.parent
-                if namespace_def:
-                    element_info = self.analyze_element(namespace_def)
-                    # Anonymous namespaces don't have names
-                    if element_info.name is None or element_info.name == "":
-                        private_elements.append(element_info)
-
-    def _collect_enums(self, private_elements: List[ElementInfo]) -> None:
-        """Collect private enums."""
-        enums = self.doc.query_opt("enums")
-        for node, capture_name in enums:
-            if capture_name == "enum_name":
-                enum_def = node.parent
-                if enum_def:
-                    element_info = self.analyze_element(enum_def)
-                    if not element_info.in_public_api:
-                        private_elements.append(element_info)
-
-    def _collect_class_members(self, private_elements: List[ElementInfo]) -> None:
-        """Collect private/protected class fields and methods."""
-        # Collect fields
-        class_fields = self.doc.query_opt("class_fields")
-        for node, capture_name in class_fields:
-            if capture_name == "field_declaration":
-                element_info = self.analyze_element(node)
-                # Remove if not public
-                if not element_info.in_public_api:
-                    private_elements.append(element_info)
-
-    def _collect_structs(self, private_elements: List[ElementInfo]) -> None:
-        """Collect structs in anonymous namespaces."""
-        structs = self.doc.query_opt("structs")
-        for node, capture_name in structs:
-            if capture_name == "struct_name":
-                struct_def = node.parent
-                if struct_def:
-                    # Check if struct is in anonymous namespace
-                    if self._in_anonymous_namespace(struct_def):
-                        element_info = self.analyze_element(struct_def)
-                        private_elements.append(element_info)
-
-    def _collect_static_declarations(self, private_elements: List[ElementInfo]) -> None:
-        """Collect static function declarations (not definitions)."""
-        declarations = self.doc.query_opt("function_declarations")
-        for node, capture_name in declarations:
-            if capture_name == "function_declaration":
-                # Check if it has static specifier
-                if self._has_static_specifier(node):
-                    element_info = self.analyze_element(node)
-                    if not element_info.in_public_api:
-                        private_elements.append(element_info)
-
-    def _collect_static_variables(self, private_elements: List[ElementInfo]) -> None:
-        """Collect static variable declarations."""
-        declarations = self.doc.query_opt("variable_declarations")
-        for node, capture_name in declarations:
-            if capture_name == "variable_declaration":
-                # Check if it has static specifier
-                if self._has_static_specifier(node):
-                    element_info = self.analyze_element(node)
-                    if not element_info.in_public_api:
-                        private_elements.append(element_info)
+    # Legacy collection methods removed - using profile-based collection
 
     def _find_access_specifier(self, node: Node) -> Optional[Visibility]:
         """
@@ -412,12 +325,13 @@ class CppCodeAnalyzer(CodeAnalyzer):
 
     def get_element_profiles(self) -> Optional[LanguageElementProfiles]:
         """
-        Return None to use legacy mode (will be migrated in Phase 2).
+        Return C++ element profiles for profile-based public API collection.
 
         Returns:
-            None (backward compatibility during migration)
+            LanguageElementProfiles for C++
         """
-        return None
+        from ..optimizations.public_api.language_profiles.cpp import CPP_PROFILES
+        return CPP_PROFILES
 
     def _is_whitespace_or_comment(self, node: Node) -> bool:
         """
