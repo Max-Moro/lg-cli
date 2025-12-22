@@ -216,106 +216,6 @@ class JavaCodeAnalyzer(CodeAnalyzer):
             "marker_annotation",
         }
 
-    def collect_language_specific_private_elements(self) -> List[ElementInfo]:
-        """
-        Collect Java-specific private elements.
-
-        Note: Classes and interfaces are already collected by base CodeAnalyzer.
-        This method collects only Java-specific elements:
-        - enums
-        - annotation types
-        - class members (fields)
-        - local variables
-
-        Returns:
-            List of Java-specific private elements
-        """
-        private_elements = []
-
-        # Java-specific elements (classes/interfaces already collected by base)
-        self._collect_enums(private_elements)
-        self._collect_annotation_types(private_elements)
-        self._collect_class_members(private_elements)
-        self._collect_local_variables(private_elements)
-
-        return private_elements
-
-    def _collect_enums(self, private_elements: List[ElementInfo]) -> None:
-        """Collect non-public enums."""
-        enums = self.doc.query_opt("enums")
-        for node, capture_name in enums:
-            if capture_name == "enum_name":
-                enum_def = node.parent
-                if enum_def:
-                    element_info = self.analyze_element(enum_def)
-                    if not element_info.in_public_api:
-                        private_elements.append(element_info)
-
-    def _collect_class_members(self, private_elements: List[ElementInfo]) -> None:
-        """Collect private/protected class members."""
-        # Collect fields
-        fields = self.doc.query_opt("fields")
-        for node, capture_name in fields:
-            if capture_name == "field_name":
-                # Navigate to field_declaration
-                field_def = node.parent
-                if field_def:
-                    field_def = field_def.parent  # variable_declarator -> field_declaration
-                if field_def:
-                    element_info = self.analyze_element(field_def)
-                    if not element_info.in_public_api:
-                        private_elements.append(element_info)
-
-    def _collect_classes(self, private_elements: List[ElementInfo]) -> None:
-        """Collect non-public classes."""
-        classes = self.doc.query_opt("classes")
-        for node, capture_name in classes:
-            if capture_name == "class_name":
-                class_def = node.parent
-                if class_def:
-                    element_info = self.analyze_element(class_def)
-                    if not element_info.in_public_api:
-                        private_elements.append(element_info)
-
-    def _collect_interfaces(self, private_elements: List[ElementInfo]) -> None:
-        """Collect non-public interfaces."""
-        interfaces = self.doc.query_opt("interfaces")
-        for node, capture_name in interfaces:
-            if capture_name == "interface_name":
-                interface_def = node.parent
-                if interface_def:
-                    element_info = self.analyze_element(interface_def)
-                    if not element_info.in_public_api:
-                        private_elements.append(element_info)
-
-    def _collect_annotation_types(self, private_elements: List[ElementInfo]) -> None:
-        """Collect non-public annotation type declarations."""
-        annotation_types = self.doc.query_opt("annotation_types")
-        for node, capture_name in annotation_types:
-            if capture_name == "annotation_name":
-                annotation_def = node.parent
-                if annotation_def:
-                    element_info = self.analyze_element(annotation_def)
-                    if not element_info.in_public_api:
-                        private_elements.append(element_info)
-
-    def _collect_local_variables(self, private_elements: List[ElementInfo]) -> None:
-        """Collect non-public top-level variable declarations."""
-        local_vars = self.doc.query_opt("local_variables")
-        for node, capture_name in local_vars:
-            if capture_name == "variable_name":
-                # Navigate to local_variable_declaration
-                var_decl = node.parent  # variable_declarator
-                if var_decl:
-                    local_var_def = var_decl.parent  # local_variable_declaration
-                    if local_var_def:
-                        # Skip local variables inside methods/constructors
-                        if self._is_inside_method_or_constructor(local_var_def):
-                            continue
-
-                        element_info = self.analyze_element(local_var_def)
-                        if not element_info.in_public_api:
-                            private_elements.append(element_info)
 
     def _has_static_modifier(self, node: Node) -> bool:
         """Check if node has static modifier."""
@@ -376,13 +276,9 @@ class JavaCodeAnalyzer(CodeAnalyzer):
         return False
 
     def get_element_profiles(self) -> Optional[LanguageElementProfiles]:
-        """
-        Return None to use legacy mode (will be migrated in Phase 2).
-
-        Returns:
-            None (backward compatibility during migration)
-        """
-        return None
+        """Return Java element profiles."""
+        from ..optimizations.public_api.language_profiles.java import JAVA_PROFILES
+        return JAVA_PROFILES
 
     def _is_whitespace_or_comment(self, node: Node) -> bool:
         """

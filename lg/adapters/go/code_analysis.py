@@ -203,132 +203,6 @@ class GoCodeAnalyzer(CodeAnalyzer):
         """
         return set()
 
-    def collect_language_specific_private_elements(self) -> List[ElementInfo]:
-        """
-        Collect Go-specific private elements.
-
-        Includes unexported types, variables, constants, and private struct fields.
-
-        Returns:
-            List of Go-specific private elements
-        """
-        private_elements = []
-
-        # Go-specific elements
-        self._collect_type_aliases(private_elements)
-        self._collect_variables(private_elements)
-        self._collect_struct_fields(private_elements)
-
-        return private_elements
-
-    def _collect_type_aliases(self, private_elements: List[ElementInfo]) -> None:
-        """Collect unexported type declarations."""
-        type_aliases = self.doc.query_opt("type_aliases")
-        for node, capture_name in type_aliases:
-            if capture_name == "type_name":
-                # Navigate to type_spec/type_alias -> type_declaration
-                parent = node.parent
-                if parent and parent.parent:
-                    type_decl = parent.parent
-                    element_info = self.analyze_element(type_decl)
-                    if not element_info.in_public_api:
-                        private_elements.append(element_info)
-
-    def _collect_variables(self, private_elements: List[ElementInfo]) -> None:
-        """Collect unexported module-level variables and constants."""
-        # Collect var declarations
-        variables = self.doc.query_opt("variables")
-        seen_positions = set()
-
-        for node, capture_name in variables:
-            if capture_name in ("var_name", "const_name"):
-                # Navigate to parent declaration
-                var_spec = node.parent
-                if var_spec and var_spec.parent:
-                    var_decl = var_spec.parent
-
-                    # Skip variable declarations inside function bodies
-                    # Only collect module-level variables
-                    if self._is_inside_function_body(var_decl):
-                        continue
-
-                    # Deduplicate by position (Go grammar may return same const/var twice)
-                    pos_key = (var_decl.start_byte, var_decl.end_byte)
-                    if pos_key in seen_positions:
-                        continue
-                    seen_positions.add(pos_key)
-
-                    element_info = self.analyze_element(var_decl)
-                    if not element_info.in_public_api:
-                        private_elements.append(element_info)
-
-    def _collect_struct_fields(self, private_elements: List[ElementInfo]) -> None:
-        """
-        Collect unexported (private) fields from exported (public) structs.
-
-        In Go, even exported structs can have unexported fields (lowercase names).
-        These fields should be removed in public API mode.
-        """
-        struct_fields = self.doc.query_opt("struct_fields")
-        for node, capture_name in struct_fields:
-            if capture_name == "field_name":
-                field_decl = node.parent
-                if field_decl and field_decl.type == "field_declaration":
-                    # Analyze the field
-                    element_info = self.analyze_element(field_decl)
-
-                    # Only collect if field is private (lowercase name)
-                    # AND it's in a public (exported) struct
-                    if not element_info.is_public and self._is_in_exported_struct(field_decl):
-                        private_elements.append(element_info)
-
-    def _is_in_exported_struct(self, node: Node) -> bool:
-        """
-        Check if node is inside an exported struct type.
-
-        Args:
-            node: Tree-sitter node to check
-
-        Returns:
-            True if inside exported struct
-        """
-        current = node.parent
-        while current:
-            if current.type == "type_spec":
-                # Find the struct name
-                for child in current.children:
-                    if child.type == "type_identifier":
-                        name = self.doc.get_node_text(child)
-                        # Exported if starts with uppercase
-                        return name[0].isupper() if name else False
-            if current.type == "source_file":
-                break
-            current = current.parent
-        return False
-
-    def _is_inside_function_body(self, node: Node) -> bool:
-        """
-        Check if node is inside a function body.
-
-        Args:
-            node: Tree-sitter node to check
-
-        Returns:
-            True if node is inside a function body
-        """
-        current = node.parent
-        while current:
-            if current.type == "block":
-                # Check if this block is a function body
-                if current.parent and current.parent.type == "function_declaration":
-                    return True
-                if current.parent and current.parent.type == "method_declaration":
-                    return True
-            # Stop at source_file (module level)
-            if current.type == "source_file":
-                return False
-            current = current.parent
-        return False
 
     def _determine_type_declaration_kind(self, node: Node) -> str:
         """
@@ -350,13 +224,9 @@ class GoCodeAnalyzer(CodeAnalyzer):
         return "type"
 
     def get_element_profiles(self) -> Optional[LanguageElementProfiles]:
-        """
-        Return None to use legacy mode (will be migrated in Phase 2).
-
-        Returns:
-            None (backward compatibility during migration)
-        """
-        return None
+        """Return Go element profiles."""
+        from ..optimizations.public_api.language_profiles.go import GO_PROFILES
+        return GO_PROFILES
 
     def _is_whitespace_or_comment(self, node: Node) -> bool:
         """
