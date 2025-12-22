@@ -159,14 +159,11 @@ class CodeAdapter(BaseAdapter[C], ABC):
         Finalize placeholders and apply them to editor, get final metrics.
         """
         # Create economy check callback
-        min_savings_ratio = ph_cfg.min_savings_ratio
-        min_abs_savings_if_none = ph_cfg.min_abs_savings_if_none
-
         def is_economical(src: str, repl: str) -> bool:
             return self.tokenizer.is_economical(
                 src, repl,
-                min_ratio=min_savings_ratio,
-                min_abs_savings_if_none=min_abs_savings_if_none,
+                min_ratio=ph_cfg.min_savings_ratio,
+                min_abs_savings_if_none=ph_cfg.min_abs_savings_if_none
             )
 
         # Apply all placeholders to editor

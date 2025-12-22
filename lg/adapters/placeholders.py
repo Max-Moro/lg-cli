@@ -69,7 +69,7 @@ class PlaceholderSpec:
     replacement_text: Optional[str] = None
 
     # Flag to add suffix comment after element
-    add_suffix_comment: bool = False
+    add_suffix_comment: bool = True
 
     # Tokens saved by this placeholder (for literal_* types, shown instead of lines)
     tokens_saved: Optional[int] = None
@@ -417,20 +417,33 @@ class PlaceholderManager:
         Returns:
             (full_replacement_text, extended_end_char)
         """
-        # If no suffix comment needed, return as-is
+        # Optimizer provided replacement, PlaceholderManager does nothing
+        # (used by literals with inline placeholders)
         if not spec.add_suffix_comment:
+            # Optimizer must provide replacement_text
+            if spec.replacement_text is None:
+                raise ValueError(f"replacement_text required when add_suffix_comment=False")
             return spec.replacement_text, spec.end_char
 
+        # PlaceholderManager must generate placeholder content
         content = self._get_placeholder_content(spec)
 
-        # For docstrings use native language wrapping
+        # Docstrings always use native language wrapping (same for OMIT and TRUNCATE)
         if spec.element_type == "docstring":
             doc_start, doc_end = self.comment_style.doc_markers
             if doc_end:
-                return f"{spec.placeholder_prefix}{doc_start} {content} {doc_end}", spec.end_char
+                replacement = f"{spec.placeholder_prefix}{doc_start} {content} {doc_end}"
             else:
                 # Single-line docstring style (e.g., /// for Rust, // for Go)
-                return f"{spec.placeholder_prefix}{doc_start} {content}\n", spec.end_char
+                replacement = f"{spec.placeholder_prefix}{doc_start} {content}\n"
+            return replacement, spec.end_char
+
+        # For OMIT (no replacement_text): generate standalone placeholder
+        if spec.replacement_text is None:
+            replacement = f"{spec.placeholder_prefix}{self.comment_style.single_line} {content}"
+            return replacement, spec.end_char
+
+        # For TRUNCATE (with replacement_text): add suffix comment after content
 
         # Analyze context after element for suffix comment positioning
         text_after = self.source_text[spec.end_char:] if spec.end_char < len(self.source_text) else ""
@@ -447,7 +460,7 @@ class PlaceholderManager:
 
         # Include trailing punctuation before comment
         trailing_punct = line_remainder[:offset]
-        full_replacement = (spec.replacement_text or "") + trailing_punct + suffix
+        full_replacement = spec.replacement_text + trailing_punct + suffix
         extended_end = spec.end_char + offset
 
         return full_replacement, extended_end
