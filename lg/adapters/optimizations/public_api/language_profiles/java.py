@@ -105,7 +105,7 @@ JAVA_PROFILES = LanguageElementProfiles(
 
         ElementProfile(
             name="variable",
-            query="(local_variable_declaration declarator: (variable_declarator name: (identifier) @element))"
+            query="(local_variable_declaration) @element"
         ),
     ]
 )

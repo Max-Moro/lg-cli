@@ -97,6 +97,23 @@ class ElementProfile:
     Returns True if element is exported.
     """
 
+    uses_visibility_for_public_api: bool = True
+    """
+    Whether this element type uses visibility (public/private/protected) for public API determination.
+
+    - True (default): Element is in public API if it's public (visibility-based)
+    - False: Element is in public API if it's exported (export-based)
+
+    Most languages use visibility for most element types (classes, methods, fields).
+    Only top-level declarations in some languages use export semantics.
+
+    Examples:
+    - Java fields: uses_visibility_for_public_api=True (public/private modifier)
+    - Java top-level variables: uses_visibility_for_public_api=True (public/private modifier)
+    - TypeScript top-level functions: uses_visibility_for_public_api=False (export keyword)
+    - Go everything: uses_visibility_for_public_api=True (naming convention IS visibility)
+    """
+
 
 @dataclass
 class LanguageElementProfiles:
@@ -131,6 +148,7 @@ class LanguageElementProfiles:
                     raise ValueError(f"Unknown parent profile: {profile.parent_profile}")
 
                 # Inherit fields from parent
+                # Note: uses_visibility_for_public_api is taken from child if explicitly set, else from parent
                 resolved_profile = ElementProfile(
                     name=profile.name,
                     query=profile.query or parent.query,
@@ -140,6 +158,7 @@ class LanguageElementProfiles:
                     ),
                     visibility_check=profile.visibility_check or parent.visibility_check,
                     export_check=profile.export_check or parent.export_check,
+                    uses_visibility_for_public_api=profile.uses_visibility_for_public_api,
                 )
                 resolved.append(resolved_profile)
             else:

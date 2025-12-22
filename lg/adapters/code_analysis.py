@@ -43,6 +43,7 @@ class ElementInfo:
     export_status: ExportStatus = ExportStatus.UNKNOWN
     is_method: bool = False
     decorators: List[Node] = None
+    uses_visibility_for_public_api: Optional[bool] = None  # If None, uses heuristic
 
     def __post_init__(self):
         if self.decorators is None:
@@ -66,6 +67,16 @@ class ElementInfo:
     @property
     def in_public_api(self) -> bool:
         """Should the element be included in the public API."""
+        # If uses_visibility_for_public_api is explicitly set, use it
+        if self.uses_visibility_for_public_api is not None:
+            if self.uses_visibility_for_public_api:
+                # Element is in public API if it's public (visibility-based)
+                return self.is_public
+            else:
+                # Element is in public API if it's exported (export-based)
+                return self.is_exported
+
+        # Fallback: use heuristic based on element_type
         # Member types (methods, fields, properties, constructors) use visibility
         # Top-level types (classes, functions, interfaces) use export status
         member_types = {

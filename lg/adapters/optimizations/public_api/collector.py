@@ -79,7 +79,7 @@ class PublicApiCollector:
             element_info = self.analyzer.analyze_element(element_def)
 
             # Override element_type with profile name (for metrics)
-            # Create new ElementInfo with updated element_type
+            # Create new ElementInfo with updated element_type and uses_visibility_for_public_api
             element_info = ElementInfo(
                 node=element_info.node,
                 element_type=profile.name,
@@ -87,7 +87,8 @@ class PublicApiCollector:
                 visibility=element_info.visibility,
                 export_status=element_info.export_status,
                 is_method=element_info.is_method,
-                decorators=element_info.decorators
+                decorators=element_info.decorators,
+                uses_visibility_for_public_api=profile.uses_visibility_for_public_api
             )
 
             # Check if private
