@@ -5,10 +5,13 @@ Combines structure analysis and visibility analysis functionality for Scala.
 
 from __future__ import annotations
 
-from typing import List, Optional, Set
+from typing import TYPE_CHECKING, List, Optional, Set
 
 from ..code_analysis import CodeAnalyzer, Visibility, ExportStatus, ElementInfo
 from ..tree_sitter_support import Node
+
+if TYPE_CHECKING:
+    from ..optimizations.public_api.profiles import LanguageElementProfiles
 
 
 class ScalaCodeAnalyzer(CodeAnalyzer):
@@ -335,6 +338,15 @@ class ScalaCodeAnalyzer(CodeAnalyzer):
                 if "case" in modifier_text:
                     return True
         return False
+
+    def get_element_profiles(self) -> Optional[LanguageElementProfiles]:
+        """
+        Return None to use legacy mode (will be migrated in Phase 2).
+
+        Returns:
+            None (backward compatibility during migration)
+        """
+        return None
 
     def _is_whitespace_or_comment(self, node: Node) -> bool:
         """

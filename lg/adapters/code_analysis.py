@@ -8,9 +8,12 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from enum import Enum
-from typing import Dict, List, Optional, Set, Tuple
+from typing import TYPE_CHECKING, Dict, List, Optional, Set, Tuple
 
 from .tree_sitter_support import Node, TreeSitterDocument
+
+if TYPE_CHECKING:
+    from .optimizations.public_api.profiles import LanguageElementProfiles
 
 
 # ============= Data models =============
@@ -144,6 +147,30 @@ class CodeAnalyzer(ABC):
         """
         Collects all private elements for removal in public API mode.
 
+        New implementation via profiles. Falls back to legacy mode if profiles not available.
+
+        Returns:
+            List of private elements for removal
+        """
+        # Get profiles for language
+        profiles = self.get_element_profiles()
+
+        if profiles:
+            # New path: via PublicApiCollector
+            from .optimizations.public_api.collector import PublicApiCollector
+
+            collector = PublicApiCollector(self.doc, self, profiles)
+            return collector.collect_private_elements()
+        else:
+            # Old path: via imperative methods (backward compatibility)
+            return self._collect_private_elements_legacy()
+
+    def _collect_private_elements_legacy(self) -> List[ElementInfo]:
+        """
+        Legacy imperative implementation (for backward compatibility).
+
+        Used when language doesn't have profiles yet.
+
         Returns:
             List of private elements for removal
         """
@@ -163,6 +190,18 @@ class CodeAnalyzer(ABC):
         private_elements.extend(language_specific_elements)
 
         return private_elements
+
+    @abstractmethod
+    def get_element_profiles(self) -> Optional[LanguageElementProfiles]:
+        """
+        Get element profiles for language.
+
+        Returns None to use legacy mode (backward compatibility during migration).
+
+        Returns:
+            LanguageElementProfiles or None (if using legacy mode)
+        """
+        pass
 
     # ============= Helper methods for collecting private elements =============
 
