@@ -24,7 +24,7 @@
 | Языковая логика | `optimizations/public_api/language_profiles/<lang>.py` | `<lang>/code_profiles.py` |
 | Function body queries | `<lang>/queries.py` (отдельно) | Объединены в профилях |
 | Модель элемента | `ElementInfo` + `FunctionGroup` (перекрытие) | `CodeElement` (унифицированная) |
-| Определение visibility | Императивные методы в каждом analyzer | Callbacks в профилях (единственный источник) |
+| Определение публичности | `visibility_check` + `export_check` + `uses_visibility_for_public_api` | Один `is_public` callback |
 
 ---
 
@@ -37,8 +37,8 @@ lg/adapters/
 │   └── code/                           # Unified code optimization
 │       ├── __init__.py
 │       ├── descriptor.py               # LanguageCodeDescriptor
-│       ├── profiles.py                 # ElementProfile, FunctionProfile
-│       ├── models.py                   # CodeElement, FunctionBody, ProcessingResult
+│       ├── profiles.py                 # ElementProfile
+│       ├── models.py                   # CodeElement
 │       ├── collector.py                # ElementCollector (универсальный)
 │       ├── public_api_optimizer.py     # PublicApiOptimizer
 │       └── function_body_optimizer.py  # FunctionBodyOptimizer
@@ -73,19 +73,23 @@ class ElementProfile:
     query: str
     """Tree-sitter query для поиска элементов. Capture: @element."""
 
-    # --- Visibility logic ---
-    visibility_check: Optional[Callable[[Node, Doc], Visibility]] = None
-    """Определение visibility. None = public по умолчанию."""
+    # --- Public API determination ---
+    is_public: Optional[Callable[[Node, Doc], bool]] = None
+    """
+    Определяет, входит ли элемент в публичный API.
+    None = всегда public (по умолчанию).
 
-    export_check: Optional[Callable[[Node, Doc], bool]] = None
-    """Определение export status. None = следует из visibility."""
-
-    uses_visibility_for_public_api: bool = True
-    """True: public API = visibility. False: public API = export."""
+    Единый callback инкапсулирует всю логику:
+    - Python: проверка _ и __ префиксов
+    - Go: проверка регистра первой буквы
+    - Java/Kotlin: проверка access modifiers
+    - TypeScript top-level: проверка export keyword
+    - TypeScript members: проверка private/protected
+    """
 
     # --- Filtering ---
     additional_check: Optional[Callable[[Node, Doc], bool]] = None
-    """Дополнительная фильтрация (например, is_case_class)."""
+    """Дополнительная фильтрация (например, is_case_class, is_inside_class)."""
 
     # --- Function body specific ---
     has_body: bool = False
@@ -116,16 +120,8 @@ class CodeElement:
     node: Node
     name: Optional[str] = None
 
-    # Visibility
-    visibility: Visibility = Visibility.PUBLIC
-    is_exported: bool = True
-
-    # Computed properties
-    @property
-    def in_public_api(self) -> bool:
-        if self.profile.uses_visibility_for_public_api:
-            return self.visibility == Visibility.PUBLIC
-        return self.is_exported
+    # Public API status (вычисляется через profile.is_public)
+    is_public: bool = True
 
     # Function body info (заполняется только если profile.has_body)
     body_node: Optional[Node] = None
@@ -155,10 +151,6 @@ class LanguageCodeDescriptor:
 
     comment_types: Set[str] = field(default_factory=set)
     """Node types для комментариев: {"comment", "line_comment"}."""
-
-    # --- Optional custom processors ---
-    custom_visibility_resolver: Optional[Type[VisibilityResolver]] = None
-    """Кастомный резолвер visibility (редко нужен)."""
 ```
 
 ---
@@ -209,6 +201,7 @@ class PublicApiOptimizer:
         descriptor = self.adapter.get_code_descriptor()
         collector = ElementCollector(context.doc, descriptor)
 
+        # Собираем элементы где is_public=False
         private_elements = collector.collect_private()
         private_elements = self._filter_nested(private_elements)
 
@@ -240,6 +233,7 @@ class FunctionBodyOptimizer:
         elements_with_bodies = collector.collect_with_bodies()
 
         for element in elements_with_bodies:
+            # Используем element.is_public для policy="keep_public"
             decision = self._evaluate_decision(element, cfg)
 
             if decision.action == "strip":
@@ -260,21 +254,25 @@ class FunctionBodyOptimizer:
 from lg.adapters.optimizations.code import (
     LanguageCodeDescriptor,
     ElementProfile,
-    Visibility,
 )
 
-def _python_visibility(node: Node, doc: TreeSitterDocument) -> Visibility:
-    """Python visibility by naming convention."""
+def _is_public_python(node: Node, doc: TreeSitterDocument) -> bool:
+    """
+    Python public API by naming convention.
+
+    - __name__ (dunder) = public
+    - __name (double underscore) = private
+    - _name (single underscore) = private (protected)
+    - name = public
+    """
     name = _extract_name(node, doc)
     if not name:
-        return Visibility.PUBLIC
+        return True  # No name = public by default
     if name.startswith("__") and name.endswith("__"):
-        return Visibility.PUBLIC  # dunder methods
-    if name.startswith("__"):
-        return Visibility.PRIVATE
+        return True  # dunder methods are public
     if name.startswith("_"):
-        return Visibility.PROTECTED
-    return Visibility.PUBLIC
+        return False  # _ or __ prefix = private
+    return True
 
 
 def _find_python_docstring(node: Node, doc: TreeSitterDocument) -> Optional[Node]:
@@ -290,13 +288,13 @@ PYTHON_CODE_DESCRIPTOR = LanguageCodeDescriptor(
         ElementProfile(
             name="class",
             query="(class_definition) @element",
-            visibility_check=_python_visibility,
+            is_public=_is_public_python,
         ),
 
         ElementProfile(
             name="function",
             query="(function_definition) @element",
-            visibility_check=_python_visibility,
+            is_public=_is_public_python,
             additional_check=lambda n, d: not _is_inside_class(n),
             has_body=True,
             docstring_extractor=_find_python_docstring,
@@ -305,7 +303,7 @@ PYTHON_CODE_DESCRIPTOR = LanguageCodeDescriptor(
         ElementProfile(
             name="method",
             query="(function_definition) @element",
-            visibility_check=_python_visibility,
+            is_public=_is_public_python,
             additional_check=lambda n, d: _is_inside_class(n),
             has_body=True,
             docstring_extractor=_find_python_docstring,
@@ -314,7 +312,7 @@ PYTHON_CODE_DESCRIPTOR = LanguageCodeDescriptor(
         ElementProfile(
             name="variable",
             query="(assignment) @element",
-            visibility_check=_python_visibility,
+            is_public=_is_public_python,
             additional_check=lambda n, d: not _is_inside_class(n),
         ),
     ],
@@ -382,9 +380,9 @@ class PythonAdapter(CodeAdapter[PythonCfg]):
 
 ### Ключевые принципы
 
-1. **Декларативность** — профили описывают ЧТО искать и КАК определять visibility
-2. **Единый источник истины** — visibility/export логика только в профилях
-3. **Языковая инкапсуляция** — всё в пакетах языков
+1. **Декларативность** — профили описывают ЧТО искать и КАК определять публичность
+2. **Единый источник истины** — один `is_public` callback вместо трёх полей
+3. **Языковая инкапсуляция** — всё в пакетах языков (`<lang>/code_profiles.py`)
 4. **Консистентность с Literals** — аналогичная структура дескриптор + профили
 5. **Разделение сбора и применения** — Collector собирает, Optimizer применяет
 6. **Унификация моделей** — один `CodeElement` вместо ElementInfo + FunctionGroup
@@ -400,4 +398,4 @@ class PythonAdapter(CodeAdapter[PythonCfg]):
 | Сбор | Query в pipeline | `ElementCollector` |
 | Обработка | `LiteralProcessor` компоненты | `PublicApiOptimizer`, `FunctionBodyOptimizer` |
 | Языковая логика | `<lang>/literals.py` | `<lang>/code_profiles.py` |
-| Custom components | `custom_processor` в дескрипторе | `custom_visibility_resolver` в дескрипторе |
+| Публичность | N/A | `is_public` callback в профиле |

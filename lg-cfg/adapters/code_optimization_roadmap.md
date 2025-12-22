@@ -59,27 +59,16 @@
 
 - [ ] **1.2** Реализовать `models.py`
   ```python
-  class Visibility(Enum):
-      PUBLIC = "public"
-      PROTECTED = "protected"
-      PRIVATE = "private"
-      INTERNAL = "internal"
-
   @dataclass
   class CodeElement:
       profile: "ElementProfile"
       node: Node
       name: Optional[str] = None
-      visibility: Visibility = Visibility.PUBLIC
-      is_exported: bool = True
+      is_public: bool = True  # Вычисляется через profile.is_public
       body_node: Optional[Node] = None
       body_range: Optional[Tuple[int, int]] = None
       docstring_node: Optional[Node] = None
       decorators: List[Node] = field(default_factory=list)
-
-      @property
-      def in_public_api(self) -> bool:
-          ...
   ```
 
 - [ ] **1.3** Реализовать `profiles.py`
@@ -88,13 +77,11 @@
   class ElementProfile:
       name: str
       query: str
-      visibility_check: Optional[Callable] = None
-      export_check: Optional[Callable] = None
-      uses_visibility_for_public_api: bool = True
-      additional_check: Optional[Callable] = None
+      is_public: Optional[Callable[[Node, Doc], bool]] = None  # None = always public
+      additional_check: Optional[Callable[[Node, Doc], bool]] = None
       has_body: bool = False
       body_query: Optional[str] = None
-      docstring_extractor: Optional[Callable] = None
+      docstring_extractor: Optional[Callable[[Node, Doc], Optional[Node]]] = None
       parent_profile: Optional[str] = None
   ```
 
@@ -133,7 +120,7 @@
 #### Задачи
 
 - [ ] **2.1** Создать `python/code_profiles.py`
-  - Перенести visibility логику из `python/code_analysis.py`
+  - Создать `_is_public_python()` callback (логика `_` и `__` префиксов)
   - Перенести профили из `optimizations/public_api/language_profiles/python.py`
   - Добавить `has_body=True` и `docstring_extractor` для functions/methods
 
