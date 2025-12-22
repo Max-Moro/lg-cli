@@ -236,7 +236,7 @@ class ScalaCodeAnalyzer(CodeAnalyzer):
 
 ## Migration Status
 
-### ✅ Completed Languages (33/33 tests)
+### ✅ Completed Languages (44/44 tests)
 
 | Language | Tests | Notes |
 |----------|-------|-------|
@@ -246,10 +246,10 @@ class ScalaCodeAnalyzer(CodeAnalyzer):
 | **Python** | 7/7 | Simple visibility (underscore prefix), no custom checks needed |
 | **TypeScript** | 6/6 | Semicolon extension via analyze_element(), namespace export checks |
 | **JavaScript** | 6/6 | field_definition must be mapped in determine_element_type(), semicolon extension |
+| **Rust** | 11/11 | Custom visibility (pub variants), trait methods inheritance, empty impl removal, top-level macros |
 
 ### 🔄 Pending Languages
 
-- Rust
 - C/C++
 - Kotlin
 
