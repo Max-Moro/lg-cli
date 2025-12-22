@@ -236,7 +236,7 @@ class ScalaCodeAnalyzer(CodeAnalyzer):
 
 ## Migration Status
 
-### ✅ ALL LANGUAGES MIGRATED! (57/57 tests) 🎉
+### ✅ ALL LANGUAGES MIGRATED! (65/65 tests) 🎉
 
 | Language | Tests | Notes |
 |----------|-------|-------|
@@ -248,7 +248,8 @@ class ScalaCodeAnalyzer(CodeAnalyzer):
 | **JavaScript** | 6/6 | field_definition must be mapped in determine_element_type(), semicolon extension |
 | **Rust** | 11/11 | Custom visibility (pub variants), trait methods inheritance, empty impl removal, top-level macros |
 | **Kotlin** | 4/4 | Misparsed classes (infix_expression), custom decorator finding for annotated classes |
-| **C/C++** | 9/9 | Access specifiers (public:/private:/protected:), static keyword, anonymous namespaces |
+| **C++** | 9/9 | Access specifiers (public:/private:/protected:), static keyword, anonymous namespaces |
+| **C** | 8/8 | Static keyword, naming convention (Internal*/\_* prefix) |
 
 ---
 

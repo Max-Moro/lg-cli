@@ -12,7 +12,7 @@ const char* PUBLIC_VERSION = "1.0.0";
 const char* API_ENDPOINT = "https://api.example.com";
 
 // Private module-level constants (should be filtered out)
-// … 2 declarations omitted (5 lines)
+// … 2 variables omitted (5 lines)
 
 // Public structure (should be preserved)
 typedef struct {
@@ -57,14 +57,14 @@ User** user_manager_get_all_users(UserManager* manager, int* count);
 void user_manager_free(UserManager* manager);
 
 // Private functions (should be filtered out)
-// … 6 declarations omitted
+// … 6 variables omitted
 
 // Public static functions (should be preserved)
 int user_manager_validate_user_role(const char* role);
 User* user_manager_create_default_user(void);
 
 // Private static functions (should be filtered out)
-// … declaration omitted
+// … variable omitted
 
 UserManager* user_manager_new(const char* api_endpoint) {
     UserManager* manager = (UserManager*)malloc(sizeof(UserManager));

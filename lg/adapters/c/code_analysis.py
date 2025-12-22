@@ -196,100 +196,7 @@ class CCodeAnalyzer(CodeAnalyzer):
         """
         return set()
 
-    def collect_language_specific_private_elements(self) -> List[ElementInfo]:
-        """
-        Collect C-specific private elements.
-
-        Note: Functions are already collected by base CodeAnalyzer.
-        This method collects only C-specific elements:
-        - static declarations (not function definitions)
-        - typedefs (which include typedef enum, typedef struct, typedef union)
-
-        We don't collect enums/structs/unions separately because in C they're
-        typically wrapped in typedefs and would be duplicated.
-
-        Returns:
-            List of C-specific private elements
-        """
-        private_elements = []
-
-        # C-specific elements (functions already collected by base)
-        self._collect_static_declarations(private_elements)
-        self._collect_typedefs(private_elements)
-
-        return private_elements
-
-    def _collect_static_functions(self, private_elements: List[ElementInfo]) -> None:
-        """Collect static functions (file-scope)."""
-        functions = self.doc.query_opt("functions")
-        for node, capture_name in functions:
-            if capture_name == "function_definition":
-                element_info = self.analyze_element(node)
-                if not element_info.in_public_api:
-                    private_elements.append(element_info)
-
-    def _collect_static_declarations(self, private_elements: List[ElementInfo]) -> None:
-        """Collect static function declarations and static variable declarations."""
-        declarations = self.doc.query_opt("declarations")
-        for node, capture_name in declarations:
-            if capture_name == "declaration":
-                # Only collect if it has static specifier and is not in public API
-                if self._has_static_specifier(node):
-                    element_info = self.analyze_element(node)
-                    if not element_info.in_public_api:
-                        private_elements.append(element_info)
-
-    def _collect_enums(self, private_elements: List[ElementInfo]) -> None:
-        """Collect private enums."""
-        enums = self.doc.query_opt("enums")
-        for node, capture_name in enums:
-            if capture_name == "enum_name":
-                enum_def = node.parent
-                if enum_def:
-                    element_info = self.analyze_element(enum_def)
-                    if not element_info.in_public_api:
-                        private_elements.append(element_info)
-
-    def _collect_typedefs(self, private_elements: List[ElementInfo]) -> None:
-        """Collect private typedefs."""
-        typedefs = self.doc.query_opt("typedefs")
-        seen_positions = set()
-
-        for node, capture_name in typedefs:
-            if capture_name == "typedef_name":
-                typedef_def = node.parent
-                if typedef_def:
-                    # Deduplicate by position (C grammar may return same typedef twice)
-                    pos_key = (typedef_def.start_byte, typedef_def.end_byte)
-                    if pos_key in seen_positions:
-                        continue
-                    seen_positions.add(pos_key)
-
-                    element_info = self.analyze_element(typedef_def)
-                    if not element_info.in_public_api:
-                        private_elements.append(element_info)
-
-    def _collect_structs(self, private_elements: List[ElementInfo]) -> None:
-        """Collect private named struct declarations."""
-        structs = self.doc.query_opt("classes")
-        for node, capture_name in structs:
-            if capture_name == "struct_name":
-                struct_def = node.parent
-                if struct_def:
-                    element_info = self.analyze_element(struct_def)
-                    if not element_info.in_public_api:
-                        private_elements.append(element_info)
-
-    def _collect_unions(self, private_elements: List[ElementInfo]) -> None:
-        """Collect private named union declarations."""
-        unions = self.doc.query_opt("classes")  # unions are in "classes" query
-        for node, capture_name in unions:
-            if capture_name == "union_name":
-                union_def = node.parent
-                if union_def:
-                    element_info = self.analyze_element(union_def)
-                    if not element_info.in_public_api:
-                        private_elements.append(element_info)
+    # Legacy collection methods removed - using profile-based collection
 
     def _has_static_specifier(self, node: Node) -> bool:
         """Check if node has static storage class specifier."""
@@ -321,12 +228,13 @@ class CCodeAnalyzer(CodeAnalyzer):
 
     def get_element_profiles(self) -> Optional[LanguageElementProfiles]:
         """
-        Return None to use legacy mode (will be migrated in Phase 2).
+        Return C element profiles for profile-based public API collection.
 
         Returns:
-            None (backward compatibility during migration)
+            LanguageElementProfiles for C
         """
-        return None
+        from ..optimizations.public_api.language_profiles.c import C_PROFILES
+        return C_PROFILES
 
     def _is_whitespace_or_comment(self, node: Node) -> bool:
         """
