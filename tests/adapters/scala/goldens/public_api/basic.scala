@@ -12,7 +12,7 @@ object PublicConstants {
   val API_ENDPOINT = "https://api.example.com"
 
   // Private constants (should be filtered out)
-  // … 2 vals omitted
+  // … 2 fields omitted
 }
 
 // Public case class (should be preserved)
@@ -24,7 +24,7 @@ case class User(
 )
 
 // Private case class (should be filtered out)
-// … class omitted (4 lines)
+// … case class omitted (4 lines)
 
 // Public type alias (should be preserved)
 type UserRole = String
@@ -36,10 +36,10 @@ class UserManager(private val apiEndpoint: String = PublicConstants.API_ENDPOINT
   var isInitialized: Boolean = false
 
   // Private properties (should be filtered out with public_api_only)
-  // … 2 vals omitted (3 lines)
+  // … 2 fields omitted (3 lines)
 
   // Protected properties (should be filtered out)
-  // … val omitted (2 lines)
+  // … field omitted (2 lines)
 
   initialize()
 
@@ -105,7 +105,7 @@ object UserManager {
 
 // Public abstract class (should be preserved)
 abstract class BaseService {
-  protected def serviceName: String
+  // … method omitted
 
   def initialize(): Unit
 
