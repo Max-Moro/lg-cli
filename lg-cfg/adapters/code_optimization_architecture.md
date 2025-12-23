@@ -34,14 +34,23 @@
 lg/adapters/
 │
 ├── optimizations/
-│   └── code/                           # Unified code optimization
+│   ├── shared/                         # Общая инфраструктура для code-оптимизаций
+│   │   ├── __init__.py
+│   │   ├── descriptor.py               # LanguageCodeDescriptor
+│   │   ├── profiles.py                 # ElementProfile
+│   │   ├── models.py                   # CodeElement
+│   │   └── collector.py                # ElementCollector (универсальный)
+│   │
+│   ├── function_bodies/                # Как сейчас, но использует shared/ вместо code_analyzer
+│   │   ├── __init__.py
+│   │   ├── optimizer.py                # FunctionBodyOptimizer
+│   │   ├── decision.py
+│   │   ├── evaluators.py
+│   │   └── trimmer.py
+│   │
+│   └── public_api/                     # Как сейчас, но использует shared/ вместо code_analyzer
 │       ├── __init__.py
-│       ├── descriptor.py               # LanguageCodeDescriptor
-│       ├── profiles.py                 # ElementProfile
-│       ├── models.py                   # CodeElement
-│       ├── collector.py                # ElementCollector (универсальный)
-│       ├── public_api_optimizer.py     # PublicApiOptimizer
-│       └── function_body_optimizer.py  # FunctionBodyOptimizer
+│       └── optimizer.py                # PublicApiOptimizer
 │
 ├── python/
 │   ├── code_profiles.py               # PYTHON_CODE_DESCRIPTOR
@@ -118,6 +127,10 @@ class CodeElement:
     # Идентификация
     profile: ElementProfile
     node: Node
+
+    # Имя конкретного элемента в коде (например "MyClass", "process_data").
+    # Используется для FunctionBodyConfig.except_patterns — regex-фильтрация
+    # функций по имени, которые нужно исключить из stripping.
     name: Optional[str] = None
 
     # Public API status (вычисляется через profile.is_public)
@@ -186,6 +199,32 @@ class ElementCollector:
         pass
 ```
 
+#### ProcessingContext (расширение)
+
+Кэширование `ElementCollector` для переиспользования между оптимизаторами:
+
+```python
+class ProcessingContext:
+    """Расширение существующего ProcessingContext."""
+
+    # ... существующие поля ...
+
+    _collector: Optional[ElementCollector] = None
+
+    def get_collector(self) -> ElementCollector:
+        """
+        Lazy-создание и кэширование ElementCollector.
+
+        Преимущества кэширования:
+        - Tree-sitter queries выполняются один раз
+        - Оба оптимизатора видят консистентные данные
+        - Создаётся только если хотя бы один оптимизатор включен
+        """
+        if self._collector is None:
+            self._collector = ElementCollector(self.doc, self.adapter.get_code_descriptor())
+        return self._collector
+```
+
 #### PublicApiOptimizer
 
 Оптимизатор публичного API:
@@ -198,8 +237,7 @@ class PublicApiOptimizer:
         self.adapter = adapter
 
     def apply(self, context: ProcessingContext) -> None:
-        descriptor = self.adapter.get_code_descriptor()
-        collector = ElementCollector(context.doc, descriptor)
+        collector = context.get_collector()
 
         # Собираем элементы где is_public=False
         private_elements = collector.collect_private()
@@ -227,8 +265,7 @@ class FunctionBodyOptimizer:
         self.trimmer = FunctionBodyTrimmer(...)
 
     def apply(self, context: ProcessingContext, cfg: FunctionBodyConfig) -> None:
-        descriptor = self.adapter.get_code_descriptor()
-        collector = ElementCollector(context.doc, descriptor)
+        collector = context.get_collector()
 
         elements_with_bodies = collector.collect_with_bodies()
 
@@ -352,32 +389,6 @@ class PythonAdapter(CodeAdapter[PythonCfg]):
 
 ---
 
-### Миграция
-
-#### Этап 1: Создание новой инфраструктуры
-- Создать `lg/adapters/optimizations/code/` с новыми моделями
-- Реализовать `ElementCollector`
-- Написать тесты на новую инфраструктуру
-
-#### Этап 2: Миграция профилей по языкам
-- Для каждого языка создать `<lang>/code_profiles.py`
-- Перенести логику из `language_profiles/<lang>.py`
-- Перенести логику visibility из `<lang>/code_analysis.py`
-- Удалить старые файлы
-
-#### Этап 3: Миграция оптимизаторов
-- Переписать `PublicApiOptimizer` на использование дескриптора
-- Переписать `FunctionBodyOptimizer` на использование дескриптора
-- Удалить зависимости от `CodeAnalyzer`
-
-#### Этап 4: Очистка
-- Удалить `lg/adapters/code_analysis.py`
-- Удалить `lg/adapters/<lang>/code_analysis.py`
-- Удалить `lg/adapters/optimizations/public_api/language_profiles/`
-- Обновить документацию
-
----
-
 ### Ключевые принципы
 
 1. **Декларативность** — профили описывают ЧТО искать и КАК определять публичность
@@ -386,6 +397,7 @@ class PythonAdapter(CodeAdapter[PythonCfg]):
 4. **Консистентность с Literals** — аналогичная структура дескриптор + профили
 5. **Разделение сбора и применения** — Collector собирает, Optimizer применяет
 6. **Унификация моделей** — один `CodeElement` вместо ElementInfo + FunctionGroup
+7. **Кэширование Collector** — `ProcessingContext.get_collector()` для переиспользования между оптимизаторами
 
 ---
 
