@@ -9,10 +9,9 @@
 ### Цели архитектуры
 
 1. **Унификация** — единая декларативная модель для обеих оптимизаций
-2. **Консистентность с Literals** — аналогичный подход (дескриптор + профили + компоненты)
-3. **Инкапсуляция языковой логики** — всё в пакетах языков, не в `optimizations/`
-4. **Разделение ответственности** — анализ структуры отдельно от применения оптимизаций
-5. **Минимизация дублирования** — единый источник истины для visibility/export логики
+2. **Инкапсуляция языковой логики** — всё в пакетах языков, не в `optimizations/`
+3. **Разделение ответственности** — анализ структуры отдельно от применения оптимизаций
+4. **Минимизация дублирования** — единый источник истины для visibility/export логики
 
 ---
 
@@ -394,20 +393,6 @@ class PythonAdapter(CodeAdapter[PythonCfg]):
 1. **Декларативность** — профили описывают ЧТО искать и КАК определять публичность
 2. **Единый источник истины** — один `is_public` callback вместо трёх полей
 3. **Языковая инкапсуляция** — всё в пакетах языков (`<lang>/code_profiles.py`)
-4. **Консистентность с Literals** — аналогичная структура дескриптор + профили
-5. **Разделение сбора и применения** — Collector собирает, Optimizer применяет
-6. **Унификация моделей** — один `CodeElement` вместо ElementInfo + FunctionGroup
-7. **Кэширование Collector** — `ProcessingContext.get_collector()` для переиспользования между оптимизаторами
-
----
-
-### Сравнение с Literals architecture
-
-| Аспект | Literals | Code (новая) |
-|--------|----------|--------------|
-| Дескриптор | `LanguageLiteralDescriptor` | `LanguageCodeDescriptor` |
-| Профили | `StringProfile`, `SequenceProfile`, ... | `ElementProfile` |
-| Сбор | Query в pipeline | `ElementCollector` |
-| Обработка | `LiteralProcessor` компоненты | `PublicApiOptimizer`, `FunctionBodyOptimizer` |
-| Языковая логика | `<lang>/literals.py` | `<lang>/code_profiles.py` |
-| Публичность | N/A | `is_public` callback в профиле |
+4. **Разделение сбора и применения** — Collector собирает, Optimizer применяет
+5. **Унификация моделей** — один `CodeElement` вместо ElementInfo + FunctionGroup
+6. **Кэширование Collector** — `ProcessingContext.get_collector()` для переиспользования между оптимизаторами
