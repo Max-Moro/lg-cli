@@ -187,6 +187,61 @@ def _find_scala_docstring(body_node: Node, doc: TreeSitterDocument) -> Optional[
     return None
 
 
+def _compute_scala_function_body_range(func_def: Node, doc: TreeSitterDocument) -> tuple[int, int]:
+    """
+    Compute strippable range for Scala function body.
+
+    Scala functions have two forms:
+    1. Block form: def f(...) = { body }
+    2. Inline form: def f(...) = expr
+
+    For both forms, we need to strip from '=' onwards.
+
+    Args:
+        func_def: function_definition node
+        doc: Tree-sitter document
+
+    Returns:
+        Tuple of (start_byte, end_byte) for strippable content
+    """
+    # Find '=' token in function definition children
+    equals_index = None
+    for i, child in enumerate(func_def.children):
+        child_text = doc.get_node_text(child)
+        if child_text == "=":
+            equals_index = i
+            break
+
+    if equals_index is None:
+        # No '=' found - shouldn't happen for function_definition
+        return (func_def.start_byte, func_def.end_byte)
+
+    # Body starts after '='
+    # Check if next non-whitespace child is a block or expression
+    if equals_index + 1 < len(func_def.children):
+        body_node = func_def.children[equals_index + 1]
+
+        # For block form: strip inner content (excluding braces)
+        if body_node.type == "block" and body_node.children:
+            first_child = body_node.children[0]
+            last_child = body_node.children[-1]
+
+            first_text = doc.get_node_text(first_child)
+            last_text = doc.get_node_text(last_child)
+
+            if first_text == "{" and last_text == "}":
+                # Strip between braces
+                return (first_child.end_byte, last_child.start_byte)
+
+        # For inline form or any other case: strip from after '=' to end
+        # Start from body_node.start_byte
+        return (body_node.start_byte, func_def.end_byte)
+
+    # Fallback: strip from '=' to end
+    equals_node = func_def.children[equals_index]
+    return (equals_node.end_byte, func_def.end_byte)
+
+
 # --- Scala Code Descriptor ---
 
 SCALA_CODE_DESCRIPTOR = LanguageCodeDescriptor(
@@ -240,6 +295,7 @@ SCALA_CODE_DESCRIPTOR = LanguageCodeDescriptor(
             additional_check=lambda node, doc: not _is_inside_class(node),
             has_body=True,
             docstring_extractor=_find_scala_docstring,
+            body_range_computer=_compute_scala_function_body_range,
         ),
 
         # Methods inside classes/traits/objects (function_definition)
@@ -250,6 +306,7 @@ SCALA_CODE_DESCRIPTOR = LanguageCodeDescriptor(
             additional_check=lambda node, doc: _is_inside_class(node),
             has_body=True,
             docstring_extractor=_find_scala_docstring,
+            body_range_computer=_compute_scala_function_body_range,
         ),
 
         # Abstract function declarations (function_declaration - no body)
