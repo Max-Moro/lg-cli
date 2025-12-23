@@ -265,6 +265,11 @@ class ElementCollector:
         Find body node for function/method.
         Applies body_resolver if specified to unwrap nested structures.
         """
+        # If custom resolver is specified, use it directly
+        # (resolver is responsible for finding body in nested structures like arrow functions)
+        if profile.body_resolver:
+            return profile.body_resolver(node)
+
         # Use body_query if provided
         if profile.body_query:
             # Query relative to this node
@@ -281,10 +286,6 @@ class ElementCollector:
         # Try field name if not found
         if not body_node:
             body_node = node.child_by_field_name("body")
-
-        # Apply resolver if specified (e.g., Kotlin function_body -> block)
-        if body_node and profile.body_resolver:
-            body_node = profile.body_resolver(body_node)
 
         return body_node
 
