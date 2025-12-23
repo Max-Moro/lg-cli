@@ -252,6 +252,7 @@ class ElementCollector:
     def _find_body_node(self, node: Node, profile: ElementProfile) -> Optional[Node]:
         """
         Find body node for function/method.
+        Applies body_resolver if specified to unwrap nested structures.
         """
         # Use body_query if provided
         if profile.body_query:
@@ -260,16 +261,21 @@ class ElementCollector:
             pass
 
         # Default: look for common body node types
+        body_node = None
         for child in node.children:
             if child.type in ("block", "statement_block", "function_body", "body"):
-                return child
+                body_node = child
+                break
 
-        # Try field name
-        body_node = node.child_by_field_name("body")
-        if body_node:
-            return body_node
+        # Try field name if not found
+        if not body_node:
+            body_node = node.child_by_field_name("body")
 
-        return None
+        # Apply resolver if specified (e.g., Kotlin function_body -> block)
+        if body_node and profile.body_resolver:
+            body_node = profile.body_resolver(body_node)
+
+        return body_node
 
     def _compute_body_range(
         self,
@@ -280,18 +286,30 @@ class ElementCollector:
         """
         Compute strippable range for function body.
 
-        For brace-based languages, excludes braces.
-        Preserves docstring if extractor found one.
+        Handles:
+        - Brace-based languages (excludes braces)
+        - Leading comments as siblings (Python style)
+        - Docstrings (via profile.docstring_extractor)
+        - Line-based start (preserving indentation)
         """
-        # Get inner content range (excluding braces if present)
+        # 1. Get inner content range (excluding braces if present)
         start_byte, end_byte = self._compute_inner_body_range(body_node)
 
-        # Adjust for docstring if present
+        # 2. Check for leading comments as siblings (Python, Ruby style)
+        #    Comments between signature and body_node
+        sibling_comment_start = self._find_leading_sibling_comments(func_def, body_node)
+        if sibling_comment_start is not None:
+            start_byte = min(start_byte, sibling_comment_start)
+
+        # 3. Adjust for docstring if present (exclude from stripping)
         if profile.docstring_extractor:
             docstring = profile.docstring_extractor(body_node, self.doc)
             if docstring:
                 # Start after docstring
                 start_byte = self._find_next_content_byte(docstring.end_byte)
+
+        # 4. Adjust to line start (preserving indentation for placeholder)
+        start_byte = self._find_line_start(start_byte)
 
         return (start_byte, end_byte)
 
@@ -320,6 +338,65 @@ class ElementCollector:
         if newline_pos == -1:
             return pos
         return newline_pos + 1
+
+    def _find_leading_sibling_comments(self, func_def: Node, body_node: Node) -> Optional[int]:
+        """
+        Find comments that appear between function signature and body block.
+
+        In Python/Ruby, comments can appear as separate children between ':' and block.
+        Example:
+            def multiply(a, b):
+                # This is a leading comment
+                return a * b
+
+        Args:
+            func_def: Function definition node
+            body_node: Body block node
+
+        Returns:
+            Start byte of first leading comment, or None if no leading comments
+        """
+        # Find body_node index among func_def children
+        body_index = None
+        for i, child in enumerate(func_def.children):
+            if child == body_node:
+                body_index = i
+                break
+
+        if body_index is None:
+            return None
+
+        # Walk backwards from body to find first comment
+        first_comment_start = None
+        for i in range(body_index - 1, -1, -1):
+            child = func_def.children[i]
+
+            # Check if this is a comment node
+            if child.type in self.descriptor.comment_types:
+                first_comment_start = child.start_byte
+            else:
+                # Stop at first non-comment node (likely ':' or other syntax)
+                break
+
+        return first_comment_start
+
+    def _find_line_start(self, pos: int) -> int:
+        """
+        Find start of line containing position.
+
+        Preserves indentation for proper placeholder formatting.
+
+        Args:
+            pos: Byte position in text
+
+        Returns:
+            Start byte of line containing pos
+        """
+        text = self.doc.text
+        line_start = text.rfind('\n', 0, pos)
+        if line_start == -1:
+            return 0
+        return line_start + 1
 
     def _filter_nested_elements(self, elements: List[CodeElement]) -> List[CodeElement]:
         """

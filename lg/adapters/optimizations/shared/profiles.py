@@ -101,6 +101,19 @@ class ElementProfile:
     Returns: Docstring node if found, None otherwise.
     """
 
+    body_resolver: Optional[Callable[[Node], Node]] = None
+    """
+    Resolve nested body structure to actual content node.
+
+    Use when language AST has wrapper nodes around actual body content.
+    Example: Kotlin function_body -> block (need to unwrap to inner block)
+
+    Only used when has_body=True.
+
+    Signature: (body_node: Node) -> Node
+    Returns: Resolved body node for range computation.
+    """
+
     # --- Inheritance ---
 
     parent_profile: Optional[str] = None
