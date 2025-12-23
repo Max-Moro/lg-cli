@@ -340,6 +340,15 @@ CPP_CODE_DESCRIPTOR = LanguageCodeDescriptor(
             is_public=_is_public_cpp,
             additional_check=lambda node, doc: _is_inside_class_or_struct(node),
         ),
+
+        # === Variables (top-level) ===
+        # Top-level variable declarations
+        ElementProfile(
+            name="variable",
+            query="(declaration) @element",
+            is_public=_is_public_cpp,
+            additional_check=lambda node, doc: not _is_inside_class_or_struct(node),
+        ),
     ],
 
     decorator_types=set(),  # C++ doesn't have decorators
