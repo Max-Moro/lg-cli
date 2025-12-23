@@ -54,6 +54,24 @@ class LanguageCodeDescriptor:
     Signature: (node: Node, doc: TreeSitterDocument) -> Optional[str]
     """
 
+    extend_element_range: Optional[Callable[[Node, str, TreeSitterDocument], Node]] = None
+    """
+    Extend element range to include trailing punctuation.
+
+    Used for TypeScript/JavaScript to include trailing semicolons in element range.
+    This ensures proper grouping of adjacent elements in placeholder system.
+
+    Args:
+        node: Element node
+        element_type: Type of element ("field", "variable", etc.)
+        doc: Tree-sitter document
+
+    Returns:
+        Node with potentially extended range (may be synthetic ExtendedRangeNode)
+
+    Signature: (node: Node, element_type: str, doc: TreeSitterDocument) -> Node
+    """
+
     # --- Resolved profiles cache ---
 
     _resolved_profiles: Optional[List[ElementProfile]] = field(default=None, repr=False)

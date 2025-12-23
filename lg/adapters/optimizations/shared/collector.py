@@ -32,8 +32,8 @@ class ElementCollector:
         self.doc = doc
         self.descriptor = descriptor
 
-        # Cache for collected elements by profile name
-        self._cache: dict[str, List[CodeElement]] = {}
+        # Cache for collected elements by profile id (supports multiple profiles with same name)
+        self._cache: dict[int, List[CodeElement]] = {}
 
     # ============= Main API =============
 
@@ -95,9 +95,12 @@ class ElementCollector:
 
         Uses caching for efficiency.
         """
+        # Use profile object id as cache key to handle multiple profiles with same name
+        cache_key = id(profile)
+
         # Check cache
-        if profile.name in self._cache:
-            return self._cache[profile.name]
+        if cache_key in self._cache:
+            return self._cache[cache_key]
 
         elements = []
 
@@ -120,7 +123,7 @@ class ElementCollector:
             elements.append(element)
 
         # Cache and return
-        self._cache[profile.name] = elements
+        self._cache[cache_key] = elements
         return elements
 
     def _get_element_definition(self, node: Node) -> Optional[Node]:
@@ -138,6 +141,11 @@ class ElementCollector:
         """
         Create CodeElement from node and profile.
         """
+        # Extend element range if language-specific logic provided
+        # (e.g., TypeScript/JavaScript include trailing semicolon)
+        if self.descriptor.extend_element_range:
+            node = self.descriptor.extend_element_range(node, profile.name, self.doc)
+
         # Extract name
         name = self._extract_name(node)
 
@@ -293,10 +301,16 @@ class ElementCollector:
         - Brace-based languages (excludes braces)
         - Leading comments as siblings (Python style)
         - Docstrings (via profile.docstring_extractor)
-        - Line-based start (preserving indentation)
+        - Line-based start (preserving indentation for Python-style languages)
         """
         # 1. Get inner content range (excluding braces if present)
         start_byte, end_byte = self._compute_inner_body_range(body_node)
+        original_start = start_byte
+
+        # Detect if this is brace-based language:
+        # If _compute_inner_body_range adjusted start_byte from body_node.start_byte,
+        # it means braces were found and handled
+        is_brace_based = (start_byte != body_node.start_byte)
 
         # 2. Check for leading comments as siblings (Python, Ruby style)
         #    Comments between signature and body_node
@@ -311,8 +325,10 @@ class ElementCollector:
                 # Start after docstring
                 start_byte = self._find_next_content_byte(docstring.end_byte)
 
-        # 4. Adjust to line start (preserving indentation for placeholder)
-        start_byte = self._find_line_start(start_byte)
+        # 4. Adjust to line start ONLY for non-brace languages (Python, Ruby)
+        #    For brace-based languages, _compute_inner_body_range already positioned correctly after '{'
+        if not is_brace_based:
+            start_byte = self._find_line_start(start_byte)
 
         return (start_byte, end_byte)
 
