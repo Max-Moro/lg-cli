@@ -18,9 +18,7 @@ public class User {
     private final String email;
 
     public User(long id, String name, String email) {
-        this.id = id;
-        this.name = name;
-        this.email = email;
+        // … constructor body omitted (3 lines)
     }
 
     public long getId() { return id; }
@@ -37,8 +35,7 @@ public class Calculator {
     }
 
     public Calculator(String name) {
-        this.name = name;
-        this.history = new ArrayList<>();
+        // … constructor body omitted (2 lines)
     }
 
     public int add(int a, int b) {
@@ -63,8 +60,7 @@ public class ProcessingResult {
     private final List<User> invalid;
 
     public ProcessingResult(List<User> valid, List<User> invalid) {
-        this.valid = valid;
-        this.invalid = invalid;
+        // … constructor body omitted (2 lines)
     }
 
     public List<User> getValid() { return valid; }
