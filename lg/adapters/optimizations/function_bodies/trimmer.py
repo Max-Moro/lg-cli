@@ -138,9 +138,21 @@ class FunctionBodyTrimmer:
         Returns:
             Tuple of (suffix_text, suffix_start_char)
         """
-        # For now, simplified - no return preservation
-        # TODO: Add return_node to CodeElement if needed
-        return "", strippable_end_char
+        if not element.return_node:
+            return "", strippable_end_char
+
+        return_node = element.return_node
+        return_start_char = context.doc.byte_to_char_position(return_node.start_byte)
+
+        # Include the return statement line with proper line ending
+        # Find line start for indentation preservation
+        line_start = self._find_line_start(context.raw_text, return_start_char)
+
+        # Get text from line start to end of strippable range
+        # This includes indentation + return statement + possible trailing content
+        suffix_text = context.raw_text[line_start:strippable_end_char]
+
+        return suffix_text, line_start
 
     def _compute_indent(self, body_text: str) -> str:
         """
@@ -182,6 +194,24 @@ class FunctionBodyTrimmer:
             return ""
 
         return text[:last_newline + 1]
+
+    def _find_line_start(self, text: str, pos: int) -> int:
+        """
+        Find start of line containing position.
+
+        Preserves indentation for proper return statement formatting.
+
+        Args:
+            text: Source text
+            pos: Character position in text
+
+        Returns:
+            Start position of line containing pos
+        """
+        line_start = text.rfind('\n', 0, pos)
+        if line_start == -1:
+            return 0
+        return line_start + 1
 
 
 __all__ = ["FunctionBodyTrimmer", "TrimResult"]

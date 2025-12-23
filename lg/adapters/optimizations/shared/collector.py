@@ -153,6 +153,7 @@ class ElementCollector:
         body_node = None
         body_range = None
         docstring_node = None
+        return_node = None
 
         if profile.has_body:
             body_node = self._find_body_node(node, profile)
@@ -160,6 +161,7 @@ class ElementCollector:
                 body_range = self._compute_body_range(node, body_node, profile)
                 if profile.docstring_extractor:
                     docstring_node = profile.docstring_extractor(body_node, self.doc)
+                return_node = self._find_return_statement(body_node)
 
         return CodeElement(
             profile=profile,
@@ -169,6 +171,7 @@ class ElementCollector:
             body_node=body_node,
             body_range=body_range,
             docstring_node=docstring_node,
+            return_node=return_node,
             decorators=decorators,
         )
 
@@ -397,6 +400,45 @@ class ElementCollector:
         if line_start == -1:
             return 0
         return line_start + 1
+
+    def _find_return_statement(self, body_node: Node) -> Optional[Node]:
+        """
+        Find return statement at the end of function body.
+
+        Searches for the last statement in the body that is a return.
+        Used by trimmer to preserve return when truncating.
+
+        Args:
+            body_node: Function/method body node
+
+        Returns:
+            Return statement node if found at end of body, None otherwise
+        """
+        if not body_node.children:
+            return None
+
+        # Return statement types across languages
+        return_types = {"return_statement", "return", "return_expression"}
+
+        # Find the last non-brace/non-comment child
+        for child in reversed(body_node.children):
+            # Skip closing brace
+            child_text = self.doc.get_node_text(child) if child else ""
+            if child_text == "}":
+                continue
+
+            # Skip whitespace/comments
+            if child.type in self.descriptor.comment_types:
+                continue
+
+            # Check if it's a return statement
+            if child.type in return_types:
+                return child
+
+            # If we hit a non-return statement, there's no return at the end
+            break
+
+        return None
 
     def _filter_nested_elements(self, elements: List[CodeElement]) -> List[CodeElement]:
         """

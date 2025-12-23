@@ -66,6 +66,9 @@ class CodeElement:
     docstring_node: Optional[Node] = None
     """Docstring node if found (for preservation when stripping)."""
 
+    return_node: Optional[Node] = None
+    """Return statement node at end of body (for preservation when trimming)."""
+
     decorators: List[Node] = field(default_factory=list)
     """List of decorator/annotation nodes attached to this element."""
 
