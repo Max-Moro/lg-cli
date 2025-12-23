@@ -336,10 +336,16 @@ class ElementCollector:
                 # Start after docstring
                 start_byte = self._find_next_content_byte(docstring.end_byte)
 
-        # 4. Adjust to line start ONLY for non-brace languages (Python, Ruby)
-        #    For brace-based languages, _compute_inner_body_range already positioned correctly after '{'
+        # 4. Adjust to line start ONLY for bodies that start on a new line (Python, Ruby)
+        #    For inline bodies (Scala inline, single-line lambdas), preserve same-line positioning
         if not is_brace_based:
-            start_byte = self._find_line_start(start_byte)
+            # Check if body is on a new line relative to function definition
+            func_line = func_def.start_point[0]
+            body_line = body_node.start_point[0]
+
+            if body_line > func_line:
+                # Body starts on a new line - adjust to line start for proper indentation
+                start_byte = self._find_line_start(start_byte)
 
         return (start_byte, end_byte)
 
