@@ -66,10 +66,9 @@ class ScalaAdapter(CodeAdapter[ScalaCfg]):
         from .imports import ScalaImportAnalyzer
         return ScalaImportAnalyzer(classifier)
 
-    def create_code_analyzer(self, doc: TreeSitterDocument):
-        """Create Scala-specific unified code analyzer."""
-        from .code_analysis import ScalaCodeAnalyzer
-        return ScalaCodeAnalyzer(doc)
+    def get_code_descriptor(self):
+        """Return Scala code descriptor."""
+        raise NotImplementedError("Scala code descriptor not yet implemented")
 
     def create_literal_descriptor(self) -> LanguageLiteralDescriptor:
         """Create Scala literal descriptor."""

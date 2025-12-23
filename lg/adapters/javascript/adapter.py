@@ -66,10 +66,9 @@ class JavaScriptAdapter(CodeAdapter[JavaScriptCfg]):
         from .imports import JavaScriptImportAnalyzer
         return JavaScriptImportAnalyzer(classifier)
 
-    def create_code_analyzer(self, doc: TreeSitterDocument):
-        """Create JavaScript-specific unified code analyzer."""
-        from .code_analysis import JavaScriptCodeAnalyzer
-        return JavaScriptCodeAnalyzer(doc)
+    def get_code_descriptor(self):
+        """Return JavaScript code descriptor."""
+        raise NotImplementedError("JavaScript code descriptor not yet implemented")
 
     def create_literal_descriptor(self) -> LanguageLiteralDescriptor:
         """Create JavaScript literal descriptor."""

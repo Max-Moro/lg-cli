@@ -65,10 +65,9 @@ class CppAdapter(CodeAdapter[CppCfg]):
         from .imports import CppImportAnalyzer
         return CppImportAnalyzer(classifier)
 
-    def create_code_analyzer(self, doc: TreeSitterDocument):
-        """Create C++-specific unified code analyzer."""
-        from .code_analysis import CppCodeAnalyzer
-        return CppCodeAnalyzer(doc)
+    def get_code_descriptor(self):
+        """Return C++ code descriptor."""
+        raise NotImplementedError("C++ code descriptor not yet implemented")
 
     def create_literal_descriptor(self) -> LanguageLiteralDescriptor:
         """Create C++ literal descriptor."""

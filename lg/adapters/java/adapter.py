@@ -65,10 +65,9 @@ class JavaAdapter(CodeAdapter[JavaCfg]):
         from .imports import JavaImportAnalyzer
         return JavaImportAnalyzer(classifier)
 
-    def create_code_analyzer(self, doc: TreeSitterDocument):
-        """Create Java-specific unified code analyzer."""
-        from .code_analysis import JavaCodeAnalyzer
-        return JavaCodeAnalyzer(doc)
+    def get_code_descriptor(self):
+        """Return Java code descriptor."""
+        raise NotImplementedError("Java code descriptor not yet implemented")
 
     def create_literal_descriptor(self) -> LanguageLiteralDescriptor:
         """Create Java literal descriptor."""

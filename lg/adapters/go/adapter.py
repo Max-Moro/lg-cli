@@ -10,7 +10,6 @@ from typing import Dict, Any, List, Optional, cast, ClassVar
 from tree_sitter import Language
 
 from .code_analysis import GoCodeAnalyzer
-from ..code_analysis import CodeAnalyzer
 from ..code_base import CodeAdapter
 from ..code_model import CodeCfg
 from ..optimizations import ImportClassifier, TreeSitterImportAnalyzer, LanguageLiteralDescriptor
@@ -67,14 +66,14 @@ class GoAdapter(CodeAdapter[GoCfg]):
         from .imports import GoImportAnalyzer
         return GoImportAnalyzer(classifier)
 
-    def create_code_analyzer(self, doc: TreeSitterDocument):
-        """Create Go-specific unified code analyzer."""
-        return GoCodeAnalyzer(doc)
-
-    def create_comment_analyzer(self, doc: TreeSitterDocument, code_analyzer: CodeAnalyzer):
+    def create_comment_analyzer(self, doc: TreeSitterDocument):
         """Create Go-specific comment analyzer."""
         from .comment_analysis import GoCommentAnalyzer
-        return GoCommentAnalyzer(doc, cast(GoCodeAnalyzer, code_analyzer), self.COMMENT_STYLE)
+        return GoCommentAnalyzer(doc, self.COMMENT_STYLE)
+
+    def get_code_descriptor(self):
+        """Return Go code descriptor."""
+        raise NotImplementedError("Go code descriptor not yet implemented")
 
     def create_literal_descriptor(self) -> LanguageLiteralDescriptor:
         """Create Go literal descriptor."""

@@ -9,7 +9,6 @@ from typing import Dict, Any, List, Optional, ClassVar
 
 from tree_sitter import Language
 
-from ..code_analysis import CodeAnalyzer
 from ..code_base import CodeAdapter
 from ..code_model import CodeCfg
 from ..context import LightweightContext
@@ -70,15 +69,15 @@ class PythonAdapter(CodeAdapter[PythonCfg]):
         from .imports import PythonImportAnalyzer
         return PythonImportAnalyzer(classifier)
 
-    def create_code_analyzer(self, doc: TreeSitterDocument):
-        """Create Python-specific unified code analyzer."""
-        from .code_analysis import PythonCodeAnalyzer
-        return PythonCodeAnalyzer(doc)
-
-    def create_comment_analyzer(self, doc: TreeSitterDocument, code_analyzer: CodeAnalyzer):
+    def create_comment_analyzer(self, doc: TreeSitterDocument):
         """Create Python-specific comment analyzer."""
         from .comment_analysis import PythonCommentAnalyzer
         return PythonCommentAnalyzer(doc, self.COMMENT_STYLE)
+
+    def get_code_descriptor(self):
+        """Return Python code descriptor."""
+        # TODO: Implement in Stage 4
+        raise NotImplementedError("Python code descriptor not yet implemented")
 
     def create_literal_descriptor(self) -> LanguageLiteralDescriptor:
         """Create Python literal descriptor."""

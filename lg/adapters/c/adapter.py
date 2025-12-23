@@ -65,10 +65,9 @@ class CAdapter(CodeAdapter[CCfg]):
         from .imports import CImportAnalyzer
         return CImportAnalyzer(classifier)
 
-    def create_code_analyzer(self, doc: TreeSitterDocument):
-        """Create C-specific unified code analyzer."""
-        from .code_analysis import CCodeAnalyzer
-        return CCodeAnalyzer(doc)
+    def get_code_descriptor(self):
+        """Return C code descriptor."""
+        raise NotImplementedError("C code descriptor not yet implemented")
 
     def create_literal_descriptor(self) -> LanguageLiteralDescriptor:
         """Create C literal descriptor."""

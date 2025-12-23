@@ -221,7 +221,6 @@ class BudgetController(Generic[Cc]):
         # Build ProcessingContext manually for sandbox evaluation
         doc = self.adapter.create_document(text, lightweight_ctx.ext)
         editor = RangeEditor(text)
-        code_analyzer = self.adapter.create_code_analyzer(doc)
         from .placeholders import PlaceholderManager
         placeholders = PlaceholderManager(doc, self.adapter.comment_style)
         return ProcessingContext(
@@ -233,7 +232,6 @@ class BudgetController(Generic[Cc]):
             editor=editor,
             placeholders=placeholders,
             tokenizer=self.tokenizer,
-            code_analyzer=code_analyzer,
             get_descriptor=self.adapter.get_code_descriptor,
         )
 

@@ -10,7 +10,6 @@ from __future__ import annotations
 
 from typing import List, Optional
 
-from .code_analysis import GoCodeAnalyzer
 from ..comment_style import CommentStyle
 from ..optimizations.comments import GroupingCommentAnalyzer
 from ..tree_sitter_support import TreeSitterDocument, Node
@@ -26,17 +25,17 @@ class GoCommentAnalyzer(GroupingCommentAnalyzer):
     3. There are no blank lines between the comment and the declaration
     """
 
-    def __init__(self, doc: TreeSitterDocument, code_analyzer: GoCodeAnalyzer, style: CommentStyle):
+    def __init__(self, doc: TreeSitterDocument, style: CommentStyle):
         """
         Initialize the Go comment analyzer.
 
         Args:
             doc: Parsed Tree-sitter document
-            code_analyzer: Go code analyzer for determining element visibility
             style: CommentStyle instance with comment markers
         """
         super().__init__(doc, style)
-        self.code_analyzer = code_analyzer
+        # TODO: migrate to collector for element visibility checks
+        self._element_visibility_cache = {}
 
     def is_documentation_comment(self, node: Node, text: str, capture_name: str = "") -> bool:
         """
@@ -164,10 +163,24 @@ class GoCommentAnalyzer(GroupingCommentAnalyzer):
         if following_decl.type not in decl_types:
             return False
 
-        # Analyze the declaration to check if it's exported
+        # TODO: Analyze the declaration to check if it's exported using collector
+        # For now, use simple heuristic: check if identifier starts with uppercase
         try:
-            elem_info = self.code_analyzer.analyze_element(following_decl)
-            return elem_info.is_exported
+            # Simple heuristic: exported names in Go start with uppercase
+            # This is a temporary implementation until collector migration
+            if following_decl.type in {'type_declaration', 'function_declaration', 'method_declaration'}:
+                # Find the identifier node
+                for child in following_decl.children:
+                    if child.type == 'type_identifier' or child.type == 'identifier':
+                        name = self.doc.get_node_text(child)
+                        return name[0].isupper() if name else False
+            elif following_decl.type in {'var_declaration', 'const_declaration'}:
+                # For var/const, look for first identifier
+                for child in following_decl.children:
+                    if child.type == 'identifier':
+                        name = self.doc.get_node_text(child)
+                        return name[0].isupper() if name else False
+            return False
         except Exception:
             return False
 

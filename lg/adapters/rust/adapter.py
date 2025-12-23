@@ -9,7 +9,6 @@ from typing import Dict, Any, List, Optional, ClassVar
 
 from tree_sitter import Language
 
-from ..code_analysis import CodeAnalyzer
 from ..code_base import CodeAdapter
 from ..code_model import CodeCfg
 from ..optimizations import ImportClassifier, TreeSitterImportAnalyzer
@@ -66,15 +65,14 @@ class RustAdapter(CodeAdapter[RustCfg]):
         from .imports import RustImportAnalyzer
         return RustImportAnalyzer(classifier)
 
-    def create_code_analyzer(self, doc: TreeSitterDocument):
-        """Create Rust-specific unified code analyzer."""
-        from .code_analysis import RustCodeAnalyzer
-        return RustCodeAnalyzer(doc)
-
-    def create_comment_analyzer(self, doc: TreeSitterDocument, code_analyzer: CodeAnalyzer):
+    def create_comment_analyzer(self, doc: TreeSitterDocument):
         """Create Rust-specific comment analyzer."""
         from .comment_analysis import RustCommentAnalyzer
         return RustCommentAnalyzer(doc, self.COMMENT_STYLE)
+
+    def get_code_descriptor(self):
+        """Return Rust code descriptor."""
+        raise NotImplementedError("Rust code descriptor not yet implemented")
 
     def create_literal_descriptor(self):
         """Create Rust literal descriptor."""

@@ -53,7 +53,7 @@ class CommentOptimizer:
         evaluators, transformer = self._create_decision_pipeline(normalized_cfg)
 
         # Get language-specific comment analyzer
-        analyzer = self.adapter.create_comment_analyzer(context.doc, context.code_analyzer)
+        analyzer = self.adapter.create_comment_analyzer(context.doc)
 
         # Track processed nodes to avoid double-processing in group handling
         processed_positions = set()

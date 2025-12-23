@@ -10,7 +10,6 @@ from typing import Dict, List, Tuple, Any, TypeVar, cast, ClassVar
 
 from .base import BaseAdapter
 from .budget import BudgetController
-from .code_analysis import CodeAnalyzer
 from .code_model import CodeCfg, PlaceholderConfig
 from .comment_style import CommentStyle
 from .context import ProcessingContext, LightweightContext
@@ -75,14 +74,19 @@ class CodeAdapter(BaseAdapter[C], ABC):
         """Create language-specific import analyzer. Must be overridden by subclasses."""
         pass
 
-    @abstractmethod
-    def create_code_analyzer(self, doc: TreeSitterDocument) -> CodeAnalyzer:
-        """Create language-specific unified code analyzer."""
-        pass
-
-    def create_comment_analyzer(self, doc: TreeSitterDocument, code_analyzer: CodeAnalyzer) -> CommentAnalyzer:
+    def create_comment_analyzer(self, doc: TreeSitterDocument) -> CommentAnalyzer:
         """Create language-specific comment analyzer for the document."""
         return CommentAnalyzer(doc, self.COMMENT_STYLE)
+
+    @abstractmethod
+    def get_code_descriptor(self):
+        """
+        Return language code descriptor for this adapter.
+
+        Returns:
+            LanguageCodeDescriptor with element profiles for this language.
+        """
+        pass
 
     def create_literal_descriptor(self) -> LanguageLiteralDescriptor:
         """Create language-specific literal descriptor."""

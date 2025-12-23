@@ -65,10 +65,9 @@ class KotlinAdapter(CodeAdapter[KotlinCfg]):
         from .imports import KotlinImportAnalyzer
         return KotlinImportAnalyzer(classifier)
 
-    def create_code_analyzer(self, doc: TreeSitterDocument):
-        """Create a Kotlin-specific unified code analyzer."""
-        from .code_analysis import KotlinCodeAnalyzer
-        return KotlinCodeAnalyzer(doc)
+    def get_code_descriptor(self):
+        """Return Kotlin code descriptor."""
+        raise NotImplementedError("Kotlin code descriptor not yet implemented")
 
     def create_literal_descriptor(self) -> LanguageLiteralDescriptor:
         """Create Kotlin literal descriptor."""

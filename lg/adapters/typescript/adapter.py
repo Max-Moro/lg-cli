@@ -76,10 +76,10 @@ class TypeScriptAdapter(CodeAdapter[TypeScriptCfg]):
         from .imports import TypeScriptImportAnalyzer
         return TypeScriptImportAnalyzer(classifier)
 
-    def create_code_analyzer(self, doc: TreeSitterDocument):
-        """Create TypeScript-specific unified code analyzer."""
-        from .code_analysis import TypeScriptCodeAnalyzer
-        return TypeScriptCodeAnalyzer(doc)
+    def get_code_descriptor(self):
+        """Return TypeScript code descriptor."""
+        # TODO: Implement in Stage 4
+        raise NotImplementedError("TypeScript code descriptor not yet implemented")
 
     def create_literal_descriptor(self) -> LanguageLiteralDescriptor:
         """Create TypeScript literal descriptor."""

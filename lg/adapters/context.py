@@ -85,7 +85,6 @@ class ProcessingContext(LightState):
         editor: RangeEditor,
         placeholders: PlaceholderManager,
         tokenizer: TokenService,
-        code_analyzer,  # CodeAnalyzer (legacy, will be removed)
         get_descriptor: Callable,  # () -> LanguageCodeDescriptor
     ):
         super().__init__(file_path, raw_text, group_size)
@@ -95,7 +94,6 @@ class ProcessingContext(LightState):
         self.placeholders = placeholders
         self.metrics = MetricsCollector(adapter_name)
         self.tokenizer = tokenizer
-        self.code_analyzer = code_analyzer
         self._get_descriptor = get_descriptor  # Lazy: called only when collector is needed
         self._collector = None  # ElementCollector, created lazily
 
@@ -220,7 +218,6 @@ class ProcessingContext(LightState):
         # Create components for full context
         doc = adapter.create_document(lightweight_ctx.raw_text, lightweight_ctx.ext)
         editor = RangeEditor(lightweight_ctx.raw_text)
-        code_analyzer = adapter.create_code_analyzer(doc)
 
         # Create PlaceholderManager with settings from adapter
         placeholders = PlaceholderManager(
@@ -238,6 +235,5 @@ class ProcessingContext(LightState):
             editor,
             placeholders,
             tokenizer,
-            code_analyzer,
             get_descriptor=adapter.get_code_descriptor,  # Lazy: called only when needed
         )
