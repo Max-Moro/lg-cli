@@ -217,7 +217,7 @@ GO_CODE_DESCRIPTOR = LanguageCodeDescriptor(
 
         # === Constants (Package-level) ===
         ElementProfile(
-            name="const",
+            name="constant",
             query="""
             (const_declaration
               (const_spec
@@ -229,7 +229,7 @@ GO_CODE_DESCRIPTOR = LanguageCodeDescriptor(
 
         # === Variables (Package-level) ===
         ElementProfile(
-            name="var",
+            name="variable",
             query="""
             (var_declaration
               (var_spec
