@@ -167,20 +167,20 @@ def _is_public_rust(node: Node, doc: TreeSitterDocument) -> bool:
     return False
 
 
-def _impl_has_public_methods(node: Node, doc: TreeSitterDocument) -> bool:
+def _impl_has_no_public_methods(node: Node, doc: TreeSitterDocument) -> bool:
     """
-    Check if impl block has at least one public method.
+    Check if impl block has no public methods.
 
     Empty impl blocks (no public methods) should be removed entirely.
     This is used as additional_check for impl_item profile.
-    Returns True if impl SHOULD BE KEPT (has public methods).
+    Returns True if impl SHOULD BE REMOVED (no public methods).
 
     Args:
         node: impl_item node
         doc: Tree-sitter document
 
     Returns:
-        True if impl block has public methods and should be kept
+        True if impl block has no public methods and should be removed
     """
     # Find the declaration_list (body) of the impl
     body_node = None
@@ -191,17 +191,125 @@ def _impl_has_public_methods(node: Node, doc: TreeSitterDocument) -> bool:
 
     if not body_node:
         # No body - remove it
-        return False
+        return True
 
     # Check each function in the impl block
     for child in body_node.children:
         if child.type == "function_item":
             # Check visibility of this method
             if _is_public_rust(child, doc):
-                return True  # Has public method, keep impl
+                return False  # Has public method, keep impl
 
     # No public methods found - remove impl
-    return False
+    return True
+
+
+def _is_top_level_private_macro(node: Node, doc: TreeSitterDocument) -> bool:
+    """
+    Check if macro invocation is top-level and private.
+
+    Top-level means not inside any function/method body.
+    Private means doesn't contain 'pub' keyword.
+
+    Args:
+        node: macro_invocation node
+        doc: Tree-sitter document
+
+    Returns:
+        True if macro is top-level and private (should be removed)
+    """
+    # Check if inside function body
+    current = node.parent
+    while current:
+        if current.type in ("block", "statement_block"):
+            # Inside function body - don't remove
+            return False
+        if current.type in ("source_file", "mod_item"):
+            # Top-level
+            break
+        current = current.parent
+
+    # Top-level macro - check if it contains 'pub'
+    macro_text = doc.get_node_text(node)
+    return "pub" not in macro_text
+
+
+def _create_extended_range_node(original_node: Node, comma_node: Node) -> Node:
+    """
+    Create synthetic node with extended range.
+
+    Args:
+        original_node: Original element node
+        comma_node: Comma node to include
+
+    Returns:
+        Synthetic node with extended range
+    """
+    class ExtendedRangeNode:
+        """Duck-typed node with extended byte range."""
+        def __init__(self, start_node: Node, end_node: Node):
+            self._original = start_node
+            self.start_byte = start_node.start_byte
+            self.end_byte = end_node.end_byte
+            self.start_point = start_node.start_point
+            self.end_point = end_node.end_point
+            self.type = start_node.type
+            self.parent = start_node.parent
+            # Copy other attributes for compatibility
+            for attr in ['children', 'text']:
+                if hasattr(start_node, attr):
+                    setattr(self, attr, getattr(start_node, attr))
+
+        def child_by_field_name(self, name: str):
+            """Delegate to original node."""
+            return self._original.child_by_field_name(name)
+
+    return ExtendedRangeNode(original_node, comma_node)
+
+
+def _extend_range_for_comma(node: Node, element_type: str, doc: TreeSitterDocument) -> Node:
+    """
+    Extend element range to include trailing comma.
+
+    For fields, includes trailing comma in element range
+    to ensure proper grouping of adjacent elements.
+
+    Args:
+        node: Element node
+        element_type: Type of element
+        doc: Tree-sitter document
+
+    Returns:
+        Node with potentially extended range
+    """
+    # Only extend for field elements
+    if element_type != "field":
+        return node
+
+    # Check if there's a comma right after this node
+    parent = node.parent
+    if not parent:
+        return node
+
+    # Find position of this node among siblings
+    siblings = parent.children
+    node_index = None
+    for i, sibling in enumerate(siblings):
+        if sibling == node:
+            node_index = i
+            break
+
+    if node_index is None:
+        return node
+
+    # Check if next sibling is a comma
+    if node_index + 1 < len(siblings):
+        next_sibling = siblings[node_index + 1]
+        if next_sibling.type == "," or doc.get_node_text(next_sibling).strip() == ",":
+            # Create synthetic node with extended range
+            return _create_extended_range_node(node, next_sibling)
+
+    return node
 
 
 # --- Rust Code Descriptor ---
@@ -295,16 +403,29 @@ RUST_CODE_DESCRIPTOR = LanguageCodeDescriptor(
 
         # === Impl Blocks ===
         # Remove impl blocks that have no public methods
+        # (impl blocks for private types or with only private methods)
         ElementProfile(
             name="impl",
             query="(impl_item) @element",
-            additional_check=_impl_has_public_methods,
+            is_public=lambda node, doc: False,  # Always private (filtered by additional_check)
+            additional_check=_impl_has_no_public_methods,
+        ),
+
+        # === Macro Invocations ===
+        # Remove top-level macros that don't contain 'pub' (likely private)
+        # Macros inside function bodies are kept (they're implementation details)
+        ElementProfile(
+            name="macro",
+            query="(macro_invocation) @element",
+            is_public=lambda node, doc: False,  # Always private (filtered by additional_check)
+            additional_check=_is_top_level_private_macro,
         ),
     ],
 
     decorator_types={"attribute_item", "inner_attribute_item"},
     comment_types={"line_comment", "block_comment"},
     name_extractor=_extract_name,
+    extend_element_range=_extend_range_for_comma,
 )
 
 
