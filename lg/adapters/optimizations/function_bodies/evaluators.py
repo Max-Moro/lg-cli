@@ -10,8 +10,8 @@ import re
 from typing import List, Optional
 
 from .decision import FunctionBodyDecision
-from ...code_analysis import ElementInfo
 from ...code_model import FunctionBodyPolicy
+from ...optimizations.shared import CodeElement
 
 logger = logging.getLogger(__name__)
 
@@ -22,12 +22,12 @@ class ExceptPatternEvaluator:
     def __init__(self, patterns: List[str]):
         self.patterns = patterns
 
-    def evaluate(self, element: ElementInfo) -> Optional[FunctionBodyDecision]:
+    def evaluate(self, element: CodeElement) -> Optional[FunctionBodyDecision]:
         """
         Check if function name matches any except pattern.
 
         Args:
-            element: Element info with function name
+            element: CodeElement with function name
 
         Returns:
             Decision to keep if pattern matches, None otherwise
@@ -52,12 +52,12 @@ class KeepAnnotatedEvaluator:
     def __init__(self, patterns: List[str]):
         self.patterns = patterns
 
-    def evaluate(self, element: ElementInfo) -> Optional[FunctionBodyDecision]:
+    def evaluate(self, element: CodeElement) -> Optional[FunctionBodyDecision]:
         """
         Check if function has any preservation annotations/decorators.
 
         Args:
-            element: Element info with decorators
+            element: CodeElement with decorators
 
         Returns:
             Decision to keep if annotation matches, None otherwise
@@ -84,12 +84,12 @@ class BasePolicyEvaluator:
     def __init__(self, policy: FunctionBodyPolicy):
         self.policy = policy
 
-    def evaluate(self, element: ElementInfo) -> FunctionBodyDecision:
+    def evaluate(self, element: CodeElement) -> FunctionBodyDecision:
         """
         Apply base function body policy.
 
         Args:
-            element: Element info with visibility information
+            element: CodeElement with public API status
 
         Returns:
             Decision based on policy (always returns a decision)
@@ -101,7 +101,7 @@ class BasePolicyEvaluator:
             return FunctionBodyDecision(action="strip")
 
         elif self.policy == "keep_public":
-            if element.in_public_api:
+            if element.is_public:
                 return FunctionBodyDecision(action="keep")
             else:
                 return FunctionBodyDecision(action="strip")

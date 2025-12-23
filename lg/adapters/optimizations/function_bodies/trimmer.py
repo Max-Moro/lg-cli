@@ -7,8 +7,8 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Optional
 
-from ...code_analysis import FunctionGroup
 from ...context import ProcessingContext
+from ...optimizations.shared import CodeElement
 
 
 @dataclass
@@ -31,46 +31,43 @@ class FunctionBodyTrimmer:
     def __init__(self, max_tokens: int):
         self.max_tokens = max_tokens
 
-    def should_trim(
+    def should_trim_element(
         self,
         context: ProcessingContext,
-        func_group: FunctionGroup
+        element: CodeElement
     ) -> bool:
         """
         Check if function body exceeds token budget.
 
         Args:
             context: Processing context with tokenizer
-            func_group: Function group with body info
+            element: CodeElement with body info
 
         Returns:
             True if body needs trimming
         """
-        body_text = self._get_strippable_text(context, func_group)
+        body_text = self._get_strippable_text(context, element)
         if not body_text:
             return False
 
         token_count = context.tokenizer.count_text_cached(body_text)
         return token_count > self.max_tokens
 
-    def trim(
+    def trim_element(
         self,
         context: ProcessingContext,
-        func_group: FunctionGroup
+        element: CodeElement
     ) -> Optional[TrimResult]:
         """
         Trim function body to fit token budget.
 
-        For brace-based languages:
-        - Keeps some lines at the start
-        - Preserves return statement at the end if present
-        - Placeholder replaces the middle section
-
         Returns:
             TrimResult with all information needed for replacement, or None if no trimming needed
         """
-        # Use pre-computed strippable range
-        start_byte, end_byte = func_group.strippable_range
+        if element.body_range is None:
+            return None
+
+        start_byte, end_byte = element.body_range
         start_char = context.doc.byte_to_char_position(start_byte)
         end_char = context.doc.byte_to_char_position(end_byte)
 
@@ -87,7 +84,7 @@ class FunctionBodyTrimmer:
             return None
 
         # Determine what to keep at the end (return statement)
-        suffix_text, suffix_start_char = self._compute_suffix(context, func_group, end_char)
+        suffix_text, suffix_start_char = self._compute_suffix(context, element, end_char)
 
         # Calculate available budget for prefix
         suffix_tokens = context.tokenizer.count_text_cached(suffix_text) if suffix_text else 0
@@ -132,7 +129,7 @@ class FunctionBodyTrimmer:
     def _compute_suffix(
         self,
         context: ProcessingContext,
-        func_group: FunctionGroup,
+        element: CodeElement,
         strippable_end_char: int
     ) -> tuple[str, int]:
         """
@@ -141,32 +138,13 @@ class FunctionBodyTrimmer:
         Returns:
             Tuple of (suffix_text, suffix_start_char)
         """
-        if not func_group.return_node:
-            return "", strippable_end_char
-
-        return_node = func_group.return_node
-        return_start_char = context.doc.byte_to_char_position(return_node.start_byte)
-        return_end_char = context.doc.byte_to_char_position(return_node.end_byte)
-
-        # Include the return statement line with proper line ending
-        # Find line start for indentation preservation
-        line_start = self._find_line_start(context.raw_text, return_start_char)
-
-        # Get text from line start to end of strippable range
-        # This includes indentation + return statement + possible trailing content
-        suffix_text = context.raw_text[line_start:strippable_end_char]
-
-        return suffix_text, line_start
+        # For now, simplified - no return preservation
+        # TODO: Add return_node to CodeElement if needed
+        return "", strippable_end_char
 
     def _compute_indent(self, body_text: str) -> str:
         """
         Compute indentation from first non-empty line of body content.
-
-        Args:
-            body_text: Inner body content
-
-        Returns:
-            Indentation string (spaces/tabs)
         """
         lines = body_text.split('\n')
         for line in lines:
@@ -178,10 +156,12 @@ class FunctionBodyTrimmer:
     def _get_strippable_text(
         self,
         context: ProcessingContext,
-        func_group: FunctionGroup
+        element: CodeElement
     ) -> str:
         """Get the text portion that can be stripped."""
-        start_byte, end_byte = func_group.strippable_range
+        if element.body_range is None:
+            return ""
+        start_byte, end_byte = element.body_range
         start_char = context.doc.byte_to_char_position(start_byte)
         end_char = context.doc.byte_to_char_position(end_byte)
         return context.raw_text[start_char:end_char]
@@ -203,9 +183,5 @@ class FunctionBodyTrimmer:
 
         return text[:last_newline + 1]
 
-    def _find_line_start(self, text: str, pos: int) -> int:
-        """Find the start of the line containing position pos."""
-        line_start = text.rfind('\n', 0, pos)
-        if line_start == -1:
-            return 0
-        return line_start + 1
+
+__all__ = ["FunctionBodyTrimmer", "TrimResult"]

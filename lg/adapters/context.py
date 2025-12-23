@@ -6,7 +6,7 @@ Encapsulates state and provides methods for typical operations.
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Optional
+from typing import Callable, Optional
 
 from .metrics import MetricsCollector
 from .placeholders import PlaceholderManager, PlaceholderAction
@@ -85,7 +85,8 @@ class ProcessingContext(LightState):
         editor: RangeEditor,
         placeholders: PlaceholderManager,
         tokenizer: TokenService,
-        code_analyzer, # CodeAnalyzer
+        code_analyzer,  # CodeAnalyzer (legacy, will be removed)
+        get_descriptor: Callable,  # () -> LanguageCodeDescriptor
     ):
         super().__init__(file_path, raw_text, group_size)
 
@@ -95,6 +96,8 @@ class ProcessingContext(LightState):
         self.metrics = MetricsCollector(adapter_name)
         self.tokenizer = tokenizer
         self.code_analyzer = code_analyzer
+        self._get_descriptor = get_descriptor  # Lazy: called only when collector is needed
+        self._collector = None  # ElementCollector, created lazily
 
     def add_placeholder(
         self,
@@ -179,6 +182,23 @@ class ProcessingContext(LightState):
         self.metrics.mark_element_removed(metrics_type, count)
         self.metrics.mark_placeholder_inserted()
 
+    def get_collector(self):
+        """
+        Get or create ElementCollector for this context.
+
+        Collector is cached for reuse between optimizers.
+        Descriptor is obtained lazily via callback on first access.
+
+        Returns:
+            ElementCollector instance
+        """
+        if self._collector is None:
+            # Import here to avoid circular dependency
+            from .optimizations.shared import ElementCollector
+            descriptor = self._get_descriptor()
+            self._collector = ElementCollector(self.doc, descriptor)
+        return self._collector
+
     @classmethod
     def from_lightweight(
         cls,
@@ -219,4 +239,5 @@ class ProcessingContext(LightState):
             placeholders,
             tokenizer,
             code_analyzer,
+            get_descriptor=adapter.get_code_descriptor,  # Lazy: called only when needed
         )

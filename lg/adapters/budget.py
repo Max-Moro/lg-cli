@@ -224,7 +224,6 @@ class BudgetController(Generic[Cc]):
         code_analyzer = self.adapter.create_code_analyzer(doc)
         from .placeholders import PlaceholderManager
         placeholders = PlaceholderManager(doc, self.adapter.comment_style)
-
         return ProcessingContext(
             file_path=lightweight_ctx.file_path,
             raw_text=text,
@@ -235,6 +234,7 @@ class BudgetController(Generic[Cc]):
             placeholders=placeholders,
             tokenizer=self.tokenizer,
             code_analyzer=code_analyzer,
+            get_descriptor=self.adapter.get_code_descriptor,
         )
 
     def _apply_user_policies(self, lightweight_ctx, text: str, cfg: CodeCfg) -> str:

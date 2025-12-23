@@ -10,10 +10,10 @@ from typing import cast, List, Optional, Tuple, Union
 from .decision import FunctionBodyDecision
 from .evaluators import ExceptPatternEvaluator, KeepAnnotatedEvaluator, BasePolicyEvaluator
 from .trimmer import FunctionBodyTrimmer
-from ...code_analysis import ElementInfo, FunctionGroup
 from ...code_model import FunctionBodyConfig
 from ...context import ProcessingContext
 from ...placeholders import PlaceholderAction
+from ...optimizations.shared import CodeElement
 
 
 class FunctionBodyOptimizer:
@@ -42,28 +42,30 @@ class FunctionBodyOptimizer:
         evaluators = self._create_evaluators(normalized_cfg)
         trimmer = FunctionBodyTrimmer(normalized_cfg.max_tokens) if normalized_cfg.max_tokens else None
 
-        # Collect all function and method groups
-        function_groups = context.code_analyzer.collect_function_like_elements()
+        # Get collector (cached in context, uses pre-loaded descriptor)
+        collector = context.get_collector()
 
-        # Process each function group
-        for func_def, func_group in function_groups.items():
-            if func_group.body_node is None:
+        # Collect elements with bodies
+        elements_with_bodies = collector.collect_with_bodies()
+
+        # Process each element
+        for element in elements_with_bodies:
+            if element.body_node is None or element.body_range is None:
                 continue
 
             # Get content lines count for single-line protection
-            # Use strippable_range to count only content lines (excluding braces)
-            lines_count = self._get_content_lines_count(context, func_group)
+            lines_count = self._get_content_lines_count(context, element)
 
             # Evaluate decision
-            decision = self._evaluate(evaluators, func_group.element_info, lines_count)
+            decision = self._evaluate(evaluators, element, lines_count)
 
             # Apply max_tokens post-processing
             if trimmer and decision.action == "keep":
-                if trimmer.should_trim(context, func_group):
+                if trimmer.should_trim_element(context, element):
                     decision = FunctionBodyDecision(action="trim", max_tokens=normalized_cfg.max_tokens)
 
             # Apply decision
-            self._apply_decision(context, decision, func_group, trimmer)
+            self._apply_decision(context, decision, element, trimmer)
 
     def _normalize_config(self, cfg: Union[bool, FunctionBodyConfig]) -> FunctionBodyConfig:
         """Normalize configuration to FunctionBodyConfig."""
@@ -90,7 +92,7 @@ class FunctionBodyOptimizer:
     def _evaluate(
         self,
         evaluators: Tuple[List, BasePolicyEvaluator],
-        element: ElementInfo,
+        element: CodeElement,
         lines_count: int
     ) -> FunctionBodyDecision:
         """Run evaluation pipeline and return final decision."""
@@ -112,7 +114,7 @@ class FunctionBodyOptimizer:
         self,
         context: ProcessingContext,
         decision: FunctionBodyDecision,
-        func_group: FunctionGroup,
+        element: CodeElement,
         trimmer: Optional[FunctionBodyTrimmer]
     ) -> None:
         """Apply the decision for a function body."""
@@ -120,28 +122,23 @@ class FunctionBodyOptimizer:
             return
 
         if decision.action == "strip":
-            self._apply_strip(context, func_group)
+            self._apply_strip(context, element)
 
         elif decision.action == "trim" and trimmer:
-            self._apply_trim(context, func_group, trimmer)
+            self._apply_trim(context, element, trimmer)
 
     def _apply_strip(
         self,
         context: ProcessingContext,
-        func_group: FunctionGroup
+        element: CodeElement
     ) -> None:
         """
-        Strip function body using pre-computed strippable_range.
-
-        The strippable_range is computed by the language-specific analyzer
-        and already accounts for protected content (docstrings) and
-        leading comments. For brace-languages, it excludes opening '{' and
-        closing '}' to preserve valid AST structure.
+        Strip function body using pre-computed body_range.
         """
-        func_type = func_group.element_info.element_type
+        func_type = element.profile.name
 
         # Get strippable range (in bytes) and convert to chars
-        start_byte, end_byte = func_group.strippable_range
+        start_byte, end_byte = element.body_range
         start_char = context.doc.byte_to_char_position(start_byte)
         end_char = context.doc.byte_to_char_position(end_byte)
 
@@ -153,8 +150,7 @@ class FunctionBodyOptimizer:
         stripped_text = context.raw_text[start_char:end_char]
         indent_prefix = self._compute_indent_from_text(stripped_text)
 
-        # Check if strippable_range starts with newline (brace-languages after '{')
-        # In this case, preserve the newline and start placeholder on next line
+        # Check if body_range starts with newline (brace-languages after '{')
         placeholder_prefix = indent_prefix
         if stripped_text.startswith('\n'):
             placeholder_prefix = "\n" + indent_prefix
@@ -167,22 +163,14 @@ class FunctionBodyOptimizer:
             placeholder_prefix=placeholder_prefix,
         )
 
-    def _get_content_lines_count(self, context: ProcessingContext, func_group: FunctionGroup) -> int:
+    def _get_content_lines_count(self, context: ProcessingContext, element: CodeElement) -> int:
         """
         Get count of content lines in function body for single-line protection.
-
-        Uses strippable_range to count only actual content lines,
-        excluding braces and empty lines. This ensures single-line functions
-        like `fun f() { return x }` are protected from stripping.
-
-        Args:
-            context: Processing context
-            func_group: Function group with strippable range
-
-        Returns:
-            Number of non-empty content lines
         """
-        start_byte, end_byte = func_group.strippable_range
+        if element.body_range is None:
+            return 0
+
+        start_byte, end_byte = element.body_range
         if start_byte >= end_byte:
             return 0
 
@@ -195,16 +183,6 @@ class FunctionBodyOptimizer:
     def _count_content_lines(self, text: str) -> int:
         """
         Count non-empty content lines in text.
-
-        For brace-based languages, strippable text typically starts with
-        newline (after '{') and ends before '}'. We count only lines with
-        actual content, not empty lines or lines with only whitespace.
-
-        Args:
-            text: Text to count lines in
-
-        Returns:
-            Number of non-empty lines
         """
         lines = text.split('\n')
         return sum(1 for line in lines if line.strip())
@@ -223,27 +201,21 @@ class FunctionBodyOptimizer:
     def _apply_trim(
         self,
         context: ProcessingContext,
-        func_group: FunctionGroup,
+        element: CodeElement,
         trimmer: FunctionBodyTrimmer
     ) -> None:
         """
         Trim function body to token budget.
-
-        Keeps some code at the start, preserves return statement at the end,
-        replaces the middle section with placeholder.
         """
-        result = trimmer.trim(context, func_group)
+        result = trimmer.trim_element(context, element)
         if result is None:
             return
 
-        func_type = func_group.element_info.element_type
+        func_type = element.profile.name
 
         # Compute placeholder prefix with proper newline handling
-        # If placeholder starts right after '{' (no prefix kept), add newline
         placeholder_prefix = result.indent
         if not result.kept_prefix:
-            # No prefix kept - placeholder goes right after opening brace
-            # Need newline before indent
             placeholder_prefix = "\n" + result.indent
 
         # Add placeholder for the removed middle section with TRUNCATE action
@@ -254,10 +226,3 @@ class FunctionBodyOptimizer:
             action=PlaceholderAction.TRUNCATE,
             placeholder_prefix=placeholder_prefix,
         )
-
-    def _find_line_start(self, text: str, pos: int) -> int:
-        """Find the start of the line containing position pos."""
-        line_start = text.rfind('\n', 0, pos)
-        if line_start == -1:
-            return 0
-        return line_start + 1

@@ -12,14 +12,14 @@ from ...context import ProcessingContext
 
 class PublicApiOptimizer:
     """Handles filtering code for public API only."""
-    
+
     def __init__(self, adapter):
         """
         Initialize with parent adapter for language-specific checks.
         """
         from ...code_base import CodeAdapter
         self.adapter = cast(CodeAdapter, adapter)
-    
+
     def apply(self, context: ProcessingContext) -> None:
         """
         Apply public API filtering.
@@ -28,18 +28,17 @@ class PublicApiOptimizer:
         Args:
             context: Processing context with document and editor
         """
-        # Collect all private elements using analyzer
-        private_elements = context.code_analyzer.collect_private_elements_for_public_api()
+        # Get collector (cached in context, uses pre-loaded descriptor)
+        collector = context.get_collector()
 
-        # First compute ranges with decorators for all elements
-        element_ranges = [
-            (context.code_analyzer.get_element_range_with_decorators(elem), elem)
-            for elem in private_elements
-        ]
+        # Collect private elements (already filtered for nesting)
+        private_elements = collector.collect_private()
 
-        # Sort by position (in reverse order for safe removal)
-        element_ranges.sort(key=lambda x: x[0][0], reverse=True)
+        # Sort by position in reverse order for safe removal
+        private_elements.sort(key=lambda e: e.start_byte, reverse=True)
 
         # Remove private elements with appropriate placeholders
-        for (start_char, end_char), private_element in element_ranges:
-            context.add_placeholder(private_element.element_type, start_char, end_char)
+        for element in private_elements:
+            start_char = context.doc.byte_to_char_position(element.start_byte)
+            end_char = context.doc.byte_to_char_position(element.end_byte)
+            context.add_placeholder(element.profile.name, start_char, end_char)
