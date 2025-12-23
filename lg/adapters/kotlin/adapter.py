@@ -14,6 +14,7 @@ from ..code_model import CodeCfg
 from ..optimizations import ImportClassifier, TreeSitterImportAnalyzer
 from ..comment_style import CommentStyle, C_STYLE_COMMENTS
 from ..optimizations.literals import LanguageLiteralDescriptor
+from ..optimizations.shared import LanguageCodeDescriptor
 from ..tree_sitter_support import TreeSitterDocument
 
 
@@ -65,9 +66,10 @@ class KotlinAdapter(CodeAdapter[KotlinCfg]):
         from .imports import KotlinImportAnalyzer
         return KotlinImportAnalyzer(classifier)
 
-    def get_code_descriptor(self):
+    def get_code_descriptor(self) -> LanguageCodeDescriptor:
         """Return Kotlin code descriptor."""
-        raise NotImplementedError("Kotlin code descriptor not yet implemented")
+        from .code_profiles import KOTLIN_CODE_DESCRIPTOR
+        return KOTLIN_CODE_DESCRIPTOR
 
     def create_literal_descriptor(self) -> LanguageLiteralDescriptor:
         """Create Kotlin literal descriptor."""

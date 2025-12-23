@@ -72,7 +72,8 @@ class RustAdapter(CodeAdapter[RustCfg]):
 
     def get_code_descriptor(self):
         """Return Rust code descriptor."""
-        raise NotImplementedError("Rust code descriptor not yet implemented")
+        from .code_profiles import RUST_CODE_DESCRIPTOR
+        return RUST_CODE_DESCRIPTOR
 
     def create_literal_descriptor(self):
         """Create Rust literal descriptor."""

@@ -14,6 +14,7 @@ from ..code_model import CodeCfg
 from ..optimizations import ImportClassifier, TreeSitterImportAnalyzer
 from ..comment_style import CommentStyle, C_STYLE_COMMENTS
 from ..optimizations.literals import LanguageLiteralDescriptor
+from ..optimizations.shared import LanguageCodeDescriptor
 from ..tree_sitter_support import TreeSitterDocument
 
 
@@ -66,9 +67,10 @@ class JavaScriptAdapter(CodeAdapter[JavaScriptCfg]):
         from .imports import JavaScriptImportAnalyzer
         return JavaScriptImportAnalyzer(classifier)
 
-    def get_code_descriptor(self):
+    def get_code_descriptor(self) -> LanguageCodeDescriptor:
         """Return JavaScript code descriptor."""
-        raise NotImplementedError("JavaScript code descriptor not yet implemented")
+        from .code_profiles import JAVASCRIPT_CODE_DESCRIPTOR
+        return JAVASCRIPT_CODE_DESCRIPTOR
 
     def create_literal_descriptor(self) -> LanguageLiteralDescriptor:
         """Create JavaScript literal descriptor."""

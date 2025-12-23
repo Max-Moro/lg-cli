@@ -14,6 +14,7 @@ from ..code_model import CodeCfg
 from ..optimizations import ImportClassifier, TreeSitterImportAnalyzer
 from ..comment_style import CommentStyle, C_STYLE_COMMENTS
 from ..optimizations.literals import LanguageLiteralDescriptor
+from ..optimizations.shared import LanguageCodeDescriptor
 from ..tree_sitter_support import TreeSitterDocument
 
 
@@ -66,9 +67,10 @@ class ScalaAdapter(CodeAdapter[ScalaCfg]):
         from .imports import ScalaImportAnalyzer
         return ScalaImportAnalyzer(classifier)
 
-    def get_code_descriptor(self):
+    def get_code_descriptor(self) -> LanguageCodeDescriptor:
         """Return Scala code descriptor."""
-        raise NotImplementedError("Scala code descriptor not yet implemented")
+        from .code_profiles import SCALA_CODE_DESCRIPTOR
+        return SCALA_CODE_DESCRIPTOR
 
     def create_literal_descriptor(self) -> LanguageLiteralDescriptor:
         """Create Scala literal descriptor."""

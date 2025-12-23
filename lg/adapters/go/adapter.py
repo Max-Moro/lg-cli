@@ -73,7 +73,8 @@ class GoAdapter(CodeAdapter[GoCfg]):
 
     def get_code_descriptor(self):
         """Return Go code descriptor."""
-        raise NotImplementedError("Go code descriptor not yet implemented")
+        from .code_profiles import GO_CODE_DESCRIPTOR
+        return GO_CODE_DESCRIPTOR
 
     def create_literal_descriptor(self) -> LanguageLiteralDescriptor:
         """Create Go literal descriptor."""

@@ -12,6 +12,7 @@ from tree_sitter import Language
 from ..code_base import CodeAdapter
 from ..code_model import CodeCfg
 from ..optimizations import ImportClassifier, TreeSitterImportAnalyzer, LanguageLiteralDescriptor
+from ..optimizations.shared import LanguageCodeDescriptor
 from ..comment_style import CommentStyle, C_STYLE_COMMENTS
 from ..tree_sitter_support import TreeSitterDocument
 
@@ -65,9 +66,10 @@ class JavaAdapter(CodeAdapter[JavaCfg]):
         from .imports import JavaImportAnalyzer
         return JavaImportAnalyzer(classifier)
 
-    def get_code_descriptor(self):
+    def get_code_descriptor(self) -> LanguageCodeDescriptor:
         """Return Java code descriptor."""
-        raise NotImplementedError("Java code descriptor not yet implemented")
+        from .code_profiles import JAVA_CODE_DESCRIPTOR
+        return JAVA_CODE_DESCRIPTOR
 
     def create_literal_descriptor(self) -> LanguageLiteralDescriptor:
         """Create Java literal descriptor."""

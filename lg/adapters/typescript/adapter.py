@@ -15,6 +15,7 @@ from ..context import LightweightContext
 from ..optimizations import ImportClassifier, TreeSitterImportAnalyzer
 from ..comment_style import CommentStyle, C_STYLE_COMMENTS
 from ..optimizations.literals import LanguageLiteralDescriptor
+from ..optimizations.shared import LanguageCodeDescriptor
 from ..tree_sitter_support import TreeSitterDocument
 
 
@@ -76,10 +77,10 @@ class TypeScriptAdapter(CodeAdapter[TypeScriptCfg]):
         from .imports import TypeScriptImportAnalyzer
         return TypeScriptImportAnalyzer(classifier)
 
-    def get_code_descriptor(self):
+    def get_code_descriptor(self) -> LanguageCodeDescriptor:
         """Return TypeScript code descriptor."""
-        # TODO: Implement in Stage 4
-        raise NotImplementedError("TypeScript code descriptor not yet implemented")
+        from .code_profiles import TYPESCRIPT_CODE_DESCRIPTOR
+        return TYPESCRIPT_CODE_DESCRIPTOR
 
     def create_literal_descriptor(self) -> LanguageLiteralDescriptor:
         """Create TypeScript literal descriptor."""
