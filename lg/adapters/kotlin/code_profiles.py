@@ -17,7 +17,7 @@ Public is the default modifier for top-level declarations.
 
 from __future__ import annotations
 
-from typing import Optional
+from typing import List, Optional
 
 from ..optimizations.shared import ElementProfile, LanguageCodeDescriptor
 from ..tree_sitter_support import Node, TreeSitterDocument
@@ -162,6 +162,138 @@ def _is_misparsed_class(node: Node, doc: TreeSitterDocument) -> bool:
     return ("private class" in node_text or "protected class" in node_text)
 
 
+def _resolve_kotlin_body(element_node: Node) -> Optional[Node]:
+    """
+    Resolve Kotlin function/getter/setter body to actual block node.
+
+    In Kotlin AST, function body is wrapped:
+    - function_declaration -> function_body -> block
+    - getter -> function_body -> block
+    - setter -> function_body -> block
+    - secondary_constructor -> function_body -> block
+
+    Args:
+        element_node: element node (function_declaration, getter, setter, etc.)
+
+    Returns:
+        block node or None
+    """
+    # Find function_body child
+    for child in element_node.children:
+        if child.type == "function_body":
+            # Find block inside function_body
+            for grandchild in child.children:
+                if grandchild.type == "block":
+                    return grandchild
+    return None
+
+
+def _resolve_lambda_body(lambda_node: Node) -> Optional[Node]:
+    """
+    Resolve lambda_literal body to itself (lambda has special structure).
+
+    Lambda structure: { [params ->] body_content }
+    Unlike functions, lambda doesn't have a separate block node.
+    Body content is directly inside lambda_literal.
+
+    Args:
+        lambda_node: lambda_literal node
+
+    Returns:
+        The lambda_literal node itself (special case for body_range computation)
+    """
+    return lambda_node
+
+
+def _find_kotlin_decorators(node: Node, doc: TreeSitterDocument, decorator_types: set) -> List[Node]:
+    """
+    Find Kotlin annotations using language-specific AST structure.
+
+    Kotlin has two annotation placement patterns:
+    1. Inside 'modifiers' node (normal classes):
+       class_declaration -> modifiers -> annotation
+    2. Nested 'annotated_expression' (misparsed private classes):
+       annotated_expression -> annotation
+         annotated_expression -> annotation
+           infix_expression (our node)
+
+    Args:
+        node: Element node
+        doc: Tree-sitter document
+        decorator_types: Set of decorator node types ({"annotation"})
+
+    Returns:
+        List of annotation nodes attached to this element
+    """
+    decorators: List[Node] = []
+
+    # Strategy 1: Walk up through annotated_expression wrappers
+    current = node.parent
+    while current and current.type == "annotated_expression":
+        for child in current.children:
+            if child.type in decorator_types:
+                # Insert at beginning to preserve order (outermost first)
+                decorators.insert(0, child)
+        current = current.parent
+
+    # Strategy 2: Look for modifiers child (normal classes/functions)
+    for child in node.children:
+        if child.type == "modifiers":
+            # Extract decorators from modifiers node
+            for modifier_child in child.children:
+                if modifier_child.type in decorator_types:
+                    if modifier_child not in decorators:
+                        decorators.append(modifier_child)
+            break
+
+    return decorators
+
+
+def _compute_kotlin_lambda_body_range(lambda_node: Node, doc: TreeSitterDocument) -> tuple[int, int]:
+    """
+    Compute strippable range for Kotlin lambda_literal.
+
+    Lambda structure: { [params ->] body_content }
+    Need to find content after '->' (if present) or after '{', and before '}'.
+
+    Args:
+        lambda_node: lambda_literal node
+        doc: Tree-sitter document
+
+    Returns:
+        Tuple of (start_byte, end_byte) for strippable range
+    """
+    # Find opening and closing braces and arrow
+    opening_brace = None
+    closing_brace = None
+    arrow = None
+
+    for child in lambda_node.children:
+        child_text = doc.get_node_text(child)
+        if child_text == "{":
+            opening_brace = child
+        elif child_text == "}":
+            closing_brace = child
+        elif child_text == "->":
+            arrow = child
+
+    # Start position: after '->' if present, otherwise after '{'
+    if arrow:
+        start_byte = arrow.end_byte
+    elif opening_brace:
+        start_byte = opening_brace.end_byte
+    else:
+        start_byte = lambda_node.start_byte
+
+    # End position: before '}'
+    if closing_brace:
+        end_byte = closing_brace.start_byte
+    else:
+        end_byte = lambda_node.end_byte
+
+    return (start_byte, end_byte)
+
+
 def _find_kotlin_docstring(body_node: Node, doc: TreeSitterDocument) -> Optional[Node]:
     """
     Find KDoc at the start of Kotlin function body.
@@ -170,24 +302,18 @@ def _find_kotlin_docstring(body_node: Node, doc: TreeSitterDocument) -> Optional
     It's a multiline_comment starting with /** and should be preserved.
 
     Args:
-        body_node: Function body node (function_body or block)
+        body_node: Function body node (block)
         doc: Tree-sitter document
 
     Returns:
         KDoc node if found, None otherwise
     """
-    # Handle function_body wrapper
-    actual_body = body_node
-    if body_node.type == "function_body":
-        if body_node.children:
-            actual_body = body_node.children[0]
-
-    # Look for block node
-    if actual_body.type != "block":
+    # Body should be block at this point (after body_resolver)
+    if body_node.type != "block":
         return None
 
     # Check for KDoc as first content inside block
-    for child in actual_body.children:
+    for child in body_node.children:
         # Skip opening brace
         if doc.get_node_text(child) == "{":
             continue
@@ -233,6 +359,7 @@ KOTLIN_CODE_DESCRIPTOR = LanguageCodeDescriptor(
             is_public=_is_public_kotlin,
             additional_check=lambda node, doc: not _is_inside_class(node),
             has_body=True,
+            body_resolver=_resolve_kotlin_body,
             docstring_extractor=_find_kotlin_docstring,
         ),
 
@@ -244,6 +371,7 @@ KOTLIN_CODE_DESCRIPTOR = LanguageCodeDescriptor(
             is_public=_is_public_kotlin,
             additional_check=lambda node, doc: _is_inside_class(node),
             has_body=True,
+            body_resolver=_resolve_kotlin_body,
             docstring_extractor=_find_kotlin_docstring,
         ),
 
@@ -257,6 +385,7 @@ KOTLIN_CODE_DESCRIPTOR = LanguageCodeDescriptor(
 
         # === Secondary Constructors ===
         # Constructors inside classes
+        # Note: secondary_constructor directly has 'block' child (no function_body wrapper)
         ElementProfile(
             name="constructor",
             query="(secondary_constructor) @element",
@@ -280,6 +409,7 @@ KOTLIN_CODE_DESCRIPTOR = LanguageCodeDescriptor(
             query="(getter) @element",
             is_public=_is_public_kotlin,
             has_body=True,
+            body_resolver=_resolve_kotlin_body,
             docstring_extractor=_find_kotlin_docstring,
         ),
 
@@ -289,7 +419,20 @@ KOTLIN_CODE_DESCRIPTOR = LanguageCodeDescriptor(
             query="(setter) @element",
             is_public=_is_public_kotlin,
             has_body=True,
+            body_resolver=_resolve_kotlin_body,
             docstring_extractor=_find_kotlin_docstring,
+        ),
+
+        # === Lambda Literals ===
+        # Kotlin lambdas: { params -> body }
+        # Note: lambda_literal has special structure - body content is directly inside
+        ElementProfile(
+            name="lambda",
+            query="(lambda_literal) @element",
+            is_public=None,  # Lambdas don't have visibility - determined by containing declaration
+            has_body=True,
+            body_resolver=_resolve_lambda_body,  # Returns lambda itself (for body node resolution)
+            body_range_computer=_compute_kotlin_lambda_body_range,  # Custom range computation
         ),
 
         # === Misparsed Classes ===
@@ -306,6 +449,7 @@ KOTLIN_CODE_DESCRIPTOR = LanguageCodeDescriptor(
     decorator_types={"annotation"},
     comment_types={"line_comment", "block_comment", "multiline_comment"},
     name_extractor=_extract_name,
+    decorator_finder=_find_kotlin_decorators,  # Kotlin-specific decorator finding
 )
 
 

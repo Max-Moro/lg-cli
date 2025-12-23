@@ -114,6 +114,19 @@ class ElementProfile:
     Returns: Resolved body node for range computation.
     """
 
+    body_range_computer: Optional[Callable[[Node, TreeSitterDocument], tuple[int, int]]] = None
+    """
+    Custom body range computation for non-standard AST structures.
+
+    Use when element has special body structure that standard logic can't handle.
+    Example: Kotlin lambda_literal has inline body without separate block node.
+
+    Only used when has_body=True.
+
+    Signature: (element_node: Node, doc: TreeSitterDocument) -> tuple[start_byte, end_byte]
+    Returns: Byte range for strippable body content.
+    """
+
     # --- Inheritance ---
 
     parent_profile: Optional[str] = None

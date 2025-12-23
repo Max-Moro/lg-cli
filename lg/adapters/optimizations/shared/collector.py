@@ -212,9 +212,14 @@ class ElementCollector:
         if not self.descriptor.decorator_types:
             return []
 
+        # Use custom decorator_finder if provided (for language-specific AST structures)
+        if self.descriptor.decorator_finder:
+            return self.descriptor.decorator_finder(node, self.doc, self.descriptor.decorator_types)
+
+        # Standard decorator finding strategies
         decorators = []
 
-        # Check parent for decorated_definition wrapper
+        # Check parent for decorated_definition wrapper (Python, TypeScript)
         parent = node.parent
         if parent and parent.type in ("decorated_definition", "decorator_list"):
             for child in parent.children:
@@ -223,7 +228,7 @@ class ElementCollector:
                 elif child == node:
                     break
 
-        # Check preceding siblings
+        # Check preceding siblings (common pattern)
         preceding = self._find_preceding_decorators(node)
         decorators.extend(d for d in preceding if d not in decorators)
 
@@ -303,7 +308,12 @@ class ElementCollector:
         - Leading comments as siblings (Python style)
         - Docstrings (via profile.docstring_extractor)
         - Line-based start (preserving indentation for Python-style languages)
+        - Custom body range computation (via profile.body_range_computer)
         """
+        # Use custom body_range_computer if provided (for non-standard AST structures)
+        if profile.body_range_computer:
+            return profile.body_range_computer(func_def, self.doc)
+
         # 1. Get inner content range (excluding braces if present)
         start_byte, end_byte = self._compute_inner_body_range(body_node)
         original_start = start_byte

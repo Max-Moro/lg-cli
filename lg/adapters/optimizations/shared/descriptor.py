@@ -72,6 +72,28 @@ class LanguageCodeDescriptor:
     Signature: (node: Node, element_type: str, doc: TreeSitterDocument) -> Node
     """
 
+    decorator_finder: Optional[Callable[[Node, TreeSitterDocument, Set[str]], List[Node]]] = None
+    """
+    Custom decorator/annotation finder for language-specific AST structures.
+
+    Use when language has non-standard decorator placement that default logic can't handle.
+    Example: Kotlin places annotations inside 'modifiers' node or nested 'annotated_expression'.
+
+    If None, collector uses standard strategies:
+    - Check parent for decorated_definition wrapper
+    - Check preceding siblings
+
+    Args:
+        node: Element node
+        doc: Tree-sitter document
+        decorator_types: Set of decorator node types to search for
+
+    Returns:
+        List of decorator nodes attached to this element
+
+    Signature: (node: Node, doc: TreeSitterDocument, decorator_types: Set[str]) -> List[Node]
+    """
+
     # --- Resolved profiles cache ---
 
     _resolved_profiles: Optional[List[ElementProfile]] = field(default=None, repr=False)

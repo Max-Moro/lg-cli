@@ -74,6 +74,7 @@ class TaskService(repository: TaskRepository) {
          * First validates the task exists, then checks assignee availability,
          * and finally performs the atomic assignment operation.
          */
+
         // … method body truncated (2 lines)
         return repo.save(updated)
     }
