@@ -53,7 +53,7 @@ lg/adapters/optimizations/public_api/language_profiles/   # Отключить, 
 
 ### Этапы миграции
 
-#### Этап 1: Создание shared-инфраструктуры
+#### ✅ Этап 1: Создание shared-инфраструктуры
 
 Создать новые модули без изменения существующего кода:
 
@@ -79,7 +79,7 @@ lg/adapters/optimizations/shared/
 
 ---
 
-#### Этап 2: Перевод оптимизаторов на shared-инфраструктуру
+#### ✅ Этап 2: Перевод оптимизаторов на shared-инфраструктуру
 
 Переписать оба оптимизатора на использование `ElementCollector` вместо `code_analyzer`:
 
@@ -100,7 +100,7 @@ lg/adapters/optimizations/shared/
 
 ---
 
-#### Этап 3: Отключение legacy-кода
+#### ✅ Этап 3: Отключение legacy-кода
 
 Полностью отключить старый код от pipeline:
 
@@ -116,22 +116,22 @@ lg/adapters/optimizations/shared/
 
 ---
 
-#### Этап 4: Актуализация языков
+#### ✅ Этап 4: Актуализация языков
 
 Последовательно создать `code_profiles.py` для каждого языка:
 
 | Язык | Статус |
 |------|--------|
-| Python | ⬜ |
-| TypeScript | ⬜ |
-| JavaScript | ⬜ |
-| Java | ⬜ |
-| Kotlin | ⬜ |
-| Scala | ⬜ |
-| Go | ⬜ |
-| Rust | ⬜ |
-| C++ | ⬜ |
-| C | ⬜ |
+| Python | ✅ |
+| TypeScript | ✅ |
+| JavaScript | ✅ |
+| Java | ✅ |
+| Kotlin | ✅ |
+| Scala | ✅ |
+| Go | ✅ |
+| Rust | ✅ |
+| C++ | ✅ |
+| C | ✅ |
 
 **Для каждого языка**:
 - [ ] Создать `<язык>/code_profiles.py` с `<ЯЗЫК>_CODE_DESCRIPTOR`

@@ -9,7 +9,6 @@ from typing import Dict, Any, List, Optional, cast, ClassVar
 
 from tree_sitter import Language
 
-from .code_analysis import GoCodeAnalyzer
 from ..code_base import CodeAdapter
 from ..code_model import CodeCfg
 from ..optimizations import ImportClassifier, TreeSitterImportAnalyzer, LanguageLiteralDescriptor

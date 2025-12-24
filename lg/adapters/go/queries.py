@@ -6,24 +6,6 @@ Contains S-expression queries for structural code analysis.
 from __future__ import annotations
 
 QUERIES = {
-    # Functions and methods (unified)
-    "functions": """
-    (function_declaration
-      name: (identifier) @function_name
-      parameters: (parameter_list) @function_params
-      body: (block) @function_body) @function_definition
-
-    (method_declaration
-      receiver: (parameter_list) @method_receiver
-      name: (field_identifier) @method_name
-      parameters: (parameter_list) @method_params
-      body: (block) @method_body) @method_definition
-
-    (func_literal
-      parameters: (parameter_list) @lambda_params
-      body: (block) @lambda_body) @function_definition
-    """,
-
     # Comments
     "comments": """
     (comment) @comment
@@ -32,89 +14,5 @@ QUERIES = {
     # Import declarations
     "imports": """
     (import_spec) @import
-    """,
-
-    # Struct definitions (class equivalent)
-    "classes": """
-    (type_declaration
-      (type_spec
-        name: (type_identifier) @struct_name
-        type: (struct_type
-          (field_declaration_list) @struct_body)))
-    """,
-
-    # Struct fields
-    "struct_fields": """
-    (field_declaration
-      name: (field_identifier) @field_name
-      type: (_) @field_type)
-    """,
-
-    # Interface definitions
-    "interfaces": """
-    (type_declaration
-      (type_spec
-        name: (type_identifier) @interface_name
-        type: (interface_type) @interface_body))
-    """,
-
-    # Type definitions and aliases
-    "type_aliases": """
-    (type_declaration
-      (type_spec
-        name: (type_identifier) @type_name
-        type: (_) @type_value))
-
-    (type_declaration
-      (type_alias
-        name: (type_identifier) @type_name
-        type: (_) @type_value))
-    """,
-
-    # Variable and constant declarations
-    "variables": """
-    (var_declaration
-      (var_spec
-        name: (identifier) @var_name
-        type: (_)? @var_type
-        value: (_)? @var_value))
-
-    (const_declaration
-      (const_spec
-        name: (identifier) @const_name
-        type: (_)? @const_type
-        value: (_)? @const_value))
-
-    (short_var_declaration
-      left: (expression_list
-        (identifier) @var_name)
-      right: (_) @var_value)
-    """,
-
-    # Defer statements
-    "defer_statements": """
-    (defer_statement
-      (call_expression) @deferred_call)
-    """,
-
-    # Go statements (goroutines)
-    "go_statements": """
-    (go_statement
-      (call_expression) @goroutine_call)
-    """,
-
-# Package clause
-    "packages": """
-    (package_clause
-      (package_identifier) @package_name)
-    """,
-
-    # Method receivers (for analysis)
-    "receivers": """
-    (method_declaration
-      receiver: (parameter_list
-        (parameter_declaration
-          name: (identifier)? @receiver_name
-          type: (_) @receiver_type)))
     """,
 }
