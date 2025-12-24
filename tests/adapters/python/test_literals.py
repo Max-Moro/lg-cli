@@ -2,7 +2,7 @@
 Tests for literal trimming in Python adapter.
 """
 
-from lg.adapters.python import PythonCfg
+from lg.adapters.langs.python import PythonCfg
 from lg.adapters.code_model import LiteralConfig
 from .utils import lctx, make_adapter
 from ..golden_utils import assert_golden_match

@@ -6,7 +6,7 @@ This tests the key distinction between .h/.hpp and .cpp files that is specific t
 
 from pathlib import Path
 
-from lg.adapters.cpp import CppCfg
+from lg.adapters.langs.cpp import CppCfg
 from lg.adapters.code_model import FunctionBodyConfig, ImportConfig
 from .utils import lctx, make_adapter
 from ..golden_utils import assert_golden_match

@@ -3,7 +3,7 @@ Test smart comment placement for literal optimization in Kotlin.
 Ensures comments don't break code structure when placed inline.
 """
 
-from lg.adapters.kotlin import KotlinCfg
+from lg.adapters.langs.kotlin import KotlinCfg
 from .utils import make_adapter
 
 

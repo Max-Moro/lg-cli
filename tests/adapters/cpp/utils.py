@@ -7,7 +7,7 @@ All C++-specific test utilities are here.
 from pathlib import Path
 
 from lg.adapters.context import LightweightContext
-from lg.adapters.cpp import CppAdapter, CppCfg
+from lg.adapters.langs.cpp import CppAdapter, CppCfg
 from lg.stats.tokenizer import default_tokenizer
 
 

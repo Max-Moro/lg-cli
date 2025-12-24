@@ -192,7 +192,7 @@ class ProcessingContext(LightState):
         """
         if self._collector is None:
             # Import here to avoid circular dependency
-            from .optimizations.shared import ElementCollector
+            from .shared import ElementCollector
             descriptor = self._get_descriptor()
             self._collector = ElementCollector(self.doc, descriptor)
         return self._collector

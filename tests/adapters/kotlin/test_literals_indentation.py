@@ -2,7 +2,7 @@
 Test literal trimming with correct indentation handling for Kotlin.
 """
 
-from lg.adapters.kotlin import KotlinCfg
+from lg.adapters.langs.kotlin import KotlinCfg
 from .utils import make_adapter, lctx
 
 

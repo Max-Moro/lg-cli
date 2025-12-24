@@ -7,7 +7,7 @@ All Python-specific test utilities are here.
 from pathlib import Path
 
 from lg.adapters.context import LightweightContext
-from lg.adapters.python import PythonAdapter, PythonCfg
+from lg.adapters.langs.python import PythonAdapter, PythonCfg
 from lg.stats.tokenizer import default_tokenizer
 
 

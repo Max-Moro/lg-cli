@@ -3,7 +3,7 @@ Test smart comment placement for literal optimization in TypeScript.
 Ensures comments don't break code structure when placed inline.
 """
 
-from lg.adapters.typescript import TypeScriptCfg
+from lg.adapters.langs.typescript import TypeScriptCfg
 from .utils import make_adapter
 
 

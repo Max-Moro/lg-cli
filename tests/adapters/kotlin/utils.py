@@ -7,7 +7,7 @@ All Kotlin-specific test utilities are here.
 from pathlib import Path
 
 from lg.adapters.context import LightweightContext
-from lg.adapters.kotlin import KotlinAdapter, KotlinCfg
+from lg.adapters.langs.kotlin import KotlinAdapter, KotlinCfg
 from lg.stats.tokenizer import default_tokenizer
 
 

@@ -9,7 +9,7 @@ each stage to goldens to see how BudgetController escalates steps.
 import pytest
 
 from lg.adapters.code_model import BudgetConfig
-from lg.adapters.python import PythonCfg
+from lg.adapters.langs.python import PythonCfg
 from .utils import make_adapter, lctx
 from ..golden_utils import assert_golden_match
 

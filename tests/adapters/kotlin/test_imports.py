@@ -4,7 +4,7 @@ Tests for import optimization in Kotlin adapter.
 
 import re
 
-from lg.adapters.kotlin import KotlinCfg
+from lg.adapters.langs.kotlin import KotlinCfg
 from lg.adapters.code_model import ImportConfig
 from .utils import lctx, make_adapter
 from ..golden_utils import assert_golden_match

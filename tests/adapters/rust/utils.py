@@ -7,7 +7,7 @@ All Rust-specific test utilities are here.
 from pathlib import Path
 
 from lg.adapters.context import LightweightContext
-from lg.adapters.rust import RustAdapter, RustCfg
+from lg.adapters.langs.rust import RustAdapter, RustCfg
 from lg.stats.tokenizer import default_tokenizer
 
 

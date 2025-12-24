@@ -3,7 +3,7 @@ Tests for literal trimming in Java adapter.
 """
 
 from lg.adapters.code_model import LiteralConfig
-from lg.adapters.java import JavaCfg
+from lg.adapters.langs.java import JavaCfg
 from .utils import lctx, make_adapter
 from ..golden_utils import assert_golden_match
 

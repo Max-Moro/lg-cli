@@ -2,7 +2,7 @@
 Tests for public API filtering in Java adapter.
 """
 
-from lg.adapters.java import JavaCfg
+from lg.adapters.langs.java import JavaCfg
 from .utils import lctx, make_adapter
 from ..golden_utils import assert_golden_match
 

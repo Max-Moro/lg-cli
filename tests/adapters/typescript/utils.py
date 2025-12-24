@@ -7,7 +7,7 @@ All TypeScript-specific test utilities are here.
 from pathlib import Path
 
 from lg.adapters.context import LightweightContext
-from lg.adapters.typescript import TypeScriptAdapter, TypeScriptCfg
+from lg.adapters.langs.typescript import TypeScriptAdapter, TypeScriptCfg
 from lg.stats.tokenizer import default_tokenizer
 
 

@@ -2,7 +2,7 @@
 Tests for function body optimization in JavaScript adapter.
 """
 
-from lg.adapters.javascript import JavaScriptCfg
+from lg.adapters.langs.javascript import JavaScriptCfg
 from lg.adapters.code_model import FunctionBodyConfig
 from .utils import lctx, make_adapter
 from ..golden_utils import assert_golden_match

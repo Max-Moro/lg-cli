@@ -8,7 +8,7 @@ from dataclasses import dataclass
 from typing import Optional
 
 from ...context import ProcessingContext
-from ...optimizations.shared import CodeElement
+from ...shared import CodeElement
 
 
 @dataclass

@@ -2,7 +2,7 @@
 Tests for public API filtering in TypeScript adapter.
 """
 
-from lg.adapters.typescript import TypeScriptCfg
+from lg.adapters.langs.typescript import TypeScriptCfg
 from .utils import lctx, make_adapter
 from ..golden_utils import assert_golden_match
 

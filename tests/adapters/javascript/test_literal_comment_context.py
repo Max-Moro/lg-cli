@@ -3,7 +3,7 @@ Test smart comment placement for literal optimization in JavaScript.
 Ensures comments don't break code structure when placed inline.
 """
 
-from lg.adapters.javascript import JavaScriptCfg
+from lg.adapters.langs.javascript import JavaScriptCfg
 from .utils import lctx, make_adapter
 
 class TestLiteralCommentContext:

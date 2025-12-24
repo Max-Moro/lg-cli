@@ -2,7 +2,7 @@
 Tests for literal trimming in C adapter.
 """
 
-from lg.adapters.c import CCfg
+from lg.adapters.langs.c import CCfg
 from lg.adapters.code_model import LiteralConfig
 from .utils import lctx, make_adapter
 from ..golden_utils import assert_golden_match

@@ -7,7 +7,7 @@ All Scala-specific test utilities are here.
 from pathlib import Path
 
 from lg.adapters.context import LightweightContext
-from lg.adapters.scala import ScalaAdapter, ScalaCfg
+from lg.adapters.langs.scala import ScalaAdapter, ScalaCfg
 from lg.stats.tokenizer import default_tokenizer
 
 

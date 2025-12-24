@@ -2,7 +2,7 @@
 Tests for function body optimization in Scala adapter.
 """
 
-from lg.adapters.scala import ScalaCfg
+from lg.adapters.langs.scala import ScalaCfg
 from lg.adapters.code_model import FunctionBodyConfig
 from .utils import lctx, make_adapter
 from ..golden_utils import assert_golden_match

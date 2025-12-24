@@ -2,7 +2,7 @@
 Tests for public API filtering in JavaScript adapter.
 """
 
-from lg.adapters.javascript import JavaScriptCfg
+from lg.adapters.langs.javascript import JavaScriptCfg
 from .utils import lctx, make_adapter
 from ..golden_utils import assert_golden_match
 

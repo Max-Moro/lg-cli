@@ -13,7 +13,7 @@ from .trimmer import FunctionBodyTrimmer
 from ...code_model import FunctionBodyConfig
 from ...context import ProcessingContext
 from ...placeholders import PlaceholderAction
-from ...optimizations.shared import CodeElement
+from ...shared import CodeElement
 
 
 class FunctionBodyOptimizer:

@@ -4,7 +4,7 @@ Tests for import optimization in Rust adapter.
 
 import re
 
-from lg.adapters.rust import RustCfg
+from lg.adapters.langs.rust import RustCfg
 from lg.adapters.code_model import ImportConfig
 from .utils import lctx, make_adapter
 from ..golden_utils import assert_golden_match

@@ -4,7 +4,7 @@ Tests for include optimization in C++ adapter.
 
 import re
 
-from lg.adapters.cpp import CppCfg
+from lg.adapters.langs.cpp import CppCfg
 from lg.adapters.code_model import ImportConfig
 from .utils import lctx, make_adapter
 from ..golden_utils import assert_golden_match

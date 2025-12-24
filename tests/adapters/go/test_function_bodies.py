@@ -2,7 +2,7 @@
 Tests for function body optimization in Go adapter.
 """
 
-from lg.adapters.go import GoCfg
+from lg.adapters.langs.go import GoCfg
 from lg.adapters.code_model import FunctionBodyConfig
 from .utils import lctx, make_adapter
 from ..golden_utils import assert_golden_match

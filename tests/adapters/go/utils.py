@@ -7,7 +7,7 @@ All Go-specific test utilities are here.
 from pathlib import Path
 
 from lg.adapters.context import LightweightContext
-from lg.adapters.go import GoAdapter, GoCfg
+from lg.adapters.langs.go import GoAdapter, GoCfg
 from lg.stats.tokenizer import default_tokenizer
 
 

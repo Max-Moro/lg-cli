@@ -6,7 +6,7 @@ All C-specific test utilities are here.
 
 from pathlib import Path
 
-from lg.adapters.c import CAdapter, CCfg
+from lg.adapters.langs.c import CAdapter, CCfg
 from lg.adapters.context import LightweightContext
 from lg.stats.tokenizer import default_tokenizer
 

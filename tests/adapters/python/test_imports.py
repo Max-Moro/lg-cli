@@ -4,9 +4,9 @@ Tests for import optimization in Python adapter.
 
 import re
 
-from lg.adapters.python import PythonCfg
-from lg.adapters.python.imports import PythonImportClassifier, PythonImportAnalyzer
-from lg.adapters.python.adapter import PythonDocument
+from lg.adapters.langs.python import PythonCfg
+from lg.adapters.langs.python.imports import PythonImportClassifier, PythonImportAnalyzer
+from lg.adapters.langs.python.adapter import PythonDocument
 from lg.adapters.code_model import ImportConfig
 from .utils import lctx, make_adapter
 from ..golden_utils import assert_golden_match

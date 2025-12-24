@@ -4,7 +4,7 @@ Tests for import optimization in JavaScript adapter.
 
 import re
 
-from lg.adapters.javascript import JavaScriptCfg
+from lg.adapters.langs.javascript import JavaScriptCfg
 from lg.adapters.code_model import ImportConfig
 from .utils import lctx, make_adapter
 from ..golden_utils import assert_golden_match

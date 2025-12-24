@@ -4,7 +4,7 @@ Ensures set literals are correctly identified and trimmed with proper bracket ty
 """
 
 from lg.adapters.code_model import LiteralConfig
-from lg.adapters.python import PythonCfg
+from lg.adapters.langs.python import PythonCfg
 from .utils import make_adapter, lctx
 
 

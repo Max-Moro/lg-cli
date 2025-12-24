@@ -12,7 +12,7 @@ from lg.adapters.code_model import (
     CommentConfig,
     FunctionBodyConfig,
 )
-from lg.adapters.javascript import JavaScriptCfg
+from lg.adapters.langs.javascript import JavaScriptCfg
 from .utils import make_adapter, lctx
 from ..golden_utils import assert_golden_match
 

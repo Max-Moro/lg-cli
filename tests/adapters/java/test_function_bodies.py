@@ -2,7 +2,7 @@
 Tests for function body optimization in Java adapter.
 """
 
-from lg.adapters.java import JavaCfg
+from lg.adapters.langs.java import JavaCfg
 from lg.adapters.code_model import FunctionBodyConfig
 from .utils import lctx, make_adapter
 from ..golden_utils import assert_golden_match

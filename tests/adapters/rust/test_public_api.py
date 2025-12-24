@@ -2,7 +2,7 @@
 Tests for public API filtering in Rust adapter.
 """
 
-from lg.adapters.rust import RustCfg
+from lg.adapters.langs.rust import RustCfg
 from .utils import lctx, make_adapter
 from ..golden_utils import assert_golden_match
 

@@ -2,7 +2,7 @@
 Tests for comment policy implementation in Rust adapter.
 """
 
-from lg.adapters.rust import RustCfg
+from lg.adapters.langs.rust import RustCfg
 from lg.adapters.code_model import CommentConfig
 from .utils import lctx, make_adapter
 from ..golden_utils import assert_golden_match

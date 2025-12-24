@@ -7,7 +7,7 @@ All Java-specific test utilities are here.
 from pathlib import Path
 
 from lg.adapters.context import LightweightContext
-from lg.adapters.java import JavaAdapter, JavaCfg
+from lg.adapters.langs.java import JavaAdapter, JavaCfg
 from lg.stats.tokenizer import default_tokenizer
 
 

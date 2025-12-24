@@ -9,7 +9,7 @@ from __future__ import annotations
 import pytest
 
 from lg.adapters.code_model import BudgetConfig
-from lg.adapters.typescript import TypeScriptCfg
+from lg.adapters.langs.typescript import TypeScriptCfg
 from .utils import make_adapter, lctx
 from ..golden_utils import assert_golden_match
 

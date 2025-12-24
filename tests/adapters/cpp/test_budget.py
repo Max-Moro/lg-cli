@@ -7,7 +7,7 @@ Run a complex sample through progressively smaller budgets and snapshot each sta
 import pytest
 
 from lg.adapters.code_model import BudgetConfig
-from lg.adapters.cpp import CppCfg
+from lg.adapters.langs.cpp import CppCfg
 from .utils import make_adapter, lctx
 from ..golden_utils import assert_golden_match
 

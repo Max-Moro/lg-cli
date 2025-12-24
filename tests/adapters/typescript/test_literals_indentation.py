@@ -2,7 +2,7 @@
 Test literal trimming with correct indentation handling for TypeScript.
 """
 
-from lg.adapters.typescript import TypeScriptCfg
+from lg.adapters.langs.typescript import TypeScriptCfg
 from .utils import make_adapter, lctx
 
 

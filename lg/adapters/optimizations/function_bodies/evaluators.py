@@ -11,7 +11,7 @@ from typing import List, Optional
 
 from .decision import FunctionBodyDecision
 from ...code_model import FunctionBodyPolicy
-from ...optimizations.shared import CodeElement
+from ...shared import CodeElement
 
 logger = logging.getLogger(__name__)
 

@@ -4,7 +4,7 @@ Tests for import optimization in Java adapter.
 
 import re
 
-from lg.adapters.java import JavaCfg
+from lg.adapters.langs.java import JavaCfg
 from lg.adapters.code_model import ImportConfig
 from .utils import lctx, make_adapter
 from ..golden_utils import assert_golden_match

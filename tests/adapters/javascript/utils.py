@@ -3,7 +3,7 @@
 from pathlib import Path
 
 from lg.adapters.context import LightweightContext
-from lg.adapters.javascript import JavaScriptAdapter, JavaScriptCfg
+from lg.adapters.langs.javascript import JavaScriptAdapter, JavaScriptCfg
 from lg.stats.tokenizer import default_tokenizer
 
 

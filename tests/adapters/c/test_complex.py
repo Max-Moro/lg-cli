@@ -12,7 +12,7 @@ from lg.adapters.code_model import (
     CommentConfig,
     FunctionBodyConfig,
 )
-from lg.adapters.c import CCfg
+from lg.adapters.langs.c import CCfg
 from .utils import make_adapter, lctx
 from ..golden_utils import assert_golden_match
 

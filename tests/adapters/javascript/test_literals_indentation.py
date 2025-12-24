@@ -2,7 +2,7 @@
 Test literal trimming with correct indentation handling for JavaScript.
 """
 
-from lg.adapters.javascript import JavaScriptCfg
+from lg.adapters.langs.javascript import JavaScriptCfg
 from .utils import lctx, make_adapter
 
 def test_javascript_object_literal_indentation():

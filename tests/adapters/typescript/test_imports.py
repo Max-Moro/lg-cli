@@ -4,9 +4,9 @@ Tests for import optimization in TypeScript adapter.
 
 import re
 
-from lg.adapters.typescript import TypeScriptCfg
-from lg.adapters.typescript.imports import TypeScriptImportClassifier, TypeScriptImportAnalyzer
-from lg.adapters.typescript.adapter import TypeScriptDocument
+from lg.adapters.langs.typescript import TypeScriptCfg
+from lg.adapters.langs.typescript.imports import TypeScriptImportClassifier, TypeScriptImportAnalyzer
+from lg.adapters.langs.typescript.adapter import TypeScriptDocument
 from lg.adapters.code_model import ImportConfig
 from .utils import lctx, make_adapter
 from ..golden_utils import assert_golden_match

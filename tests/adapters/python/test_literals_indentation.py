@@ -2,7 +2,7 @@
 Test literal trimming with correct indentation handling.
 """
 
-from lg.adapters.python import PythonCfg
+from lg.adapters.langs.python import PythonCfg
 from .utils import make_adapter, lctx
 
 

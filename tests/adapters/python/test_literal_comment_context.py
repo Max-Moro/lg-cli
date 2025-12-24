@@ -3,7 +3,7 @@ Test smart comment placement for literal optimization in Python.
 Ensures comments don't break code structure when placed inline.
 """
 
-from lg.adapters.python import PythonCfg
+from lg.adapters.langs.python import PythonCfg
 from .utils import make_adapter
 
 

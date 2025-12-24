@@ -12,7 +12,7 @@ from lg.adapters.code_model import (
     CommentConfig,
     FunctionBodyConfig,
 )
-from lg.adapters.go import GoCfg
+from lg.adapters.langs.go import GoCfg
 from .utils import make_adapter, lctx
 from ..golden_utils import assert_golden_match
 

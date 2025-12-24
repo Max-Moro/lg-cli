@@ -130,9 +130,11 @@ PYTEST_UPDATE_GOLDENS=1 pytest tests/adapters/kotlin/
    - `load_sample_code()` - load code sample
 
 Example:
+
 ```python
 from .conftest import make_adapter, lctx_kt, assert_golden_match
-from lg.adapters.kotlin import KotlinCfg
+from lg.adapters.langs.kotlin import KotlinCfg
+
 
 def test_my_feature():
     cfg = KotlinCfg(my_option=True)

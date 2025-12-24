@@ -2,7 +2,7 @@
 Tests for comment policy implementation in Java adapter.
 """
 
-from lg.adapters.java import JavaCfg
+from lg.adapters.langs.java import JavaCfg
 from lg.adapters.code_model import CommentConfig
 from .utils import lctx, make_adapter
 from ..golden_utils import assert_golden_match
