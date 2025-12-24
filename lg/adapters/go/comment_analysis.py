@@ -163,11 +163,8 @@ class GoCommentAnalyzer(GroupingCommentAnalyzer):
         if following_decl.type not in decl_types:
             return False
 
-        # TODO: Analyze the declaration to check if it's exported using collector
-        # For now, use simple heuristic: check if identifier starts with uppercase
+        # Use heuristic: exported names in Go start with uppercase
         try:
-            # Simple heuristic: exported names in Go start with uppercase
-            # This is a temporary implementation until collector migration
             if following_decl.type in {'type_declaration', 'function_declaration', 'method_declaration'}:
                 # Find the identifier node
                 for child in following_decl.children:

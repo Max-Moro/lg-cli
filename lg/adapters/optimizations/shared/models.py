@@ -17,7 +17,6 @@ class CodeElement:
     """
     Unified representation of a code element.
 
-    Replaces both ElementInfo and FunctionGroup from legacy architecture.
     Contains all information needed for both public API filtering
     and function body optimization.
     """

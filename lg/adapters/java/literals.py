@@ -109,7 +109,7 @@ JAVA_LIST_SET_OF_PROFILE = FactoryProfile(
     comment_name="array",
 )
 
-# Arrays.asList() - legacy sequence factory
+# Arrays.asList() - classic sequence factory
 JAVA_ARRAYS_ASLIST_PROFILE = FactoryProfile(
     query="""
     (method_invocation

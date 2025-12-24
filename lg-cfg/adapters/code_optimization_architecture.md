@@ -1,6 +1,6 @@
-## Архитектура Code Optimization (Public API + Function Bodies)
+## Архитектура Code Optimization
 
-Этот документ описывает целевую архитектуру для подсистем оптимизации кода:
+Этот документ описывает архитектуру подсистем оптимизации кода:
 - **Public API optimization** — фильтрация приватных элементов
 - **Function body optimization** — удаление/обрезка тел функций
 
@@ -15,18 +15,6 @@
 
 ---
 
-### Ключевые изменения относительно текущей архитектуры
-
-| Аспект | Было | Станет |
-|--------|------|--------|
-| Центральный класс | `CodeAnalyzer` (ABC с 10+ abstract methods) | `LanguageCodeDescriptor` (декларативная конфигурация) |
-| Языковая логика | `optimizations/public_api/language_profiles/<lang>.py` | `<lang>/code_profiles.py` |
-| Function body queries | `<lang>/queries.py` (отдельно) | Объединены в профилях |
-| Модель элемента | `ElementInfo` + `FunctionGroup` (перекрытие) | `CodeElement` (унифицированная) |
-| Определение публичности | `visibility_check` + `export_check` + `uses_visibility_for_public_api` | Один `is_public` callback |
-
----
-
 ### Структура подсистемы
 
 ```
@@ -34,21 +22,18 @@ lg/adapters/
 │
 ├── optimizations/
 │   ├── shared/                         # Общая инфраструктура для code-оптимизаций
-│   │   ├── __init__.py
 │   │   ├── descriptor.py               # LanguageCodeDescriptor
 │   │   ├── profiles.py                 # ElementProfile
 │   │   ├── models.py                   # CodeElement
-│   │   └── collector.py                # ElementCollector (универсальный)
+│   │   └── collector.py                # ElementCollector
 │   │
-│   ├── function_bodies/                # Как сейчас, но использует shared/ вместо code_analyzer
-│   │   ├── __init__.py
+│   ├── function_bodies/                # Оптимизация тел функций
 │   │   ├── optimizer.py                # FunctionBodyOptimizer
-│   │   ├── decision.py
-│   │   ├── evaluators.py
-│   │   └── trimmer.py
+│   │   ├── decision.py                 # FunctionBodyDecision
+│   │   ├── evaluators.py               # Evaluators для политик
+│   │   └── trimmer.py                  # FunctionBodyTrimmer
 │   │
-│   └── public_api/                     # Как сейчас, но использует shared/ вместо code_analyzer
-│       ├── __init__.py
+│   └── public_api/                     # Оптимизация публичного API
 │       └── optimizer.py                # PublicApiOptimizer
 │
 ├── python/
@@ -64,106 +49,55 @@ lg/adapters/
 
 ---
 
-### ER-модель
+### Модель данных
 
 #### ElementProfile
 
-Описывает тип элемента кода (класс, функция, метод, поле и т.д.):
+Декларативное описание типа элемента кода (класс, функция, метод, поле и т.д.).
 
-```python
-@dataclass
-class ElementProfile:
-    """Декларативное описание типа элемента кода."""
+**Основные поля:**
+- `name: str` — имя профиля для метрик и placeholders
+- `query: str` — Tree-sitter query для поиска элементов
+- `is_public: Callable[[Node, Doc], bool]` — единый callback для определения публичности
+- `has_body: bool` — True для элементов с телами (functions, methods)
+- `additional_check: Callable` — дополнительная фильтрация (is_inside_class и т.д.)
+- `docstring_extractor: Callable` — извлечение docstring для сохранения
+- `parent_profile: str` — имя родительского профиля для наследования
 
-    name: str
-    """Имя профиля для метрик и placeholders: "class", "method", "field"."""
+**Принцип работы `is_public`:**
 
-    query: str
-    """Tree-sitter query для поиска элементов. Capture: @element."""
-
-    # --- Public API determination ---
-    is_public: Optional[Callable[[Node, Doc], bool]] = None
-    """
-    Определяет, входит ли элемент в публичный API.
-    None = всегда public (по умолчанию).
-
-    Единый callback инкапсулирует всю логику:
-    - Python: проверка _ и __ префиксов
-    - Go: проверка регистра первой буквы
-    - Java/Kotlin: проверка access modifiers
-    - TypeScript top-level: проверка export keyword
-    - TypeScript members: проверка private/protected
-    """
-
-    # --- Filtering ---
-    additional_check: Optional[Callable[[Node, Doc], bool]] = None
-    """Дополнительная фильтрация (например, is_case_class, is_inside_class)."""
-
-    # --- Function body specific ---
-    has_body: bool = False
-    """True для элементов с телом (functions, methods)."""
-
-    body_query: Optional[str] = None
-    """Query для извлечения тела. Capture: @body. Если None — ищем child "block"."""
-
-    docstring_extractor: Optional[Callable[[Node, Doc], Optional[Node]]] = None
-    """Извлечение docstring для сохранения при strip."""
-
-    # --- Inheritance ---
-    parent_profile: Optional[str] = None
-    """Имя родительского профиля для наследования."""
-```
+Единый callback инкапсулирует всю логику определения публичности:
+- Python: проверка префиксов `_` и `__`
+- Go: проверка регистра первой буквы
+- Java/Kotlin: проверка access modifiers
+- TypeScript top-level: проверка export keyword
+- TypeScript members: проверка private/protected
 
 #### CodeElement
 
-Унифицированная модель элемента кода (заменяет ElementInfo + FunctionGroup):
+Унифицированная модель элемента кода.
 
-```python
-@dataclass
-class CodeElement:
-    """Результат анализа элемента кода."""
-
-    # Идентификация
-    profile: ElementProfile
-    node: Node
-
-    # Имя конкретного элемента в коде (например "MyClass", "process_data").
-    # Используется для FunctionBodyConfig.except_patterns — regex-фильтрация
-    # функций по имени, которые нужно исключить из stripping.
-    name: Optional[str] = None
-
-    # Public API status (вычисляется через profile.is_public)
-    is_public: bool = True
-
-    # Function body info (заполняется только если profile.has_body)
-    body_node: Optional[Node] = None
-    body_range: Optional[Tuple[int, int]] = None  # (start_byte, end_byte)
-    docstring_node: Optional[Node] = None
-    decorators: List[Node] = field(default_factory=list)
-```
+**Основные поля:**
+- `profile: ElementProfile` — профиль элемента
+- `node: Node` — Tree-sitter узел
+- `name: str` — имя элемента (для `except_patterns`)
+- `is_public: bool` — результат вычисления через `profile.is_public`
+- `body_node: Node` — узел тела (для функций/методов)
+- `body_range: Tuple[int, int]` — диапазон для stripping
+- `docstring_node: Node` — узел docstring (для сохранения)
+- `decorators: List[Node]` — список декораторов
 
 #### LanguageCodeDescriptor
 
-Центральная декларация языка (аналог LanguageLiteralDescriptor):
+Центральная декларация языка. Аналог `LanguageLiteralDescriptor` для кодовых элементов.
 
-```python
-@dataclass
-class LanguageCodeDescriptor:
-    """Декларативное описание элементов кода для языка."""
-
-    language: str
-    """Имя языка: "python", "typescript", etc."""
-
-    profiles: List[ElementProfile]
-    """Все профили элементов для этого языка."""
-
-    # --- Language-specific utilities ---
-    decorator_types: Set[str] = field(default_factory=set)
-    """Node types для декораторов: {"decorator", "annotation"}."""
-
-    comment_types: Set[str] = field(default_factory=set)
-    """Node types для комментариев: {"comment", "line_comment"}."""
-```
+**Основные поля:**
+- `language: str` — имя языка
+- `profiles: List[ElementProfile]` — все профили элементов
+- `decorator_types: Set[str]` — типы узлов для декораторов
+- `comment_types: Set[str]` — типы узлов для комментариев
+- `name_extractor: Callable` — извлечение имени элемента
+- `extend_element_range: Callable` — расширение диапазона элемента
 
 ---
 
@@ -171,219 +105,108 @@ class LanguageCodeDescriptor:
 
 #### ElementCollector
 
-Универсальный сборщик элементов по профилям:
+Универсальный сборщик элементов по профилям из дескриптора.
 
-```python
-class ElementCollector:
-    """Собирает CodeElement по профилям из дескриптора."""
+**Методы:**
+- `collect_all()` — собрать все элементы всех профилей
+- `collect_by_profile(name)` — собрать элементы конкретного профиля
+- `collect_private()` — собрать только приватные элементы (для public API)
+- `collect_with_bodies()` — собрать только элементы с телами (для function bodies)
 
-    def __init__(self, doc: TreeSitterDocument, descriptor: LanguageCodeDescriptor):
-        self.doc = doc
-        self.descriptor = descriptor
+**Принцип работы:**
+1. Выполняет Tree-sitter queries из профилей
+2. Применяет `additional_check` для фильтрации
+3. Вычисляет `is_public` через callback профиля
+4. Извлекает body_node, docstring, decorators
+5. Создает `CodeElement` с полной информацией
 
-    def collect_all(self) -> List[CodeElement]:
-        """Собрать все элементы всех профилей."""
-        pass
+#### ProcessingContext
 
-    def collect_by_profile(self, profile_name: str) -> List[CodeElement]:
-        """Собрать элементы конкретного профиля."""
-        pass
+Расширен для кэширования `ElementCollector`.
 
-    def collect_private(self) -> List[CodeElement]:
-        """Собрать только приватные элементы (для public API opt)."""
-        pass
+**Новый метод:**
+- `get_collector()` — lazy-создание и кэширование collector
 
-    def collect_with_bodies(self) -> List[CodeElement]:
-        """Собрать только элементы с телами (для function body opt)."""
-        pass
-```
-
-#### ProcessingContext (расширение)
-
-Кэширование `ElementCollector` для переиспользования между оптимизаторами:
-
-```python
-class ProcessingContext:
-    """Расширение существующего ProcessingContext."""
-
-    # ... существующие поля ...
-
-    _collector: Optional[ElementCollector] = None
-
-    def get_collector(self) -> ElementCollector:
-        """
-        Lazy-создание и кэширование ElementCollector.
-
-        Преимущества кэширования:
-        - Tree-sitter queries выполняются один раз
-        - Оба оптимизатора видят консистентные данные
-        - Создаётся только если хотя бы один оптимизатор включен
-        """
-        if self._collector is None:
-            self._collector = ElementCollector(self.doc, self.adapter.get_code_descriptor())
-        return self._collector
-```
+**Преимущества кэширования:**
+- Tree-sitter queries выполняются один раз
+- Оба оптимизатора видят консистентные данные
+- Создаётся только если хотя бы один оптимизатор включен
 
 #### PublicApiOptimizer
 
-Оптимизатор публичного API:
+Удаляет приватные элементы из кода.
 
-```python
-class PublicApiOptimizer:
-    """Удаляет приватные элементы из кода."""
-
-    def __init__(self, adapter: CodeAdapter):
-        self.adapter = adapter
-
-    def apply(self, context: ProcessingContext) -> None:
-        collector = context.get_collector()
-
-        # Собираем элементы где is_public=False
-        private_elements = collector.collect_private()
-        private_elements = self._filter_nested(private_elements)
-
-        for element in sorted(private_elements, key=lambda e: -e.node.start_byte):
-            range_with_decorators = self._get_full_range(element)
-            context.add_placeholder(
-                element.profile.name,
-                range_with_decorators[0],
-                range_with_decorators[1]
-            )
-```
+**Алгоритм:**
+1. Получить `collector` из контекста
+2. Собрать приватные элементы: `collector.collect_private()`
+3. Отфильтровать вложенные элементы
+4. Для каждого элемента создать placeholder
 
 #### FunctionBodyOptimizer
 
-Оптимизатор тел функций:
+Удаляет/обрезает тела функций.
 
-```python
-class FunctionBodyOptimizer:
-    """Удаляет/обрезает тела функций."""
+**Алгоритм:**
+1. Получить `collector` из контекста
+2. Собрать элементы с телами: `collector.collect_with_bodies()`
+3. Для каждого элемента:
+   - Вычислить decision через evaluators
+   - Применить strip или trim
+   - Создать placeholder
 
-    def __init__(self, adapter: CodeAdapter):
-        self.adapter = adapter
-        self.trimmer = FunctionBodyTrimmer(...)
+**Evaluators:**
+- `ExceptPatternEvaluator` — проверка `except_patterns`
+- `KeepAnnotatedEvaluator` — проверка `keep_annotated`
+- `BasePolicyEvaluator` — базовая политика (keep_all/strip_all/keep_public)
 
-    def apply(self, context: ProcessingContext, cfg: FunctionBodyConfig) -> None:
-        collector = context.get_collector()
-
-        elements_with_bodies = collector.collect_with_bodies()
-
-        for element in elements_with_bodies:
-            # Используем element.is_public для policy="keep_public"
-            decision = self._evaluate_decision(element, cfg)
-
-            if decision.action == "strip":
-                self._apply_strip(context, element)
-            elif decision.action == "trim":
-                self._apply_trim(context, element)
-```
+**Trimmer:**
+- `FunctionBodyTrimmer` — обрезка тела до токенового бюджета
+- Сохраняет prefix (начало тела)
+- Сохраняет suffix (return statement)
+- Вставляет placeholder между ними
 
 ---
 
 ### Языковые дескрипторы
 
-Каждый язык определяет свой дескриптор в `<lang>/code_profiles.py`:
+Каждый язык определяет свой дескриптор в `<lang>/code_profiles.py`.
 
-```python
-# python/code_profiles.py
+**Структура дескриптора:**
+1. Helper-функции для определения публичности (`_is_public_<lang>`)
+2. Helper-функции для извлечения элементов (`_extract_name`, `_find_docstring`)
+3. Константа `<LANG>_CODE_DESCRIPTOR` с профилями
 
-from lg.adapters.optimizations.code import (
-    LanguageCodeDescriptor,
-    ElementProfile,
-)
+**Примеры профилей:**
 
-def _is_public_python(node: Node, doc: TreeSitterDocument) -> bool:
-    """
-    Python public API by naming convention.
+Python:
+- `class`, `function`, `method`, `variable`
+- Публичность по naming convention (_name, __name)
 
-    - __name__ (dunder) = public
-    - __name (double underscore) = private
-    - _name (single underscore) = private (protected)
-    - name = public
-    """
-    name = _extract_name(node, doc)
-    if not name:
-        return True  # No name = public by default
-    if name.startswith("__") and name.endswith("__"):
-        return True  # dunder methods are public
-    if name.startswith("_"):
-        return False  # _ or __ prefix = private
-    return True
+TypeScript:
+- `class`, `interface`, `type`, `enum`, `namespace`
+- `function` (top-level и namespace), `method`, `field`, `variable`
+- `import` (для фильтрации re-exports)
+- Top-level: публичность по export keyword
+- Members: публичность по visibility modifiers
 
-
-def _find_python_docstring(node: Node, doc: TreeSitterDocument) -> Optional[Node]:
-    """Find docstring at start of function body."""
-    # ... implementation
-    pass
-
-
-PYTHON_CODE_DESCRIPTOR = LanguageCodeDescriptor(
-    language="python",
-
-    profiles=[
-        ElementProfile(
-            name="class",
-            query="(class_definition) @element",
-            is_public=_is_public_python,
-        ),
-
-        ElementProfile(
-            name="function",
-            query="(function_definition) @element",
-            is_public=_is_public_python,
-            additional_check=lambda n, d: not _is_inside_class(n),
-            has_body=True,
-            docstring_extractor=_find_python_docstring,
-        ),
-
-        ElementProfile(
-            name="method",
-            query="(function_definition) @element",
-            is_public=_is_public_python,
-            additional_check=lambda n, d: _is_inside_class(n),
-            has_body=True,
-            docstring_extractor=_find_python_docstring,
-        ),
-
-        ElementProfile(
-            name="variable",
-            query="(assignment) @element",
-            is_public=_is_public_python,
-            additional_check=lambda n, d: not _is_inside_class(n),
-        ),
-    ],
-
-    decorator_types={"decorator"},
-    comment_types={"comment"},
-)
-```
+Java:
+- `class`, `interface`, `enum`, `annotation`
+- `function`, `method`, `field`, `variable`
+- Публичность по access modifiers
 
 ---
 
 ### Интеграция с адаптером
 
+**CodeAdapter:**
+- Абстрактный метод: `get_code_descriptor() -> LanguageCodeDescriptor`
+- Используется в `_post_bind()` для создания оптимизаторов
+
+**Пример в языковом адаптере:**
 ```python
-# code_base.py
-
-class CodeAdapter(BaseAdapter[C], ABC):
-
-    @abstractmethod
-    def get_code_descriptor(self) -> LanguageCodeDescriptor:
-        """Return language code descriptor."""
-        pass
-
-    # Удаляем:
-    # - create_code_analyzer()
-    # - все зависимости от CodeAnalyzer
-
-
-# python/adapter.py
-
-class PythonAdapter(CodeAdapter[PythonCfg]):
-
-    def get_code_descriptor(self) -> LanguageCodeDescriptor:
-        from .code_profiles import PYTHON_CODE_DESCRIPTOR
-        return PYTHON_CODE_DESCRIPTOR
+def get_code_descriptor(self) -> LanguageCodeDescriptor:
+    from .code_profiles import PYTHON_CODE_DESCRIPTOR
+    return PYTHON_CODE_DESCRIPTOR
 ```
 
 ---
@@ -391,8 +214,8 @@ class PythonAdapter(CodeAdapter[PythonCfg]):
 ### Ключевые принципы
 
 1. **Декларативность** — профили описывают ЧТО искать и КАК определять публичность
-2. **Единый источник истины** — один `is_public` callback вместо трёх полей
+2. **Единый источник истины** — один `is_public` callback вместо множества полей
 3. **Языковая инкапсуляция** — всё в пакетах языков (`<lang>/code_profiles.py`)
 4. **Разделение сбора и применения** — Collector собирает, Optimizer применяет
-5. **Унификация моделей** — один `CodeElement` вместо ElementInfo + FunctionGroup
-6. **Кэширование Collector** — `ProcessingContext.get_collector()` для переиспользования между оптимизаторами
+5. **Унификация моделей** — один `CodeElement` для всех оптимизаций
+6. **Кэширование Collector** — переиспользование между оптимизаторами

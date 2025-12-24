@@ -44,7 +44,7 @@ class Edit:
 class RangeEditor:
     """
     Unicode-safe range-based text editor that works with character positions.
-    This is the new architecture that avoids UTF-8 boundary issues.
+    Avoids UTF-8 boundary issues by working with character offsets.
     """
     
     def __init__(self, original_text: str):
