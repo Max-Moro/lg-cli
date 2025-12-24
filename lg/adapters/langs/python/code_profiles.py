@@ -22,19 +22,9 @@ from ...shared import ElementProfile, LanguageCodeDescriptor, is_inside_containe
 from ...tree_sitter_support import Node, TreeSitterDocument
 
 
-# --- Helper functions ---
-
-
 def _extract_name(node: Node, doc: TreeSitterDocument) -> Optional[str]:
     """
     Extract name of Python element from node.
-
-    Args:
-        node: Tree-sitter node of element
-        doc: Tree-sitter document
-
-    Returns:
-        Element name or None if not found
     """
     # Special handling for assignments
     if node.type == "assignment":
@@ -65,13 +55,6 @@ def _is_public_python(node: Node, doc: TreeSitterDocument) -> bool:
     - __name (double underscore) = private
     - _name (single underscore) = protected/private
     - name = public
-
-    Args:
-        node: Tree-sitter node of element
-        doc: Tree-sitter document
-
-    Returns:
-        True if element is public, False if private
     """
     name = _extract_name(node, doc)
     if not name:
@@ -99,13 +82,6 @@ def _find_python_docstring(body_node: Node, doc: TreeSitterDocument) -> Optional
 
     In Python, a docstring is the first expression statement that contains
     a string literal (not evaluated for side effects).
-
-    Args:
-        body_node: Function body node (block)
-        doc: Tree-sitter document
-
-    Returns:
-        Docstring node (expression_statement) if found, None otherwise
     """
     for child in body_node.children:
         if child.type == "expression_statement":
@@ -117,23 +93,17 @@ def _find_python_docstring(body_node: Node, doc: TreeSitterDocument) -> Optional
     return None
 
 
-# --- Python Code Descriptor ---
-
 PYTHON_CODE_DESCRIPTOR = LanguageCodeDescriptor(
     language="python",
     profiles=[
-        # === Classes ===
         ElementProfile(
             name="class",
             query="(class_definition) @element",
             is_public=_is_public_python,
         ),
 
-        # === Functions and Methods ===
         # Python has single node type (function_definition) for both.
-        # Distinguish via is_inside_class check.
-
-        # Top-level functions
+        # Distinguish via is_inside_container check.
         ElementProfile(
             name="function",
             query="(function_definition) @element",
@@ -145,7 +115,6 @@ PYTHON_CODE_DESCRIPTOR = LanguageCodeDescriptor(
             docstring_extractor=_find_python_docstring,
         ),
 
-        # Methods inside classes
         ElementProfile(
             name="method",
             query="(function_definition) @element",
@@ -157,8 +126,6 @@ PYTHON_CODE_DESCRIPTOR = LanguageCodeDescriptor(
             docstring_extractor=_find_python_docstring,
         ),
 
-        # === Module-level Variables ===
-        # Only top-level assignments (not inside functions/classes)
         ElementProfile(
             name="variable",
             query="(assignment) @element",

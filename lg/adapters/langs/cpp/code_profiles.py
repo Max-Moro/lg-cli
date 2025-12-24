@@ -27,22 +27,12 @@ from ...shared import ElementProfile, LanguageCodeDescriptor, is_inside_containe
 from ...tree_sitter_support import Node, TreeSitterDocument
 
 
-# --- Helper functions ---
-
-
 def _get_access_specifier(node: Node, doc: TreeSitterDocument) -> Optional[str]:
     """
     Find the access specifier (public, private, protected) for a class/struct member.
 
     For nested classes inside field_declaration, checks parent's siblings.
     For regular members, checks parent's children.
-
-    Args:
-        node: Tree-sitter node of element
-        doc: Tree-sitter document
-
-    Returns:
-        Access specifier text ("public", "private", "protected") or None
     """
     # For nested classes inside field_declaration
     if node.parent and node.parent.type == "field_declaration":
@@ -64,14 +54,6 @@ def _search_access_specifier_in_siblings(
 ) -> Optional[str]:
     """
     Search for access specifier among siblings before target node.
-
-    Args:
-        target_node: The node we're looking for access specifier for
-        siblings: List of sibling nodes to search
-        doc: Tree-sitter document
-
-    Returns:
-        Access specifier text or None if not found
     """
     current_access = None
 
@@ -94,12 +76,6 @@ def _search_access_specifier_in_siblings(
 def _get_parent_class_or_struct_type(node: Node) -> Optional[str]:
     """
     Find the type of parent class or struct (class_specifier or struct_specifier).
-
-    Args:
-        node: Tree-sitter node to analyze
-
-    Returns:
-        "class" or "struct" or None
     """
     current = node.parent
     while current:
@@ -116,27 +92,17 @@ def _get_parent_class_or_struct_type(node: Node) -> Optional[str]:
 def _extract_name(node: Node, doc: TreeSitterDocument) -> Optional[str]:
     """
     Extract name of C++ element from node.
-
-    Args:
-        node: Tree-sitter node of element
-        doc: Tree-sitter document
-
-    Returns:
-        Element name or None if not found
     """
-    # For qualified identifiers (e.g., namespace::class::method)
+    # For qualified identifiers (e.g., namespace::class::method), get the last identifier
     if node.type == "qualified_identifier":
-        # Get the last identifier in the chain
         for child in reversed(node.children):
             if child.type == "identifier":
                 return doc.get_node_text(child)
 
-    # Search for child node with name
     for child in node.children:
         if child.type in ("identifier", "type_identifier", "field_identifier"):
             return doc.get_node_text(child)
 
-    # For some node types, name may be in the name field
     name_node = node.child_by_field_name("name")
     if name_node:
         return doc.get_node_text(name_node)
@@ -155,15 +121,7 @@ def _is_public_cpp(node: Node, doc: TreeSitterDocument) -> bool:
     - No explicit modifier in class = private (default for class)
     - No explicit modifier in struct = public (default for struct)
     - Top-level functions/classes = public (unless static or in anonymous namespace)
-
-    Args:
-        node: Tree-sitter node of element
-        doc: Tree-sitter document
-
-    Returns:
-        True if element is public, False if private
     """
-    # For class/struct members
     if is_inside_container(
         node,
         {"class_specifier", "struct_specifier", "union_specifier"},
@@ -171,21 +129,18 @@ def _is_public_cpp(node: Node, doc: TreeSitterDocument) -> bool:
     ):
         access = _get_access_specifier(node, doc)
 
-        # Explicit access specifier takes precedence
         if access == "public":
             return True
         elif access in ("private", "protected"):
             return False
 
-        # No explicit modifier - use default based on parent type
+        # No explicit modifier - default is private for class, public for struct/union
         parent_type = _get_parent_class_or_struct_type(node)
         if parent_type == "class":
-            return False  # Default for class is private
+            return False
         else:
-            return True   # Default for struct/union is public
+            return True
 
-    # For top-level elements (functions, classes, etc.)
-    # Top-level is public unless static or in anonymous namespace
     if _has_static_specifier(node, doc):
         return False
     if _in_anonymous_namespace(node):
@@ -208,14 +163,13 @@ def _in_anonymous_namespace(node: Node) -> bool:
     current = node.parent
     while current:
         if current.type == "namespace_definition":
-            # Check if namespace has a name
             has_name = False
             for child in current.children:
                 if child.type == "namespace_identifier":
                     has_name = True
                     break
             if not has_name:
-                return True  # Anonymous namespace
+                return True
         current = current.parent
     return False
 
@@ -227,13 +181,6 @@ def _find_cpp_docstring(body_node: Node, doc: TreeSitterDocument) -> Optional[No
     In C++, docstrings are typically handled via comments (/* */ or //)
     which appear before the function, not inside the body.
     This searches for comment nodes at the start of the body.
-
-    Args:
-        body_node: Function body node (compound_statement)
-        doc: Tree-sitter document
-
-    Returns:
-        Comment node if found, None otherwise
     """
     if not body_node or body_node.type != "compound_statement":
         return None
@@ -241,25 +188,20 @@ def _find_cpp_docstring(body_node: Node, doc: TreeSitterDocument) -> Optional[No
     for child in body_node.children:
         if child.type == "comment":
             return child
-        # First non-whitespace that's not a comment, stop
         if child.type not in ("newline", "\n", " ", "\t"):
             break
 
     return None
 
 
-# --- C++ Code Descriptor ---
-
 CPP_CODE_DESCRIPTOR = LanguageCodeDescriptor(
     language="cpp",
     profiles=[
-        # === Namespaces ===
         ElementProfile(
             name="namespace",
             query="(namespace_definition) @element",
         ),
 
-        # === Classes ===
         ElementProfile(
             name="class",
             query="(class_specifier) @element",
@@ -271,7 +213,6 @@ CPP_CODE_DESCRIPTOR = LanguageCodeDescriptor(
             ),
         ),
 
-        # === Structs ===
         ElementProfile(
             name="struct",
             query="(struct_specifier) @element",
@@ -283,7 +224,6 @@ CPP_CODE_DESCRIPTOR = LanguageCodeDescriptor(
             ),
         ),
 
-        # === Unions ===
         ElementProfile(
             name="union",
             query="(union_specifier) @element",
@@ -295,7 +235,6 @@ CPP_CODE_DESCRIPTOR = LanguageCodeDescriptor(
             ),
         ),
 
-        # === Enums ===
         ElementProfile(
             name="enum",
             query="(enum_specifier) @element",
@@ -307,7 +246,6 @@ CPP_CODE_DESCRIPTOR = LanguageCodeDescriptor(
             ),
         ),
 
-        # === Functions (top-level) ===
         ElementProfile(
             name="function",
             query="(function_definition) @element",
@@ -321,7 +259,6 @@ CPP_CODE_DESCRIPTOR = LanguageCodeDescriptor(
             docstring_extractor=_find_cpp_docstring,
         ),
 
-        # === Methods (inside classes/structs/unions) ===
         ElementProfile(
             name="method",
             query="(function_definition) @element",
@@ -335,8 +272,6 @@ CPP_CODE_DESCRIPTOR = LanguageCodeDescriptor(
             docstring_extractor=_find_cpp_docstring,
         ),
 
-        # === Class/Struct Fields ===
-        # Only field_declaration inside field_declaration_list (not standalone declarations)
         ElementProfile(
             name="field",
             query="(field_declaration) @element",
@@ -348,8 +283,6 @@ CPP_CODE_DESCRIPTOR = LanguageCodeDescriptor(
             ),
         ),
 
-        # === Variables (top-level) ===
-        # Top-level variable declarations
         ElementProfile(
             name="variable",
             query="(declaration) @element",
@@ -362,8 +295,8 @@ CPP_CODE_DESCRIPTOR = LanguageCodeDescriptor(
         ),
     ],
 
-    decorator_types=set(),  # C++ doesn't have decorators
-    comment_types={"comment"},  # C++ has single comment type
+    decorator_types=set(),
+    comment_types={"comment"},
     name_extractor=_extract_name,
 )
 

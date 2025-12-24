@@ -27,19 +27,9 @@ from ...shared import ElementProfile, LanguageCodeDescriptor, is_inside_containe
 from ...tree_sitter_support import Node, TreeSitterDocument
 
 
-# --- Helper functions ---
-
-
 def _extract_name(node: Node, doc: TreeSitterDocument) -> Optional[str]:
     """
     Extract name of TypeScript element from node.
-
-    Args:
-        node: Tree-sitter node of element
-        doc: Tree-sitter document
-
-    Returns:
-        Element name or None if not found
     """
     # Special handling for variable_declaration
     if node.type == "variable_declaration":
@@ -65,13 +55,6 @@ def _extract_name(node: Node, doc: TreeSitterDocument) -> Optional[str]:
 def _get_visibility_modifier(node: Node, doc: TreeSitterDocument) -> Optional[str]:
     """
     Extract visibility modifier from node.
-
-    Args:
-        node: Tree-sitter node of element
-        doc: Tree-sitter document
-
-    Returns:
-        Modifier text ("private", "protected", "public") or None
     """
     for child in node.children:
         if child.type == "accessibility_modifier":
@@ -84,13 +67,6 @@ def _has_export_keyword(node: Node, doc: TreeSitterDocument) -> bool:
     Check if node has 'export' keyword directly before it.
 
     For namespace members and top-level declarations.
-
-    Args:
-        node: Tree-sitter node of element
-        doc: Tree-sitter document
-
-    Returns:
-        True if element is exported
     """
     node_text = doc.get_node_text(node).strip()
 
@@ -110,13 +86,6 @@ def _is_public_top_level(node: Node, doc: TreeSitterDocument) -> bool:
     Determine if top-level TypeScript element is public.
 
     Top-level elements are public only if they have 'export' keyword.
-
-    Args:
-        node: Tree-sitter node of element
-        doc: Tree-sitter document
-
-    Returns:
-        True if element is exported (public)
     """
     return _has_export_keyword(node, doc)
 
@@ -129,13 +98,6 @@ def _is_public_class_member(node: Node, doc: TreeSitterDocument) -> bool:
     - private modifier = private
     - protected modifier = private (protected)
     - public modifier or no modifier = public
-
-    Args:
-        node: Tree-sitter node of element
-        doc: Tree-sitter document
-
-    Returns:
-        True if element is public
     """
     modifier = _get_visibility_modifier(node, doc)
 
@@ -152,13 +114,6 @@ def _is_public_namespace_member(node: Node, doc: TreeSitterDocument) -> bool:
     Determine if namespace member is public.
 
     Namespace members must have explicit 'export' to be public.
-
-    Args:
-        node: Tree-sitter node of element
-        doc: Tree-sitter document
-
-    Returns:
-        True if element is exported
     """
     return _has_export_keyword(node, doc)
 
@@ -169,13 +124,6 @@ def _is_side_effect_import(node: Node, doc: TreeSitterDocument) -> bool:
 
     Side-effect imports: import './module' (no destructuring, no 'from')
     These can modify global state and must not be removed.
-
-    Args:
-        node: Tree-sitter node of import statement
-        doc: Tree-sitter document
-
-    Returns:
-        True if import is side-effect import
     """
     import_text = doc.get_node_text(node)
     # Side-effect if no 'from', no '{', no '* as'
@@ -189,13 +137,6 @@ def _find_typescript_docstring(body_node: Node, doc: TreeSitterDocument) -> Opti
     In TypeScript, docstrings are typically handled via JSDoc comments
     which appear before the function, not inside the body.
     This searches for comment nodes at the start of the body.
-
-    Args:
-        body_node: Function body node (statement_block)
-        doc: Tree-sitter document
-
-    Returns:
-        Comment node if found, None otherwise
     """
     # TypeScript docstrings are usually before the function, not in the body
     # We check if there's a comment as first child
@@ -221,48 +162,39 @@ def _compute_element_range(node: Node, element_type: str, doc: TreeSitterDocumen
     )
 
 
-# --- TypeScript Code Descriptor ---
-
 TYPESCRIPT_CODE_DESCRIPTOR = LanguageCodeDescriptor(
     language="typescript",
     profiles=[
-        # === Classes ===
         ElementProfile(
             name="class",
             query="(class_declaration) @element",
             is_public=_is_public_top_level,
         ),
 
-        # === Interfaces ===
         ElementProfile(
             name="interface",
             query="(interface_declaration) @element",
             is_public=_is_public_top_level,
         ),
 
-        # === Type Aliases ===
         ElementProfile(
             name="type",
             query="(type_alias_declaration) @element",
             is_public=_is_public_top_level,
         ),
 
-        # === Enums ===
         ElementProfile(
             name="enum",
             query="(enum_declaration) @element",
             is_public=_is_public_top_level,
         ),
 
-        # === Namespaces ===
         ElementProfile(
             name="namespace",
             query="(internal_module) @element",
             is_public=_is_public_top_level,
         ),
 
-        # === Functions ===
-        # Top-level functions (not in class or namespace)
         ElementProfile(
             name="function",
             query="(function_declaration) @element",
@@ -276,7 +208,7 @@ TYPESCRIPT_CODE_DESCRIPTOR = LanguageCodeDescriptor(
             docstring_extractor=_find_typescript_docstring,
         ),
 
-        # Functions inside namespace (must have explicit export to be public)
+        # Namespace members must have explicit export to be public
         ElementProfile(
             name="function",
             query="(function_declaration) @element",
@@ -287,19 +219,15 @@ TYPESCRIPT_CODE_DESCRIPTOR = LanguageCodeDescriptor(
             docstring_extractor=_find_typescript_docstring,
         ),
 
-        # Arrow functions
+        # Arrow functions can have expression or statement_block body
         ElementProfile(
             name="function",
             query="(arrow_function) @element",
             is_public=None,  # Arrow functions visibility determined by variable declaration
             has_body=True,
-            # Arrow functions can have expression or statement_block body
-            # No specific body_query needed - _find_body_node will find it
             docstring_extractor=_find_typescript_docstring,
         ),
 
-        # === Methods ===
-        # Methods inside classes use visibility modifiers
         ElementProfile(
             name="method",
             query="(method_definition) @element",
@@ -309,16 +237,12 @@ TYPESCRIPT_CODE_DESCRIPTOR = LanguageCodeDescriptor(
             docstring_extractor=_find_typescript_docstring,
         ),
 
-        # === Class Fields ===
-        # Properties inside classes
         ElementProfile(
             name="field",
             query="(public_field_definition) @element",
             is_public=_is_public_class_member,
         ),
 
-        # === Variables ===
-        # Top-level const/let/var declarations
         ElementProfile(
             name="variable",
             query="(variable_declaration) @element",
@@ -328,8 +252,6 @@ TYPESCRIPT_CODE_DESCRIPTOR = LanguageCodeDescriptor(
             ),
         ),
 
-        # === Imports ===
-        # Collect non-side-effect imports for removal
         # Side-effect imports are preserved by default (not in this profile)
         ElementProfile(
             name="import",

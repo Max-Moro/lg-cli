@@ -26,21 +26,11 @@ from ...shared import ElementProfile, LanguageCodeDescriptor, is_inside_containe
 from ...tree_sitter_support import Node, TreeSitterDocument
 
 
-# --- Helper functions ---
-
-
 def _is_case_class(node: Node, doc: TreeSitterDocument) -> bool:
     """
     Check if a class definition is a case class.
 
     Case classes have 'case' modifier in Scala.
-
-    Args:
-        node: class_definition node
-        doc: Tree-sitter document
-
-    Returns:
-        True if it's a case class
     """
     node_text = doc.get_node_text(node)
     return "case class" in node_text[:50]
@@ -49,26 +39,17 @@ def _is_case_class(node: Node, doc: TreeSitterDocument) -> bool:
 def _extract_name(node: Node, doc: TreeSitterDocument) -> Optional[str]:
     """
     Extract name of Scala element from node.
-
-    Args:
-        node: Tree-sitter node of element
-        doc: Tree-sitter document
-
-    Returns:
-        Element name or None if not found
     """
-    # Special handling for val/var definitions - name is in pattern field
+    # For val/var definitions, name is in pattern field
     if node.type in ("val_definition", "var_definition", "val_declaration", "var_declaration"):
         pattern_node = node.child_by_field_name("pattern")
         if pattern_node and pattern_node.type == "identifier":
             return doc.get_node_text(pattern_node)
 
-    # Search for child node with identifier
     for child in node.children:
         if child.type == "identifier":
             return doc.get_node_text(child)
 
-    # For some node types, name may be in the name field
     name_node = node.child_by_field_name("name")
     if name_node:
         return doc.get_node_text(name_node)
@@ -82,13 +63,6 @@ def _get_visibility_modifier(node: Node, doc: TreeSitterDocument) -> Optional[st
 
     Scala visibility modifiers: private, protected, public.
     No modifier means public (default).
-
-    Args:
-        node: Tree-sitter node of element
-        doc: Tree-sitter document
-
-    Returns:
-        Modifier text ("private", "protected", "public") or None
     """
     for child in node.children:
         if child.type == "modifiers":
@@ -106,21 +80,12 @@ def _is_public_scala(node: Node, doc: TreeSitterDocument) -> bool:
     - private = private
     - protected = protected (treated as private for public API)
     - No modifier = public (default)
-
-    Args:
-        node: Tree-sitter node of element
-        doc: Tree-sitter document
-
-    Returns:
-        True if element is public, False if private
     """
     modifier = _get_visibility_modifier(node, doc)
 
-    # private and protected = private
     if modifier in ("private", "protected"):
         return False
 
-    # No modifier or public = public (default in Scala)
     return True
 
 
@@ -130,13 +95,6 @@ def _find_scala_docstring(body_node: Node, doc: TreeSitterDocument) -> Optional[
 
     In Scala, ScalaDoc is documentation that appears at the start of the body.
     It's a block_comment or multiline_comment starting with /** and should be preserved.
-
-    Args:
-        body_node: Function body node (block or function_body)
-        doc: Tree-sitter document
-
-    Returns:
-        ScalaDoc node if found, None otherwise
     """
     # Handle function_body wrapper - get actual block inside
     actual_body = body_node
@@ -144,36 +102,27 @@ def _find_scala_docstring(body_node: Node, doc: TreeSitterDocument) -> Optional[
         if body_node.children:
             actual_body = body_node.children[0]
 
-    # Look for block node
     if actual_body.type != "block":
         return None
 
-    # Check for ScalaDoc as first content inside block
     for child in actual_body.children:
-        # Skip opening brace
         if doc.get_node_text(child) == "{":
             continue
 
-        # Check if it's a ScalaDoc comment
         if child.type in ("multiline_comment", "block_comment"):
             comment_text = doc.get_node_text(child)
             if comment_text.startswith("/**"):
                 return child
 
-        # If first non-brace, non-comment element, stop looking
         if child.type not in ("multiline_comment", "block_comment", "line_comment"):
             break
 
     return None
 
 
-# --- Scala Code Descriptor ---
-
 SCALA_CODE_DESCRIPTOR = LanguageCodeDescriptor(
     language="scala",
     profiles=[
-        # === Classes ===
-        # Regular classes (non-case)
         ElementProfile(
             name="class",
             query="(class_definition) @element",
@@ -181,7 +130,6 @@ SCALA_CODE_DESCRIPTOR = LanguageCodeDescriptor(
             additional_check=lambda node, doc: not _is_case_class(node, doc),
         ),
 
-        # === Case Classes ===
         ElementProfile(
             name="case_class",
             query="(class_definition) @element",
@@ -189,30 +137,24 @@ SCALA_CODE_DESCRIPTOR = LanguageCodeDescriptor(
             additional_check=lambda node, doc: _is_case_class(node, doc),
         ),
 
-        # === Traits ===
         ElementProfile(
             name="trait",
             query="(trait_definition) @element",
             is_public=_is_public_scala,
         ),
 
-        # === Objects ===
-        # Singletons and companion objects
         ElementProfile(
             name="object",
             query="(object_definition) @element",
             is_public=_is_public_scala,
         ),
 
-        # === Type aliases ===
         ElementProfile(
             name="type",
             query="(type_definition) @element",
             is_public=_is_public_scala,
         ),
 
-        # === Functions and Methods ===
-        # Top-level functions with body (function_definition)
         ElementProfile(
             name="function",
             query="(function_definition) @element",
@@ -224,7 +166,6 @@ SCALA_CODE_DESCRIPTOR = LanguageCodeDescriptor(
             docstring_extractor=_find_scala_docstring,
         ),
 
-        # Methods inside classes/traits/objects (function_definition)
         ElementProfile(
             name="method",
             query="(function_definition) @element",
@@ -236,8 +177,6 @@ SCALA_CODE_DESCRIPTOR = LanguageCodeDescriptor(
             docstring_extractor=_find_scala_docstring,
         ),
 
-        # Abstract function declarations (function_declaration - no body)
-        # Top-level abstract functions
         ElementProfile(
             name="function",
             query="(function_declaration) @element",
@@ -247,7 +186,6 @@ SCALA_CODE_DESCRIPTOR = LanguageCodeDescriptor(
             ),
         ),
 
-        # Abstract methods inside classes/traits
         ElementProfile(
             name="method",
             query="(function_declaration) @element",
@@ -257,8 +195,6 @@ SCALA_CODE_DESCRIPTOR = LanguageCodeDescriptor(
             ),
         ),
 
-        # === Module-level Variables ===
-        # val at module level (not inside classes)
         ElementProfile(
             name="variable",
             query="(val_definition) @element",
@@ -268,7 +204,6 @@ SCALA_CODE_DESCRIPTOR = LanguageCodeDescriptor(
             ),
         ),
 
-        # var at module level (not inside classes)
         ElementProfile(
             name="variable",
             query="(var_definition) @element",
@@ -278,8 +213,6 @@ SCALA_CODE_DESCRIPTOR = LanguageCodeDescriptor(
             ),
         ),
 
-        # === Class Fields ===
-        # val properties inside classes
         ElementProfile(
             name="field",
             query="(val_definition) @element",
@@ -289,7 +222,6 @@ SCALA_CODE_DESCRIPTOR = LanguageCodeDescriptor(
             ),
         ),
 
-        # var properties inside classes
         ElementProfile(
             name="field",
             query="(var_definition) @element",

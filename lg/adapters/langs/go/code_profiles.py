@@ -23,21 +23,10 @@ from ...shared import ElementProfile, LanguageCodeDescriptor, is_inside_containe
 from ...tree_sitter_support import Node, TreeSitterDocument
 
 
-# --- Helper functions ---
-
-
 def _extract_name(node: Node, doc: TreeSitterDocument) -> Optional[str]:
     """
     Extract name of Go element from node.
-
-    Args:
-        node: Tree-sitter node of element
-        doc: Tree-sitter document
-
-    Returns:
-        Element name or None if not found
     """
-    # For type declarations, look inside type_spec or type_alias
     if node.type == "type_declaration":
         for child in node.children:
             if child.type in ("type_spec", "type_alias"):
@@ -45,13 +34,11 @@ def _extract_name(node: Node, doc: TreeSitterDocument) -> Optional[str]:
                     if grandchild.type == "type_identifier":
                         return doc.get_node_text(grandchild)
 
-    # For method declarations, get field_identifier (method name)
     if node.type == "method_declaration":
         for child in node.children:
             if child.type == "field_identifier":
                 return doc.get_node_text(child)
 
-    # For var/const declarations
     if node.type in ("var_declaration", "const_declaration"):
         for child in node.children:
             if child.type in ("var_spec", "const_spec"):
@@ -59,7 +46,6 @@ def _extract_name(node: Node, doc: TreeSitterDocument) -> Optional[str]:
                     if grandchild.type == "identifier":
                         return doc.get_node_text(grandchild)
 
-    # For short variable declarations
     if node.type == "short_var_declaration":
         for child in node.children:
             if child.type == "expression_list":
@@ -67,18 +53,15 @@ def _extract_name(node: Node, doc: TreeSitterDocument) -> Optional[str]:
                     if grandchild.type == "identifier":
                         return doc.get_node_text(grandchild)
 
-    # For field declarations (struct fields)
     if node.type == "field_declaration":
         for child in node.children:
             if child.type == "field_identifier":
                 return doc.get_node_text(child)
 
-    # Generic search for identifier/field_identifier child
     for child in node.children:
         if child.type in ("identifier", "type_identifier", "field_identifier"):
             return doc.get_node_text(child)
 
-    # For some node types, name may be in the name field
     name_node = node.child_by_field_name("name")
     if name_node:
         return doc.get_node_text(name_node)
@@ -93,13 +76,6 @@ def _is_public_go(node: Node, doc: TreeSitterDocument) -> bool:
     Rules:
     - Names starting with uppercase letter = exported (public)
     - Names starting with lowercase letter = unexported (private)
-
-    Args:
-        node: Tree-sitter node of element
-        doc: Tree-sitter document
-
-    Returns:
-        True if element is public, False if private
     """
     name = _extract_name(node, doc)
     if not name:
@@ -112,12 +88,6 @@ def _is_public_go(node: Node, doc: TreeSitterDocument) -> bool:
 def _determine_type_kind(node: Node) -> Optional[str]:
     """
     Determine the kind of type declaration (struct, interface, or alias).
-
-    Args:
-        node: type_declaration node
-
-    Returns:
-        String: "struct", "interface", or "alias", or None if not determined
     """
     for child in node.children:
         if child.type == "type_spec":
@@ -133,13 +103,9 @@ def _determine_type_kind(node: Node) -> Optional[str]:
     return None
 
 
-# --- Go Code Descriptor ---
-
 GO_CODE_DESCRIPTOR = LanguageCodeDescriptor(
     language="go",
     profiles=[
-        # === Type Declarations (Structs) ===
-        # Struct types defined via type declaration
         ElementProfile(
             name="struct",
             query="""
@@ -151,8 +117,6 @@ GO_CODE_DESCRIPTOR = LanguageCodeDescriptor(
             is_public=_is_public_go,
         ),
 
-        # === Type Declarations (Interfaces) ===
-        # Interface types defined via type declaration
         ElementProfile(
             name="interface",
             query="""
@@ -164,8 +128,6 @@ GO_CODE_DESCRIPTOR = LanguageCodeDescriptor(
             is_public=_is_public_go,
         ),
 
-        # === Type Declarations (Aliases) ===
-        # Type aliases and other type declarations
         ElementProfile(
             name="type",
             query="(type_declaration) @element",
@@ -173,7 +135,6 @@ GO_CODE_DESCRIPTOR = LanguageCodeDescriptor(
             additional_check=lambda node, doc: _determine_type_kind(node) == "alias",
         ),
 
-        # === Functions (Top-level) ===
         ElementProfile(
             name="function",
             query="""
@@ -185,7 +146,6 @@ GO_CODE_DESCRIPTOR = LanguageCodeDescriptor(
             has_body=True,
         ),
 
-        # === Methods (Functions with Receiver) ===
         ElementProfile(
             name="method",
             query="""
@@ -198,7 +158,6 @@ GO_CODE_DESCRIPTOR = LanguageCodeDescriptor(
             has_body=True,
         ),
 
-        # === Constants (Package-level) ===
         ElementProfile(
             name="constant",
             query="""
@@ -214,7 +173,6 @@ GO_CODE_DESCRIPTOR = LanguageCodeDescriptor(
             ),
         ),
 
-        # === Variables (Package-level) ===
         ElementProfile(
             name="variable",
             query="""
@@ -230,8 +188,6 @@ GO_CODE_DESCRIPTOR = LanguageCodeDescriptor(
             ),
         ),
 
-        # === Struct Fields ===
-        # Fields inside struct types
         ElementProfile(
             name="field",
             query="""
@@ -242,7 +198,7 @@ GO_CODE_DESCRIPTOR = LanguageCodeDescriptor(
         ),
     ],
 
-    decorator_types=set(),  # Go doesn't have decorators
+    decorator_types=set(),
     comment_types={"comment", "line_comment", "block_comment"},
     name_extractor=_extract_name,
 )

@@ -23,19 +23,9 @@ from ...shared import ElementProfile, LanguageCodeDescriptor, is_inside_containe
 from ...tree_sitter_support import Node, TreeSitterDocument
 
 
-# --- Helper functions ---
-
-
 def _extract_name(node: Node, doc: TreeSitterDocument) -> Optional[str]:
     """
     Extract name of Kotlin element from node.
-
-    Args:
-        node: Tree-sitter node of element
-        doc: Tree-sitter document
-
-    Returns:
-        Element name or None if not found
     """
     # Special handling for property_declaration
     if node.type == "property_declaration":
@@ -63,13 +53,6 @@ def _get_visibility_modifier(node: Node, doc: TreeSitterDocument) -> Optional[st
     Extract visibility modifier from Kotlin node.
 
     Kotlin visibility modifiers: private, protected, internal, public
-
-    Args:
-        node: Tree-sitter node of element
-        doc: Tree-sitter document
-
-    Returns:
-        Modifier text ("private", "protected", "internal", "public") or None
     """
     for child in node.children:
         if child.type == "modifiers":
@@ -88,13 +71,6 @@ def _is_public_kotlin(node: Node, doc: TreeSitterDocument) -> bool:
     - protected = private (protected)
     - internal = internal (module-level, treated as private for public API)
     - public or no modifier = public (default)
-
-    Args:
-        node: Tree-sitter node of element
-        doc: Tree-sitter document
-
-    Returns:
-        True if element is public, False if private
     """
     modifier = _get_visibility_modifier(node, doc)
 
@@ -112,13 +88,6 @@ def _is_public_misparsed_class(node: Node, doc: TreeSitterDocument) -> bool:
 
     Tree-sitter sometimes misparsed classes with multiple annotations as infix_expression.
     This checks if it's explicitly marked as private or protected.
-
-    Args:
-        node: infix_expression node
-        doc: Tree-sitter document
-
-    Returns:
-        True if element is public (not explicitly private)
     """
     node_text = doc.get_node_text(node)
     # If it has "private class" or "protected class" in the text, it's private
@@ -137,13 +106,6 @@ def _is_misparsed_class(node: Node, doc: TreeSitterDocument) -> bool:
     private class Foo {...}
 
     Becomes: annotated_expression -> infix_expression instead of class_declaration
-
-    Args:
-        node: infix_expression node
-        doc: Tree-sitter document
-
-    Returns:
-        True if this is misparsed private class
     """
     node_text = doc.get_node_text(node)
     # Check if text contains "private class" or "protected class"
@@ -159,12 +121,6 @@ def _resolve_kotlin_body(element_node: Node) -> Optional[Node]:
     - getter -> function_body -> block
     - setter -> function_body -> block
     - secondary_constructor -> function_body -> block
-
-    Args:
-        element_node: element node (function_declaration, getter, setter, etc.)
-
-    Returns:
-        block node or None
     """
     # Find function_body child
     for child in element_node.children:
@@ -183,12 +139,6 @@ def _resolve_lambda_body(lambda_node: Node) -> Optional[Node]:
     Lambda structure: { [params ->] body_content }
     Unlike functions, lambda doesn't have a separate block node.
     Body content is directly inside lambda_literal.
-
-    Args:
-        lambda_node: lambda_literal node
-
-    Returns:
-        The lambda_literal node itself (special case for body_range computation)
     """
     return lambda_node
 
@@ -204,14 +154,6 @@ def _find_kotlin_decorators(node: Node, doc: TreeSitterDocument, decorator_types
        annotated_expression -> annotation
          annotated_expression -> annotation
            infix_expression (our node)
-
-    Args:
-        node: Element node
-        doc: Tree-sitter document
-        decorator_types: Set of decorator node types ({"annotation"})
-
-    Returns:
-        List of annotation nodes attached to this element
     """
     decorators: List[Node] = []
 
@@ -243,13 +185,6 @@ def _compute_kotlin_lambda_body_range(lambda_node: Node, doc: TreeSitterDocument
 
     Lambda structure: { [params ->] body_content }
     Need to find content after '->' (if present) or after '{', and before '}'.
-
-    Args:
-        lambda_node: lambda_literal node
-        doc: Tree-sitter document
-
-    Returns:
-        Tuple of (start_byte, end_byte) for strippable range
     """
     # Find opening and closing braces and arrow
     opening_brace = None
@@ -288,13 +223,6 @@ def _find_kotlin_docstring(body_node: Node, doc: TreeSitterDocument) -> Optional
 
     In Kotlin, KDoc is documentation that appears at the start of the body.
     It's a multiline_comment starting with /** and should be preserved.
-
-    Args:
-        body_node: Function body node (block)
-        doc: Tree-sitter document
-
-    Returns:
-        KDoc node if found, None otherwise
     """
     # Body should be block at this point (after body_resolver)
     if body_node.type != "block":
@@ -319,28 +247,21 @@ def _find_kotlin_docstring(body_node: Node, doc: TreeSitterDocument) -> Optional
     return None
 
 
-# --- Kotlin Code Descriptor ---
-
 KOTLIN_CODE_DESCRIPTOR = LanguageCodeDescriptor(
     language="kotlin",
     profiles=[
-        # === Classes ===
         ElementProfile(
             name="class",
             query="(class_declaration) @element",
             is_public=_is_public_kotlin,
         ),
 
-        # === Objects ===
-        # Kotlin-specific: singleton objects and companion objects
         ElementProfile(
             name="object",
             query="(object_declaration) @element",
             is_public=_is_public_kotlin,
         ),
 
-        # === Functions ===
-        # Top-level function declarations (not inside class/object)
         ElementProfile(
             name="function",
             query="(function_declaration) @element",
@@ -353,8 +274,6 @@ KOTLIN_CODE_DESCRIPTOR = LanguageCodeDescriptor(
             docstring_extractor=_find_kotlin_docstring,
         ),
 
-        # === Methods ===
-        # Functions inside classes/objects
         ElementProfile(
             name="method",
             query="(function_declaration) @element",
@@ -367,16 +286,12 @@ KOTLIN_CODE_DESCRIPTOR = LanguageCodeDescriptor(
             docstring_extractor=_find_kotlin_docstring,
         ),
 
-        # === Properties ===
-        # Kotlin properties (val/var/const val) - both top-level and class members
         ElementProfile(
             name="property",
             query="(property_declaration) @element",
             is_public=_is_public_kotlin,
         ),
 
-        # === Secondary Constructors ===
-        # Constructors inside classes
         # Note: secondary_constructor directly has 'block' child (no function_body wrapper)
         ElementProfile(
             name="constructor",
@@ -386,8 +301,6 @@ KOTLIN_CODE_DESCRIPTOR = LanguageCodeDescriptor(
             docstring_extractor=_find_kotlin_docstring,
         ),
 
-        # === Init Blocks ===
-        # Anonymous initializers (init { ... })
         ElementProfile(
             name="init",
             query="(anonymous_initializer) @element",
@@ -395,7 +308,6 @@ KOTLIN_CODE_DESCRIPTOR = LanguageCodeDescriptor(
             has_body=True,
         ),
 
-        # === Getters ===
         ElementProfile(
             name="getter",
             query="(getter) @element",
@@ -405,7 +317,6 @@ KOTLIN_CODE_DESCRIPTOR = LanguageCodeDescriptor(
             docstring_extractor=_find_kotlin_docstring,
         ),
 
-        # === Setters ===
         ElementProfile(
             name="setter",
             query="(setter) @element",
@@ -415,8 +326,6 @@ KOTLIN_CODE_DESCRIPTOR = LanguageCodeDescriptor(
             docstring_extractor=_find_kotlin_docstring,
         ),
 
-        # === Lambda Literals ===
-        # Kotlin lambdas: { params -> body }
         # Note: lambda_literal has special structure - body content is directly inside
         ElementProfile(
             name="lambda",
@@ -427,9 +336,7 @@ KOTLIN_CODE_DESCRIPTOR = LanguageCodeDescriptor(
             body_range_computer=_compute_kotlin_lambda_body_range,  # Custom range computation
         ),
 
-        # === Misparsed Classes ===
         # Tree-sitter sometimes misparsed classes with multiple annotations as infix_expression
-        # Requires both additional_check (to filter) and custom is_public (text-based)
         ElementProfile(
             name="class",
             query="(infix_expression) @element",
