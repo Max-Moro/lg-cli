@@ -19,28 +19,11 @@ from __future__ import annotations
 
 from typing import Optional
 
-from ...shared import ElementProfile, LanguageCodeDescriptor
+from ...shared import ElementProfile, LanguageCodeDescriptor, is_inside_container
 from ...tree_sitter_support import Node, TreeSitterDocument
 
 
 # --- Helper functions ---
-
-
-def _is_inside_function_or_method(node: Node) -> bool:
-    """Check if node is inside function or method body."""
-    current = node.parent
-    while current:
-        if current.type in ("function_declaration", "method_declaration", "func_literal", "block"):
-            # For block, verify it's a function/method body
-            if current.type == "block" and current.parent:
-                if current.parent.type in ("function_declaration", "method_declaration", "func_literal"):
-                    return True
-            elif current.type in ("function_declaration", "method_declaration", "func_literal"):
-                return True
-        if current.type in ("source_file", "package_clause"):
-            break
-        current = current.parent
-    return False
 
 
 def _extract_name(node: Node, doc: TreeSitterDocument) -> Optional[str]:
@@ -224,7 +207,11 @@ GO_CODE_DESCRIPTOR = LanguageCodeDescriptor(
                 name: (identifier))) @element
             """,
             is_public=_is_public_go,
-            additional_check=lambda node, doc: not _is_inside_function_or_method(node),
+            additional_check=lambda node, doc: not is_inside_container(
+                node,
+                {"function_declaration", "method_declaration", "func_literal", "block"},
+                boundary_types={"source_file", "package_clause"}
+            ),
         ),
 
         # === Variables (Package-level) ===
@@ -236,7 +223,11 @@ GO_CODE_DESCRIPTOR = LanguageCodeDescriptor(
                 name: (identifier))) @element
             """,
             is_public=_is_public_go,
-            additional_check=lambda node, doc: not _is_inside_function_or_method(node),
+            additional_check=lambda node, doc: not is_inside_container(
+                node,
+                {"function_declaration", "method_declaration", "func_literal", "block"},
+                boundary_types={"source_file", "package_clause"}
+            ),
         ),
 
         # === Struct Fields ===

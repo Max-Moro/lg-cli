@@ -17,36 +17,11 @@ from __future__ import annotations
 
 from typing import Optional
 
-from ...shared import ElementProfile, LanguageCodeDescriptor
+from ...shared import ElementProfile, LanguageCodeDescriptor, is_inside_container
 from ...tree_sitter_support import Node, TreeSitterDocument
 
 
 # --- Helper functions ---
-
-
-def _is_inside_class(node: Node) -> bool:
-    """Check if node is inside class definition."""
-    current = node.parent
-    while current:
-        if current.type in ("class_declaration", "class_body"):
-            return True
-        if current.type in ("program", "source_file"):
-            return False
-        current = current.parent
-    return False
-
-
-def _is_inside_function(node: Node) -> bool:
-    """Check if node is inside function/method/arrow function."""
-    current = node.parent
-    while current:
-        if current.type in ("function_declaration", "method_definition", "arrow_function",
-                           "function_expression", "generator_function"):
-            return True
-        if current.type in ("program", "source_file"):
-            return False
-        current = current.parent
-    return False
 
 
 def _extract_name(node: Node, doc: TreeSitterDocument) -> Optional[str]:
@@ -386,7 +361,9 @@ JAVASCRIPT_CODE_DESCRIPTOR = LanguageCodeDescriptor(
             name="function",
             query="(function_declaration) @element",
             is_public=_is_public_top_level,
-            additional_check=lambda node, doc: not _is_inside_class(node),
+            additional_check=lambda node, doc: not is_inside_container(
+                node, {"class_declaration", "class_body"}
+            ),
             has_body=True,
             body_query='(function_declaration body: (statement_block) @body)',
             docstring_extractor=_find_javascript_docstring,
@@ -441,8 +418,11 @@ JAVASCRIPT_CODE_DESCRIPTOR = LanguageCodeDescriptor(
             query="(variable_declaration) @element",
             is_public=_is_public_top_level,
             additional_check=lambda node, doc: (
-                not _is_inside_class(node) and
-                not _is_inside_function(node) and
+                not is_inside_container(node, {"class_declaration", "class_body"}) and
+                not is_inside_container(node, {
+                    "function_declaration", "method_definition", "arrow_function",
+                    "function_expression", "generator_function"
+                }) and
                 not _has_arrow_function_body(node, doc)
             ),
         ),
@@ -452,8 +432,11 @@ JAVASCRIPT_CODE_DESCRIPTOR = LanguageCodeDescriptor(
             query="(lexical_declaration) @element",
             is_public=_is_public_top_level,
             additional_check=lambda node, doc: (
-                not _is_inside_class(node) and
-                not _is_inside_function(node) and
+                not is_inside_container(node, {"class_declaration", "class_body"}) and
+                not is_inside_container(node, {
+                    "function_declaration", "method_definition", "arrow_function",
+                    "function_expression", "generator_function"
+                }) and
                 not _has_arrow_function_body(node, doc)
             ),
         ),

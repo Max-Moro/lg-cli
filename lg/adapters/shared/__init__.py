@@ -16,10 +16,12 @@ from .profiles import ElementProfile
 from .models import CodeElement
 from .descriptor import LanguageCodeDescriptor
 from .collector import ElementCollector
+from .utils import is_inside_container
 
 __all__ = [
     "ElementProfile",
     "CodeElement",
     "LanguageCodeDescriptor",
     "ElementCollector",
+    "is_inside_container",
 ]

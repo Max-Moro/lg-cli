@@ -19,23 +19,11 @@ from __future__ import annotations
 
 from typing import List, Optional
 
-from ...shared import ElementProfile, LanguageCodeDescriptor
+from ...shared import ElementProfile, LanguageCodeDescriptor, is_inside_container
 from ...tree_sitter_support import Node, TreeSitterDocument
 
 
 # --- Helper functions ---
-
-
-def _is_inside_class(node: Node) -> bool:
-    """Check if node is inside class or object definition."""
-    current = node.parent
-    while current:
-        if current.type in ("class_declaration", "class_body", "object_declaration"):
-            return True
-        if current.type in ("source_file",):
-            return False
-        current = current.parent
-    return False
 
 
 def _extract_name(node: Node, doc: TreeSitterDocument) -> Optional[str]:
@@ -357,7 +345,9 @@ KOTLIN_CODE_DESCRIPTOR = LanguageCodeDescriptor(
             name="function",
             query="(function_declaration) @element",
             is_public=_is_public_kotlin,
-            additional_check=lambda node, doc: not _is_inside_class(node),
+            additional_check=lambda node, doc: not is_inside_container(
+                node, {"class_declaration", "class_body", "object_declaration"}
+            ),
             has_body=True,
             body_resolver=_resolve_kotlin_body,
             docstring_extractor=_find_kotlin_docstring,
@@ -369,7 +359,9 @@ KOTLIN_CODE_DESCRIPTOR = LanguageCodeDescriptor(
             name="method",
             query="(function_declaration) @element",
             is_public=_is_public_kotlin,
-            additional_check=lambda node, doc: _is_inside_class(node),
+            additional_check=lambda node, doc: is_inside_container(
+                node, {"class_declaration", "class_body", "object_declaration"}
+            ),
             has_body=True,
             body_resolver=_resolve_kotlin_body,
             docstring_extractor=_find_kotlin_docstring,

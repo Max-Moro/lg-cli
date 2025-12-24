@@ -23,36 +23,11 @@ from __future__ import annotations
 
 from typing import Optional
 
-from ...shared import ElementProfile, LanguageCodeDescriptor
+from ...shared import ElementProfile, LanguageCodeDescriptor, is_inside_container
 from ...tree_sitter_support import Node, TreeSitterDocument
 
 
 # --- Helper functions ---
-
-
-def _is_inside_class_or_struct(node: Node) -> bool:
-    """Check if node is inside class, struct, or union definition."""
-    current = node.parent
-    while current:
-        if current.type in ("class_specifier", "struct_specifier", "union_specifier"):
-            return True
-        # Stop at namespace or translation unit boundary
-        if current.type in ("namespace_definition", "translation_unit"):
-            return False
-        current = current.parent
-    return False
-
-
-def _is_inside_namespace(node: Node) -> bool:
-    """Check if node is inside namespace definition."""
-    current = node.parent
-    while current:
-        if current.type == "namespace_definition":
-            return True
-        if current.type == "translation_unit":
-            return False
-        current = current.parent
-    return False
 
 
 def _get_access_specifier(node: Node, doc: TreeSitterDocument) -> Optional[str]:
@@ -189,7 +164,11 @@ def _is_public_cpp(node: Node, doc: TreeSitterDocument) -> bool:
         True if element is public, False if private
     """
     # For class/struct members
-    if _is_inside_class_or_struct(node):
+    if is_inside_container(
+        node,
+        {"class_specifier", "struct_specifier", "union_specifier"},
+        boundary_types={"namespace_definition", "translation_unit"}
+    ):
         access = _get_access_specifier(node, doc)
 
         # Explicit access specifier takes precedence
@@ -285,7 +264,11 @@ CPP_CODE_DESCRIPTOR = LanguageCodeDescriptor(
             name="class",
             query="(class_specifier) @element",
             is_public=_is_public_cpp,
-            additional_check=lambda node, doc: not _is_inside_class_or_struct(node),
+            additional_check=lambda node, doc: not is_inside_container(
+                node,
+                {"class_specifier", "struct_specifier", "union_specifier"},
+                boundary_types={"namespace_definition", "translation_unit"}
+            ),
         ),
 
         # === Structs ===
@@ -293,7 +276,11 @@ CPP_CODE_DESCRIPTOR = LanguageCodeDescriptor(
             name="struct",
             query="(struct_specifier) @element",
             is_public=_is_public_cpp,
-            additional_check=lambda node, doc: not _is_inside_class_or_struct(node),
+            additional_check=lambda node, doc: not is_inside_container(
+                node,
+                {"class_specifier", "struct_specifier", "union_specifier"},
+                boundary_types={"namespace_definition", "translation_unit"}
+            ),
         ),
 
         # === Unions ===
@@ -301,7 +288,11 @@ CPP_CODE_DESCRIPTOR = LanguageCodeDescriptor(
             name="union",
             query="(union_specifier) @element",
             is_public=_is_public_cpp,
-            additional_check=lambda node, doc: not _is_inside_class_or_struct(node),
+            additional_check=lambda node, doc: not is_inside_container(
+                node,
+                {"class_specifier", "struct_specifier", "union_specifier"},
+                boundary_types={"namespace_definition", "translation_unit"}
+            ),
         ),
 
         # === Enums ===
@@ -309,7 +300,11 @@ CPP_CODE_DESCRIPTOR = LanguageCodeDescriptor(
             name="enum",
             query="(enum_specifier) @element",
             is_public=_is_public_cpp,
-            additional_check=lambda node, doc: not _is_inside_class_or_struct(node),
+            additional_check=lambda node, doc: not is_inside_container(
+                node,
+                {"class_specifier", "struct_specifier", "union_specifier"},
+                boundary_types={"namespace_definition", "translation_unit"}
+            ),
         ),
 
         # === Functions (top-level) ===
@@ -317,7 +312,11 @@ CPP_CODE_DESCRIPTOR = LanguageCodeDescriptor(
             name="function",
             query="(function_definition) @element",
             is_public=_is_public_cpp,
-            additional_check=lambda node, doc: not _is_inside_class_or_struct(node),
+            additional_check=lambda node, doc: not is_inside_container(
+                node,
+                {"class_specifier", "struct_specifier", "union_specifier"},
+                boundary_types={"namespace_definition", "translation_unit"}
+            ),
             has_body=True,
             docstring_extractor=_find_cpp_docstring,
         ),
@@ -327,7 +326,11 @@ CPP_CODE_DESCRIPTOR = LanguageCodeDescriptor(
             name="method",
             query="(function_definition) @element",
             is_public=_is_public_cpp,
-            additional_check=lambda node, doc: _is_inside_class_or_struct(node),
+            additional_check=lambda node, doc: is_inside_container(
+                node,
+                {"class_specifier", "struct_specifier", "union_specifier"},
+                boundary_types={"namespace_definition", "translation_unit"}
+            ),
             has_body=True,
             docstring_extractor=_find_cpp_docstring,
         ),
@@ -338,7 +341,11 @@ CPP_CODE_DESCRIPTOR = LanguageCodeDescriptor(
             name="field",
             query="(field_declaration) @element",
             is_public=_is_public_cpp,
-            additional_check=lambda node, doc: _is_inside_class_or_struct(node),
+            additional_check=lambda node, doc: is_inside_container(
+                node,
+                {"class_specifier", "struct_specifier", "union_specifier"},
+                boundary_types={"namespace_definition", "translation_unit"}
+            ),
         ),
 
         # === Variables (top-level) ===
@@ -347,7 +354,11 @@ CPP_CODE_DESCRIPTOR = LanguageCodeDescriptor(
             name="variable",
             query="(declaration) @element",
             is_public=_is_public_cpp,
-            additional_check=lambda node, doc: not _is_inside_class_or_struct(node),
+            additional_check=lambda node, doc: not is_inside_container(
+                node,
+                {"class_specifier", "struct_specifier", "union_specifier"},
+                boundary_types={"namespace_definition", "translation_unit"}
+            ),
         ),
     ],
 

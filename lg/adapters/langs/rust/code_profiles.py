@@ -28,27 +28,11 @@ from __future__ import annotations
 
 from typing import Optional
 
-from ...shared import ElementProfile, LanguageCodeDescriptor
+from ...shared import ElementProfile, LanguageCodeDescriptor, is_inside_container
 from ...tree_sitter_support import Node, TreeSitterDocument
 
 
 # --- Helper functions ---
-
-
-def _is_inside_impl(node: Node) -> bool:
-    """Check if node is inside impl block."""
-    current = node.parent
-    while current:
-        if current.type in ("impl_item", "declaration_list"):
-            if current.type == "declaration_list" and current.parent:
-                if current.parent.type == "impl_item":
-                    return True
-            elif current.type == "impl_item":
-                return True
-        if current.type in ("source_file", "mod_item"):
-            return False
-        current = current.parent
-    return False
 
 
 def _is_in_trait_impl(node: Node) -> bool:
@@ -366,7 +350,11 @@ RUST_CODE_DESCRIPTOR = LanguageCodeDescriptor(
             name="function",
             query="(function_item) @element",
             is_public=_is_public_rust,
-            additional_check=lambda node, doc: not _is_inside_impl(node),
+            additional_check=lambda node, doc: not is_inside_container(
+                node,
+                {"impl_item", "declaration_list"},
+                boundary_types={"source_file", "mod_item"}
+            ),
             has_body=True,
         ),
 
@@ -376,7 +364,11 @@ RUST_CODE_DESCRIPTOR = LanguageCodeDescriptor(
             name="method",
             query="(function_item) @element",
             is_public=_is_public_rust,
-            additional_check=lambda node, doc: _is_inside_impl(node),
+            additional_check=lambda node, doc: is_inside_container(
+                node,
+                {"impl_item", "declaration_list"},
+                boundary_types={"source_file", "mod_item"}
+            ),
             has_body=True,
         ),
 

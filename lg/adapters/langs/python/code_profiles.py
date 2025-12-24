@@ -18,23 +18,11 @@ from __future__ import annotations
 
 from typing import Optional
 
-from ...shared import ElementProfile, LanguageCodeDescriptor
+from ...shared import ElementProfile, LanguageCodeDescriptor, is_inside_container
 from ...tree_sitter_support import Node, TreeSitterDocument
 
 
 # --- Helper functions ---
-
-
-def _is_inside_class(node: Node) -> bool:
-    """Check if node is inside class definition."""
-    current = node.parent
-    while current:
-        if current.type == "class_definition":
-            return True
-        if current.type in ("module", "program"):
-            return False
-        current = current.parent
-    return False
 
 
 def _extract_name(node: Node, doc: TreeSitterDocument) -> Optional[str]:
@@ -150,7 +138,9 @@ PYTHON_CODE_DESCRIPTOR = LanguageCodeDescriptor(
             name="function",
             query="(function_definition) @element",
             is_public=_is_public_python,
-            additional_check=lambda node, doc: not _is_inside_class(node),
+            additional_check=lambda node, doc: not is_inside_container(
+                node, {"class_definition"}
+            ),
             has_body=True,
             docstring_extractor=_find_python_docstring,
         ),
@@ -160,7 +150,9 @@ PYTHON_CODE_DESCRIPTOR = LanguageCodeDescriptor(
             name="method",
             query="(function_definition) @element",
             is_public=_is_public_python,
-            additional_check=lambda node, doc: _is_inside_class(node),
+            additional_check=lambda node, doc: is_inside_container(
+                node, {"class_definition"}
+            ),
             has_body=True,
             docstring_extractor=_find_python_docstring,
         ),
@@ -171,7 +163,9 @@ PYTHON_CODE_DESCRIPTOR = LanguageCodeDescriptor(
             name="variable",
             query="(assignment) @element",
             is_public=_is_public_python,
-            additional_check=lambda node, doc: not _is_inside_class(node),
+            additional_check=lambda node, doc: not is_inside_container(
+                node, {"class_definition"}
+            ),
         ),
     ],
 

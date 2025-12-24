@@ -20,7 +20,7 @@ from __future__ import annotations
 
 from typing import Optional
 
-from ...shared import ElementProfile, LanguageCodeDescriptor
+from ...shared import ElementProfile, LanguageCodeDescriptor, is_inside_container
 from ...tree_sitter_support import Node, TreeSitterDocument
 
 
@@ -146,26 +146,6 @@ def _is_public_c(node: Node, doc: TreeSitterDocument) -> bool:
     return True  # Otherwise public
 
 
-def _is_inside_function(node: Node) -> bool:
-    """
-    Check if node is inside a function definition.
-
-    Args:
-        node: Tree-sitter node to check
-
-    Returns:
-        True if node is inside a function, False otherwise
-    """
-    current = node.parent
-    while current:
-        if current.type == "function_definition":
-            return True
-        if current.type in ("translation_unit",):
-            return False
-        current = current.parent
-    return False
-
-
 # --- C Code Descriptor ---
 
 C_CODE_DESCRIPTOR = LanguageCodeDescriptor(
@@ -218,7 +198,9 @@ C_CODE_DESCRIPTOR = LanguageCodeDescriptor(
             name="variable",
             query="(declaration) @element",
             is_public=_is_public_c,
-            additional_check=lambda node, doc: not _is_inside_function(node),
+            additional_check=lambda node, doc: not is_inside_container(
+                node, {"function_definition"}
+            ),
         ),
     ],
 

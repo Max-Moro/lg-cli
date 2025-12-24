@@ -23,40 +23,11 @@ from __future__ import annotations
 
 from typing import Optional
 
-from ...shared import ElementProfile, LanguageCodeDescriptor
+from ...shared import ElementProfile, LanguageCodeDescriptor, is_inside_container
 from ...tree_sitter_support import Node, TreeSitterDocument
 
 
 # --- Helper functions ---
-
-
-def _is_inside_class(node: Node) -> bool:
-    """Check if node is inside class, interface, or enum declaration."""
-    current = node.parent
-    while current:
-        if current.type in ("class_declaration", "interface_declaration", "enum_declaration", "class_body", "interface_body", "enum_body"):
-            return True
-        if current.type in ("program", "source_file"):
-            return False
-        current = current.parent
-    return False
-
-
-def _is_inside_method_or_constructor(node: Node) -> bool:
-    """Check if node is inside method or constructor body."""
-    current = node.parent
-    while current:
-        if current.type in ("method_declaration", "constructor_declaration", "block", "constructor_body"):
-            # For block, verify it's a method/constructor body
-            if current.type == "block" and current.parent:
-                if current.parent.type in ("method_declaration", "constructor_declaration"):
-                    return True
-            elif current.type in ("method_declaration", "constructor_declaration", "constructor_body"):
-                return True
-        if current.type in ("class_body", "interface_body", "enum_body", "program", "source_file"):
-            break
-        current = current.parent
-    return False
 
 
 def _is_interface_member(node: Node) -> bool:
@@ -263,7 +234,12 @@ JAVA_CODE_DESCRIPTOR = LanguageCodeDescriptor(
             name="field",
             query="(field_declaration) @element",
             is_public=_is_public_java,
-            additional_check=lambda node, doc: _is_inside_class(node),
+            additional_check=lambda node, doc: is_inside_container(
+                node, {
+                    "class_declaration", "interface_declaration", "enum_declaration",
+                    "class_body", "interface_body", "enum_body"
+                }
+            ),
         ),
 
         # === Top-level Variables ===
@@ -273,7 +249,11 @@ JAVA_CODE_DESCRIPTOR = LanguageCodeDescriptor(
             name="variable",
             query="(local_variable_declaration) @element",
             is_public=_is_public_java,
-            additional_check=lambda node, doc: not _is_inside_method_or_constructor(node),
+            additional_check=lambda node, doc: not is_inside_container(
+                node,
+                {"method_declaration", "constructor_declaration", "block", "constructor_body"},
+                boundary_types={"class_body", "interface_body", "enum_body", "program", "source_file"}
+            ),
         ),
     ],
 

@@ -22,31 +22,11 @@ from __future__ import annotations
 
 from typing import Optional
 
-from ...shared import ElementProfile, LanguageCodeDescriptor
+from ...shared import ElementProfile, LanguageCodeDescriptor, is_inside_container
 from ...tree_sitter_support import Node, TreeSitterDocument
 
 
 # --- Helper functions ---
-
-
-def _is_inside_class(node: Node) -> bool:
-    """
-    Check if node is inside class, object, or trait definition.
-
-    Args:
-        node: Tree-sitter node
-
-    Returns:
-        True if node is inside a class/object/trait
-    """
-    current = node.parent
-    while current:
-        if current.type in ("class_definition", "object_definition", "trait_definition", "template_body"):
-            return True
-        if current.type == "compilation_unit":
-            break
-        current = current.parent
-    return False
 
 
 def _is_case_class(node: Node, doc: TreeSitterDocument) -> bool:
@@ -237,7 +217,9 @@ SCALA_CODE_DESCRIPTOR = LanguageCodeDescriptor(
             name="function",
             query="(function_definition) @element",
             is_public=_is_public_scala,
-            additional_check=lambda node, doc: not _is_inside_class(node),
+            additional_check=lambda node, doc: not is_inside_container(
+                node, {"class_definition", "object_definition", "trait_definition", "template_body"}
+            ),
             has_body=True,
             docstring_extractor=_find_scala_docstring,
         ),
@@ -247,7 +229,9 @@ SCALA_CODE_DESCRIPTOR = LanguageCodeDescriptor(
             name="method",
             query="(function_definition) @element",
             is_public=_is_public_scala,
-            additional_check=lambda node, doc: _is_inside_class(node),
+            additional_check=lambda node, doc: is_inside_container(
+                node, {"class_definition", "object_definition", "trait_definition", "template_body"}
+            ),
             has_body=True,
             docstring_extractor=_find_scala_docstring,
         ),
@@ -258,7 +242,9 @@ SCALA_CODE_DESCRIPTOR = LanguageCodeDescriptor(
             name="function",
             query="(function_declaration) @element",
             is_public=_is_public_scala,
-            additional_check=lambda node, doc: not _is_inside_class(node),
+            additional_check=lambda node, doc: not is_inside_container(
+                node, {"class_definition", "object_definition", "trait_definition", "template_body"}
+            ),
         ),
 
         # Abstract methods inside classes/traits
@@ -266,7 +252,9 @@ SCALA_CODE_DESCRIPTOR = LanguageCodeDescriptor(
             name="method",
             query="(function_declaration) @element",
             is_public=_is_public_scala,
-            additional_check=lambda node, doc: _is_inside_class(node),
+            additional_check=lambda node, doc: is_inside_container(
+                node, {"class_definition", "object_definition", "trait_definition", "template_body"}
+            ),
         ),
 
         # === Module-level Variables ===
@@ -275,7 +263,9 @@ SCALA_CODE_DESCRIPTOR = LanguageCodeDescriptor(
             name="variable",
             query="(val_definition) @element",
             is_public=_is_public_scala,
-            additional_check=lambda node, doc: not _is_inside_class(node),
+            additional_check=lambda node, doc: not is_inside_container(
+                node, {"class_definition", "object_definition", "trait_definition", "template_body"}
+            ),
         ),
 
         # var at module level (not inside classes)
@@ -283,7 +273,9 @@ SCALA_CODE_DESCRIPTOR = LanguageCodeDescriptor(
             name="variable",
             query="(var_definition) @element",
             is_public=_is_public_scala,
-            additional_check=lambda node, doc: not _is_inside_class(node),
+            additional_check=lambda node, doc: not is_inside_container(
+                node, {"class_definition", "object_definition", "trait_definition", "template_body"}
+            ),
         ),
 
         # === Class Fields ===
@@ -292,7 +284,9 @@ SCALA_CODE_DESCRIPTOR = LanguageCodeDescriptor(
             name="field",
             query="(val_definition) @element",
             is_public=_is_public_scala,
-            additional_check=lambda node, doc: _is_inside_class(node),
+            additional_check=lambda node, doc: is_inside_container(
+                node, {"class_definition", "object_definition", "trait_definition", "template_body"}
+            ),
         ),
 
         # var properties inside classes
@@ -300,7 +294,9 @@ SCALA_CODE_DESCRIPTOR = LanguageCodeDescriptor(
             name="field",
             query="(var_definition) @element",
             is_public=_is_public_scala,
-            additional_check=lambda node, doc: _is_inside_class(node),
+            additional_check=lambda node, doc: is_inside_container(
+                node, {"class_definition", "object_definition", "trait_definition", "template_body"}
+            ),
         ),
     ],
 
