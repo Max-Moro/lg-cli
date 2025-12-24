@@ -17,7 +17,7 @@ from __future__ import annotations
 
 from typing import Optional
 
-from ...shared import ElementProfile, LanguageCodeDescriptor, is_inside_container
+from ...shared import ElementProfile, LanguageCodeDescriptor, is_inside_container, compute_element_range_with_trailing
 from ...tree_sitter_support import Node, TreeSitterDocument
 
 
@@ -265,82 +265,13 @@ def _find_arrow_function_body(node: Node) -> Optional[Node]:
     return None
 
 
-def _extend_range_for_semicolon(node: Node, element_type: str, doc: TreeSitterDocument) -> Node:
-    """
-    Extend element range to include trailing semicolon.
-
-    For fields and variables, includes trailing semicolon in element range
-    to ensure proper grouping of adjacent elements.
-
-    Args:
-        node: Element node
-        element_type: Type of element
-        doc: Tree-sitter document
-
-    Returns:
-        Node with potentially extended range
-    """
-    # Only extend for specific element types
-    if element_type not in ("field", "variable"):
-        return node
-
-    # Check if there's a semicolon right after this node
-    parent = node.parent
-    if not parent:
-        return node
-
-    # Find position of this node among siblings
-    siblings = parent.children
-    node_index = None
-    for i, sibling in enumerate(siblings):
-        if sibling == node:
-            node_index = i
-            break
-
-    if node_index is None:
-        return node
-
-    # Check if next sibling is a semicolon
-    if node_index + 1 < len(siblings):
-        next_sibling = siblings[node_index + 1]
-        if next_sibling.type == ";" or doc.get_node_text(next_sibling).strip() == ";":
-            # Create synthetic node with extended range
-            return _create_extended_range_node(node, next_sibling)
-
-    return node
-
-
-def _create_extended_range_node(original_node: Node, semicolon_node: Node) -> Node:
-    """
-    Create synthetic node with extended range.
-
-    Args:
-        original_node: Original element node
-        semicolon_node: Semicolon node to include
-
-    Returns:
-        Synthetic node with extended range
-    """
-    class ExtendedRangeNode:
-        """Duck-typed node with extended byte range."""
-        def __init__(self, start_node: Node, end_node: Node):
-            self.start_byte = start_node.start_byte
-            self.end_byte = end_node.end_byte
-            self.start_point = start_node.start_point
-            self.end_point = end_node.end_point
-            self.type = start_node.type
-            self.parent = start_node.parent
-            self._original_node = start_node
-            # Copy other attributes for compatibility
-            for attr in ['children', 'text']:
-                if hasattr(start_node, attr):
-                    setattr(self, attr, getattr(start_node, attr))
-
-        def child_by_field_name(self, name: str):
-            """Delegate to original node."""
-            return self._original_node.child_by_field_name(name)
-
-    return ExtendedRangeNode(original_node, semicolon_node)
+def _compute_element_range(node: Node, element_type: str, doc: TreeSitterDocument) -> Optional[tuple[int, int]]:
+    """Compute adjusted element range to include trailing semicolon."""
+    return compute_element_range_with_trailing(
+        node, element_type, doc,
+        element_types={"field", "variable"},
+        trailing_chars={";"},
+    )
 
 
 # --- JavaScript Code Descriptor ---
@@ -455,7 +386,7 @@ JAVASCRIPT_CODE_DESCRIPTOR = LanguageCodeDescriptor(
     decorator_types=set(),
     comment_types={"comment", "line_comment", "block_comment"},
     name_extractor=_extract_name,
-    extend_element_range=_extend_range_for_semicolon,
+    compute_element_range=_compute_element_range,
 )
 
 

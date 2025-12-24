@@ -28,7 +28,7 @@ from __future__ import annotations
 
 from typing import Optional
 
-from ...shared import ElementProfile, LanguageCodeDescriptor, is_inside_container
+from ...shared import ElementProfile, LanguageCodeDescriptor, is_inside_container, compute_element_range_with_trailing
 from ...tree_sitter_support import Node, TreeSitterDocument
 
 
@@ -218,82 +218,13 @@ def _is_top_level_private_macro(node: Node, doc: TreeSitterDocument) -> bool:
     return "pub" not in macro_text
 
 
-def _create_extended_range_node(original_node: Node, comma_node: Node) -> Node:
-    """
-    Create synthetic node with extended range.
-
-    Args:
-        original_node: Original element node
-        comma_node: Comma node to include
-
-    Returns:
-        Synthetic node with extended range
-    """
-    class ExtendedRangeNode:
-        """Duck-typed node with extended byte range."""
-        def __init__(self, start_node: Node, end_node: Node):
-            self._original = start_node
-            self.start_byte = start_node.start_byte
-            self.end_byte = end_node.end_byte
-            self.start_point = start_node.start_point
-            self.end_point = end_node.end_point
-            self.type = start_node.type
-            self.parent = start_node.parent
-            # Copy other attributes for compatibility
-            for attr in ['children', 'text']:
-                if hasattr(start_node, attr):
-                    setattr(self, attr, getattr(start_node, attr))
-
-        def child_by_field_name(self, name: str):
-            """Delegate to original node."""
-            return self._original.child_by_field_name(name)
-
-    return ExtendedRangeNode(original_node, comma_node)
-
-
-def _extend_range_for_comma(node: Node, element_type: str, doc: TreeSitterDocument) -> Node:
-    """
-    Extend element range to include trailing comma.
-
-    For fields, includes trailing comma in element range
-    to ensure proper grouping of adjacent elements.
-
-    Args:
-        node: Element node
-        element_type: Type of element
-        doc: Tree-sitter document
-
-    Returns:
-        Node with potentially extended range
-    """
-    # Only extend for field elements
-    if element_type != "field":
-        return node
-
-    # Check if there's a comma right after this node
-    parent = node.parent
-    if not parent:
-        return node
-
-    # Find position of this node among siblings
-    siblings = parent.children
-    node_index = None
-    for i, sibling in enumerate(siblings):
-        if sibling == node:
-            node_index = i
-            break
-
-    if node_index is None:
-        return node
-
-    # Check if next sibling is a comma
-    if node_index + 1 < len(siblings):
-        next_sibling = siblings[node_index + 1]
-        if next_sibling.type == "," or doc.get_node_text(next_sibling).strip() == ",":
-            # Create synthetic node with extended range
-            return _create_extended_range_node(node, next_sibling)
-
-    return node
+def _compute_element_range(node: Node, element_type: str, doc: TreeSitterDocument) -> Optional[tuple[int, int]]:
+    """Compute adjusted element range to include trailing comma."""
+    return compute_element_range_with_trailing(
+        node, element_type, doc,
+        element_types={"field"},
+        trailing_chars={","},
+    )
 
 
 # --- Rust Code Descriptor ---
@@ -417,7 +348,7 @@ RUST_CODE_DESCRIPTOR = LanguageCodeDescriptor(
     decorator_types={"attribute_item", "inner_attribute_item"},
     comment_types={"line_comment", "block_comment"},
     name_extractor=_extract_name,
-    extend_element_range=_extend_range_for_comma,
+    compute_element_range=_compute_element_range,
 )
 
 

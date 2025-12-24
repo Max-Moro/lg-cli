@@ -6,7 +6,7 @@ Central declaration of all code element profiles for a language.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Callable, List, Optional, Set
+from typing import Callable, List, Optional, Set, Tuple
 
 from lg.adapters.tree_sitter_support import Node, TreeSitterDocument
 from .profiles import ElementProfile
@@ -54,12 +54,12 @@ class LanguageCodeDescriptor:
     Signature: (node: Node, doc: TreeSitterDocument) -> Optional[str]
     """
 
-    extend_element_range: Optional[Callable[[Node, str, TreeSitterDocument], Node]] = None
+    compute_element_range: Optional[Callable[[Node, str, TreeSitterDocument], Optional[Tuple[int, int]]]] = None
     """
-    Extend element range to include trailing punctuation.
+    Compute adjusted byte range for element.
 
-    Used for TypeScript/JavaScript to include trailing semicolons in element range.
-    This ensures proper grouping of adjacent elements in placeholder system.
+    Used to include trailing punctuation (semicolons, commas) or exclude
+    leading noise from element boundaries.
 
     Args:
         node: Element node
@@ -67,9 +67,9 @@ class LanguageCodeDescriptor:
         doc: Tree-sitter document
 
     Returns:
-        Node with potentially extended range (may be synthetic ExtendedRangeNode)
+        Tuple (start_byte, end_byte) if range should be adjusted, None otherwise.
 
-    Signature: (node: Node, element_type: str, doc: TreeSitterDocument) -> Node
+    Signature: (node: Node, element_type: str, doc: TreeSitterDocument) -> Optional[Tuple[int, int]]
     """
 
     decorator_finder: Optional[Callable[[Node, TreeSitterDocument, Set[str]], List[Node]]] = None

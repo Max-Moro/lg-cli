@@ -16,7 +16,7 @@ from .profiles import ElementProfile
 from .models import CodeElement
 from .descriptor import LanguageCodeDescriptor
 from .collector import ElementCollector
-from .utils import is_inside_container
+from .utils import is_inside_container, compute_element_range_with_trailing
 
 __all__ = [
     "ElementProfile",
@@ -24,4 +24,5 @@ __all__ = [
     "LanguageCodeDescriptor",
     "ElementCollector",
     "is_inside_container",
+    "compute_element_range_with_trailing",
 ]

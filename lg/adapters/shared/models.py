@@ -71,18 +71,35 @@ class CodeElement:
     decorators: List[Node] = field(default_factory=list)
     """List of decorator/annotation nodes attached to this element."""
 
+    # --- Adjusted element boundaries ---
+
+    element_range: Optional[Tuple[int, int]] = None
+    """
+    Adjusted byte range for the element (start_byte, end_byte).
+
+    When set, overrides node boundaries. Used for:
+    - Including trailing punctuation (semicolons, commas) in element range
+    - Excluding leading noise not relevant to the element
+
+    If None, boundaries are computed from node (and decorators for start).
+    """
+
     # --- Computed properties ---
 
     @property
     def start_byte(self) -> int:
         """Start byte position of element (including decorators if any)."""
+        if self.element_range is not None:
+            return self.element_range[0]
         if self.decorators:
             return min(d.start_byte for d in self.decorators)
         return self.node.start_byte
 
     @property
     def end_byte(self) -> int:
-        """End byte position of element."""
+        """End byte position of element (including trailing punctuation if adjusted)."""
+        if self.element_range is not None:
+            return self.element_range[1]
         return self.node.end_byte
 
     @property

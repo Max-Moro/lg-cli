@@ -141,10 +141,11 @@ class ElementCollector:
         """
         Create CodeElement from node and profile.
         """
-        # Extend element range if language-specific logic provided
+        # Compute adjusted element range if language-specific logic provided
         # (e.g., TypeScript/JavaScript include trailing semicolon)
-        if self.descriptor.extend_element_range:
-            node = self.descriptor.extend_element_range(node, profile.name, self.doc)
+        element_range = None
+        if self.descriptor.compute_element_range:
+            element_range = self.descriptor.compute_element_range(node, profile.name, self.doc)
 
         # Extract name
         name = self._extract_name(node)
@@ -181,6 +182,7 @@ class ElementCollector:
             docstring_node=docstring_node,
             return_node=return_node,
             decorators=decorators,
+            element_range=element_range,
         )
 
     def _extract_name(self, node: Node) -> Optional[str]:
