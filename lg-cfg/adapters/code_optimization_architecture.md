@@ -20,12 +20,13 @@
 ```
 lg/adapters/
 │
+├── shared/                         # Общая инфраструктура для code-оптимизаций
+│   ├── descriptor.py               # LanguageCodeDescriptor
+│   ├── profiles.py                 # ElementProfile
+│   ├── models.py                   # CodeElement
+│   └── collector.py                # ElementCollector
+│
 ├── optimizations/
-│   ├── shared/                         # Общая инфраструктура для code-оптимизаций
-│   │   ├── descriptor.py               # LanguageCodeDescriptor
-│   │   ├── profiles.py                 # ElementProfile
-│   │   ├── models.py                   # CodeElement
-│   │   └── collector.py                # ElementCollector
 │   │
 │   ├── function_bodies/                # Оптимизация тел функций
 │   │   ├── optimizer.py                # FunctionBodyOptimizer
@@ -33,18 +34,22 @@ lg/adapters/
 │   │   ├── evaluators.py               # Evaluators для политик
 │   │   └── trimmer.py                  # FunctionBodyTrimmer
 │   │
-│   └── public_api/                     # Оптимизация публичного API
-│       └── optimizer.py                # PublicApiOptimizer
+│   ├── public_api/                     # Оптимизация публичного API
+│   │   └── optimizer.py                # PublicApiOptimizer
+│   │
+│   └── ... (другие оптимизации)
 │
-├── python/
-│   ├── code_profiles.py               # PYTHON_CODE_DESCRIPTOR
-│   └── ...
-│
-├── typescript/
-│   ├── code_profiles.py               # TYPESCRIPT_CODE_DESCRIPTOR
-│   └── ...
-│
-└── ... (другие языки)
+└── langs/
+    │
+    ├── python/
+    │   ├── code_profiles.py               # PYTHON_CODE_DESCRIPTOR
+    │   └── ...
+    │
+    ├── typescript/
+    │   ├── code_profiles.py               # TYPESCRIPT_CODE_DESCRIPTOR
+    │   └── ...
+    │
+    └── ... (другие языки)
 ```
 
 ---
