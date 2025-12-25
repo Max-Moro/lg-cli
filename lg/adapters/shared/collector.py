@@ -18,7 +18,6 @@ class ElementCollector:
     """
     Universal collector for code elements based on profiles.
 
-    Replaces manual _collect_* methods with declarative logic.
     Used by both PublicApiOptimizer and FunctionBodyOptimizer.
     """
 
@@ -33,30 +32,39 @@ class ElementCollector:
         self.doc = doc
         self.descriptor = descriptor
 
-        # Cache for collected elements by profile id (supports multiple profiles with same name)
-        self._cache: dict[int, List[CodeElement]] = {}
+        # Lazy caches for different element collections
+        self._all_elements: Optional[List[CodeElement]] = None
+        self._public_elements: Optional[List[CodeElement]] = None
+        self._private_elements: Optional[List[CodeElement]] = None
+        self._elements_with_bodies: Optional[List[CodeElement]] = None
+
+        # Mapping from node position to element for fast lookup
+        self._node_to_element: Optional[dict[tuple[int, int], CodeElement]] = None
 
         # Body range computer for function body processing
         self._body_range_computer = BodyRangeComputer(doc, descriptor.comment_types)
 
     # ============= Main API =============
 
-    def collect_all(self) -> List[CodeElement]:
+    def get_all(self) -> List[CodeElement]:
         """
-        Collect all elements from all profiles.
+        Get all elements from all profiles (cached).
 
         Returns:
             List of all CodeElement instances found in document.
         """
-        all_elements = []
-        for profile in self.descriptor.get_profiles():
-            elements = self._collect_by_profile(profile)
-            all_elements.extend(elements)
-        return all_elements
+        if self._all_elements is None:
+            self._all_elements = self._collect_all_elements()
+            # Build node mapping for fast lookup
+            self._node_to_element = {
+                (elem.node.start_byte, elem.node.end_byte): elem
+                for elem in self._all_elements
+            }
+        return self._all_elements
 
-    def collect_by_profile(self, profile_name: str) -> List[CodeElement]:
+    def get_by_profile(self, profile_name: str) -> List[CodeElement]:
         """
-        Collect elements of a specific profile.
+        Get elements of a specific profile.
 
         Args:
             profile_name: Name of profile (e.g., "function", "class")
@@ -64,71 +72,111 @@ class ElementCollector:
         Returns:
             List of CodeElement instances matching this profile.
         """
-        # Find profile by name
-        for profile in self.descriptor.get_profiles():
-            if profile.name == profile_name:
-                return self._collect_by_profile(profile)
-        return []
+        # Ensure all elements are collected
+        all_elements = self.get_all()
+        # Filter by profile name
+        return [e for e in all_elements if e.profile.name == profile_name]
 
-    def collect_private(self) -> List[CodeElement]:
+    def get_public(self) -> List[CodeElement]:
         """
-        Collect only private elements (for public API optimization).
+        Get only public elements (cached).
+
+        Returns:
+            List of elements where is_public=True.
+        """
+        if self._public_elements is None:
+            all_elements = self.get_all()
+            self._public_elements = [e for e in all_elements if e.is_public]
+        return self._public_elements
+
+    def get_private(self) -> List[CodeElement]:
+        """
+        Get only private elements (cached, filtered to remove nested).
+
+        Used by public API optimization.
 
         Returns:
             List of elements where is_public=False, filtered to remove nested.
         """
-        all_elements = self.collect_all()
-        private_elements = [e for e in all_elements if not e.is_public]
-        return self._filter_nested_elements(private_elements)
+        if self._private_elements is None:
+            all_elements = self.get_all()
+            private_elements = [e for e in all_elements if not e.is_public]
+            self._private_elements = self._filter_nested_elements(private_elements)
+        return self._private_elements
 
-    def collect_with_bodies(self) -> List[CodeElement]:
+    def get_with_bodies(self) -> List[CodeElement]:
         """
-        Collect only elements with bodies (for function body optimization).
+        Get only elements with bodies (cached).
+
+        Used by function body optimization.
 
         Returns:
             List of elements where profile.has_body=True and body_node is not None.
         """
-        all_elements = self.collect_all()
-        return [e for e in all_elements if e.profile.has_body and e.body_node is not None]
+        if self._elements_with_bodies is None:
+            all_elements = self.get_all()
+            self._elements_with_bodies = [
+                e for e in all_elements if e.profile.has_body and e.body_node is not None
+            ]
+        return self._elements_with_bodies
+
+    def is_public_declaration(self, node: Node) -> bool:
+        """
+        Check if a declaration node is public (exported).
+
+        Args:
+            node: Declaration node to check
+
+        Returns:
+            True if declaration is public, False if private or not found
+        """
+        # Ensure collection is done and mapping is built
+        self.get_all()
+
+        # Fast lookup by node position
+        position = (node.start_byte, node.end_byte)
+        element = self._node_to_element.get(position)
+
+        if element:
+            return element.is_public
+
+        # Not found in collector - assume private (conservative approach)
+        return False
 
     # ============= Internal methods =============
 
-    def _collect_by_profile(self, profile: ElementProfile) -> List[CodeElement]:
+    def _collect_all_elements(self) -> List[CodeElement]:
         """
-        Collect elements by single profile.
+        Collect all elements from all profiles.
 
-        Uses caching for efficiency.
+        This is the core collection method that executes Tree-sitter queries
+        and creates CodeElement instances.
+
+        Returns:
+            List of all CodeElement instances found in document.
         """
-        # Use profile object id as cache key to handle multiple profiles with same name
-        cache_key = id(profile)
+        all_elements = []
 
-        # Check cache
-        if cache_key in self._cache:
-            return self._cache[cache_key]
+        for profile in self.descriptor.get_profiles():
+            # Execute query for this profile
+            nodes = self.doc.query_nodes(profile.query, "element")
 
-        elements = []
+            for node in nodes:
+                # Apply additional_check if specified
+                if profile.additional_check:
+                    if not profile.additional_check(node, self.doc):
+                        continue
 
-        # Execute query
-        nodes = self.doc.query_nodes(profile.query, "element")
-
-        for node in nodes:
-            # Apply additional_check if specified
-            if profile.additional_check:
-                if not profile.additional_check(node, self.doc):
+                # Get definition node (node may be identifier from query)
+                element_def = self._get_element_definition(node)
+                if not element_def:
                     continue
 
-            # Get definition node (node may be identifier from query)
-            element_def = self._get_element_definition(node)
-            if not element_def:
-                continue
+                # Create CodeElement
+                element = self._create_element(element_def, profile)
+                all_elements.append(element)
 
-            # Create CodeElement
-            element = self._create_element(element_def, profile)
-            elements.append(element)
-
-        # Cache and return
-        self._cache[cache_key] = elements
-        return elements
+        return all_elements
 
     def _get_element_definition(self, node: Node) -> Optional[Node]:
         """

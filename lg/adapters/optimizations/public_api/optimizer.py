@@ -31,8 +31,8 @@ class PublicApiOptimizer:
         # Get collector (cached in context, uses pre-loaded descriptor)
         collector = context.get_collector()
 
-        # Collect private elements (already filtered for nesting)
-        private_elements = collector.collect_private()
+        # Get private elements (cached, already filtered for nesting)
+        private_elements = collector.get_private()
 
         # Sort by position in reverse order for safe removal
         private_elements.sort(key=lambda e: e.start_byte, reverse=True)

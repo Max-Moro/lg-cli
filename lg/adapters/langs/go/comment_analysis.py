@@ -37,8 +37,6 @@ class GoCommentAnalyzer(GroupingCommentAnalyzer):
         super().__init__(context.doc, style)
         # Store context for accessing shared collector
         self._context = context
-        # Cache mapping node positions to public/private status
-        self._element_visibility_cache: dict[tuple[int, int], bool] = {}
 
     def is_documentation_comment(self, node: Node, text: str, capture_name: str = "") -> bool:
         """
@@ -128,38 +126,6 @@ class GoCommentAnalyzer(GroupingCommentAnalyzer):
 
         return groups
 
-    def _is_public_declaration(self, decl_node: Node) -> bool:
-        """
-        Check if declaration node is public (exported).
-
-        Uses ElementCollector from context to determine if the declaration is part of public API.
-
-        Args:
-            decl_node: Declaration node to check
-
-        Returns:
-            True if declaration is public (exported), False otherwise
-        """
-        # Check cache first
-        position = (decl_node.start_byte, decl_node.end_byte)
-        if position in self._element_visibility_cache:
-            return self._element_visibility_cache[position]
-
-        # Get shared collector from context (cached there)
-        collector = self._context.get_collector()
-        all_elements = collector.collect_all()
-
-        # Find element matching this declaration node
-        for element in all_elements:
-            if element.node == decl_node:
-                # Cache and return
-                self._element_visibility_cache[position] = element.is_public
-                return element.is_public
-
-        # If not found in collector, assume private (conservative approach)
-        self._element_visibility_cache[position] = False
-        return False
-
     def _is_doc_comment_group(self, comment_group: List[Node]) -> bool:
         """
         Check if a comment group is a documentation comment.
@@ -179,8 +145,6 @@ class GoCommentAnalyzer(GroupingCommentAnalyzer):
         # First comment in group must start at beginning of line (not inline)
         # Inline comments (after code on same line) are not doc comments
         first_comment = comment_group[0]
-        comment_line_start = first_comment.start_point[0]
-        comment_col = first_comment.start_point[1]
 
         # Check if there's any non-whitespace before the comment on the same line
         line_start_byte = self.doc.text.rfind('\n', 0, first_comment.start_byte)
@@ -211,7 +175,7 @@ class GoCommentAnalyzer(GroupingCommentAnalyzer):
             return True
 
         # Check if following declaration is public using ElementCollector
-        return self._is_public_declaration(following_decl)
+        return self._context.get_collector().is_public_declaration(following_decl)
 
     def _find_following_declaration(self, comment_node: Node) -> Optional[Node]:
         """

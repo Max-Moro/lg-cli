@@ -45,8 +45,8 @@ class FunctionBodyOptimizer:
         # Get collector (cached in context, uses pre-loaded descriptor)
         collector = context.get_collector()
 
-        # Collect elements with bodies
-        elements_with_bodies = collector.collect_with_bodies()
+        # Get elements with bodies (cached)
+        elements_with_bodies = collector.get_with_bodies()
 
         # Process each element
         for element in elements_with_bodies:
