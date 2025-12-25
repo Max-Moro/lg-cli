@@ -16,6 +16,7 @@ from .profiles import ElementProfile
 from .models import CodeElement
 from .descriptor import LanguageCodeDescriptor
 from .collector import ElementCollector
+from .body_range import BodyRangeComputer
 from .utils import is_inside_container, compute_element_range_with_trailing
 
 __all__ = [
@@ -23,6 +24,7 @@ __all__ = [
     "CodeElement",
     "LanguageCodeDescriptor",
     "ElementCollector",
+    "BodyRangeComputer",
     "is_inside_container",
     "compute_element_range_with_trailing",
 ]
