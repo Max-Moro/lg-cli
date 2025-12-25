@@ -23,7 +23,7 @@ from __future__ import annotations
 
 from typing import Optional
 
-from ...shared import ElementProfile, LanguageCodeDescriptor, is_inside_container
+from ...shared import ElementProfile, InheritMode, LanguageCodeDescriptor, is_inside_container
 from ...tree_sitter_support import Node, TreeSitterDocument
 
 
@@ -168,9 +168,7 @@ JAVA_CODE_DESCRIPTOR = LanguageCodeDescriptor(
         ElementProfile(
             name="constructor",
             query="(constructor_declaration) @element",
-            is_public=_is_public_java,
-            has_body=True,
-            docstring_extractor=_find_java_docstring,
+            inherit_previous=InheritMode.INHERIT,
         ),
 
         ElementProfile(

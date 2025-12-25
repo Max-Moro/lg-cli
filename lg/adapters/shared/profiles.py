@@ -150,17 +150,6 @@ class ElementProfile:
     - INHERIT: Inherit all fields from previous profile
     - NEGATE_CHECK: Inherit all fields, but negate additional_check
 
-    When inheriting, fields are inherited as follows:
-    - name: inherits if current is "" (empty string)
-    - query: inherits if current is "" (empty string)
-    - is_public: inherits if current is None
-    - additional_check: inherits if current is None (or negated in NEGATE_CHECK mode)
-    - has_body: inherits True from parent (current True always takes priority)
-    - body_query: inherits if current is None
-    - docstring_extractor: inherits if current is None
-    - body_resolver: inherits if current is None
-    - body_range_computer: inherits if current is None
-
     Example usage:
         ElementProfile(
             name="function",

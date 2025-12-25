@@ -23,7 +23,7 @@ from __future__ import annotations
 
 from typing import Optional
 
-from ...shared import ElementProfile, LanguageCodeDescriptor, is_inside_container
+from ...shared import ElementProfile, InheritMode, LanguageCodeDescriptor, is_inside_container
 from ...tree_sitter_support import Node, TreeSitterDocument
 
 
@@ -261,15 +261,7 @@ CPP_CODE_DESCRIPTOR = LanguageCodeDescriptor(
 
         ElementProfile(
             name="method",
-            query="(function_definition) @element",
-            is_public=_is_public_cpp,
-            additional_check=lambda node, doc: is_inside_container(
-                node,
-                {"class_specifier", "struct_specifier", "union_specifier"},
-                boundary_types={"namespace_definition", "translation_unit"}
-            ),
-            has_body=True,
-            docstring_extractor=_find_cpp_docstring,
+            inherit_previous=InheritMode.NEGATE_CHECK,
         ),
 
         ElementProfile(

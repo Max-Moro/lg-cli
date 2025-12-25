@@ -19,7 +19,7 @@ from __future__ import annotations
 
 from typing import List, Optional
 
-from ...shared import ElementProfile, LanguageCodeDescriptor, is_inside_container
+from ...shared import ElementProfile, InheritMode, LanguageCodeDescriptor, is_inside_container
 from ...tree_sitter_support import Node, TreeSitterDocument
 
 
@@ -276,14 +276,22 @@ KOTLIN_CODE_DESCRIPTOR = LanguageCodeDescriptor(
 
         ElementProfile(
             name="method",
-            query="(function_declaration) @element",
+            inherit_previous=InheritMode.NEGATE_CHECK,
+        ),
+
+        ElementProfile(
+            name="getter",
+            query="(getter) @element",
             is_public=_is_public_kotlin,
-            additional_check=lambda node, doc: is_inside_container(
-                node, {"class_declaration", "class_body", "object_declaration"}
-            ),
             has_body=True,
             body_resolver=_resolve_kotlin_body,
             docstring_extractor=_find_kotlin_docstring,
+        ),
+
+        ElementProfile(
+            name="setter",
+            query="(setter) @element",
+            inherit_previous=InheritMode.INHERIT,
         ),
 
         ElementProfile(
@@ -306,24 +314,6 @@ KOTLIN_CODE_DESCRIPTOR = LanguageCodeDescriptor(
             query="(anonymous_initializer) @element",
             is_public=_is_public_kotlin,
             has_body=True,
-        ),
-
-        ElementProfile(
-            name="getter",
-            query="(getter) @element",
-            is_public=_is_public_kotlin,
-            has_body=True,
-            body_resolver=_resolve_kotlin_body,
-            docstring_extractor=_find_kotlin_docstring,
-        ),
-
-        ElementProfile(
-            name="setter",
-            query="(setter) @element",
-            is_public=_is_public_kotlin,
-            has_body=True,
-            body_resolver=_resolve_kotlin_body,
-            docstring_extractor=_find_kotlin_docstring,
         ),
 
         # Note: lambda_literal has special structure - body content is directly inside

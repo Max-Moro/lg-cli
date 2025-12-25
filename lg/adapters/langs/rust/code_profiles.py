@@ -28,7 +28,7 @@ from __future__ import annotations
 
 from typing import Optional
 
-from ...shared import ElementProfile, LanguageCodeDescriptor, is_inside_container, compute_element_range_with_trailing
+from ...shared import ElementProfile, InheritMode, LanguageCodeDescriptor, is_inside_container, compute_element_range_with_trailing
 from ...tree_sitter_support import Node, TreeSitterDocument
 
 
@@ -236,14 +236,7 @@ RUST_CODE_DESCRIPTOR = LanguageCodeDescriptor(
 
         ElementProfile(
             name="method",
-            query="(function_item) @element",
-            is_public=_is_public_rust,
-            additional_check=lambda node, doc: is_inside_container(
-                node,
-                {"impl_item", "declaration_list"},
-                boundary_types={"source_file", "mod_item"}
-            ),
-            has_body=True,
+            inherit_previous=InheritMode.NEGATE_CHECK,
         ),
 
         ElementProfile(
