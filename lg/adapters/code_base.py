@@ -74,9 +74,9 @@ class CodeAdapter(BaseAdapter[C], ABC):
         """Create language-specific import analyzer. Must be overridden by subclasses."""
         pass
 
-    def create_comment_analyzer(self, doc: TreeSitterDocument) -> CommentAnalyzer:
-        """Create language-specific comment analyzer for the document."""
-        return CommentAnalyzer(doc, self.COMMENT_STYLE)
+    def create_comment_analyzer(self, context: ProcessingContext) -> CommentAnalyzer:
+        """Create language-specific comment analyzer for the context."""
+        return CommentAnalyzer(context.doc, self.COMMENT_STYLE)
 
     @abstractmethod
     def get_code_descriptor(self):

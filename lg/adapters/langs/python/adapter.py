@@ -70,10 +70,10 @@ class PythonAdapter(CodeAdapter[PythonCfg]):
         from .imports import PythonImportAnalyzer
         return PythonImportAnalyzer(classifier)
 
-    def create_comment_analyzer(self, doc: TreeSitterDocument):
+    def create_comment_analyzer(self, context):
         """Create Python-specific comment analyzer."""
         from .comment_analysis import PythonCommentAnalyzer
-        return PythonCommentAnalyzer(doc, self.COMMENT_STYLE)
+        return PythonCommentAnalyzer(context.doc, self.COMMENT_STYLE)
 
     def get_code_descriptor(self) -> LanguageCodeDescriptor:
         """Return Python code descriptor."""

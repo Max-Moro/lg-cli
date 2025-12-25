@@ -10,8 +10,7 @@ import (
 
 // … docstring omitted
 
-const ModuleVersion = "1.0.0" // … docstring omitted
-
+const ModuleVersion = "1.0.0" // … comment omitted
 
 // … docstring omitted
 

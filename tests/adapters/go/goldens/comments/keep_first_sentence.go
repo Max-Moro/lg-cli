@@ -8,7 +8,7 @@ import (
 )
 
 // Single-line comment at module level.
-const ModuleVersion = "1.0.0" // TODO: Move to config file.
+const ModuleVersion = "1.0.0" // … comment omitted
 
 // User represents a user with documentation comments.
 type User struct {

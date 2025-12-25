@@ -11,8 +11,9 @@ from __future__ import annotations
 from typing import List, Optional
 
 from ...comment_style import CommentStyle
+from ...context import ProcessingContext
 from ...optimizations.comments import GroupingCommentAnalyzer
-from ...tree_sitter_support import TreeSitterDocument, Node
+from ...tree_sitter_support import Node
 
 
 class GoCommentAnalyzer(GroupingCommentAnalyzer):
@@ -25,17 +26,19 @@ class GoCommentAnalyzer(GroupingCommentAnalyzer):
     3. There are no blank lines between the comment and the declaration
     """
 
-    def __init__(self, doc: TreeSitterDocument, style: CommentStyle):
+    def __init__(self, context: ProcessingContext, style: CommentStyle):
         """
         Initialize the Go comment analyzer.
 
         Args:
-            doc: Parsed Tree-sitter document
+            context: Processing context with document and collector
             style: CommentStyle instance with comment markers
         """
-        super().__init__(doc, style)
-        # TODO: migrate to collector for element visibility checks
-        self._element_visibility_cache = {}
+        super().__init__(context.doc, style)
+        # Store context for accessing shared collector
+        self._context = context
+        # Cache mapping node positions to public/private status
+        self._element_visibility_cache: dict[tuple[int, int], bool] = {}
 
     def is_documentation_comment(self, node: Node, text: str, capture_name: str = "") -> bool:
         """
@@ -125,6 +128,38 @@ class GoCommentAnalyzer(GroupingCommentAnalyzer):
 
         return groups
 
+    def _is_public_declaration(self, decl_node: Node) -> bool:
+        """
+        Check if declaration node is public (exported).
+
+        Uses ElementCollector from context to determine if the declaration is part of public API.
+
+        Args:
+            decl_node: Declaration node to check
+
+        Returns:
+            True if declaration is public (exported), False otherwise
+        """
+        # Check cache first
+        position = (decl_node.start_byte, decl_node.end_byte)
+        if position in self._element_visibility_cache:
+            return self._element_visibility_cache[position]
+
+        # Get shared collector from context (cached there)
+        collector = self._context.get_collector()
+        all_elements = collector.collect_all()
+
+        # Find element matching this declaration node
+        for element in all_elements:
+            if element.node == decl_node:
+                # Cache and return
+                self._element_visibility_cache[position] = element.is_public
+                return element.is_public
+
+        # If not found in collector, assume private (conservative approach)
+        self._element_visibility_cache[position] = False
+        return False
+
     def _is_doc_comment_group(self, comment_group: List[Node]) -> bool:
         """
         Check if a comment group is a documentation comment.
@@ -141,45 +176,42 @@ class GoCommentAnalyzer(GroupingCommentAnalyzer):
         if not comment_group:
             return False
 
+        # First comment in group must start at beginning of line (not inline)
+        # Inline comments (after code on same line) are not doc comments
+        first_comment = comment_group[0]
+        comment_line_start = first_comment.start_point[0]
+        comment_col = first_comment.start_point[1]
+
+        # Check if there's any non-whitespace before the comment on the same line
+        line_start_byte = self.doc.text.rfind('\n', 0, first_comment.start_byte)
+        if line_start_byte == -1:
+            line_start_byte = 0
+        else:
+            line_start_byte += 1  # Skip the newline
+
+        text_before_comment = self.doc.text[line_start_byte:first_comment.start_byte]
+        if text_before_comment.strip():  # Non-whitespace found before comment
+            return False
+
         last_comment = comment_group[-1]
         following_decl = self._find_following_declaration(last_comment)
 
         if not following_decl:
             return False
 
+        # Doc comments must end BEFORE the line where declaration starts
+        # This filters out edge cases where comment and decl are on same line
+        comment_end_line = last_comment.end_point[0]
+        decl_start_line = following_decl.start_point[0]
+        if comment_end_line >= decl_start_line:
+            return False
+
         # Package clause is always documented (package-level doc comment)
         if following_decl.type == 'package_clause':
             return True
 
-        # Check if it's a declaration type we care about
-        decl_types = {
-            'type_declaration',
-            'function_declaration',
-            'method_declaration',
-            'var_declaration',
-            'const_declaration'
-        }
-
-        if following_decl.type not in decl_types:
-            return False
-
-        # Use heuristic: exported names in Go start with uppercase
-        try:
-            if following_decl.type in {'type_declaration', 'function_declaration', 'method_declaration'}:
-                # Find the identifier node
-                for child in following_decl.children:
-                    if child.type == 'type_identifier' or child.type == 'identifier':
-                        name = self.doc.get_node_text(child)
-                        return name[0].isupper() if name else False
-            elif following_decl.type in {'var_declaration', 'const_declaration'}:
-                # For var/const, look for first identifier
-                for child in following_decl.children:
-                    if child.type == 'identifier':
-                        name = self.doc.get_node_text(child)
-                        return name[0].isupper() if name else False
-            return False
-        except Exception:
-            return False
+        # Check if following declaration is public using ElementCollector
+        return self._is_public_declaration(following_decl)
 
     def _find_following_declaration(self, comment_node: Node) -> Optional[Node]:
         """

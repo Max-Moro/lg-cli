@@ -65,10 +65,10 @@ class RustAdapter(CodeAdapter[RustCfg]):
         from .imports import RustImportAnalyzer
         return RustImportAnalyzer(classifier)
 
-    def create_comment_analyzer(self, doc: TreeSitterDocument):
+    def create_comment_analyzer(self, context):
         """Create Rust-specific comment analyzer."""
         from .comment_analysis import RustCommentAnalyzer
-        return RustCommentAnalyzer(doc, self.COMMENT_STYLE)
+        return RustCommentAnalyzer(context.doc, self.COMMENT_STYLE)
 
     def get_code_descriptor(self):
         """Return Rust code descriptor."""
