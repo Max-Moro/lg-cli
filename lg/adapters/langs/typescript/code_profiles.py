@@ -23,7 +23,7 @@ from __future__ import annotations
 
 from typing import Optional
 
-from ...shared import ElementProfile, LanguageCodeDescriptor, is_inside_container, compute_element_range_with_trailing
+from ...shared import ElementProfile, InheritMode, LanguageCodeDescriptor, is_inside_container, compute_element_range_with_trailing
 from ...tree_sitter_support import Node, TreeSitterDocument
 
 
@@ -212,7 +212,7 @@ TYPESCRIPT_CODE_DESCRIPTOR = LanguageCodeDescriptor(
         ElementProfile(
             is_public=_is_public_namespace_member,
             additional_check=lambda node, doc: is_inside_container(node, {"internal_module"}),
-            inherit_previous=True,
+            inherit_previous=InheritMode.INHERIT,
         ),
 
         # Arrow functions can have expression or statement_block body

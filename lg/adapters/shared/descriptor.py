@@ -9,7 +9,7 @@ from dataclasses import dataclass, field
 from typing import Callable, List, Optional, Set, Tuple
 
 from lg.adapters.tree_sitter_support import Node, TreeSitterDocument
-from .profiles import ElementProfile
+from .profiles import ElementProfile, InheritMode
 
 
 @dataclass
@@ -120,12 +120,27 @@ class LanguageCodeDescriptor:
         resolved = []
 
         for i, profile in enumerate(self.profiles):
-            if profile.inherit_previous:
+            if profile.inherit_previous != InheritMode.NONE:
                 if i == 0:
-                    raise ValueError(f"Profile '{profile.name}' has inherit_previous=True but is first in list")
+                    raise ValueError(f"Profile '{profile.name}' has inherit_previous={profile.inherit_previous} but is first in list")
 
                 # Get parent from resolved list (already has inherited values)
                 parent = resolved[i - 1]
+
+                # Determine additional_check based on inheritance mode
+                if profile.additional_check is not None:
+                    # Explicit check specified - use it
+                    resolved_check = profile.additional_check
+                elif profile.inherit_previous == InheritMode.NEGATE_CHECK:
+                    # Negate parent's check
+                    if parent.additional_check is not None:
+                        parent_check = parent.additional_check
+                        resolved_check = lambda node, doc, pc=parent_check: not pc(node, doc)
+                    else:
+                        resolved_check = None
+                else:
+                    # INHERIT mode - use parent's check as-is
+                    resolved_check = parent.additional_check
 
                 # Inherit fields from previous profile
                 # For has_body: inherit from parent only if current is False (default)
@@ -134,13 +149,13 @@ class LanguageCodeDescriptor:
                     name=profile.name if profile.name else parent.name,
                     query=profile.query if profile.query else parent.query,
                     is_public=profile.is_public if profile.is_public is not None else parent.is_public,
-                    additional_check=profile.additional_check if profile.additional_check is not None else parent.additional_check,
+                    additional_check=resolved_check,
                     has_body=profile.has_body or parent.has_body,  # Inherit True from parent
                     body_query=profile.body_query if profile.body_query is not None else parent.body_query,
                     docstring_extractor=profile.docstring_extractor if profile.docstring_extractor is not None else parent.docstring_extractor,
                     body_resolver=profile.body_resolver if profile.body_resolver is not None else parent.body_resolver,
                     body_range_computer=profile.body_range_computer if profile.body_range_computer is not None else parent.body_range_computer,
-                    inherit_previous=False,  # Remove inheritance marker
+                    inherit_previous=InheritMode.NONE,  # Remove inheritance marker
                 )
                 resolved.append(resolved_profile)
             else:

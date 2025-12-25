@@ -6,9 +6,17 @@ Defines what elements to find and how to determine their public API status.
 from __future__ import annotations
 
 from dataclasses import dataclass
+from enum import Enum
 from typing import Callable, Optional
 
 from lg.adapters.tree_sitter_support import Node, TreeSitterDocument
+
+
+class InheritMode(str, Enum):
+    """Inheritance mode for element profiles."""
+    NONE = "none"
+    INHERIT = "inherit"
+    NEGATE_CHECK = "negate_check"
 
 
 @dataclass
@@ -133,15 +141,20 @@ class ElementProfile:
 
     # --- Inheritance ---
 
-    inherit_previous: bool = False
+    inherit_previous: InheritMode = InheritMode.NONE
     """
-    Inherit fields from previous profile in the list.
+    Inheritance mode for this profile.
 
-    When True, fields are inherited as follows:
+    Modes:
+    - NONE: No inheritance (default)
+    - INHERIT: Inherit all fields from previous profile
+    - NEGATE_CHECK: Inherit all fields, but negate additional_check
+
+    When inheriting, fields are inherited as follows:
     - name: inherits if current is "" (empty string)
     - query: inherits if current is "" (empty string)
     - is_public: inherits if current is None
-    - additional_check: inherits if current is None (NO combining via AND)
+    - additional_check: inherits if current is None (or negated in NEGATE_CHECK mode)
     - has_body: inherits True from parent (current True always takes priority)
     - body_query: inherits if current is None
     - docstring_extractor: inherits if current is None
@@ -152,15 +165,14 @@ class ElementProfile:
         ElementProfile(
             name="function",
             query="(function_declaration) @element",
-            is_public=_is_public_top_level,
+            additional_check=lambda n, d: not is_inside_container(n, {"class_body"}),
             has_body=True,
-            docstring_extractor=_find_docstring,
         ),
         ElementProfile(
-            additional_check=lambda n, d: is_inside_class(n),
-            inherit_previous=True,  # Inherits name, query, is_public, has_body, docstring_extractor
+            name="method",
+            inherit_previous=InheritMode.NEGATE_CHECK,  # Inherits all, but reverses check
         ),
     """
 
 
-__all__ = ["ElementProfile"]
+__all__ = ["ElementProfile", "InheritMode"]

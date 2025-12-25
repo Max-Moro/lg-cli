@@ -22,7 +22,7 @@ from __future__ import annotations
 
 from typing import Optional
 
-from ...shared import ElementProfile, LanguageCodeDescriptor, is_inside_container
+from ...shared import ElementProfile, InheritMode, LanguageCodeDescriptor, is_inside_container
 from ...tree_sitter_support import Node, TreeSitterDocument
 
 
@@ -133,7 +133,7 @@ SCALA_CODE_DESCRIPTOR = LanguageCodeDescriptor(
         ElementProfile(
             name="case_class",
             additional_check=lambda node, doc: _is_case_class(node, doc),
-            inherit_previous=True,
+            inherit_previous=InheritMode.INHERIT,
         ),
 
         ElementProfile(
@@ -167,21 +167,18 @@ SCALA_CODE_DESCRIPTOR = LanguageCodeDescriptor(
 
         ElementProfile(
             query="(function_declaration) @element",
-            inherit_previous=True,
+            inherit_previous=InheritMode.INHERIT,
         ),
 
         ElementProfile(
             name="method",
             query="(function_definition) @element",
-            additional_check=lambda node, doc: is_inside_container(
-                node, {"class_definition", "object_definition", "trait_definition", "template_body"}
-            ),
-            inherit_previous=True,
+            inherit_previous=InheritMode.NEGATE_CHECK,
         ),
 
         ElementProfile(
             query="(function_declaration) @element",
-            inherit_previous=True,
+            inherit_previous=InheritMode.INHERIT,
         ),
 
         ElementProfile(
@@ -195,7 +192,7 @@ SCALA_CODE_DESCRIPTOR = LanguageCodeDescriptor(
 
         ElementProfile(
             query="(var_definition) @element",
-            inherit_previous=True,
+            inherit_previous=InheritMode.INHERIT,
         ),
 
         ElementProfile(
@@ -209,7 +206,7 @@ SCALA_CODE_DESCRIPTOR = LanguageCodeDescriptor(
 
         ElementProfile(
             query="(var_definition) @element",
-            inherit_previous=True,
+            inherit_previous=InheritMode.INHERIT,
         ),
     ],
 

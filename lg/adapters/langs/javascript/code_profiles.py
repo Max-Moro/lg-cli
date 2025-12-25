@@ -17,7 +17,7 @@ from __future__ import annotations
 
 from typing import Optional
 
-from ...shared import ElementProfile, LanguageCodeDescriptor, is_inside_container, compute_element_range_with_trailing
+from ...shared import ElementProfile, InheritMode, LanguageCodeDescriptor, is_inside_container, compute_element_range_with_trailing
 from ...tree_sitter_support import Node, TreeSitterDocument
 
 
@@ -243,7 +243,7 @@ JAVASCRIPT_CODE_DESCRIPTOR = LanguageCodeDescriptor(
 
         ElementProfile(
             query="(variable_declaration) @element",
-            inherit_previous=True,
+            inherit_previous=InheritMode.INHERIT,
         ),
 
         ElementProfile(
@@ -277,7 +277,7 @@ JAVASCRIPT_CODE_DESCRIPTOR = LanguageCodeDescriptor(
 
         ElementProfile(
             query="(lexical_declaration) @element",
-            inherit_previous=True,
+            inherit_previous=InheritMode.INHERIT,
         ),
 
         # Side-effect imports are preserved by default (not in this profile)
