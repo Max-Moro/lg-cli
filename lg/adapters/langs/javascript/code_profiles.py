@@ -242,13 +242,8 @@ JAVASCRIPT_CODE_DESCRIPTOR = LanguageCodeDescriptor(
         ),
 
         ElementProfile(
-            name="arrow_function",
             query="(variable_declaration) @element",
-            is_public=_is_public_top_level,
-            additional_check=_has_arrow_function_body,  # Only arrow functions with block body
-            has_body=True,
-            body_resolver=_find_arrow_function_body,
-            docstring_extractor=_find_javascript_docstring,
+            inherit_previous=True,
         ),
 
         ElementProfile(
@@ -281,17 +276,8 @@ JAVASCRIPT_CODE_DESCRIPTOR = LanguageCodeDescriptor(
         ),
 
         ElementProfile(
-            name="variable",
             query="(lexical_declaration) @element",
-            is_public=_is_public_top_level,
-            additional_check=lambda node, doc: (
-                not is_inside_container(node, {"class_declaration", "class_body"}) and
-                not is_inside_container(node, {
-                    "function_declaration", "method_definition", "arrow_function",
-                    "function_expression", "generator_function"
-                }) and
-                not _has_arrow_function_body(node, doc)
-            ),
+            inherit_previous=True,
         ),
 
         # Side-effect imports are preserved by default (not in this profile)

@@ -115,47 +115,38 @@ class LanguageCodeDescriptor:
         """
         Resolve profile inheritance.
 
-        Creates flat list where parent_profile is replaced with inherited values.
+        Creates flat list where inherit_previous is replaced with inherited values.
         """
-        # Build map: name -> profile
-        profile_map = {p.name: p for p in self.profiles}
-
         resolved = []
-        for profile in self.profiles:
-            if profile.parent_profile:
-                parent = profile_map.get(profile.parent_profile)
-                if not parent:
-                    raise ValueError(f"Unknown parent profile: {profile.parent_profile}")
 
-                # Inherit fields from parent
+        for i, profile in enumerate(self.profiles):
+            if profile.inherit_previous:
+                if i == 0:
+                    raise ValueError(f"Profile '{profile.name}' has inherit_previous=True but is first in list")
+
+                # Get parent from resolved list (already has inherited values)
+                parent = resolved[i - 1]
+
+                # Inherit fields from previous profile
+                # For has_body: inherit from parent only if current is False (default)
+                # This allows explicit has_body=True to override, but inherits True from parent
                 resolved_profile = ElementProfile(
-                    name=profile.name,
-                    query=profile.query or parent.query,
+                    name=profile.name if profile.name else parent.name,
+                    query=profile.query if profile.query else parent.query,
                     is_public=profile.is_public if profile.is_public is not None else parent.is_public,
-                    additional_check=self._combine_checks(parent.additional_check, profile.additional_check),
-                    has_body=profile.has_body if profile.has_body else parent.has_body,
-                    body_query=profile.body_query or parent.body_query,
-                    docstring_extractor=profile.docstring_extractor or parent.docstring_extractor,
-                    parent_profile=None,  # Remove inheritance marker
+                    additional_check=profile.additional_check if profile.additional_check is not None else parent.additional_check,
+                    has_body=profile.has_body or parent.has_body,  # Inherit True from parent
+                    body_query=profile.body_query if profile.body_query is not None else parent.body_query,
+                    docstring_extractor=profile.docstring_extractor if profile.docstring_extractor is not None else parent.docstring_extractor,
+                    body_resolver=profile.body_resolver if profile.body_resolver is not None else parent.body_resolver,
+                    body_range_computer=profile.body_range_computer if profile.body_range_computer is not None else parent.body_range_computer,
+                    inherit_previous=False,  # Remove inheritance marker
                 )
                 resolved.append(resolved_profile)
             else:
                 resolved.append(profile)
 
         return resolved
-
-    @staticmethod
-    def _combine_checks(
-        parent_check: Optional[Callable],
-        child_check: Optional[Callable],
-    ) -> Optional[Callable]:
-        """Combine parent and child additional_check via AND."""
-        if not parent_check:
-            return child_check
-        if not child_check:
-            return parent_check
-
-        return lambda node, doc: parent_check(node, doc) and child_check(node, doc)
 
 
 __all__ = ["LanguageCodeDescriptor"]

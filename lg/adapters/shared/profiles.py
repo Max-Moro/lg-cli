@@ -22,21 +22,25 @@ class ElementProfile:
     - Whether they have bodies (for function body optimization)
     """
 
-    name: str
+    name: str = ""
     """
     Profile name for metrics and placeholders.
     Examples: "class", "function", "method", "field", "variable".
+
+    When inherit_previous=True and name="", inherits name from previous profile.
 
     Used for:
     - Metrics: {language}.removed.{name}
     - Placeholder: "... {name} omitted ..."
     """
 
-    query: str
+    query: str = ""
     """
     Tree-sitter query for finding elements of this type.
 
     IMPORTANT: Must be single-pattern query. Capture name must be @element.
+
+    When inherit_previous=True and query="", inherits query from previous profile.
 
     Examples:
         "(class_definition) @element"
@@ -129,14 +133,33 @@ class ElementProfile:
 
     # --- Inheritance ---
 
-    parent_profile: Optional[str] = None
+    inherit_previous: bool = False
     """
-    Name of parent profile for inheritance.
+    Inherit fields from previous profile in the list.
 
-    When inheriting:
-    - query is taken from parent (if not overridden)
-    - additional_check is combined (parent AND child)
-    - is_public is taken from child if specified, else from parent
+    When True, fields are inherited as follows:
+    - name: inherits if current is "" (empty string)
+    - query: inherits if current is "" (empty string)
+    - is_public: inherits if current is None
+    - additional_check: inherits if current is None (NO combining via AND)
+    - has_body: inherits True from parent (current True always takes priority)
+    - body_query: inherits if current is None
+    - docstring_extractor: inherits if current is None
+    - body_resolver: inherits if current is None
+    - body_range_computer: inherits if current is None
+
+    Example usage:
+        ElementProfile(
+            name="function",
+            query="(function_declaration) @element",
+            is_public=_is_public_top_level,
+            has_body=True,
+            docstring_extractor=_find_docstring,
+        ),
+        ElementProfile(
+            additional_check=lambda n, d: is_inside_class(n),
+            inherit_previous=True,  # Inherits name, query, is_public, has_body, docstring_extractor
+        ),
     """
 
 

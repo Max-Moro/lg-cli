@@ -132,9 +132,8 @@ SCALA_CODE_DESCRIPTOR = LanguageCodeDescriptor(
 
         ElementProfile(
             name="case_class",
-            query="(class_definition) @element",
-            is_public=_is_public_scala,
             additional_check=lambda node, doc: _is_case_class(node, doc),
+            inherit_previous=True,
         ),
 
         ElementProfile(
@@ -167,32 +166,22 @@ SCALA_CODE_DESCRIPTOR = LanguageCodeDescriptor(
         ),
 
         ElementProfile(
+            query="(function_declaration) @element",
+            inherit_previous=True,
+        ),
+
+        ElementProfile(
             name="method",
             query="(function_definition) @element",
-            is_public=_is_public_scala,
             additional_check=lambda node, doc: is_inside_container(
                 node, {"class_definition", "object_definition", "trait_definition", "template_body"}
             ),
-            has_body=True,
-            docstring_extractor=_find_scala_docstring,
+            inherit_previous=True,
         ),
 
         ElementProfile(
-            name="function",
             query="(function_declaration) @element",
-            is_public=_is_public_scala,
-            additional_check=lambda node, doc: not is_inside_container(
-                node, {"class_definition", "object_definition", "trait_definition", "template_body"}
-            ),
-        ),
-
-        ElementProfile(
-            name="method",
-            query="(function_declaration) @element",
-            is_public=_is_public_scala,
-            additional_check=lambda node, doc: is_inside_container(
-                node, {"class_definition", "object_definition", "trait_definition", "template_body"}
-            ),
+            inherit_previous=True,
         ),
 
         ElementProfile(
@@ -205,30 +194,22 @@ SCALA_CODE_DESCRIPTOR = LanguageCodeDescriptor(
         ),
 
         ElementProfile(
-            name="variable",
             query="(var_definition) @element",
-            is_public=_is_public_scala,
-            additional_check=lambda node, doc: not is_inside_container(
-                node, {"class_definition", "object_definition", "trait_definition", "template_body"}
-            ),
+            inherit_previous=True,
         ),
 
         ElementProfile(
             name="field",
             query="(val_definition) @element",
-            is_public=_is_public_scala,
             additional_check=lambda node, doc: is_inside_container(
                 node, {"class_definition", "object_definition", "trait_definition", "template_body"}
             ),
+            is_public=_is_public_scala,
         ),
 
         ElementProfile(
-            name="field",
             query="(var_definition) @element",
-            is_public=_is_public_scala,
-            additional_check=lambda node, doc: is_inside_container(
-                node, {"class_definition", "object_definition", "trait_definition", "template_body"}
-            ),
+            inherit_previous=True,
         ),
     ],
 

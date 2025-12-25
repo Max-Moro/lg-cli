@@ -210,13 +210,9 @@ TYPESCRIPT_CODE_DESCRIPTOR = LanguageCodeDescriptor(
 
         # Namespace members must have explicit export to be public
         ElementProfile(
-            name="function",
-            query="(function_declaration) @element",
             is_public=_is_public_namespace_member,
             additional_check=lambda node, doc: is_inside_container(node, {"internal_module"}),
-            has_body=True,
-            body_query='(function_declaration body: (statement_block) @body)',
-            docstring_extractor=_find_typescript_docstring,
+            inherit_previous=True,
         ),
 
         # Arrow functions can have expression or statement_block body
