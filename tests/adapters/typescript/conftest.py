@@ -13,18 +13,6 @@ def do_function_bodies():
 
 
 @pytest.fixture
-def barrel_file_sample():
-    """Sample TypeScript barrel file for testing."""
-    return load_sample_code("barrel_file_sample")
-
-
-@pytest.fixture
-def non_barrel_file_sample():
-    """Sample TypeScript non-barrel file for testing."""
-    return load_sample_code("non_barrel_file_sample")
-
-
-@pytest.fixture
 def do_comments():
     """Sample TypeScript code for testing comment optimization."""
     return load_sample_code("comments")

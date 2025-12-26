@@ -34,7 +34,6 @@ class PythonCfg(CodeCfg):
         cfg.general_load(d)
 
         # Python-specific settings
-        cfg.skip_trivial_inits = bool(d.get("skip_trivial_inits", True))
 
         return cfg
 
@@ -85,7 +84,7 @@ class PythonAdapter(CodeAdapter[PythonCfg]):
         """
         Python-specific file skip heuristics.
         """
-        from .file_heuristics import should_skip_python_file
-        return should_skip_python_file(lightweight_ctx, self.cfg.skip_trivial_inits)
+        # TODO
+        return False
 
 

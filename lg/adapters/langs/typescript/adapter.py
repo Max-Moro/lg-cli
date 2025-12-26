@@ -34,7 +34,6 @@ class TypeScriptCfg(CodeCfg):
         cfg.general_load(d)
 
         # TypeScript-specific settings
-        cfg.skip_barrel_files = bool(d.get("skip_barrel_files", True))
 
         return cfg
 
@@ -87,5 +86,5 @@ class TypeScriptAdapter(CodeAdapter[TypeScriptCfg]):
         """
         TypeScript-specific file skip heuristics.
         """
-        from .file_heuristics import should_skip_typescript_file
-        return should_skip_typescript_file(lightweight_ctx, self.cfg.skip_barrel_files, self, self.tokenizer)
+        # TODO
+        return False
