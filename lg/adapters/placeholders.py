@@ -86,6 +86,10 @@ class PlaceholderSpec:
         """Check if this placeholder overlaps with another."""
         return not (self.end_char <= other.start_char or other.end_char <= self.start_char)
 
+    def contains(self, other: PlaceholderSpec) -> bool:
+        """Check if this placeholder completely contains another (nested)."""
+        return self.start_char <= other.start_char and other.end_char <= self.end_char
+
     @property
     def position_key(self) -> Tuple[int, int]:
         """Key for sorting by position."""
@@ -208,6 +212,7 @@ class PlaceholderSpec:
             placeholder_prefix=self.placeholder_prefix,
             count=self.count + other.count,
             lines_removed=self.lines_removed + other.lines_removed,
+            use_composing_nested=True,  # Enable composition with nested placeholders
         )
 
 
@@ -513,21 +518,47 @@ class PlaceholderManager:
         # Sort by position for correct adjacency check
         sorted_placeholders = sorted(self.placeholders, key=lambda p: p.position_key)
 
+        # Separate top-level and nested placeholders
+        # Nested placeholders are those completely contained within others
+        top_level = []
+        nested = []
+
+        for placeholder in sorted_placeholders:
+            is_nested = False
+            for other in sorted_placeholders:
+                if other is placeholder:
+                    continue
+                if other.contains(placeholder):
+                    is_nested = True
+                    nested.append(placeholder)
+                    break
+
+            if not is_nested:
+                top_level.append(placeholder)
+
+        # Collapse only top-level placeholders
         collapsed = []
-        current_group = [sorted_placeholders[0]]
+        if top_level:
+            current_group = [top_level[0]]
 
-        for placeholder in sorted_placeholders[1:]:
-            # Check if can merge with current group
-            if current_group and current_group[-1].can_merge_with(placeholder, self.doc.text):
-                current_group.append(placeholder)
-            else:
-                # Finalize current group
+            for placeholder in top_level[1:]:
+                # Check if can merge with current group
+                can_merge = current_group and current_group[-1].can_merge_with(placeholder, self.doc.text)
+
+                if can_merge:
+                    current_group.append(placeholder)
+                else:
+                    # Finalize current group
+                    collapsed.append(self._merge_group(current_group))
+                    current_group = [placeholder]
+
+            # Don't forget last group
+            if current_group:
                 collapsed.append(self._merge_group(current_group))
-                current_group = [placeholder]
 
-        # Don't forget last group
-        if current_group:
-            collapsed.append(self._merge_group(current_group))
+        # Add nested placeholders back (they are not grouped)
+        # They will be applied before their parents due to width-based sorting in apply_to_editor
+        collapsed.extend(nested)
 
         return collapsed
 

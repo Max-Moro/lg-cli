@@ -5,10 +5,10 @@
 package com.example.budget
 
 // … comment omitted
-// … 8 imports omitted
+// … 8 imports omitted (5 lines)
 
 // … comment omitted
-// … 3 imports omitted
+// … 3 imports omitted (2 lines)
 
 /**
  * Module level long documentation that might be truncated under tight budgets.
@@ -17,7 +17,7 @@ object ModuleConstants {
   val MODULE_TITLE = "Budget System Complex Sample"
 
   val LONG_TEXT = """This is an extremely long raw string that is designed to be trimmed
-by the literal optimizer when budgets are small. It repeats a message to…""" // literal string (−5 tokens)
+by the literal optimizer when budgets are small. It repeats a message to…""" // literal string (−2 tokens)
 
   val BIG_OBJECT = Map(
     "users" -> (1 to 50).map { i =>
@@ -32,26 +32,32 @@ by the literal optimizer when budgets are small. It repeats a message to…""" /
 }
 
 class PublicService {
-  // … val omitted
+  // … field omitted
 
   /**
    * Public API: gets a user by ID.
    */
-  def getUser(id: Long): Option[User] = // … method body omitted (3 lines)
+  def getUser(id: Long): Option[User] = {
+    cache.get(id.toString)
+  }
 
   // … comment omitted
-  private def normalize(u: Map[String, Any]): User = // … method body omitted (7 lines)
+  // … method omitted (7 lines)
 
   /** Long method body to allow function body stripping. */
-  def process(list: List[User]): ApiResponse[List[User]] = // … method body omitted (14 lines)
+  def process(list: List[User]): ApiResponse[List[User]] = {
+    // … method body omitted (12 lines)
+  }
 }
 
-// … class omitted
+// … class omitted (4 lines)
 
 object Functions {
-  def publicFunction(name: String): String = // … method body omitted (4 lines)
+  def publicFunction(name: String): String = {
+    // … method body omitted (2 lines)
+  }
 
-  private def privateFunction(data: List[String]): List[String] = // … method body omitted (4 lines)
+  // … method omitted (4 lines)
 }
 
 object Main extends App {
@@ -64,5 +70,7 @@ case class User(id: Long, name: String, email: String)
 case class ApiResponse[T](success: Boolean, data: T)
 
 object StringUtils {
-  def toTitle(text: String): String = // … method body omitted (3 lines)
+  def toTitle(text: String): String = {
+    text.split(" ").map(_.capitalize).mkString(" ")
+  }
 }

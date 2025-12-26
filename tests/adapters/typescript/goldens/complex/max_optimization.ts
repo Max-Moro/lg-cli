@@ -4,10 +4,10 @@
  */
 
 // … comment omitted
-// … 3 imports omitted
+// … 8 imports omitted (3 lines)
 
 // … comment omitted
-// … 2 imports omitted
+// … 3 imports omitted (2 lines)
 
 /**
  * Module level long documentation that might be truncated under tight budgets.
@@ -15,7 +15,7 @@
 export const MODULE_TITLE = 'Budget System Complex Sample';
 
 const LONG_TEXT = `This is an extremely long template literal that is designed to be trimmed 
-by the literal optimizer when budgets are small. It repeats a message…`; // literal string (−7 tokens)
+by the literal optimizer when budgets are small. It repeats a message…`; // literal string (−4 tokens)
 
 const BIG_OBJECT = {
   users: Array.from({ length: 50 }, (_, i) => ({ id: i + 1, name: `User ${i + 1}`, active: i % 2 === 0 })),
@@ -28,19 +28,27 @@ export class PublicService {
   /**
    * Public API: gets a user by ID.
    */
-  public getUser(id: number): User | null // … method body omitted (3 lines)
+  public getUser(id: number): User | null {
+    return this.cache.get(String(id)) ?? null;
+  }
 
   // … comment omitted
-  private _normalize(u: Partial<User>): User // … method body omitted (3 lines)
+  // … method omitted (3 lines)
 
   /** Long method body to allow function body stripping. */
-  public process(list: User[]): ApiResponse<User[]> // … method body omitted (8 lines)
+  public process(list: User[]): ApiResponse<User[]> {
+    // … method body omitted (6 lines)
+  }
 }
 
-// … class omitted
+// … class omitted (4 lines)
 
-export function publicFunction(name: string): string // … function body omitted (4 lines)
+export function publicFunction(name: string): string {
+  // … function body omitted (2 lines)
+}
 
-// … function omitted
+// … function omitted (4 lines)
 
-export default function main(): void // … function body omitted (4 lines)
+export default function main(): void {
+  // … function body omitted (2 lines)
+}

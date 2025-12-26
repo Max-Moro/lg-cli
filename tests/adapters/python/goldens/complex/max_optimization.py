@@ -1,7 +1,7 @@
 """Comprehensive sample for Budget System tests (Python)."""
 
 # … comment omitted
-# … 11 imports omitted
+# … 11 imports omitted (7 lines)
 
 # … comment omitted
 # … import omitted  # … comment omitted
@@ -11,7 +11,7 @@
 MODULE_DOC = """
 This module demonstrates a variety of language features to exercise the
 BudgetController escalation sequence. The text here is quite verbose and
-contains enough co…""" # literal string (−43 tokens)
+contains enough co…""" # literal string (−41 tokens)
 
 BIG_LIST = [f"item_{i:04d}" for i in range(200)]
 
@@ -26,7 +26,7 @@ def public_function(data: str) -> str:
     # … function body omitted (2 lines)
 
 
-# … function omitted
+# … function omitted (6 lines)
 
 
 class PublicClass:
@@ -37,19 +37,19 @@ class PublicClass:
 
     def public_method(self, x: int, y: int) -> int:
         """Add two numbers and return the result."""
-        # … method body omitted
+        return x + y
 
-    # … method omitted
+    # … method omitted (3 lines)
 
     @property
     def public_property(self) -> str:
         """Public property."""
-        # … method body omitted
+        return self.name
 
-    # … method omitted
+    # … method omitted (4 lines)
 
 
-# … class omitted
+# … class omitted (4 lines)
 
 
 def huge_processing_pipeline(values: List[int]) -> Tuple[int, int, int]:

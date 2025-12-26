@@ -118,18 +118,6 @@ def _is_public_namespace_member(node: Node, doc: TreeSitterDocument) -> bool:
     return _has_export_keyword(node, doc)
 
 
-def _is_side_effect_import(node: Node, doc: TreeSitterDocument) -> bool:
-    """
-    Check if import is side-effect only (must be preserved).
-
-    Side-effect imports: import './module' (no destructuring, no 'from')
-    These can modify global state and must not be removed.
-    """
-    import_text = doc.get_node_text(node)
-    # Side-effect if no 'from', no '{', no '* as'
-    return ("from" not in import_text) and ("{" not in import_text) and ("* as" not in import_text)
-
-
 def _find_typescript_docstring(body_node: Node, doc: TreeSitterDocument) -> Optional[Node]:
     """
     Find docstring (JSDoc comment) at the start of function body.
@@ -246,14 +234,6 @@ TYPESCRIPT_CODE_DESCRIPTOR = LanguageCodeDescriptor(
             additional_check=lambda node, doc: not is_inside_container(
                 node, {"class_declaration", "class_body"}
             ),
-        ),
-
-        # Side-effect imports are preserved by default (not in this profile)
-        ElementProfile(
-            name="import",
-            query="(import_statement) @element",
-            is_public=lambda node, doc: _is_side_effect_import(node, doc),  # side-effect = public (keep)
-            additional_check=lambda node, doc: not _is_side_effect_import(node, doc),  # filter to regular imports
         ),
     ],
 

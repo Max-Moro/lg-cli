@@ -21,7 +21,7 @@ const ModuleTitle = "Budget System Complex Sample"
 
 const LongText = `This is an extremely long text that is designed to be trimmed
 by the literal optimizer when budgets are small. It repeats a message to
-ensu…` // literal string (−15 tokens)
+ensu…` // literal string (−12 tokens)
 
 var BigObject = map[string]interface{}{
 	"users": func() []map[string]interface{} {
@@ -43,23 +43,31 @@ type PublicService struct {
 }
 
 // NewPublicService creates a new service instance.
-func NewPublicService() *PublicService // … function body omitted (5 lines)
+func NewPublicService() *PublicService {
+	// … function body omitted (3 lines)
+}
+
+// GetUser is a public API method that gets a user by ID.
+func (s *PublicService) GetUser(id int) *models.User {
+	// … method body omitted (5 lines)
+}
 
 // … comment omitted
-func (s *PublicService) GetUser(id int) *models.User // … method body omitted (7 lines)
+// … method omitted (8 lines)
 
 // … comment omitted
-// … method omitted
-
-// … comment omitted
-func (s *PublicService) Process(list []*models.User) ([]*models.User, error) // … method body omitted (15 lines)
+func (s *PublicService) Process(list []*models.User) ([]*models.User, error) {
+	// … method body omitted (11 lines)
+}
 
 // … comment omitted
 // … struct omitted (3 lines)
 
-// … method omitted
+// … method omitted (3 lines)
 
-// PublicFunction is an exported function.
-func PublicFunction(name string) string // … function body omitted (7 lines)
+// … comment omitted
+func PublicFunction(name string) string {
+	// … function body omitted (5 lines)
+}
 
-// … 2 functions omitted
+// … 2 functions omitted (15 lines)

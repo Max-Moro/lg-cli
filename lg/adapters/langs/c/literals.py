@@ -51,7 +51,7 @@ C_CONCATENATED_STRING_PROFILE = SequenceProfile(
     separator="",
     placeholder_position=PlaceholderPosition.END,
     placeholder_template="…",
-    comment_name="literal string",
+    comment_name="string",
     requires_ast_extraction=True,
 )
 

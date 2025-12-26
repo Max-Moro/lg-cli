@@ -127,18 +127,6 @@ def _is_public_class_member(node: Node, doc: TreeSitterDocument) -> bool:
     return True
 
 
-def _is_side_effect_import(node: Node, doc: TreeSitterDocument) -> bool:
-    """
-    Check if import is side-effect only (must be preserved).
-
-    Side-effect imports: import './module' (no destructuring, no 'from')
-    These can modify global state and must not be removed.
-    """
-    import_text = doc.get_node_text(node)
-    # Side-effect if no 'from', no '{', no '* as'
-    return ("from" not in import_text) and ("{" not in import_text) and ("* as" not in import_text)
-
-
 def _find_javascript_docstring(body_node: Node, doc: TreeSitterDocument) -> Optional[Node]:
     """
     Find docstring (JSDoc comment) at the start of function body.
@@ -278,14 +266,6 @@ JAVASCRIPT_CODE_DESCRIPTOR = LanguageCodeDescriptor(
         ElementProfile(
             query="(lexical_declaration) @element",
             inherit_previous=InheritMode.INHERIT,
-        ),
-
-        # Side-effect imports are preserved by default (not in this profile)
-        ElementProfile(
-            name="import",
-            query="(import_statement) @element",
-            is_public=lambda node, doc: _is_side_effect_import(node, doc),  # side-effect = public (keep)
-            additional_check=lambda node, doc: not _is_side_effect_import(node, doc),  # filter to regular imports
         ),
     ],
 

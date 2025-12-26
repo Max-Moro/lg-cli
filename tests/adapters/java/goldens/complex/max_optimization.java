@@ -18,7 +18,7 @@ public class BudgetSystemSample {
 
     public static final String LONG_TEXT = """
         This is an extremely long text block that is designed to be trimmed
-        by the literal optimizer when budgets are small. It repeats a m…"""; // literal string (−8 tokens)
+        by the literal optimizer when budgets are small. It repeats a m…"""; // literal string (−6 tokens)
 
     public static final Map<String, Object> BIG_OBJECT = Map.ofEntries(
         Map.entry("users", IntStream.range(1, 51)
@@ -38,24 +38,32 @@ public class PublicService {
     /**
      * Public API: gets a user by ID.
      */
-    public User getUser(long id) // … method body omitted (3 lines)
+    public User getUser(long id) {
+        return cache.get(String.valueOf(id));
+    }
 
     // … comment omitted
-    private User normalize(Map<String, Object> u) // … method body omitted (7 lines)
+    // … method omitted (7 lines)
 
     /** Long method body to allow function body stripping. */
-    public ApiResponse<List<User>> process(List<User> list) // … method body omitted (12 lines)
+    public ApiResponse<List<User>> process(List<User> list) {
+        // … method body omitted (10 lines)
+    }
 }
 
-// … class omitted
+// … class omitted (4 lines)
 
 public class Functions {
-    public static String publicFunction(String name) // … method body omitted (4 lines)
+    public static String publicFunction(String name) {
+        // … method body omitted (2 lines)
+    }
 
-    private static List<String> privateFunction(List<String> data) // … method body omitted (6 lines)
+    // … method omitted (6 lines)
 
-    public static void main(String[] args) // … method body omitted (4 lines)
+    public static void main(String[] args) {
+        // … method body omitted (2 lines)
+    }
 }
 
 // … comment omitted
-// … 3 classes omitted
+// … 3 classes omitted (31 lines)

@@ -34,23 +34,31 @@ typedef struct {
 /**
  * Public API: gets a user by ID.
  */
-void* public_service_get_user(PublicService* service, int id) // … function body omitted (4 lines)
+void* public_service_get_user(PublicService* service, int id) {
+    // … function body omitted (2 lines)
+}
 
 // … comment omitted
-// … function omitted
+// … function omitted (5 lines)
 
 /** Long method body to allow function body stripping. */
-void* public_service_process(PublicService* service, void** list, int count) // … function body omitted (15 lines)
+void* public_service_process(PublicService* service, void** list, int count) {
+    // … function body omitted (10 lines)
+}
 
 // … comment omitted
 // … typedef omitted (3 lines)
 
-// … function omitted
+// … function omitted (4 lines)
 
 // … comment omitted
-char* public_function(const char* name) // … function body omitted (5 lines)
+char* public_function(const char* name) {
+    // … function body omitted (3 lines)
+}
 
 // … comment omitted
-// … function omitted
+// … function omitted (9 lines)
 
-int main(void) // … function body omitted (8 lines)
+int main(void) {
+    // … function body omitted (6 lines)
+}
