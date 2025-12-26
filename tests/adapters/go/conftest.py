@@ -40,3 +40,15 @@ def do_public_api():
 def do_complex():
     """Sample Go code for testing complex combined optimization."""
     return load_sample_code("complex", language="go")
+
+
+@pytest.fixture
+def do_trivial():
+    """doc.go with package documentation only."""
+    return load_sample_code("trivial_doc")
+
+
+@pytest.fixture
+def do_non_trivial():
+    """doc.go with actual code."""
+    return load_sample_code("non_trivial_doc")

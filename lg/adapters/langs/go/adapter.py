@@ -12,6 +12,7 @@ from tree_sitter import Language
 from ...code_base import CodeAdapter
 from ...code_model import CodeCfg
 from ...comment_style import CommentStyle, GO_STYLE_COMMENTS
+from ...context import LightweightContext
 from ...optimizations import ImportClassifier, TreeSitterImportAnalyzer, LanguageLiteralDescriptor
 from ...tree_sitter_support import TreeSitterDocument
 
@@ -75,4 +76,13 @@ class GoAdapter(CodeAdapter[GoCfg]):
         """Create Go literal descriptor."""
         from .literals import create_go_descriptor
         return create_go_descriptor()
+
+    def should_skip(self, lightweight_ctx: LightweightContext) -> bool:
+        """
+        Go-specific file skip heuristics.
+        Detects trivial doc.go files.
+        """
+        from .trivial import GoTrivialAnalyzer
+        analyzer = GoTrivialAnalyzer()
+        return analyzer.is_trivial(lightweight_ctx, self)
 
