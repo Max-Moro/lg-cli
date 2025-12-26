@@ -58,3 +58,9 @@ def do_trivial():
 def do_non_trivial():
     """__init__.py with convenience function."""
     return load_sample_code("non_trivial_init")
+
+
+@pytest.fixture
+def do_trivial_annotated():
+    """__init__.py with annotated __all__ declaration."""
+    return load_sample_code("trivial_init_annotated")

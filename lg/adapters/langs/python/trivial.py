@@ -91,7 +91,8 @@ class PythonTrivialAnalyzer(TrivialFileAnalyzer):
         for child in node.children:
             if child.type == "string":
                 return True
-            if child.type == "assignment":
+            # Handle both simple and annotated assignment
+            if child.type in ("assignment", "annotated_assignment"):
                 # Check if left side is __all__
                 left = child.child_by_field_name("left")
                 if left and doc.get_node_text(left) == "__all__":

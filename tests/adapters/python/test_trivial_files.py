@@ -37,3 +37,11 @@ def test_skip_trivial_files_config_disabled(do_trivial):
 
     ctx = lctx(do_trivial, Path("/pkg/__init__.py"))
     assert adapter.should_skip(ctx) is False
+
+
+def test_trivial_annotated_all(do_trivial_annotated):
+    """Adapter should skip __init__.py with annotated __all__."""
+    adapter = make_adapter(PythonCfg())
+
+    ctx = lctx(do_trivial_annotated, Path("/pkg/__init__.py"))
+    assert adapter.should_skip(ctx) is True
