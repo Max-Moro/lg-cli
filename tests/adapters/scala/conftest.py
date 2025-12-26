@@ -40,3 +40,15 @@ def do_public_api():
 def do_complex():
     """Sample Scala code for testing complex combined optimization."""
     return load_sample_code("complex", language="scala")
+
+
+@pytest.fixture
+def do_trivial():
+    """package.scala with only type aliases."""
+    return load_sample_code("trivial_package", language="scala")
+
+
+@pytest.fixture
+def do_non_trivial():
+    """package.scala with function definition."""
+    return load_sample_code("non_trivial_package", language="scala")
