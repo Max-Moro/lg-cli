@@ -40,3 +40,15 @@ def do_public_api():
 def do_complex():
     """Sample Kotlin code for testing complex combined optimization."""
     return load_sample_code("complex")
+
+
+@pytest.fixture
+def do_trivial():
+    """Kotlin file with only package, imports and annotations."""
+    return load_sample_code("trivial_package")
+
+
+@pytest.fixture
+def do_non_trivial():
+    """Kotlin file with function definition."""
+    return load_sample_code("non_trivial_package")

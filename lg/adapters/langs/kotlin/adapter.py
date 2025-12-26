@@ -12,6 +12,7 @@ from tree_sitter import Language
 from ...code_base import CodeAdapter
 from ...code_model import CodeCfg
 from ...comment_style import CommentStyle, C_STYLE_COMMENTS
+from ...context import LightweightContext
 from ...optimizations import ImportClassifier, TreeSitterImportAnalyzer
 from ...optimizations.literals import LanguageLiteralDescriptor
 from ...shared import LanguageCodeDescriptor
@@ -76,3 +77,12 @@ class KotlinAdapter(CodeAdapter[KotlinCfg]):
         """Create Kotlin literal descriptor."""
         from .literals import create_kotlin_descriptor
         return create_kotlin_descriptor()
+
+    def should_skip(self, lightweight_ctx: LightweightContext) -> bool:
+        """
+        Kotlin-specific file skip heuristics.
+        Detects trivial package.kt files.
+        """
+        from .trivial import KotlinTrivialAnalyzer
+        analyzer = KotlinTrivialAnalyzer()
+        return analyzer.is_trivial(lightweight_ctx, self)
