@@ -18,6 +18,12 @@ from ...tree_sitter_support import TreeSitterDocument
 class PythonTrivialAnalyzer(TrivialFileAnalyzer):
     """Detect trivial Python __init__.py files."""
 
+    # Trivial node types that can be safely skipped
+    SKIP_NODE_TYPES = {
+        "comment",
+        "pass_statement",
+    }
+
     # Node types that indicate non-trivial content
     NON_TRIVIAL_TYPES = {
         "function_definition",
@@ -59,8 +65,8 @@ class PythonTrivialAnalyzer(TrivialFileAnalyzer):
         for child in root.children:
             node_type = child.type
 
-            # Skip comments
-            if node_type == "comment":
+            # Skip trivial nodes (comments, pass statements)
+            if node_type in self.SKIP_NODE_TYPES:
                 continue
 
             # Check expression statements (docstrings, __all__)

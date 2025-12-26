@@ -46,7 +46,7 @@ def test_conditional_python_adapter_options(adaptive_project):
     python-default:
       extensions: [".py"]
       python:
-        skip_trivial_inits: true  # standard behavior - skip trivial
+        skip_trivial_files: true  # standard behavior - skip trivial
       filters:
         mode: allow
         allow:
@@ -55,10 +55,10 @@ def test_conditional_python_adapter_options(adaptive_project):
     python-with-inits:
       extensions: [".py"]
       python:
-        skip_trivial_inits: true  # base value
+        skip_trivial_files: true  # base value
         when:
           - condition: "tag:include-inits"
-            skip_trivial_inits: false  # override when tag active
+            skip_trivial_files: false  # override when tag active
       filters:
         mode: allow
         allow:
@@ -162,16 +162,16 @@ def test_multiple_conditional_adapter_options(adaptive_project):
     adaptive-python:
       extensions: [".py"]
       python:
-        skip_trivial_inits: true
+        skip_trivial_files: true
         strip_function_bodies: false
         when:
           - condition: "tag:include-inits"
-            skip_trivial_inits: false
+            skip_trivial_files: false
           - condition: "tag:strip-bodies AND NOT tag:verbose-mode"
             strip_function_bodies: true
           - condition: "tag:verbose-mode"
             strip_function_bodies: false
-            skip_trivial_inits: false
+            skip_trivial_files: false
       filters:
         mode: allow
         allow:
@@ -263,16 +263,16 @@ def test_conditional_options_with_complex_conditions(adaptive_project):
     complex-conditions:
       extensions: [".py"]
       python:
-        skip_trivial_inits: true
+        skip_trivial_files: true
         strip_function_bodies: false
         when:
           # In production without debugging, remove __init__.py for compactness
           - condition: "tag:production AND NOT tag:debug"
-            skip_trivial_inits: true
+            skip_trivial_files: true
             strip_function_bodies: true
           # In debug mode or for internal documentation, show everything
           - condition: "tag:debug OR tag:internal-docs"
-            skip_trivial_inits: false
+            skip_trivial_files: false
             strip_function_bodies: false
           # For API documentation, show only signatures
           - condition: "tag:api-docs AND NOT tag:internal-docs"
@@ -352,17 +352,17 @@ def test_conditional_options_inheritance_and_priority(adaptive_project):
     priority-test:
       extensions: [".py"]
       python:
-        skip_trivial_inits: true  # base value
+        skip_trivial_files: true  # base value
         when:
           # First rule
           - condition: "tag:base-mode"
-            skip_trivial_inits: false
+            skip_trivial_files: false
           # Second rule overrides first when conditions match
           - condition: "tag:base-mode AND tag:override-mode"
-            skip_trivial_inits: true
+            skip_trivial_files: true
           # Third rule with highest priority
           - condition: "tag:final-mode"
-            skip_trivial_inits: false
+            skip_trivial_files: false
       filters:
         mode: allow
         allow:
@@ -382,22 +382,22 @@ ${priority-test}
     result1 = render_template(root, "ctx:priority-test",
                              make_run_options(extra_tags={"base-mode"}))
 
-    assert "python:src/__init__.py" in result1  # skip_trivial_inits: false
+    assert "python:src/__init__.py" in result1  # skip_trivial_files: false
 
     # Test 2: base-mode + override-mode - second rule overrides first
     result2 = render_template(root, "ctx:priority-test",
                              make_run_options(extra_tags={"base-mode", "override-mode"}))
 
-    assert "python:src/__init__.py" not in result2  # skip_trivial_inits: true (overridden)
+    assert "python:src/__init__.py" not in result2  # skip_trivial_files: true (overridden)
 
     # Test 3: all three tags - final-mode has highest priority
     result3 = render_template(root, "ctx:priority-test",
                              make_run_options(extra_tags={"base-mode", "override-mode", "final-mode"}))
 
-    assert "python:src/__init__.py" in result3  # skip_trivial_inits: false (final-mode)
+    assert "python:src/__init__.py" in result3  # skip_trivial_files: false (final-mode)
 
     # Test 4: final-mode only - does not depend on other rules
     result4 = render_template(root, "ctx:priority-test",
                              make_run_options(extra_tags={"final-mode"}))
 
-    assert "python:src/__init__.py" in result4  # skip_trivial_inits: false
+    assert "python:src/__init__.py" in result4  # skip_trivial_files: false

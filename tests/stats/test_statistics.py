@@ -262,7 +262,7 @@ class TestMetaSummary:
             """all:
   extensions: [".py", ".md"]
   python:
-    skip_trivial_inits: true
+    skip_trivial_files: true
   markdown:
     max_heading_level: 2
     strip_h1: true

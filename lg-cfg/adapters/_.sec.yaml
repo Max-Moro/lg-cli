@@ -235,10 +235,6 @@ tests:
   extensions: [".py", ".ts", ".kt", ".js", ".java", ".go", ".rs", ".scala",
                ".c", ".h", ".cpp", ".hpp", ".cc", ".hh", ".hxx", ".cxx",
                ".sh"]
-  python:
-    skip_trivial_inits: false
-  typescript:
-    skip_barrel_files: false
   filters:
     mode: allow
     allow:

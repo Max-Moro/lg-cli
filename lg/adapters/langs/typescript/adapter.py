@@ -22,8 +22,7 @@ from ...tree_sitter_support import TreeSitterDocument
 @dataclass
 class TypeScriptCfg(CodeCfg):
     """Configuration for TypeScript adapter."""
-    skip_barrel_files: bool = True  # Skip barrel files (index.ts with re-exports)
-    
+
     @staticmethod
     def from_dict(d: Optional[Dict[str, Any]]) -> TypeScriptCfg:
         """Load configuration from YAML dictionary."""

@@ -22,7 +22,6 @@ from ...tree_sitter_support import TreeSitterDocument
 @dataclass
 class PythonCfg(CodeCfg):
     """Configuration for Python adapter."""
-    skip_trivial_inits: bool = True  # Skip trivial __init__.py files
 
     @staticmethod
     def from_dict(d: Optional[Dict[str, Any]]) -> PythonCfg:

@@ -353,7 +353,7 @@ def get_multilang_sections_config() -> Dict[str, Dict[str, Any]]:
         "python-src": {
             "extensions": [".py"],
             "python": {
-                "skip_trivial_inits": True
+                "skip_trivial_files": True
             },
             "filters": {
                 "mode": "allow",

@@ -221,7 +221,7 @@ def federated_project(tmp_path: Path) -> Path:
         "core-lib": {
             "extensions": [".py"],
             "python": {
-                "skip_trivial_inits": True
+                "skip_trivial_files": True
             },
             "filters": {
                 "mode": "allow",
