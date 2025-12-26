@@ -120,8 +120,6 @@ docs:
 core-model-src:
   extensions: [".py", ".md", ".yaml", ".json", ".toml"]
   skip_empty: true
-  python:
-    skip_trivial_inits: true
   markdown:
     max_heading_level: 3
   filters:
@@ -204,7 +202,6 @@ core:
 
   # Global rules for entire section
   python:
-    skip_trivial_inits: true
     strip_function_bodies: false
 
   markdown:

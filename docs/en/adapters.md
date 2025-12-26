@@ -260,9 +260,11 @@ These metrics help understand what exactly "eats" tokens and how effective the a
 
 ### Language-Specific Features
 
-**Python** additionally offers `skip_trivial_inits: true` for skipping empty or trivial `__init__.py` files, and special handlers for decorators (`@property`, `@classmethod`).
+**Trivial file detection** is enabled by default for all languages. Trivial files (like `__init__.py` with only re-exports, `index.ts` barrel files, `doc.go` with only package docs) are automatically skipped from listings. This can be disabled per-section with `skip_trivial_files: false`.
 
-**TypeScript** adds `skip_barrel_files: true` for skipping barrel files (index.ts with re-exports), optimized work with JSX and decorators, and special logic for exported API.
+**Python** provides special handlers for decorators (`@property`, `@classmethod`) and Python-specific comment styles (docstrings).
+
+**TypeScript** offers optimized work with JSX and decorators, and special logic for exported API.
 
 ---
 
