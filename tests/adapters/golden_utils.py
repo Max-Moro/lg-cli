@@ -10,46 +10,59 @@ from typing import Optional
 import pytest
 
 
-def _get_language_extension(language: str) -> str:
+def _get_language_extensions(language: str) -> list[str]:
     """
-    Returns the file extension for a given language.
+    Returns the file extensions for a given language.
 
     Args:
         language: Language name ("python", "typescript", etc.)
 
     Returns:
-        str: File extension with a dot (".py", ".ts", etc.)
+        list[str]: File extensions with dots, primary extension first
     """
     extension_map = {
-        "python": ".py",
-        "typescript": ".ts",
-        "javascript": ".js",
-        "java": ".java",
-        "csharp": ".cs",
-        "cpp": ".cpp",
-        "c": ".c",
-        "go": ".go",
-        "rust": ".rs",
-        "swift": ".swift",
-        "kotlin": ".kt",
-        "scala": ".scala",
-        "php": ".php",
-        "ruby": ".rb",
-        "perl": ".pl",
-        "shell": ".sh",
-        "powershell": ".ps1",
-        "html": ".html",
-        "css": ".css",
-        "scss": ".scss",
-        "sass": ".sass",
-        "xml": ".xml",
-        "json": ".json",
-        "yaml": ".yaml",
-        "toml": ".toml",
-        "markdown": ".md"
+        "python": [".py"],
+        "typescript": [".ts", ".tsx"],
+        "javascript": [".js", ".jsx", ".mjs", ".cjs"],
+        "java": [".java"],
+        "csharp": [".cs"],
+        "cpp": [".cpp", ".hpp", ".cc", ".hh", ".cxx", ".hxx"],
+        "c": [".c", ".h"],
+        "go": [".go"],
+        "rust": [".rs"],
+        "swift": [".swift"],
+        "kotlin": [".kt", ".kts"],
+        "scala": [".scala"],
+        "php": [".php"],
+        "ruby": [".rb"],
+        "perl": [".pl"],
+        "shell": [".sh"],
+        "powershell": [".ps1"],
+        "html": [".html"],
+        "css": [".css"],
+        "scss": [".scss"],
+        "sass": [".sass"],
+        "xml": [".xml"],
+        "json": [".json"],
+        "yaml": [".yaml", ".yml"],
+        "toml": [".toml"],
+        "markdown": [".md"],
     }
 
-    return extension_map.get(language, ".txt")
+    return extension_map.get(language, [".txt"])
+
+
+def _get_language_extension(language: str) -> str:
+    """
+    Returns the primary file extension for a given language.
+
+    Args:
+        language: Language name ("python", "typescript", etc.)
+
+    Returns:
+        str: Primary file extension with a dot (".py", ".ts", etc.)
+    """
+    return _get_language_extensions(language)[0]
 
 
 def assert_golden_match(
@@ -342,13 +355,14 @@ def load_sample_code(sample_name: str, language: Optional[str] = None) -> str:
 def _get_sample_file_path(language: str, sample_name: str) -> Path:
     """
     Forms path to source code file for given language and name.
+    Searches through all possible extensions for the language.
 
     Args:
         language: Language name ("python", "typescript", etc.)
         sample_name: File name without extension
 
     Returns:
-        Path to source code file
+        Path to source code file (existing file or primary extension path)
     """
     # Find project root (where pyproject.toml exists)
     current = Path(__file__)
@@ -360,11 +374,16 @@ def _get_sample_file_path(language: str, sample_name: str) -> Path:
         # Fallback: from current file upward
         current = Path(__file__).parent.parent.parent
 
-    # Get language extension
-    extension = _get_language_extension(language)
-
     sample_dir = current / "tests" / "adapters" / language / "goldens" / "do"
-    return sample_dir / f"{sample_name}{extension}"
+
+    # Try all possible extensions for the language
+    for ext in _get_language_extensions(language):
+        candidate = sample_dir / f"{sample_name}{ext}"
+        if candidate.exists():
+            return candidate
+
+    # Return path with primary extension (for error messages)
+    return sample_dir / f"{sample_name}{_get_language_extension(language)}"
 
 
 def list_sample_files(language: Optional[str] = None) -> list[Path]:
@@ -383,8 +402,8 @@ def list_sample_files(language: Optional[str] = None) -> list[Path]:
         # Specific language
         sample_dir = _get_sample_file_path(language, "dummy").parent
         if sample_dir.exists():
-            extension = _get_language_extension(language)
-            result.extend(sample_dir.glob(f"*{extension}"))
+            for ext in _get_language_extensions(language):
+                result.extend(sample_dir.glob(f"*{ext}"))
     else:
         # All languages
         adapters_dir = Path(__file__).parent
@@ -393,7 +412,7 @@ def list_sample_files(language: Optional[str] = None) -> list[Path]:
                 lang_name = lang_dir.name
                 sample_dir = lang_dir / "goldens" / "do"
                 if sample_dir.exists():
-                    extension = _get_language_extension(lang_name)
-                    result.extend(sample_dir.glob(f"*{extension}"))
+                    for ext in _get_language_extensions(lang_name):
+                        result.extend(sample_dir.glob(f"*{ext}"))
 
     return result
