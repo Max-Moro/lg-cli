@@ -15,6 +15,17 @@ from ...optimizations.comments import CommentAnalyzer, TruncationStyle, extract_
 class PythonCommentAnalyzer(CommentAnalyzer):
     """Python-specific comment analyzer with docstring support."""
 
+    def get_comment_query(self) -> str:
+        """Get Python comment query."""
+        return "(comment) @comment"
+
+    def get_docstring_query(self) -> str:
+        """Get Python docstring query."""
+        return """
+        (expression_statement
+          (string) @docstring)
+        """
+
     def is_documentation_comment(self, node: Node, text: str, capture_name: str = "") -> bool:
         """
         Determine if a comment is a documentation comment in Python.

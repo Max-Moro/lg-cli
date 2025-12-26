@@ -76,6 +76,14 @@ class JavaScriptImportClassifier(ImportClassifier):
 class JavaScriptImportAnalyzer(TreeSitterImportAnalyzer):
     """JavaScript-specific Tree-sitter import analyzer."""
 
+    def get_import_query(self) -> str:
+        """Get JavaScript import query."""
+        return """
+    (import_statement) @import
+    (export_statement
+      source: (string)) @import
+    """
+
     def _parse_import_from_ast(self, doc: TreeSitterDocument, node: Node, import_type: str) -> Optional[ImportInfo]:
         """Parse JavaScript import or re-export using Tree-sitter AST structure."""
         start_byte, end_byte = doc.get_node_range(node)

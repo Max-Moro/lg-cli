@@ -5,14 +5,14 @@ Rust adapter core: configuration, document and adapter classes.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Dict, Any, List, Optional, ClassVar
+from typing import Any, List, Optional, ClassVar, Dict
 
 from tree_sitter import Language
 
 from ...code_base import CodeAdapter
 from ...code_model import CodeCfg
-from ...optimizations import ImportClassifier, TreeSitterImportAnalyzer
 from ...comment_style import CommentStyle, RUST_STYLE_COMMENTS
+from ...optimizations import ImportClassifier, TreeSitterImportAnalyzer
 from ...tree_sitter_support import TreeSitterDocument
 
 
@@ -40,10 +40,6 @@ class RustDocument(TreeSitterDocument):
         import tree_sitter_rust as tsrust
         return Language(tsrust.language())
 
-    def get_query_definitions(self) -> Dict[str, str]:
-        from .queries import QUERIES
-        return QUERIES
-
 
 class RustAdapter(CodeAdapter[RustCfg]):
 
@@ -67,7 +63,7 @@ class RustAdapter(CodeAdapter[RustCfg]):
 
     def create_comment_analyzer(self, context):
         """Create Rust-specific comment analyzer."""
-        from .comment_analysis import RustCommentAnalyzer
+        from .comments import RustCommentAnalyzer
         return RustCommentAnalyzer(context.doc, self.COMMENT_STYLE)
 
     def get_code_descriptor(self):
@@ -79,3 +75,4 @@ class RustAdapter(CodeAdapter[RustCfg]):
         """Create Rust literal descriptor."""
         from .literals import create_rust_descriptor
         return create_rust_descriptor()
+

@@ -104,6 +104,13 @@ class RustImportClassifier(ImportClassifier):
 class RustImportAnalyzer(TreeSitterImportAnalyzer):
     """Rust-specific Tree-sitter import analyzer."""
 
+    def get_import_query(self) -> str:
+        """Get Rust import query."""
+        return """
+    (use_declaration) @import
+    (extern_crate_declaration) @import
+    """
+
     def _parse_import_from_ast(self, doc: TreeSitterDocument, node: Node, import_type: str) -> Optional[ImportInfo]:
         """Parse Rust use declaration using Tree-sitter AST structure."""
         start_byte, end_byte = doc.get_node_range(node)

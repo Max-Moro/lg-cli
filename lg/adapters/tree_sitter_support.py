@@ -6,9 +6,9 @@ Provides grammar loading, query management, and utilities for AST parsing.
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from typing import Dict, List, Optional, Tuple
+from typing import List, Optional, Tuple
 
-from tree_sitter import Tree, Node, Parser, Query, Language, QueryCursor
+from tree_sitter import Tree, Node, Parser, Language, QueryCursor, Query
 
 
 class TreeSitterDocument(ABC):
@@ -21,7 +21,6 @@ class TreeSitterDocument(ABC):
         self.ext = ext
         self.tree: Optional[Tree] = None
         self._text_bytes = text.encode('utf-8')
-        self._query_cache: Dict[str, Query] = {}
         self._parse()
 
     @abstractmethod
@@ -31,16 +30,6 @@ class TreeSitterDocument(ABC):
         
         Returns:
             Language instance
-        """
-        pass
-
-    @abstractmethod
-    def get_query_definitions(self) -> Dict[str, str]:
-        """
-        Get named query definitions for this language.
-        
-        Returns:
-            Dict mapping query names to query strings
         """
         pass
 
@@ -64,61 +53,6 @@ class TreeSitterDocument(ABC):
         if not self.tree:
             raise RuntimeError("Document not parsed")
         return self.tree.root_node
-
-    def has_query(self, query_name: str) -> bool:
-        """
-        Check if a named query is supported by this language.
-
-        Args:
-            query_name: Name of the query to check
-
-        Returns:
-            True if query is supported, False otherwise
-        """
-        query_definitions = self.get_query_definitions()
-        return query_name in query_definitions
-
-    def query(self, query_name: str) -> List[Tuple[Node, str]]:
-        """
-        Execute a named query on the document.
-        Raises exceptions for unsupported queries or execution failures.
-
-        Args:
-            query_name: Name of the query to execute
-
-        Returns:
-            List of (node, capture_name) tuples
-
-        Raises:
-            ValueError: If query is not defined for this language
-            RuntimeError: If document is not parsed or query execution fails
-        """
-        root_node = self.root_node
-
-        # Check if query exists for this language
-        query_definitions = self.get_query_definitions()
-        if query_name not in query_definitions:
-            raise ValueError(f"Unknown query: {query_name}")
-
-        # Get or create cached query
-        if query_name not in self._query_cache:
-            query_string = query_definitions[query_name]
-            self._query_cache[query_name] = Query(self.get_language(), query_string)
-
-        query = self._query_cache[query_name]
-
-        # Execute query and collect results
-        results = []
-        cursor = QueryCursor(query)
-
-        # Use matches to get pattern matches with capture info
-        matches = cursor.matches(root_node)
-        for pattern_index, captures in matches:
-            for capture_name, nodes in captures.items():
-                for node in nodes:
-                    results.append((node, capture_name))
-
-        return results
 
     def query_nodes(self, query_string: str, capture_name: str) -> List[Node]:
         """
@@ -148,22 +82,6 @@ class TreeSitterDocument(ABC):
                     nodes.append(node)
 
         return nodes
-
-    def query_opt(self, query_name: str) -> List[Tuple[Node, str]]:
-        """
-        Safely execute a named query on the document.
-        Returns empty list if query is not supported by this language.
-
-        Args:
-            query_name: Name of the query to execute
-            
-        Returns:
-            List of (node, capture_name) tuples, or empty list if query not supported
-        """
-        if not self.has_query(query_name):
-            return []
-
-        return self.query(query_name)
 
     def find_nodes_by_type(self, node_type: str, start_node: Optional[Node] = None) -> List[Node]:
         """

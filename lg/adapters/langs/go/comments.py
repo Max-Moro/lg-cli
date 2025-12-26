@@ -26,6 +26,10 @@ class GoCommentAnalyzer(GroupingCommentAnalyzer):
     3. There are no blank lines between the comment and the declaration
     """
 
+    def get_comment_query(self) -> str:
+        """Get Go comment query."""
+        return "(comment) @comment"
+
     def __init__(self, context: ProcessingContext, style: CommentStyle):
         """
         Initialize the Go comment analyzer.
@@ -68,8 +72,8 @@ class GoCommentAnalyzer(GroupingCommentAnalyzer):
         Groups consecutive comments and determines which groups are doc comments.
         """
         # Get all comment nodes
-        comments = self.doc.query("comments")
-        comment_nodes = [node for node, _ in comments]
+        comment_query = self.get_comment_query()
+        comment_nodes = self.doc.query_nodes(comment_query, "comment")
 
         # Group consecutive comments
         self._comment_groups = self._group_consecutive_comments(comment_nodes)

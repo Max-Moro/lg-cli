@@ -45,6 +45,30 @@ class CommentAnalyzer:
         self.style = style
         self._analyzed = False
 
+    def get_comment_query(self) -> str:
+        """
+        Get Tree-sitter query for finding comments.
+
+        Default returns simple "(comment) @comment".
+        Override in language-specific analyzers for different node types.
+
+        Returns:
+            Tree-sitter query string with @comment captures
+        """
+        return "(comment) @comment"
+
+    def get_docstring_query(self) -> str | None:
+        """
+        Get Tree-sitter query for finding docstrings (separate from comments).
+
+        Returns None if language doesn't have separate docstring syntax.
+        Override in language analyzers that have docstrings (Python).
+
+        Returns:
+            Tree-sitter query string with @docstring captures, or None
+        """
+        return None
+
     def is_documentation_comment(self, node: Node, text: str, capture_name: str = "") -> bool:
         """
         Determine if a comment is a documentation comment.

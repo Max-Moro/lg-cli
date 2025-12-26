@@ -38,6 +38,13 @@ class RustCommentAnalyzer(GroupingCommentAnalyzer):
     Consecutive /// or //! comments that form a single documentation block are grouped together.
     """
 
+    def get_comment_query(self) -> str:
+        """Get Rust comment query including doc comments."""
+        return """
+        (line_comment) @comment
+        (block_comment) @comment
+        """
+
     def extract_first_sentence(self, text: str) -> str:
         """
         Extract first sentence from Rust comment text.
@@ -113,16 +120,8 @@ class RustCommentAnalyzer(GroupingCommentAnalyzer):
         Groups consecutive line-based doc comments (/// and //!).
         """
         # Get all comment nodes
-        comments = self.doc.query("comments")
-
-        # Deduplicate nodes by position (Rust query returns duplicates for doc comments)
-        seen_positions: Set[tuple[int, int]] = set()
-        comment_nodes = []
-        for node, _ in comments:
-            pos = (node.start_byte, node.end_byte)
-            if pos not in seen_positions:
-                seen_positions.add(pos)
-                comment_nodes.append(node)
+        comment_query = self.get_comment_query()
+        comment_nodes = self.doc.query_nodes(comment_query, "comment")
 
         # Group consecutive doc comments
         self._comment_groups = self._group_consecutive_doc_comments(comment_nodes)

@@ -5,7 +5,7 @@ Go adapter core: configuration, document and adapter classes.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Dict, Any, List, Optional, ClassVar
+from typing import Any, List, Optional, ClassVar
 
 from tree_sitter import Language
 
@@ -40,10 +40,6 @@ class GoDocument(TreeSitterDocument):
         import tree_sitter_go as tsgo
         return Language(tsgo.language())
 
-    def get_query_definitions(self) -> Dict[str, str]:
-        from .queries import QUERIES
-        return QUERIES
-
 
 class GoAdapter(CodeAdapter[GoCfg]):
 
@@ -67,7 +63,7 @@ class GoAdapter(CodeAdapter[GoCfg]):
 
     def create_comment_analyzer(self, context):
         """Create Go-specific comment analyzer."""
-        from .comment_analysis import GoCommentAnalyzer
+        from .comments import GoCommentAnalyzer
         return GoCommentAnalyzer(context, self.COMMENT_STYLE)
 
     def get_code_descriptor(self):
@@ -79,3 +75,4 @@ class GoAdapter(CodeAdapter[GoCfg]):
         """Create Go literal descriptor."""
         from .literals import create_go_descriptor
         return create_go_descriptor()
+

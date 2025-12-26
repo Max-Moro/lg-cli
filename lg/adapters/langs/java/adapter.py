@@ -5,15 +5,15 @@ Java adapter core: configuration, document and adapter classes.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Dict, Any, List, Optional, ClassVar
+from typing import Any, List, Optional, ClassVar, Dict
 
 from tree_sitter import Language
 
 from ...code_base import CodeAdapter
 from ...code_model import CodeCfg
+from ...comment_style import CommentStyle, C_STYLE_COMMENTS
 from ...optimizations import ImportClassifier, TreeSitterImportAnalyzer, LanguageLiteralDescriptor
 from ...shared import LanguageCodeDescriptor
-from ...comment_style import CommentStyle, C_STYLE_COMMENTS
 from ...tree_sitter_support import TreeSitterDocument
 
 
@@ -41,10 +41,6 @@ class JavaDocument(TreeSitterDocument):
         import tree_sitter_java as tsjava
         return Language(tsjava.language())
 
-    def get_query_definitions(self) -> Dict[str, str]:
-        from .queries import QUERIES
-        return QUERIES
-
 
 class JavaAdapter(CodeAdapter[JavaCfg]):
 
@@ -65,6 +61,11 @@ class JavaAdapter(CodeAdapter[JavaCfg]):
         """Create Java-specific import analyzer."""
         from .imports import JavaImportAnalyzer
         return JavaImportAnalyzer(classifier)
+
+    def create_comment_analyzer(self, context):
+        """Create Java-specific comment analyzer."""
+        from .comments import JavaCommentAnalyzer
+        return JavaCommentAnalyzer(context.doc, self.COMMENT_STYLE)
 
     def get_code_descriptor(self) -> LanguageCodeDescriptor:
         """Return Java code descriptor."""

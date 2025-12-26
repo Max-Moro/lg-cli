@@ -74,6 +74,10 @@ class JavaImportClassifier(ImportClassifier):
 class JavaImportAnalyzer(TreeSitterImportAnalyzer):
     """Java-specific Tree-sitter import analyzer."""
 
+    def get_import_query(self) -> str:
+        """Get Java import query."""
+        return "(import_declaration) @import"
+
     def _parse_import_from_ast(self, doc: TreeSitterDocument, node: Node, import_type: str) -> Optional[ImportInfo]:
         """Parse Java import using Tree-sitter AST structure."""
         start_byte, end_byte = doc.get_node_range(node)

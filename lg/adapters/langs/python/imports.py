@@ -106,18 +106,26 @@ class PythonImportClassifier(ImportClassifier):
 
 class PythonImportAnalyzer(TreeSitterImportAnalyzer):
     """Python-specific Tree-sitter import analyzer."""
-    
+
+    def get_import_query(self) -> str:
+        """Get Python import query."""
+        return """
+    (import_statement) @import
+    (import_from_statement) @import
+    """
+
     def _parse_import_from_ast(self, doc: TreeSitterDocument, node: Node, import_type: str) -> Optional[ImportInfo]:
         """Parse Python import using Tree-sitter AST structure."""
         start_byte, end_byte = doc.get_node_range(node)
         start_line, end_line = doc.get_line_range(node)
         line_count = end_line - start_line + 1
-        
-        if import_type == "import":
+
+        # Determine import type from node type
+        if node.type == "import_statement":
             return self._parse_import_statement(doc, node, start_byte, end_byte, line_count)
-        elif import_type == "import_from":
+        elif node.type == "import_from_statement":
             return self._parse_import_from_statement(doc, node, start_byte, end_byte, line_count)
-        
+
         return None
     
     def _parse_import_statement(self, doc: TreeSitterDocument, node: Node, 

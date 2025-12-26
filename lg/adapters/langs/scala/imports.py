@@ -97,6 +97,10 @@ class ScalaImportClassifier(ImportClassifier):
 class ScalaImportAnalyzer(TreeSitterImportAnalyzer):
     """Scala-specific Tree-sitter import analyzer."""
 
+    def get_import_query(self) -> str:
+        """Get Scala import query."""
+        return "(import_declaration) @import"
+
     def _parse_import_from_ast(self, doc: TreeSitterDocument, node: Node, import_type: str) -> Optional[ImportInfo]:
         """Parse Scala import using Tree-sitter AST structure."""
         start_byte, end_byte = doc.get_node_range(node)

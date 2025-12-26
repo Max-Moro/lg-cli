@@ -41,7 +41,7 @@ src:
               - condition: "TAGSET:adapters-optimizations:literals"
                 allow: ["/literals/"]
               - condition: "TAGSET:adapters-optimizations:imports"
-                allow: ["/imports.py"]
+                allow: ["/imports/"]
               - condition: "TAGSET:adapters-optimizations:public-api"
                 allow: ["/public_api/"]
           langs:
@@ -77,9 +77,9 @@ src:
                   - condition: "TAGSET:adapters-optimizations:function-bodies OR TAGSET:adapters-optimizations:public-api"
                     allow: ["/code_profiles.py"]
                   - condition: "TAGSET:adapters-optimizations:comments"
-                    allow: ["/comment_analysis.py", "/queries.py"]
+                    allow: ["/comments.py"]
                   - condition: "TAGSET:adapters-optimizations:imports"
-                    allow: ["/imports.py", "/queries.py"]
+                    allow: ["/imports.py"]
                   - condition: "TAGSET:adapters-optimizations:literals"
                     allow: ["/literals*.py"]
                   - condition: "TAGSET:adapters-optimizations:custom"
@@ -93,9 +93,9 @@ src:
                   - condition: "TAGSET:adapters-optimizations:function-bodies OR TAGSET:adapters-optimizations:public-api"
                     allow: ["/code_profiles.py"]
                   - condition: "TAGSET:adapters-optimizations:comments"
-                    allow: ["/comment_analysis.py", "/queries.py"]
+                    allow: ["/comments.py"]
                   - condition: "TAGSET:adapters-optimizations:imports"
-                    allow: ["/imports.py", "/queries.py"]
+                    allow: ["/imports.py"]
                   - condition: "TAGSET:adapters-optimizations:literals"
                     allow: ["/literals*.py"]
                   - condition: "TAGSET:adapters-optimizations:custom"
@@ -109,9 +109,9 @@ src:
                   - condition: "TAGSET:adapters-optimizations:function-bodies OR TAGSET:adapters-optimizations:public-api"
                     allow: ["/code_profiles.py"]
                   - condition: "TAGSET:adapters-optimizations:comments"
-                    allow: ["/comment_analysis.py", "/queries.py"]
+                    allow: ["/comments.py"]
                   - condition: "TAGSET:adapters-optimizations:imports"
-                    allow: ["/imports.py", "/queries.py"]
+                    allow: ["/imports.py"]
                   - condition: "TAGSET:adapters-optimizations:literals"
                     allow: ["/literals*.py"]
               javascript:
@@ -123,9 +123,9 @@ src:
                   - condition: "TAGSET:adapters-optimizations:function-bodies OR TAGSET:adapters-optimizations:public-api"
                     allow: ["/code_profiles.py"]
                   - condition: "TAGSET:adapters-optimizations:comments"
-                    allow: ["/comment_analysis.py", "/queries.py"]
+                    allow: ["/comments.py"]
                   - condition: "TAGSET:adapters-optimizations:imports"
-                    allow: ["/imports.py", "/queries.py"]
+                    allow: ["/imports.py"]
                   - condition: "TAGSET:adapters-optimizations:literals"
                     allow: ["/literals*.py"]
               java:
@@ -137,9 +137,9 @@ src:
                   - condition: "TAGSET:adapters-optimizations:function-bodies OR TAGSET:adapters-optimizations:public-api"
                     allow: ["/code_profiles.py"]
                   - condition: "TAGSET:adapters-optimizations:comments"
-                    allow: ["/comment_analysis.py", "/queries.py"]
+                    allow: ["/comments.py"]
                   - condition: "TAGSET:adapters-optimizations:imports"
-                    allow: ["/imports.py", "/queries.py"]
+                    allow: ["/imports.py"]
                   - condition: "TAGSET:adapters-optimizations:literals"
                     allow: ["/literals*.py"]
               c:
@@ -151,9 +151,9 @@ src:
                   - condition: "TAGSET:adapters-optimizations:function-bodies OR TAGSET:adapters-optimizations:public-api"
                     allow: ["/code_profiles.py"]
                   - condition: "TAGSET:adapters-optimizations:comments"
-                    allow: ["/comment_analysis.py", "/queries.py"]
+                    allow: ["/comments.py"]
                   - condition: "TAGSET:adapters-optimizations:imports"
-                    allow: ["/imports.py", "/queries.py"]
+                    allow: ["/imports.py"]
                   - condition: "TAGSET:adapters-optimizations:literals"
                     allow: ["/literals*.py"]
               cpp:
@@ -165,9 +165,9 @@ src:
                   - condition: "TAGSET:adapters-optimizations:function-bodies OR TAGSET:adapters-optimizations:public-api"
                     allow: ["/code_profiles.py"]
                   - condition: "TAGSET:adapters-optimizations:comments"
-                    allow: ["/comment_analysis.py", "/queries.py"]
+                    allow: ["/comments.py"]
                   - condition: "TAGSET:adapters-optimizations:imports"
-                    allow: ["/imports.py", "/queries.py"]
+                    allow: ["/imports.py"]
                   - condition: "TAGSET:adapters-optimizations:literals"
                     allow: ["/literals*.py"]
               go:
@@ -179,9 +179,9 @@ src:
                   - condition: "TAGSET:adapters-optimizations:function-bodies OR TAGSET:adapters-optimizations:public-api"
                     allow: ["/code_profiles.py"]
                   - condition: "TAGSET:adapters-optimizations:comments"
-                    allow: ["/comment_analysis.py", "/queries.py"]
+                    allow: ["/comments.py"]
                   - condition: "TAGSET:adapters-optimizations:imports"
-                    allow: ["/imports.py", "/queries.py"]
+                    allow: ["/imports.py"]
                   - condition: "TAGSET:adapters-optimizations:literals"
                     allow: ["/literals*.py"]
               rust:
@@ -193,9 +193,9 @@ src:
                   - condition: "TAGSET:adapters-optimizations:function-bodies OR TAGSET:adapters-optimizations:public-api"
                     allow: ["/code_profiles.py"]
                   - condition: "TAGSET:adapters-optimizations:comments"
-                    allow: ["/comment_analysis.py", "/queries.py"]
+                    allow: ["/comments.py"]
                   - condition: "TAGSET:adapters-optimizations:imports"
-                    allow: ["/imports.py", "/queries.py"]
+                    allow: ["/imports.py"]
                   - condition: "TAGSET:adapters-optimizations:literals"
                     allow: ["/literals*.py"]
               scala:
@@ -207,9 +207,9 @@ src:
                   - condition: "TAGSET:adapters-optimizations:function-bodies OR TAGSET:adapters-optimizations:public-api"
                     allow: ["/code_profiles.py"]
                   - condition: "TAGSET:adapters-optimizations:comments"
-                    allow: ["/comment_analysis.py", "/queries.py"]
+                    allow: ["/comments.py"]
                   - condition: "TAGSET:adapters-optimizations:imports"
-                    allow: ["/imports.py", "/queries.py"]
+                    allow: ["/imports.py"]
                   - condition: "TAGSET:adapters-optimizations:literals"
                     allow: ["/literals*.py"]
 

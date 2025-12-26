@@ -75,6 +75,8 @@ def _deep_barrel_file_analysis(doc: TreeSitterDocument) -> bool:
         True if document is a barrel file
     """
     try:
+        # TODO: Update this code to use query_nodes() with inline queries
+        # instead of the deprecated query() method with named queries
         # Find all export statements
         exports = doc.query("exports")
         export_count = len(exports)

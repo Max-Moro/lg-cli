@@ -5,14 +5,14 @@ Scala adapter core: configuration, document and adapter classes.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Dict, Any, List, Optional, ClassVar
+from typing import Any, Dict, List, Optional, ClassVar
 
 from tree_sitter import Language
 
 from ...code_base import CodeAdapter
 from ...code_model import CodeCfg
-from ...optimizations import ImportClassifier, TreeSitterImportAnalyzer
 from ...comment_style import CommentStyle, C_STYLE_COMMENTS
+from ...optimizations import ImportClassifier, TreeSitterImportAnalyzer
 from ...optimizations.literals import LanguageLiteralDescriptor
 from ...shared import LanguageCodeDescriptor
 from ...tree_sitter_support import TreeSitterDocument
@@ -42,10 +42,6 @@ class ScalaDocument(TreeSitterDocument):
         import tree_sitter_scala as tsscala
         return Language(tsscala.language())
 
-    def get_query_definitions(self) -> Dict[str, str]:
-        from .queries import QUERIES
-        return QUERIES
-
 
 class ScalaAdapter(CodeAdapter[ScalaCfg]):
 
@@ -71,6 +67,11 @@ class ScalaAdapter(CodeAdapter[ScalaCfg]):
         """Return Scala code descriptor."""
         from .code_profiles import SCALA_CODE_DESCRIPTOR
         return SCALA_CODE_DESCRIPTOR
+
+    def create_comment_analyzer(self, context):
+        """Create Scala-specific comment analyzer."""
+        from .comments import ScalaCommentAnalyzer
+        return ScalaCommentAnalyzer(context.doc, self.COMMENT_STYLE)
 
     def create_literal_descriptor(self) -> LanguageLiteralDescriptor:
         """Create Scala literal descriptor."""

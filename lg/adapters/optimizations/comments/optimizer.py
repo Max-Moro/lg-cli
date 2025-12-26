@@ -58,8 +58,16 @@ class CommentOptimizer:
         # Track processed nodes to avoid double-processing in group handling
         processed_positions = set()
 
-        # Find and process comments
-        comments = context.doc.query("comments")
+        # Get comments using analyzer's query
+        comment_query = analyzer.get_comment_query()
+        comment_nodes = context.doc.query_nodes(comment_query, "comment")
+        comments = [(node, "comment") for node in comment_nodes]
+
+        # Find docstrings if language supports them
+        docstring_query = analyzer.get_docstring_query()
+        if docstring_query:
+            docstring_nodes = context.doc.query_nodes(docstring_query, "docstring")
+            comments.extend((node, "docstring") for node in docstring_nodes)
 
         for node, capture_name in comments:
             # Skip if already processed (as part of a group)

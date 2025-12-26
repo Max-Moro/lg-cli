@@ -1,99 +1,15 @@
 """
-Tree-sitter based import optimization system.
-Clean architecture with proper AST-based analysis.
+Import optimization.
+Processes import statements according to policy.
 """
 
 from __future__ import annotations
 
-from abc import ABC, abstractmethod
-from dataclasses import dataclass
-from pathlib import Path
-from typing import cast, Dict, List, Optional
+from typing import cast, Dict, List
 
-from ..code_model import ImportConfig
-from ..context import ProcessingContext
-from ..tree_sitter_support import TreeSitterDocument, Node
-
-
-@dataclass
-class ImportInfo:
-    """Information about a single import statement."""
-    node: Node                     # Tree-sitter node for the import
-    import_type: str               # "import", "import_from", "export", etc.
-    module_name: str               # Module being imported from
-    imported_items: List[str]      # List of imported names/aliases
-    is_external: bool              # External vs local classification
-    is_wildcard: bool = False      # True for "import *" or "export *"
-    aliases: Dict[str, str] = None # name -> alias mapping
-    start_byte: int = 0
-    end_byte: int = 0
-    line_count: int = 1
-
-    def __post_init__(self):
-        if self.aliases is None:
-            self.aliases = {}
-
-
-class ImportClassifier(ABC):
-    """Abstract base for import classification (external vs local)."""
-
-    @abstractmethod
-    def is_external(self, module_name: str, project_root: Optional[Path] = None) -> bool:
-        """Determine if a module is external (third-party) or local."""
-        pass
-
-
-class TreeSitterImportAnalyzer(ABC):
-    """
-    Base Tree-sitter based import analyzer.
-    Uses AST structure instead of regex parsing.
-    """
-
-    def __init__(self, classifier: ImportClassifier):
-        self.classifier = classifier
-
-    def analyze_imports(self, doc: TreeSitterDocument) -> List[ImportInfo]:
-        """
-        Analyze all imports in a document using Tree-sitter queries.
-        
-        Returns:
-            List of ImportInfo objects with detailed analysis
-        """
-        results = []
-        
-        # Get imports through Tree-sitter queries
-        import_nodes = doc.query("imports")
-        
-        for node, capture_name in import_nodes:
-            import_info = self._parse_import_from_ast(doc, node, capture_name)
-            if import_info:
-                results.append(import_info)
-        
-        return results
-
-    @abstractmethod
-    def _parse_import_from_ast(self, doc: TreeSitterDocument, node: Node, import_type: str) -> Optional[ImportInfo]:
-        """
-        Parse import node using Tree-sitter AST structure.
-        Language-specific implementation.
-        """
-        pass
-
-    @staticmethod
-    def group_imports(imports: List[ImportInfo]) -> Dict[str, List[ImportInfo]]:
-        """Group imports by type (external vs local)."""
-        groups = {
-            "external": [],
-            "local": []
-        }
-
-        for imp in imports:
-            if imp.is_external:
-                groups["external"].append(imp)
-            else:
-                groups["local"].append(imp)
-
-        return groups
+from .analyzer import ImportInfo
+from ...code_model import ImportConfig
+from ...context import ProcessingContext
 
 
 class ImportOptimizer:
@@ -101,12 +17,12 @@ class ImportOptimizer:
     Tree-sitter based import processor.
     Handles all import optimization policies.
     """
-    
+
     def __init__(self, adapter):
         """Initialize with parent adapter."""
-        from ..code_base import CodeAdapter
+        from ...code_base import CodeAdapter
         self.adapter = cast(CodeAdapter, adapter)
-    
+
     def apply(self, context: ProcessingContext, cfg: ImportConfig) -> None:
         """
         Apply import processing based on policy.
@@ -146,12 +62,12 @@ class ImportOptimizer:
             remaining_imports = analyzer.analyze_imports(context.doc)
             if remaining_imports:
                 self._process_summarize_long(remaining_imports, context, cfg)
-    
+
     def _process_strip(self, imports: List[ImportInfo], context: ProcessingContext) -> None:
         """Remove specified imports."""
         for imp in imports:
             self._remove_import(context, imp)
-    
+
     def _process_summarize_long(self, imports: List[ImportInfo], context: ProcessingContext, cfg: ImportConfig) -> None:
         """
         Summarize imports with too many items.
@@ -179,7 +95,7 @@ class ImportOptimizer:
                 # Summarize entire group
                 for imp in group:
                     self._remove_import(context, imp)
-    
+
     def _group_consecutive_imports_by_base_module(self, imports: List[ImportInfo], context: ProcessingContext) -> Dict[str, List[ImportInfo]]:
         """
         Group consecutive imports by base module.
@@ -255,11 +171,6 @@ class ImportOptimizer:
 
         # Use new simple API
         context.add_placeholder_for_node("import", import_info.node, count=count)
-    
-# Export the classes that will be used by language adapters
-__all__ = [
-    "ImportInfo",
-    "ImportClassifier", 
-    "TreeSitterImportAnalyzer",
-    "ImportOptimizer"
-]
+
+
+__all__ = ["ImportOptimizer"]

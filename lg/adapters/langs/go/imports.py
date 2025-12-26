@@ -82,6 +82,10 @@ class GoImportClassifier(ImportClassifier):
 class GoImportAnalyzer(TreeSitterImportAnalyzer):
     """Go-specific Tree-sitter import analyzer."""
 
+    def get_import_query(self) -> str:
+        """Get Go import query."""
+        return "(import_spec) @import"
+
     def _parse_import_from_ast(self, doc: TreeSitterDocument, node: Node, import_type: str) -> Optional[ImportInfo]:
         """Parse Go import using Tree-sitter AST structure."""
         # With the fixed query, we always receive import_spec nodes

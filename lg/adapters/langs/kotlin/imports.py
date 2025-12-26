@@ -74,7 +74,11 @@ class KotlinImportClassifier(ImportClassifier):
 
 class KotlinImportAnalyzer(TreeSitterImportAnalyzer):
     """Kotlin-specific Tree-sitter import analyzer."""
-    
+
+    def get_import_query(self) -> str:
+        """Get Kotlin import query."""
+        return "(import) @import"
+
     def _parse_import_from_ast(self, doc: TreeSitterDocument, node: Node, import_type: str) -> Optional[ImportInfo]:
         """Parse Kotlin import using Tree-sitter AST structure."""
         start_byte, end_byte = doc.get_node_range(node)

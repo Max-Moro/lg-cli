@@ -5,14 +5,14 @@ Kotlin adapter core: configuration, document and adapter classes.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Dict, Any, List, Optional, ClassVar
+from typing import Any, List, Optional, ClassVar, Dict
 
 from tree_sitter import Language
 
 from ...code_base import CodeAdapter
 from ...code_model import CodeCfg
-from ...optimizations import ImportClassifier, TreeSitterImportAnalyzer
 from ...comment_style import CommentStyle, C_STYLE_COMMENTS
+from ...optimizations import ImportClassifier, TreeSitterImportAnalyzer
 from ...optimizations.literals import LanguageLiteralDescriptor
 from ...shared import LanguageCodeDescriptor
 from ...tree_sitter_support import TreeSitterDocument
@@ -41,10 +41,6 @@ class KotlinDocument(TreeSitterDocument):
         import tree_sitter_kotlin as tskotlin
         return Language(tskotlin.language())
 
-    def get_query_definitions(self) -> Dict[str, str]:
-        from .queries import QUERIES
-        return QUERIES
-
 
 class KotlinAdapter(CodeAdapter[KotlinCfg]):
 
@@ -65,6 +61,11 @@ class KotlinAdapter(CodeAdapter[KotlinCfg]):
         """Create a Kotlin-specific import analyzer."""
         from .imports import KotlinImportAnalyzer
         return KotlinImportAnalyzer(classifier)
+
+    def create_comment_analyzer(self, context):
+        """Create Kotlin-specific comment analyzer."""
+        from .comments import KotlinCommentAnalyzer
+        return KotlinCommentAnalyzer(context.doc, self.COMMENT_STYLE)
 
     def get_code_descriptor(self) -> LanguageCodeDescriptor:
         """Return Kotlin code descriptor."""

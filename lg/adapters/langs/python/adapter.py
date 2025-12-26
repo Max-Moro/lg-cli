@@ -5,15 +5,15 @@ Python adapter core: configuration, document and adapter classes.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Dict, Any, List, Optional, ClassVar
+from typing import Any, List, Optional, ClassVar, Dict
 
 from tree_sitter import Language
 
 from ...code_base import CodeAdapter
 from ...code_model import CodeCfg
+from ...comment_style import CommentStyle, HASH_STYLE_COMMENTS
 from ...context import LightweightContext
 from ...optimizations import ImportClassifier, TreeSitterImportAnalyzer
-from ...comment_style import CommentStyle, HASH_STYLE_COMMENTS
 from ...optimizations.literals import LanguageLiteralDescriptor
 from ...shared import LanguageCodeDescriptor
 from ...tree_sitter_support import TreeSitterDocument
@@ -45,10 +45,6 @@ class PythonDocument(TreeSitterDocument):
         import tree_sitter_python as tspython
         return Language(tspython.language())
 
-    def get_query_definitions(self) -> Dict[str, str]:
-        from .queries import QUERIES
-        return QUERIES
-
 
 class PythonAdapter(CodeAdapter[PythonCfg]):
 
@@ -72,7 +68,7 @@ class PythonAdapter(CodeAdapter[PythonCfg]):
 
     def create_comment_analyzer(self, context):
         """Create Python-specific comment analyzer."""
-        from .comment_analysis import PythonCommentAnalyzer
+        from .comments import PythonCommentAnalyzer
         return PythonCommentAnalyzer(context.doc, self.COMMENT_STYLE)
 
     def get_code_descriptor(self) -> LanguageCodeDescriptor:
@@ -91,4 +87,5 @@ class PythonAdapter(CodeAdapter[PythonCfg]):
         """
         from .file_heuristics import should_skip_python_file
         return should_skip_python_file(lightweight_ctx, self.cfg.skip_trivial_inits)
+
 

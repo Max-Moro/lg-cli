@@ -5,15 +5,15 @@ TypeScript adapter core: configuration, document and adapter classes.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Dict, Any, List, Optional, ClassVar
+from typing import Any, List, Optional, ClassVar, Dict
 
 from tree_sitter import Language
 
 from ...code_base import CodeAdapter
 from ...code_model import CodeCfg
+from ...comment_style import CommentStyle, C_STYLE_COMMENTS
 from ...context import LightweightContext
 from ...optimizations import ImportClassifier, TreeSitterImportAnalyzer
-from ...comment_style import CommentStyle, C_STYLE_COMMENTS
 from ...optimizations.literals import LanguageLiteralDescriptor
 from ...shared import LanguageCodeDescriptor
 from ...tree_sitter_support import TreeSitterDocument
@@ -51,10 +51,6 @@ class TypeScriptDocument(TreeSitterDocument):
         else:
             # Default to TypeScript
             return Language(tsts.language_typescript())
-
-    def get_query_definitions(self) -> Dict[str, str]:
-        from .queries import QUERIES
-        return QUERIES
 
 
 class TypeScriptAdapter(CodeAdapter[TypeScriptCfg]):

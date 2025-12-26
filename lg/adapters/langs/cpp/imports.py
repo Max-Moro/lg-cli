@@ -81,6 +81,14 @@ class CppImportClassifier(ImportClassifier):
 class CppImportAnalyzer(TreeSitterImportAnalyzer):
     """C++-specific Tree-sitter import analyzer."""
 
+    def get_import_query(self) -> str:
+        """Get C++ import query."""
+        return """
+    (preproc_include) @import
+    (using_declaration) @import
+    (namespace_alias_definition) @import
+    """
+
     def _parse_import_from_ast(self, doc: TreeSitterDocument, node: Node, import_type: str) -> Optional[ImportInfo]:
         """Parse C++ include using Tree-sitter AST structure."""
         start_byte, end_byte = doc.get_node_range(node)
