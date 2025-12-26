@@ -40,3 +40,15 @@ def do_public_api():
 def do_complex():
     """Sample C++ code for testing complex combined optimization."""
     return load_sample_code("complex", language="cpp")
+
+
+@pytest.fixture
+def do_trivial():
+    """Header with only forward declarations."""
+    return load_sample_code("trivial_header")
+
+
+@pytest.fixture
+def do_non_trivial():
+    """Header with class definitions."""
+    return load_sample_code("non_trivial_header")

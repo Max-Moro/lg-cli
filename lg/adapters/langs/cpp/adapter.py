@@ -12,6 +12,7 @@ from tree_sitter import Language
 from ...code_base import CodeAdapter
 from ...code_model import CodeCfg
 from ...comment_style import CommentStyle, C_STYLE_COMMENTS
+from ...context import LightweightContext
 from ...optimizations import ImportClassifier, TreeSitterImportAnalyzer, LanguageLiteralDescriptor
 from ...shared import LanguageCodeDescriptor
 from ...tree_sitter_support import TreeSitterDocument
@@ -71,3 +72,12 @@ class CppAdapter(CodeAdapter[CppCfg]):
         """Create C++ literal descriptor."""
         from .literals import create_cpp_descriptor
         return create_cpp_descriptor()
+
+    def should_skip(self, lightweight_ctx: LightweightContext) -> bool:
+        """
+        C++-specific file skip heuristics.
+        Detects trivial header files with only forward declarations.
+        """
+        from .trivial import CppTrivialAnalyzer
+        analyzer = CppTrivialAnalyzer()
+        return analyzer.is_trivial(lightweight_ctx, self)
