@@ -5,7 +5,6 @@ Clean implementation without regex parsing.
 
 from __future__ import annotations
 
-from pathlib import Path
 from typing import Dict, List, Optional
 
 from ...optimizations.imports import ImportClassifier, TreeSitterImportAnalyzer, ImportInfo
@@ -46,7 +45,7 @@ class TypeScriptImportClassifier(ImportClassifier):
             r'^@types/',
         ]
     
-    def is_external(self, module_name: str, project_root: Optional[Path] = None) -> bool:
+    def is_external(self, module_name: str) -> bool:
         """Determine if a TS/JS module is external or local."""
         import re
 

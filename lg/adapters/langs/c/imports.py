@@ -5,7 +5,6 @@ Clean implementation without regex parsing.
 
 from __future__ import annotations
 
-from pathlib import Path
 from typing import List, Optional
 
 from ...optimizations.imports import ImportClassifier, TreeSitterImportAnalyzer, ImportInfo
@@ -44,7 +43,7 @@ class CImportClassifier(ImportClassifier):
             r'^openssl/',
         ]
 
-    def is_external(self, module_name: str, project_root: Optional[Path] = None) -> bool:
+    def is_external(self, module_name: str) -> bool:
         """Determine if a C include is external or local."""
         import re
 
