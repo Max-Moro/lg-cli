@@ -49,24 +49,12 @@ def do_complex():
 
 
 @pytest.fixture
-def do_trivial_init_empty():
-    """Empty __init__.py file with only docstring."""
-    return load_sample_code("trivial_init_empty")
-
-
-@pytest.fixture
-def do_trivial_init_reexports():
-    """__init__.py with only re-exports."""
-    return load_sample_code("trivial_init_reexports")
-
-
-@pytest.fixture
-def do_trivial_init_docstring_and_all():
+def do_trivial():
     """__init__.py with docstring and __all__ only."""
-    return load_sample_code("trivial_init_docstring_and_all")
+    return load_sample_code("trivial_init")
 
 
 @pytest.fixture
-def do_non_trivial_init():
-    """__init__.py with convenience function - realistic non-trivial example."""
-    return load_sample_code("non_trivial_init_function")
+def do_non_trivial():
+    """__init__.py with convenience function."""
+    return load_sample_code("non_trivial_init")

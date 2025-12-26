@@ -1,4 +1,10 @@
-export { Component } from './Component';
-export { useHook } from './hooks';
-export * from './types';
-export type { Config } from './config';
+/**
+ * Public API for the components module.
+ */
+
+// Re-export all components
+export { Button } from './Button';
+export { Input } from './Input';
+
+// Re-export types
+export type { ButtonProps, InputProps } from './types';

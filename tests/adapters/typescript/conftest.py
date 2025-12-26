@@ -49,24 +49,12 @@ def do_complex():
 
 
 @pytest.fixture
-def do_trivial_barrel():
-    """Barrel file with only re-exports."""
+def do_trivial():
+    """Barrel file with comments and re-exports."""
     return load_sample_code("trivial_barrel")
 
 
 @pytest.fixture
-def do_trivial_barrel_with_comments():
-    """Barrel file with comments and re-exports."""
-    return load_sample_code("trivial_barrel_with_comments")
-
-
-@pytest.fixture
-def do_trivial_barrel_type_only():
-    """Barrel file with only type exports."""
-    return load_sample_code("trivial_barrel_type_only")
-
-
-@pytest.fixture
-def do_non_trivial_barrel():
-    """Barrel file with convenience function - realistic non-trivial example."""
-    return load_sample_code("non_trivial_barrel_function")
+def do_non_trivial():
+    """Non trivial barrel file."""
+    return load_sample_code("non_trivial_barrel")
