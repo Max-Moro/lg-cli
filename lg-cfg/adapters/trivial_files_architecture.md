@@ -609,31 +609,32 @@ class ScalaTrivialAnalyzer(TrivialFileAnalyzer):
 
 ## Конфигурация
 
-### Удаление устаревших опций
+### Глобальная опция
 
-Следующие опции становятся устаревшими и должны быть удалены:
-
-- `PythonCfg.skip_trivial_inits` → заменяется на `TrivialFileAnalyzer`
-- `TypeScriptCfg.skip_barrel_files` → заменяется на `TrivialFileAnalyzer`
-
-### Новая глобальная опция (опционально)
-
-При необходимости можно добавить глобальную опцию для отключения:
+Пропуск тривиальных файлов включён по умолчанию. При необходимости можно отключить:
 
 ```yaml
 api-module:
   extensions: [".py", ".ts"]
 
-  # Global option to disable trivial file skipping
-  skip_trivial_files: true  # default: true
+  # Disable trivial file skipping (default: true)
+  skip_trivial_files: false
 ```
+
+### Модель конфигурации
 
 ```python
 @dataclass
 class CodeCfg:
-    # ... existing fields ...
+    # ... other fields ...
     skip_trivial_files: bool = True  # Enable trivial file detection
 ```
+
+### Поведение по умолчанию
+
+- **Включено**: тривиальные файлы автоматически пропускаются
+- Каждый язык определяет свои критерии тривиальности
+- Решение принимается на основе AST-анализа, не эвристик по имени
 
 ---
 
@@ -681,108 +682,283 @@ def process_files(plan: SectionPlan, template_ctx: TemplateContext) -> List[Proc
 
 ### Структура тестов
 
+Тесты тривиальных файлов следуют стандартной структуре проекта:
+
 ```
 tests/adapters/
-├── <язык>/
-│   ├── test_trivial_files.py       # Тесты пропуска тривиальных файлов
+├── python/
+│   ├── conftest.py                  # Фикстуры для загрузки образцов
+│   ├── test_trivial_files.py        # Тесты пропуска тривиальных файлов
 │   └── goldens/
-│       └── trivial_files/          # Не требуется (файлы пропускаются)
-│           └── samples/            # Примеры тривиальных/нетривиальных файлов
-│               ├── trivial_init.py
-│               ├── non_trivial_init.py
-│               ├── trivial_barrel.ts
-│               └── non_trivial_barrel.ts
+│       └── do/                      # Входные образцы (стандартная папка)
+│           ├── trivial_init_empty.py
+│           ├── trivial_init_reexports.py
+│           └── non_trivial_init.py
+│
+├── typescript/
+│   ├── conftest.py
+│   ├── test_trivial_files.py
+│   └── goldens/
+│       └── do/
+│           ├── trivial_barrel.ts
+│           └── non_trivial_barrel.ts
+│
+├── go/
+│   ├── conftest.py
+│   ├── test_trivial_files.py
+│   └── goldens/
+│       └── do/
+│           ├── trivial_doc.go
+│           └── non_trivial_doc.go
+│
+└── rust/
+    ├── conftest.py
+    ├── test_trivial_files.py
+    └── goldens/
+        └── do/
+            ├── trivial_mod.rs
+            └── non_trivial_mod.rs
+```
+
+### Загрузка образцов через conftest.py
+
+Образцы загружаются через фикстуры в `conftest.py` каждого языка:
+
+```python
+# tests/adapters/python/conftest.py
+
+import pytest
+from ..golden_utils import load_sample_code
+
+
+@pytest.fixture
+def do_trivial_init_empty():
+    """Empty __init__.py file."""
+    return load_sample_code("trivial_init_empty")
+
+
+@pytest.fixture
+def do_trivial_init_reexports():
+    """__init__.py with only re-exports."""
+    return load_sample_code("trivial_init_reexports")
+
+
+@pytest.fixture
+def do_non_trivial_init():
+    """__init__.py with function definitions."""
+    return load_sample_code("non_trivial_init")
+```
+
+```python
+# tests/adapters/typescript/conftest.py
+
+import pytest
+from ..golden_utils import load_sample_code
+
+
+@pytest.fixture
+def do_trivial_barrel():
+    """Barrel file with only re-exports."""
+    return load_sample_code("trivial_barrel")
+
+
+@pytest.fixture
+def do_non_trivial_barrel():
+    """Barrel file with definitions."""
+    return load_sample_code("non_trivial_barrel")
 ```
 
 ### Подход к тестированию
 
 В отличие от других оптимизаций, тесты тривиальных файлов **не используют golden files** для результатов (файл пропускается полностью). Вместо этого:
 
-1. **Unit-тесты** для `is_trivial()` методов
-2. **Sample files** как входные данные
+1. **Фикстуры** загружают образцы из `goldens/do/`
+2. **Unit-тесты** проверяют `is_trivial()` методы
 3. **Assertions** на boolean результат
 
 ```python
 # tests/adapters/python/test_trivial_files.py
 
-import pytest
+from pathlib import Path
+from lg.adapters.langs.python import PythonCfg
 from lg.adapters.langs.python.trivial import PythonTrivialAnalyzer
 from .utils import lctx, make_adapter
+
 
 class TestPythonTrivialFiles:
     """Test trivial __init__.py detection."""
 
-    def test_empty_init_is_trivial(self):
+    def test_empty_init_is_trivial(self, do_trivial_init_empty):
         """Empty __init__.py should be skipped."""
-        code = ""
         analyzer = PythonTrivialAnalyzer()
         adapter = make_adapter(PythonCfg())
 
-        ctx = lctx(code, Path("/pkg/__init__.py"))
+        ctx = lctx(do_trivial_init_empty, Path("/pkg/__init__.py"))
         assert analyzer.is_trivial(ctx, adapter) is True
 
-    def test_docstring_only_is_trivial(self):
-        """__init__.py with only docstring is trivial."""
-        code = '"""Package docstring."""'
-        # ... assert is_trivial
-
-    def test_reexport_only_is_trivial(self):
+    def test_reexports_only_is_trivial(self, do_trivial_init_reexports):
         """__init__.py with only re-exports is trivial."""
-        code = '''
-from .module import func
-from .other import Class
-__all__ = ["func", "Class"]
-'''
-        # ... assert is_trivial
+        analyzer = PythonTrivialAnalyzer()
+        adapter = make_adapter(PythonCfg())
 
-    def test_with_function_is_not_trivial(self):
+        ctx = lctx(do_trivial_init_reexports, Path("/pkg/__init__.py"))
+        assert analyzer.is_trivial(ctx, adapter) is True
+
+    def test_with_function_is_not_trivial(self, do_non_trivial_init):
         """__init__.py with function definition is not trivial."""
-        code = '''
+        analyzer = PythonTrivialAnalyzer()
+        adapter = make_adapter(PythonCfg())
+
+        ctx = lctx(do_non_trivial_init, Path("/pkg/__init__.py"))
+        assert analyzer.is_trivial(ctx, adapter) is False
+
+    def test_non_init_file_not_checked(self, do_trivial_init_reexports):
+        """Non-__init__.py files are never trivial."""
+        analyzer = PythonTrivialAnalyzer()
+        adapter = make_adapter(PythonCfg())
+
+        # Same content but different filename
+        ctx = lctx(do_trivial_init_reexports, Path("/pkg/utils.py"))
+        assert analyzer.is_trivial(ctx, adapter) is False
+```
+
+```python
+# tests/adapters/typescript/test_trivial_files.py
+
+from pathlib import Path
+from lg.adapters.langs.typescript import TypeScriptCfg
+from lg.adapters.langs.typescript.trivial import TypeScriptTrivialAnalyzer
+from .utils import lctx, make_adapter
+
+
+class TestTypeScriptTrivialFiles:
+    """Test trivial barrel file detection."""
+
+    def test_barrel_with_reexports_is_trivial(self, do_trivial_barrel):
+        """index.ts with only re-exports is trivial."""
+        analyzer = TypeScriptTrivialAnalyzer()
+        adapter = make_adapter(TypeScriptCfg())
+
+        ctx = lctx(do_trivial_barrel, Path("/src/components/index.ts"))
+        assert analyzer.is_trivial(ctx, adapter) is True
+
+    def test_barrel_with_definitions_is_not_trivial(self, do_non_trivial_barrel):
+        """index.ts with function definitions is not trivial."""
+        analyzer = TypeScriptTrivialAnalyzer()
+        adapter = make_adapter(TypeScriptCfg())
+
+        ctx = lctx(do_non_trivial_barrel, Path("/src/components/index.ts"))
+        assert analyzer.is_trivial(ctx, adapter) is False
+
+    def test_non_index_file_not_checked(self, do_trivial_barrel):
+        """Non-index.ts files are never trivial."""
+        analyzer = TypeScriptTrivialAnalyzer()
+        adapter = make_adapter(TypeScriptCfg())
+
+        ctx = lctx(do_trivial_barrel, Path("/src/components/exports.ts"))
+        assert analyzer.is_trivial(ctx, adapter) is False
+```
+
+### Примеры файлов-образцов
+
+```python
+# tests/adapters/python/goldens/do/trivial_init_empty.py
+
+"""Package docstring."""
+```
+
+```python
+# tests/adapters/python/goldens/do/trivial_init_reexports.py
+
+"""Package with re-exports only."""
+
+from .module import func
+from .other import Class, helper
+from .utils import *
+
+__all__ = ["func", "Class", "helper"]
+```
+
+```python
+# tests/adapters/python/goldens/do/non_trivial_init.py
+
+"""Package with actual code."""
+
 from .module import func
 
-def helper():
-    return 42
-'''
-        # ... assert NOT is_trivial
 
-    def test_non_init_file_not_checked(self):
-        """Non-__init__.py files are never trivial."""
-        code = 'from .module import func'
-        ctx = lctx(code, Path("/pkg/utils.py"))
-        # ... assert NOT is_trivial (not even checked)
+def package_helper():
+    """Helper function defined in __init__."""
+    return func() + 1
+```
+
+```typescript
+// tests/adapters/typescript/goldens/do/trivial_barrel.ts
+
+export { Component } from './Component';
+export { useHook } from './hooks';
+export * from './types';
+export type { Config } from './config';
+```
+
+```typescript
+// tests/adapters/typescript/goldens/do/non_trivial_barrel.ts
+
+export { Component } from './Component';
+
+// This function makes the barrel non-trivial
+export function createComponent(props: Props): Component {
+    return new Component(props);
+}
 ```
 
 ### Совместимость с test_adapters.sh
 
-Тесты должны быть доступны через стандартный раннер:
+Тесты доступны через стандартный раннер:
 
 ```bash
 # Запуск тестов тривиальных файлов для Python
 ./scripts/test_adapters.sh trivial_files python
 
+# Запуск для TypeScript
+./scripts/test_adapters.sh trivial_files typescript
+
 # Запуск для всех языков
 ./scripts/test_adapters.sh trivial_files all
+
+# Запуск вместе с другими оптимизациями
+./scripts/test_adapters.sh trivial_files,imports python
 ```
 
 ---
 
-## Миграция
+## План реализации
 
-### План миграции
+### Этапы
 
-1. **Создать базовую инфраструктуру** (`lg/adapters/optimizations/trivial_files/`)
-2. **Реализовать для Python** (замена `skip_trivial_inits`)
-3. **Реализовать для TypeScript** (замена `skip_barrel_files`)
-4. **Добавить тесты** для Python и TypeScript
-5. **Удалить устаревшие опции** из конфигов
-6. **Реализовать для остальных языков** (Go, Rust, C++, etc.)
-7. **Обновить документацию**
+1. **Базовая инфраструктура**
+   - Создать `lg/adapters/optimizations/trivial_files/`
+   - Реализовать базовый класс `TrivialFileAnalyzer`
 
-### Backward Compatibility
+2. **Языковые анализаторы**
+   - Python: `PythonTrivialAnalyzer` для `__init__.py`
+   - TypeScript: `TypeScriptTrivialAnalyzer` для barrel-файлов
+   - JavaScript: `JavaScriptTrivialAnalyzer` для barrel-файлов
+   - Go: `GoTrivialAnalyzer` для `doc.go`
+   - Rust: `RustTrivialAnalyzer` для `mod.rs`, `lib.rs`
+   - C/C++: `CppTrivialAnalyzer` для header-only файлов
+   - Kotlin: `KotlinTrivialAnalyzer` для package-info
+   - Java: `JavaTrivialAnalyzer` для `package-info.java`
+   - Scala: `ScalaTrivialAnalyzer` для `package.scala`
 
-- Старые конфиги с `skip_trivial_inits: true` должны работать (deprecation warning)
-- Новое поведение включено по умолчанию
-- Можно отключить через `skip_trivial_files: false`
+3. **Тестирование**
+   - Создать образцы файлов в `goldens/do/`
+   - Добавить фикстуры в `conftest.py`
+   - Написать тесты для каждого языка
+
+4. **Документация**
+   - Обновить `docs/en/adapters.md`
+   - Добавить примеры конфигурации
 
 ---
 
