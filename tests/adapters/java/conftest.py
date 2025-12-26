@@ -46,3 +46,15 @@ def do_complex():
 def do_literals_legacy():
     """Sample Java legacy code with double-brace."""
     return load_sample_code("literals_legacy", language="java")
+
+
+@pytest.fixture
+def do_trivial():
+    """package-info.java with only annotations and docs."""
+    return load_sample_code("trivial_package_info", language="java")
+
+
+@pytest.fixture
+def do_non_trivial():
+    """package-info.java with class definition."""
+    return load_sample_code("non_trivial_package_info", language="java")

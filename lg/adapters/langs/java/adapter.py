@@ -12,6 +12,7 @@ from tree_sitter import Language
 from ...code_base import CodeAdapter
 from ...code_model import CodeCfg
 from ...comment_style import CommentStyle, C_STYLE_COMMENTS
+from ...context import LightweightContext
 from ...optimizations import ImportClassifier, TreeSitterImportAnalyzer, LanguageLiteralDescriptor
 from ...shared import LanguageCodeDescriptor
 from ...tree_sitter_support import TreeSitterDocument
@@ -76,3 +77,12 @@ class JavaAdapter(CodeAdapter[JavaCfg]):
         """Create Java literal descriptor."""
         from .literals import create_java_descriptor
         return create_java_descriptor()
+
+    def should_skip(self, lightweight_ctx: LightweightContext) -> bool:
+        """
+        Java-specific file skip heuristics.
+        Detects trivial package-info.java files.
+        """
+        from .trivial import JavaTrivialAnalyzer
+        analyzer = JavaTrivialAnalyzer()
+        return analyzer.is_trivial(lightweight_ctx, self)
