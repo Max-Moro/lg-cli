@@ -85,6 +85,9 @@ class PythonAdapter(CodeAdapter[PythonCfg]):
         Python-specific file skip heuristics.
         Detects trivial __init__.py files.
         """
+        if not self.cfg.skip_trivial_files:
+            return False
+
         from .trivial import PythonTrivialAnalyzer
         analyzer = PythonTrivialAnalyzer()
         return analyzer.is_trivial(lightweight_ctx, self)

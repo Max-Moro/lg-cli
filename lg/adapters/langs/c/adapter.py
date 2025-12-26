@@ -78,6 +78,9 @@ class CAdapter(CodeAdapter[CCfg]):
         C-specific file skip heuristics.
         Detects trivial header files with only forward declarations.
         """
+        if not self.cfg.skip_trivial_files:
+            return False
+
         from .trivial import CTrivialAnalyzer
         analyzer = CTrivialAnalyzer()
         return analyzer.is_trivial(lightweight_ctx, self)

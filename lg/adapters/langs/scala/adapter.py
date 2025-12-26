@@ -84,6 +84,9 @@ class ScalaAdapter(CodeAdapter[ScalaCfg]):
         Scala-specific file skip heuristics.
         Detects trivial package.scala files.
         """
+        if not self.cfg.skip_trivial_files:
+            return False
+
         from .trivial import ScalaTrivialAnalyzer
         analyzer = ScalaTrivialAnalyzer()
         return analyzer.is_trivial(lightweight_ctx, self)

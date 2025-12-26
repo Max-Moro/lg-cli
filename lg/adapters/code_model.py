@@ -72,6 +72,7 @@ class CodeCfg:
     """
     # Main policies
     public_api_only: bool = False
+    skip_trivial_files: bool = True
     strip_function_bodies: Union[bool, FunctionBodyConfig] = False
     comment_policy: Union[CommentPolicy, CommentConfig] = "keep_all"
 
@@ -91,6 +92,7 @@ class CodeCfg:
 
         # Parse main fields
         self.public_api_only = bool(d.get("public_api_only", False))
+        self.skip_trivial_files = bool(d.get("skip_trivial_files", True))
 
         # strip_function_bodies: bool | dict
         sfb = d.get("strip_function_bodies", False)

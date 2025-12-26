@@ -83,6 +83,9 @@ class KotlinAdapter(CodeAdapter[KotlinCfg]):
         Kotlin-specific file skip heuristics.
         Detects trivial package.kt files.
         """
+        if not self.cfg.skip_trivial_files:
+            return False
+
         from .trivial import KotlinTrivialAnalyzer
         analyzer = KotlinTrivialAnalyzer()
         return analyzer.is_trivial(lightweight_ctx, self)

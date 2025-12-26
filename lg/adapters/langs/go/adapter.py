@@ -82,6 +82,9 @@ class GoAdapter(CodeAdapter[GoCfg]):
         Go-specific file skip heuristics.
         Detects trivial doc.go files.
         """
+        if not self.cfg.skip_trivial_files:
+            return False
+
         from .trivial import GoTrivialAnalyzer
         analyzer = GoTrivialAnalyzer()
         return analyzer.is_trivial(lightweight_ctx, self)

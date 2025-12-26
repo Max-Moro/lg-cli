@@ -81,6 +81,9 @@ class RustAdapter(CodeAdapter[RustCfg]):
         Rust-specific file skip heuristics.
         Detects trivial mod.rs and lib.rs files.
         """
+        if not self.cfg.skip_trivial_files:
+            return False
+
         from .trivial import RustTrivialAnalyzer
         analyzer = RustTrivialAnalyzer()
         return analyzer.is_trivial(lightweight_ctx, self)

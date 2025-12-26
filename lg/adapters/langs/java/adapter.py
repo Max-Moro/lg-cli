@@ -83,6 +83,9 @@ class JavaAdapter(CodeAdapter[JavaCfg]):
         Java-specific file skip heuristics.
         Detects trivial package-info.java files.
         """
+        if not self.cfg.skip_trivial_files:
+            return False
+
         from .trivial import JavaTrivialAnalyzer
         analyzer = JavaTrivialAnalyzer()
         return analyzer.is_trivial(lightweight_ctx, self)

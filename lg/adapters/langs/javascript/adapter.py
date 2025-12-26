@@ -79,6 +79,9 @@ class JavaScriptAdapter(CodeAdapter[JavaScriptCfg]):
         JavaScript-specific file skip heuristics.
         Detects trivial barrel files (index.js).
         """
+        if not self.cfg.skip_trivial_files:
+            return False
+
         from .trivial import JavaScriptTrivialAnalyzer
         analyzer = JavaScriptTrivialAnalyzer()
         return analyzer.is_trivial(lightweight_ctx, self)

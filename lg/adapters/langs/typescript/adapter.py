@@ -87,6 +87,9 @@ class TypeScriptAdapter(CodeAdapter[TypeScriptCfg]):
         TypeScript-specific file skip heuristics.
         Detects trivial barrel files (index.ts).
         """
+        if not self.cfg.skip_trivial_files:
+            return False
+
         from .trivial import TypeScriptTrivialAnalyzer
         analyzer = TypeScriptTrivialAnalyzer()
         return analyzer.is_trivial(lightweight_ctx, self)
