@@ -44,6 +44,8 @@ src:
                 allow: ["/imports/"]
               - condition: "TAGSET:adapters-optimizations:public-api"
                 allow: ["/public_api/"]
+              - condition: "TAGSET:adapters-optimizations:trivial"
+                allow: ["/trivial_files/"]
           langs:
             mode: allow
             when:
@@ -82,8 +84,8 @@ src:
                     allow: ["/imports.py"]
                   - condition: "TAGSET:adapters-optimizations:literals"
                     allow: ["/literals*.py"]
-                  - condition: "TAGSET:adapters-optimizations:custom"
-                    allow: ["/file_heuristics.py"]
+                  - condition: "TAGSET:adapters-optimizations:trivial"
+                    allow: ["/trivial.py"]
               typescript:
                 mode: allow
                 allow:
@@ -98,8 +100,8 @@ src:
                     allow: ["/imports.py"]
                   - condition: "TAGSET:adapters-optimizations:literals"
                     allow: ["/literals*.py"]
-                  - condition: "TAGSET:adapters-optimizations:custom"
-                    allow: ["/file_heuristics.py"]
+                  - condition: "TAGSET:adapters-optimizations:trivial"
+                    allow: ["/trivial.py"]
               kotlin:
                 mode: allow
                 allow:
@@ -114,6 +116,8 @@ src:
                     allow: ["/imports.py"]
                   - condition: "TAGSET:adapters-optimizations:literals"
                     allow: ["/literals*.py"]
+                  - condition: "TAGSET:adapters-optimizations:trivial"
+                    allow: ["/trivial.py"]
               javascript:
                 mode: allow
                 allow:
@@ -128,6 +132,8 @@ src:
                     allow: ["/imports.py"]
                   - condition: "TAGSET:adapters-optimizations:literals"
                     allow: ["/literals*.py"]
+                  - condition: "TAGSET:adapters-optimizations:trivial"
+                    allow: ["/trivial.py"]
               java:
                 mode: allow
                 allow:
@@ -142,6 +148,8 @@ src:
                     allow: ["/imports.py"]
                   - condition: "TAGSET:adapters-optimizations:literals"
                     allow: ["/literals*.py"]
+                  - condition: "TAGSET:adapters-optimizations:trivial"
+                    allow: ["/trivial.py"]
               c:
                 mode: allow
                 allow:
@@ -156,6 +164,8 @@ src:
                     allow: ["/imports.py"]
                   - condition: "TAGSET:adapters-optimizations:literals"
                     allow: ["/literals*.py"]
+                  - condition: "TAGSET:adapters-optimizations:trivial"
+                    allow: ["/trivial.py"]
               cpp:
                 mode: allow
                 allow:
@@ -170,6 +180,8 @@ src:
                     allow: ["/imports.py"]
                   - condition: "TAGSET:adapters-optimizations:literals"
                     allow: ["/literals*.py"]
+                  - condition: "TAGSET:adapters-optimizations:trivial"
+                    allow: ["/trivial.py"]
               go:
                 mode: allow
                 allow:
@@ -184,6 +196,8 @@ src:
                     allow: ["/imports.py"]
                   - condition: "TAGSET:adapters-optimizations:literals"
                     allow: ["/literals*.py"]
+                  - condition: "TAGSET:adapters-optimizations:trivial"
+                    allow: ["/trivial.py"]
               rust:
                 mode: allow
                 allow:
@@ -198,6 +212,8 @@ src:
                     allow: ["/imports.py"]
                   - condition: "TAGSET:adapters-optimizations:literals"
                     allow: ["/literals*.py"]
+                  - condition: "TAGSET:adapters-optimizations:trivial"
+                    allow: ["/trivial.py"]
               scala:
                 mode: allow
                 allow:
@@ -212,6 +228,8 @@ src:
                     allow: ["/imports.py"]
                   - condition: "TAGSET:adapters-optimizations:literals"
                     allow: ["/literals*.py"]
+                  - condition: "TAGSET:adapters-optimizations:trivial"
+                    allow: ["/trivial.py"]
 
 tests:
   extensions: [".py", ".ts", ".kt", ".js", ".java", ".go", ".rs", ".scala",
@@ -278,6 +296,8 @@ tests:
                     allow: ["/test_imports.py", "/goldens/do/imports.py"]
                   - condition: "TAGSET:adapters-optimizations:public-api"
                     allow: ["/test_public_api.py", "/goldens/do/public_api.py"]
+                  - condition: "TAGSET:adapters-optimizations:trivial"
+                    allow: ["/test_trivial_files.py", "/goldens/do/*trivial*.py"]
                   - condition: "TAGSET:adapters-optimizations:budget"
                     allow: ["/test_budget.py", "/goldens/do/budget_complex.py"]
               typescript:
@@ -294,6 +314,8 @@ tests:
                     allow: ["/test_imports.py", "/goldens/do/imports.ts"]
                   - condition: "TAGSET:adapters-optimizations:public-api"
                     allow: ["/test_public_api.py", "/goldens/do/public_api.ts"]
+                  - condition: "TAGSET:adapters-optimizations:trivial"
+                    allow: ["/test_trivial_files.py", "/goldens/do/*trivial*.ts"]
                   - condition: "TAGSET:adapters-optimizations:budget"
                     allow: ["/test_budget.py", "/goldens/do/budget_complex.ts"]
               kotlin:
@@ -310,6 +332,8 @@ tests:
                     allow: ["/test_imports.py", "/goldens/do/imports.kt"]
                   - condition: "TAGSET:adapters-optimizations:public-api"
                     allow: ["/test_public_api.py", "/goldens/do/public_api.kt"]
+                  - condition: "TAGSET:adapters-optimizations:trivial"
+                    allow: ["/test_trivial_files.py", "/goldens/do/*trivial*.kt"]
                   - condition: "TAGSET:adapters-optimizations:budget"
                     allow: ["/test_budget.py", "/goldens/do/budget_complex.kt"]
               javascript:
@@ -326,6 +350,8 @@ tests:
                     allow: ["/test_imports.py", "/goldens/do/imports.js"]
                   - condition: "TAGSET:adapters-optimizations:public-api"
                     allow: ["/test_public_api.py", "/goldens/do/public_api.js"]
+                  - condition: "TAGSET:adapters-optimizations:trivial"
+                    allow: ["/test_trivial_files.py", "/goldens/do/*trivial*.js"]
                   - condition: "TAGSET:adapters-optimizations:budget"
                     allow: ["/test_budget.py", "/goldens/do/budget_complex.js"]
               java:
@@ -342,6 +368,8 @@ tests:
                     allow: ["/test_imports.py", "/goldens/do/imports.java"]
                   - condition: "TAGSET:adapters-optimizations:public-api"
                     allow: ["/test_public_api.py", "/goldens/do/public_api.java"]
+                  - condition: "TAGSET:adapters-optimizations:trivial"
+                    allow: ["/test_trivial_files.py", "/goldens/do/*trivial*.java"]
                   - condition: "TAGSET:adapters-optimizations:budget"
                     allow: ["/test_budget.py", "/goldens/do/budget_complex.java"]
               c:
@@ -361,6 +389,8 @@ tests:
                     allow: ["/test_imports.py", "/goldens/do/imports.c"]
                   - condition: "TAGSET:adapters-optimizations:public-api"
                     allow: ["/test_public_api.py", "/goldens/do/public_api.c"]
+                  - condition: "TAGSET:adapters-optimizations:trivial"
+                    allow: ["/test_trivial_files.py", "/goldens/do/*trivial*.c", "/goldens/do/*trivial*.h"]
                   - condition: "TAGSET:adapters-optimizations:budget"
                     allow: ["/test_budget.py", "/goldens/do/budget_complex.c"]
               cpp:
@@ -380,6 +410,8 @@ tests:
                     allow: ["/test_imports.py", "/goldens/do/imports.cpp"]
                   - condition: "TAGSET:adapters-optimizations:public-api"
                     allow: ["/test_public_api.py", "/goldens/do/public_api.cpp"]
+                  - condition: "TAGSET:adapters-optimizations:trivial"
+                    allow: ["/test_trivial_files.py", "/goldens/do/*trivial*.cpp", "/goldens/do/*trivial*.hpp"]
                   - condition: "TAGSET:adapters-optimizations:budget"
                     allow: ["/test_budget.py", "/goldens/do/budget_complex.cpp"]
               go:
@@ -398,6 +430,8 @@ tests:
                     allow: ["/test_imports.py", "/goldens/do/imports.go"]
                   - condition: "TAGSET:adapters-optimizations:public-api"
                     allow: ["/test_public_api.py", "/goldens/do/public_api.go"]
+                  - condition: "TAGSET:adapters-optimizations:trivial"
+                    allow: ["/test_trivial_files.py", "/goldens/do/*trivial*.go"]
                   - condition: "TAGSET:adapters-optimizations:budget"
                     allow: ["/test_budget.py", "/goldens/do/budget_complex.go"]
               rust:
@@ -416,6 +450,8 @@ tests:
                     allow: ["/test_imports.py", "/goldens/do/imports.rs"]
                   - condition: "TAGSET:adapters-optimizations:public-api"
                     allow: ["/test_public_api.py", "/goldens/do/public_api.rs"]
+                  - condition: "TAGSET:adapters-optimizations:trivial"
+                    allow: ["/test_trivial_files.py", "/goldens/do/*trivial*.rs"]
                   - condition: "TAGSET:adapters-optimizations:budget"
                     allow: ["/test_budget.py", "/goldens/do/budget_complex.rs"]
               scala:
@@ -434,5 +470,7 @@ tests:
                     allow: ["/test_imports.py", "/goldens/do/imports.scala"]
                   - condition: "TAGSET:adapters-optimizations:public-api"
                     allow: ["/test_public_api.py", "/goldens/do/public_api.scala"]
+                  - condition: "TAGSET:adapters-optimizations:trivial"
+                    allow: ["/test_trivial_files.py", "/goldens/do/*trivial*.scala"]
                   - condition: "TAGSET:adapters-optimizations:budget"
                     allow: ["/test_budget.py", "/goldens/do/budget_complex.scala"]

@@ -100,8 +100,8 @@ tag-sets:
         title: "Public API optimization"
       budget:
         title: "Budget System"
-      custom:
-        title: "Custom langs optimizations"
+      trivial:
+        title: "Skipping trivial files"
 
 # Global tags (not part of specific sets and usually toggled through modes)
 tags:
