@@ -40,3 +40,15 @@ def do_public_api():
 def do_complex():
     """Sample Rust code for testing complex combined optimization."""
     return load_sample_code("complex", language="rust")
+
+
+@pytest.fixture
+def do_trivial():
+    """mod.rs with only pub mod declarations."""
+    return load_sample_code("trivial_mod", language="rust")
+
+
+@pytest.fixture
+def do_non_trivial():
+    """mod.rs with actual function."""
+    return load_sample_code("non_trivial_mod", language="rust")

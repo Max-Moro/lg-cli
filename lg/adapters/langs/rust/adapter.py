@@ -76,3 +76,12 @@ class RustAdapter(CodeAdapter[RustCfg]):
         from .literals import create_rust_descriptor
         return create_rust_descriptor()
 
+    def should_skip(self, lightweight_ctx) -> bool:
+        """
+        Rust-specific file skip heuristics.
+        Detects trivial mod.rs and lib.rs files.
+        """
+        from .trivial import RustTrivialAnalyzer
+        analyzer = RustTrivialAnalyzer()
+        return analyzer.is_trivial(lightweight_ctx, self)
+
