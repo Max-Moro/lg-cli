@@ -40,3 +40,15 @@ def do_public_api():
 def do_complex():
     """Sample JavaScript code for testing complex combined optimization."""
     return load_sample_code("complex")
+
+
+@pytest.fixture
+def do_trivial():
+    """Barrel file with comments and re-exports."""
+    return load_sample_code("trivial_barrel")
+
+
+@pytest.fixture
+def do_non_trivial():
+    """Non trivial barrel file."""
+    return load_sample_code("non_trivial_barrel")

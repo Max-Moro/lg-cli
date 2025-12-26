@@ -12,6 +12,7 @@ from tree_sitter import Language
 from ...code_base import CodeAdapter
 from ...code_model import CodeCfg
 from ...comment_style import CommentStyle, C_STYLE_COMMENTS
+from ...context import LightweightContext
 from ...optimizations import ImportClassifier, TreeSitterImportAnalyzer
 from ...optimizations.literals import LanguageLiteralDescriptor
 from ...shared import LanguageCodeDescriptor
@@ -72,3 +73,12 @@ class JavaScriptAdapter(CodeAdapter[JavaScriptCfg]):
         """Create JavaScript literal descriptor."""
         from .literals import create_javascript_descriptor
         return create_javascript_descriptor()
+
+    def should_skip(self, lightweight_ctx: LightweightContext) -> bool:
+        """
+        JavaScript-specific file skip heuristics.
+        Detects trivial barrel files (index.js).
+        """
+        from .trivial import JavaScriptTrivialAnalyzer
+        analyzer = JavaScriptTrivialAnalyzer()
+        return analyzer.is_trivial(lightweight_ctx, self)

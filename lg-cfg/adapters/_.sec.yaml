@@ -235,6 +235,10 @@ tests:
   extensions: [".py", ".ts", ".kt", ".js", ".java", ".go", ".rs", ".scala",
                ".c", ".h", ".cpp", ".hpp", ".cc", ".hh", ".hxx", ".cxx",
                ".sh"]
+  python:
+    skip_trivial_inits: false
+  typescript:
+    skip_barrel_files: false
   filters:
     mode: allow
     allow:
@@ -257,10 +261,10 @@ tests:
               - condition: "tag:tests-infra"
                 allow:
                   - "/golden_utils.py"
-              - condition: "TAGSET:adapters-optimizations:core"
-                allow:
-                  - "/test_placeholders.py"
-                  - "/test_tree_sitter_document.py"
+#              - condition: "TAGSET:adapters-optimizations:core"
+#                allow:
+#                  - "/test_placeholders.py"
+#                  - "/test_tree_sitter_document.py"
               - condition: "TAGSET:language:python"
                 allow: ["/python/"]
               - condition: "TAGSET:language:typescript"
@@ -288,14 +292,14 @@ tests:
                 when:
                   - condition: "TAGSET:adapters-optimizations:function-bodies"
                     allow: ["/test_function_bodies.py", "/goldens/do/function_bodies.py"]
-                  - condition: "TAGSET:adapters-optimizations:comments"
-                    allow: ["/test_comments.py", "/goldens/do/comments.py"]
+#                  - condition: "TAGSET:adapters-optimizations:comments"
+#                    allow: ["/test_comments.py", "/goldens/do/comments.py"]
                   - condition: "TAGSET:adapters-optimizations:literals"
                     allow: ["/test_literals.py", "test_literal_comment_context.py", "test_literals_indentation.py", "test_literal_sets.py", "/goldens/do/literals.py"]
-                  - condition: "TAGSET:adapters-optimizations:imports"
-                    allow: ["/test_imports.py", "/goldens/do/imports.py"]
-                  - condition: "TAGSET:adapters-optimizations:public-api"
-                    allow: ["/test_public_api.py", "/goldens/do/public_api.py"]
+#                  - condition: "TAGSET:adapters-optimizations:imports"
+#                    allow: ["/test_imports.py", "/goldens/do/imports.py"]
+#                  - condition: "TAGSET:adapters-optimizations:public-api"
+#                    allow: ["/test_public_api.py", "/goldens/do/public_api.py"]
                   - condition: "TAGSET:adapters-optimizations:trivial"
                     allow: ["/test_trivial_files.py", "/goldens/do/*trivial*.py"]
                   - condition: "TAGSET:adapters-optimizations:budget"
@@ -306,14 +310,14 @@ tests:
                 when:
                   - condition: "TAGSET:adapters-optimizations:function-bodies"
                     allow: ["/test_function_bodies.py", "/goldens/do/function_bodies.ts"]
-                  - condition: "TAGSET:adapters-optimizations:comments"
-                    allow: ["/test_comments.py", "/goldens/do/comments.ts"]
+#                  - condition: "TAGSET:adapters-optimizations:comments"
+#                    allow: ["/test_comments.py", "/goldens/do/comments.ts"]
                   - condition: "TAGSET:adapters-optimizations:literals"
                     allow: ["/test_literals.py", "test_literal_comment_context.py", "test_literals_indentation.py", "/goldens/do/literals.ts"]
-                  - condition: "TAGSET:adapters-optimizations:imports"
-                    allow: ["/test_imports.py", "/goldens/do/imports.ts"]
-                  - condition: "TAGSET:adapters-optimizations:public-api"
-                    allow: ["/test_public_api.py", "/goldens/do/public_api.ts"]
+#                  - condition: "TAGSET:adapters-optimizations:imports"
+#                    allow: ["/test_imports.py", "/goldens/do/imports.ts"]
+#                  - condition: "TAGSET:adapters-optimizations:public-api"
+#                    allow: ["/test_public_api.py", "/goldens/do/public_api.ts"]
                   - condition: "TAGSET:adapters-optimizations:trivial"
                     allow: ["/test_trivial_files.py", "/goldens/do/*trivial*.ts"]
                   - condition: "TAGSET:adapters-optimizations:budget"
