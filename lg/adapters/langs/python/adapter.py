@@ -83,8 +83,10 @@ class PythonAdapter(CodeAdapter[PythonCfg]):
     def should_skip(self, lightweight_ctx: LightweightContext) -> bool:
         """
         Python-specific file skip heuristics.
+        Detects trivial __init__.py files.
         """
-        # TODO
-        return False
+        from .trivial import PythonTrivialAnalyzer
+        analyzer = PythonTrivialAnalyzer()
+        return analyzer.is_trivial(lightweight_ctx, self)
 
 

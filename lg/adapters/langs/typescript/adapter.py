@@ -85,6 +85,8 @@ class TypeScriptAdapter(CodeAdapter[TypeScriptCfg]):
     def should_skip(self, lightweight_ctx: LightweightContext) -> bool:
         """
         TypeScript-specific file skip heuristics.
+        Detects trivial barrel files (index.ts).
         """
-        # TODO
-        return False
+        from .trivial import TypeScriptTrivialAnalyzer
+        analyzer = TypeScriptTrivialAnalyzer()
+        return analyzer.is_trivial(lightweight_ctx, self)
