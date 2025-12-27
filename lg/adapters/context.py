@@ -6,7 +6,7 @@ Encapsulates state and provides methods for typical operations.
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Callable, Optional
+from typing import Optional
 
 from .metrics import MetricsCollector
 from .placeholders import PlaceholderManager, PlaceholderAction
@@ -80,22 +80,22 @@ class ProcessingContext(LightState):
         file_path: Path,
         raw_text: str,
         group_size: int,
-        adapter_name: str,
+        adapter,
         doc: TreeSitterDocument,
         editor: RangeEditor,
         placeholders: PlaceholderManager,
         tokenizer: TokenService,
-        get_descriptor: Callable,  # () -> LanguageCodeDescriptor
     ):
         super().__init__(file_path, raw_text, group_size)
 
         self.doc = doc
         self.editor = editor
         self.placeholders = placeholders
-        self.metrics = MetricsCollector(adapter_name)
+        self.adapter = adapter
+        self.metrics = MetricsCollector(adapter.name)
         self.tokenizer = tokenizer
-        self._get_descriptor = get_descriptor  # Lazy: called only when collector is needed
         self._collector = None  # ElementCollector, created lazily
+        self._comment_analyzer = None  # Lazy cache for CommentAnalyzer
 
     def add_placeholder(
         self,
@@ -193,9 +193,21 @@ class ProcessingContext(LightState):
         if self._collector is None:
             # Import here to avoid circular dependency
             from .shared import ElementCollector
-            descriptor = self._get_descriptor()
-            self._collector = ElementCollector(self.doc, descriptor)
+            self._collector = ElementCollector(self.doc, self.adapter.get_code_descriptor())
         return self._collector
+
+    def get_comment_analyzer(self):
+        """
+        Get or create CommentAnalyzer for this context.
+
+        Analyzer is cached for reuse between optimizers.
+
+        Returns:
+            CommentAnalyzer instance
+        """
+        if self._comment_analyzer is None:
+            self._comment_analyzer = self.adapter.create_comment_analyzer(self)
+        return self._comment_analyzer
 
     @classmethod
     def from_lightweight(
@@ -230,10 +242,9 @@ class ProcessingContext(LightState):
             lightweight_ctx.file_path,
             lightweight_ctx.raw_text,
             lightweight_ctx.group_size,
-            adapter.name,
+            adapter,
             doc,
             editor,
             placeholders,
             tokenizer,
-            get_descriptor=adapter.get_code_descriptor,  # Lazy: called only when needed
         )

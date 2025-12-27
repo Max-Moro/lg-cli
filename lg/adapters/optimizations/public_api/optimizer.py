@@ -31,6 +31,9 @@ class PublicApiOptimizer:
         # Get collector (cached in context, uses pre-loaded descriptor)
         collector = context.get_collector()
 
+        # Get comment analyzer for extending ranges
+        comment_analyzer = context.get_comment_analyzer()
+
         # Get private elements (cached, already filtered for nesting)
         private_elements = collector.get_private()
 
@@ -39,6 +42,16 @@ class PublicApiOptimizer:
 
         # Remove private elements with appropriate placeholders
         for element in private_elements:
-            start_char = context.doc.byte_to_char_position(element.start_byte)
-            end_char = context.doc.byte_to_char_position(element.end_byte)
+            # Get extended range including associated comments
+            start_byte, end_byte = comment_analyzer.get_associated_comments_range(element.node)
+
+            # Use element's own boundaries if they extend beyond node
+            # (e.g., decorators before the element)
+            if element.start_byte < start_byte:
+                start_byte = element.start_byte
+            if element.end_byte > end_byte:
+                end_byte = element.end_byte
+
+            start_char = context.doc.byte_to_char_position(start_byte)
+            end_char = context.doc.byte_to_char_position(end_byte)
             context.add_placeholder(element.profile.name, start_char, end_char)

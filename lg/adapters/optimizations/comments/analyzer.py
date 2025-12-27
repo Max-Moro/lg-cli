@@ -329,5 +329,151 @@ class CommentAnalyzer:
 
         return None  # Unknown style, use fallback
 
+    def get_associated_comments_range(
+        self,
+        node: Node,
+        include_leading: bool = True,
+        include_trailing_inline: bool = True,
+    ) -> tuple[int, int]:
+        """
+        Get extended byte range that includes associated comments.
+
+        Used by PublicApiOptimizer and ImportOptimizer to capture comments
+        that semantically belong to elements being removed.
+
+        Args:
+            node: Element node to find associated comments for
+            include_leading: Include comments before the element (no blank lines between)
+            include_trailing_inline: Include comments after element on the same line
+
+        Returns:
+            Tuple of (start_byte, end_byte) — extended range including comments.
+            Returns original node range if no associated comments found.
+        """
+        start_byte = node.start_byte
+        end_byte = node.end_byte
+
+        if include_leading:
+            start_byte = self._find_leading_comments_start(node, start_byte)
+
+        if include_trailing_inline:
+            end_byte = self._find_trailing_inline_comment_end(node, end_byte)
+
+        return start_byte, end_byte
+
+    def _find_leading_comments_start(self, node: Node, default_start: int) -> int:
+        """
+        Find start byte of leading comments before the node.
+
+        Leading comments are comments that:
+        - Appear as siblings before the node
+        - Have no blank lines between them and the node
+        - Form a contiguous block
+
+        Args:
+            node: Element node
+            default_start: Default start byte if no leading comments
+
+        Returns:
+            Start byte of first leading comment, or default_start
+        """
+        parent = node.parent
+        if not parent:
+            return default_start
+
+        # Find node index among siblings
+        siblings = parent.children
+        node_index = None
+        for i, sibling in enumerate(siblings):
+            if sibling.id == node.id:
+                node_index = i
+                break
+
+        if node_index is None or node_index == 0:
+            return default_start
+
+        # Walk backwards through siblings to find leading comments
+        leading_comment_start = default_start
+        prev_end_byte = node.start_byte
+
+        for i in range(node_index - 1, -1, -1):
+            sibling = siblings[i]
+
+            # Check if this is a comment
+            sibling_text = self.doc.text[sibling.start_byte:sibling.end_byte]
+            is_comment = (
+                sibling.type in ("comment", "line_comment", "block_comment") or
+                sibling_text.strip().startswith(self.style.single_line) or
+                sibling_text.strip().startswith(self.style.multi_line[0])
+            )
+
+            if not is_comment:
+                break
+
+            # Check for blank line between this comment and previous element
+            text_between = self.doc.text[sibling.end_byte:prev_end_byte]
+            if self._has_blank_line(text_between):
+                break
+
+            # This comment is associated with the node
+            leading_comment_start = sibling.start_byte
+            prev_end_byte = sibling.start_byte
+
+        return leading_comment_start
+
+    def _find_trailing_inline_comment_end(self, node: Node, default_end: int) -> int:
+        """
+        Find end byte of trailing inline comment (same line as node end).
+
+        Args:
+            node: Element node
+            default_end: Default end byte if no trailing comment
+
+        Returns:
+            End byte after trailing comment, or default_end
+        """
+        # Get the line where node ends
+        node_end_line = node.end_point[0]
+
+        # Look at text after node on the same line
+        text_after = self.doc.text[node.end_byte:]
+
+        # Find end of current line
+        newline_pos = text_after.find('\n')
+        if newline_pos == -1:
+            line_remainder = text_after
+        else:
+            line_remainder = text_after[:newline_pos]
+
+        # Check if there's a comment on this line
+        stripped = line_remainder.strip()
+        if not stripped:
+            return default_end
+
+        # Check for single-line comment marker
+        comment_start = None
+        if self.style.single_line and self.style.single_line in line_remainder:
+            comment_start = line_remainder.find(self.style.single_line)
+
+        # Check for block comment that starts and ends on same line
+        if self.style.multi_line[0] and self.style.multi_line[0] in line_remainder:
+            block_start = line_remainder.find(self.style.multi_line[0])
+            if self.style.multi_line[1] in line_remainder[block_start:]:
+                if comment_start is None or block_start < comment_start:
+                    comment_start = block_start
+
+        if comment_start is not None:
+            # Include the comment in the range (up to newline or end of text)
+            if newline_pos == -1:
+                return len(self.doc.text)
+            else:
+                return node.end_byte + newline_pos
+
+        return default_end
+
+    def _has_blank_line(self, text: str) -> bool:
+        """Check if text contains a blank line (two consecutive newlines)."""
+        return '\n\n' in text or '\r\n\r\n' in text
+
 
 __all__ = ["CommentAnalyzer", "TruncationStyle"]

@@ -169,8 +169,16 @@ class ImportOptimizer:
         """Remove an import and add appropriate placeholder."""
         count = len(import_info.imported_items)
 
-        # Use new simple API
-        context.add_placeholder_for_node("import", import_info.node, count=count)
+        # Get comment analyzer for extending range
+        comment_analyzer = context.get_comment_analyzer()
+
+        # Get extended range including associated comments
+        start_byte, end_byte = comment_analyzer.get_associated_comments_range(import_info.node)
+
+        start_char = context.doc.byte_to_char_position(start_byte)
+        end_char = context.doc.byte_to_char_position(end_byte)
+
+        context.add_placeholder("import", start_char, end_char, count=count)
 
 
 __all__ = ["ImportOptimizer"]

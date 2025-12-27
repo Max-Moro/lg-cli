@@ -227,12 +227,11 @@ class BudgetController(Generic[Cc]):
             file_path=lightweight_ctx.file_path,
             raw_text=text,
             group_size=lightweight_ctx.group_size,
-            adapter_name=self.adapter.name,
+            adapter=self.adapter,
             doc=doc,
             editor=editor,
             placeholders=placeholders,
             tokenizer=self.tokenizer,
-            get_descriptor=self.adapter.get_code_descriptor,
         )
 
     def _apply_user_policies(self, lightweight_ctx, text: str, cfg: CodeCfg) -> str:
