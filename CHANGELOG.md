@@ -7,12 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- Language adapters for C++, C, Java, JavaScript, Scala, Go, and Rust
+- `max_tokens` parameter for function body trimming (preserve function structure while reducing size)
+
+### Changed
+- Function body optimization policies: `keep_all`, `strip_all`, `keep_public` (simplified from previous mode system)
+- Automatic context-based placeholder formatting (inline/block/embedded)
+
 ## [0.9.2] - 2025-11-22
 
 ### Added
 - Context generation from source code with filtering and normalization
 - Adaptive capabilities system (modes, tags, conditional logic)
-- Language adapters (Python, TypeScript, JavaScript, Kotlin, Markdown)
+- Language adapters (Python, TypeScript, Kotlin, Markdown)
 - Tokenization support (tiktoken, HuggingFace tokenizers, sentencepiece)
 - Git integration (changes/branch-changes VCS modes)
 - Template engine with cascading includes
