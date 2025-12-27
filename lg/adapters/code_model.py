@@ -10,7 +10,6 @@ from typing import Dict, List, Optional, Literal, Union, Any
 
 # ---- Types for configuration ----
 
-VisibilityLevel = Literal["public", "protected", "private", "internal", "exported"]
 FunctionBodyPolicy = Literal["keep_all", "strip_all", "keep_public"]
 CommentPolicy = Literal["keep_all", "strip_all", "keep_doc", "keep_first_sentence"]
 ImportPolicy = Literal["keep_all", "strip_all", "strip_external", "strip_local"]
