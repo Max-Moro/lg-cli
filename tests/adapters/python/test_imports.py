@@ -214,25 +214,28 @@ class TestPythonImportOptimization:
         """Test import optimization with custom external patterns."""
         code = '''import os
 import mycompany.utils  # Should be treated as external
-from internal.helpers import process  # Single-word module → external by default pattern
+from internal.helpers import process  # Treated as local (doesn't match custom or stdlib patterns)
 from .local import function  # Relative import → local
 '''
 
         import_config = ImportConfig(
             policy="strip_local",
-            external_patterns=[r"^mycompany\..*"]  # Add 'r' prefix for raw string
+            external_patterns=[r"^mycompany\..*"]
         )
 
         adapter = make_adapter(PythonCfg(imports=import_config))
 
         result, meta = adapter.process(lctx(code))
 
+        # Two local imports should be removed
+        assert meta.get("python.removed.import", 0) == 2
+
         # External imports should be preserved
         assert "import os" in result
         assert "import mycompany.utils" in result
 
         # Local imports should be removed
-        assert "from internal.helpers" not in result  # Treated as local (no longer matches single-word pattern)
+        assert "from internal.helpers" not in result
         assert "from .local" not in result
         assert re.search(r'# … (\d+ )?imports? omitted', result)
     
@@ -333,16 +336,21 @@ from .helpers import process_data as process
 from local.project.deeply.nested import utility
 import external.library.with.deep.structure
 '''
-        
+
         import_config = ImportConfig(policy="strip_local")
-        
+
         adapter = make_adapter(PythonCfg(imports=import_config))
-        
+
         result, meta = adapter.process(lctx(code))
-        
-        # Classification should work for deeply nested modules
-        # Exact behavior depends on implementation heuristics
-        assert meta.get("python.removed.import", 0) >= 0
+
+        # All three imports are classified as external (match default patterns) and removed
+        assert meta.get("python.removed.import", 0) == 3
+
+        # All imports should be replaced with placeholder
+        assert re.search(r'# … (\d+ )?imports? omitted', result)
+        lines = [line.strip() for line in result.split('\n') if line.strip()]
+        import_lines = [line for line in lines if line.startswith(('import', 'from'))]
+        assert len(import_lines) == 0
     
     def test_import_summarization_grouping(self):
         """Test that import summarization groups consecutive imports."""

@@ -251,19 +251,27 @@ class TestTypeScriptImportEdgeCases:
 import * as lodash from 'lodash';
 import { Observable, Subject, map, filter } from 'rxjs';
 '''
-        
+
         import_config = ImportConfig(
             policy="keep_all",
             summarize_long=True,
             max_items_before_summary=3
         )
-        
+
         adapter = make_adapter(TypeScriptCfg(imports=import_config))
-        
+
         result, meta = adapter.process(lctx(code))
-        
-        # Long named import lists should be summarized
-        assert meta.get("typescript.removed.import", 0) >= 0
+
+        # Four items from rxjs exceed threshold and should be summarized
+        assert meta.get("typescript.removed.import", 0) == 4
+        assert re.search(r'// … (\d+ )?imports? omitted', result)
+
+        # Imports not exceeding threshold should be preserved
+        assert "import React, { Component, useState } from 'react'" in result
+        assert "import * as lodash from 'lodash'" in result
+
+        # Long import list should be removed
+        assert "from 'rxjs'" not in result
     
     def test_type_only_imports(self):
         """Test handling of TypeScript type-only imports."""

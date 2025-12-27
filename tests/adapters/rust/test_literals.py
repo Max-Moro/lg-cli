@@ -52,7 +52,8 @@ const LONG_MSG: &str = "This is a very long message that should be trimmed becau
         result, meta = adapter.process(lctx(code))
 
         assert 'const SHORT_MSG: &str = "Hello";' in result
-        assert "// literal string" in result or "/* literal string" in result
+        # Rust uses single-line comments for literal placeholders
+        assert "// literal string" in result
 
     def test_vec_literal_trimming(self):
         """Test trimming of vec! literals."""
@@ -72,8 +73,8 @@ let large_vec = vec![
         result, meta = adapter.process(lctx(code))
 
         assert "let small_vec = vec![1, 2, 3];" in result
-        # v2 generates "// literal vec" (specific comment_name)
-        assert "// literal vec" in result or "/* literal vec" in result
+        # Rust uses single-line comments for literal placeholders
+        assert "// literal vec" in result
 
     def test_array_literal_trimming(self):
         """Test trimming of array literals."""

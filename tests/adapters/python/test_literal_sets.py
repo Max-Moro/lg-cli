@@ -65,9 +65,9 @@ CONFIG = {
         # Set should be identified as set
         assert "literal set" in set_result
         assert "TAGS = {" in set_result
-        
-        # Dict should be identified as object (MIDDLE_COMMENT format)
-        assert "# …" in dict_result or "literal object" in dict_result
+
+        # Dict uses middle-element comment placeholder format
+        assert "# …" in dict_result
         assert "CONFIG = {" in dict_result
 
     def test_empty_set_handling(self):

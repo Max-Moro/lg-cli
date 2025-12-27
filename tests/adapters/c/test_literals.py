@@ -52,7 +52,8 @@ const char* long_msg = "This is a very long message that should be trimmed becau
         result, meta = adapter.process(lctx(code))
 
         assert 'const char* short_msg = "Hello";' in result
-        assert "// literal string" in result or "/* literal string" in result
+        # C uses single-line comments for literal placeholders
+        assert "// literal string" in result
 
     def test_array_literal_trimming(self):
         """Test trimming of array initializers."""
