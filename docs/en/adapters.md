@@ -29,27 +29,27 @@ Language adapters are configured through sections in YAML configuration:
 api-module:
   extensions: [".py", ".ts", ".js"]
 
-  lang: # Target language
-      # Base configuration for entire section
-      public_api_only: false  # Show only public API
-      strip_function_bodies: true  # Remove function bodies
-      comment_policy: "keep_doc"  # Comment handling policy
+  python:  # Target language
+    # Base configuration for entire section
+    public_api_only: false  # Show only public API
+    strip_function_bodies: true  # Remove function bodies
+    comment_policy: "keep_doc"  # Comment handling policy
 
-      # Detailed settings for specific aspects
-      imports:
-        policy: "strip_external"
-        summarize_long: true
+    # Detailed settings for specific aspects
+    imports:
+      policy: "strip_external"
+      summarize_long: true
 
-      literals:
-        max_tokens: 100
+    literals:
+      max_tokens: 100
 
-      placeholders:
-        style: "inline"  # Placeholder style: inline, block, none
-        min_savings_ratio: 2.0  # Minimum savings ratio
+    placeholders:
+      min_savings_ratio: 2.0  # Minimum savings ratio
+      min_abs_savings_if_none: 5  # Minimum absolute savings
 
-      # Token budgeting
-      budget:
-        max_tokens_per_file: 500
+    # Token budgeting
+    budget:
+      max_tokens_per_file: 500
 ```
 
 ---
@@ -64,18 +64,19 @@ strip_function_bodies: true
 
 # Extended configuration
 strip_function_bodies:
-  mode: "public_only"  # Possible modes: none, all, public_only, non_public, large_only
-  min_lines: 5  # Minimum size for removal in large_only mode
+  policy: "strip_all"  # Possible policies: keep_all, strip_all, keep_public
+  max_tokens: 50  # Trim function bodies to N tokens instead of complete removal
   except_patterns: ["^init", "^main"]  # Don't touch functions matching regex
   keep_annotated: ["@important", "@critical"]  # Keep annotated functions
 ```
 
-Modes:
-- `none` — don't remove anything
-- `all` — remove all function bodies
-- `public_only` — remove only from public functions/methods
-- `non_public` — remove only from private/protected
-- `large_only` — remove functions larger than `min_lines`
+**Policies:**
+- `keep_all` — keep all function bodies
+- `strip_all` — remove all function bodies
+- `keep_public` — remove only private function/method bodies
+
+**The `max_tokens` parameter:**
+Instead of completely removing function bodies, you can use `max_tokens` to trim them to a specified token budget. LG will preserve the beginning of the function and the return statement (if present), inserting a placeholder between them. This allows you to see the main function logic while saving tokens on implementation details.
 
 ---
 
@@ -192,25 +193,27 @@ Different optimization strategies can be set for different parts of the codebase
 ```yaml
 api-module:
   extensions: [".py", ".ts"]
-  # Base settings for entire section
-  strip_function_bodies: false
 
-  # Targeted overrides
-  targets:
-    # API modules - only public interfaces
-    - match: ["**/api/**", "**/interfaces/**"]
-      public_api_only: true
-      strip_function_bodies: true
+  python:
+    # Base settings for entire section
+    strip_function_bodies: false
 
-    # Tests - minimal volume
-    - match: ["**/test/**"]
-      strip_function_bodies: true
-      comment_policy: "strip_all"
+    # Targeted overrides
+    targets:
+      # API modules - only public interfaces
+      - match: ["**/api/**", "**/interfaces/**"]
+        public_api_only: true
+        strip_function_bodies: true
 
-    # Utils - budgeting
-    - match: ["**/utils/**"]
-      budget:
-        max_tokens_per_file: 300
+      # Tests - minimal volume
+      - match: ["**/test/**"]
+        strip_function_bodies: true
+        comment_policy: "strip_all"
+
+      # Utils - budgeting
+      - match: ["**/utils/**"]
+        budget:
+          max_tokens_per_file: 300
 ```
 
 The `match` rule accepts both string and array of glob patterns. When multiple rules match, the more specific one wins.
@@ -219,21 +222,20 @@ The `match` rule accepts both string and array of glob patterns. When multiple r
 
 ### Placeholder System
 
-The `placeholders` setting determines how to denote removed code sections:
+The `placeholders` setting determines savings thresholds for applying optimizations:
 
 ```yaml
 placeholders:
-  style: "inline"  # inline, block, none
   min_savings_ratio: 2.0  # Minimum token savings ratio
-  min_abs_savings_if_none: 5  # Minimum absolute savings for style=none
+  min_abs_savings_if_none: 5  # Minimum absolute savings for complete removal
 ```
 
-Styles:
-- `inline` — single-line comments
-- `block` — block comments
-- `none` — no placeholders (complete removal)
+Placeholders are automatically formatted based on context:
+- **Single-line comments** — for most removals
+- **Block comments** — when code remains on the same line
+- **Inline** — for shortened literals (inside string)
 
-Placeholders contain information about removed element type, name, and size.
+Placeholders contain information about removed element type, name, and size. The `min_savings_ratio` parameter controls the minimum ratio of saved tokens to placeholder size (default 2.0, meaning savings must be at least twice the placeholder size).
 
 ---
 
@@ -258,13 +260,70 @@ These metrics help understand what exactly "eats" tokens and how effective the a
 
 ---
 
-### Language-Specific Features
+### Automatic Trivial File Skipping
 
-**Trivial file detection** is enabled by default for all languages. Trivial files (like `__init__.py` with only re-exports, `index.ts` barrel files, `doc.go` with only package docs) are automatically skipped from listings. This can be disabled per-section with `skip_trivial_files: false`.
+LG automatically detects and skips trivial files that don't carry meaningful content for code analysis:
 
-**Python** provides special handlers for decorators (`@property`, `@classmethod`) and Python-specific comment styles (docstrings).
+**Examples of trivial files:**
+- Python: `__init__.py` with only re-exports (`from .module import ...`, `__all__ = [...]`)
+- TypeScript/JavaScript: barrel files `index.ts`/`index.js` with only re-exports (`export { ... } from './module'`)
+- Go: `doc.go` with only package documentation
 
-**TypeScript** offers optimized work with JSX and decorators, and special logic for exported API.
+**Configuration:**
+```yaml
+api-module:
+  extensions: [".py", ".ts"]
+
+  python:
+    skip_trivial_files: true  # enabled by default
+
+  typescript:
+    skip_trivial_files: true  # enabled by default
+```
+
+This feature is enabled by default for all languages and helps reduce noise in listings. If needed, it can be disabled via `skip_trivial_files: false` in section configuration.
+
+---
+
+### Supported Languages
+
+LG supports language adapters for the following programming languages. Each language has a specific configuration key and recommended file extensions:
+
+| Language | YAML Key | Recommended extensions |
+|----------|----------|------------------------|
+| **Python** | `python:` | `[".py"]` |
+| **TypeScript** | `typescript:` | `[".ts", ".tsx"]` |
+| **JavaScript** | `javascript:` | `[".js", ".jsx", ".mjs", ".cjs"]` |
+| **Kotlin** | `kotlin:` | `[".kt", ".kts"]` |
+| **Java** | `java:` | `[".java"]` |
+| **C++** | `cpp:` | `[".cpp", ".hpp", ".cc", ".hh", ".cxx", ".hxx"]` |
+| **C** | `c:` | `[".c", ".h"]` |
+| **Scala** | `scala:` | `[".scala", ".sc"]` |
+| **Go** | `go:` | `[".go"]` |
+| **Rust** | `rust:` | `[".rs"]` |
+
+**Configuration example:**
+```yaml
+my-section:
+  extensions: [".py", ".java"]
+
+  python:
+    strip_function_bodies: true
+    comment_policy: "keep_doc"
+
+  java:
+    public_api_only: true
+    strip_function_bodies: true
+```
+
+**Current list:**
+The complete list of supported adapters can be obtained with:
+```bash
+lg diag
+```
+
+**Uniform configuration:**
+All languages are configured through a common settings model. Internal processing differences (syntax specifics, element visibility rules, comment styles) are encapsulated in adapters and transparent to the user — you don't need to learn the specifics of each language separately.
 
 ---
 
