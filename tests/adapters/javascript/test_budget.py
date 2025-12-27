@@ -15,7 +15,7 @@ from ..golden_utils import assert_golden_match
 
 
 # Budget steps for progression testing
-BUDGET_STEPS = [598, 564, 517, 443, 420, 356, 250, 179, 99]
+BUDGET_STEPS = [598, 557, 425, 368, 345, 268, 207, 76]
 
 
 @pytest.mark.parametrize("budget", BUDGET_STEPS)

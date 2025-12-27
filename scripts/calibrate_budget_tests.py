@@ -86,7 +86,7 @@ def import_language_utils(language: str):
     if not cfg_class_name:
         raise ValueError(f"Unknown language: {language}")
 
-    adapter_module = importlib.import_module(f"lg.adapters.{language}")
+    adapter_module = importlib.import_module(f"lg.adapters.langs.{language}")
     cfg_class = getattr(adapter_module, cfg_class_name)
 
     return make_adapter, lctx, load_sample_code, cfg_class

@@ -7,17 +7,17 @@
 // - Public vs private API elements
 package main
 
-// External imports (most common cases)
+// … comment omitted
 import (
 	// … 3 imports omitted
 )
 
-// Third-party imports
+// … comment omitted
 import (
 	// … import omitted
 )
 
-// Local imports (treated as local)
+// … comment omitted
 import (
 	"myproject/internal/models"
 	"myproject/pkg/utils"
@@ -30,7 +30,7 @@ const ModuleTitle = "Budget System Complex Sample"
 
 const LongText = `This is an extremely long text that is designed to be trimmed
 by the literal optimizer when budgets are small. It repeats a message to
-ensure length. This is an extremely long text that is designed to be trimmed.`
+ensu…` // literal string (−12 tokens)
 
 var BigObject = map[string]interface{}{
 	"users": func() []map[string]interface{} {
@@ -38,28 +38,12 @@ var BigObject = map[string]interface{}{
 		for i := 0; i < 50; i++ {
 			result[i] = map[string]interface{}{
 				"id":     i + 1,
-				"name":   fmt.Sprintf("User %d", i+1),
-				"active": i%2 == 0,
+				// … (2 more, −23 tokens)
 			}
 		}
 		return result
 	}(),
-	"config": map[string]interface{}{
-		"flags": func() map[string]bool {
-			result := make(map[string]bool)
-			for i := 0; i < 40; i++ {
-				result[fmt.Sprintf("flag_%d", i)] = i%2 == 0
-			}
-			return result
-		}(),
-		"thresholds": func() []int {
-			result := make([]int, 120)
-			for i := 0; i < 120; i++ {
-				result[i] = i
-			}
-			return result
-		}(),
-	},
+	// … (1 more, −128 tokens)
 }
 
 // PublicService provides public API operations
@@ -84,7 +68,7 @@ func (s *PublicService) GetUser(id int) *models.User {
 	return nil
 }
 
-// normalize is a private helper — should not be visible with public_api_only
+// … comment omitted
 func (s *PublicService) normalize(u *models.User) *models.User {
 	if u == nil {
 		return nil
@@ -94,7 +78,7 @@ func (s *PublicService) normalize(u *models.User) *models.User {
 	return u
 }
 
-// Process is a long method body to allow function body stripping
+// … comment omitted
 func (s *PublicService) Process(list []*models.User) ([]*models.User, error) {
 	if len(list) == 0 {
 		return nil, errors.New("empty list")
@@ -111,18 +95,18 @@ func (s *PublicService) Process(list []*models.User) ([]*models.User, error) {
 	return out, nil
 }
 
-// internalOnly is a private struct — should be filtered out in public_api_only
+// … comment omitted
 type internalOnly struct {
 	data string
 }
 
 func (i *internalOnly) doWork() {
-	// noop
+	// … comment omitted
 }
 
-// PublicFunction is an exported function
+// … comment omitted
 func PublicFunction(name string) string {
-	// Regular comment that may be stripped
+	// … comment omitted
 	if utils.ToTitle != nil {
 		return utils.ToTitle(name)
 	}
@@ -130,7 +114,7 @@ func PublicFunction(name string) string {
 }
 
 func privateFunction(data []string) []string {
-	// Not exported; should be removed when public_api_only
+	// … comment omitted
 	result := make([]string, len(data))
 	for i, s := range data {
 		result[i] = strings.TrimSpace(s)

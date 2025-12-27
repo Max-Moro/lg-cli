@@ -30,7 +30,7 @@ const ModuleTitle = "Budget System Complex Sample"
 
 const LongText = `This is an extremely long text that is designed to be trimmed
 by the literal optimizer when budgets are small. It repeats a message to
-ensure length. This is an extremely long text that is designed to be trimmed.`
+ensu…` // literal string (−12 tokens)
 
 var BigObject = map[string]interface{}{
 	"users": func() []map[string]interface{} {
@@ -38,28 +38,12 @@ var BigObject = map[string]interface{}{
 		for i := 0; i < 50; i++ {
 			result[i] = map[string]interface{}{
 				"id":     i + 1,
-				"name":   fmt.Sprintf("User %d", i+1),
-				"active": i%2 == 0,
+				// … (2 more, −23 tokens)
 			}
 		}
 		return result
 	}(),
-	"config": map[string]interface{}{
-		"flags": func() map[string]bool {
-			result := make(map[string]bool)
-			for i := 0; i < 40; i++ {
-				result[fmt.Sprintf("flag_%d", i)] = i%2 == 0
-			}
-			return result
-		}(),
-		"thresholds": func() []int {
-			result := make([]int, 120)
-			for i := 0; i < 120; i++ {
-				result[i] = i
-			}
-			return result
-		}(),
-	},
+	// … (1 more, −128 tokens)
 }
 
 // PublicService provides public API operations

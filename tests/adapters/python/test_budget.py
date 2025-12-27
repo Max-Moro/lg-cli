@@ -14,7 +14,7 @@ from .utils import make_adapter, lctx
 from ..golden_utils import assert_golden_match
 
 
-BUDGET_STEPS = [829, 797, 706, 635, 621, 593, 494, 373, 285]
+BUDGET_STEPS = [829, 787, 618, 567, 553, 462, 359, 301]
 
 
 @pytest.mark.parametrize("budget", BUDGET_STEPS)
