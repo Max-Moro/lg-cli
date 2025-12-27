@@ -65,8 +65,7 @@
 #include "../../core/core_module.hpp"
 #include "../../../config/app_config.hpp"
 
-// Long include lists from single directory (candidates for summarization)
-// … 23 imports omitted
+// … 23 imports omitted (24 lines)
 
 class ImportTestService {
 private:

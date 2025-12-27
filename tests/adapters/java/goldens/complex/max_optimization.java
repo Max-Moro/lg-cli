@@ -4,11 +4,7 @@
 
 package com.example.budget;
 
-// … comment omitted
-// … 4 imports omitted
-
-// … comment omitted
-// … 3 imports omitted
+// … 7 imports omitted (9 lines)
 
 /**
  * Module level long documentation that might be truncated under tight budgets.
@@ -42,8 +38,7 @@ public class PublicService {
         return cache.get(String.valueOf(id));
     }
 
-    // … comment omitted
-    // … method omitted (7 lines)
+    // … method omitted (8 lines)
 
     /** Long method body to allow function body stripping. */
     public ApiResponse<List<User>> process(List<User> list) {
@@ -65,5 +60,4 @@ public class Functions {
     }
 }
 
-// … comment omitted
-// … 3 classes omitted (31 lines)
+// … 3 classes omitted (32 lines)

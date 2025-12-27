@@ -11,8 +11,7 @@ object PublicConstants {
   val PUBLIC_VERSION = "1.0.0"
   val API_ENDPOINT = "https://api.example.com"
 
-  // Private constants (should be filtered out)
-  // … 2 fields omitted
+  // … 2 fields omitted (3 lines)
 }
 
 // Public case class (should be preserved)
@@ -23,8 +22,7 @@ case class User(
   createdAt: Instant
 )
 
-// Private case class (should be filtered out)
-// … case class omitted (4 lines)
+// … case class omitted (5 lines)
 
 // Public type alias (should be preserved)
 type UserRole = String
@@ -35,11 +33,7 @@ class UserManager(private val apiEndpoint: String = PublicConstants.API_ENDPOINT
   val version: String = PublicConstants.PUBLIC_VERSION
   var isInitialized: Boolean = false
 
-  // Private properties (should be filtered out with public_api_only)
-  // … 2 fields omitted (3 lines)
-
-  // Protected properties (should be filtered out)
-  // … field omitted (2 lines)
+  // … 3 fields omitted (7 lines)
 
   initialize()
 
@@ -67,17 +61,12 @@ class UserManager(private val apiEndpoint: String = PublicConstants.API_ENDPOINT
     internalCache.values.toList
   }
 
-  // Private methods (should be filtered out)
-  // … 4 methods omitted (26 lines)
-
-  // Protected methods (should be filtered out)
-  // … 2 methods omitted (7 lines)
+  // … 6 methods omitted (35 lines)
 
   // Public property with getter
   def userCount: Int = internalCache.size
 
-  // Private property with getter (should be filtered out)
-  // … method omitted (4 lines)
+  // … method omitted (5 lines)
 }
 
 // Companion object with mixed visibility
@@ -96,12 +85,10 @@ object UserManager {
     )
   }
 
-  // Private static methods (should be filtered out)
-  // … method omitted (3 lines)
+  // … method omitted (4 lines)
 }
 
-// Private class (should be filtered out)
-// … class omitted (11 lines)
+// … class omitted (12 lines)
 
 // Public abstract class (should be preserved)
 abstract class BaseService {
@@ -114,8 +101,7 @@ abstract class BaseService {
     "version" -> PublicConstants.PUBLIC_VERSION
   )
 
-  // Protected abstract method (should be filtered out in public API)
-  // … method omitted
+  // … method omitted (2 lines)
 }
 
 // Public trait (should be preserved)
@@ -124,8 +110,7 @@ trait UserService {
   def save(user: User): User
 }
 
-// Private trait (should be filtered out)
-// … trait omitted (4 lines)
+// … trait omitted (5 lines)
 
 // Public sealed trait with case objects (should be preserved)
 sealed trait UserStatus
@@ -136,8 +121,7 @@ object UserStatus {
   case object Banned extends UserStatus
 }
 
-// Private sealed trait (should be filtered out)
-// … trait omitted
+// … trait omitted (2 lines)
 // … object omitted (5 lines)
 
 // Public functions (should be preserved)
@@ -149,8 +133,7 @@ def isValidUserRole(role: Any): Boolean = {
   UserManager.validateUserRole(role.toString)
 }
 
-// Private functions (should be filtered out)
-// … 2 functions omitted (7 lines)
+// … 2 functions omitted (8 lines)
 
 // Public object (should be preserved)
 object UserUtils {
@@ -164,12 +147,10 @@ object UserUtils {
     (now.toEpochMilli - created.toEpochMilli) / (1000 * 60 * 60 * 24)
   }
 
-  // Private object member (should be filtered out)
-  // … method omitted (3 lines)
+  // … method omitted (4 lines)
 }
 
-// Private object (should be filtered out)
-// … object omitted (14 lines)
+// … object omitted (15 lines)
 
 // ============= Examples with Scala annotations =============
 
@@ -198,8 +179,7 @@ class PublicAnnotatedClass {
   // … method omitted (4 lines)
 }
 
-// Annotated functions
-// … function omitted (7 lines)
+// … function omitted (8 lines)
 
 @Logged
 @Validate
@@ -220,8 +200,7 @@ class MixedAnnotatedClass {
   // … 2 methods omitted (9 lines)
 }
 
-// Multiple stacked annotations on private elements
-// … class omitted (12 lines)
+// … class omitted (13 lines)
 
 @Logged
 @Validate

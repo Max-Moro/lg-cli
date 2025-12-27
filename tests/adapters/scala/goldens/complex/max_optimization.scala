@@ -4,11 +4,7 @@
 
 package com.example.budget
 
-// … comment omitted
-// … 8 imports omitted (5 lines)
-
-// … comment omitted
-// … 3 imports omitted (2 lines)
+// … 11 imports omitted (9 lines)
 
 /**
  * Module level long documentation that might be truncated under tight budgets.
@@ -41,8 +37,7 @@ class PublicService {
     cache.get(id.toString)
   }
 
-  // … comment omitted
-  // … method omitted (7 lines)
+  // … method omitted (8 lines)
 
   /** Long method body to allow function body stripping. */
   def process(list: List[User]): ApiResponse[List[User]] = {

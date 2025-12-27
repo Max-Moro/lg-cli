@@ -4,29 +4,7 @@
 
 package com.example.imports;
 
-// Standard library imports (external)
-// … 7 imports omitted
-
-// More standard library
-// … 7 imports omitted
-
-// Java EE / Jakarta EE imports (external)
-// … 5 imports omitted
-
-// Third-party library imports (external)
-// … 18 imports omitted
-
-// Local/relative imports (should be considered local)
-// … 9 imports omitted
-
-// Imports from different package levels
-// … 3 imports omitted
-
-// Static imports
-// … 4 imports omitted
-
-// Long import lists from single package (candidates for summarization)
-// … 35 imports omitted
+// … 88 imports omitted (96 lines)
 
 @Service
 public class ImportTestService {

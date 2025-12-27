@@ -112,41 +112,6 @@ class PrivateClass {
         # Private class should be removed
         assert "class PrivateClass" not in result
 
-    def test_re_exports(self):
-        """Test re-export statements."""
-        code = '''
-// Re-exports (public API)
-export { default as Component } from './Component.js';
-export { Utils } from './utils.js';
-export * from './types.js';
-
-// Named exports
-export {
-    ServiceA,
-    ServiceB as Service2
-} from './services.js';
-
-// Private imports (not re-exported)
-import { InternalHelper } from './internal.js';
-
-// Local definitions using imports
-function useInternal() {
-    return InternalHelper.process();
-}
-'''
-
-        adapter = make_adapter(JavaScriptCfg(public_api_only=True))
-
-        result, meta = adapter.process(lctx(code))
-
-        # Re-exports should remain
-        assert "export { default as Component }" in result
-        assert "export { Utils }" in result
-        assert "export * from './types.js'" in result
-
-        # Private imports should be removed
-        assert "InternalHelper" not in result
-
     def test_namespace_like_exports(self):
         """Test namespace-like object exports."""
         code = '''

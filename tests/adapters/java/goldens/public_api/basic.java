@@ -12,8 +12,7 @@ public class PublicConstants {
     public static final String PUBLIC_VERSION = "1.0.0";
     public static final String API_ENDPOINT = "https://api.example.com";
 
-    // Private constants (should be filtered out)
-    // … 2 fields omitted
+    // … 2 fields omitted (3 lines)
 }
 
 // Public interface (should be preserved)
@@ -24,8 +23,7 @@ public interface User {
     Instant getCreatedAt();
 }
 
-// Package-private interface (should be filtered out)
-// … interface omitted (4 lines)
+// … interface omitted (5 lines)
 
 // Public enum (should be preserved)
 public enum UserRole {
@@ -38,11 +36,7 @@ public class UserManager {
     public final String version = PublicConstants.PUBLIC_VERSION;
     public boolean isInitialized = false;
 
-    // Private properties (should be filtered out with public_api_only)
-    // … 2 fields omitted
-
-    // Protected properties (should be filtered out)
-    // … 2 fields omitted
+    // … 4 fields omitted (6 lines)
 
     public UserManager() {
         this(PublicConstants.API_ENDPOINT);
@@ -82,11 +76,7 @@ public class UserManager {
         return new ArrayList<>(internalCache.values());
     }
 
-    // Private methods (should be filtered out)
-    // … 4 methods omitted (24 lines)
-
-    // Protected methods (should be filtered out)
-    // … 2 methods omitted (7 lines)
+    // … 6 methods omitted (33 lines)
 
     // Public static methods (should be preserved)
     public static boolean validateUserRole(String role) {
@@ -102,20 +92,17 @@ public class UserManager {
         return new UserImpl(0, "Default User", "default@example.com", Instant.now());
     }
 
-    // Private static methods (should be filtered out)
-    // … method omitted (3 lines)
+    // … method omitted (4 lines)
 
     // Public property with getter
     public int getUserCount() {
         return internalCache.size();
     }
 
-    // Private property with getter (should be filtered out)
-    // … method omitted (6 lines)
+    // … method omitted (7 lines)
 }
 
-// Package-private class (should be filtered out)
-// … class omitted (12 lines)
+// … class omitted (13 lines)
 
 // Public abstract class (should be preserved)
 public abstract class BaseService {
@@ -130,12 +117,10 @@ public abstract class BaseService {
         return info;
     }
 
-    // Protected abstract method (should be filtered out in public API)
-    // … method omitted
+    // … method omitted (2 lines)
 }
 
-// Private enum (should be filtered out)
-// … enum omitted (5 lines)
+// … enum omitted (6 lines)
 
 // Public functions (should be preserved)
 public class UserManagerFactory {
@@ -151,8 +136,7 @@ public class UserManagerFactory {
         return UserManager.validateUserRole(role.toString());
     }
 
-    // Private functions (should be filtered out)
-    // … 2 methods omitted (7 lines)
+    // … 2 methods omitted (8 lines)
 }
 
 // Public utility class (should be preserved)
@@ -167,12 +151,10 @@ public class UserUtils {
         return (now.toEpochMilli() - created.toEpochMilli()) / (1000 * 60 * 60 * 24);
     }
 
-    // Private utility member (should be filtered out)
-    // … method omitted (3 lines)
+    // … method omitted (4 lines)
 }
 
-// Package-private utility class (should be filtered out)
-// … class omitted (14 lines)
+// … class omitted (15 lines)
 
 // ============= Support classes =============
 
@@ -180,8 +162,7 @@ public class UserUtils {
 
 // ============= Examples with Java annotations =============
 
-// Simple annotation examples
-// … 2 annotations omitted
+// … 2 annotations omitted (3 lines)
 
 // … class omitted (11 lines)
 
@@ -212,8 +193,7 @@ public class MixedAnnotatedClass {
     // … 2 methods omitted (9 lines)
 }
 
-// Multiple stacked annotations on private elements
-// … class omitted (12 lines)
+// … class omitted (13 lines)
 
 @Logged
 @Validate

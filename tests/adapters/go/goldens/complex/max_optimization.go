@@ -52,16 +52,14 @@ func (s *PublicService) GetUser(id int) *models.User {
 	// … method body omitted (5 lines)
 }
 
-// … comment omitted
-// … method omitted (8 lines)
+// … method omitted (9 lines)
 
 // … comment omitted
 func (s *PublicService) Process(list []*models.User) ([]*models.User, error) {
 	// … method body omitted (11 lines)
 }
 
-// … comment omitted
-// … struct omitted (3 lines)
+// … struct omitted (4 lines)
 
 // … method omitted (3 lines)
 

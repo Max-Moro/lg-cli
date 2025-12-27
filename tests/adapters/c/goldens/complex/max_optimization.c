@@ -2,11 +2,7 @@
  * Comprehensive C sample for Budget System tests.
  */
 
-// … comment omitted
-// … 5 imports omitted
-
-// … comment omitted
-// … 3 imports omitted
+// … 8 imports omitted (10 lines)
 
 /**
  * Module level long documentation that might be truncated under tight budgets.
@@ -38,16 +34,14 @@ void* public_service_get_user(PublicService* service, int id) {
     // … function body omitted (2 lines)
 }
 
-// … comment omitted
-// … function omitted (5 lines)
+// … function omitted (6 lines)
 
 /** Long method body to allow function body stripping. */
 void* public_service_process(PublicService* service, void** list, int count) {
     // … function body omitted (10 lines)
 }
 
-// … comment omitted
-// … typedef omitted (3 lines)
+// … typedef omitted (4 lines)
 
 // … function omitted (4 lines)
 
@@ -56,8 +50,7 @@ char* public_function(const char* name) {
     // … function body omitted (3 lines)
 }
 
-// … comment omitted
-// … function omitted (9 lines)
+// … function omitted (10 lines)
 
 int main(void) {
     // … function body omitted (6 lines)

@@ -38,14 +38,7 @@ use actix_web::{web, App, HttpServer, HttpResponse};
 use axum::{Router, routing::get};
 use warp::Filter;
 
-// Local/project imports (should be considered local)
-// … 10 imports omitted (6 lines)
-
-// Relative imports with different depth levels
-// … 3 imports omitted
-
-// Long import lists from single module (candidates for summarization)
-// … 23 imports omitted (27 lines)
+// … 36 imports omitted (39 lines)
 
 struct ImportTestService {
     user_service: UserService,

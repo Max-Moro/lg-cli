@@ -29,8 +29,7 @@ import javax.persistence.*;
 import javax.servlet.http.*;
 import javax.annotation.*;
 
-// Third-party library imports (external)
-// … 7 imports omitted
+// … 7 imports omitted (8 lines)
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
@@ -45,8 +44,7 @@ import org.apache.commons.collections4.CollectionUtils;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 
-// Local/relative imports (should be considered local)
-// … 9 imports omitted
+// … 9 imports omitted (10 lines)
 
 // Imports from different package levels
 import com.example.shared.SharedUtility;
@@ -59,8 +57,7 @@ import static java.util.stream.Collectors.*;
 import static org.springframework.http.HttpStatus.*;
 import static com.example.imports.utils.Constants.*;
 
-// Long import lists from single package (candidates for summarization)
-// … 35 imports omitted
+// … 35 imports omitted (36 lines)
 
 @Service
 public class ImportTestService {

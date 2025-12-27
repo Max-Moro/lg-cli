@@ -4,11 +4,7 @@
 
 package com.example.imports
 
-// Standard library imports (external)
-// … 16 imports omitted (12 lines)
-
-// Third-party library imports (external)
-// … 16 imports omitted (13 lines)
+// … 32 imports omitted (27 lines)
 
 // Local/relative imports (should be considered local)
 import com.example.imports.services.UserService

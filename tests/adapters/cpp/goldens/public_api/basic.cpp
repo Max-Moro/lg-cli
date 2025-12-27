@@ -12,8 +12,7 @@
 const char* PUBLIC_VERSION = "1.0.0";
 const char* API_ENDPOINT = "https://api.example.com";
 
-// Private module-level constants (should be filtered out)
-// … 2 variables omitted
+// … 2 variables omitted (3 lines)
 
 // Public structure (should be preserved)
 struct User {
@@ -100,18 +99,12 @@ public:
     }
 
 protected:
-    // Protected methods (should be filtered out)
-    // … 2 methods omitted (6 lines)
+    // … 2 methods omitted (7 lines)
 
 private:
-    // Private properties (should be filtered out with public_api_only)
-    // … 3 fields omitted
+    // … 3 fields omitted (4 lines)
 
-    // Private methods (should be filtered out)
-    // … 4 methods omitted (25 lines)
-
-    // Private static methods (should be filtered out)
-    // … method omitted (5 lines)
+    // … 5 methods omitted (32 lines)
 };
 
 // Package-private class (should be filtered out)

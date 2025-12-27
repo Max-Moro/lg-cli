@@ -33,20 +33,7 @@ import org.slf4j.{Logger, LoggerFactory}
 import slick.jdbc.PostgresProfile.api._
 import com.typesafe.config.{Config, ConfigFactory}
 
-// Local/relative imports (should be considered local)
-// … 9 imports omitted (5 lines)
-
-// Imports from different package levels
-// … 3 imports omitted
-
-// Import with aliasing
-// … 3 imports omitted
-
-// Wildcard imports
-// … 2 imports omitted
-
-// Long import lists from single package (candidates for summarization)
-// … 9 imports omitted (3 lines)
+// … 26 imports omitted (21 lines)
 
 import akka.http.scaladsl.marshallers.sprayjson.SprayJsonSupport
 import akka.http.scaladsl.marshalling.{Marshal, Marshaller}
@@ -54,8 +41,7 @@ import akka.http.scaladsl.unmarshalling.{Unmarshal, Unmarshaller}
 import akka.http.scaladsl.server.{Route, RouteResult}
 import akka.http.scaladsl.server.directives.{BasicDirectives, RouteDirectives}
 
-// Local imports with long lists
-// … 23 imports omitted (27 lines)
+// … 23 imports omitted (28 lines)
 
 class ImportTestService(
   userService: UserService,

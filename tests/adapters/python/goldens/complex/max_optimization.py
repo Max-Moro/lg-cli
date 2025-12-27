@@ -1,11 +1,6 @@
 """Comprehensive sample for Budget System tests (Python)."""
 
-# … comment omitted
-# … 11 imports omitted (7 lines)
-
-# … comment omitted
-# … import omitted  # … comment omitted
-# … import omitted  # … comment omitted
+# … 13 imports omitted (12 lines)
 
 
 MODULE_DOC = """

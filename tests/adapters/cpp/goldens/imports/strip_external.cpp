@@ -2,14 +2,7 @@
  * C++ module for testing include optimization.
  */
 
-// Standard library includes (external)
-// … 14 imports omitted
-
-// More standard library
-// … 10 imports omitted
-
-// Third-party library includes (external)
-// … 15 imports omitted
+// … 39 imports omitted (42 lines)
 
 // Local/project includes (should be considered local)
 #include "services/user_service.hpp"

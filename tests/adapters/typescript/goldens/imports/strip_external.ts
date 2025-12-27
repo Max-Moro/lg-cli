@@ -2,14 +2,7 @@
  * TypeScript module for testing import optimization.
  */
 
-// External library imports (should be considered external)
-// … 16 imports omitted (7 lines)
-
-// Scoped package imports (external)
-// … 10 imports omitted (4 lines)
-
-// Node.js built-in modules (external/standard library)
-// … 7 imports omitted (5 lines)
+// … 33 imports omitted (19 lines)
 
 // Local/relative imports (should be considered local)
 import { UserService } from './services/user-service';
@@ -33,11 +26,7 @@ import type { TypedRequest, TypedResponse } from './types/http';
 import type { DatabaseConfig, ConnectionOptions } from './database/types';
 import type { User, Post, Comment } from './models';
 
-// Mixed import styles on single line
-// … 7 imports omitted (2 lines)
-
-// Long import lists (candidates for summarization)
-// … 47 imports omitted (53 lines)
+// … 54 imports omitted (57 lines)
 
 // Local imports with long lists
 import {

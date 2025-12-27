@@ -2,7 +2,7 @@
  * TypeScript module for testing public API filtering.
  */
 
-// … import omitted
+import { EventEmitter } from 'events';
 
 // Public module-level constants (should be preserved)
 export const PUBLIC_VERSION = '1.0.0';
@@ -20,8 +20,7 @@ export interface User {
     createdAt: Date;
 }
 
-// Private interface (not exported, should be filtered out)
-// … interface omitted (4 lines)
+// … interface omitted (5 lines)
 
 // Public type alias (should be preserved)
 export type UserRole = 'admin' | 'user' | 'guest';
@@ -32,11 +31,7 @@ export class UserManager {
     public readonly version: string = PUBLIC_VERSION;
     public isInitialized: boolean = false;
     
-    // Private properties (should be filtered out with public_api_only)
-    // … 2 fields omitted
-    
-    // Protected properties (should be filtered out)
-    // … field omitted
+    // … 3 fields omitted (5 lines)
     
     constructor(apiEndpoint: string = API_ENDPOINT) {
         this.apiEndpoint = apiEndpoint;
@@ -72,11 +67,7 @@ export class UserManager {
         return Array.from(this.internalCache.values());
     }
     
-    // Private methods (should be filtered out)
-    // … 4 methods omitted (26 lines)
-    
-    // Protected methods (should be filtered out)
-    // … 2 methods omitted (7 lines)
+    // … 6 methods omitted (35 lines)
     
     // Public static methods (should be preserved)
     public static validateUserRole(role: string): role is UserRole {
@@ -92,23 +83,19 @@ export class UserManager {
         };
     }
     
-    // Private static methods (should be filtered out)
-    // … method omitted (3 lines)
+    // … method omitted (4 lines)
     
     // Public readonly property with getter
     public get userCount(): number {
         return this.internalCache.size;
     }
     
-    // Private readonly property with getter (should be filtered out)
-    // … method omitted (6 lines)
+    // … method omitted (7 lines)
     
-    // Private property declaration
-    // … field omitted
+    // … field omitted (2 lines)
 }
 
-// Private class (not exported, should be filtered out)
-// … class omitted (12 lines)
+// … class omitted (13 lines)
 
 // Public abstract class (should be preserved)
 export abstract class BaseService {
@@ -135,8 +122,7 @@ export enum UserStatus {
     BANNED = 'banned'
 }
 
-// Private enum (not exported, should be filtered out)
-// … enum omitted (5 lines)
+// … enum omitted (6 lines)
 
 // Public functions (should be preserved)
 export function createUserManager(endpoint?: string): UserManager {
@@ -147,8 +133,7 @@ export function isValidUserRole(role: any): role is UserRole {
     return UserManager.validateUserRole(role);
 }
 
-// Private functions (not exported, should be filtered out)
-// … 2 functions omitted (7 lines)
+// … 2 functions omitted (8 lines)
 
 // Exported namespace (should be preserved)
 export namespace UserUtils {
@@ -162,8 +147,7 @@ export namespace UserUtils {
         return Math.floor((now.getTime() - created.getTime()) / (1000 * 60 * 60 * 24));
     }
     
-    // Private namespace member (should be filtered out)
-    // … function omitted (3 lines)
+    // … function omitted (4 lines)
 }
 
 // Private namespace (not exported, should be filtered out)
@@ -174,8 +158,7 @@ export default UserManager;
 
 // ============= Examples with TypeScript decorators =============
 
-// Simple decorator examples
-// … 2 functions omitted (10 lines)
+// … 2 functions omitted (11 lines)
 
 // … class omitted (11 lines)
 
@@ -231,8 +214,7 @@ export class MixedDecoratedClass {
     // … 2 methods omitted (9 lines)
 }
 
-// Multiple stacked decorators on private elements
-// … class omitted (12 lines)
+// … class omitted (13 lines)
 
 @logged
 @validate

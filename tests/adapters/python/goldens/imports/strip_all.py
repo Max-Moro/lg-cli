@@ -1,19 +1,6 @@
 """Module for testing import optimization."""
 
-# Standard library imports (external)
-# … 17 imports omitted (10 lines)
-
-# Third-party imports (external)
-# … 13 imports omitted (6 lines)
-
-# Local/relative imports (should be considered local)
-# … 12 imports omitted (5 lines)
-
-# Mixed import styles
-# … 6 imports omitted (2 lines)
-
-# Import with alias
-# … 4 imports omitted
+# … 52 imports omitted (32 lines)
 
 # Conditional imports
 try:
@@ -21,8 +8,7 @@ try:
 except ImportError:
     uvloop = None
 
-# Long from-import lists (candidates for summarization)
-# … 29 imports omitted (16 lines)
+# … 29 imports omitted (17 lines)
 
 class ImportTestClass:
     """Class that uses imported modules."""

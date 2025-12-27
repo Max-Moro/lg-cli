@@ -52,8 +52,7 @@
 #include "../../core/core_module.h"
 #include "../../../config/app_config.h"
 
-// Long include lists from single directory (candidates for summarization)
-// … 23 imports omitted
+// … 23 imports omitted (24 lines)
 
 typedef struct {
     void* user_service;

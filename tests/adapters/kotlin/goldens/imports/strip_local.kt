@@ -30,17 +30,7 @@ import com.google.gson.GsonBuilder
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 
-// Local/relative imports (should be considered local)
-// … 9 imports omitted
-
-// Relative imports with different depth levels
-// … 3 imports omitted
-
-// Import with aliasing
-// … 3 imports omitted
-
-// Star imports
-// … 2 imports omitted
+// … 17 imports omitted (21 lines)
 
 // Long import lists (candidates for summarization)
 import io.ktor.server.application.Application
@@ -85,8 +75,7 @@ import javax.validation.constraints.Negative
 import javax.validation.constraints.NegativeOrZero
 import javax.validation.Valid
 
-// Local imports with long lists
-// … 23 imports omitted
+// … 23 imports omitted (24 lines)
 
 class ImportTestService(
     private val userService: UserService,

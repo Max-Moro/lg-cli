@@ -5,11 +5,7 @@
 
 package com.example.budget
 
-// … comment omitted
-// … 5 imports omitted
-
-// … comment omitted
-// … 3 imports omitted
+// … 8 imports omitted (10 lines)
 
 /**
  * Module level long documentation that might be truncated under tight budgets.
@@ -35,8 +31,7 @@ class PublicService {
         return cache[id.toString()]
     }
 
-    // … comment omitted
-    // … method omitted (7 lines)
+    // … method omitted (8 lines)
 
     /** Long method body to allow function body stripping. */
     fun process(list: List<User>): ApiResponse<List<User>> {

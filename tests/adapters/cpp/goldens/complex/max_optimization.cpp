@@ -2,11 +2,7 @@
  * Comprehensive C++ sample for Budget System tests.
  */
 
-// … comment omitted
-// … 8 imports omitted
-
-// … comment omitted
-// … 3 imports omitted
+// … 11 imports omitted (13 lines)
 
 /**
  * Module level long documentation that might be truncated under tight budgets.
@@ -42,8 +38,7 @@ public:
     }
 
 private:
-    // … comment omitted
-    // … method omitted (4 lines)
+    // … method omitted (5 lines)
 
 public:
     /** Long method body to allow function body stripping. */

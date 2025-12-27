@@ -7,8 +7,7 @@ use std::time::{SystemTime, UNIX_EPOCH};
 pub const PUBLIC_VERSION: &str = "1.0.0";
 pub const API_ENDPOINT: &str = "https://api.example.com";
 
-// Private module-level constants (should be filtered out)
-// … const omitted
+// … const omitted (2 lines)
 
 // … macro omitted (8 lines)
 
@@ -21,8 +20,7 @@ pub struct User {
     pub created_at: SystemTime,
 }
 
-// Private structure (should be filtered out)
-// … struct omitted (4 lines)
+// … struct omitted (5 lines)
 
 // Public enum (should be preserved)
 #[derive(Debug, Clone, Copy)]
@@ -32,8 +30,7 @@ pub enum UserRole {
     Guest,
 }
 
-// Private enum (should be filtered out)
-// … enum omitted (5 lines)
+// … enum omitted (6 lines)
 
 // Public struct with mixed visibility members
 pub struct UserManager {
@@ -41,8 +38,7 @@ pub struct UserManager {
     pub version: String,
     pub is_initialized: bool,
 
-    // Private fields (should be filtered out with public_api_only)
-    // … 3 fields omitted
+    // … 3 fields omitted (4 lines)
 }
 
 impl UserManager {
@@ -108,15 +104,10 @@ impl UserManager {
         }
     }
 
-    // Private methods (should be filtered out)
-    // … 6 methods omitted (26 lines)
-
-    // Private static methods (should be filtered out)
-    // … method omitted (3 lines)
+    // … 7 methods omitted (31 lines)
 }
 
-// Private struct (should be filtered out)
-// … struct omitted (3 lines)
+// … struct omitted (4 lines)
 
 // … impl omitted (14 lines)
 
@@ -148,8 +139,7 @@ pub fn is_valid_user_role(role: &str) -> bool {
     UserManager::validate_user_role(role)
 }
 
-// Private functions (should be filtered out)
-// … 2 functions omitted (6 lines)
+// … 2 functions omitted (7 lines)
 
 // Public utility struct (should be preserved)
 pub struct UserUtils;
@@ -168,8 +158,7 @@ impl UserUtils {
     // … method omitted (3 lines)
 }
 
-// Private utility struct (should be filtered out)
-// … struct omitted
+// … struct omitted (2 lines)
 
 // … impl omitted (17 lines)
 

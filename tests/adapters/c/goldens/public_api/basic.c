@@ -11,8 +11,7 @@
 const char* PUBLIC_VERSION = "1.0.0";
 const char* API_ENDPOINT = "https://api.example.com";
 
-// Private module-level constants (should be filtered out)
-// … 2 variables omitted (5 lines)
+// … 2 variables omitted (6 lines)
 
 // Public structure (should be preserved)
 typedef struct {
@@ -22,8 +21,7 @@ typedef struct {
     time_t created_at;
 } User;
 
-// Private structure (should be filtered out)
-// … typedef omitted (4 lines)
+// … typedef omitted (5 lines)
 
 // Public enum (should be preserved)
 typedef enum {
@@ -32,8 +30,7 @@ typedef enum {
     ROLE_GUEST
 } UserRole;
 
-// Private enum (should be filtered out)
-// … typedef omitted (5 lines)
+// … typedef omitted (6 lines)
 
 // Public structure with mixed visibility members
 typedef struct {
@@ -56,15 +53,13 @@ User* user_manager_get_user_by_id(UserManager* manager, int id);
 User** user_manager_get_all_users(UserManager* manager, int* count);
 void user_manager_free(UserManager* manager);
 
-// Private functions (should be filtered out)
-// … 6 variables omitted
+// … 6 variables omitted (7 lines)
 
 // Public static functions (should be preserved)
 int user_manager_validate_user_role(const char* role);
 User* user_manager_create_default_user(void);
 
-// Private static functions (should be filtered out)
-// … variable omitted
+// … variable omitted (2 lines)
 
 UserManager* user_manager_new(const char* api_endpoint) {
     UserManager* manager = (UserManager*)malloc(sizeof(UserManager));
@@ -123,8 +118,7 @@ void user_manager_free(UserManager* manager) {
     free(manager);
 }
 
-// Private function implementations (should be filtered out)
-// … 6 functions omitted (33 lines)
+// … 6 functions omitted (34 lines)
 
 // Public static function implementations
 int user_manager_validate_user_role(const char* role) {
@@ -149,11 +143,9 @@ User* user_manager_create_default_user(void) {
     return user;
 }
 
-// Private static function implementations (should be filtered out)
-// … function omitted (6 lines)
+// … function omitted (7 lines)
 
-// Private structure (should be filtered out)
-// … typedef omitted (5 lines)
+// … typedef omitted (6 lines)
 
 // … 3 functions omitted (25 lines)
 
@@ -181,5 +173,4 @@ long get_user_age(User* user) {
     return (now - user->created_at) / (60 * 60 * 24);
 }
 
-// Private utility functions (should be filtered out)
-// … 2 functions omitted (13 lines)
+// … 2 functions omitted (14 lines)

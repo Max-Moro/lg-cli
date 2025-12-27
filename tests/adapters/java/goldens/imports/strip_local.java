@@ -51,11 +51,7 @@ import org.apache.commons.collections4.CollectionUtils;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 
-// Local/relative imports (should be considered local)
-// … 9 imports omitted
-
-// Imports from different package levels
-// … 3 imports omitted
+// … 12 imports omitted (14 lines)
 
 // Static imports
 import static java.util.Collections.*;

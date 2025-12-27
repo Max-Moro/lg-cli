@@ -4,17 +4,7 @@
 
 package com.example.imports;
 
-// Standard library imports (external)
-// … 7 imports omitted
-
-// More standard library
-// … 7 imports omitted
-
-// Java EE / Jakarta EE imports (external)
-// … 5 imports omitted
-
-// Third-party library imports (external)
-// … 18 imports omitted
+// … 37 imports omitted (41 lines)
 
 // Local/relative imports (should be considered local)
 import com.example.imports.services.UserService;
@@ -32,12 +22,10 @@ import com.example.shared.SharedUtility;
 import com.example.core.CoreModule;
 import com.example.config.AppConfig;
 
-// Static imports
-// … 3 imports omitted
+// … 3 imports omitted (4 lines)
 import static com.example.imports.utils.Constants.*;
 
-// Long import lists from single package (candidates for summarization)
-// … 12 imports omitted
+// … 12 imports omitted (13 lines)
 
 import com.example.imports.services.createUser;
 import com.example.imports.services.updateUser;

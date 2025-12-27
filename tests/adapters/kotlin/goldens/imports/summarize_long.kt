@@ -30,8 +30,7 @@ import com.google.gson.GsonBuilder
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 
-// Local/relative imports (should be considered local)
-// … 9 imports omitted
+// … 9 imports omitted (10 lines)
 
 // Relative imports with different depth levels
 import com.example.shared.SharedUtility
@@ -47,11 +46,7 @@ import com.example.imports.http.HttpClient as CustomHttpClient
 import com.example.imports.extensions.*
 import com.example.imports.constants.*
 
-// Long import lists (candidates for summarization)
-// … 39 imports omitted
-
-// Local imports with long lists
-// … 23 imports omitted
+// … 62 imports omitted (64 lines)
 
 class ImportTestService(
     private val userService: UserService,

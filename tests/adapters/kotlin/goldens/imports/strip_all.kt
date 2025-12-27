@@ -4,29 +4,7 @@
 
 package com.example.imports
 
-// Standard library imports (external)
-// … 11 imports omitted
-
-// Third-party library imports (external)
-// … 11 imports omitted
-
-// Local/relative imports (should be considered local)
-// … 9 imports omitted
-
-// Relative imports with different depth levels
-// … 3 imports omitted
-
-// Import with aliasing
-// … 3 imports omitted
-
-// Star imports
-// … 2 imports omitted
-
-// Long import lists (candidates for summarization)
-// … 39 imports omitted
-
-// Local imports with long lists
-// … 23 imports omitted
+// … 101 imports omitted (109 lines)
 
 class ImportTestService(
     private val userService: UserService,

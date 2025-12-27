@@ -1,10 +1,6 @@
 """Module for testing import optimization."""
 
-# Standard library imports (external)
-# … 17 imports omitted (10 lines)
-
-# Third-party imports (external)
-# … 13 imports omitted (6 lines)
+# … 30 imports omitted (18 lines)
 
 # Local/relative imports (should be considered local)
 from .utils import helper_function, DataProcessor
@@ -13,11 +9,7 @@ from .config import DATABASE_URL, API_KEY, DEBUG_MODE
 from ..shared.validators import validate_email, validate_phone
 from ...core.exceptions import ValidationError, DatabaseError
 
-# Mixed import styles
-# … 6 imports omitted (2 lines)
-
-# Import with alias
-# … 4 imports omitted
+# … 10 imports omitted (8 lines)
 
 # Conditional imports
 try:
@@ -25,8 +17,7 @@ try:
 except ImportError:
     uvloop = None
 
-# Long from-import lists (candidates for summarization)
-# … 18 imports omitted (10 lines)
+# … 18 imports omitted (11 lines)
 
 from myproject.utils.helpers import (
     format_date, format_currency, validate_input,

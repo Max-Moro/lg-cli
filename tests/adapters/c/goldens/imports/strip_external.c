@@ -2,14 +2,7 @@
  * C module for testing include optimization.
  */
 
-// Standard library includes (external)
-// … 12 imports omitted
-
-// POSIX headers (external/system)
-// … 8 imports omitted
-
-// Common external libraries (external)
-// … 8 imports omitted
+// … 28 imports omitted (31 lines)
 
 // Local/project includes (should be considered local)
 #include "services/user_service.h"

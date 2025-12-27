@@ -1,14 +1,8 @@
 // … comment omitted
-// … 3 imports omitted
 
-// … comment omitted
-// … 3 imports omitted (2 lines)
+// … 8 imports omitted (10 lines)
 
-// … comment omitted
-// … 2 imports omitted
-
-/// Module level long documentation that might be truncated under tight budgets.
-// … 2 consts omitted (4 lines)
+// … 2 consts omitted (7 lines)
 
 // … macro omitted (13 lines)
 
@@ -30,8 +24,7 @@ impl PublicService {
         // … method body omitted (2 lines)
     }
 
-    /// normalize is a private helper — should not be visible with public_api_only.
-    // … method omitted (5 lines)
+    // … method omitted (6 lines)
 
     /// Process is a long method body to allow function body stripping.
     pub fn process(&mut self, list: Vec<User>) -> Result<Vec<User>> {
@@ -39,8 +32,7 @@ impl PublicService {
     }
 }
 
-/// internalOnly is a private struct — should be filtered out in public_api_only.
-// … struct omitted (3 lines)
+// … struct omitted (4 lines)
 
 // … impl omitted (5 lines)
 

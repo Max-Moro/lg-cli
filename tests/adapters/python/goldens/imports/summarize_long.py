@@ -43,8 +43,7 @@ try:
 except ImportError:
     uvloop = None
 
-# Long from-import lists (candidates for summarization)
-# … 29 imports omitted (16 lines)
+# … 29 imports omitted (17 lines)
 
 class ImportTestClass:
     """Class that uses imported modules."""

@@ -22,21 +22,13 @@ import { promisify } from 'util';
 import { EventEmitter } from 'events';
 import { Readable, Writable, Transform } from 'stream';
 
-// Local/relative imports (should be considered local)
-// … 9 imports omitted (5 lines)
-
-// Relative imports with different depth levels
-// … 3 imports omitted
-
-// Import with aliasing
-// … 3 imports omitted
+// … 15 imports omitted (14 lines)
 
 // Mixed import styles on single line
 import fs2, { readFile, writeFile } from 'fs';
 import path2, { join, resolve, dirname } from 'path';
 
-// Long import lists (candidates for summarization)
-// … 23 imports omitted (27 lines)
+// … 23 imports omitted (28 lines)
 
 // Dynamic imports (should be preserved as-is)
 const dynamicModule = async () => {
@@ -101,8 +93,7 @@ export class ImportTestService {
     }
 }
 
-// Re-exports (should be handled appropriately)
-// … import omitted (3 lines)
+// … import omitted (4 lines)
 
 // Default export
 export default ImportTestService;

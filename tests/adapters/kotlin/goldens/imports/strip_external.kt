@@ -4,11 +4,7 @@
 
 package com.example.imports
 
-// Standard library imports (external)
-// … 11 imports omitted
-
-// Third-party library imports (external)
-// … 11 imports omitted
+// … 22 imports omitted (24 lines)
 
 // Local/relative imports (should be considered local)
 import com.example.imports.services.UserService
@@ -35,8 +31,7 @@ import com.example.imports.http.HttpClient as CustomHttpClient
 import com.example.imports.extensions.*
 import com.example.imports.constants.*
 
-// Long import lists (candidates for summarization)
-// … 39 imports omitted
+// … 39 imports omitted (40 lines)
 
 // Local imports with long lists
 import com.example.imports.services.createUser

@@ -2,14 +2,13 @@
  * JavaScript module for testing public API filtering.
  */
 
-// … import omitted
+import { EventEmitter } from 'events';
 
 // Public module-level constants (should be preserved)
 export const PUBLIC_VERSION = '1.0.0';
 export const API_ENDPOINT = 'https://api.example.com';
 
-// Private module-level constants (should be filtered out)
-// … 2 variables omitted
+// … 2 variables omitted (3 lines)
 
 // Public class with mixed visibility members
 export class UserManager {
@@ -17,8 +16,7 @@ export class UserManager {
     version = PUBLIC_VERSION;
     isInitialized = false;
 
-    // Private properties (should be filtered out with public_api_only)
-    // … 2 fields omitted
+    // … 2 fields omitted (3 lines)
 
     constructor(apiEndpoint = API_ENDPOINT) {
         this.apiEndpoint = apiEndpoint;
@@ -54,8 +52,7 @@ export class UserManager {
         return Array.from(this.#internalCache.values());
     }
 
-    // Private methods (should be filtered out)
-    // … 6 methods omitted (33 lines)
+    // … 6 methods omitted (34 lines)
 
     // Public static methods (should be preserved)
     static validateUserRole(role) {
@@ -71,20 +68,17 @@ export class UserManager {
         };
     }
 
-    // Private static methods (should be filtered out)
-    // … method omitted (3 lines)
+    // … method omitted (4 lines)
 
     // Public readonly property with getter
     get userCount() {
         return this.#internalCache.size;
     }
 
-    // Private readonly property with getter (should be filtered out)
-    // … method omitted (6 lines)
+    // … method omitted (7 lines)
 }
 
-// Private class (not exported, should be filtered out)
-// … class omitted (12 lines)
+// … class omitted (13 lines)
 
 // Public abstract-like class (should be preserved)
 export class BaseService {
@@ -105,8 +99,7 @@ export class BaseService {
         };
     }
 
-    // Protected-like method (should be filtered out in public API)
-    // … method omitted (3 lines)
+    // … method omitted (4 lines)
 }
 
 // Public enum-like object (should be preserved)
@@ -117,8 +110,7 @@ export const UserStatus = {
     BANNED: 'banned'
 };
 
-// Private enum-like object (not exported, should be filtered out)
-// … variable omitted (5 lines)
+// … variable omitted (6 lines)
 
 // Public functions (should be preserved)
 export function createUserManager(endpoint) {
@@ -129,8 +121,7 @@ export function isValidUserRole(role) {
     return UserManager.validateUserRole(role);
 }
 
-// Private functions (not exported, should be filtered out)
-// … 2 functions omitted (7 lines)
+// … 2 functions omitted (8 lines)
 
 // Exported namespace-like object (should be preserved)
 export const UserUtils = {
@@ -144,12 +135,10 @@ export const UserUtils = {
         return Math.floor((now.getTime() - created.getTime()) / (1000 * 60 * 60 * 24));
     },
 
-    // Private namespace member (should be filtered out)
-    // … method omitted (3 lines)
+    // … method omitted (4 lines)
 };
 
-// Private namespace-like object (not exported, should be filtered out)
-// … variable omitted (14 lines)
+// … variable omitted (15 lines)
 
 // Default export (should be preserved)
 export default UserManager;

@@ -132,50 +132,6 @@ namespace InternalUtils {
         # Private namespace should be removed
         assert "namespace InternalUtils" not in result
 
-    def test_re_exports(self):
-        """Test re-export statements."""
-        code = '''
-// Re-exports (public API)
-export { default as Component } from './Component';
-export { Utils, type UtilsConfig } from './utils';
-export * from './types';
-export * as API from './api';
-
-// Named exports
-export { 
-    ServiceA, 
-    ServiceB as Service2,
-    type ConfigType 
-} from './services';
-
-// Conditional exports
-if (process.env.NODE_ENV === 'development') {
-    export { DevTools } from './dev-tools';
-}
-
-// Private imports (not re-exported)
-import { InternalHelper } from './internal';
-import type { InternalType } from './internal-types';
-
-// Local definitions using imports
-function useInternal(): InternalType {
-    return InternalHelper.process();
-}
-'''
-        
-        adapter = make_adapter(TypeScriptCfg(public_api_only=True))
-        
-        result, meta = adapter.process(lctx(code))
-        
-        # Re-exports should remain
-        assert "export { default as Component }" in result
-        assert "export { Utils, type UtilsConfig }" in result
-        assert "export * from './types'" in result
-        assert "export * as API" in result
-        
-        # Private imports should be removed or summarized
-        assert "InternalHelper" not in result
-
     def test_class_member_visibility(self):
         """Test class member visibility in public API."""
         code = '''

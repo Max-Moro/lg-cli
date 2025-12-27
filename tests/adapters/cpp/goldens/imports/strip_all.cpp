@@ -2,23 +2,7 @@
  * C++ module for testing include optimization.
  */
 
-// Standard library includes (external)
-// … 14 imports omitted
-
-// More standard library
-// … 10 imports omitted
-
-// Third-party library includes (external)
-// … 15 imports omitted
-
-// Local/project includes (should be considered local)
-// … 9 imports omitted
-
-// Relative includes with different depth levels
-// … 3 imports omitted
-
-// Long include lists from single directory (candidates for summarization)
-// … 23 imports omitted
+// … 74 imports omitted (80 lines)
 
 class ImportTestService {
 private:

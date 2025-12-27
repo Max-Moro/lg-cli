@@ -15,7 +15,7 @@ const char* LONG_MESSAGE = "This is an extremely long message that contains a su
 // Multi-line string with formatting
 const char* TEMPLATE_WITH_DATA =
     "User Information:\n"
-    "- Name: %s\n…"; // literal literal string (−55 tokens)
+    "- Name: %s\n…"; // literal string (−55 tokens)
 
 typedef struct {
     // Small array (should be preserved)
@@ -105,7 +105,7 @@ const char* get_long_query(void) {
     // Very long SQL-like query string
     return
         "SELECT "
-        "    users.id, users.username, users.email, users.created_at, …"; // literal literal string (−196 tokens)
+        "    users.id, users.username, users.email, users.created_at, …"; // literal string (−196 tokens)
 }
 
 // Module-level constants with different sizes

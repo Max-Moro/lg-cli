@@ -49,14 +49,7 @@
 #include <sqlite3.h>
 #include <pcre.h>
 
-// Local/project includes (should be considered local)
-// … 9 imports omitted
-
-// Relative includes with different depth levels
-// … 3 imports omitted
-
-// Long include lists from single directory (candidates for summarization)
-// … 23 imports omitted
+// … 35 imports omitted (38 lines)
 
 class ImportTestService {
 private:

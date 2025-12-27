@@ -3,11 +3,7 @@
  * Comprehensive TypeScript sample for Budget System tests.
  */
 
-// … comment omitted
-// … 8 imports omitted (3 lines)
-
-// … comment omitted
-// … 3 imports omitted (2 lines)
+// … 11 imports omitted (7 lines)
 
 /**
  * Module level long documentation that might be truncated under tight budgets.
@@ -32,8 +28,7 @@ export class PublicService {
     return this.cache.get(String(id)) ?? null;
   }
 
-  // … comment omitted
-  // … method omitted (3 lines)
+  // … method omitted (4 lines)
 
   /** Long method body to allow function body stripping. */
   public process(list: User[]): ApiResponse<User[]> {
