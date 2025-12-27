@@ -399,19 +399,23 @@ class CommentAnalyzer:
         for i in range(node_index - 1, -1, -1):
             sibling = siblings[i]
 
-            # Check if this is a comment
-            sibling_text = self.doc.text[sibling.start_byte:sibling.end_byte]
-            is_comment = (
-                sibling.type in ("comment", "line_comment", "block_comment") or
-                sibling_text.strip().startswith(self.style.single_line) or
-                sibling_text.strip().startswith(self.style.multi_line[0])
-            )
+            # Check if this is a comment using node type
+            is_comment = sibling.type in ("comment", "line_comment", "block_comment")
+
+            # Fallback: check text content if type doesn't match
+            if not is_comment:
+                sibling_text = self.doc.get_node_text(sibling)
+                is_comment = (
+                    sibling_text.strip().startswith(self.style.single_line) or
+                    sibling_text.strip().startswith(self.style.multi_line[0])
+                )
 
             if not is_comment:
                 break
 
             # Check for blank line between this comment and previous element
-            text_between = self.doc.text[sibling.end_byte:prev_end_byte]
+            # Use byte slicing on _text_bytes for correct Unicode handling
+            text_between = self.doc._text_bytes[sibling.end_byte:prev_end_byte].decode('utf-8', errors='replace')
             if self._has_blank_line(text_between):
                 break
 
@@ -432,18 +436,19 @@ class CommentAnalyzer:
         Returns:
             End byte after trailing comment, or default_end
         """
-        # Get the line where node ends
-        node_end_line = node.end_point[0]
+        # Look at bytes after node on the same line
+        # Use _text_bytes for correct Unicode handling
+        bytes_after = self.doc._text_bytes[node.end_byte:]
 
-        # Look at text after node on the same line
-        text_after = self.doc.text[node.end_byte:]
-
-        # Find end of current line
-        newline_pos = text_after.find('\n')
+        # Find end of current line (in bytes)
+        newline_pos = bytes_after.find(b'\n')
         if newline_pos == -1:
-            line_remainder = text_after
+            line_remainder_bytes = bytes_after
         else:
-            line_remainder = text_after[:newline_pos]
+            line_remainder_bytes = bytes_after[:newline_pos]
+
+        # Decode to string for content analysis
+        line_remainder = line_remainder_bytes.decode('utf-8', errors='replace')
 
         # Check if there's a comment on this line
         stripped = line_remainder.strip()
@@ -465,7 +470,7 @@ class CommentAnalyzer:
         if comment_start is not None:
             # Include the comment in the range (up to newline or end of text)
             if newline_pos == -1:
-                return len(self.doc.text)
+                return len(self.doc._text_bytes)
             else:
                 return node.end_byte + newline_pos
 
