@@ -110,7 +110,7 @@ def _is_public_java(node: Node, doc: TreeSitterDocument) -> bool:
     return False
 
 
-def _find_java_docstring(body_node: Node, doc: TreeSitterDocument) -> Optional[Node]:
+def _find_java_docstring(body_node: Node, _doc: TreeSitterDocument) -> Optional[Node]:
     """
     Find docstring (Javadoc comment) at the start of method/constructor body.
 

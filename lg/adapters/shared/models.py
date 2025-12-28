@@ -105,7 +105,7 @@ class CodeElement:
     @property
     def full_range(self) -> Tuple[int, int]:
         """Full byte range including decorators."""
-        return (self.start_byte, self.end_byte)
+        return self.start_byte, self.end_byte
 
 
 __all__ = ["CodeElement"]

@@ -70,7 +70,7 @@ class TypeScriptTrivialAnalyzer(TrivialFileAnalyzer):
 
         return True
 
-    def _is_reexport(self, node, doc: TreeSitterDocument) -> bool:
+    def _is_reexport(self, node, _doc: TreeSitterDocument) -> bool:
         """Check if export statement is a re-export (has 'from' clause)."""
         # Re-export has source child (the 'from' part)
         for child in node.children:

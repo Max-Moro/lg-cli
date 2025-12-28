@@ -109,7 +109,7 @@ def _is_misparsed_class(node: Node, doc: TreeSitterDocument) -> bool:
     """
     node_text = doc.get_node_text(node)
     # Check if text contains "private class" or "protected class"
-    return ("private class" in node_text or "protected class" in node_text)
+    return "private class" in node_text or "protected class" in node_text
 
 
 def _resolve_kotlin_body(element_node: Node) -> Optional[Node]:
@@ -143,7 +143,7 @@ def _resolve_lambda_body(lambda_node: Node) -> Optional[Node]:
     return lambda_node
 
 
-def _find_kotlin_decorators(node: Node, doc: TreeSitterDocument, decorator_types: set) -> List[Node]:
+def _find_kotlin_decorators(node: Node, _doc: TreeSitterDocument, decorator_types: set) -> List[Node]:
     """
     Find Kotlin annotations using language-specific AST structure.
 
@@ -214,7 +214,7 @@ def _compute_kotlin_lambda_body_range(lambda_node: Node, doc: TreeSitterDocument
     else:
         end_byte = lambda_node.end_byte
 
-    return (start_byte, end_byte)
+    return start_byte, end_byte
 
 
 def _find_kotlin_docstring(body_node: Node, doc: TreeSitterDocument) -> Optional[Node]:

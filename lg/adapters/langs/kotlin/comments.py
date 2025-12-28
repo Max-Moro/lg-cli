@@ -4,9 +4,7 @@ Kotlin-specific comment analyzer.
 
 from __future__ import annotations
 
-from ...comment_style import CommentStyle
 from ...optimizations.comments import CommentAnalyzer
-from ...tree_sitter_support import TreeSitterDocument
 
 
 class KotlinCommentAnalyzer(CommentAnalyzer):

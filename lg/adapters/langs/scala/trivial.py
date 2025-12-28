@@ -18,6 +18,20 @@ from ...tree_sitter_support import TreeSitterDocument
 class ScalaTrivialAnalyzer(TrivialFileAnalyzer):
     """Detect trivial Scala package.scala files."""
 
+    ALLOWED_TOP_LEVEL = {
+        "package_clause",
+        "import_declaration",
+        "comment",
+        "block_comment",
+    }
+
+    TRIVIAL_MEMBERS = {
+        "type_definition",
+        "import_declaration",
+        "comment",
+        "block_comment",
+    }
+
     def is_trivial(self, ctx: LightweightContext, adapter) -> bool:
         """Check if Scala file is trivial package.scala."""
         if ctx.filename != "package.scala":
@@ -35,20 +49,13 @@ class ScalaTrivialAnalyzer(TrivialFileAnalyzer):
         """Analyze package.scala for triviality."""
         root = doc.root_node
 
-        ALLOWED_TOP_LEVEL = {
-            "package_clause",
-            "import_declaration",
-            "comment",
-            "block_comment",
-        }
-
         for child in root.children:
-            if child.type in ALLOWED_TOP_LEVEL:
+            if child.type in self.ALLOWED_TOP_LEVEL:
                 continue
 
             # Check package object body
             if child.type == "package_object":
-                if self._has_non_trivial_members(child, doc):
+                if self._has_non_trivial_members(child):
                     return False
                 continue
 
@@ -57,24 +64,17 @@ class ScalaTrivialAnalyzer(TrivialFileAnalyzer):
 
         return True
 
-    def _has_non_trivial_members(self, package_obj, doc: TreeSitterDocument) -> bool:
+    def _has_non_trivial_members(self, package_obj) -> bool:
         """Check if package object has non-trivial members."""
-        TRIVIAL_MEMBERS = {
-            "type_definition",
-            "import_declaration",
-            "comment",
-            "block_comment",
-        }
-
         # Find template body
         for child in package_obj.children:
             if child.type == "template_body":
                 for member in child.children:
                     # Skip braces and whitespace
-                    if member.type in ("{", "}", "comment", "block_comment"):
+                    if member.type in ("{", "}"):
                         continue
-                    # Type aliases are trivial
-                    if member.type == "type_definition":
+                    # Trivial members: type aliases, imports, comments
+                    if member.type in self.TRIVIAL_MEMBERS:
                         continue
                     # Any other member = non-trivial
                     return True

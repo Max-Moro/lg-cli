@@ -66,6 +66,7 @@ class BaseAdapter(Generic[C]):
         inst = cls()
         inst._cfg = cfg
         inst.tokenizer = tokenizer
+        # noinspection PyProtectedMember
         inst._post_bind()
         return inst
 

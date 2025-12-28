@@ -71,7 +71,7 @@ class BodyRangeComputer:
             if body_line > func_line:
                 start_byte = self._find_line_start(start_byte)
 
-        return (start_byte, end_byte)
+        return start_byte, end_byte
 
     def _compute_inner_range(self, body_node: Node) -> Tuple[int, int]:
         """
@@ -84,7 +84,7 @@ class BodyRangeComputer:
             Tuple of (start_byte, end_byte) for inner content
         """
         if not body_node.children:
-            return (body_node.start_byte, body_node.end_byte)
+            return body_node.start_byte, body_node.end_byte
 
         first_child = body_node.children[0]
         last_child = body_node.children[-1]
@@ -93,9 +93,9 @@ class BodyRangeComputer:
         last_text = self.doc.get_node_text(last_child) if last_child else ""
 
         if first_text == "{" and last_text == "}":
-            return (first_child.end_byte, last_child.start_byte)
+            return first_child.end_byte, last_child.start_byte
 
-        return (body_node.start_byte, body_node.end_byte)
+        return body_node.start_byte, body_node.end_byte
 
     def _find_leading_sibling_comments(
         self, func_def: Node, body_node: Node

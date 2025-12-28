@@ -83,7 +83,7 @@ def compute_element_range_with_trailing(
         next_sibling = siblings[node_index + 1]
         sibling_text = doc.get_node_text(next_sibling).strip()
         if next_sibling.type in trailing_chars or sibling_text in trailing_chars:
-            return (node.start_byte, next_sibling.end_byte)
+            return node.start_byte, next_sibling.end_byte
 
     return None
 

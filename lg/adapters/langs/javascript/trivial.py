@@ -66,7 +66,7 @@ class JavaScriptTrivialAnalyzer(TrivialFileAnalyzer):
 
         return True
 
-    def _is_reexport(self, node, doc: TreeSitterDocument) -> bool:
+    def _is_reexport(self, node, _doc: TreeSitterDocument) -> bool:
         """Check if export statement is a re-export (has 'from' clause)."""
         for child in node.children:
             if child.type == "string":

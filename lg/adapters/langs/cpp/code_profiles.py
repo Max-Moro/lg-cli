@@ -174,7 +174,7 @@ def _in_anonymous_namespace(node: Node) -> bool:
     return False
 
 
-def _find_cpp_docstring(body_node: Node, doc: TreeSitterDocument) -> Optional[Node]:
+def _find_cpp_docstring(body_node: Node, _doc: TreeSitterDocument) -> Optional[Node]:
     """
     Find docstring (comment) at the start of function body.
 

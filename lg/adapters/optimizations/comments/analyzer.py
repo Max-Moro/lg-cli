@@ -414,8 +414,7 @@ class CommentAnalyzer:
                 break
 
             # Check for blank line between this comment and previous element
-            # Use byte slicing on _text_bytes for correct Unicode handling
-            text_between = self.doc._text_bytes[sibling.end_byte:prev_end_byte].decode('utf-8', errors='replace')
+            text_between = self.doc.text_bytes[sibling.end_byte:prev_end_byte].decode('utf-8', errors='replace')
             if self._has_blank_line(text_between):
                 break
 
@@ -437,8 +436,7 @@ class CommentAnalyzer:
             End byte after trailing comment, or default_end
         """
         # Look at bytes after node on the same line
-        # Use _text_bytes for correct Unicode handling
-        bytes_after = self.doc._text_bytes[node.end_byte:]
+        bytes_after = self.doc.text_bytes[node.end_byte:]
 
         # Find end of current line (in bytes)
         newline_pos = bytes_after.find(b'\n')
@@ -470,7 +468,7 @@ class CommentAnalyzer:
         if comment_start is not None:
             # Include the comment in the range (up to newline or end of text)
             if newline_pos == -1:
-                return len(self.doc._text_bytes)
+                return len(self.doc.text_bytes)
             else:
                 return node.end_byte + newline_pos
 

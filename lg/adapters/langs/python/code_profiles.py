@@ -76,7 +76,7 @@ def _is_public_python(node: Node, doc: TreeSitterDocument) -> bool:
     return True
 
 
-def _find_python_docstring(body_node: Node, doc: TreeSitterDocument) -> Optional[Node]:
+def _find_python_docstring(body_node: Node, _doc: TreeSitterDocument) -> Optional[Node]:
     """
     Find docstring at the start of function body.
 

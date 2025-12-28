@@ -118,7 +118,7 @@ def _is_public_namespace_member(node: Node, doc: TreeSitterDocument) -> bool:
     return _has_export_keyword(node, doc)
 
 
-def _find_typescript_docstring(body_node: Node, doc: TreeSitterDocument) -> Optional[Node]:
+def _find_typescript_docstring(body_node: Node, _doc: TreeSitterDocument) -> Optional[Node]:
     """
     Find docstring (JSDoc comment) at the start of function body.
 

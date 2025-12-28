@@ -20,7 +20,7 @@ class TreeSitterDocument(ABC):
         self.text = text
         self.ext = ext
         self.tree: Optional[Tree] = None
-        self._text_bytes = text.encode('utf-8')
+        self.text_bytes = text.encode('utf-8')
         self._query_cache: dict[str, Query] = {}  # Cache for compiled Query objects
         self._parse()
 
@@ -46,7 +46,7 @@ class TreeSitterDocument(ABC):
     def _parse(self):
         """Parse the document with Tree-sitter."""
         parser = self.get_parser()
-        self.tree = parser.parse(self._text_bytes)
+        self.tree = parser.parse(self.text_bytes)
 
     @property
     def root_node(self) -> Node:
@@ -132,7 +132,7 @@ class TreeSitterDocument(ABC):
         """Get text content for a node."""
         start_byte = node.start_byte
         end_byte = node.end_byte
-        return self._text_bytes[start_byte:end_byte].decode('utf-8')
+        return self.text_bytes[start_byte:end_byte].decode('utf-8')
 
     def get_node_range(self, node: Node) -> Tuple[int, int]:
         """Get char range for a node."""
@@ -196,7 +196,7 @@ class TreeSitterDocument(ABC):
         """
         if byte_pos <= 0:
             return 0
-        if byte_pos >= len(self._text_bytes):
+        if byte_pos >= len(self.text_bytes):
             # If position is beyond text, return text length in characters
             return len(self.text)
 
@@ -205,7 +205,7 @@ class TreeSitterDocument(ABC):
         start = max(0, byte_pos - 4)
         for end in range(byte_pos, start - 1, -1):
             try:
-                decoded = self._text_bytes[:end].decode('utf-8')
+                decoded = self.text_bytes[:end].decode('utf-8')
                 return len(decoded)
             except UnicodeDecodeError:
                 continue

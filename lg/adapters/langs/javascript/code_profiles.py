@@ -127,7 +127,7 @@ def _is_public_class_member(node: Node, doc: TreeSitterDocument) -> bool:
     return True
 
 
-def _find_javascript_docstring(body_node: Node, doc: TreeSitterDocument) -> Optional[Node]:
+def _find_javascript_docstring(body_node: Node, _doc: TreeSitterDocument) -> Optional[Node]:
     """
     Find docstring (JSDoc comment) at the start of function body.
 
@@ -150,7 +150,7 @@ def _find_javascript_docstring(body_node: Node, doc: TreeSitterDocument) -> Opti
     return None
 
 
-def _has_arrow_function_body(node: Node, doc: TreeSitterDocument) -> bool:
+def _has_arrow_function_body(node: Node, _doc: TreeSitterDocument) -> bool:
     """
     Check if variable declaration contains arrow function with statement_block body.
 
