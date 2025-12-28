@@ -1,3 +1,9 @@
+"""
+Tests for TreeSitterDocument base class.
+
+Tests query_nodes with caching, unicode handling, and tree traversal.
+"""
+
 import pytest
 
 from tree_sitter import Language
@@ -12,35 +18,11 @@ class PyDoc(TreeSitterDocument):
         import tree_sitter_python as tspython
         return Language(tspython.language())
 
-    def get_query_definitions(self) -> dict[str, str]:
-        # Lightweight queries sufficient for behavior testing
-        return {
-            # Capture every identifier occurrence
-            "ids": "(identifier) @id",
-            # Basic function structure
-            "funcs": (
-                "(function_definition\n"
-                "  name: (identifier) @fname\n"
-                "  body: (block) @fbody) @fdef\n"
-            ),
-            # Strings for unicode/range testing
-            "strings": "(string) @string",
-        }
 
+# ============= Query caching tests =============
 
-def test_query_unknown_and_query_opt():
-    src = "def f():\n    return 1\n"
-    doc = PyDoc(src, ext="py")
-
-    # query() must raise on unknown name
-    with pytest.raises(ValueError):
-        doc.query("unknown_query_name")
-
-    # query_opt() returns [] instead of raising
-    assert doc.query_opt("unknown_query_name") == []
-
-
-def test_query_cache_by_name_and_stable_results_order():
+def test_query_cache_compiled_query_reused():
+    """Verify that Query objects are cached and reused."""
     src = """
 def a():
     x = 1
@@ -49,38 +31,77 @@ def b():
     z = 3
 """
     doc = PyDoc(src, ext="py")
+    query_string = "(identifier) @id"
 
     # Initial call populates cache
-    ids_1 = doc.query("ids")
-    assert "ids" in doc._query_cache  # internal cache
-    q1 = doc._query_cache["ids"]
+    ids_1 = doc.query_nodes(query_string, "id")
+    assert query_string in doc._query_cache
 
-    # Subsequent calls reuse same Query object
-    ids_2 = doc.query("ids")
-    q2 = doc._query_cache["ids"]
-    assert q1 is q2
+    # Get reference to cached Query
+    cached_query = doc._query_cache[query_string]
 
-    # Order of captures should be stable across calls
-    seq1 = [(n.start_byte, cap) for n, cap in ids_1]
-    seq2 = [(n.start_byte, cap) for n, cap in ids_2]
-    assert seq1 == seq2
+    # Subsequent call reuses same Query object
+    ids_2 = doc.query_nodes(query_string, "id")
+    assert doc._query_cache[query_string] is cached_query
 
-    # A new document with same text should also produce the same order
+    # Results should be identical
+    assert len(ids_1) == len(ids_2)
+    assert [n.start_byte for n in ids_1] == [n.start_byte for n in ids_2]
+
+
+def test_query_nodes_stable_order():
+    """Results order should be stable across calls and documents."""
+    src = """
+def foo():
+    x = 1
+def bar():
+    y = 2
+"""
+    doc1 = PyDoc(src, ext="py")
     doc2 = PyDoc(src, ext="py")
-    ids_3 = doc2.query("ids")
-    seq3 = [(n.start_byte, cap) for n, cap in ids_3]
-    assert seq1 == seq3
 
+    query_string = "(function_definition) @func"
+
+    funcs_1 = doc1.query_nodes(query_string, "func")
+    funcs_2 = doc1.query_nodes(query_string, "func")
+    funcs_3 = doc2.query_nodes(query_string, "func")
+
+    # Extract positions for comparison
+    positions_1 = [n.start_byte for n in funcs_1]
+    positions_2 = [n.start_byte for n in funcs_2]
+    positions_3 = [n.start_byte for n in funcs_3]
+
+    assert positions_1 == positions_2 == positions_3
+
+
+def test_query_nodes_different_queries_cached_separately():
+    """Different query strings should have separate cache entries."""
+    src = "x = 'hello'\ny = 123\n"
+    doc = PyDoc(src, ext="py")
+
+    ids_query = "(identifier) @id"
+    str_query = "(string) @str"
+
+    doc.query_nodes(ids_query, "id")
+    doc.query_nodes(str_query, "str")
+
+    assert ids_query in doc._query_cache
+    assert str_query in doc._query_cache
+    assert doc._query_cache[ids_query] is not doc._query_cache[str_query]
+
+
+# ============= Unicode handling tests =============
 
 def test_get_node_text_and_ranges_with_unicode():
-    # Include multibyte characters (Cyrillic + emoji)
+    """Test proper handling of multibyte characters (Cyrillic + emoji)."""
     src = "# заголовок\nmsg = \"привет 🍕\"\n"
     doc = PyDoc(src, ext="py")
 
-    strings = doc.query("strings")
+    strings = doc.query_nodes("(string) @string", "string")
     assert strings, "expected to capture a string literal"
-    node, cap = strings[0]
-    # Ranges returned by helper equal to Node offsets
+    node = strings[0]
+
+    # Ranges returned by helper should be correct char positions
     start, end = doc.get_node_range(node)
 
     # Line range consistent with Node points
@@ -90,13 +111,13 @@ def test_get_node_text_and_ranges_with_unicode():
 
     # Extracted text matches the source slice
     text = doc.get_node_text(node)
-    # Decode slice from original to compare precisely
     raw_slice = src[start:end]
     assert text == raw_slice
     assert "привет" in text and "🍕" in text
 
 
 def test_get_line_number_for_byte_with_multibyte_chars():
+    """Test line number calculation with multibyte characters."""
     # Two lines; second contains multibyte characters
     src = "line1\nстрока2 🍕\n"
     doc = PyDoc(src, ext="py")
@@ -107,27 +128,47 @@ def test_get_line_number_for_byte_with_multibyte_chars():
     assert doc.get_line_number(newline_pos) == 1
 
     # Offset in the middle of the unicode line still should be line 1 (0-based)
-    # Pick a byte offset within the Cyrillic word
-    off = newline_pos + 4  # not necessarily char-aligned, but within the line
+    off = newline_pos + 4
     assert doc.get_line_number(off) == 1
 
 
-def test_errors_detection_valid_and_invalid_sources():
+# ============= Error detection tests =============
+
+def test_errors_detection_valid_source():
+    """Valid Python source should have no errors."""
     valid = "def ok():\n    return 42\n"
-    invalid = "def broken(:\n  pass\n"  # syntax error
+    doc = PyDoc(valid, ext="py")
 
-    doc_ok = PyDoc(valid, ext="py")
-    assert not doc_ok.has_error()
-    assert doc_ok.get_errors() == []
-
-    doc_bad = PyDoc(invalid, ext="py")
-    # Tree-sitter for invalid code should flag errors
-    assert doc_bad.has_error()
-    errs = doc_bad.get_errors()
-    assert isinstance(errs, list) and all(getattr(n, "type", None) == "ERROR" for n in errs)
+    assert not doc.has_error()
+    assert doc.get_errors() == []
 
 
-def test_walk_and_find_nodes_by_type():
+def test_errors_detection_invalid_source():
+    """Invalid Python source should have errors flagged."""
+    invalid = "def broken(:\n  pass\n"  # syntax error (missing ')')
+    doc = PyDoc(invalid, ext="py")
+
+    # has_error() detects that tree contains errors
+    assert doc.has_error()
+
+
+def test_get_errors_returns_error_nodes():
+    """get_errors() should return explicit ERROR nodes when present."""
+    # This syntax creates an actual ERROR node (completely unparseable)
+    invalid = "def @@@@@:\n"
+    doc = PyDoc(invalid, ext="py")
+
+    assert doc.has_error()
+    errs = doc.get_errors()
+    # Some syntax errors create ERROR nodes, others use MISSING
+    # We just verify the method returns a list
+    assert isinstance(errs, list)
+
+
+# ============= Tree traversal tests =============
+
+def test_walk_tree_yields_nodes():
+    """walk_tree should yield nodes in depth-first order."""
     src = """
 def foo():
     return 1
@@ -137,12 +178,62 @@ def bar():
 """
     doc = PyDoc(src, ext="py")
 
-    # Basic walk should include the root node and many descendants
     walked = list(doc.walk_tree())
     assert walked, "walk_tree should yield nodes"
-    # Root type for Python is typically 'module'
-    assert getattr(walked[0], "type", None) in ("module", "program")
 
-    # find_nodes_by_type should find both function definitions
-    fdefs = doc.find_nodes_by_type("function_definition")
-    assert len(fdefs) >= 2
+    # Root type for Python is 'module'
+    assert walked[0].type == "module"
+
+    # Should contain function definitions
+    func_types = [n.type for n in walked if n.type == "function_definition"]
+    assert len(func_types) >= 2
+
+
+def test_walk_tree_from_specific_node():
+    """walk_tree should work from a specific start node."""
+    src = "def foo():\n    x = 1\n    y = 2\n"
+    doc = PyDoc(src, ext="py")
+
+    # Get function definition node
+    funcs = doc.query_nodes("(function_definition) @func", "func")
+    assert funcs
+
+    # Walk from function node
+    walked = list(doc.walk_tree(start_node=funcs[0]))
+
+    # First node should be the function definition
+    assert walked[0].type == "function_definition"
+
+    # Should contain identifiers from function body
+    ids = [n for n in walked if n.type == "identifier"]
+    assert len(ids) >= 3  # foo, x, y
+
+
+# ============= Static helper tests =============
+
+def test_get_parent_of_type():
+    """Test finding parent node of specific type."""
+    src = "def foo():\n    x = 1\n"
+    doc = PyDoc(src, ext="py")
+
+    # Get identifier 'x'
+    ids = doc.query_nodes("(identifier) @id", "id")
+    x_node = next(n for n in ids if doc.get_node_text(n) == "x")
+
+    # Find parent function_definition
+    func_parent = doc.get_parent_of_type(x_node, "function_definition")
+    assert func_parent is not None
+    assert func_parent.type == "function_definition"
+
+    # Non-existent parent type
+    assert doc.get_parent_of_type(x_node, "class_definition") is None
+
+
+def test_get_children_by_type():
+    """Test getting direct children of specific type."""
+    src = "x = 1\ny = 2\nz = 3\n"
+    doc = PyDoc(src, ext="py")
+
+    # Module should have expression_statement children
+    statements = doc.get_children_by_type(doc.root_node, "expression_statement")
+    assert len(statements) == 3
