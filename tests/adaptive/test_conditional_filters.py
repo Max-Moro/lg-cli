@@ -493,9 +493,8 @@ src:
     result1 = render_template(root, "sec:src", make_run_options())
     assert "pyproject.toml" in result1
     assert "lg/cli.py" in result1
-    assert "config/load.py" in result1
-    assert "adapters/__init__.py" in result1
-    assert "template/processor.py" in result1 or "template/common.py" in result1
+    assert "lg/config/load.py" in result1
+    assert "lg/template/processor.py" in result1
     assert "common_placeholders" in result1
     assert "adaptive" in result1
     assert "md_placeholders" in result1
@@ -504,7 +503,7 @@ src:
     options2 = make_run_options(extra_tags={"common-placeholders"})
     result2 = render_template(root, "sec:src", options2)
     assert "pyproject.toml" in result2
-    assert "template/processor.py" in result2 or "template/common.py" in result2
+    assert "lg/template/processor.py" in result2
     assert "common_placeholders" in result2
     assert "adaptive" not in result2
     assert "md_placeholders" not in result2
@@ -512,7 +511,7 @@ src:
     # Test 3: With active adaptive - only this plugin
     options3 = make_run_options(extra_tags={"adaptive"})
     result3 = render_template(root, "sec:src", options3)
-    assert "template/processor.py" in result3 or "template/common.py" in result3
+    assert "lg/template/processor.py" in result3
     assert "common_placeholders" not in result3
     assert "adaptive" in result3
     assert "md_placeholders" not in result3

@@ -19,7 +19,7 @@ class TestTokenizerBasics:
     def test_tiktoken_counts_tokens(self, tiktoken_service):
         """Verifies that tiktoken correctly counts tokens."""
         text = "Hello, world!"
-        tokens = tiktoken_service.count_text(text)
+        tokens = tiktoken_service.count_text_cached(text)
 
         assert tokens > 0
         assert tokens < len(text)  # Fewer tokens than characters
@@ -28,7 +28,7 @@ class TestTokenizerBasics:
     def test_hf_tokenizer_counts_tokens(self, hf_tokenizer_service):
         """Verifies that HF tokenizer correctly counts tokens."""
         text = "Hello, world!"
-        tokens = hf_tokenizer_service.count_text(text)
+        tokens = hf_tokenizer_service.count_text_cached(text)
 
         assert tokens > 0
         assert tokens < len(text)
@@ -37,15 +37,15 @@ class TestTokenizerBasics:
     def test_sp_tokenizer_counts_tokens(self, sp_tokenizer_service):
         """Verifies that SentencePiece tokenizer correctly counts tokens."""
         text = "Hello, world!"
-        tokens = sp_tokenizer_service.count_text(text)
+        tokens = sp_tokenizer_service.count_text_cached(text)
 
         assert tokens > 0
         assert tokens < len(text)
 
     def test_empty_text_returns_zero(self, tiktoken_service):
         """Verifies that empty text returns 0 tokens."""
-        assert tiktoken_service.count_text("") == 0
-        assert tiktoken_service.count_text("   ") > 0  # Spaces are tokens
+        assert tiktoken_service.count_text_cached("") == 0
+        assert tiktoken_service.count_text_cached("   ") > 0  # Spaces are tokens
 
 
 class TestTokenizerDifferences:
@@ -61,8 +61,8 @@ class TestTokenizerDifferences:
         """Verifies that different tokenizers give different results."""
         text = sample_texts["simple"]
 
-        tiktoken_count = tiktoken_service.count_text(text)
-        hf_count = hf_tokenizer_service.count_text(text)
+        tiktoken_count = tiktoken_service.count_text_cached(text)
+        hf_count = hf_tokenizer_service.count_text_cached(text)
 
         # Results can differ (different algorithms and vocabularies)
         # But both should be reasonable
@@ -73,8 +73,8 @@ class TestTokenizerDifferences:
         """Verifies that tokenizer gives consistent result for same text."""
         text = "Consistent tokenization test"
 
-        count1 = tiktoken_service.count_text(text)
-        count2 = tiktoken_service.count_text(text)
+        count1 = tiktoken_service.count_text_cached(text)
+        count2 = tiktoken_service.count_text_cached(text)
 
         assert count1 == count2
 
@@ -83,8 +83,8 @@ class TestTokenizerDifferences:
         short = sample_texts["simple"]
         long = sample_texts["long_text"]
 
-        short_tokens = tiktoken_service.count_text(short)
-        long_tokens = tiktoken_service.count_text(long)
+        short_tokens = tiktoken_service.count_text_cached(short)
+        long_tokens = tiktoken_service.count_text_cached(long)
 
         assert long_tokens > short_tokens
 
@@ -102,7 +102,7 @@ class TestTokenizerAccuracy:
         code = sample_texts["python_code"]
 
         char_count = len(code)
-        token_count = tiktoken_service.count_text(code)
+        token_count = tiktoken_service.count_text_cached(code)
 
         # Approximate ratio: 1 token per 3-4 characters for code
         compression_ratio = char_count / token_count
@@ -124,8 +124,8 @@ class TestTokenizerAccuracy:
         """
         text = sample_texts["special_chars"]
 
-        tiktoken_count = tiktoken_service.count_text(text)
-        hf_count = hf_tokenizer_service.count_text(text)
+        tiktoken_count = tiktoken_service.count_text_cached(text)
+        hf_count = hf_tokenizer_service.count_text_cached(text)
 
         # Both should correctly process text
         assert tiktoken_count > 0
@@ -140,7 +140,7 @@ class TestTokenizerAccuracy:
         """
         mixed = sample_texts["mixed"]
 
-        tokens = tiktoken_service.count_text(mixed)
+        tokens = tiktoken_service.count_text_cached(mixed)
         chars = len(mixed)
 
         # Mixed content should have reasonable compression ratio
@@ -173,9 +173,9 @@ class TestTokenizerComparison:
         """
         text = sample_texts[text_type]
 
-        tiktoken_count = tiktoken_service.count_text(text)
-        hf_count = hf_tokenizer_service.count_text(text)
-        sp_count = sp_tokenizer_service.count_text(text)
+        tiktoken_count = tiktoken_service.count_text_cached(text)
+        hf_count = hf_tokenizer_service.count_text_cached(text)
+        sp_count = sp_tokenizer_service.count_text_cached(text)
 
         # All results should be positive
         assert tiktoken_count > 0
@@ -203,8 +203,8 @@ class TestTokenizerComparison:
         """
         text = sample_texts["long_text"]
 
-        tiktoken_count = tiktoken_service.count_text(text)
-        hf_count = hf_tokenizer_service.count_text(text)
+        tiktoken_count = tiktoken_service.count_text_cached(text)
+        hf_count = hf_tokenizer_service.count_text_cached(text)
 
         # Calculate relative difference
         diff = abs(tiktoken_count - hf_count)
