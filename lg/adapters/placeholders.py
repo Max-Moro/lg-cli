@@ -29,12 +29,37 @@ _PLURAL_FORMS: Dict[str, str] = {
 
 
 def _pluralize(word: str, count: int) -> str:
-    """Pluralize word based on count."""
+    """
+    Pluralize word based on count.
+
+    For compound words (e.g., "function body"), pluralizes only the last word.
+
+    Args:
+        word: Word or phrase to pluralize
+        count: Count of items
+
+    Returns:
+        Pluralized form if count > 1, original otherwise
+    """
     if count == 1:
         return word
-    # Check special forms
+
+    # Split into words for compound types (e.g., "function body")
+    words = word.split()
+
+    if len(words) > 1:
+        # Pluralize only the last word in compound phrase
+        last_word = words[-1]
+        if last_word in _PLURAL_FORMS:
+            words[-1] = _PLURAL_FORMS[last_word]
+        else:
+            words[-1] = last_word + "s"
+        return " ".join(words)
+
+    # Single word - check special forms
     if word in _PLURAL_FORMS:
         return _PLURAL_FORMS[word]
+
     # Default: add 's'
     return word + "s"
 

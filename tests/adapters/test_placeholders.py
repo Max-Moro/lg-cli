@@ -1,209 +1,522 @@
-import pytest
+"""
+Tests for PlaceholderManager system.
 
-from lg.adapters.placeholders import create_placeholder_manager, PlaceholderSpec
-from lg.adapters.comment_style import CommentStyle
+Tests cover:
+- Placeholder generation with different comment styles
+- Placeholder collapsing logic
+- Different placeholder actions (OMIT, TRUNCATE)
+- Token savings display
+- Indentation handling
+"""
+
+from lg.adapters.comment_style import CommentStyle, C_STYLE_COMMENTS, HASH_STYLE_COMMENTS
+from lg.adapters.placeholders import PlaceholderManager, PlaceholderAction
+from lg.adapters.range_edits import RangeEditor
+from lg.adapters.tree_sitter_support import TreeSitterDocument
 
 
-def make_manager(text: str, style: str = "inline"):
-    """Helper: create a PlaceholderManager with Python-like comment style.
+class MockDocument(TreeSitterDocument):
+    """Mock TreeSitterDocument for testing without real parsing."""
 
-    single: '#', block: '/* */', docstring: '""" """'
+    def __init__(self, text: str):
+        self.text = text
+        self._text_bytes = text.encode('utf-8')
+        self.tree = None  # Not needed for placeholder tests
+
+    def get_language(self):
+        """Not used in placeholder tests."""
+        raise NotImplementedError("Mock document doesn't need language")
+
+    def count_removed_lines(self, start_char: int, end_char: int) -> int:
+        """Count non-empty lines in the text range."""
+        if start_char >= end_char:
+            return 0
+
+        removed_text = self.text[start_char:end_char]
+        lines = removed_text.split('\n')
+        return sum(1 for line in lines if line.strip())
+
+
+def make_manager(text: str, comment_style: CommentStyle = HASH_STYLE_COMMENTS) -> PlaceholderManager:
     """
-    comment_style = CommentStyle(
-        single_line="#",
-        multi_line=("/*", "*/"),
-        doc_markers=('"""', '"""')
-    )
-    return create_placeholder_manager(
-        raw_text=text,
-        comment_style=comment_style,
-        placeholder_style=style,
-    )
+    Create PlaceholderManager with mock document and editor.
+
+    Args:
+        text: Source text
+        comment_style: Comment style to use (default: Python-style #)
+
+    Returns:
+        Configured PlaceholderManager
+    """
+    doc = MockDocument(text)
+    editor = RangeEditor(text)
+    return PlaceholderManager(doc, comment_style, editor)
 
 
-def line_of(text: str, byte_pos: int) -> int:
-    return text[:byte_pos].count("\n")
+def apply_placeholders(pm: PlaceholderManager) -> tuple[str, dict]:
+    """
+    Apply placeholders and return result text and stats.
+
+    Args:
+        pm: PlaceholderManager with added placeholders
+
+    Returns:
+        Tuple of (result_text, edit_stats)
+    """
+    # Apply placeholders to editor (no economy check for tests)
+    pm.apply_to_editor(is_economical=None)
+
+    # Apply edits and get stats
+    result_text, stats = pm.editor.apply_edits()
+
+    return result_text, stats
 
 
-def test_generate_inline_block_and_docstring_placeholders():
-    text = "def foo():\n    pass\n\n\n"
+class TestPlaceholderGeneration:
+    """Test basic placeholder generation with different comment styles."""
 
-    # Inline style
-    pm_inline = make_manager(text, style="inline")
-    # Span covers two lines (function body)
-    start = text.find(":") + 1
-    end = text.find("\n\n")
-    pm_inline.add_placeholder(
-        placeholder_type="function_body",
-        start_char=start,
-        end_char=end,
-        start_line=line_of(text, start),
-        end_line=line_of(text, end),
-    )
-    edits_inline, stats_inline = pm_inline.finalize_edits()
-    assert len(edits_inline) == 1
-    spec, repl = edits_inline[0]
-    # Inline uses '# '
-    assert repl.startswith("# ")
-    assert "function body omitted" in repl
-    # 2 lines (body plus newline) captured in placeholder content suffix
-    assert "lines" in repl
-    assert stats_inline["placeholders_inserted"] == 1
+    def test_omit_with_hash_comment(self):
+        """Test OMIT placeholder with hash-style comments (Python)."""
+        text = "def foo():\n    pass\n    return None\n"
+        pm = make_manager(text, HASH_STYLE_COMMENTS)
 
-    # Block style
-    pm_block = make_manager(text, style="block")
-    pm_block.add_placeholder(
-        placeholder_type="function_body",
-        start_char=start,
-        end_char=end,
-        start_line=line_of(text, start),
-        end_line=line_of(text, end),
-    )
-    edits_block, _ = pm_block.finalize_edits()
-    spec_b, repl_b = edits_block[0]
-    assert repl_b.startswith("/* ") and repl_b.endswith(" */")
-    assert "function body omitted" in repl_b
+        # Remove function body
+        start = text.find(":") + 1
+        end = len(text)
 
-    # Docstring placeholder always uses docstring delimiters
-    pm_doc = make_manager(text, style="inline")
-    pm_doc.add_placeholder(
-        placeholder_type="docstring",
-        start_char=0,
-        end_char=0,
-        start_line=0,
-        end_line=0,
-    )
-    edits_doc, _ = pm_doc.finalize_edits()
-    _, repl_d = edits_doc[0]
-    assert repl_d.startswith('""" ')
-    assert repl_d.endswith(' """')
-    assert "docstring omitted" in repl_d
+        pm.add_placeholder(
+            element_type="function_body",
+            start_char=start,
+            end_char=end,
+            action=PlaceholderAction.OMIT,
+            add_suffix_comment=True,
+        )
 
+        result, stats = apply_placeholders(pm)
 
-def test_collapse_same_type_with_only_whitespace_between():
-    # Two imports separated by blank lines -> should collapse
-    text = "import a\n\n\nimport b\n"
-    pm = make_manager(text)
+        # Should have hash-style comment placeholder
+        assert "# … function body omitted" in result
+        # Check that at least one edit was applied
+        assert stats["edits_applied"] > 0
 
-    # First placeholder at beginning
-    start1 = 0
-    end1 = text.find("\n\n\n")
-    pm.add_placeholder(
-        placeholder_type="import",
-        start_char=start1,
-        end_char=end1,
-        start_line=line_of(text, start1),
-        end_line=line_of(text, end1),
-        count=1,
-    )
+    def test_omit_with_c_style_comment(self):
+        """Test OMIT placeholder with C-style comments."""
+        text = "function foo() {\n    return 42;\n}\n"
+        pm = make_manager(text, C_STYLE_COMMENTS)
 
-    # Second placeholder after blank lines
-    start2 = end1 + 3  # skip the three newlines
-    end2 = len(text)
-    pm.add_placeholder(
-        placeholder_type="import",
-        start_char=start2,
-        end_char=end2,
-        start_line=line_of(text, start2),
-        end_line=line_of(text, end2),
-        count=1,
-    )
+        # Remove function body
+        start = text.find("{") + 1
+        end = text.find("}")
 
-    edits, stats = pm.finalize_edits()
-    # Collapsed into single placeholder
-    assert len(edits) == 1
-    spec, repl = edits[0]
-    # Count should be aggregated (2 imports)
-    assert spec.count == 2
-    assert "2 imports omitted" in repl
-    assert stats["placeholders_inserted"] == 1
-    assert stats["placeholders_by_type"]["import"] == 2
+        pm.add_placeholder(
+            element_type="function_body",
+            start_char=start,
+            end_char=end,
+            action=PlaceholderAction.OMIT,
+            add_suffix_comment=True,
+        )
+
+        result, stats = apply_placeholders(pm)
+
+        # Should have C-style comment placeholder
+        assert "// … function body omitted" in result
+
+    def test_docstring_placeholder(self):
+        """Test that docstring placeholders use doc markers."""
+        text = '"""Original docstring."""\n'
+        pm = make_manager(text, HASH_STYLE_COMMENTS)
+
+        pm.add_placeholder(
+            element_type="docstring",
+            start_char=0,
+            end_char=len(text),
+            action=PlaceholderAction.OMIT,
+            add_suffix_comment=True,
+        )
+
+        result, stats = apply_placeholders(pm)
+
+        # Docstring should use triple-quote markers
+        assert '"""' in result
+        assert "docstring omitted" in result
+
+    def test_placeholder_with_indentation(self):
+        """Test that placeholder preserves indentation."""
+        text = "def foo():\n    pass\n"
+        pm = make_manager(text, HASH_STYLE_COMMENTS)
+
+        start = text.find(":") + 1
+        end = len(text)
+
+        pm.add_placeholder(
+            element_type="function_body",
+            start_char=start,
+            end_char=end,
+            action=PlaceholderAction.OMIT,
+            placeholder_prefix="\n    ",  # Indentation prefix
+            add_suffix_comment=True,
+        )
+
+        result, stats = apply_placeholders(pm)
+
+        # Should preserve indentation in placeholder
+        assert "\n    #" in result or "    #" in result
 
 
-def test_no_collapse_when_code_between():
-    # Placeholders separated by non-whitespace code must not collapse
-    text = "from x import y\nprint(y)\nfrom a import b\n"
-    pm = make_manager(text)
+class TestPlaceholderCollapsing:
+    """Test placeholder collapsing logic."""
 
-    # First import statement
-    start1 = 0
-    end1 = text.find("\n") + 1
-    pm.add_placeholder(
-        placeholder_type="import",
-        start_char=start1,
-        end_char=end1,
-        start_line=line_of(text, start1),
-        end_line=line_of(text, end1),
-    )
+    def test_collapse_same_type_with_only_whitespace(self):
+        """Test that same-type placeholders with only whitespace between collapse."""
+        text = "import a\n\n\nimport b\n"
+        pm = make_manager(text)
 
-    # Second import statement after a code line
-    start2 = text.rfind("from")
-    end2 = len(text)
-    pm.add_placeholder(
-        placeholder_type="import",
-        start_char=start2,
-        end_char=end2,
-        start_line=line_of(text, start2),
-        end_line=line_of(text, end2),
-    )
+        # First import
+        end1 = text.find("\n\n\n")
+        pm.add_placeholder(
+            element_type="import",
+            start_char=0,
+            end_char=end1,
+            count=1,
+            add_suffix_comment=True,
+        )
 
-    edits, stats = pm.finalize_edits()
-    assert len(edits) == 2
-    # Ensure each replacement corresponds to a single import
-    assert all("import omitted" in r for _, r in edits)
+        # Second import
+        start2 = end1 + 3
+        pm.add_placeholder(
+            element_type="import",
+            start_char=start2,
+            end_char=len(text),
+            count=1,
+            add_suffix_comment=True,
+        )
+
+        result, stats = apply_placeholders(pm)
+
+        # Should collapse into single placeholder
+        assert result.count("import") == 1  # Only one placeholder
+        assert "2 imports omitted" in result
+
+    def test_no_collapse_with_code_between(self):
+        """Test that placeholders with code between don't collapse."""
+        text = "from x import y\nprint(y)\nfrom a import b\n"
+        pm = make_manager(text)
+
+        # First import
+        end1 = text.find("\n") + 1
+        pm.add_placeholder(
+            element_type="import",
+            start_char=0,
+            end_char=end1,
+            add_suffix_comment=True,
+        )
+
+        # Second import (after code line)
+        start2 = text.rfind("from")
+        pm.add_placeholder(
+            element_type="import",
+            start_char=start2,
+            end_char=len(text),
+            add_suffix_comment=True,
+        )
+
+        result, stats = apply_placeholders(pm)
+
+        # Should NOT collapse - two separate placeholders
+        assert result.count("import omitted") == 2
+
+    def test_no_collapse_different_indentation(self):
+        """Test that placeholders at different indentation levels don't collapse."""
+        text = "import a\n    import b\n"
+        pm = make_manager(text)
+
+        # First at column 0
+        end1 = text.find("\n")
+        pm.add_placeholder(
+            element_type="import",
+            start_char=0,
+            end_char=end1,
+            add_suffix_comment=True,
+        )
+
+        # Second indented
+        start2 = text.find("\n") + 1
+        # Skip leading spaces to get actual import start
+        while start2 < len(text) and text[start2] == ' ':
+            start2 += 1
+
+        pm.add_placeholder(
+            element_type="import",
+            start_char=start2,
+            end_char=len(text) - 1,
+            add_suffix_comment=True,
+        )
+
+        result, stats = apply_placeholders(pm)
+
+        # Should NOT collapse - different indentation
+        assert result.count("import omitted") == 2
 
 
-def test_different_indentation_blocks_collapse():
-    # Same type with different column positions should not collapse
-    text = "import a\n    import b\n"
-    pm = make_manager(text)
+class TestPlaceholderActions:
+    """Test different placeholder actions (OMIT vs TRUNCATE)."""
 
-    # First starts at column 0
-    start1 = 0
-    end1 = text.find("\n")
-    pm.add_placeholder("import", start1, end1, 0, 0)
+    def test_omit_action_removes_completely(self):
+        """Test that OMIT action removes content completely."""
+        text = "def foo():\n    x = 1\n    return x\n"
+        pm = make_manager(text)
 
-    # Second starts after 4 spaces
-    # Use first non-space char to reflect actual column (4)
-    nl_pos = text.find("\n")
-    line2 = text[nl_pos + 1:]
-    # index of first non-space in line2
-    first_non_space = len(line2) - len(line2.lstrip(" "))
-    start2 = nl_pos + 1 + first_non_space
-    end2 = len(text) - 1
-    pm.add_placeholder("import", start2, end2, 1, 1)
+        start = text.find(":") + 1
+        end = len(text)
 
-    edits, _ = pm.finalize_edits()
-    assert len(edits) == 2
+        pm.add_placeholder(
+            element_type="function_body",
+            start_char=start,
+            end_char=end,
+            action=PlaceholderAction.OMIT,
+            add_suffix_comment=True,
+        )
+
+        result, stats = apply_placeholders(pm)
+
+        # Original body should be gone
+        assert "x = 1" not in result
+        assert "return x" not in result
+        # Placeholder should be present
+        assert "function body omitted" in result
+
+    def test_truncate_action_with_replacement(self):
+        """Test that TRUNCATE action uses replacement text."""
+        text = "very_long_literal_string_here"
+        pm = make_manager(text)
+
+        pm.add_placeholder(
+            element_type="literal_string",
+            start_char=0,
+            end_char=len(text),
+            action=PlaceholderAction.TRUNCATE,
+            replacement_text="very_long…",
+            add_suffix_comment=True,
+        )
+
+        result, stats = apply_placeholders(pm)
+
+        # Should contain replacement text
+        assert "very_long…" in result
+        # Should have suffix comment
+        assert "literal string" in result
 
 
-def test_style_none_produces_empty_replacements_but_keeps_stats():
-    text = "x = 1\n"
-    pm = make_manager(text, style="none")
-    pm.add_placeholder("import", 0, 0, 0, 0)
-    pm.add_placeholder("import", 0, 0, 0, 0)
-    edits, stats = pm.finalize_edits()
-    # Collapses because identical positions and whitespace-only between
-    assert len(edits) == 1
-    _, repl = edits[0]
-    assert repl == ""  # style none → empty replacement
-    assert stats["placeholders_inserted"] == 1
-    assert stats["placeholders_by_type"]["import"] == 2
+class TestTokenSavings:
+    """Test token savings display in placeholders."""
+
+    def test_tokens_saved_format(self):
+        """Test that tokens_saved uses simplified format."""
+        text = '"very long string literal"'
+        pm = make_manager(text)
+
+        pm.add_placeholder(
+            element_type="literal_string",
+            start_char=0,
+            end_char=len(text),
+            action=PlaceholderAction.OMIT,
+            tokens_saved=50,
+            add_suffix_comment=True,
+        )
+
+        result, stats = apply_placeholders(pm)
+
+        # Should show tokens instead of lines
+        assert "−50 tokens" in result or "-50 tokens" in result
+        assert "literal string" in result
+
+    def test_no_tokens_shows_standard_format(self):
+        """Test standard format when tokens_saved is None."""
+        text = "import module\n"
+        pm = make_manager(text)
+
+        pm.add_placeholder(
+            element_type="import",
+            start_char=0,
+            end_char=len(text),
+            count=3,
+            add_suffix_comment=True,
+        )
+
+        result, stats = apply_placeholders(pm)
+
+        # Should show count and type
+        assert "3 imports omitted" in result
+        assert "tokens" not in result
 
 
-def test_placeholder_prefix_is_preserved():
-    text = "line\n"
-    pm = make_manager(text, style="inline")
-    pm.add_placeholder(
-        placeholder_type="import",
-        start_char=0,
-        end_char=0,
-        start_line=0,
-        end_line=0,
-        placeholder_prefix="    ",
-        count=3,
-    )
-    edits, _ = pm.finalize_edits()
-    _, repl = edits[0]
-    assert repl.startswith("    # ")
-    assert "3 imports omitted" in repl
+class TestPlaceholderPrefix:
+    """Test placeholder prefix handling."""
+
+    def test_prefix_preserved_in_placeholder(self):
+        """Test that placeholder_prefix is preserved."""
+        text = "    code\n"
+        pm = make_manager(text)
+
+        pm.add_placeholder(
+            element_type="import",
+            start_char=0,
+            end_char=len(text),
+            placeholder_prefix="    ",
+            count=3,
+            add_suffix_comment=True,
+        )
+
+        result, stats = apply_placeholders(pm)
+
+        # Should start with prefix
+        assert result.startswith("    #")
+        assert "3 imports omitted" in result
+
+
+class TestPlaceholderCounts:
+    """Test placeholder count aggregation."""
+
+    def test_single_element_no_count_in_text(self):
+        """Test that single element doesn't show count."""
+        text = "import x\n"
+        pm = make_manager(text)
+
+        pm.add_placeholder(
+            element_type="import",
+            start_char=0,
+            end_char=len(text),
+            count=1,
+            add_suffix_comment=True,
+        )
+
+        result, stats = apply_placeholders(pm)
+
+        # Should not show "1" in placeholder
+        assert "import omitted" in result
+        assert "1 import" not in result
+
+    def test_multiple_elements_show_count(self):
+        """Test that multiple elements show count."""
+        text = "import x\nimport y\n"
+        pm = make_manager(text)
+
+        pm.add_placeholder(
+            element_type="import",
+            start_char=0,
+            end_char=len(text),
+            count=5,
+            add_suffix_comment=True,
+        )
+
+        result, stats = apply_placeholders(pm)
+
+        # Should show count
+        assert "5 imports omitted" in result
+
+
+class TestPluralization:
+    """Test pluralization rules for different element types."""
+
+    def test_class_pluralization(self):
+        """Test that 'class' becomes 'classes'."""
+        text = "class A:\n    pass\n"
+        pm = make_manager(text)
+
+        pm.add_placeholder(
+            element_type="class",
+            start_char=0,
+            end_char=len(text),
+            count=3,
+            add_suffix_comment=True,
+        )
+
+        result, stats = apply_placeholders(pm)
+
+        assert "3 classes omitted" in result
+
+    def test_body_pluralization(self):
+        """Test that 'body' becomes 'bodies'."""
+        text = "def foo(): pass\n"
+        pm = make_manager(text)
+
+        pm.add_placeholder(
+            element_type="function_body",
+            start_char=0,
+            end_char=len(text),
+            count=2,
+            add_suffix_comment=True,
+        )
+
+        result, stats = apply_placeholders(pm)
+
+        assert "2 function bodies omitted" in result
+
+    def test_default_pluralization(self):
+        """Test default pluralization (add 's')."""
+        text = "import x\n"
+        pm = make_manager(text)
+
+        pm.add_placeholder(
+            element_type="import",
+            start_char=0,
+            end_char=len(text),
+            count=3,
+            add_suffix_comment=True,
+        )
+
+        result, stats = apply_placeholders(pm)
+
+        assert "3 imports omitted" in result
+
+
+class TestEditorIntegration:
+    """Test integration with RangeEditor."""
+
+    def test_stats_from_editor(self):
+        """Test that statistics are properly returned from editor."""
+        text = "def foo():\n    pass\n"
+        pm = make_manager(text)
+
+        start = text.find(":") + 1
+        end = len(text)
+
+        pm.add_placeholder(
+            element_type="function_body",
+            start_char=start,
+            end_char=end,
+            add_suffix_comment=True,
+        )
+
+        result, stats = apply_placeholders(pm)
+
+        # Check stats structure
+        assert "edits_applied" in stats
+        assert "bytes_removed" in stats
+        assert "bytes_added" in stats
+        assert stats["edits_applied"] > 0
+
+    def test_multiple_placeholders_applied(self):
+        """Test that multiple placeholders are all applied."""
+        text = "import a\nimport b\nimport c\n"
+        pm = make_manager(text)
+
+        # Add three separate placeholders
+        lines = text.split("\n")
+        pos = 0
+        for i in range(3):
+            line_end = pos + len(lines[i]) + 1
+            pm.add_placeholder(
+                element_type="import",
+                start_char=pos,
+                end_char=line_end,
+                add_suffix_comment=True,
+            )
+            pos = line_end
+
+        result, stats = apply_placeholders(pm)
+
+        # All should be replaced (or collapsed)
+        assert "import a" not in result
+        assert "import b" not in result
+        assert "import c" not in result
