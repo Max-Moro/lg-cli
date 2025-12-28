@@ -265,9 +265,16 @@ placeholders:
 LG автоматически обнаруживает и пропускает тривиальные файлы, которые не несут смысловой нагрузки для анализа кода:
 
 **Примеры тривиальных файлов:**
-- Python: `__init__.py` только с реэкспортами (`from .module import ...`, `__all__ = [...]`)
-- TypeScript/JavaScript: barrel-файлы `index.ts`/`index.js` только с реэкспортами (`export { ... } from './module'`)
-- Go: `doc.go` только с документацией пакета
+- **Python**: `__init__.py` только с реэкспортами (`from .module import ...`, `__all__ = [...]`)
+- **TypeScript**: barrel-файлы `index.ts`, `index.tsx` только с реэкспортами (`export { ... } from './module'`)
+- **JavaScript**: barrel-файлы `index.js`, `index.jsx`, `index.mjs`, `index.cjs` только с реэкспортами
+- **Java**: `package-info.java` только с объявлениями пакета и аннотациями
+- **Kotlin**: `package.kt`, `package-info.kt` только с заголовками пакета и импортами
+- **Go**: `doc.go` только с документацией пакета
+- **Scala**: `package.scala` только с package objects и type aliases
+- **Rust**: `mod.rs`, `lib.rs` только с объявлениями модулей и реэкспортами (`pub use`)
+- **C**: заголовочные файлы `.h` только с include guards и forward declarations
+- **C++**: заголовочные файлы `.hpp`, `.hh`, `.hxx`, `.h` только с include guards и forward declarations
 
 **Настройка:**
 ```yaml

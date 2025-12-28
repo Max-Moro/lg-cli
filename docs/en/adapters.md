@@ -265,9 +265,16 @@ These metrics help understand what exactly "eats" tokens and how effective the a
 LG automatically detects and skips trivial files that don't carry meaningful content for code analysis:
 
 **Examples of trivial files:**
-- Python: `__init__.py` with only re-exports (`from .module import ...`, `__all__ = [...]`)
-- TypeScript/JavaScript: barrel files `index.ts`/`index.js` with only re-exports (`export { ... } from './module'`)
-- Go: `doc.go` with only package documentation
+- **Python**: `__init__.py` with only re-exports (`from .module import ...`, `__all__ = [...]`)
+- **TypeScript**: barrel files `index.ts`, `index.tsx` with only re-exports (`export { ... } from './module'`)
+- **JavaScript**: barrel files `index.js`, `index.jsx`, `index.mjs`, `index.cjs` with only re-exports
+- **Java**: `package-info.java` with only package declarations and annotations
+- **Kotlin**: `package.kt`, `package-info.kt` with only package headers and imports
+- **Go**: `doc.go` with only package documentation
+- **Scala**: `package.scala` with only package objects and type aliases
+- **Rust**: `mod.rs`, `lib.rs` with only module declarations and re-exports (`pub use`)
+- **C**: `.h` header files with only include guards and forward declarations
+- **C++**: `.hpp`, `.hh`, `.hxx`, `.h` header files with only include guards and forward declarations
 
 **Configuration:**
 ```yaml
