@@ -1,11 +1,12 @@
 """
-GitIgnore service with recursive loading and caching.
+GitIgnore service with correct recursive .gitignore semantics.
 
-Implements proper Git semantics:
-- Recursive loading of .gitignore files from all directories
+Implements proper Git behavior:
+- All .gitignore files are treated uniformly (root is not special)
 - Patterns are relative to their .gitignore location
-- Support for .git/info/exclude
-- Caching for performance during filesystem traversal
+- For a file check: collect .gitignore files from root to file's directory
+- Combine patterns into single PathSpec — last match wins (supports !pattern)
+- Lazy loading with caching for performance
 """
 
 from __future__ import annotations
@@ -29,10 +30,12 @@ class GitIgnoreService:
     """
     Service for checking paths against .gitignore rules.
 
-    Implements recursive .gitignore loading with proper Git semantics:
+    Implements correct Git .gitignore semantics:
     - Each .gitignore applies to its directory and subdirectories
-    - Patterns are matched relative to the .gitignore location
-    - Results are cached for performance
+    - Patterns are relative to the .gitignore location
+    - When checking a file, all .gitignore files from root to file's
+      directory are collected and combined
+    - Last matching pattern wins (supports negation with !pattern)
 
     Usage:
         service = GitIgnoreService(repo_root)
@@ -50,97 +53,170 @@ class GitIgnoreService:
         """
         self.root = root.resolve()
 
-        # Cache of PathSpec objects by directory path
-        # Key: directory path relative to root (empty string for root)
-        # Value: PathSpec for that directory's .gitignore (or None if no .gitignore)
-        self._specs: Dict[str, Optional[PathSpec]] = {}
+        # Cache of .gitignore patterns by directory path (relative to root)
+        # Key: directory path relative to root ("" for root, "src", "src/utils", etc.)
+        # Value: List of (pattern, is_negation) tuples, or None if no .gitignore
+        self._gitignore_cache: Dict[str, Optional[List[str]]] = {}
 
-        # Cache of already checked paths
-        self._ignore_cache: Dict[str, bool] = {}
+        # Cache of check results
+        self._result_cache: Dict[str, bool] = {}
 
-        # Load root .gitignore and .git/info/exclude
-        self._load_root_ignores()
-
-    def _load_root_ignores(self) -> None:
-        """Load root-level ignore patterns."""
-        patterns: List[str] = []
-
-        # Load .git/info/exclude (repository-specific excludes)
-        exclude_path = self.root / ".git" / "info" / "exclude"
-        if exclude_path.is_file():
-            patterns.extend(self._read_gitignore_file(exclude_path))
-
-        # Load root .gitignore
-        root_gitignore = self.root / ".gitignore"
-        if root_gitignore.is_file():
-            patterns.extend(self._read_gitignore_file(root_gitignore))
-
-        if patterns:
-            self._specs[""] = PathSpec.from_lines(GitWildMatchPattern, patterns)
-        else:
-            self._specs[""] = None
-
-    def _read_gitignore_file(self, path: Path) -> List[str]:
+    def _read_gitignore(self, gitignore_path: Path) -> List[str]:
         """
         Read and parse a .gitignore file.
 
         Args:
-            path: Path to .gitignore file
+            gitignore_path: Absolute path to .gitignore file
 
         Returns:
-            List of non-empty, non-comment patterns
+            List of non-empty, non-comment patterns (preserving order)
         """
         try:
-            content = path.read_text(encoding="utf-8", errors="ignore")
+            content = gitignore_path.read_text(encoding="utf-8", errors="ignore")
             patterns = []
             for line in content.splitlines():
-                line = line.strip()
-                if line and not line.startswith("#"):
-                    patterns.append(line)
+                # Strip trailing whitespace but preserve leading (significant for patterns)
+                line = line.rstrip()
+                # Skip empty lines and comments
+                if not line or line.startswith("#"):
+                    continue
+                patterns.append(line)
             return patterns
         except Exception as e:
-            logger.warning(f"Failed to read {path}: {e}")
+            logger.warning(f"Failed to read {gitignore_path}: {e}")
             return []
 
-    def _get_spec_for_dir(self, rel_dir: str) -> Optional[PathSpec]:
+    def _get_gitignore_patterns(self, dir_rel: str) -> Optional[List[str]]:
         """
-        Get or load PathSpec for a directory.
+        Get .gitignore patterns for a directory (with caching).
 
         Args:
-            rel_dir: Directory path relative to root (POSIX format)
+            dir_rel: Directory path relative to root ("" for root)
 
         Returns:
-            PathSpec for directory's .gitignore, or None if no .gitignore
+            List of patterns or None if no .gitignore in this directory
         """
-        if rel_dir in self._specs:
-            return self._specs[rel_dir]
+        if dir_rel in self._gitignore_cache:
+            return self._gitignore_cache[dir_rel]
 
-        # Load .gitignore for this directory
-        if rel_dir:
-            gitignore_path = self.root / rel_dir / ".gitignore"
+        # Build absolute path to .gitignore
+        if dir_rel:
+            gitignore_path = self.root / dir_rel / ".gitignore"
         else:
-            # Root already loaded
-            return self._specs.get("")
+            gitignore_path = self.root / ".gitignore"
 
         if gitignore_path.is_file():
-            patterns = self._read_gitignore_file(gitignore_path)
-            if patterns:
-                self._specs[rel_dir] = PathSpec.from_lines(GitWildMatchPattern, patterns)
-            else:
-                self._specs[rel_dir] = None
+            patterns = self._read_gitignore(gitignore_path)
+            self._gitignore_cache[dir_rel] = patterns if patterns else None
         else:
-            self._specs[rel_dir] = None
+            self._gitignore_cache[dir_rel] = None
 
-        return self._specs[rel_dir]
+        return self._gitignore_cache[dir_rel]
+
+    def _collect_patterns_for_path(self, rel_path: str) -> List[str]:
+        """
+        Collect all applicable .gitignore patterns for a path.
+
+        Walks from root to the file's parent directory, collecting patterns
+        from each .gitignore file. Patterns are transformed to be relative
+        to root by prepending the .gitignore directory path.
+
+        Args:
+            rel_path: File path relative to root (POSIX format)
+
+        Returns:
+            Combined list of patterns (order preserved for last-match-wins)
+        """
+        # Normalize path
+        rel_path_clean = rel_path.strip("/")
+
+        # Get parent directory parts
+        parts = rel_path_clean.split("/")
+        if len(parts) > 1:
+            dir_parts = parts[:-1]
+        else:
+            dir_parts = []
+
+        # Collect patterns from root to file's parent directory
+        all_patterns: List[str] = []
+
+        # Check root .gitignore
+        root_patterns = self._get_gitignore_patterns("")
+        if root_patterns:
+            all_patterns.extend(root_patterns)
+
+        # Check each parent directory's .gitignore
+        current_dir = ""
+        for part in dir_parts:
+            if current_dir:
+                current_dir = f"{current_dir}/{part}"
+            else:
+                current_dir = part
+
+            dir_patterns = self._get_gitignore_patterns(current_dir)
+            if dir_patterns:
+                # Transform patterns to be relative to root
+                for pattern in dir_patterns:
+                    transformed = self._transform_pattern(pattern, current_dir)
+                    all_patterns.append(transformed)
+
+        return all_patterns
+
+    def _transform_pattern(self, pattern: str, dir_rel: str) -> str:
+        """
+        Transform a pattern from .gitignore to be relative to root.
+
+        Git .gitignore patterns are relative to the .gitignore location.
+        We need to transform them to be relative to root for unified matching.
+
+        Args:
+            pattern: Original pattern from .gitignore
+            dir_rel: Directory containing .gitignore (relative to root)
+
+        Returns:
+            Pattern transformed to be relative to root
+        """
+        # Handle negation patterns
+        is_negation = pattern.startswith("!")
+        if is_negation:
+            pattern = pattern[1:]
+
+        # Patterns starting with / are anchored to .gitignore directory
+        if pattern.startswith("/"):
+            # Remove leading / and prepend directory
+            pattern = pattern[1:]
+            if dir_rel:
+                pattern = f"{dir_rel}/{pattern}"
+        else:
+            # Non-anchored patterns can match anywhere in subtree
+            # Prepend **/ only if pattern doesn't already have path separators
+            # at the beginning (to avoid matching above the .gitignore location)
+            if dir_rel:
+                if "/" in pattern and not pattern.startswith("**/"):
+                    # Pattern with path component - anchor to directory
+                    pattern = f"{dir_rel}/{pattern}"
+                else:
+                    # Simple pattern (like *.log) - match anywhere in subtree
+                    pattern = f"{dir_rel}/**/{pattern}"
+            else:
+                # Root .gitignore - pattern stays as is for non-anchored
+                if "/" not in pattern and not pattern.startswith("**/"):
+                    pattern = f"**/{pattern}"
+
+        # Restore negation
+        if is_negation:
+            pattern = f"!{pattern}"
+
+        return pattern
 
     def is_ignored(self, rel_path: str) -> bool:
         """
         Check if a path is ignored by .gitignore rules.
 
-        Implements proper Git semantics:
-        - Checks all .gitignore files from root to the file's directory
-        - Patterns are matched relative to their .gitignore location
-        - Later rules can override earlier ones (negation patterns)
+        Implements correct Git semantics:
+        - Collects all .gitignore files from root to file's directory
+        - Combines patterns with last-match-wins semantics
+        - Supports negation patterns (!pattern)
 
         Args:
             rel_path: Path relative to repository root (POSIX format)
@@ -149,41 +225,29 @@ class GitIgnoreService:
             True if path is ignored
         """
         # Check cache first
-        if rel_path in self._ignore_cache:
-            return self._ignore_cache[rel_path]
+        cache_key = rel_path.lower()
+        if cache_key in self._result_cache:
+            return self._result_cache[cache_key]
 
-        # Normalize path
-        rel_path_normalized = rel_path.strip("/").lower()
+        # Collect all applicable patterns
+        patterns = self._collect_patterns_for_path(rel_path)
 
-        # Check all .gitignore files from root to the file's directory
-        parts = rel_path_normalized.split("/")
-        ignored = False
+        if not patterns:
+            self._result_cache[cache_key] = False
+            return False
 
-        # Check root .gitignore against full path
-        root_spec = self._specs.get("")
-        if root_spec and root_spec.match_file(rel_path_normalized):
-            ignored = True
+        # Build PathSpec and check
+        # pathspec with GitWildMatchPattern handles negation correctly
+        # when patterns are in order (last match wins)
+        try:
+            spec = PathSpec.from_lines(GitWildMatchPattern, patterns)
+            result = spec.match_file(rel_path.lower())
+        except Exception as e:
+            logger.warning(f"Failed to match patterns for {rel_path}: {e}")
+            result = False
 
-        # Check each parent directory's .gitignore
-        for i in range(len(parts) - 1):
-            dir_path = "/".join(parts[:i + 1])
-
-            # Load spec for this directory (lazy loading)
-            spec = self._get_spec_for_dir(dir_path)
-            if spec is None:
-                continue
-
-            # The remaining path relative to this directory's .gitignore
-            remaining_path = "/".join(parts[i + 1:])
-
-            if spec.match_file(remaining_path):
-                ignored = True
-                # Note: We continue checking because negation patterns
-                # in deeper directories could un-ignore the file
-
-        # Cache result
-        self._ignore_cache[rel_path] = ignored
-        return ignored
+        self._result_cache[cache_key] = result
+        return result
 
     def is_dir_ignored(self, rel_dir: str) -> bool:
         """
@@ -195,14 +259,13 @@ class GitIgnoreService:
         Returns:
             True if directory is ignored
         """
-        # Check with trailing slash for directory matching
-        return self.is_ignored(rel_dir + "/") or self.is_ignored(rel_dir)
+        # Check both with and without trailing slash
+        rel_dir_clean = rel_dir.strip("/")
+        return self.is_ignored(rel_dir_clean) or self.is_ignored(rel_dir_clean + "/")
 
     def should_descend(self, rel_dir: str) -> bool:
         """
         Check if we should descend into a directory during traversal.
-
-        This is the inverse of is_dir_ignored, provided for convenience.
 
         Args:
             rel_dir: Directory path relative to root (POSIX format)
@@ -213,8 +276,9 @@ class GitIgnoreService:
         return not self.is_dir_ignored(rel_dir)
 
     def clear_cache(self) -> None:
-        """Clear the ignore result cache."""
-        self._ignore_cache.clear()
+        """Clear all caches."""
+        self._gitignore_cache.clear()
+        self._result_cache.clear()
 
 
 def ensure_gitignore_entry(root: Path, entry: str, *, comment: Optional[str] = None) -> bool:

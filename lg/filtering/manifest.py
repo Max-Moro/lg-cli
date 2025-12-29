@@ -58,7 +58,7 @@ def build_section_manifest(
     adapters_cfg = _compute_final_adapter_configs(section_config, template_ctx)
 
     # Determine if section describes local files
-    is_local_files = _is_gitignored_section(section_config, gitignore_service)
+    is_local_files = _is_gitignored_section(section_config, gitignore_service, section_ref.scope_rel)
 
     # Preliminary check: determine if section is documentation-only
     # Collect files with vcs_mode: all to check section type
@@ -227,9 +227,21 @@ def _apply_conditional_filters_recursive(node: FilterNode, template_ctx: Templat
     return enhanced_node
 
 
-def _is_gitignored_section(section_cfg: SectionCfg, gitignore_service: Optional[GitIgnoreService]) -> bool:
+def _is_gitignored_section(
+    section_cfg: SectionCfg,
+    gitignore_service: Optional[GitIgnoreService],
+    scope_rel: str
+) -> bool:
     """
     Determines if section's allow patterns are covered by .gitignore.
+
+    Args:
+        section_cfg: Section configuration
+        gitignore_service: GitIgnore service for checking patterns
+        scope_rel: Section scope relative to root (empty for root scope)
+
+    Returns:
+        True if all allow patterns are covered by .gitignore
     """
     root_filter = section_cfg.filters
 
@@ -248,7 +260,14 @@ def _is_gitignored_section(section_cfg: SectionCfg, gitignore_service: Optional[
     # Check if all allow patterns are covered by gitignore
     for pattern in root_filter.allow:
         pattern_normalized = pattern.lstrip('/')
-        if not gitignore_service.is_ignored(pattern_normalized):
+
+        # Prepend scope_rel to get path relative to root
+        if scope_rel:
+            full_path = f"{scope_rel}/{pattern_normalized}"
+        else:
+            full_path = pattern_normalized
+
+        if not gitignore_service.is_ignored(full_path):
             return False
 
     # All patterns are covered by gitignore
