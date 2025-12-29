@@ -14,7 +14,6 @@ import logging
 from pathlib import Path
 from typing import Optional, Dict, List
 
-import pathspec
 from pathspec import PathSpec
 from pathspec.patterns import GitWildMatchPattern
 

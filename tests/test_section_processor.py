@@ -157,6 +157,7 @@ def _create_run_context(root: Path, active_tags: set | None = None) -> RunContex
         options=RunOptions(),
         cache=cache,
         vcs=vcs,
+        gitignore=None,
         tokenizer=tokenizer,
         adaptive_loader=adaptive_loader,
         mode_options=ModeOptions(),

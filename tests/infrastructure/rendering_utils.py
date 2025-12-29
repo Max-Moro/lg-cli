@@ -18,6 +18,7 @@ from lg.run_context import RunContext
 from lg.stats.tokenizer import default_tokenizer
 from lg.types import RunOptions
 from lg.git import NullVcs
+from lg.git.gitignore import GitIgnoreService
 
 
 def make_run_options(
@@ -69,11 +70,15 @@ def make_run_context(root: Path, options: Optional[RunOptions] = None) -> RunCon
         options.extra_tags
     )
 
+    # Initialize GitIgnoreService (same pattern as Engine._init_services)
+    gitignore = GitIgnoreService(root) if (root / ".git").is_dir() else None
+
     return RunContext(
         root=root,
         options=options,
         cache=cache,
         vcs=NullVcs(),
+        gitignore=gitignore,
         tokenizer=default_tokenizer(),
         adaptive_loader=adaptive_loader,
         mode_options=mode_options,

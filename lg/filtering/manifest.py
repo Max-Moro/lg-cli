@@ -20,6 +20,7 @@ from ..rendering import get_language_for_file
 from ..template.context import TemplateContext
 from ..types import FileEntry, SectionManifest, SectionRef
 from ..git import VcsProvider, NullVcs
+from ..git.gitignore import GitIgnoreService
 
 
 def build_section_manifest(
@@ -28,6 +29,7 @@ def build_section_manifest(
     template_ctx: TemplateContext,
     root: Path,
     vcs: VcsProvider,
+    gitignore_service: Optional[GitIgnoreService],
     vcs_mode: str,
     target_branch: Optional[str] = None
 ) -> SectionManifest:
@@ -40,6 +42,7 @@ def build_section_manifest(
         template_ctx: Template context with active modes/tags
         root: Repository root
         vcs: VCS provider
+        gitignore_service: GitIgnore service for filtering ignored files
         vcs_mode: VCS mode ("all", "changes" or "branch-changes")
         target_branch: Target branch for "branch-changes" mode (optional)
 
@@ -55,7 +58,7 @@ def build_section_manifest(
     adapters_cfg = _compute_final_adapter_configs(section_config, template_ctx)
 
     # Determine if section describes local files
-    is_local_files = _is_gitignored_section(section_config, root)
+    is_local_files = _is_gitignored_section(section_config, gitignore_service)
 
     # Preliminary check: determine if section is documentation-only
     # Collect files with vcs_mode: all to check section type
@@ -67,7 +70,8 @@ def build_section_manifest(
         vcs_mode="all",
         root=root,
         adapters_cfg=adapters_cfg,
-        is_local_files=is_local_files
+        is_local_files=is_local_files,
+        gitignore_service=gitignore_service
     )
 
     # Determine if section is documentation-only
@@ -97,7 +101,8 @@ def build_section_manifest(
             vcs_mode=effective_vcs_mode,
             root=root,
             adapters_cfg=adapters_cfg,
-            is_local_files=is_local_files
+            is_local_files=is_local_files,
+            gitignore_service=gitignore_service
         )
 
     # Create manifest
@@ -222,12 +227,10 @@ def _apply_conditional_filters_recursive(node: FilterNode, template_ctx: Templat
     return enhanced_node
 
 
-def _is_gitignored_section(section_cfg: SectionCfg, root: Path) -> bool:
+def _is_gitignored_section(section_cfg: SectionCfg, gitignore_service: Optional[GitIgnoreService]) -> bool:
     """
     Determines if section's allow patterns are covered by .gitignore.
     """
-    from ..git.gitignore import GitIgnoreService
-
     root_filter = section_cfg.filters
 
     # Must be in allow mode
@@ -238,12 +241,9 @@ def _is_gitignored_section(section_cfg: SectionCfg, root: Path) -> bool:
     if not root_filter.allow:
         return False
 
-    # Check if root .gitignore exists
-    if not (root / ".gitignore").is_file():
+    # No gitignore service means no .git directory
+    if gitignore_service is None:
         return False
-
-    # Create service for checking
-    gitignore_service = GitIgnoreService(root)
 
     # Check if all allow patterns are covered by gitignore
     for pattern in root_filter.allow:
@@ -262,7 +262,8 @@ def _collect_section_files(
     vcs_mode: str,
     root: Path,
     adapters_cfg: dict[str, dict],
-    is_local_files: bool
+    is_local_files: bool,
+    gitignore_service: Optional[GitIgnoreService]
 ) -> List[FileEntry]:
     """
     Collects files for a section with all filters applied.
@@ -288,8 +289,7 @@ def _collect_section_files(
     # Local files sections (all patterns covered by .gitignore) represent
     # deliberate inclusion of specific files (e.g., local configs, workspace docs)
     # that should bypass .gitignore
-    from ..git.gitignore import GitIgnoreService
-    gitignore_service = None if is_local_files else GitIgnoreService(root)
+    effective_gitignore = None if is_local_files else gitignore_service
 
     # Prepare target rules for targeted overrides
     target_specs = _prepare_target_specs(section_cfg)
@@ -332,7 +332,7 @@ def _collect_section_files(
     # Collect files
     files: List[FileEntry] = []
 
-    for fp in iter_files(root, extensions=extensions, gitignore_service=gitignore_service, dir_pruner=_pruner):
+    for fp in iter_files(root, extensions=extensions, gitignore_service=effective_gitignore, dir_pruner=_pruner):
         rel_posix = fp.resolve().relative_to(root.resolve()).as_posix()
 
         # Filter by VCS mode

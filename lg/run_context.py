@@ -9,6 +9,7 @@ from .config.adaptive_loader import AdaptiveConfigLoader
 from .config.adaptive_model import ModeOptions
 from .types import RunOptions
 from .git import VcsProvider
+from .git.gitignore import GitIgnoreService
 from .stats import TokenService
 
 
@@ -92,6 +93,7 @@ class RunContext:
     options: RunOptions
     cache: Cache
     vcs: VcsProvider
+    gitignore: Optional[GitIgnoreService]  # None if no .git directory
     tokenizer: TokenService
     adaptive_loader: AdaptiveConfigLoader
     mode_options: ModeOptions = field(default_factory=ModeOptions)  # merged options from modes

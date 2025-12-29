@@ -57,6 +57,7 @@ py-files:
         template_ctx=template_ctx,
         root=tmp_path,
         vcs=run_ctx.vcs,
+        gitignore_service=run_ctx.gitignore,
         vcs_mode="all"
     )
 
@@ -112,6 +113,7 @@ all-files:
         template_ctx=template_ctx,
         root=tmp_path,
         vcs=run_ctx.vcs,
+        gitignore_service=run_ctx.gitignore,
         vcs_mode="all"
     )
 
@@ -134,6 +136,7 @@ all-files:
         template_ctx=template_ctx,
         root=tmp_path,
         vcs=run_ctx.vcs,
+        gitignore_service=run_ctx.gitignore,
         vcs_mode="all"
     )
 
@@ -145,6 +148,9 @@ all-files:
 
 def test_gitignore_still_filters_regular_sections(tmp_path: Path):
     """Tests that .gitignore filtering works normally for non-single-file sections."""
+
+    # Initialize git repository so gitignore service works
+    write(tmp_path / ".git" / "config", "[core]")
 
     # Create files with gitignore
     write(tmp_path / ".gitignore", "*.bak\ntemp/\nbuild/\n")
@@ -192,6 +198,7 @@ wildcard-pattern:
         template_ctx=template_ctx,
         root=tmp_path,
         vcs=run_ctx.vcs,
+        gitignore_service=run_ctx.gitignore,
         vcs_mode="all",
         target_branch=None
     )
@@ -209,6 +216,7 @@ wildcard-pattern:
         template_ctx=template_ctx,
         root=tmp_path,
         vcs=run_ctx.vcs,
+        gitignore_service=run_ctx.gitignore,
         vcs_mode="all",
         target_branch=None
     )
@@ -225,6 +233,7 @@ wildcard-pattern:
         template_ctx=template_ctx,
         root=tmp_path,
         vcs=run_ctx.vcs,
+        gitignore_service=run_ctx.gitignore,
         vcs_mode="all",
         target_branch=None
     )
@@ -238,6 +247,9 @@ wildcard-pattern:
 
 def test_local_files_flag_in_manifest(tmp_path: Path):
     """Tests that is_local_files flag is correctly set based on .gitignore."""
+    # Initialize git repository so gitignore service works
+    write(tmp_path / ".git" / "config", "[core]")
+
     # Create .gitignore that blocks certain patterns
     write(tmp_path / ".gitignore", """
 # Local workspace files
@@ -313,6 +325,7 @@ normal-wildcard:
         template_ctx=template_ctx,
         root=tmp_path,
         vcs=run_ctx.vcs,
+        gitignore_service=run_ctx.gitignore,
         vcs_mode="all",
         target_branch=None
     )
@@ -325,6 +338,7 @@ normal-wildcard:
         template_ctx=template_ctx,
         root=tmp_path,
         vcs=run_ctx.vcs,
+        gitignore_service=run_ctx.gitignore,
         vcs_mode="all",
         target_branch=None
     )
@@ -337,6 +351,7 @@ normal-wildcard:
         template_ctx=template_ctx,
         root=tmp_path,
         vcs=run_ctx.vcs,
+        gitignore_service=run_ctx.gitignore,
         vcs_mode="all",
         target_branch=None
     )
@@ -349,6 +364,7 @@ normal-wildcard:
         template_ctx=template_ctx,
         root=tmp_path,
         vcs=run_ctx.vcs,
+        gitignore_service=run_ctx.gitignore,
         vcs_mode="all",
         target_branch=None
     )
@@ -361,6 +377,7 @@ normal-wildcard:
         template_ctx=template_ctx,
         root=tmp_path,
         vcs=run_ctx.vcs,
+        gitignore_service=run_ctx.gitignore,
         vcs_mode="all",
         target_branch=None
     )
@@ -373,6 +390,7 @@ normal-wildcard:
         template_ctx=template_ctx,
         root=tmp_path,
         vcs=run_ctx.vcs,
+        gitignore_service=run_ctx.gitignore,
         vcs_mode="all",
         target_branch=None
     )
@@ -381,6 +399,9 @@ normal-wildcard:
 
 def test_virtual_section_local_files_no_error(tmp_path: Path):
     """Tests that virtual sections for local files don't error when files are missing."""
+    # Initialize git repository so gitignore service works
+    write(tmp_path / ".git" / "config", "[core]")
+
     # Create empty directory structure (no actual files)
     write(tmp_path / "lg-cfg" / "sections.yaml", """
 dummy:

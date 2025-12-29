@@ -52,6 +52,7 @@ def _process_section(
         template_ctx=template_ctx,
         root=root,
         vcs=vcs or rc.vcs,
+        gitignore_service=rc.gitignore,
         vcs_mode=vcs_mode
     )
 

@@ -18,6 +18,7 @@ from .stats.tokenizer import TokenService
 from .template import create_template_processor, TemplateContext
 from .types import RunOptions, TargetSpec, SectionRef
 from .git import NullVcs, GitVcs
+from .git import GitIgnoreService
 from .version import tool_version
 
 
@@ -59,6 +60,9 @@ class Engine:
         # VCS
         self.vcs = GitVcs() if (self.root / ".git").is_dir() else NullVcs()
 
+        # GitIgnore service (None if no .git directory)
+        self.gitignore = GitIgnoreService(self.root) if (self.root / ".git").is_dir() else None
+
         self.tokenizer = TokenService(
             root=self.root,
             lib=self.options.tokenizer_lib,
@@ -76,6 +80,7 @@ class Engine:
             options=self.options,
             cache=self.cache,
             vcs=self.vcs,
+            gitignore=self.gitignore,
             tokenizer=self.tokenizer,
             adaptive_loader=adaptive_loader,
             mode_options=mode_options,
