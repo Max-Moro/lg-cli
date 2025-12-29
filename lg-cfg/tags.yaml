@@ -54,8 +54,8 @@ tag-sets:
         title: "Filtering"
       rendering:
         title: "Rendering"
-      vcs:
-        title: "VCS"
+      git:
+        title: "Git"
 
   language:
     title: "Programming Languages"

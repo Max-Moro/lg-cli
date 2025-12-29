@@ -9,7 +9,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Optional
 
-from .gitignore_helper import ensure_gitignore_entry
+from ..git.gitignore import ensure_gitignore_entry
 
 CACHE_VERSION = 1
 

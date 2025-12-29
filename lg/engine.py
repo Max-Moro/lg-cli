@@ -17,8 +17,7 @@ from .stats import RunResult, build_run_result_from_collector, StatsCollector
 from .stats.tokenizer import TokenService
 from .template import create_template_processor, TemplateContext
 from .types import RunOptions, TargetSpec, SectionRef
-from .vcs import NullVcs
-from .vcs.git import GitVcs
+from .git import NullVcs, GitVcs
 from .version import tool_version
 
 

@@ -11,7 +11,7 @@ from pathlib import Path
 from typing import Dict, List, Set, cast, Optional
 
 from .filters import FilterEngine
-from .fs import build_gitignore_spec, iter_files
+from .fs import iter_files
 from .model import FilterNode
 from ..adapters.registry import get_adapter_for_path
 from ..config import SectionCfg, EmptyPolicy
@@ -19,7 +19,7 @@ from ..config.paths import is_cfg_relpath
 from ..rendering import get_language_for_file
 from ..template.context import TemplateContext
 from ..types import FileEntry, SectionManifest, SectionRef
-from ..vcs import VcsProvider, NullVcs
+from ..git import VcsProvider, NullVcs
 
 
 def build_section_manifest(
@@ -226,6 +226,8 @@ def _is_gitignored_section(section_cfg: SectionCfg, root: Path) -> bool:
     """
     Determines if section's allow patterns are covered by .gitignore.
     """
+    from ..git.gitignore import GitIgnoreService
+
     root_filter = section_cfg.filters
 
     # Must be in allow mode
@@ -236,16 +238,17 @@ def _is_gitignored_section(section_cfg: SectionCfg, root: Path) -> bool:
     if not root_filter.allow:
         return False
 
-    # Load .gitignore specification
-    spec_git = build_gitignore_spec(root)
-    if spec_git is None:
-        # No .gitignore - can't be gitignored section
+    # Check if root .gitignore exists
+    if not (root / ".gitignore").is_file():
         return False
+
+    # Create service for checking
+    gitignore_service = GitIgnoreService(root)
 
     # Check if all allow patterns are covered by gitignore
     for pattern in root_filter.allow:
         pattern_normalized = pattern.lstrip('/')
-        if not spec_git.match_file(pattern_normalized):
+        if not gitignore_service.is_ignored(pattern_normalized):
             return False
 
     # All patterns are covered by gitignore
@@ -281,11 +284,12 @@ def _collect_section_files(
     # File extensions
     extensions = {e.lower() for e in section_cfg.extensions}
 
-    # Gitignore specification - skip for local files sections
+    # GitIgnore service - skip for local files sections
     # Local files sections (all patterns covered by .gitignore) represent
     # deliberate inclusion of specific files (e.g., local configs, workspace docs)
     # that should bypass .gitignore
-    spec_git = None if is_local_files else build_gitignore_spec(root)
+    from ..git.gitignore import GitIgnoreService
+    gitignore_service = None if is_local_files else GitIgnoreService(root)
 
     # Prepare target rules for targeted overrides
     target_specs = _prepare_target_specs(section_cfg)
@@ -328,7 +332,7 @@ def _collect_section_files(
     # Collect files
     files: List[FileEntry] = []
 
-    for fp in iter_files(root, extensions=extensions, spec_git=spec_git, dir_pruner=_pruner):
+    for fp in iter_files(root, extensions=extensions, gitignore_service=gitignore_service, dir_pruner=_pruner):
         rel_posix = fp.resolve().relative_to(root.resolve()).as_posix()
 
         # Filter by VCS mode

@@ -18,7 +18,7 @@ from lg.config.adaptive_loader import AdaptiveConfigLoader, process_adaptive_opt
 from lg.run_context import RunContext
 from lg.stats.tokenizer import default_tokenizer
 from lg.types import RunOptions
-from lg.vcs import NullVcs
+from lg.git import NullVcs
 
 # Import from unified infrastructure
 from tests.infrastructure import (

@@ -11,7 +11,7 @@ from lg.stats import TokenService
 from lg.stats.collector import StatsCollector
 from lg.template.context import TemplateContext
 from lg.types import RunOptions, SectionRef
-from lg.vcs import NullVcs
+from lg.git import NullVcs
 
 
 def _write(tmp: Path, rel: str, text: str = "x") -> Path:

@@ -22,8 +22,8 @@ src:
             allow: ["/filtering/"]
           - condition: "TAGSET:section-pipeline:rendering"
             allow: ["/rendering/"]
-          - condition: "TAGSET:section-pipeline:vcs"
-            allow: ["/vcs/"]
+          - condition: "TAGSET:section-pipeline:git"
+            allow: ["/git/"]
         children:
           config:
             mode: allow

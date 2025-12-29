@@ -8,7 +8,7 @@ from .cache.fs_cache import Cache
 from .config.adaptive_loader import AdaptiveConfigLoader
 from .config.adaptive_model import ModeOptions
 from .types import RunOptions
-from .vcs import VcsProvider
+from .git import VcsProvider
 from .stats import TokenService
 
 

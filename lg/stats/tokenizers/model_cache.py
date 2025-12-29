@@ -1,7 +1,7 @@
 import logging
 from pathlib import Path
 
-from ...cache.gitignore_helper import ensure_gitignore_entry
+from ...git.gitignore import ensure_gitignore_entry
 
 logger = logging.getLogger(__name__)
 
