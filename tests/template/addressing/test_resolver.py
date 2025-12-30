@@ -82,7 +82,7 @@ class TestPathResolverRelativePaths:
         ctx = AddressingContext(addressing_project, addressing_project / "lg-cfg")
 
         # Simulate being in docs/ directory
-        ctx.push("self", "docs", addressing_project / "lg-cfg")
+        ctx._push_raw("self", "docs", addressing_project / "lg-cfg")
 
         parsed = parser.parse("../common/header", ResourceKind.TEMPLATE)
         resolved = resolver.resolve(parsed, ctx)
@@ -96,7 +96,7 @@ class TestPathResolverRelativePaths:
         ctx = AddressingContext(addressing_project, addressing_project / "lg-cfg")
 
         # Simulate being in docs/ directory
-        ctx.push("self", "docs", addressing_project / "lg-cfg")
+        ctx._push_raw("self", "docs", addressing_project / "lg-cfg")
 
         parsed = parser.parse("/common/header", ResourceKind.TEMPLATE)
         resolved = resolver.resolve(parsed, ctx)

@@ -40,25 +40,33 @@ class TestAddressingContextStack:
     def test_push_adds_context(self, tmp_path: Path):
         """Push adds new context to stack."""
         cfg_root = tmp_path / "lg-cfg"
-        ctx = AddressingContext(tmp_path, cfg_root)
+        cfg_root.mkdir(parents=True)
+        (cfg_root / "docs").mkdir()
+        file_path = cfg_root / "docs" / "api.tpl.md"
+        file_path.touch()
 
-        ctx.push("apps/web", "docs", cfg_root)
+        ctx = AddressingContext(tmp_path, cfg_root)
+        ctx.push(file_path)
 
         assert len(ctx) == 2
-        assert ctx.origin == "apps/web"
         assert ctx.current_directory == "docs"
 
     def test_pop_removes_context(self, tmp_path: Path):
         """Pop removes and returns top context."""
         cfg_root = tmp_path / "lg-cfg"
+        cfg_root.mkdir(parents=True)
+        (cfg_root / "docs").mkdir()
+        file_path = cfg_root / "docs" / "api.tpl.md"
+        file_path.touch()
+
         ctx = AddressingContext(tmp_path, cfg_root)
-        ctx.push("apps/web", "docs", cfg_root)
+        ctx.push(file_path)
 
         popped = ctx.pop()
 
         assert len(ctx) == 1
         assert ctx.origin == "self"
-        assert popped.origin == "apps/web"
+        assert popped.current_dir == "docs"
 
     def test_pop_root_raises_error(self, tmp_path: Path):
         """Cannot pop root context."""
@@ -71,40 +79,35 @@ class TestAddressingContextStack:
     def test_nested_push_pop(self, tmp_path: Path):
         """Multiple push/pop operations work correctly."""
         cfg_root = tmp_path / "lg-cfg"
+        cfg_root.mkdir(parents=True)
+        (cfg_root / "dir1").mkdir()
+        (cfg_root / "dir1" / "dir2").mkdir()
+        file1 = cfg_root / "dir1" / "a.tpl.md"
+        file2 = cfg_root / "dir1" / "dir2" / "b.tpl.md"
+        file1.touch()
+        file2.touch()
+
         ctx = AddressingContext(tmp_path, cfg_root)
 
-        ctx.push("scope1", "dir1", cfg_root)
-        ctx.push("scope2", "dir2", cfg_root)
+        ctx.push(file1)
+        ctx.push(file2)
         assert len(ctx) == 3
-        assert ctx.origin == "scope2"
+        assert ctx.current_directory == "dir1/dir2"
 
         ctx.pop()
         assert len(ctx) == 2
-        assert ctx.origin == "scope1"
+        assert ctx.current_directory == "dir1"
 
         ctx.pop()
         assert len(ctx) == 1
         assert ctx.origin == "self"
 
 
-class TestAddressingContextPushForFile:
-    """Tests for push_for_file convenience method."""
+class TestAddressingContextPushWithOrigin:
+    """Tests for push with new_origin parameter."""
 
-    def test_push_for_file_computes_directory(self, tmp_path: Path):
-        """push_for_file computes current_dir from file path."""
-        cfg_root = tmp_path / "lg-cfg"
-        cfg_root.mkdir(parents=True)
-        (cfg_root / "docs").mkdir()
-        file_path = cfg_root / "docs" / "api.tpl.md"
-        file_path.touch()
-
-        ctx = AddressingContext(tmp_path, cfg_root)
-        ctx.push_for_file(file_path)
-
-        assert ctx.current_directory == "docs"
-
-    def test_push_for_file_with_new_origin(self, tmp_path: Path):
-        """push_for_file with new origin changes scope."""
+    def test_push_with_new_origin(self, tmp_path: Path):
+        """Push with new origin changes scope."""
         cfg_root = tmp_path / "lg-cfg"
         cfg_root.mkdir(parents=True)
 
@@ -115,20 +118,20 @@ class TestAddressingContextPushForFile:
         file_path.touch()
 
         ctx = AddressingContext(tmp_path, cfg_root)
-        ctx.push_for_file(file_path, new_origin="apps/web")
+        ctx.push(file_path, new_origin="apps/web")
 
         assert ctx.origin == "apps/web"
         assert ctx.cfg_root == web_cfg.resolve()
 
-    def test_push_for_file_at_root(self, tmp_path: Path):
-        """push_for_file for file at lg-cfg root sets empty current_dir."""
+    def test_push_at_root(self, tmp_path: Path):
+        """Push for file at lg-cfg root sets empty current_dir."""
         cfg_root = tmp_path / "lg-cfg"
         cfg_root.mkdir(parents=True)
         file_path = cfg_root / "main.ctx.md"
         file_path.touch()
 
         ctx = AddressingContext(tmp_path, cfg_root)
-        ctx.push_for_file(file_path)
+        ctx.push(file_path)
 
         assert ctx.current_directory == ""
 
@@ -139,13 +142,18 @@ class TestAddressingContextProperties:
     def test_current_returns_top_context(self, tmp_path: Path):
         """current property returns top of stack."""
         cfg_root = tmp_path / "lg-cfg"
+        cfg_root.mkdir(parents=True)
+        (cfg_root / "docs").mkdir()
+        file_path = cfg_root / "docs" / "api.tpl.md"
+        file_path.touch()
+
         ctx = AddressingContext(tmp_path, cfg_root)
-        ctx.push("apps/web", "docs", cfg_root)
+        ctx.push(file_path)
 
         current = ctx.current
 
         assert isinstance(current, DirectoryContext)
-        assert current.origin == "apps/web"
+        assert current.current_dir == "docs"
 
     def test_get_effective_origin_for_self(self, tmp_path: Path):
         """get_effective_origin returns 'self' for root scope."""
@@ -157,18 +165,29 @@ class TestAddressingContextProperties:
     def test_get_effective_origin_for_nested(self, tmp_path: Path):
         """get_effective_origin returns path for nested scope."""
         cfg_root = tmp_path / "lg-cfg"
+        cfg_root.mkdir(parents=True)
+
+        web_cfg = tmp_path / "apps" / "web" / "lg-cfg"
+        web_cfg.mkdir(parents=True)
+        file_path = web_cfg / "main.tpl.md"
+        file_path.touch()
+
         ctx = AddressingContext(tmp_path, cfg_root)
-        ctx.push("apps/web", "", cfg_root)
+        ctx.push(file_path, new_origin="apps/web")
 
         assert ctx.get_effective_origin() == "apps/web"
 
     def test_repr_is_readable(self, tmp_path: Path):
         """repr shows useful information."""
         cfg_root = tmp_path / "lg-cfg"
+        cfg_root.mkdir(parents=True)
+        (cfg_root / "docs").mkdir()
+        file_path = cfg_root / "docs" / "api.tpl.md"
+        file_path.touch()
+
         ctx = AddressingContext(tmp_path, cfg_root)
-        ctx.push("apps/web", "docs", cfg_root)
+        ctx.push(file_path)
 
         repr_str = repr(ctx)
 
         assert "depth=2" in repr_str
-        assert "apps/web" in repr_str

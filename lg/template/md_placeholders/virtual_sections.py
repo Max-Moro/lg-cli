@@ -4,11 +4,9 @@ Factory for virtual sections for the templating engine.
 
 from __future__ import annotations
 
-from pathlib import Path
-from typing import Optional
-
 from .heading_context import HeadingContext
 from .nodes import MarkdownFileNode
+from ..addressing import ResolvedPath
 from ...config.model import SectionCfg, AdapterConfig
 from ...filtering.model import FilterNode
 from ...markdown import MarkdownCfg
@@ -30,27 +28,24 @@ class VirtualSectionFactory:
     def create_for_markdown_file(
         self,
         node: MarkdownFileNode,
-        scope_dir: Path,
-        scope_rel: str,
-        heading_context: HeadingContext
+        resolved: ResolvedPath,
+        heading_context: HeadingContext,
     ) -> tuple[SectionCfg, SectionRef]:
         """
         Creates virtual section for Markdown file or set of files.
 
         Args:
             node: MarkdownFileNode with complete information about included file
-            scope_dir: Resolved scope directory (from addressing system)
-            scope_rel: Resolved scope relative path (from addressing system)
+            resolved: Resolved path from addressing system
             heading_context: Heading context
 
         Returns:
             Tuple (section_config, section_ref)
-
-        Raises:
-            ValueError: For invalid parameters
         """
-        # Normalize file path(s) using node info
-        normalized_path = self._normalize_file_path(node.path, node.origin, node.is_glob)
+        # Use resolved path for md@origin:, otherwise normalize from node for md: (external)
+        path = resolved.resource_rel if node.origin is not None else node.path
+        prefix = "/lg-cfg" if node.origin is not None else ""
+        normalized_path = self._normalize_path_for_filter(path, node.is_glob, prefix)
 
         # Create filter configuration
         filters = self._create_file_filter(normalized_path)
@@ -65,11 +60,11 @@ class VirtualSectionFactory:
             adapters={"markdown": AdapterConfig(base_options=markdown_config_raw)}
         )
 
-        # Create SectionRef with provided scope info
+        # Create SectionRef with scope info from resolved path
         section_ref = SectionRef(
             name=self._generate_name(),
-            scope_rel=scope_rel,
-            scope_dir=scope_dir
+            scope_rel=resolved.scope_rel,
+            scope_dir=resolved.scope_dir
         )
 
         return section_config, section_ref
@@ -84,44 +79,26 @@ class VirtualSectionFactory:
         self._counter += 1
         return f"_virtual_{self._counter}"
 
-    def _normalize_file_path(self, path: str, origin: Optional[str], is_glob: bool) -> str:
+    def _normalize_path_for_filter(self, path: str, is_glob: bool, prefix: str = "") -> str:
         """
-        Normalizes file path for filter creation.
+        Normalizes path for section filter.
 
         Args:
-            path: Original file path or glob pattern
-            origin: Scope ("self" or scope path, None for regular md:)
+            path: File path or glob pattern
             is_glob: True if path contains glob symbols
+            prefix: Optional prefix (e.g., "/lg-cfg" for md@origin:)
 
         Returns:
             Normalized path for allow filter
         """
-        # Normalize path
         normalized = path.strip()
 
-        # Automatically add .md extension if missing
-        if not is_glob:
-            # For regular files, check and add .md
-            if not normalized.endswith('.md') and not normalized.endswith('.markdown'):
-                normalized += '.md'
-        else:
-            # For globs, do not add extension automatically
-            pass
+        # Add .md extension only for non-glob paths
+        if not is_glob and not normalized.endswith('.md') and not normalized.endswith('.markdown'):
+            normalized += '.md'
 
-        # Format different paths based on origin type
-        if origin is not None:
-            # For @origin: files are ALWAYS searched in lg-cfg/ area of origin scope
-            if normalized.startswith('/'):
-                return f"/lg-cfg{normalized}"
-            else:
-                return f"/lg-cfg/{normalized}"
-
-        else:
-            # For regular md: files are searched relative to the repository root
-            if normalized.startswith('/'):
-                return normalized
-            else:
-                return f"/{normalized}"
+        # Format with prefix and leading slash
+        return f"{prefix}{normalized}" if normalized.startswith('/') else f"{prefix}/{normalized}"
 
     def _create_file_filter(self, path: str) -> FilterNode:
         """

@@ -110,9 +110,11 @@ class CommonPlaceholdersPlugin(TemplatePlugin):
             if node.children is None:
                 raise RuntimeError(f"Include '{node.canon_key()}' not resolved")
 
-            # Render child nodes with new context for nested AST
+            # Render child nodes with file scope context for nested AST
+            # This ensures that relative paths in nested templates resolve correctly
             result_parts = []
-            with self.template_ctx.origin_scope(node.origin):
+            scope_rel = None if node.origin == "self" else node.origin
+            with self.template_ctx.file_scope(node.resolved_path, scope_rel):
                 for child_index, child_node in enumerate(node.children):
                     # Create context for nested AST
                     child_context = ProcessingContext(ast=node.children, node_index=child_index)

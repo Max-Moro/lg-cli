@@ -27,6 +27,7 @@ class ResolvedInclude:
     name: str
     origin: str
     cfg_root: Path
+    resource_path: Path  # Full path to the included file
     ast: TemplateAST
 
 
@@ -118,7 +119,8 @@ class CommonPlaceholdersResolver:
                 kind=node.kind,
                 name=node.name,
                 origin=resolved_include.origin,
-                children=resolved_include.ast
+                children=resolved_include.ast,
+                resolved_path=resolved_include.resource_path
             )
 
         # Resolve the include
@@ -131,7 +133,8 @@ class CommonPlaceholdersResolver:
                 kind=node.kind,
                 name=node.name,
                 origin=resolved_include.origin,
-                children=resolved_include.ast
+                children=resolved_include.ast,
+                resolved_path=resolved_include.resource_path
             )
         finally:
             self._resolution_stack.pop()
@@ -175,6 +178,7 @@ class CommonPlaceholdersResolver:
             name=node.name,
             origin=effective_origin,
             cfg_root=resolved.cfg_root,
+            resource_path=resolved.resource_path,
             ast=ast
         )
 

@@ -64,20 +64,15 @@ class AddressingContext:
         """Root context (bottom of stack)."""
         return self._stack[0]
 
-    def push(self, origin: str, current_dir: str, cfg_root: Optional[Path] = None) -> None:
+    def _push_raw(self, origin: str, current_dir: str, cfg_root: Path) -> None:
         """
-        Push new context onto stack.
-
-        Called when entering ${tpl:...} or ${ctx:...}.
+        Low-level push onto stack (internal use only).
 
         Args:
             origin: New scope
             current_dir: Directory of loaded file inside lg-cfg
-            cfg_root: lg-cfg/ directory (if different from current)
+            cfg_root: lg-cfg/ directory
         """
-        if cfg_root is None:
-            cfg_root = self.current.cfg_root
-
         self._stack.append(DirectoryContext(
             origin=origin,
             current_dir=current_dir,
@@ -100,9 +95,9 @@ class AddressingContext:
             raise RuntimeError("Cannot pop root addressing context")
         return self._stack.pop()
 
-    def push_for_file(self, file_path: Path, new_origin: Optional[str] = None) -> None:
+    def push(self, file_path: Path, new_origin: Optional[str] = None) -> None:
         """
-        Convenience method: push context for a file.
+        Push context for a file onto stack.
 
         Automatically computes current_dir from file path.
 
@@ -128,7 +123,7 @@ class AddressingContext:
             # File in different scope — need new cfg_root
             current_dir = ""
 
-        self.push(origin, current_dir, cfg_root)
+        self._push_raw(origin, current_dir, cfg_root)
 
     def _resolve_cfg_root_for_origin(self, origin: str) -> Path:
         """Compute lg-cfg/ path for specified origin."""

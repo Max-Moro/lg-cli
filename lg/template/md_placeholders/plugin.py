@@ -111,12 +111,11 @@ class MdPlaceholdersPlugin(TemplatePlugin):
             except Exception as e:
                 raise RuntimeError(f"Failed to resolve markdown path '{raw_path}': {e}")
 
-            # Create virtual section with resolved scope info
+            # Create virtual section with resolved path info
             section_config, section_ref = self.virtual_factory.create_for_markdown_file(
                 node=node,
-                scope_dir=resolved.scope_dir,
-                scope_rel=resolved.scope_rel,
-                heading_context=heading_context
+                resolved=resolved,
+                heading_context=heading_context,
             )
 
             # Set virtual section in context

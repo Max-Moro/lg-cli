@@ -5,6 +5,7 @@ AST nodes for basic section and template placeholders.
 from __future__ import annotations
 
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Optional, List
 
 from ..nodes import TemplateNode
@@ -38,6 +39,9 @@ class IncludeNode(TemplateNode):
 
     # Included content (filled by resolver)
     children: Optional[List[TemplateNode]] = None
+
+    # Resolved file path (filled by resolver, used for file_scope in processing)
+    resolved_path: Optional[Path] = None
 
     def canon_key(self) -> str:
         """

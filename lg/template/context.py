@@ -192,27 +192,6 @@ class TemplateContext:
         self.current_state.current_virtual_section = None
 
     @contextmanager
-    def origin_scope(self, origin: str):
-        """
-        Context manager for temporarily changing origin scope.
-
-        No-op if origin is None, empty, or "self" (current scope).
-
-        Args:
-            origin: New origin for nested context
-        """
-        if not origin or origin == "self":
-            yield  # No-op, stay in current scope
-            return
-
-        new_cfg_root = self.run_ctx.root / origin / "lg-cfg"
-        self.addressing.push(origin, self.addressing.current_directory, new_cfg_root)
-        try:
-            yield
-        finally:
-            self.addressing.pop()
-
-    @contextmanager
     def file_scope(self, file_path: Path, new_origin: Optional[str] = None):
         """
         Context manager for file processing context.
@@ -223,7 +202,7 @@ class TemplateContext:
             file_path: Path to the file being processed
             new_origin: New origin scope (if different from current)
         """
-        self.addressing.push_for_file(file_path, new_origin)
+        self.addressing.push(file_path, new_origin)
         try:
             yield
         finally:
