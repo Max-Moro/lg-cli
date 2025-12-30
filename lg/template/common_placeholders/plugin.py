@@ -54,9 +54,12 @@ class CommonPlaceholdersPlugin(TemplatePlugin):
     def initialize(self) -> None:
         """Initializes resolver after all dependencies are set."""
         from .resolver import CommonPlaceholdersResolver
-        # Create resolver and pass template_ctx for path resolution
-        self._resolver = CommonPlaceholdersResolver(self.handlers, self.registry)
-        self._resolver.set_template_ctx(self.template_ctx)
+        # Create resolver with all dependencies
+        self._resolver = CommonPlaceholdersResolver(
+            self.handlers,
+            self.registry,
+            self.template_ctx
+        )
     
     def register_tokens(self) -> List[TokenSpec]:
         """Registers tokens for placeholders."""

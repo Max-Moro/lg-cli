@@ -11,11 +11,12 @@ from pathlib import Path
 from typing import Dict, List, cast
 
 from .nodes import SectionNode, IncludeNode
+from ..addressing import ResourceKind
 from ..common import load_template_from, load_context_from
+from ..context import TemplateContext
 from ..handlers import TemplateProcessorHandlers
 from ..nodes import TemplateNode, TemplateAST
 from ..protocols import TemplateRegistryProtocol
-from ..addressing import ResourceKind
 from ...types import SectionRef
 
 
@@ -43,6 +44,7 @@ class CommonPlaceholdersResolver:
             self,
             handlers: TemplateProcessorHandlers,
             registry: TemplateRegistryProtocol,
+            template_ctx: TemplateContext,
     ):
         """
         Initializes resolver.
@@ -50,26 +52,15 @@ class CommonPlaceholdersResolver:
         Args:
             handlers: Typed handlers for template parsing
             registry: Registry of components for parsing
+            template_ctx: Template context for path resolution
         """
         self.handlers: TemplateProcessorHandlers = handlers
-        self.registry = registry
+        self.registry: TemplateRegistryProtocol = registry
+        self.template_ctx: TemplateContext = template_ctx
 
         # Cache of resolved inclusions
         self._resolved_includes: Dict[str, ResolvedInclude] = {}
         self._resolution_stack: List[str] = []
-
-        # Reference to template_ctx will be obtained through handlers
-        self._template_ctx = None
-
-    def _get_template_ctx(self):
-        """Lazily get template context from processor."""
-        if self._template_ctx is None:
-            raise RuntimeError("Template context not set. Call set_template_ctx() first.")
-        return self._template_ctx
-
-    def set_template_ctx(self, template_ctx) -> None:
-        """Set template context for path resolution."""
-        self._template_ctx = template_ctx
 
     def resolve_node(self, node: TemplateNode, context: str = "") -> TemplateNode:
         """
@@ -89,11 +80,10 @@ class CommonPlaceholdersResolver:
         Resolves section node using new addressing API.
         """
         section_name = node.section_name
-        template_ctx = self._get_template_ctx()
 
         try:
             # Use new addressing API
-            resolved = template_ctx.resolve_path(section_name, ResourceKind.SECTION)
+            resolved = self.template_ctx.resolve_path(section_name, ResourceKind.SECTION)
 
             # Create SectionRef from resolved path
             section_ref = SectionRef(
@@ -150,8 +140,6 @@ class CommonPlaceholdersResolver:
         """
         Loads and parses the included template using new addressing API.
         """
-        template_ctx = self._get_template_ctx()
-
         # Determine resource kind
         kind = ResourceKind.CONTEXT if node.kind == "ctx" else ResourceKind.TEMPLATE
 
@@ -161,8 +149,7 @@ class CommonPlaceholdersResolver:
         else:
             raw_path = node.name
 
-        # Resolve path using new API
-        resolved = template_ctx.resolve_path(raw_path, kind)
+        resolved = self.template_ctx.resolve_path(raw_path, kind)
 
         # Load content from resolved path
         if node.kind == "ctx":
@@ -176,7 +163,7 @@ class CommonPlaceholdersResolver:
         include_ast = parse_template(template_text, registry=cast(TemplateRegistry, self.registry))
 
         # Apply resolvers with file scope context
-        with template_ctx.file_scope(resolved.resource_path, resolved.scope_rel):
+        with self.template_ctx.file_scope(resolved.resource_path, resolved.scope_rel):
             # Core will apply resolvers from all plugins
             ast: TemplateAST = self.handlers.resolve_ast(include_ast, context)
 

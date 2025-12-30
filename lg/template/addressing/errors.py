@@ -7,10 +7,9 @@ Provides informative error messages for path parsing and resolution failures.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import List, Optional, TYPE_CHECKING
+from typing import List, Optional
 
-if TYPE_CHECKING:
-    from .types import ParsedPath
+from .types import ParsedPath
 
 
 class AddressingError(Exception):
@@ -71,22 +70,9 @@ class ScopeNotFoundError(PathResolutionError):
         )
 
 
-@dataclass
-class ResourceNotFoundError(PathResolutionError):
-    """Resource not found at specified path."""
-    resource_type: str = ""
-
-    def __str__(self) -> str:
-        base = f"{self.resource_type.capitalize()} not found: {self.message}"
-        if self.hint:
-            base += f"\n  Hint: {self.hint}"
-        return base
-
-
 __all__ = [
     "AddressingError",
     "PathParseError",
     "PathResolutionError",
     "ScopeNotFoundError",
-    "ResourceNotFoundError",
 ]

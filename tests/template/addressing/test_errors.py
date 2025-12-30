@@ -13,7 +13,6 @@ from lg.template.addressing import (
     PathParseError,
     PathResolutionError,
     ScopeNotFoundError,
-    ResourceNotFoundError,
     ParsedPath,
     ResourceKind,
 )
@@ -124,25 +123,3 @@ class TestScopeNotFoundError:
         error = ScopeNotFoundError(message="test", scope_path="test")
         assert isinstance(error, PathResolutionError)
         assert isinstance(error, AddressingError)
-
-
-class TestResourceNotFoundError:
-    """Tests for ResourceNotFoundError exception."""
-
-    def test_resource_not_found_message(self):
-        """Test resource not found error formatting."""
-        error = ResourceNotFoundError(
-            message="intro.tpl.md",
-            resource_type="template",
-            hint="Check the file exists in lg-cfg/",
-        )
-
-        error_str = str(error)
-        assert "Template not found" in error_str
-        assert "intro.tpl.md" in error_str
-        assert "Hint:" in error_str
-
-    def test_is_path_resolution_error(self):
-        """Verify inheritance chain."""
-        error = ResourceNotFoundError(message="test", resource_type="section")
-        assert isinstance(error, PathResolutionError)

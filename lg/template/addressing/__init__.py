@@ -23,7 +23,6 @@ from .errors import (
     PathParseError,
     PathResolutionError,
     ScopeNotFoundError,
-    ResourceNotFoundError,
 )
 
 
@@ -44,5 +43,4 @@ __all__ = [
     "PathParseError",
     "PathResolutionError",
     "ScopeNotFoundError",
-    "ResourceNotFoundError",
 ]
