@@ -2,6 +2,63 @@
 
 This section describes how **templating** works in LG: combining `*.ctx.md` (contexts), `*.tpl.md` (templates) and **sections** from `lg-cfg/` — including **targeted includes** from other `lg-cfg` scopes in a monorepo.
 
+## Core Concepts
+
+Before diving into the details, let's clarify the key terms.
+
+### Repository and Scope
+
+**Repository root** is the top-level directory of your project where LG is run from.
+
+**Scope** is any directory that contains its own `lg-cfg/` folder. A scope defines a boundary for configuration and resources.
+
+In simple projects, repository root and scope are the same thing:
+
+```
+my-project/           ← repository root = scope
+├─ lg-cfg/
+│  └─ ...
+└─ src/
+```
+
+In monorepos, there can be **multiple scopes** — one at the root and several in submodules:
+
+```
+monorepo/             ← repository root = root scope
+├─ lg-cfg/            ← root scope config
+├─ apps/
+│  └─ web/            ← nested scope
+│     ├─ lg-cfg/      ← web app config
+│     └─ src/
+└─ libs/
+   └─ core/           ← nested scope
+      ├─ lg-cfg/      ← core lib config
+      └─ src/
+```
+
+### Path Resolution: Two Types of Relativity
+
+Paths in LG can be relative in two different ways:
+
+1. **Relative to current directory** (inside `lg-cfg/`):
+   - Used for `tpl:`, `ctx:` paths and `md@self:`
+   - Changes as you navigate through nested includes
+   - Example: from `lg-cfg/docs/intro.ctx.md`, path `../common/header` resolves to `lg-cfg/common/header`
+
+2. **Relative to current scope** (the directory containing `lg-cfg/`):
+   - Used for `@origin` references and `md:` without `@`
+   - Example: from scope `apps/web`, path `${md:README}` resolves to `apps/web/README.md`
+
+### Accessing Other Scopes
+
+To reference resources from another scope, use the `@origin` syntax:
+
+- `${@apps/web:section}` — section from `apps/web` scope (relative to current scope)
+- `${@/:section}` — section from **root scope** (absolute)
+- `${tpl@libs/core:intro}` — template from `libs/core` scope
+
+The path after `@` is always relative to the **current scope**, not repository root. Use `@/` to explicitly access the root scope.
+
 ---
 
 ## What is What
@@ -44,8 +101,10 @@ Placeholders support both `${…}` and `$…` (we recommend **braces**). Inside 
 
 * Current scope (this `lg-cfg/`):
   `${my-section}`
-* From another scope (address relative to **repo root**, to the directory containing *its* `lg-cfg/`):
+* From another scope (address relative to **current scope**):
   `${@apps/web:my-section}`
+* Root scope (explicit):
+  `${@/:my-section}`
 * Bracket form, if origin contains colons:
   `${@[apps/web:legacy]:my-section}`
 
@@ -65,7 +124,7 @@ Placeholders support both `${…}` and `$…` (we recommend **braces**). Inside 
   `${ctx@services/auth:hotfix}`
 
 > **Double path specifier** — this is `origin:resource`:
-> `origin` — path to module **inside repo**, where its `lg-cfg/` is located.
+> `origin` — path to module **relative to current scope** (use `@/` for root scope).
 > `resource` — path **inside that `lg-cfg/`** (e.g., `tpl`/`ctx` name or relative path).
 
 ---
@@ -273,6 +332,8 @@ There is also a simpler insertion method using the `${md:…}` placeholder:
 ```markdown
 ${md:README}
 ```
+
+> **Note**: The path is relative to the **current scope** directory (the directory containing `lg-cfg/`). In nested includes, the scope changes accordingly.
 
 The `${md:…}` placeholder has quite extensive capabilities.
 

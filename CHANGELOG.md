@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - Language adapters for C++, C, Java, JavaScript, Scala, Go, and Rust
 - `max_tokens` parameter for function body trimming (preserve function structure while reducing size)
+- Relative paths within `lg-cfg/` directories (`../`, nested includes)
 
 ### Changed
 - Function body optimization policies: `keep_all`, `strip_all`, `keep_public` (simplified from previous mode system)
