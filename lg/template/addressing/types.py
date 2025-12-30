@@ -7,18 +7,29 @@ Defines core types for path parsing and resolution.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from enum import Enum
 from pathlib import Path
 from typing import Optional
 
 
-class ResourceKind(Enum):
-    """Type of resource being addressed."""
-    SECTION = "section"
-    TEMPLATE = "tpl"
-    CONTEXT = "ctx"
-    MARKDOWN = "md"              # md with @ (inside lg-cfg)
-    MARKDOWN_EXTERNAL = "md_external"  # md without @ (outside lg-cfg, relative to current scope)
+@dataclass(frozen=True)
+class ResourceConfig:
+    """
+    Configuration for resolving a resource type.
+
+    Defines how paths for this resource type should be parsed and resolved.
+    Plugins define their own configs; addressing system uses them generically.
+    """
+    # Identity (for error messages)
+    name: str
+
+    # Extension handling: auto-add extension if not present (None = no extension)
+    extension: Optional[str] = None
+
+    # Path syntax: strip #anchor and ,params before resolving
+    strip_md_syntax: bool = False
+
+    # Resolution behavior: True = resolve relative to scope root (outside lg-cfg/)
+    resolve_outside_cfg: bool = False
 
 
 @dataclass(frozen=True)
@@ -29,7 +40,7 @@ class ParsedPath:
     Represents the "raw" path before resolution — as specified in template.
     Universal structure for all resource types (sections, templates, contexts, markdown).
     """
-    kind: ResourceKind
+    config: ResourceConfig  # Resource configuration
 
     # Scope (origin)
     origin: Optional[str]       # None = implicit (from context), "self" = explicit current
@@ -47,7 +58,7 @@ class ResolvedPath:
 
     Result of resolution — ready for use in loading.
     """
-    kind: ResourceKind
+    config: ResourceConfig  # Resource configuration
 
     # Resolved scope
     scope_dir: Path             # Absolute path to scope directory (parent of lg-cfg)
@@ -75,7 +86,7 @@ class DirectoryContext:
 
 
 __all__ = [
-    "ResourceKind",
+    "ResourceConfig",
     "ParsedPath",
     "ResolvedPath",
     "DirectoryContext",

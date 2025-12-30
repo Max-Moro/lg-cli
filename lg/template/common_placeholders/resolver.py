@@ -11,7 +11,7 @@ from pathlib import Path
 from typing import Dict, List, cast
 
 from .nodes import SectionNode, IncludeNode
-from ..addressing import ResourceKind
+from .configs import SECTION_CONFIG, TEMPLATE_CONFIG, CONTEXT_CONFIG
 from ..common import load_template_from, load_context_from
 from ..context import TemplateContext
 from ..handlers import TemplateProcessorHandlers
@@ -85,7 +85,7 @@ class CommonPlaceholdersResolver:
 
         try:
             # Use new addressing API
-            resolved = self.template_ctx.resolve_path(section_name, ResourceKind.SECTION)
+            resolved = self.template_ctx.resolve_path(section_name, SECTION_CONFIG)
 
             # Create fully resolved SectionRef
             # For sections, resource_rel is the canonical ID
@@ -142,8 +142,8 @@ class CommonPlaceholdersResolver:
         """
         Loads and parses the included template using new addressing API.
         """
-        # Determine resource kind
-        kind = ResourceKind.CONTEXT if node.kind == "ctx" else ResourceKind.TEMPLATE
+        # Determine resource config
+        config = CONTEXT_CONFIG if node.kind == "ctx" else TEMPLATE_CONFIG
 
         # Build raw path for resolution
         if node.origin and node.origin != "self":
@@ -151,7 +151,7 @@ class CommonPlaceholdersResolver:
         else:
             raw_path = node.name
 
-        resolved = self.template_ctx.resolve_path(raw_path, kind)
+        resolved = self.template_ctx.resolve_path(raw_path, config)
 
         # Load content from resolved path
         if node.kind == "ctx":

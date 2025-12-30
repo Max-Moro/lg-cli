@@ -12,7 +12,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Dict, Set, List, Optional
 
-from .addressing import AddressingContext, PathParser, PathResolver, ResourceKind, ResolvedPath
+from .addressing import AddressingContext, PathParser, PathResolver, ResourceConfig, ResolvedPath
 from .evaluator import TemplateConditionEvaluator
 from ..config.adaptive_model import ModeOptions
 from ..config.model import SectionCfg
@@ -208,7 +208,7 @@ class TemplateContext:
         finally:
             self.addressing.pop()
 
-    def resolve_path(self, raw: str, kind: ResourceKind) -> ResolvedPath:
+    def resolve_path(self, raw: str, config: ResourceConfig) -> ResolvedPath:
         """
         High-level API for resolving paths.
 
@@ -216,7 +216,7 @@ class TemplateContext:
 
         Args:
             raw: Raw path string from placeholder
-            kind: Type of resource being resolved
+            config: Resource configuration
 
         Returns:
             Fully resolved path
@@ -225,7 +225,7 @@ class TemplateContext:
             PathParseError: If path syntax is invalid
             PathResolutionError: If path cannot be resolved
         """
-        parsed = self._path_parser.parse(raw, kind)
+        parsed = self._path_parser.parse(raw, config)
         return self._path_resolver.resolve(parsed, self.addressing)
 
     def get_origin(self) -> str:

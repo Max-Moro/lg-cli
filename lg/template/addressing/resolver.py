@@ -12,7 +12,7 @@ from typing import Tuple
 
 from .context import AddressingContext
 from .errors import PathResolutionError, ScopeNotFoundError
-from .types import ParsedPath, ResolvedPath, ResourceKind
+from .types import ParsedPath, ResolvedPath, ResourceConfig
 
 
 class PathResolver:
@@ -22,14 +22,6 @@ class PathResolver:
     Uses AddressingContext for resolving relative paths
     and determining current scope.
     """
-
-    # File extensions by resource kind
-    _EXTENSIONS = {
-        ResourceKind.TEMPLATE: ".tpl.md",
-        ResourceKind.CONTEXT: ".ctx.md",
-        ResourceKind.MARKDOWN: ".md",
-        ResourceKind.MARKDOWN_EXTERNAL: ".md",
-    }
 
     def __init__(self, repo_root: Path):
         """
@@ -54,9 +46,9 @@ class PathResolver:
         Raises:
             PathResolutionError: If path cannot be resolved
         """
-        # External markdown is handled separately
-        if parsed.kind == ResourceKind.MARKDOWN_EXTERNAL:
-            return self._resolve_external_markdown(parsed, context)
+        # External resources are handled separately
+        if parsed.config.resolve_outside_cfg:
+            return self._resolve_external(parsed, context)
 
         # Determine scope
         scope_dir, scope_rel, cfg_root = self._resolve_scope(parsed, context)
@@ -68,7 +60,7 @@ class PathResolver:
         resource_rel = self._resolve_relative_path(parsed.path, base_dir, parsed.is_absolute)
 
         # Add extension if needed
-        resource_rel = self._add_extension(resource_rel, parsed.kind)
+        resource_rel = self._add_extension(resource_rel, parsed.config)
 
         # Build full path
         resource_path = (cfg_root / resource_rel).resolve()
@@ -77,7 +69,7 @@ class PathResolver:
         self._validate_path_bounds(resource_path, cfg_root, parsed)
 
         return ResolvedPath(
-            kind=parsed.kind,
+            config=parsed.config,
             scope_dir=scope_dir,
             scope_rel=scope_rel,
             cfg_root=cfg_root,
@@ -200,30 +192,24 @@ class PathResolver:
 
         return '/'.join(parts) if parts else ''
 
-    def _add_extension(self, path: str, kind: ResourceKind) -> str:
+    def _add_extension(self, path: str, config: ResourceConfig) -> str:
         """
-        Add file extension if not specified.
+        Add file extension if needed.
 
-        - TEMPLATE → .tpl.md
-        - CONTEXT → .ctx.md
-        - MARKDOWN → .md
-        - SECTION → no change
+        Uses config.extension; if None, returns path unchanged.
         """
-        if kind == ResourceKind.SECTION:
+        if config.extension is None:
             return path
 
-        ext = self._EXTENSIONS.get(kind)
-        if ext is None:
-            return path
+        ext = config.extension
 
         # Check if extension already present
         if path.endswith(ext):
             return path
 
-        # For .md, also check .markdown
-        if kind in (ResourceKind.MARKDOWN, ResourceKind.MARKDOWN_EXTERNAL):
-            if path.endswith('.md') or path.endswith('.markdown'):
-                return path
+        # For .md extension, also check .markdown
+        if ext == ".md" and (path.endswith('.md') or path.endswith('.markdown')):
+            return path
 
         return path + ext
 
@@ -248,14 +234,14 @@ class PathResolver:
                 hint="Cannot use '../' to escape lg-cfg/ directory"
             )
 
-    def _resolve_external_markdown(self, parsed: ParsedPath, context: AddressingContext) -> ResolvedPath:
+    def _resolve_external(self, parsed: ParsedPath, context: AddressingContext) -> ResolvedPath:
         """
-        Resolve external markdown (without @) relative to current scope.
+        Resolve external resource (without @) relative to current scope.
 
-        External markdown files are outside lg-cfg/ but within the current scope directory.
+        External resources are outside lg-cfg/ but within the current scope directory.
         """
         # Add extension if needed
-        resource_rel = self._add_extension(parsed.path, parsed.kind)
+        resource_rel = self._add_extension(parsed.path, parsed.config)
 
         # Build full path relative to current scope (parent of lg-cfg/)
         scope_dir = context.cfg_root.parent
@@ -268,7 +254,7 @@ class PathResolver:
             raise PathResolutionError(
                 message=f"Path escapes scope boundary: {parsed.path}",
                 parsed=parsed,
-                hint="External markdown paths must be within current scope"
+                hint=f"External {parsed.config.name} paths must be within current scope"
             )
 
         # Calculate scope_rel from repo root
@@ -280,7 +266,7 @@ class PathResolver:
             scope_rel = ""
 
         return ResolvedPath(
-            kind=parsed.kind,
+            config=parsed.config,
             scope_dir=scope_dir,
             scope_rel=scope_rel,
             cfg_root=context.cfg_root,

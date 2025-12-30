@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import re
 
-from .types import ParsedPath, ResourceKind
+from .types import ParsedPath, ResourceConfig
 from .errors import PathParseError
 
 
@@ -30,13 +30,13 @@ class PathParser:
     # Pattern for simple origin: @origin:path
     _SIMPLE_ORIGIN_PATTERN = re.compile(r'^([^:]+):(.+)$')
 
-    def parse(self, raw: str, kind: ResourceKind) -> ParsedPath:
+    def parse(self, raw: str, config: ResourceConfig) -> ParsedPath:
         """
         Parse a path string.
 
         Args:
             raw: Raw string from placeholder (e.g., "@apps/web:docs/api")
-            kind: Resource type (determines parsing rules)
+            config: Resource configuration (determines parsing rules)
 
         Returns:
             Structured ParsedPath
@@ -49,48 +49,18 @@ class PathParser:
 
         raw = raw.strip()
 
-        # For MARKDOWN_EXTERNAL, path is always relative to current scope
-        if kind == ResourceKind.MARKDOWN_EXTERNAL:
-            return self._parse_external_markdown(raw)
+        # For resources with resolve_outside_cfg, path is always relative to current scope
+        if config.resolve_outside_cfg:
+            return self._parse_external(raw, config)
 
         # Check for @ prefix (explicit origin)
         if raw.startswith('@'):
-            return self._parse_with_origin(raw[1:], kind)
+            return self._parse_with_origin(raw[1:], config)
 
         # No @ prefix — implicit origin from context
-        return self._parse_without_origin(raw, kind)
+        return self._parse_without_origin(raw, config)
 
-    def parse_section(self, raw: str) -> ParsedPath:
-        """Parse path to section."""
-        return self.parse(raw, ResourceKind.SECTION)
-
-    def parse_template(self, raw: str) -> ParsedPath:
-        """Parse path to template (tpl:...)."""
-        return self.parse(raw, ResourceKind.TEMPLATE)
-
-    def parse_context(self, raw: str) -> ParsedPath:
-        """Parse path to context (ctx:...)."""
-        return self.parse(raw, ResourceKind.CONTEXT)
-
-    def parse_markdown(self, raw: str, has_at: bool) -> ParsedPath:
-        """
-        Parse path to markdown (md:... or md@...:...).
-
-        Determines kind as MARKDOWN or MARKDOWN_EXTERNAL
-        based on presence of @.
-
-        Args:
-            raw: Path string after 'md:' or 'md@'
-            has_at: True if @ was present (md@origin:path)
-        """
-        if has_at:
-            # For md@origin:path, the raw string is "origin:path" (already without @)
-            # We need to parse it as origin:path format
-            return self._parse_with_origin(raw, ResourceKind.MARKDOWN)
-        else:
-            return self.parse(raw, ResourceKind.MARKDOWN_EXTERNAL)
-
-    def _parse_with_origin(self, raw: str, kind: ResourceKind) -> ParsedPath:
+    def _parse_with_origin(self, raw: str, config: ResourceConfig) -> ParsedPath:
         """
         Parse path with explicit origin (@origin:path or @[origin]:path).
 
@@ -125,65 +95,65 @@ class PathParser:
             else:
                 raise PathParseError("Empty origin in '@origin:path'", f"@{raw}")
 
-        path = self._extract_base_path(path_part, kind)
+        path = self._extract_base_path(path_part, config)
         is_absolute = path.startswith('/')
         normalized_path = path.lstrip('/') if is_absolute else path
 
         return ParsedPath(
-            kind=kind,
+            config=config,
             origin=origin,
             origin_explicit=True,
             path=normalized_path,
             is_absolute=is_absolute,
         )
 
-    def _parse_without_origin(self, raw: str, kind: ResourceKind) -> ParsedPath:
+    def _parse_without_origin(self, raw: str, config: ResourceConfig) -> ParsedPath:
         """Parse path without origin (implicit from context)."""
-        path = self._extract_base_path(raw, kind)
+        path = self._extract_base_path(raw, config)
         is_absolute = path.startswith('/')
         normalized_path = path.lstrip('/') if is_absolute else path
 
         return ParsedPath(
-            kind=kind,
+            config=config,
             origin=None,
             origin_explicit=False,
             path=normalized_path,
             is_absolute=is_absolute,
         )
 
-    def _parse_external_markdown(self, raw: str) -> ParsedPath:
-        """Parse external markdown path (relative to current scope)."""
-        path = self._extract_base_path(raw, ResourceKind.MARKDOWN_EXTERNAL)
+    def _parse_external(self, raw: str, config: ResourceConfig) -> ParsedPath:
+        """Parse external resource path (relative to current scope)."""
+        path = self._extract_base_path(raw, config)
 
-        # External markdown paths are always relative to current scope
+        # External paths are always relative to current scope
         # Leading / is optional and doesn't change semantics
         normalized_path = path.lstrip('/')
 
         return ParsedPath(
-            kind=ResourceKind.MARKDOWN_EXTERNAL,
+            config=config,
             origin=None,
             origin_explicit=False,
             path=normalized_path,
             is_absolute=False,  # Always relative to current scope
         )
 
-    def _extract_base_path(self, raw: str, kind: ResourceKind) -> str:
+    def _extract_base_path(self, raw: str, config: ResourceConfig) -> str:
         """
         Extract base path from raw string.
 
-        For MD resources, strips MD-specific syntax (#anchor, ,params).
+        For resources with strip_md_syntax=True, strips MD-specific syntax (#anchor, ,params).
         MD-specific parameters are handled by MarkdownFileNode, not by addressing.
 
         For other resources, returns raw as-is.
 
         Args:
             raw: Raw path string
-            kind: Resource kind
+            config: Resource configuration
 
         Returns:
             Base path without MD-specific decorations
         """
-        if kind not in (ResourceKind.MARKDOWN, ResourceKind.MARKDOWN_EXTERNAL):
+        if not config.strip_md_syntax:
             return raw
 
         # For MD: extract path before # or ,

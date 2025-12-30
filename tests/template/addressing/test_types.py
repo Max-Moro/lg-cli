@@ -1,7 +1,7 @@
 """
 Tests for lg/template/addressing/types.py
 
-Tests data types: ResourceKind, ParsedPath, ResolvedPath, DirectoryContext.
+Tests data types: ResourceConfig, ParsedPath, ResolvedPath, DirectoryContext.
 """
 
 from __future__ import annotations
@@ -11,27 +11,59 @@ from pathlib import Path
 import pytest
 
 from lg.template.addressing import (
-    ResourceKind,
+    ResourceConfig,
     ParsedPath,
     ResolvedPath,
     DirectoryContext,
 )
+from lg.template.common_placeholders.configs import (
+    SECTION_CONFIG,
+    TEMPLATE_CONFIG,
+    CONTEXT_CONFIG,
+)
+from lg.template.md_placeholders.configs import (
+    MARKDOWN_CONFIG,
+    MARKDOWN_EXTERNAL_CONFIG,
+)
 
 
-class TestResourceKind:
-    """Tests for ResourceKind enum."""
+class TestResourceConfig:
+    """Tests for ResourceConfig dataclass."""
 
-    def test_has_all_expected_values(self):
-        """Verify all resource kinds are defined."""
-        assert ResourceKind.SECTION.value == "section"
-        assert ResourceKind.TEMPLATE.value == "tpl"
-        assert ResourceKind.CONTEXT.value == "ctx"
-        assert ResourceKind.MARKDOWN.value == "md"
-        assert ResourceKind.MARKDOWN_EXTERNAL.value == "md_external"
+    def test_predefined_configs_exist(self):
+        """Verify all predefined configs are defined."""
+        assert SECTION_CONFIG.name == "section"
+        assert TEMPLATE_CONFIG.name == "template"
+        assert CONTEXT_CONFIG.name == "context"
+        assert MARKDOWN_CONFIG.name == "markdown"
+        assert MARKDOWN_EXTERNAL_CONFIG.name == "markdown_external"
 
-    def test_enum_members_count(self):
-        """Verify exact number of resource kinds."""
-        assert len(ResourceKind) == 5
+    def test_config_extensions(self):
+        """Verify configs have correct extensions."""
+        assert SECTION_CONFIG.extension is None
+        assert TEMPLATE_CONFIG.extension == ".tpl.md"
+        assert CONTEXT_CONFIG.extension == ".ctx.md"
+        assert MARKDOWN_CONFIG.extension == ".md"
+        assert MARKDOWN_EXTERNAL_CONFIG.extension == ".md"
+
+    def test_config_behaviors(self):
+        """Verify configs have correct behavior flags."""
+        assert SECTION_CONFIG.strip_md_syntax is False
+        assert MARKDOWN_CONFIG.strip_md_syntax is True
+        assert MARKDOWN_EXTERNAL_CONFIG.strip_md_syntax is True
+        assert MARKDOWN_EXTERNAL_CONFIG.resolve_outside_cfg is True
+        assert TEMPLATE_CONFIG.resolve_outside_cfg is False
+
+    def test_custom_config(self):
+        """Create custom ResourceConfig."""
+        config = ResourceConfig(
+            name="yaml",
+            extension=".yaml",
+        )
+        assert config.name == "yaml"
+        assert config.extension == ".yaml"
+        assert config.strip_md_syntax is False
+        assert config.resolve_outside_cfg is False
 
 
 class TestParsedPath:
@@ -40,14 +72,14 @@ class TestParsedPath:
     def test_create_simple_path(self):
         """Create ParsedPath with minimal required fields."""
         parsed = ParsedPath(
-            kind=ResourceKind.TEMPLATE,
+            config=TEMPLATE_CONFIG,
             origin=None,
             origin_explicit=False,
             path="intro",
             is_absolute=False,
         )
 
-        assert parsed.kind == ResourceKind.TEMPLATE
+        assert parsed.config == TEMPLATE_CONFIG
         assert parsed.origin is None
         assert parsed.origin_explicit is False
         assert parsed.path == "intro"
@@ -56,7 +88,7 @@ class TestParsedPath:
     def test_create_path_with_origin(self):
         """Create ParsedPath with explicit origin."""
         parsed = ParsedPath(
-            kind=ResourceKind.SECTION,
+            config=SECTION_CONFIG,
             origin="apps/web",
             origin_explicit=True,
             path="web-src",
@@ -69,7 +101,7 @@ class TestParsedPath:
     def test_parsed_path_is_frozen(self):
         """Verify ParsedPath is immutable."""
         parsed = ParsedPath(
-            kind=ResourceKind.TEMPLATE,
+            config=TEMPLATE_CONFIG,
             origin=None,
             origin_explicit=False,
             path="intro",
@@ -89,7 +121,7 @@ class TestResolvedPath:
         resource_path = cfg_root / "intro.tpl.md"
 
         resolved = ResolvedPath(
-            kind=ResourceKind.TEMPLATE,
+            config=TEMPLATE_CONFIG,
             scope_dir=tmp_path,
             scope_rel="",
             cfg_root=cfg_root,
@@ -97,7 +129,7 @@ class TestResolvedPath:
             resource_rel="intro.tpl.md",
         )
 
-        assert resolved.kind == ResourceKind.TEMPLATE
+        assert resolved.config == TEMPLATE_CONFIG
         assert resolved.scope_dir == tmp_path
         assert resolved.scope_rel == ""
         assert resolved.cfg_root == cfg_root
@@ -107,7 +139,7 @@ class TestResolvedPath:
     def test_create_resolved_section(self, tmp_path: Path):
         """Create ResolvedPath for section (resource_rel is canonical ID)."""
         resolved = ResolvedPath(
-            kind=ResourceKind.SECTION,
+            config=SECTION_CONFIG,
             scope_dir=tmp_path,
             scope_rel="apps/web",
             cfg_root=tmp_path / "apps" / "web" / "lg-cfg",
@@ -120,7 +152,7 @@ class TestResolvedPath:
     def test_resolved_path_is_frozen(self, tmp_path: Path):
         """Verify ResolvedPath is immutable."""
         resolved = ResolvedPath(
-            kind=ResourceKind.TEMPLATE,
+            config=TEMPLATE_CONFIG,
             scope_dir=tmp_path,
             scope_rel="",
             cfg_root=tmp_path / "lg-cfg",

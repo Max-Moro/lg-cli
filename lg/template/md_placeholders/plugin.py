@@ -13,7 +13,7 @@ from .nodes import MarkdownFileNode
 from .parser_rules import get_md_parser_rules
 from .tokens import get_md_token_specs
 from .virtual_sections import VirtualSectionFactory
-from ..addressing import ResourceKind
+from .configs import MARKDOWN_CONFIG, MARKDOWN_EXTERNAL_CONFIG
 from ..base import TemplatePlugin
 from ..types import PluginPriority, TokenSpec, ParsingRule, ProcessorRule, ProcessingContext
 from ...template import TemplateContext
@@ -94,20 +94,20 @@ class MdPlaceholdersPlugin(TemplatePlugin):
             from .heading_context import detect_heading_context_for_node
             heading_context = detect_heading_context_for_node(processing_context)
 
-            # Determine resource kind and build raw path for resolution
+            # Determine resource config and build raw path for resolution
             if node.origin is not None:
                 # md@origin:path - file inside lg-cfg/ of specified scope
-                kind = ResourceKind.MARKDOWN
+                config = MARKDOWN_CONFIG
                 # Reconstruct @origin:path format for PathParser to recognize explicit origin
                 raw_path = f"@{node.origin}:{node.path}"
             else:
                 # md:path - file relative to current scope root (outside lg-cfg/)
-                kind = ResourceKind.MARKDOWN_EXTERNAL
+                config = MARKDOWN_EXTERNAL_CONFIG
                 raw_path = node.path
 
             # Resolve path using new addressing API
             try:
-                resolved = self.template_ctx.resolve_path(raw_path, kind)
+                resolved = self.template_ctx.resolve_path(raw_path, config)
             except Exception as e:
                 raise RuntimeError(f"Failed to resolve markdown path '{raw_path}': {e}")
 

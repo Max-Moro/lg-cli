@@ -14,9 +14,17 @@ from lg.template.addressing import (
     PathParser,
     PathResolver,
     AddressingContext,
-    ResourceKind,
     PathResolutionError,
     ScopeNotFoundError,
+)
+from lg.template.common_placeholders.configs import (
+    SECTION_CONFIG,
+    TEMPLATE_CONFIG,
+    CONTEXT_CONFIG,
+)
+from lg.template.md_placeholders.configs import (
+    MARKDOWN_CONFIG,
+    MARKDOWN_EXTERNAL_CONFIG,
 )
 
 
@@ -29,10 +37,10 @@ class TestPathResolverBasic:
         parser = PathParser()
         ctx = AddressingContext(addressing_project, addressing_project / "lg-cfg")
 
-        parsed = parser.parse("intro", ResourceKind.TEMPLATE)
+        parsed = parser.parse("intro", TEMPLATE_CONFIG)
         resolved = resolver.resolve(parsed, ctx)
 
-        assert resolved.kind == ResourceKind.TEMPLATE
+        assert resolved.config == TEMPLATE_CONFIG
         assert resolved.resource_rel == "intro.tpl.md"
         assert resolved.resource_path == addressing_project / "lg-cfg" / "intro.tpl.md"
         assert resolved.scope_rel == ""
@@ -43,7 +51,7 @@ class TestPathResolverBasic:
         parser = PathParser()
         ctx = AddressingContext(addressing_project, addressing_project / "lg-cfg")
 
-        parsed = parser.parse("common/header", ResourceKind.TEMPLATE)
+        parsed = parser.parse("common/header", TEMPLATE_CONFIG)
         resolved = resolver.resolve(parsed, ctx)
 
         assert resolved.resource_rel == "common/header.tpl.md"
@@ -54,7 +62,7 @@ class TestPathResolverBasic:
         parser = PathParser()
         ctx = AddressingContext(addressing_project, addressing_project / "lg-cfg")
 
-        parsed = parser.parse("main", ResourceKind.CONTEXT)
+        parsed = parser.parse("main", CONTEXT_CONFIG)
         resolved = resolver.resolve(parsed, ctx)
 
         assert resolved.resource_rel == "main.ctx.md"
@@ -65,7 +73,7 @@ class TestPathResolverBasic:
         parser = PathParser()
         ctx = AddressingContext(addressing_project, addressing_project / "lg-cfg")
 
-        parsed = parser.parse("docs", ResourceKind.SECTION)
+        parsed = parser.parse("docs", SECTION_CONFIG)
         resolved = resolver.resolve(parsed, ctx)
 
         # For sections, resource_rel serves as canonical ID
@@ -84,7 +92,7 @@ class TestPathResolverRelativePaths:
         # Simulate being in docs/ directory
         ctx._push_raw("self", "docs", addressing_project / "lg-cfg")
 
-        parsed = parser.parse("../common/header", ResourceKind.TEMPLATE)
+        parsed = parser.parse("../common/header", TEMPLATE_CONFIG)
         resolved = resolver.resolve(parsed, ctx)
 
         assert resolved.resource_rel == "common/header.tpl.md"
@@ -98,7 +106,7 @@ class TestPathResolverRelativePaths:
         # Simulate being in docs/ directory
         ctx._push_raw("self", "docs", addressing_project / "lg-cfg")
 
-        parsed = parser.parse("/common/header", ResourceKind.TEMPLATE)
+        parsed = parser.parse("/common/header", TEMPLATE_CONFIG)
         resolved = resolver.resolve(parsed, ctx)
 
         assert resolved.resource_rel == "common/header.tpl.md"
@@ -110,7 +118,7 @@ class TestPathResolverRelativePaths:
         parser = PathParser()
         ctx = AddressingContext(addressing_project, addressing_project / "lg-cfg")
 
-        parsed = parser.parse("../../outside", ResourceKind.TEMPLATE)
+        parsed = parser.parse("../../outside", TEMPLATE_CONFIG)
 
         with pytest.raises(PathResolutionError, match="escapes lg-cfg"):
             resolver.resolve(parsed, ctx)
@@ -125,7 +133,7 @@ class TestPathResolverScopes:
         parser = PathParser()
         ctx = AddressingContext(multi_scope_project, multi_scope_project / "lg-cfg")
 
-        parsed = parser.parse("@apps/web:web", ResourceKind.TEMPLATE)
+        parsed = parser.parse("@apps/web:web", TEMPLATE_CONFIG)
         resolved = resolver.resolve(parsed, ctx)
 
         assert resolved.scope_rel == "apps/web"
@@ -141,7 +149,7 @@ class TestPathResolverScopes:
         web_cfg = multi_scope_project / "apps" / "web" / "lg-cfg"
         ctx = AddressingContext(multi_scope_project, web_cfg)
 
-        parsed = parser.parse("@/:root", ResourceKind.TEMPLATE)
+        parsed = parser.parse("@/:root", TEMPLATE_CONFIG)
         resolved = resolver.resolve(parsed, ctx)
 
         assert resolved.scope_rel == ""
@@ -153,7 +161,7 @@ class TestPathResolverScopes:
         parser = PathParser()
         ctx = AddressingContext(multi_scope_project, multi_scope_project / "lg-cfg")
 
-        parsed = parser.parse("@apps/mobile:intro", ResourceKind.TEMPLATE)
+        parsed = parser.parse("@apps/mobile:intro", TEMPLATE_CONFIG)
 
         with pytest.raises(ScopeNotFoundError, match="apps/mobile"):
             resolver.resolve(parsed, ctx)
@@ -168,10 +176,10 @@ class TestPathResolverExternalMarkdown:
         parser = PathParser()
         ctx = AddressingContext(addressing_project, addressing_project / "lg-cfg")
 
-        parsed = parser.parse_markdown("README", has_at=False)
+        parsed = parser.parse("README", MARKDOWN_EXTERNAL_CONFIG)
         resolved = resolver.resolve(parsed, ctx)
 
-        assert resolved.kind == ResourceKind.MARKDOWN_EXTERNAL
+        assert resolved.config == MARKDOWN_EXTERNAL_CONFIG
         assert resolved.resource_path == addressing_project / "README.md"
 
     def test_resolve_external_md_in_subdirectory(self, addressing_project: Path):
@@ -180,7 +188,7 @@ class TestPathResolverExternalMarkdown:
         parser = PathParser()
         ctx = AddressingContext(addressing_project, addressing_project / "lg-cfg")
 
-        parsed = parser.parse_markdown("docs/external", has_at=False)
+        parsed = parser.parse("docs/external", MARKDOWN_EXTERNAL_CONFIG)
         resolved = resolver.resolve(parsed, ctx)
 
         assert resolved.resource_path == addressing_project / "docs" / "external.md"
@@ -191,10 +199,10 @@ class TestPathResolverExternalMarkdown:
         parser = PathParser()
         ctx = AddressingContext(addressing_project, addressing_project / "lg-cfg")
 
-        parsed = parser.parse_markdown("self:docs/guide", has_at=True)
+        parsed = parser.parse("@self:docs/guide", MARKDOWN_CONFIG)
         resolved = resolver.resolve(parsed, ctx)
 
-        assert resolved.kind == ResourceKind.MARKDOWN
+        assert resolved.config == MARKDOWN_CONFIG
         assert resolved.resource_path == addressing_project / "lg-cfg" / "docs" / "guide.md"
 
 
@@ -207,7 +215,7 @@ class TestPathResolverExtensions:
         parser = PathParser()
         ctx = AddressingContext(addressing_project, addressing_project / "lg-cfg")
 
-        parsed = parser.parse("intro", ResourceKind.TEMPLATE)
+        parsed = parser.parse("intro", TEMPLATE_CONFIG)
         resolved = resolver.resolve(parsed, ctx)
 
         assert resolved.resource_rel.endswith(".tpl.md")
@@ -218,7 +226,7 @@ class TestPathResolverExtensions:
         parser = PathParser()
         ctx = AddressingContext(addressing_project, addressing_project / "lg-cfg")
 
-        parsed = parser.parse("main", ResourceKind.CONTEXT)
+        parsed = parser.parse("main", CONTEXT_CONFIG)
         resolved = resolver.resolve(parsed, ctx)
 
         assert resolved.resource_rel.endswith(".ctx.md")
@@ -229,7 +237,7 @@ class TestPathResolverExtensions:
         parser = PathParser()
         ctx = AddressingContext(addressing_project, addressing_project / "lg-cfg")
 
-        parsed = parser.parse("intro.tpl.md", ResourceKind.TEMPLATE)
+        parsed = parser.parse("intro.tpl.md", TEMPLATE_CONFIG)
         resolved = resolver.resolve(parsed, ctx)
 
         assert resolved.resource_rel == "intro.tpl.md"
@@ -241,7 +249,7 @@ class TestPathResolverExtensions:
         parser = PathParser()
         ctx = AddressingContext(addressing_project, addressing_project / "lg-cfg")
 
-        parsed = parser.parse_markdown("self:docs/guide", has_at=True)
+        parsed = parser.parse("@self:docs/guide", MARKDOWN_CONFIG)
         resolved = resolver.resolve(parsed, ctx)
 
         assert resolved.resource_rel.endswith(".md")

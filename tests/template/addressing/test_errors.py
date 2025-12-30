@@ -14,8 +14,8 @@ from lg.template.addressing import (
     PathResolutionError,
     ScopeNotFoundError,
     ParsedPath,
-    ResourceKind,
 )
+from lg.template.common_placeholders.configs import TEMPLATE_CONFIG
 
 
 class TestPathParseError:
@@ -60,7 +60,7 @@ class TestPathResolutionError:
     def test_error_with_parsed_path(self):
         """Test error with parsed path context."""
         parsed = ParsedPath(
-            kind=ResourceKind.TEMPLATE,
+            config=TEMPLATE_CONFIG,
             origin="apps/web",
             origin_explicit=True,
             path="missing",

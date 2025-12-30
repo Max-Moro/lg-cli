@@ -6,7 +6,7 @@ from template placeholders.
 """
 
 from .types import (
-    ResourceKind,
+    ResourceConfig,
     ParsedPath,
     ResolvedPath,
     DirectoryContext,
@@ -28,7 +28,7 @@ from .errors import (
 
 __all__ = [
     # Types
-    "ResourceKind",
+    "ResourceConfig",
     "ParsedPath",
     "ResolvedPath",
     "DirectoryContext",
