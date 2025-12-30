@@ -12,7 +12,6 @@ from .nodes import MarkdownFileNode
 from ...config.model import SectionCfg, AdapterConfig
 from ...filtering.model import FilterNode
 from ...markdown import MarkdownCfg
-from ...template.common import merge_origins
 from ...types import SectionRef
 
 
@@ -31,8 +30,8 @@ class VirtualSectionFactory:
     def create_for_markdown_file(
         self,
         node: MarkdownFileNode,
-        repo_root: Path,
-        current_origin: str,
+        scope_dir: Path,
+        scope_rel: str,
         heading_context: HeadingContext
     ) -> tuple[SectionCfg, SectionRef]:
         """
@@ -40,8 +39,8 @@ class VirtualSectionFactory:
 
         Args:
             node: MarkdownFileNode with complete information about included file
-            repo_root: Repository root for path resolution
-            current_origin: Current origin from template context ("self" or scope path)
+            scope_dir: Resolved scope directory (from addressing system)
+            scope_rel: Resolved scope relative path (from addressing system)
             heading_context: Heading context
 
         Returns:
@@ -50,7 +49,7 @@ class VirtualSectionFactory:
         Raises:
             ValueError: For invalid parameters
         """
-        # Normalize file path(s)
+        # Normalize file path(s) using node info
         normalized_path = self._normalize_file_path(node.path, node.origin, node.is_glob)
 
         # Create filter configuration
@@ -66,19 +65,7 @@ class VirtualSectionFactory:
             adapters={"markdown": AdapterConfig(base_options=markdown_config_raw)}
         )
 
-        # Merge base origin from context with node origin
-        effective_origin = merge_origins(current_origin, node.origin)
-
-        # Create SectionRef
-        if effective_origin == "self":
-            # Root scope
-            scope_dir = repo_root.resolve()
-            scope_rel = ""
-        else:
-            # Nested or composite scope
-            scope_dir = (repo_root / effective_origin).resolve()
-            scope_rel = effective_origin
-
+        # Create SectionRef with provided scope info
         section_ref = SectionRef(
             name=self._generate_name(),
             scope_rel=scope_rel,

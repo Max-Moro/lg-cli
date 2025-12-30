@@ -28,6 +28,8 @@ tag-sets:
     tags:
       core:
         title: "Core"
+      addressing:
+        title: "Path resolution and addressing system"
       common-placeholders:
         title: "Section and template placeholders"
       adaptive:

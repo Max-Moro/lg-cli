@@ -55,9 +55,10 @@ def get_placeholder_token_specs() -> List[TokenSpec]:
 
         # Identifier (names of sections, templates, scopes)
         # Allow letters, digits, hyphens, underscores, slashes, periods
+        # Optional leading slash for absolute paths
         TokenSpec(
             name="IDENTIFIER",
-            pattern=re.compile(r'[a-zA-Z_][a-zA-Z0-9_/.​-]*'),
+            pattern=re.compile(r'/?[a-zA-Z_][a-zA-Z0-9_/.​-]*'),
         ),
 
         # Whitespace inside placeholders

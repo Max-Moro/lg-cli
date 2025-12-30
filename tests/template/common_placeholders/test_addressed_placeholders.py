@@ -122,7 +122,7 @@ ${@nonexistent/module:some-section}
 """)
 
     # Should raise error about nonexistent scope
-    with pytest.raises(TemplateProcessingError, match=r"Child lg-cfg not found"):
+    with pytest.raises(TemplateProcessingError, match=r"Scope not found"):
         render_template(root, "ctx:bad-scope-test")
 
 

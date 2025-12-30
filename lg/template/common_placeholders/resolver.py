@@ -11,15 +11,11 @@ from pathlib import Path
 from typing import Dict, List, cast
 
 from .nodes import SectionNode, IncludeNode
-from ..common import (
-    resolve_cfg_root,
-    load_template_from, load_context_from,
-    merge_origins
-)
+from ..common import load_template_from, load_context_from
 from ..handlers import TemplateProcessorHandlers
 from ..nodes import TemplateNode, TemplateAST
 from ..protocols import TemplateRegistryProtocol
-from ...run_context import RunContext
+from ..addressing import ResourceKind
 from ...types import SectionRef
 
 
@@ -39,11 +35,12 @@ class CommonPlaceholdersResolver:
 
     Handles addressed references, loads included templates,
     and fills node metadata for subsequent processing.
+
+    Uses AddressingContext from TemplateContext for path resolution.
     """
 
     def __init__(
             self,
-            run_ctx: RunContext,
             handlers: TemplateProcessorHandlers,
             registry: TemplateRegistryProtocol,
     ):
@@ -51,22 +48,28 @@ class CommonPlaceholdersResolver:
         Initializes resolver.
 
         Args:
-            run_ctx: Runtime context with settings and paths
             handlers: Typed handlers for template parsing
             registry: Registry of components for parsing
         """
-        self.run_ctx = run_ctx
         self.handlers: TemplateProcessorHandlers = handlers
         self.registry = registry
-        self.repo_root = run_ctx.root
-        self.current_cfg_root = run_ctx.root / "lg-cfg"
-
-        # Stack of origins for supporting nested inclusions
-        self._origin_stack: List[str] = ["self"]
 
         # Cache of resolved inclusions
         self._resolved_includes: Dict[str, ResolvedInclude] = {}
         self._resolution_stack: List[str] = []
+
+        # Reference to template_ctx will be obtained through handlers
+        self._template_ctx = None
+
+    def _get_template_ctx(self):
+        """Lazily get template context from processor."""
+        if self._template_ctx is None:
+            raise RuntimeError("Template context not set. Call set_template_ctx() first.")
+        return self._template_ctx
+
+    def set_template_ctx(self, template_ctx) -> None:
+        """Set template context for path resolution."""
+        self._template_ctx = template_ctx
 
     def resolve_node(self, node: TemplateNode, context: str = "") -> TemplateNode:
         """
@@ -79,41 +82,31 @@ class CommonPlaceholdersResolver:
         elif isinstance(node, IncludeNode):
             return self._resolve_include_node(node, context)
         else:
-            # Not our node - return as is
             return node
 
     def _resolve_section_node(self, node: SectionNode, _context: str = "") -> SectionNode:
         """
-        Resolves section node, handling addressed references.
-
-        Supports formats:
-        - "section_name" → current scope (uses origin stack)
-        - "@origin:section_name" → specified scope
-        - "@[origin]:section_name" → scope with colons in name
+        Resolves section node using new addressing API.
         """
         section_name = node.section_name
-        
-        try:
-            # Always use _parse_section_reference
-            cfg_root, resolved_name = self._parse_section_reference(section_name)
+        template_ctx = self._get_template_ctx()
 
-            # Create SectionRef for use in the rest of the pipeline
-            scope_dir = cfg_root.parent.resolve()
-            try:
-                scope_rel = scope_dir.relative_to(self.repo_root.resolve()).as_posix()
-                if scope_rel == ".":
-                    scope_rel = ""
-            except ValueError:
-                raise RuntimeError(f"Scope directory outside repository: {scope_dir}")
-            
+        try:
+            # Use new addressing API
+            resolved = template_ctx.resolve_path(section_name, ResourceKind.SECTION)
+
+            # Create SectionRef from resolved path
             section_ref = SectionRef(
-                name=resolved_name,
-                scope_rel=scope_rel, 
-                scope_dir=scope_dir
+                name=resolved.canonical_id or resolved.resource_rel,
+                scope_rel=resolved.scope_rel,
+                scope_dir=resolved.scope_dir
             )
-            
-            return SectionNode(section_name=resolved_name, resolved_ref=section_ref)
-            
+
+            return SectionNode(
+                section_name=resolved.canonical_id or resolved.resource_rel,
+                resolved_ref=section_ref
+            )
+
         except Exception as e:
             raise RuntimeError(f"Failed to resolve section '{section_name}': {e}")
 
@@ -121,7 +114,6 @@ class CommonPlaceholdersResolver:
         """
         Resolves include node, loads and parses the included template.
         """
-        # Create cache key
         cache_key = node.canon_key()
 
         # Check for circular dependencies
@@ -135,7 +127,7 @@ class CommonPlaceholdersResolver:
             return IncludeNode(
                 kind=node.kind,
                 name=node.name,
-                origin=resolved_include.origin,  # Use effective origin from cache
+                origin=resolved_include.origin,
                 children=resolved_include.ast
             )
 
@@ -148,103 +140,54 @@ class CommonPlaceholdersResolver:
             return IncludeNode(
                 kind=node.kind,
                 name=node.name,
-                origin=resolved_include.origin,  # Use effective origin from resolution
+                origin=resolved_include.origin,
                 children=resolved_include.ast
             )
         finally:
             self._resolution_stack.pop()
 
-    def _parse_section_reference(self, section_name: str) -> tuple[Path, str]:
-        """
-        Parses section reference in various formats.
-
-        Args:
-            section_name: Section name (may be addressed)
-
-        Returns:
-            Tuple (cfg_root, resolved_name)
-        """
-        if section_name.startswith("@["):
-            # Bracket form: @[origin]:name
-            close_bracket = section_name.find("]:")
-            if close_bracket < 0:
-                raise RuntimeError(f"Invalid section reference format: {section_name}")
-            origin = section_name[2:close_bracket]
-            name = section_name[close_bracket + 2:]
-        elif section_name.startswith("@"):
-            # Simple addressed form: @origin:name
-            colon_pos = section_name.find(":", 1)
-            if colon_pos < 0:
-                raise RuntimeError(f"Invalid section reference format: {section_name}")
-            origin = section_name[1:colon_pos]
-            name = section_name[colon_pos + 1:]
-        else:
-            # Simple reference without addressing - uses current origin from stack
-            current_origin = self._origin_stack[-1] if self._origin_stack else "self"
-            cfg_root = resolve_cfg_root(
-                current_origin,
-                current_cfg_root=self.current_cfg_root,
-                repo_root=self.repo_root
-            )
-            return cfg_root, section_name
-
-        # Resolve cfg_root for specified origin
-        cfg_root = resolve_cfg_root(
-            origin,
-            current_cfg_root=self.current_cfg_root,
-            repo_root=self.repo_root
-        )
-        return cfg_root, name
-
     def _load_and_parse_include(self, node: IncludeNode, context: str) -> ResolvedInclude:
         """
-        Loads and parses the included template.
-
-        Args:
-            node: Include node to process
-            context: Context for diagnostics
-
-        Returns:
-            Resolved inclusion with AST
+        Loads and parses the included template using new addressing API.
         """
-        # Merge base origin from stack with node origin
-        base_origin = self._origin_stack[-1] if self._origin_stack else "self"
-        effective_origin = merge_origins(base_origin, node.origin)
+        template_ctx = self._get_template_ctx()
 
-        # Resolve cfg_root
-        cfg_root = resolve_cfg_root(
-            effective_origin,
-            current_cfg_root=self.current_cfg_root,
-            repo_root=self.repo_root
-        )
+        # Determine resource kind
+        kind = ResourceKind.CONTEXT if node.kind == "ctx" else ResourceKind.TEMPLATE
 
-        # Load content
-        if node.kind == "ctx":
-            _, template_text = load_context_from(cfg_root, node.name)
-        elif node.kind == "tpl":
-            _, template_text = load_template_from(cfg_root, node.name)
+        # Build raw path for resolution
+        if node.origin and node.origin != "self":
+            raw_path = f"@{node.origin}:{node.name}"
         else:
-            raise RuntimeError(f"Unknown include kind: {node.kind}")
+            raw_path = node.name
+
+        # Resolve path using new API
+        resolved = template_ctx.resolve_path(raw_path, kind)
+
+        # Load content from resolved path
+        if node.kind == "ctx":
+            _, template_text = load_context_from(resolved.cfg_root, resolved.resource_rel.replace('.ctx.md', ''))
+        else:
+            _, template_text = load_template_from(resolved.cfg_root, resolved.resource_rel.replace('.tpl.md', ''))
 
         # Parse template
         from ..parser import parse_template
         from ..registry import TemplateRegistry
         include_ast = parse_template(template_text, registry=cast(TemplateRegistry, self.registry))
 
-        # Recursively resolve inclusion with new origin on stack
-        self._origin_stack.append(effective_origin)
-        try:
-            # Core will apply resolvers from all plugins, including ours
+        # Apply resolvers with file scope context
+        with template_ctx.file_scope(resolved.resource_path, resolved.scope_rel):
+            # Core will apply resolvers from all plugins
             ast: TemplateAST = self.handlers.resolve_ast(include_ast, context)
-        finally:
-            # Restore origin stack after resolution
-            self._origin_stack.pop()
+
+        # Determine effective origin
+        effective_origin = resolved.scope_rel if resolved.scope_rel else "self"
 
         return ResolvedInclude(
             kind=node.kind,
             name=node.name,
             origin=effective_origin,
-            cfg_root=cfg_root,
+            cfg_root=resolved.cfg_root,
             ast=ast
         )
 

@@ -43,12 +43,18 @@ The orchestrator provides:
 
 ```
 tests/
-├── adaptive/          # Adaptive features (modes, tags, conditions)
+├── adapters/          # Language adapter tests (python, typescript, etc.)
 ├── cdm/              # Content Delivery Model tests
 ├── conditions/       # Condition expression parser/evaluator
 ├── markdown/         # Markdown processing
-├── md_placeholders/  # Markdown placeholder system
-├── task_placeholder/ # Task placeholder processing
+├── migrate/          # Migration system tests
+├── stats/            # Tokenization and statistics tests
+├── template/         # Template engine tests
+│   ├── adaptive/         # Adaptive features (modes, tags, conditions)
+│   ├── addressing/       # Path resolution and addressing system
+│   ├── common_placeholders/  # Section, template, context placeholders
+│   ├── md_placeholders/      # Markdown placeholder system
+│   └── task_placeholder/     # Task placeholder processing
 ├── infrastructure/   # Shared test utilities (CRITICAL)
 └── conftest.py      # Root fixtures
 ```
@@ -58,35 +64,63 @@ tests/
 **File utilities (file_utils.py):**
 - `write(path, text)` - write file with parent dirs creation
 - `write_source_file(path, content, language)` - write source with header
-- `write_markdown(path, title, content)` - write markdown file
+- `write_markdown(path, title, content, h1_prefix)` - write markdown file
 
 **Rendering utilities (rendering_utils.py):**
-- `render_template(root, template_name, options)` - render context/template
-- `make_run_options(**kwargs)` - create RunOptions
+- `render_template(root, target, options)` - render context/template/section
+- `make_run_options(modes, extra_tags, task_text)` - create RunOptions
+- `make_run_context(root, options)` - create RunContext
 - `make_engine(root, options)` - create Engine instance
 
 **Testing utilities (testing_utils.py):**
-- `stub_tokenizer()` - mock tokenizer for budget tests
-- `lctx(language, content, **kwargs)` - create locator context
+- `lctx_md(raw_text, group_size)` - create LightweightContext for Markdown
 
 **CLI utilities (cli_utils.py):**
-- `run_cli(root, *args)` - run CLI subprocess (AVOID for unit tests!)
-- `jload(json_str)` - parse JSON output
+- `run_cli(root, *args)` - run CLI subprocess (auto-adds tokenizer params for report/render)
+- `jload(json_str)` - parse JSON output (removes ANSI codes)
+- `DEFAULT_TOKENIZER_LIB`, `DEFAULT_ENCODER`, `DEFAULT_CTX_LIMIT` - default tokenization settings
 
 **Config builders (config_builders.py):**
-- `create_sections_yaml()` - create sections config
-- `create_modes_yaml()` - create modes config
-- `create_tags_yaml()` - create tags config
+- `create_sections_yaml(root, sections_config)` - create lg-cfg/sections.yaml
+- `create_section_fragment(root, fragment_path, sections_config)` - create *.sec.yaml
+- `create_modes_yaml(root, mode_sets, include, append)` - create modes.yaml
+- `create_tags_yaml(root, tag_sets, global_tags, include, append)` - create tags.yaml
+- `create_template(root, name, content, template_type)` - create *.tpl.md or *.ctx.md
+- `create_basic_lg_cfg(root)` - create minimal lg-cfg/sections.yaml
+- `create_basic_sections_yaml(root)` - create basic sections.yaml with src/docs/tests
+- `get_basic_sections_config()` - returns basic sections dict
+- `get_multilang_sections_config()` - returns multilang sections dict
+
+**Adaptive config classes (adaptive_config.py):**
+- `ModeConfig`, `ModeSetConfig` - structured mode configuration
+- `TagConfig`, `TagSetConfig` - structured tag configuration
 
 ### Common Fixtures
 
 **Root conftest.py:**
 - `tmpproj` - minimal project with lg-cfg/sections.yaml
+- `_allow_migrations_without_git` - autouse fixture allowing migrations without git
 
 **Module-specific fixtures:**
-- `adaptive_project` - project with modes/tags configs
-- `mock_tokenizer` - tokenizer mock
-- Various language-specific fixtures
+
+*Template/addressing (tests/template/addressing/conftest.py):*
+- `addressing_project` - minimal lg-cfg structure with nested directories (intro, common/header, docs/api, etc.)
+- `multi_scope_project` - project with multiple lg-cfg scopes (root, apps/web, libs/core)
+
+*Template/md_placeholders (tests/template/md_placeholders/conftest.py):*
+- Fixtures for md placeholder testing
+
+*Template/task_placeholder (tests/template/task_placeholder/conftest.py):*
+- Fixtures for task placeholder testing
+
+*Stats (tests/stats/conftest.py):*
+- `mock_tokenizer` - tokenizer mock for stats tests
+
+*Migrate (tests/migrate/conftest.py):*
+- Fixtures for migration system testing
+
+*CDM (tests/cdm/conftest.py):*
+- Fixtures for CDM testing
 
 ### Testing Patterns
 
@@ -95,17 +129,20 @@ tests/
    - Use mocks and stubs
    - Fast execution
    - Good error traceability
+   - Example: `tests/template/addressing/` - isolated component testing
 
 2. **Integration Tests** (when needed):
    - Test module interactions
    - Use real file system (tmp_path)
    - Avoid subprocess when possible
+   - Example: `tests/template/adaptive/test_federated.py` - cross-module testing
 
 3. **CLI Tests** (sparingly):
    - Only for stdin/stdout serialization
    - Heavy subprocess overhead
    - Poor error traceability
    - Use `run_cli()` utility
+   - Example: `tests/template/adaptive/test_cli_integration.py`
 
 ## Advice Strategy
 
@@ -180,21 +217,46 @@ tests/
 
 ### Finding test files for a module
 ```bash
-# For module lg/adaptive/loader.py, search:
-grep -r "from lg.adaptive import loader" tests/
-grep -r "import lg.adaptive.loader" tests/
+# For module lg/template/addressing/parser.py, search:
+grep -r "from lg.template.addressing import" tests/
+grep -r "import lg.template.addressing" tests/
+
+# For specific class/function:
+grep -r "PathParser" tests/
+grep -r "AddressingContext" tests/
 ```
 
 ### Finding fixtures
 ```bash
 # Search all conftest.py files
-grep -n "@pytest.fixture" tests/**/conftest.py
+find tests -name "conftest.py" -exec grep -l "@pytest.fixture" {} \;
+
+# Search for specific fixture
+grep -rn "def addressing_project" tests/
+grep -rn "@pytest.fixture" tests/template/addressing/conftest.py
 ```
 
 ### Finding similar test patterns
 ```bash
 # Search for test method names
-grep -n "def test_.*<pattern>" tests/
+grep -rn "def test_.*parse.*path" tests/
+grep -rn "def test_.*resolve" tests/
+
+# Find tests using specific utilities
+grep -rn "from tests.infrastructure import" tests/
+grep -rn "make_run_options" tests/
+```
+
+### Finding tests by feature area
+```bash
+# Template system tests
+ls tests/template/*/
+
+# Adapter tests
+ls tests/adapters/*/
+
+# Infrastructure utilities
+ls tests/infrastructure/
 ```
 
 ## Output Report Format
@@ -207,17 +269,33 @@ grep -n "def test_.*<pattern>" tests/
 **Recommended location:** `tests/<path>/<file>.py`
 
 **Reasoning:**
-- [Why this location is appropriate]
+- [Why this location is appropriate - module alignment, feature area, existing patterns]
 
 **File status:** [New file needed | Add to existing file]
 
 **Existing related tests:**
-- `tests/path/file.py:45:89` - Similar functionality
-- `tests/path/other.py:12:34` - Uses same module
+- `tests/template/addressing/test_parser.py:45:89` - Similar parsing logic
+- `tests/template/common_placeholders/test_template_placeholders.py:12:34` - Uses same module
 
 **Suggested test structure:**
-- Test class/function naming pattern
-- Key fixtures to use
+- Test class/function naming pattern (e.g., `test_<functionality>_<scenario>`)
+- Key fixtures to use (e.g., `addressing_project`, `tmpproj`)
+- Infrastructure utilities (e.g., `write()`, `render_template()`)
+
+**Example test skeleton:**
+```python
+from tests.infrastructure import write, render_template
+
+def test_new_feature(addressing_project):
+    # Arrange
+    write(addressing_project / "lg-cfg" / "test.tpl.md", "content")
+
+    # Act
+    result = render_template(addressing_project, "test")
+
+    # Assert
+    assert "expected" in result
+```
 ```
 
 ### For find_similar
@@ -278,10 +356,33 @@ grep -n "def test_.*<pattern>" tests/
 ## Important Guidelines
 
 1. **Avoid run_cli() for unit tests** - subprocess overhead, poor traceability
+   - Use `make_engine()`, `make_run_context()`, or direct component testing instead
+   - Reserve `run_cli()` for CLI-specific integration tests only
+
 2. **Prefer direct testing** - faster, better debugging
-3. **Check existing patterns** - consistency is valuable
-4. **Consider fixture reuse** - avoid duplication
-5. **Keep recommendations practical** - balance thoroughness with efficiency
+   - Test components in isolation when possible
+   - Example: test `PathParser` directly, not through full template rendering
+
+3. **Use infrastructure utilities** - leverage tests/infrastructure/ consistently
+   - `write()` for file creation
+   - `render_template()` for template testing
+   - `make_run_options()` for configuration
+   - Config builders for YAML generation
+
+4. **Check existing patterns** - consistency is valuable
+   - Look at similar tests in the same directory
+   - Follow naming conventions (test_<module>_<scenario>)
+   - Reuse fixture patterns
+
+5. **Consider fixture reuse** - avoid duplication
+   - Check conftest.py in module and parent directories
+   - Use `addressing_project` for path resolution tests
+   - Use `tmpproj` for basic template tests
+
+6. **Keep recommendations practical** - balance thoroughness with efficiency
+   - Suggest minimal effective test scope
+   - Prefer adding to existing files when appropriate
+   - Recommend new files only when justified
 
 ## Boundaries
 

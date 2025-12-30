@@ -13,6 +13,7 @@ from .nodes import MarkdownFileNode
 from .parser_rules import get_md_parser_rules
 from .tokens import get_md_token_specs
 from .virtual_sections import VirtualSectionFactory
+from ..addressing import ResourceKind
 from ..base import TemplatePlugin
 from ..types import PluginPriority, TokenSpec, ParsingRule, ProcessorRule, ProcessingContext
 from ...template import TemplateContext
@@ -87,20 +88,34 @@ class MdPlaceholdersPlugin(TemplatePlugin):
             if node.condition:
                 should_include = self.template_ctx.evaluate_condition_text(node.condition)
                 if not should_include:
-                    # Condition not met - skip node
                     return ""
 
             # Use ProcessingContext for analyzing heading context
             from .heading_context import detect_heading_context_for_node
             heading_context = detect_heading_context_for_node(processing_context)
 
-            # Get current origin from template context
-            current_origin = self.template_ctx.get_origin()
+            # Determine resource kind and build raw path for resolution
+            if node.origin is not None:
+                # md@origin:path - file inside lg-cfg/
+                kind = ResourceKind.MARKDOWN
+                # Always include @ prefix for parser to recognize explicit origin
+                raw_path = f"@{node.origin}:{node.path}"
+            else:
+                # md:path - file relative to repo root
+                kind = ResourceKind.MARKDOWN_EXTERNAL
+                raw_path = node.path
 
+            # Resolve path using new addressing API
+            try:
+                resolved = self.template_ctx.resolve_path(raw_path, kind)
+            except Exception as e:
+                raise RuntimeError(f"Failed to resolve markdown path '{raw_path}': {e}")
+
+            # Create virtual section with resolved scope info
             section_config, section_ref = self.virtual_factory.create_for_markdown_file(
                 node=node,
-                repo_root=self.template_ctx.run_ctx.root,
-                current_origin=current_origin,
+                scope_dir=resolved.scope_dir,
+                scope_rel=resolved.scope_rel,
                 heading_context=heading_context
             )
 
@@ -108,11 +123,9 @@ class MdPlaceholdersPlugin(TemplatePlugin):
             self.template_ctx.set_virtual_section(section_config)
 
             try:
-                # Process through section_handler
                 result = self.handlers.process_section_ref(section_ref)
                 return result
             finally:
-                # Always clear virtual section after processing
                 self.template_ctx.clear_virtual_section()
 
         return [

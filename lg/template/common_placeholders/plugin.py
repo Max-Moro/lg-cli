@@ -54,9 +54,9 @@ class CommonPlaceholdersPlugin(TemplatePlugin):
     def initialize(self) -> None:
         """Initializes resolver after all dependencies are set."""
         from .resolver import CommonPlaceholdersResolver
-        run_ctx = self.template_ctx.run_ctx
-        # Pass template_ctx for origin management through TemplateState
-        self._resolver = CommonPlaceholdersResolver(run_ctx, self.handlers, self.registry)
+        # Create resolver and pass template_ctx for path resolution
+        self._resolver = CommonPlaceholdersResolver(self.handlers, self.registry)
+        self._resolver.set_template_ctx(self.template_ctx)
     
     def register_tokens(self) -> List[TokenSpec]:
         """Registers tokens for placeholders."""
@@ -107,12 +107,9 @@ class CommonPlaceholdersPlugin(TemplatePlugin):
             if node.children is None:
                 raise RuntimeError(f"Include '{node.canon_key()}' not resolved")
 
-            # Save and set origin for nested context
-            self.template_ctx.push_origin(node.origin)
-
-            try:
-                # Render child nodes with new context for nested AST
-                result_parts = []
+            # Render child nodes with new context for nested AST
+            result_parts = []
+            with self.template_ctx.origin_scope(node.origin):
                 for child_index, child_node in enumerate(node.children):
                     # Create context for nested AST
                     child_context = ProcessingContext(ast=node.children, node_index=child_index)
@@ -120,10 +117,7 @@ class CommonPlaceholdersPlugin(TemplatePlugin):
                     if rendered:
                         result_parts.append(rendered)
 
-                return "".join(result_parts)
-            finally:
-                # Always restore previous origin
-                self.template_ctx.pop_origin()
+            return "".join(result_parts)
 
         return [
             ProcessorRule(

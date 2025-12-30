@@ -131,26 +131,28 @@ def test_deeply_nested_mixed_placeholders(basic_project):
     """Test deeply nested mixed placeholders."""
     root = basic_project
 
-    # Create complex nesting hierarchy
+    # Create complex nesting hierarchy with properly nested directories
 
-    # Level 4 (deepest)
-    create_template(root, "level4/content", """Deep content: ${src}""", "tpl")
+    # Level 4 (deepest) - inside level1/level2/level3/level4/
+    create_template(root, "level1/level2/level3/level4/content", """# Level 4 Content
 
-    # Level 3
-    create_template(root, "level3/wrapper", """# Level 3
+Deep nested content here: ${src}""", "tpl")
+
+    # Level 3 - inside level1/level2/level3/
+    create_template(root, "level1/level2/level3/wrapper", """# Level 3
 
 ${tpl:level4/content}
 """, "ctx")
 
-    # Level 2
-    create_template(root, "level2/container", """# Level 2
+    # Level 2 - inside level1/level2/
+    create_template(root, "level1/level2/container", """# Level 2
 
 ${ctx:level3/wrapper}
 
 Additional docs: ${docs}
 """, "tpl")
 
-    # Level 1
+    # Level 1 - inside level1/
     create_template(root, "level1/main", """# Level 1
 
 ${tpl:level2/container}
@@ -174,7 +176,7 @@ This demonstrates deep nesting of mixed placeholders.
     assert "Level 1" in result
     assert "Level 2" in result
     assert "Level 3" in result
-    assert "Deep content:" in result
+    assert "Level 4 Content" in result
     assert "def main():" in result  # from src via level4
     assert "Project Documentation" in result  # from docs via level2
     assert "def test_main():" in result  # from tests via level1

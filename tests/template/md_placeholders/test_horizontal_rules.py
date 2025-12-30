@@ -4,9 +4,9 @@ Tests for contextual heading analysis with horizontal rules.
 
 from __future__ import annotations
 
-from tests.md_placeholders.conftest import md_project, create_template, render_template
-from tests.md_placeholders.test_contextual_analysis import (
-    extract_heading_level, assert_heading_level, assert_heading_not_present
+from tests.template.md_placeholders.conftest import md_project, create_template, render_template
+from tests.template.md_placeholders.test_contextual_analysis import (
+    assert_heading_level, assert_heading_not_present
 )
 
 

@@ -7,9 +7,12 @@ modes, and their overrides via {% mode %} blocks.
 
 from __future__ import annotations
 
+from contextlib import contextmanager
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Dict, Set, List, Optional
 
+from .addressing import AddressingContext, PathParser, PathResolver, ResourceKind, ResolvedPath
 from .evaluator import TemplateConditionEvaluator
 from ..config.adaptive_model import ModeOptions
 from ..config.model import SectionCfg
@@ -24,7 +27,6 @@ class TemplateState:
     Used for implementing state stack when entering/exiting
     {% mode %} blocks.
     """
-    origin: str
     mode_options: ModeOptions
     active_tags: Set[str]
     active_modes: Dict[str, str]  # modeset -> mode_name
@@ -34,7 +36,6 @@ class TemplateState:
     def copy(self) -> TemplateState:
         """Creates a deep copy of the state."""
         return TemplateState(
-            origin=self.origin,
             mode_options=self.mode_options,
             active_tags=set(self.active_tags),
             active_modes=dict(self.active_modes),
@@ -63,7 +64,6 @@ class TemplateContext:
 
         # Current state (initialized from run_ctx)
         self.current_state = TemplateState(
-            origin="self",
             mode_options=run_ctx.mode_options,
             active_tags=set(run_ctx.active_tags),
             active_modes=dict(run_ctx.options.modes),
@@ -78,6 +78,14 @@ class TemplateContext:
 
         # Condition evaluator (created lazily)
         self._condition_evaluator: Optional[TemplateConditionEvaluator] = None
+
+        # Addressing system components
+        self.addressing = AddressingContext(
+            repo_root=run_ctx.root,
+            initial_cfg_root=run_ctx.root / "lg-cfg"
+        )
+        self._path_parser = PathParser()
+        self._path_resolver = PathResolver(run_ctx.root)
 
     def get_condition_evaluator(self) -> TemplateConditionEvaluator:
         """
@@ -183,45 +191,72 @@ class TemplateContext:
         """
         self.current_state.current_virtual_section = None
 
-    def push_origin(self, origin: str) -> None:
+    @contextmanager
+    def origin_scope(self, origin: str):
         """
-        Enters new origin (scope) when processing nested includes.
+        Context manager for temporarily changing origin scope.
 
-        Saves current state to stack and updates origin.
-        Used when processing ${ctx@origin:name} and ${tpl@origin:name}.
+        No-op if origin is None, empty, or "self" (current scope).
 
         Args:
             origin: New origin for nested context
         """
-        # Save current state to stack
-        self.state_stack.append(self.current_state.copy())
+        if not origin or origin == "self":
+            yield  # No-op, stay in current scope
+            return
 
-        # Update origin in current state
-        self.current_state.origin = origin
+        new_cfg_root = self.run_ctx.root / origin / "lg-cfg"
+        self.addressing.push(origin, self.addressing.current_directory, new_cfg_root)
+        try:
+            yield
+        finally:
+            self.addressing.pop()
 
-    def pop_origin(self) -> None:
+    @contextmanager
+    def file_scope(self, file_path: Path, new_origin: Optional[str] = None):
         """
-        Exits nested origin, restoring previous state.
+        Context manager for file processing context.
 
-        Should be called after completion of nested context processing.
+        Updates current directory and optionally origin.
+
+        Args:
+            file_path: Path to the file being processed
+            new_origin: New origin scope (if different from current)
+        """
+        self.addressing.push_for_file(file_path, new_origin)
+        try:
+            yield
+        finally:
+            self.addressing.pop()
+
+    def resolve_path(self, raw: str, kind: ResourceKind) -> ResolvedPath:
+        """
+        High-level API for resolving paths.
+
+        Combines parsing and resolution using current addressing context.
+
+        Args:
+            raw: Raw path string from placeholder
+            kind: Type of resource being resolved
+
+        Returns:
+            Fully resolved path
 
         Raises:
-            RuntimeError: If state stack is empty
+            PathParseError: If path syntax is invalid
+            PathResolutionError: If path cannot be resolved
         """
-        if not self.state_stack:
-            raise RuntimeError("No origin to pop (state stack is empty)")
-
-        # Restore previous state
-        self.current_state = self.state_stack.pop()
+        parsed = self._path_parser.parse(raw, kind)
+        return self._path_resolver.resolve(parsed, self.addressing)
 
     def get_origin(self) -> str:
         """
-        Returns current origin from template state.
+        Returns current origin from addressing context.
 
         Returns:
             Current origin ("self" for root scope or path to subdomain)
         """
-        return self.current_state.origin
+        return self.addressing.origin
 
     def evaluate_condition(self, condition_ast) -> bool:
         """
@@ -261,7 +296,7 @@ class TemplateContext:
         return ConditionContext(
             active_tags=self.current_state.active_tags,
             tagsets=tagsets,
-            origin=self.current_state.origin,
+            origin=self.addressing.origin,
             task_text=self.run_ctx.get_effective_task_text(),
         )
 
