@@ -175,45 +175,38 @@ class PathResolver:
             Normalized path inside lg-cfg (no leading /)
         """
         if is_absolute:
-            # Absolute path — use as-is (already stripped of leading /)
             work_path = path
         else:
-            # Relative path — combine with base directory
             if base_dir:
                 work_path = f"{base_dir}/{path}"
             else:
                 work_path = path
 
         # Normalize path using PurePosixPath
-        # This handles . and .. components
         normalized = PurePosixPath(work_path)
 
-        # Convert to parts and rebuild without . and ..
-        parts = []
+        # Track depth to detect boundary escape early
+        parts: list[str] = []
+        depth = 0
+
         for part in normalized.parts:
             if part == '.':
                 continue
             elif part == '..':
-                # Can only pop if there are real directory parts (not other ..)
-                if parts and parts[-1] != '..':
+                if depth > 0:
                     parts.pop()
+                    depth -= 1
                 else:
-                    # Either empty or last is also .. - keep the ..
-                    parts.append(part)
+                    # Attempting to go above lg-cfg/ boundary
+                    raise PathResolutionError(
+                        message=f"Path escapes lg-cfg/ boundary: {path}",
+                        hint="Cannot use '../' to escape lg-cfg/ directory"
+                    )
             else:
                 parts.append(part)
+                depth += 1
 
-        # Rebuild path
-        result = '/'.join(parts) if parts else ''
-
-        # Early validation: if path starts with "..", it escapes the boundary
-        if result.startswith('..'):
-            raise PathResolutionError(
-                message=f"Path escapes lg-cfg/ boundary: {path}",
-                hint="Cannot use '../' to escape lg-cfg/ directory"
-            )
-
-        return result
+        return '/'.join(parts) if parts else ''
 
     def _add_extension(self, path: str, kind: ResourceKind) -> str:
         """

@@ -50,7 +50,7 @@ class PathParser:
 
         raw = raw.strip()
 
-        # For MARKDOWN_EXTERNAL, path is always relative to repo root
+        # For MARKDOWN_EXTERNAL, path is always relative to current scope
         if kind == ResourceKind.MARKDOWN_EXTERNAL:
             return self._parse_external_markdown(raw)
 
@@ -100,14 +100,16 @@ class PathParser:
         """
         origin: str
         path_part: str
+        is_bracket_form = False
 
         # Check for empty origin first (":path" case)
         if raw.startswith(':'):
-            raise PathParseError("Empty origin", f"@{raw}")
+            raise PathParseError("Empty origin after '@'", f"@{raw}")
 
         # Check for bracket form: [origin]:path
         bracket_match = self._BRACKET_ORIGIN_PATTERN.match(raw)
         if bracket_match:
+            is_bracket_form = True
             origin = bracket_match.group(1)
             path_part = bracket_match.group(2)
         else:
@@ -119,7 +121,10 @@ class PathParser:
             path_part = simple_match.group(2)
 
         if not origin:
-            raise PathParseError("Empty origin", f"@{raw}")
+            if is_bracket_form:
+                raise PathParseError("Empty origin in bracket form '@[]:path'", f"@{raw}")
+            else:
+                raise PathParseError("Empty origin in '@origin:path'", f"@{raw}")
 
         # Parse path and parameters
         path, anchor, params = self._parse_path_and_params(path_part, kind)
@@ -153,10 +158,10 @@ class PathParser:
         )
 
     def _parse_external_markdown(self, raw: str) -> ParsedPath:
-        """Parse external markdown path (relative to repo root)."""
+        """Parse external markdown path (relative to current scope)."""
         path, anchor, params = self._parse_path_and_params(raw, ResourceKind.MARKDOWN_EXTERNAL)
 
-        # External markdown paths are always relative to repo root
+        # External markdown paths are always relative to current scope
         # Leading / is optional and doesn't change semantics
         normalized_path = path.lstrip('/')
 
@@ -165,7 +170,7 @@ class PathParser:
             origin=None,
             origin_explicit=False,
             path=normalized_path,
-            is_absolute=False,  # Always relative to repo root
+            is_absolute=False,  # Always relative to current scope
             anchor=anchor,
             parameters=params,
         )

@@ -96,12 +96,12 @@ class MdPlaceholdersPlugin(TemplatePlugin):
 
             # Determine resource kind and build raw path for resolution
             if node.origin is not None:
-                # md@origin:path - file inside lg-cfg/
+                # md@origin:path - file inside lg-cfg/ of specified scope
                 kind = ResourceKind.MARKDOWN
-                # Always include @ prefix for parser to recognize explicit origin
+                # Reconstruct @origin:path format for PathParser to recognize explicit origin
                 raw_path = f"@{node.origin}:{node.path}"
             else:
-                # md:path - file relative to repo root
+                # md:path - file relative to current scope root (outside lg-cfg/)
                 kind = ResourceKind.MARKDOWN_EXTERNAL
                 raw_path = node.path
 

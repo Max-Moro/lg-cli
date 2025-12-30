@@ -18,7 +18,7 @@ class ResourceKind(Enum):
     TEMPLATE = "tpl"
     CONTEXT = "ctx"
     MARKDOWN = "md"              # md with @ (inside lg-cfg)
-    MARKDOWN_EXTERNAL = "md_external"  # md without @ (outside lg-cfg, relative to repo root)
+    MARKDOWN_EXTERNAL = "md_external"  # md without @ (outside lg-cfg, relative to current scope)
 
 
 @dataclass(frozen=True)
