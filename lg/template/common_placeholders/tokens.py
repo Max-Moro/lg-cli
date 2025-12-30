@@ -54,11 +54,14 @@ def get_placeholder_token_specs() -> List[TokenSpec]:
         ),
 
         # Identifier (names of sections, templates, scopes)
-        # Allow letters, digits, hyphens, underscores, slashes, periods
-        # Optional leading slash for absolute paths
+        # Supports:
+        # - Regular paths: agent/index, common/header
+        # - Absolute paths: /agent/index
+        # - Parent references: ../common, ../../shared/common
+        # - Current dir references: ./local
         TokenSpec(
             name="IDENTIFIER",
-            pattern=re.compile(r'/?[a-zA-Z_][a-zA-Z0-9_/.​-]*'),
+            pattern=re.compile(r'(?:\.\.?/)+[a-zA-Z0-9_/.-]+|/?[a-zA-Z_][a-zA-Z0-9_/.-]*'),
         ),
 
         # Whitespace inside placeholders

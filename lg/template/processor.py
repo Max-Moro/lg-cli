@@ -11,6 +11,7 @@ Allows extending functionality through plugins.
 from __future__ import annotations
 
 import logging
+from pathlib import Path
 from typing import Callable, Dict, Optional
 
 from .context import TemplateContext
@@ -111,8 +112,14 @@ class TemplateProcessor:
             TemplateProcessingError: If template processing error occurs
         """
         def process_file():
-            template_text = self._load_template_text(template_name)
-            return self.process_template_text(template_text, template_name)
+            template_path, template_text = self._load_template_with_path(template_name)
+
+            # Initialize AddressingContext with current template's directory
+            # This enables relative path resolution from the template's location
+            with self.template_ctx.file_scope(template_path):
+                rendered = self.process_template_text(template_text, template_name)
+
+            return rendered
 
         return self._handle_template_errors(
             process_file,
@@ -203,21 +210,42 @@ class TemplateProcessor:
         logger.warning(f"No processor found for node type: {type(node).__name__}")
         return f"[{type(node).__name__}]"
 
-    def _load_template_text(self, template_name: str) -> str:
-        """Loads template text from file."""
+    def _load_template_with_path(self, template_name: str) -> tuple[Path, str]:
+        """
+        Loads template text and returns both path and content.
+
+        Used by process_template_file() to initialize AddressingContext
+        with the correct current directory.
+
+        Args:
+            template_name: Template name (without suffix)
+
+        Returns:
+            Tuple of (template_path, template_text)
+
+        Raises:
+            TemplateProcessingError: If template not found
+        """
+        from .common import load_context_from, load_template_from
+
+        cfg_root = self.run_ctx.root / "lg-cfg"
+
         try:
             # Try to load as context
-            from .common import load_context_from
-            _, text = load_context_from(self.run_ctx.root / "lg-cfg", template_name)
-            return text
-        except FileNotFoundError:
+            path, text = load_context_from(cfg_root, template_name)
+            return path, text
+        except (FileNotFoundError, RuntimeError):
             try:
                 # Try to load as template
-                from .common import load_template_from
-                _, text = load_template_from(self.run_ctx.root / "lg-cfg", template_name)
-                return text
-            except FileNotFoundError:
+                path, text = load_template_from(cfg_root, template_name)
+                return path, text
+            except (FileNotFoundError, RuntimeError):
                 raise TemplateProcessingError(f"Template not found: {template_name}")
+
+    def _load_template_text(self, template_name: str) -> str:
+        """Loads template text from file."""
+        _, text = self._load_template_with_path(template_name)
+        return text
 
     def _resolve_template_references(self, ast: TemplateAST, template_name: str = "") -> TemplateAST:
         """
