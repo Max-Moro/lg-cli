@@ -81,8 +81,7 @@ lg-cfg/
 ├─ sections.yaml           # required root file (base sections)
 ├─ **/*.sec.yaml           # arbitrary number of section fragments (can be in subfolders)
 ├─ **/*.tpl.md             # templates (fragments)
-├─ **/*.ctx.md             # contexts (top-level documents)
-└─ models.yaml             # (optional) models/plans for token statistics
+└─ **/*.ctx.md             # contexts (top-level documents)
 ```
 
 > **Canonical Section IDs**:
