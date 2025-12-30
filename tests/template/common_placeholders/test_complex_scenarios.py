@@ -136,7 +136,7 @@ def test_deeply_nested_mixed_placeholders(basic_project):
     # Level 4 (deepest) - inside level1/level2/level3/level4/
     create_template(root, "level1/level2/level3/level4/content", """# Level 4 Content
 
-Deep nested content here: ${src}""", "tpl")
+Deep nested content here: ${/src}""", "tpl")
 
     # Level 3 - inside level1/level2/level3/
     create_template(root, "level1/level2/level3/wrapper", """# Level 3
@@ -149,7 +149,7 @@ ${tpl:level4/content}
 
 ${ctx:level3/wrapper}
 
-Additional docs: ${docs}
+Additional docs: ${/docs}
 """, "tpl")
 
     # Level 1 - inside level1/
@@ -157,7 +157,7 @@ Additional docs: ${docs}
 
 ${tpl:level2/container}
 
-Tests: ${tests}
+Tests: ${/tests}
 """, "ctx")
 
     # Main template

@@ -72,7 +72,7 @@ def test_context_placeholder_in_subdirectory(basic_project):
 
 ## Implementation Status
 
-${src}
+${/src}
 
 ---
 Generated on $(date)
@@ -82,7 +82,7 @@ Generated on $(date)
 
 ## Current Documentation
 
-${docs}
+${/docs}
 
 ---
 Documentation is up to date.
@@ -197,12 +197,12 @@ def test_nested_context_includes(basic_project):
     # Create base contexts
     create_template(root, "base/code-ctx", """# Code Context
 
-${src}
+${/src}
 """, "ctx")
 
     create_template(root, "base/docs-ctx", """# Docs Context
 
-${docs}
+${/docs}
 """, "ctx")
 
     # Intermediate context that combines base contexts
@@ -428,12 +428,12 @@ def test_context_placeholder_parametrized(basic_project, context_name, content_c
     # Prepare contexts
     create_template(root, "shared-context", """# Shared Context
 
-${src}
+${/src}
 """, "ctx")
 
     create_template(root, "reports/code-report", """# Code Report
 
-${src}
+${/src}
 """, "ctx")
 
     create_template(root, f"param-ctx-test-{context_name.replace('/', '-')}", f"""# Param Test
@@ -459,7 +459,7 @@ This is a template.
 
 This is a context.
 
-${src}
+${/src}
 """, "ctx")
 
     # Use both types of placeholders

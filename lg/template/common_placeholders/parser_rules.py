@@ -11,12 +11,14 @@ Handles constructs like:
 
 from __future__ import annotations
 
+from pathlib import Path
 from typing import List, Optional
 
 from .nodes import SectionNode, IncludeNode
 from ..nodes import TemplateNode
 from ..tokens import ParserError
 from ..types import PluginPriority, ParsingRule, ParsingContext
+from ...types import SectionRef
 
 
 def parse_placeholder(context: ParsingContext) -> Optional[TemplateNode]:
@@ -120,9 +122,14 @@ def _parse_addressed_section(context: ParsingContext) -> SectionNode:
     context.consume("AT")  # consume @
     origin, name = _parse_addressed_reference(context)
 
-    # Create SectionNode with addressed reference
-    # resolved_ref will be filled by resolver
-    return SectionNode(section_name=f"@{origin}:{name}")
+    # Create SectionNode with temporary SectionRef
+    # Resolver will replace this with fully resolved reference
+    temp_ref = SectionRef(
+        name=f"@{origin}:{name}",  # Store original syntax for resolver
+        scope_rel="",  # Will be filled by resolver
+        scope_dir=Path(".")  # Placeholder, will be filled by resolver
+    )
+    return SectionNode(resolved_ref=temp_ref)
 
 
 def _parse_simple_section(context: ParsingContext) -> SectionNode:
@@ -130,7 +137,15 @@ def _parse_simple_section(context: ParsingContext) -> SectionNode:
     Parses simple section reference section_name.
     """
     name = _parse_identifier_path(context)
-    return SectionNode(section_name=name)
+
+    # Create SectionNode with temporary SectionRef
+    # Resolver will replace this with fully resolved reference
+    temp_ref = SectionRef(
+        name=name,  # Store original name for resolver
+        scope_rel="",  # Will be filled by resolver
+        scope_dir=Path(".")  # Placeholder, will be filled by resolver
+    )
+    return SectionNode(resolved_ref=temp_ref)
 
 
 def _parse_addressed_reference(context: ParsingContext) -> tuple[str, str]:

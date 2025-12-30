@@ -52,8 +52,6 @@ class TestParsedPath:
         assert parsed.origin_explicit is False
         assert parsed.path == "intro"
         assert parsed.is_absolute is False
-        assert parsed.anchor is None
-        assert parsed.parameters == {}
 
     def test_create_path_with_origin(self):
         """Create ParsedPath with explicit origin."""
@@ -67,21 +65,6 @@ class TestParsedPath:
 
         assert parsed.origin == "apps/web"
         assert parsed.origin_explicit is True
-
-    def test_create_path_with_anchor_and_params(self):
-        """Create ParsedPath with anchor and parameters (for md)."""
-        parsed = ParsedPath(
-            kind=ResourceKind.MARKDOWN,
-            origin="self",
-            origin_explicit=True,
-            path="docs/api",
-            is_absolute=False,
-            anchor="Authentication",
-            parameters={"level": 3, "strip_h1": True},
-        )
-
-        assert parsed.anchor == "Authentication"
-        assert parsed.parameters == {"level": 3, "strip_h1": True}
 
     def test_parsed_path_is_frozen(self):
         """Verify ParsedPath is immutable."""
@@ -112,7 +95,6 @@ class TestResolvedPath:
             cfg_root=cfg_root,
             resource_path=resource_path,
             resource_rel="intro.tpl.md",
-            canonical_id=None,
         )
 
         assert resolved.kind == ResourceKind.TEMPLATE
@@ -122,19 +104,18 @@ class TestResolvedPath:
         assert resolved.resource_path == resource_path
         assert resolved.resource_rel == "intro.tpl.md"
 
-    def test_create_resolved_section_with_canonical_id(self, tmp_path: Path):
-        """Create ResolvedPath for section with canonical ID."""
+    def test_create_resolved_section(self, tmp_path: Path):
+        """Create ResolvedPath for section (resource_rel is canonical ID)."""
         resolved = ResolvedPath(
             kind=ResourceKind.SECTION,
             scope_dir=tmp_path,
             scope_rel="apps/web",
             cfg_root=tmp_path / "apps" / "web" / "lg-cfg",
             resource_path=tmp_path / "apps" / "web" / "lg-cfg" / "sections.yaml",
-            resource_rel="sections.yaml",
-            canonical_id="web-src",
+            resource_rel="web-src",  # For sections, resource_rel serves as canonical ID
         )
 
-        assert resolved.canonical_id == "web-src"
+        assert resolved.resource_rel == "web-src"
 
     def test_resolved_path_is_frozen(self, tmp_path: Path):
         """Verify ResolvedPath is immutable."""

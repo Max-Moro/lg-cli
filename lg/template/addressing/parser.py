@@ -8,7 +8,6 @@ Does NOT perform resolution — only syntactic parsing.
 from __future__ import annotations
 
 import re
-from typing import Any, Dict, Optional, Tuple
 
 from .types import ParsedPath, ResourceKind
 from .errors import PathParseError
@@ -20,6 +19,9 @@ class PathParser:
 
     Transforms a path string into a structured ParsedPath.
     Does NOT perform resolution — only syntactic parsing.
+
+    Note: Markdown-specific syntax (#anchor, ,params) is stripped but not parsed.
+    These parameters are handled by MarkdownFileNode parser, not by addressing.
     """
 
     # Pattern for bracket origin: @[origin]:path
@@ -27,9 +29,6 @@ class PathParser:
 
     # Pattern for simple origin: @origin:path
     _SIMPLE_ORIGIN_PATTERN = re.compile(r'^([^:]+):(.+)$')
-
-    # Pattern for md parameters: path,param:value,param:value
-    _MD_PARAMS_PATTERN = re.compile(r'^([^,#]+)(#[^,]+)?((?:,[^,]+)*)$')
 
     def parse(self, raw: str, kind: ResourceKind) -> ParsedPath:
         """
@@ -126,8 +125,7 @@ class PathParser:
             else:
                 raise PathParseError("Empty origin in '@origin:path'", f"@{raw}")
 
-        # Parse path and parameters
-        path, anchor, params = self._parse_path_and_params(path_part, kind)
+        path = self._extract_base_path(path_part, kind)
         is_absolute = path.startswith('/')
         normalized_path = path.lstrip('/') if is_absolute else path
 
@@ -137,13 +135,11 @@ class PathParser:
             origin_explicit=True,
             path=normalized_path,
             is_absolute=is_absolute,
-            anchor=anchor,
-            parameters=params,
         )
 
     def _parse_without_origin(self, raw: str, kind: ResourceKind) -> ParsedPath:
         """Parse path without origin (implicit from context)."""
-        path, anchor, params = self._parse_path_and_params(raw, kind)
+        path = self._extract_base_path(raw, kind)
         is_absolute = path.startswith('/')
         normalized_path = path.lstrip('/') if is_absolute else path
 
@@ -153,13 +149,11 @@ class PathParser:
             origin_explicit=False,
             path=normalized_path,
             is_absolute=is_absolute,
-            anchor=anchor,
-            parameters=params,
         )
 
     def _parse_external_markdown(self, raw: str) -> ParsedPath:
         """Parse external markdown path (relative to current scope)."""
-        path, anchor, params = self._parse_path_and_params(raw, ResourceKind.MARKDOWN_EXTERNAL)
+        path = self._extract_base_path(raw, ResourceKind.MARKDOWN_EXTERNAL)
 
         # External markdown paths are always relative to current scope
         # Leading / is optional and doesn't change semantics
@@ -171,90 +165,36 @@ class PathParser:
             origin_explicit=False,
             path=normalized_path,
             is_absolute=False,  # Always relative to current scope
-            anchor=anchor,
-            parameters=params,
         )
 
-    def _parse_path_and_params(
-        self,
-        raw: str,
-        kind: ResourceKind
-    ) -> Tuple[str, Optional[str], Dict[str, Any]]:
+    def _extract_base_path(self, raw: str, kind: ResourceKind) -> str:
         """
-        Parse path with optional anchor and parameters.
+        Extract base path from raw string.
 
-        For md placeholders: path#anchor,param:value,param:value
-        For others: just path
+        For MD resources, strips MD-specific syntax (#anchor, ,params).
+        MD-specific parameters are handled by MarkdownFileNode, not by addressing.
+
+        For other resources, returns raw as-is.
+
+        Args:
+            raw: Raw path string
+            kind: Resource kind
 
         Returns:
-            (path, anchor, parameters)
+            Base path without MD-specific decorations
         """
         if kind not in (ResourceKind.MARKDOWN, ResourceKind.MARKDOWN_EXTERNAL):
-            # No parameters for non-md resources
-            return raw, None, {}
+            return raw
 
-        # Parse md format: path#anchor,param:value,...
-        match = self._MD_PARAMS_PATTERN.match(raw)
-        if not match:
-            return raw, None, {}
+        # For MD: extract path before # or ,
+        # Examples:
+        #   "docs/api#section,level:2" -> "docs/api"
+        #   "README.md" -> "README.md"
+        for separator in ('#', ','):
+            if separator in raw:
+                return raw.split(separator, 1)[0].strip()
 
-        path = match.group(1).strip()
-        anchor_part = match.group(2)  # #anchor or None
-        params_part = match.group(3)  # ,param:value,... or ""
-
-        anchor = anchor_part[1:].strip() if anchor_part else None
-        params = self._parse_md_parameters(params_part) if params_part else {}
-
-        return path, anchor, params
-
-    def _parse_md_parameters(self, params_str: str) -> Dict[str, Any]:
-        """
-        Parse md placeholder parameters.
-
-        Format: ,param:value,param:value,...
-
-        Returns:
-            Dictionary of parameters
-        """
-        params: Dict[str, Any] = {}
-        if not params_str:
-            return params
-
-        # Split by comma, skip first empty element
-        parts = params_str.split(',')[1:]
-
-        for part in parts:
-            part = part.strip()
-            if not part:
-                continue
-
-            if ':' not in part:
-                raise PathParseError(f"Invalid parameter format '{part}', expected 'name:value'", params_str)
-
-            name, value = part.split(':', 1)
-            name = name.strip()
-            value = value.strip()
-
-            # Type conversion
-            params[name] = self._convert_param_value(name, value)
-
-        return params
-
-    def _convert_param_value(self, name: str, value: str) -> Any:
-        """Convert parameter value to appropriate type."""
-        # Boolean parameters
-        if name in ('strip_h1',):
-            return value.lower() in ('true', '1', 'yes')
-
-        # Integer parameters
-        if name in ('level',):
-            try:
-                return int(value)
-            except ValueError:
-                raise PathParseError(f"Parameter '{name}' must be integer, got '{value}'", value)
-
-        # String parameters (if, anchor, etc.)
-        return value
+        return raw.strip()
 
 
 __all__ = ["PathParser"]

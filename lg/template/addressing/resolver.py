@@ -76,11 +76,6 @@ class PathResolver:
         # Validate path doesn't escape lg-cfg
         self._validate_path_bounds(resource_path, cfg_root, parsed)
 
-        # For sections — compute canonical ID
-        canonical_id = None
-        if parsed.kind == ResourceKind.SECTION:
-            canonical_id = self._compute_canonical_section_id(parsed.path)
-
         return ResolvedPath(
             kind=parsed.kind,
             scope_dir=scope_dir,
@@ -88,9 +83,6 @@ class PathResolver:
             cfg_root=cfg_root,
             resource_path=resource_path,
             resource_rel=resource_rel,
-            canonical_id=canonical_id,
-            anchor=parsed.anchor,
-            parameters=parsed.parameters,
         )
 
     def _resolve_scope(
@@ -294,22 +286,7 @@ class PathResolver:
             cfg_root=context.cfg_root,
             resource_path=resource_path,
             resource_rel=resource_rel,
-            canonical_id=None,
-            anchor=parsed.anchor,
-            parameters=parsed.parameters,
         )
-
-    def _compute_canonical_section_id(self, original_path: str) -> str:
-        """
-        Compute canonical section ID from path.
-
-        For sections, the canonical ID is typically the path without extension,
-        following the naming conventions from the config loader.
-        """
-        # For now, return the original path as canonical ID
-        # The actual canonical ID computation depends on how sections are defined
-        # in sections.yaml vs *.sec.yaml
-        return original_path
 
 
 __all__ = ["PathResolver"]

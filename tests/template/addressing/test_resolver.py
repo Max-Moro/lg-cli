@@ -68,8 +68,8 @@ class TestPathResolverBasic:
         parsed = parser.parse("docs", ResourceKind.SECTION)
         resolved = resolver.resolve(parsed, ctx)
 
+        # For sections, resource_rel serves as canonical ID
         assert resolved.resource_rel == "docs"
-        assert resolved.canonical_id == "docs"
 
 
 class TestPathResolverRelativePaths:

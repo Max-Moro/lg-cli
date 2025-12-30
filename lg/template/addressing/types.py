@@ -6,10 +6,10 @@ Defines core types for path parsing and resolution.
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from enum import Enum
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Optional
 
 
 class ResourceKind(Enum):
@@ -27,6 +27,7 @@ class ParsedPath:
     Result of parsing a path string from a placeholder.
 
     Represents the "raw" path before resolution — as specified in template.
+    Universal structure for all resource types (sections, templates, contexts, markdown).
     """
     kind: ResourceKind
 
@@ -37,10 +38,6 @@ class ParsedPath:
     # Path to resource
     path: str                   # Path as specified (may be relative)
     is_absolute: bool           # True if starts with /
-
-    # Additional parameters (for md)
-    anchor: Optional[str] = None
-    parameters: Dict[str, Any] = field(default_factory=dict)
 
 
 @dataclass(frozen=True)
@@ -59,14 +56,7 @@ class ResolvedPath:
     # Resolved path inside lg-cfg
     cfg_root: Path              # Absolute path to lg-cfg/
     resource_path: Path         # Full path to file/resource
-    resource_rel: str           # Relative path inside lg-cfg/
-
-    # For sections — canonical ID
-    canonical_id: Optional[str] = None
-
-    # Original parameters (for md)
-    anchor: Optional[str] = None
-    parameters: Dict[str, Any] = field(default_factory=dict)
+    resource_rel: str           # Relative path inside lg-cfg/ (also serves as canonical ID for sections)
 
 
 @dataclass

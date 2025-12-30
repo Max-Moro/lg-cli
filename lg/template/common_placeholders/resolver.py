@@ -80,23 +80,22 @@ class CommonPlaceholdersResolver:
         """
         Resolves section node using new addressing API.
         """
-        section_name = node.section_name
+        # Get original section name from temporary ref
+        section_name = node.resolved_ref.name
 
         try:
             # Use new addressing API
             resolved = self.template_ctx.resolve_path(section_name, ResourceKind.SECTION)
 
-            # Create SectionRef from resolved path
+            # Create fully resolved SectionRef
+            # For sections, resource_rel is the canonical ID
             section_ref = SectionRef(
-                name=resolved.canonical_id or resolved.resource_rel,
+                name=resolved.resource_rel,
                 scope_rel=resolved.scope_rel,
                 scope_dir=resolved.scope_dir
             )
 
-            return SectionNode(
-                section_name=resolved.canonical_id or resolved.resource_rel,
-                resolved_ref=section_ref
-            )
+            return SectionNode(resolved_ref=section_ref)
 
         except Exception as e:
             raise RuntimeError(f"Failed to resolve section '{section_name}': {e}")

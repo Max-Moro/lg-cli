@@ -139,48 +139,6 @@ class TestPathParserResourceKinds:
         assert result.origin is None
 
 
-class TestPathParserMarkdownParams:
-    """Tests for markdown parameter parsing."""
-
-    def setup_method(self):
-        """Create parser instance for each test."""
-        self.parser = PathParser()
-
-    def test_parse_md_with_anchor(self):
-        """Parse markdown path with anchor."""
-        result = self.parser.parse_markdown("docs/api#Authentication", has_at=False)
-
-        assert result.path == "docs/api"
-        assert result.anchor == "Authentication"
-
-    def test_parse_md_with_level_param(self):
-        """Parse markdown with level parameter."""
-        result = self.parser.parse_markdown("docs/api,level:3", has_at=False)
-
-        assert result.path == "docs/api"
-        assert result.parameters == {"level": 3}
-
-    def test_parse_md_with_strip_h1_param(self):
-        """Parse markdown with strip_h1 parameter."""
-        result = self.parser.parse_markdown("docs/api,strip_h1:true", has_at=False)
-
-        assert result.parameters == {"strip_h1": True}
-
-    def test_parse_md_with_multiple_params(self):
-        """Parse markdown with multiple parameters."""
-        result = self.parser.parse_markdown("docs/api#Auth,level:2,strip_h1:false", has_at=False)
-
-        assert result.path == "docs/api"
-        assert result.anchor == "Auth"
-        assert result.parameters == {"level": 2, "strip_h1": False}
-
-    def test_parse_md_with_if_condition(self):
-        """Parse markdown with if condition."""
-        result = self.parser.parse_markdown("docs/api,if:tag:python", has_at=False)
-
-        assert result.parameters == {"if": "tag:python"}
-
-
 class TestPathParserErrors:
     """Tests for error handling in PathParser."""
 
@@ -207,8 +165,3 @@ class TestPathParserErrors:
         """Raise error on empty origin in @:path."""
         with pytest.raises(PathParseError, match="Empty origin"):
             self.parser.parse("@:path", ResourceKind.TEMPLATE)
-
-    def test_error_on_invalid_level_param(self):
-        """Raise error on non-integer level parameter."""
-        with pytest.raises(PathParseError, match="must be integer"):
-            self.parser.parse_markdown("docs/api,level:abc", has_at=False)

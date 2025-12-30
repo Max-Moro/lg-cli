@@ -20,9 +20,8 @@ class SectionNode(TemplateNode):
     Represents a reference to a section that should be resolved
     and replaced with rendered section content.
     """
-    section_name: str
-    # Resolved section reference (filled by resolver)
-    resolved_ref: Optional[SectionRef] = None
+    # Resolved section reference (always present)
+    resolved_ref: SectionRef
 
 
 @dataclass(frozen=True)

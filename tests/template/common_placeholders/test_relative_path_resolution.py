@@ -137,76 +137,181 @@ ${tpl:/agent/index}
 
 
 class TestRelativeSectionPaths:
-    """Tests for relative section path resolution."""
+    """Tests for relative section path resolution - beautiful short references."""
 
     @pytest.fixture
-    def project_with_nested_sections(self, tmp_path: Path) -> Path:
+    def case_a_multiple_sections_in_underscore_file(self, tmp_path: Path) -> Path:
         """
-        Create project with sections in subdirectories.
+        Case A: adapters/_.sec.yaml with 2 sections (src, tests).
 
-        Structure:
-            root/
-            ├── lg-cfg/
-            │   ├── sections.yaml (with 'docs' section)
-            │   └── adapters/
-            │       ├── _.sec.yaml (with 'local-docs' section)
-            │       └── _.ctx.md
-            └── adapters/
-                └── docs/
-                    └── guide.md
+        Canonical IDs: adapters/_/src, adapters/_/tests
+        References from adapters/overview.ctx.md: ${_/src}, ${_/tests}
         """
         root = tmp_path
 
-        # Root sections
-        create_sections_yaml(root, {
-            "docs": {
-                "extensions": [".md"],
-                "filters": {"mode": "allow", "allow": ["/docs/**"]}
-            }
-        })
+        create_sections_yaml(root, {})
 
-        # Create docs at root
-        write(root / "docs" / "readme.md", "# ROOT DOCS\n")
-
-        # Sections for adapters scope (fragment)
-        # Create as fragment: lg-cfg/adapters/_.sec.yaml
+        # Multiple sections in _.sec.yaml
         write(root / "lg-cfg" / "adapters" / "_.sec.yaml",
-              "local-docs:\n  extensions: ['.md']\n  filters:\n    mode: allow\n    allow:\n      - '/adapters/docs/**'\n")
+              "src:\n  extensions: ['.py']\n  filters:\n    mode: allow\n    allow:\n      - '/adapters/src/**'\n\ntests:\n  extensions: ['.py']\n  filters:\n    mode: allow\n    allow:\n      - '/adapters/tests/**'\n")
 
-        # Create adapters docs
-        write(root / "adapters" / "docs" / "guide.md", "# ADAPTERS DOCS\n")
+        write(root / "adapters" / "src" / "main.py", "# ADAPTERS SOURCE\ndef main(): pass\n")
+        write(root / "adapters" / "tests" / "test_main.py", "# ADAPTERS TESTS\ndef test_main(): pass\n")
 
-        # Context in adapters/ that references sections
-        # NOTE: Section fragments in subdirectories have canonical IDs like "adapters/local-docs"
-        # This is by design of the section loading system, not a bug in addressing.
-        # Use the canonical ID to reference the section.
-        create_template(root, "adapters/sections-test", """# Section Test
+        # Context with RELATIVE references
+        create_template(root, "adapters/overview", """# Adapters Overview
 
-## Local Docs (using canonical section ID)
+## Source Code
 
-${adapters/local-docs}
+${_/src}
+
+## Tests
+
+${_/tests}
 
 ## End
 """, "ctx")
 
         return root
 
-    def test_section_resolves_from_local_scope(self, project_with_nested_sections):
+    @pytest.fixture
+    def case_b_single_section_in_underscore_file(self, tmp_path: Path) -> Path:
         """
-        Sections defined in subdirectory fragments are accessible via their canonical ID.
+        Case B: adapters/_.sec.yaml with 1 section (src).
 
-        NOTE: This is not a test of relative addressing, but of section fragment naming.
-        Sections in lg-cfg/adapters/_.sec.yaml get canonical IDs like "adapters/local-docs".
+        Canonical ID: adapters/src (no _ prefix for single section)
+        Reference from adapters/overview.ctx.md: ${src}
         """
-        root = project_with_nested_sections
+        root = tmp_path
 
-        result = render_template(root, "ctx:adapters/sections-test")
+        create_sections_yaml(root, {})
 
-        # Should include content from adapters/docs/guide.md
-        assert "ADAPTERS DOCS" in result, (
-            f"Expected section 'adapters/local-docs' to include content from adapters/docs/. "
+        # Single section in _.sec.yaml
+        write(root / "lg-cfg" / "adapters" / "_.sec.yaml",
+              "src:\n  extensions: ['.py']\n  filters:\n    mode: allow\n    allow:\n      - '/adapters/**'\n")
+
+        write(root / "adapters" / "main.py", "# ADAPTERS SOURCE\ndef main(): pass\n")
+
+        # Context with RELATIVE reference (shortest form!)
+        create_template(root, "adapters/overview", """# Adapters Overview
+
+## Source Code
+
+${src}
+
+## End
+""", "ctx")
+
+        return root
+
+    @pytest.fixture
+    def case_c_sections_yaml_in_root(self, tmp_path: Path) -> Path:
+        """
+        Case C: sections.yaml with multiple sections.
+
+        Canonical IDs: src, src-short, tests, tests-short (no prefix)
+        References: ${src}, ${src-short}, ${tests}, ${tests-short}
+        """
+        root = tmp_path
+
+        # Sections in root sections.yaml
+        create_sections_yaml(root, {
+            "src": {
+                "extensions": [".py"],
+                "filters": {"mode": "allow", "allow": ["/src/**"]}
+            },
+            "src-short": {
+                "extensions": [".py"],
+                "python": {"strip_function_bodies": True},
+                "filters": {"mode": "allow", "allow": ["/src/**"]}
+            },
+            "tests": {
+                "extensions": [".py"],
+                "filters": {"mode": "allow", "allow": ["/tests/**"]}
+            },
+            "tests-short": {
+                "extensions": [".py"],
+                "python": {"strip_function_bodies": True},
+                "filters": {"mode": "allow", "allow": ["/tests/**"]}
+            }
+        })
+
+        write(root / "src" / "main.py", "# SOURCE\ndef main(): pass\n")
+        write(root / "tests" / "test_main.py", "# TESTS\ndef test_main(): pass\n")
+
+        # Context using sections from root
+        create_template(root, "overview", """# Project Overview
+
+## Full Source
+
+${src}
+
+## Short Source (signatures only)
+
+${src-short}
+
+## Full Tests
+
+${tests}
+
+## Short Tests (signatures only)
+
+${tests-short}
+
+## End
+""", "ctx")
+
+        return root
+
+    def test_case_a_multiple_sections_relative_reference(self, case_a_multiple_sections_in_underscore_file):
+        """
+        Case A: ${_/src} from adapters/ should resolve to 'adapters/_/src'.
+
+        This is the most common pattern: _.sec.yaml with multiple sections.
+        Reference uses _/section_name (no directory prefix).
+        """
+        root = case_a_multiple_sections_in_underscore_file
+
+        result = render_template(root, "ctx:adapters/overview")
+
+        assert "ADAPTERS SOURCE" in result, (
+            f"Expected ${'{_/src}'}' to resolve to 'adapters/_/src'. "
             f"Actual result:\n{result}"
         )
+
+        assert "ADAPTERS TESTS" in result, (
+            f"Expected ${'{_/tests}'}' to resolve to 'adapters/_/tests'. "
+            f"Actual result:\n{result}"
+        )
+
+    def test_case_b_single_section_shortest_reference(self, case_b_single_section_in_underscore_file):
+        """
+        Case B: ${src} from adapters/ should resolve to 'adapters/src'.
+
+        This is the SHORTEST and most beautiful form!
+        Single section in _.sec.yaml → reference is just section name.
+        """
+        root = case_b_single_section_in_underscore_file
+
+        result = render_template(root, "ctx:adapters/overview")
+
+        assert "ADAPTERS SOURCE" in result, (
+            f"Expected ${'{src}'}' to resolve to 'adapters/src'. "
+            f"Actual result:\n{result}"
+        )
+
+    def test_case_c_sections_yaml_global_references(self, case_c_sections_yaml_in_root):
+        """
+        Case C: Sections from root sections.yaml are referenced by simple names.
+
+        Global sections have no directory prefix in canonical ID.
+        """
+        root = case_c_sections_yaml_in_root
+
+        result = render_template(root, "ctx:overview")
+
+        assert "# SOURCE\n" in result
+        assert "# TESTS\n" in result
 
 
 class TestNestedTemplateInclusions:
