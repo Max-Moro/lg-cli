@@ -17,7 +17,7 @@ src:
           - "/config/"
           - "/adapters/"
           - "/template/"
-          - "/cache/"
+          - "/section/"
         when:
           - condition: "TAGSET:template-features:conditions"
             allow: ["/conditions/"]
