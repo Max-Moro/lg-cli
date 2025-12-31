@@ -128,9 +128,15 @@ class ResolvedFile(ResolvedResource):
 
 @dataclass
 class ResolvedSection(ResolvedResource):
-    """Результат разрешения секции."""
+    """
+    Результат разрешения секции.
+
+    ВАЖНО: Заменяет старый SectionRef — содержит всю необходимую информацию
+    для обработки секции без повторных обращений к SectionService.
+    """
     location: SectionLocation     # Где физически лежит секция
     section_config: SectionCfg    # Уже загруженная конфигурация
+    name: str                     # Оригинальное имя из шаблона (для диагностики)
 ```
 
 #### Конкретные реализации
@@ -158,14 +164,27 @@ class SectionResolver(ResourceResolver):
         scope_dir = context.cfg_root.parent
         current_dir = context.current_directory
 
+        # 1. Найти секцию в индексе
         location = self._service.find_section(name, current_dir, scope_dir)
+
+        # 2. Лениво загрузить конфигурацию
         section_config = self._service.load_section(location)
 
+        # 3. Вычислить scope_rel
+        try:
+            scope_rel = scope_dir.relative_to(context.repo_root).as_posix()
+            if scope_rel == ".":
+                scope_rel = ""
+        except ValueError:
+            scope_rel = ""
+
+        # 4. Вернуть полностью разрешённую секцию
         return ResolvedSection(
             scope_dir=scope_dir,
-            scope_rel=...,
+            scope_rel=scope_rel,
             location=location,
-            section_config=section_config
+            section_config=section_config,
+            name=name
         )
 ```
 
@@ -577,47 +596,76 @@ class TemplateContext:
 
 ### SectionProcessor
 
-Удалить `_config_cache`. Использовать `run_ctx.section_service`.
+Удалить `_config_cache`. Принимать `ResolvedSection` вместо `SectionRef`.
 
 ```python
 class SectionProcessor:
     def __init__(self, run_ctx: RunContext, stats_collector: StatsCollector):
         self.run_ctx = run_ctx
         # Удалить: self._config_cache
+        # Удалить: self._get_config()
 
-    def _build_manifest(self, section_ref: SectionRef, template_ctx):
-        # Используем сервис вместо прямой загрузки конфига
-        location = self.run_ctx.section_service.find_section(
-            section_ref.name,
-            template_ctx.addressing.current_directory,
-            section_ref.scope_dir
+    def process_section(
+        self,
+        resolved: ResolvedSection,
+        template_ctx: TemplateContext
+    ) -> RenderedSection:
+        """
+        Обработать разрешённую секцию.
+
+        Args:
+            resolved: Полностью разрешённая секция (из резолвера)
+            template_ctx: Контекст шаблонизатора
+
+        Returns:
+            Отрендеренная секция
+        """
+        # НИКАКИХ вызовов section_service!
+        # Всё уже есть в resolved
+
+        manifest = build_section_manifest(
+            resolved=resolved,
+            section_config=resolved.section_config,  # уже загружена
+            template_ctx=template_ctx,
+            root=self.run_ctx.root,
+            vcs=self.run_ctx.vcs,
+            gitignore_service=self.run_ctx.gitignore,
+            vcs_mode=template_ctx.current_state.mode_options.vcs_mode,
+            target_branch=self.run_ctx.options.target_branch
         )
-        section_config = self.run_ctx.section_service.load_section(location)
-        ...
+
+        plan = build_section_plan(manifest, template_ctx)
+        processed_files = process_files(plan, template_ctx)
+
+        # Регистрация в статистике
+        for pf in processed_files:
+            self.stats_collector.register_processed_file(file=pf, resolved=resolved)
+
+        rendered = render_section(plan, processed_files)
+        self.stats_collector.register_section_rendered(rendered)
+
+        return rendered
 ```
 
-### CommonPlaceholdersResolver
+### Обработчик секций в процессоре
 
-Заменить `ConfigBasedResolver` на прямые вызовы `SectionService`.
+Обработчик должен вызывать `SectionProcessor.process_section()` с `ResolvedSection`.
 
 ```python
-def _resolve_section_node(self, node: SectionNode) -> SectionNode:
-    scope_dir = self.template_ctx.addressing.cfg_root.parent
-    current_dir = self.template_ctx.addressing.current_directory
+# В CommonPlaceholdersPlugin.register_processors()
+def process_section_node(processing_context: ProcessingContext) -> str:
+    """Обрабатывает SectionNode через typed handlers."""
+    node = processing_context.get_node()
+    if not isinstance(node, SectionNode):
+        raise RuntimeError(f"Expected SectionNode, got {type(node)}")
 
-    location = self.template_ctx.run_ctx.section_service.find_section(
-        node.name,
-        current_dir,
-        scope_dir
-    )
+    # node.resolved_section заполнен резолвером, содержит всё необходимое
+    if node.resolved_section is None:
+        raise RuntimeError(f"Section '{node.name}' not resolved")
 
-    section_ref = SectionRef(
-        name=...,  # формируется из location
-        scope_rel=...,
-        scope_dir=scope_dir
-    )
-
-    return SectionNode(node.name, section_ref)
+    # Вызываем обработку через handler
+    # Handler делегирует в SectionProcessor.process_section(resolved, template_ctx)
+    return self.handlers.process_section(node.resolved_section)
 ```
 
 ---
@@ -650,13 +698,12 @@ class CommonPlaceholdersResolver:
             self.template_ctx.addressing
         )
 
-        section_ref = SectionRef(
-            name=node.name,  # Сохраняем оригинальное имя
-            scope_rel=resolved.scope_rel,
-            scope_dir=resolved.scope_dir
-        )
+        # resolved это ResolvedSection — содержит ВСЁ необходимое:
+        # - location для идентификации
+        # - section_config уже загружена
+        # - scope_dir, scope_rel для контекста
 
-        return SectionNode(node.name, section_ref)
+        return SectionNode(node.name, resolved_section=resolved)
 
     def _resolve_include_node(self, node: IncludeNode) -> IncludeNode:
         # Используем FileResolver для tpl/ctx
@@ -745,15 +792,25 @@ class TemplateContext:
 
 9. **`lg/section_processor.py`**
    - Удалить `_config_cache` и `_get_config()`
-   - Использовать `run_ctx.section_service` напрямую
+   - Изменить сигнатуру: `process_section(resolved: ResolvedSection, ...)` вместо `process_section(section_ref: SectionRef, ...)`
+   - Убрать все обращения к `section_service` внутри методов — вся информация уже в `resolved`
 
 10. **`lg/template/common_placeholders/resolver.py`**
     - Заменить вызовы `config_resolver` на `section_resolver`
     - Использовать `file_resolver` для tpl/ctx
+    - Обновить `_resolve_section_node()` — возвращать `SectionNode` с `resolved_section`
+
+11. **`lg/template/handlers.py`**
+    - Обновить `TemplateProcessorHandlers` protocol:
+    - Изменить сигнатуру: `process_section(resolved: ResolvedSection)` вместо `process_section_ref(section_ref: SectionRef)`
+
+12. **`lg/template/processor.py`**
+    - Обновить реализацию handlers в `ProcessorHandlers` inner class
+    - Метод `process_section()` теперь принимает `ResolvedSection` и делегирует в `SectionProcessor`
 
 ### Файлы для удаления
 
-11. **`lg/template/addressing/config_based_resolver.py`**
+13. **`lg/template/addressing/config_based_resolver.py`**
     - Полностью удалить, заменён на `SectionResolver`
 
 ---
@@ -836,6 +893,31 @@ def _collect_sections_from_fragments(root: Path) -> Dict[str, SectionCfg]:
 
 ### Типы для ревизии
 
+#### `lg/types.py`
+
+```python
+# SectionRef больше не нужен — заменён на ResolvedSection
+@dataclass(frozen=True)
+class SectionRef:  # ← УДАЛИТЬ
+    name: str
+    scope_rel: str
+    scope_dir: Path
+```
+
+**Замена:** Везде, где использовался `SectionRef`, теперь используется `ResolvedSection` из `lg/template/addressing/types.py`.
+
+#### `lg/template/common_placeholders/nodes.py`
+
+```python
+@dataclass(frozen=True)
+class SectionNode(TemplateNode):
+    """Section placeholder ${section}."""
+    name: str
+    # Было: resolved_ref: Optional[SectionRef] = None
+    # Стало:
+    resolved_section: Optional[ResolvedSection] = None
+```
+
 #### `lg/config/model.py`
 
 ```python
@@ -860,6 +942,9 @@ class Config:
 - [ ] Удалён `config_based_resolver.py`
 - [ ] Удалены `_config_cache` из `TemplateContext` и `SectionProcessor`
 - [ ] Удалены методы `get_config()` и `_get_config()`
+- [ ] Удалён тип `SectionRef` из `lg/types.py`
+- [ ] Заменены все использования `SectionRef` на `ResolvedSection`
+- [ ] Обновлён `SectionNode`: `resolved_ref` → `resolved_section`
 - [ ] Очищены неиспользуемые импорты
 - [ ] Обновлены/удалены соответствующие тесты
 - [ ] Проверено отсутствие ссылок на удалённый код (grep по кодовой базе)
