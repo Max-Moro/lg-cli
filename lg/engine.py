@@ -59,29 +59,29 @@ class Engine:
         """Initialize basic services."""
         # Cache
         tool_ver = tool_version()
-        self.cache = Cache(self.root, enabled=None, fresh=False, tool_version=tool_ver)
+        cache = Cache(self.root, enabled=None, fresh=False, tool_version=tool_ver)
 
         # VCS
-        self.vcs = GitVcs() if (self.root / ".git").is_dir() else NullVcs()
+        vcs = GitVcs() if (self.root / ".git").is_dir() else NullVcs()
 
         # GitIgnore service (None if no .git directory)
-        self.gitignore = GitIgnoreService(self.root) if (self.root / ".git").is_dir() else None
+        gitignore = GitIgnoreService(self.root) if (self.root / ".git").is_dir() else None
 
-        self.tokenizer = TokenService(
+        tokenizer = TokenService(
             root=self.root,
             lib=self.options.tokenizer_lib,
             encoder=self.options.encoder,
-            cache=self.cache
+            cache=cache
         )
 
         # Section service
-        self.section_service = SectionService(self.root, self.cache)
+        section_service = SectionService(self.root, cache)
 
         # Create addressing context
-        self.addressing = AddressingContext(
+        addressing = AddressingContext(
             repo_root=self.root,
             initial_cfg_root=self.root / "lg-cfg",
-            section_service=self.section_service
+            section_service=section_service
         )
 
         active_tags, mode_options, adaptive_loader = process_adaptive_options(
@@ -93,12 +93,12 @@ class Engine:
         self.run_ctx = RunContext(
             root=self.root,
             options=self.options,
-            cache=self.cache,
-            vcs=self.vcs,
-            gitignore=self.gitignore,
-            tokenizer=self.tokenizer,
+            cache=cache,
+            vcs=vcs,
+            gitignore=gitignore,
+            tokenizer=tokenizer,
             adaptive_loader=adaptive_loader,
-            addressing=self.addressing,
+            addressing=addressing,
             mode_options=mode_options,
             active_tags=active_tags,
         )
@@ -106,7 +106,7 @@ class Engine:
     def _init_processors(self) -> None:
         """Create main processors."""
         # Statistics collector
-        self.stats_collector = StatsCollector(self.options.ctx_limit, self.tokenizer)
+        self.stats_collector = StatsCollector(self.run_ctx.options.ctx_limit, self.run_ctx.tokenizer)
 
         # Section processor
         self.section_processor = SectionProcessor(
@@ -173,7 +173,7 @@ class Engine:
         template_ctx = TemplateContext(self.run_ctx)
 
         # Resolve section reference using unified addressing API
-        resolved_section = cast(ResolvedSection, self.addressing.resolve(section_name, SECTION_CONFIG))
+        resolved_section = cast(ResolvedSection, self.run_ctx.addressing.resolve(section_name, SECTION_CONFIG))
         rendered_section = self.section_processor.process_section(resolved_section, template_ctx)
 
         # Set final texts in collector (for section they are the same)
