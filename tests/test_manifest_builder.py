@@ -4,7 +4,6 @@ from pathlib import Path
 
 import pytest
 
-from lg.config import load_config
 from lg.section.model import SectionCfg
 from lg.section import SectionLocation
 from lg.filtering.manifest import build_section_manifest
@@ -13,7 +12,7 @@ from lg.section_processor import SectionProcessor
 from lg.stats import StatsCollector
 from lg.template.context import TemplateContext
 from lg.template.addressing.types import ResolvedSection
-from tests.infrastructure import write, make_run_context, make_run_options
+from tests.infrastructure import write, make_run_context, make_run_options, load_sections
 
 
 def test_basic_section_manifest(tmp_path: Path):
@@ -41,9 +40,9 @@ py-files:
     # Create template context
     template_ctx = TemplateContext(run_ctx)
 
-    # Load configuration
-    config = load_config(tmp_path)
-    section_cfg = config.sections.get("py-files")
+    # Load sections
+    sections = load_sections(tmp_path)
+    section_cfg = sections.get("py-files")
 
     # Create resolved section
     resolved = ResolvedSection(
@@ -105,8 +104,8 @@ all-files:
     run_ctx = make_run_context(tmp_path)
     template_ctx = TemplateContext(run_ctx)
 
-    config = load_config(tmp_path)
-    section_cfg = config.sections.get("all-files")
+    sections = load_sections(tmp_path)
+    section_cfg = sections.get("all-files")
 
     resolved = ResolvedSection(
         scope_dir=tmp_path,
@@ -136,8 +135,8 @@ all-files:
     run_ctx = make_run_context(tmp_path, options=options)
     template_ctx = TemplateContext(run_ctx)
 
-    config = load_config(tmp_path)
-    section_cfg = config.sections.get("all-files")
+    sections = load_sections(tmp_path)
+    section_cfg = sections.get("all-files")
 
     resolved = ResolvedSection(
         scope_dir=tmp_path,
@@ -205,10 +204,10 @@ wildcard-pattern:
 
     run_ctx = make_run_context(tmp_path)
     template_ctx = TemplateContext(run_ctx)
-    cfg = load_config(tmp_path)
+    sections = load_sections(tmp_path)
 
     # Test 1: Multi-file section with multiple allow patterns
-    section_cfg1 = cfg.sections["multi-file"]
+    section_cfg1 = sections["multi-file"]
     resolved1 = ResolvedSection(
         scope_dir=tmp_path,
         scope_rel="",
@@ -233,7 +232,7 @@ wildcard-pattern:
     assert "src/backup.bak" not in file_paths, ".bak files should be gitignored"
 
     # Test 2: Section with multiple specific patterns
-    section_cfg2 = cfg.sections["multi-pattern"]
+    section_cfg2 = sections["multi-pattern"]
     resolved2 = ResolvedSection(
         scope_dir=tmp_path,
         scope_rel="",
@@ -257,7 +256,7 @@ wildcard-pattern:
     assert "temp/debug.py" not in file_paths2, "temp/ directory should be gitignored"
 
     # Test 3: Section with wildcard pattern
-    section_cfg3 = cfg.sections["wildcard-pattern"]
+    section_cfg3 = sections["wildcard-pattern"]
     resolved3 = ResolvedSection(
         scope_dir=tmp_path,
         scope_rel="",
@@ -354,10 +353,10 @@ normal-wildcard:
 
     run_ctx = make_run_context(tmp_path)
     template_ctx = TemplateContext(run_ctx)
-    cfg = load_config(tmp_path)
+    sections = load_sections(tmp_path)
 
     # Test 1: Single gitignored file - should have is_local_files=True
-    section_cfg = cfg.sections["gitignored-single"]
+    section_cfg = sections["gitignored-single"]
     resolved = ResolvedSection(
         scope_dir=tmp_path,
         scope_rel="",
@@ -378,7 +377,7 @@ normal-wildcard:
     assert manifest.is_local_files is True, "Gitignored single-file section should have is_local_files=True"
 
     # Test 2: Gitignored pattern - should have is_local_files=True
-    section_cfg = cfg.sections["gitignored-pattern"]
+    section_cfg = sections["gitignored-pattern"]
     resolved = ResolvedSection(
         scope_dir=tmp_path,
         scope_rel="",
@@ -399,7 +398,7 @@ normal-wildcard:
     assert manifest.is_local_files is True, "Gitignored pattern section should have is_local_files=True"
 
     # Test 3: Gitignored directory - should have is_local_files=True
-    section_cfg = cfg.sections["gitignored-dir"]
+    section_cfg = sections["gitignored-dir"]
     resolved = ResolvedSection(
         scope_dir=tmp_path,
         scope_rel="",
@@ -420,7 +419,7 @@ normal-wildcard:
     assert manifest.is_local_files is True, "Gitignored directory section should have is_local_files=True"
 
     # Test 4: Normal single-file section - should have is_local_files=False
-    section_cfg = cfg.sections["normal-section"]
+    section_cfg = sections["normal-section"]
     resolved = ResolvedSection(
         scope_dir=tmp_path,
         scope_rel="",
@@ -441,7 +440,7 @@ normal-wildcard:
     assert manifest.is_local_files is False, "Non-gitignored single-file section should have is_local_files=False"
 
     # Test 5: Normal multi-file section - should have is_local_files=False
-    section_cfg = cfg.sections["normal-multi"]
+    section_cfg = sections["normal-multi"]
     resolved = ResolvedSection(
         scope_dir=tmp_path,
         scope_rel="",
@@ -462,7 +461,7 @@ normal-wildcard:
     assert manifest.is_local_files is False, "Non-gitignored multi-file section should have is_local_files=False"
 
     # Test 6: Normal wildcard section - should have is_local_files=False
-    section_cfg = cfg.sections["normal-wildcard"]
+    section_cfg = sections["normal-wildcard"]
     resolved = ResolvedSection(
         scope_dir=tmp_path,
         scope_rel="",

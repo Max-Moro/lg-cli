@@ -7,12 +7,12 @@ import pytest
 from ruamel.yaml import YAML
 
 from lg.filtering.manifest import build_section_manifest
-from lg.config import load_config
 from lg.template.context import TemplateContext
 from lg.template.addressing.types import ResolvedSection
 from lg.section import SectionLocation
 from lg.git import VcsProvider
 from tests.infrastructure.file_utils import write
+from tests.infrastructure import load_sections
 from .conftest import mk_run_ctx
 
 
@@ -53,11 +53,11 @@ def _build_section_manifest(
     else:
         scope_dir = root
 
-    config = load_config(scope_dir)
-    section_cfg = config.sections.get(section_name)
+    sections = load_sections(scope_dir)
+    section_cfg = sections.get(section_name)
 
     if not section_cfg:
-        available = list(config.sections.keys())
+        available = list(sections.keys())
         raise RuntimeError(
             f"Section '{section_name}' not found in {scope_dir}. "
             f"Available: {', '.join(available) if available else '(none)'}"

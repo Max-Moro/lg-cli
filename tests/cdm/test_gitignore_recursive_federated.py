@@ -11,14 +11,13 @@ from pathlib import Path
 
 import pytest
 
-from lg.config import load_config
 from lg.filtering.manifest import build_section_manifest
 from lg.template.context import TemplateContext
 from lg.template.addressing.types import ResolvedSection
 from lg.section import SectionLocation
 from lg.types import SectionManifest
 from tests.infrastructure import make_run_context
-from tests.infrastructure import write
+from tests.infrastructure import write, load_sections
 
 
 def _create_federated_with_gitignore(root: Path) -> Path:
@@ -121,11 +120,11 @@ def _build_manifest_for_section(
     else:
         scope_dir = root
 
-    config = load_config(scope_dir)
-    section_cfg = config.sections.get(section_name)
+    sections = load_sections(scope_dir)
+    section_cfg = sections.get(section_name)
 
     if not section_cfg:
-        available = list(config.sections.keys())
+        available = list(sections.keys())
         raise RuntimeError(
             f"Section '{section_name}' not found in {scope_dir}. "
             f"Available: {', '.join(available) if available else '(none)'}"

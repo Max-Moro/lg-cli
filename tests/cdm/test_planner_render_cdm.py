@@ -4,12 +4,12 @@ from pathlib import Path
 
 from lg.adapters.processor import process_files
 from lg.filtering.manifest import build_section_manifest
-from lg.config import load_config
 from lg.rendering.planner import build_section_plan
 from lg.rendering.renderer import render_section
 from lg.template.context import TemplateContext
 from lg.template.addressing.types import ResolvedSection
 from lg.section import SectionLocation
+from tests.infrastructure import load_sections
 from .conftest import mk_run_ctx
 
 
@@ -38,8 +38,8 @@ def _process_section(
         scope_dir = root
 
     # 1. Build manifest
-    config = load_config(scope_dir)
-    section_cfg = config.sections.get(section_name)
+    sections = load_sections(scope_dir)
+    section_cfg = sections.get(section_name)
 
     resolved = ResolvedSection(
         scope_dir=scope_dir,

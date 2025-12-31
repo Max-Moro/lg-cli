@@ -20,7 +20,7 @@ from .config_builders import (
 )
 # Core utilities that should be available everywhere
 from .file_utils import write, write_source_file, write_markdown
-from .rendering_utils import render_template, make_run_options, make_run_context, make_engine
+from .rendering_utils import load_sections, render_template, make_run_options, make_run_context, make_engine
 from .testing_utils import lctx_md
 
 __all__ = [
@@ -28,7 +28,7 @@ __all__ = [
     "write", "write_source_file", "write_markdown",
 
     # Rendering utilities
-    "render_template", "make_run_options", "make_run_context", "make_engine",
+    "load_sections", "render_template", "make_run_options", "make_run_context", "make_engine",
 
     # Testing utilities
     "lctx_md",

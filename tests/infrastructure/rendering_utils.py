@@ -19,6 +19,37 @@ from lg.stats.tokenizer import default_tokenizer
 from lg.types import RunOptions
 from lg.git import NullVcs
 from lg.git.gitignore import GitIgnoreService
+from lg.section.model import SectionCfg
+
+
+def load_sections(root: Path) -> Dict[str, SectionCfg]:
+    """
+    Load all sections from a scope (for testing).
+
+    Replaces the deprecated load_config() function.
+    Internally uses SectionService for lazy-loading.
+
+    Args:
+        root: Scope directory (parent of lg-cfg/)
+
+    Returns:
+        Dictionary mapping section_name -> SectionCfg
+
+    Example:
+        sections = load_sections(tmp_path)
+        section_cfg = sections.get("my-section")
+    """
+    from lg.section import SectionService
+
+    cache = Cache(root, enabled=None, fresh=False, tool_version="test")
+    service = SectionService(root, cache)
+
+    sections: Dict[str, SectionCfg] = {}
+    for name in service.list_sections(root):
+        location = service.find_section(name, "", root)
+        sections[name] = service.load_section(location)
+
+    return sections
 
 
 def make_run_options(
@@ -138,5 +169,6 @@ def render_template(root: Path, target: str, options: Optional[RunOptions] = Non
 
 
 __all__ = [
+    "load_sections",
     "make_run_options", "make_run_context", "make_engine", "render_template"
 ]
