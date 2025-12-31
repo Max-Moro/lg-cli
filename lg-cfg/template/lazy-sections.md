@@ -754,63 +754,118 @@ class TemplateContext:
 
 ## Файлы для изменения
 
+### Зоны ответственности нового пакета `lg/section/*`
+
+**Отвечает за:**
+- Построение индекса секций из YAML файлов
+- Ленивую загрузку конфигураций секций (`SectionCfg`)
+- Кэширование (memory + disk)
+- Публичное API для получения списка секций
+
+**НЕ отвечает за:**
+- Обработку секций (это `section_processor.py` — ядро пайплайна)
+- Построение манифестов (это `filtering/manifest.py`)
+- Обработку файлов в секциях (это `adapters/*`, `rendering/*`)
+
 ### Новые файлы
 
 1. **`lg/section/__init__.py`**
    - Публичное API: `SectionService`, `SectionLocation`, `ScopeIndex`
+   - Реэкспорт модели: `SectionCfg`, `AdapterConfig`, `TargetRule`
 
-2. **`lg/section/service.py`**
+2. **`lg/section/model.py`** (перенос из `lg/config/model.py`)
+   - `SectionCfg` — модель секции
+   - `AdapterConfig` — конфигурация адаптеров
+   - `ConditionalAdapterOptions` — условные опции адаптеров
+   - `TargetRule` — целевые правила
+   - `EmptyPolicy` — политика пустых файлов
+
+3. **`lg/section/service.py`**
    - `SectionService` — основной сервис
    - Логика кэширования (memory + disk)
    - Методы `get_index()`, `find_section()`, `load_section()`
+   - Методы `list_sections()`, `list_sections_peek()` (перенос из `lg/config/load.py`)
 
-3. **`lg/section/index.py`**
+4. **`lg/section/index.py`**
    - Функция `build_index(cfg_root: Path) -> ScopeIndex`
-   - Вспомогательные функции для обхода файлов
+   - `_collect_sections_from_sections_yaml()` (перенос из `lg/config/load.py`)
+   - `_collect_sections_from_fragments()` (перенос из `lg/config/load.py`)
 
-4. **`lg/template/addressing/types.py`** (обновить)
+5. **`lg/section/paths.py`** (перенос из `lg/config/paths.py`)
+   - `sections_path()` — путь к главному файлу секций
+   - `iter_sections_yaml_files()` — все sections.yaml файлы
+   - `iter_section_fragments()` — все *.sec.yaml файлы
+   - `canonical_fragment_prefix()` — префикс для фрагмента
+   - `sections_yaml_prefix()` — префикс для sections.yaml
+
+6. **`lg/template/addressing/types.py`** (обновить)
    - Добавить `ResolvedResource`, `ResolvedFile`, `ResolvedSection`
    - Добавить Protocol `ResourceResolver`
 
-5. **`lg/template/addressing/resolvers.py`** (новый)
+7. **`lg/template/addressing/resolvers.py`** (новый)
    - `FileResolver` — обёртка над PathParser + PathResolver
    - `SectionResolver` — использует SectionService
 
 ### Файлы для изменения
 
-6. **`lg/run_context.py`**
+8. **`lg/run_context.py`**
    - Добавить поле `section_service: SectionService`
 
-7. **`lg/engine.py`**
+9. **`lg/engine.py`**
    - Создать экземпляр `SectionService` при инициализации
    - Передать в `RunContext`
 
-8. **`lg/template/context.py`**
-   - Удалить `_config_cache` и `config_resolver`
-   - Добавить `_section_resolver` и `_file_resolver`
-   - Добавить методы `get_section_resolver()` и `get_file_resolver()`
+10. **`lg/template/context.py`**
+    - Удалить `_config_cache` и `config_resolver`
+    - Добавить `_section_resolver` и `_file_resolver`
+    - Добавить методы `get_section_resolver()` и `get_file_resolver()`
 
-9. **`lg/section_processor.py`**
-   - Удалить `_config_cache` и `_get_config()`
-   - Изменить сигнатуру: `process_section(resolved: ResolvedSection, ...)` вместо `process_section(section_ref: SectionRef, ...)`
-   - Убрать все обращения к `section_service` внутри методов — вся информация уже в `resolved`
+11. **`lg/section_processor.py`**
+    - Удалить `_config_cache` и `_get_config()`
+    - Изменить сигнатуру: `process_section(resolved: ResolvedSection, ...)` вместо `process_section(section_ref: SectionRef, ...)`
+    - Убрать все обращения к `section_service` внутри методов — вся информация уже в `resolved`
 
-10. **`lg/template/common_placeholders/resolver.py`**
+12. **`lg/template/common_placeholders/resolver.py`**
     - Заменить вызовы `config_resolver` на `section_resolver`
     - Использовать `file_resolver` для tpl/ctx
     - Обновить `_resolve_section_node()` — возвращать `SectionNode` с `resolved_section`
 
-11. **`lg/template/handlers.py`**
+13. **`lg/template/handlers.py`**
     - Обновить `TemplateProcessorHandlers` protocol:
     - Изменить сигнатуру: `process_section(resolved: ResolvedSection)` вместо `process_section_ref(section_ref: SectionRef)`
 
-12. **`lg/template/processor.py`**
+14. **`lg/template/processor.py`**
     - Обновить реализацию handlers в `ProcessorHandlers` inner class
     - Метод `process_section()` теперь принимает `ResolvedSection` и делегирует в `SectionProcessor`
 
+15. **`lg/config/model.py`**
+    - Удалить `SectionCfg`, `AdapterConfig`, `ConditionalAdapterOptions`, `TargetRule`, `EmptyPolicy`
+    - Все перенесены в `lg/section/model.py`
+    - Класс `Config` может остаться пустым или быть удалён полностью
+
+16. **`lg/config/load.py`**
+    - Удалить `_collect_sections_from_sections_yaml()`, `_collect_sections_from_fragments()`
+    - Удалить `list_sections()`, `list_sections_peek()`
+    - Функция `load_config()` либо удаляется, либо упрощается (если останется логика для НЕ-секционных конфигов)
+
+17. **`lg/config/paths.py`**
+    - Удалить `sections_path()`, `iter_sections_yaml_files()`, `iter_section_fragments()`
+    - Удалить `canonical_fragment_prefix()`, `sections_yaml_prefix()`
+    - Оставить только общие константы и функции: `cfg_root()`, `CFG_DIR`, `models_path()`, `modes_path()`, `tags_path()`
+
+18. **`lg/config/__init__.py`**
+    - Обновить экспорты: убрать `list_sections`, `list_sections_peek`, `SectionCfg`
+    - Добавить реэкспорт из `lg/section`: `from lg.section import SectionCfg, list_sections` (для обратной совместимости импортов)
+
+19. **`lg/cli.py`**
+    - Обновить импорт: `from lg.section import list_sections` вместо `from .config import list_sections`
+
+20. **`lg/diag/diagnostics.py`**
+    - Обновить импорт: `from lg.section import list_sections_peek` вместо `from lg.config import list_sections_peek`
+
 ### Файлы для удаления
 
-13. **`lg/template/addressing/config_based_resolver.py`**
+21. **`lg/template/addressing/config_based_resolver.py`**
     - Полностью удалить, заменён на `SectionResolver`
 
 ---
@@ -872,15 +927,73 @@ def _get_config(self, scope_dir: Path) -> Config:
 #### `lg/config/load.py`
 
 ```python
-# Удалить или переработать (логика переезжает в SectionService):
+# ПЕРЕНОСИМ в lg/section/index.py:
 def _collect_sections_from_sections_yaml(root: Path) -> Dict[str, SectionCfg]:
     ...
 
 def _collect_sections_from_fragments(root: Path) -> Dict[str, SectionCfg]:
     ...
 
-# Функция load_config() может остаться для загрузки НЕ-секционных частей конфига,
-# но логика загрузки секций должна быть удалена или делегирована в SectionService
+# ПЕРЕНОСИМ в lg/section/service.py:
+def list_sections(root: Path) -> List[str]:
+    ...
+
+def list_sections_peek(root: Path) -> List[str]:
+    ...
+
+# Функция load_config() УДАЛЯЕТСЯ или упрощается:
+# - Если Config класс остаётся для других целей, может остаться заглушка
+# - Иначе полностью удаляется
+def load_config(root: Path) -> Config:
+    ...
+```
+
+#### `lg/config/model.py`
+
+```python
+# ПЕРЕНОСИМ в lg/section/model.py:
+class SectionCfg:
+    ...
+
+class AdapterConfig:
+    ...
+
+class ConditionalAdapterOptions:
+    ...
+
+class TargetRule:
+    ...
+
+EmptyPolicy = Literal["inherit", "include", "exclude"]
+
+# Класс Config остаётся пустым или удаляется:
+@dataclass
+class Config:
+    sections: Dict[str, SectionCfg]  # ← УДАЛИТЬ это поле
+```
+
+#### `lg/config/paths.py`
+
+```python
+# ПЕРЕНОСИМ в lg/section/paths.py:
+def sections_path(root: Path) -> Path:
+    ...
+
+def iter_sections_yaml_files(root: Path) -> List[Path]:
+    ...
+
+def iter_section_fragments(root: Path) -> List[Path]:
+    ...
+
+def canonical_fragment_prefix(root: Path, frag: Path) -> str:
+    ...
+
+def sections_yaml_prefix(root: Path, sections_file: Path) -> str:
+    ...
+
+# ОСТАЁТСЯ в lg/config/paths.py (общие константы):
+# - CFG_DIR, SECTIONS_FILE, MODELS_FILE, MODES_FILE, TAGS_FILE
+# - cfg_root(), models_path(), modes_path(), tags_path()
 ```
 
 ### Импорты для удаления
@@ -939,13 +1052,32 @@ class Config:
 
 ### Чеклист финальной очистки
 
+**Удаление легаси:**
 - [ ] Удалён `config_based_resolver.py`
 - [ ] Удалены `_config_cache` из `TemplateContext` и `SectionProcessor`
 - [ ] Удалены методы `get_config()` и `_get_config()`
 - [ ] Удалён тип `SectionRef` из `lg/types.py`
 - [ ] Заменены все использования `SectionRef` на `ResolvedSection`
 - [ ] Обновлён `SectionNode`: `resolved_ref` → `resolved_section`
+
+**Перенос в lg/section/*:**
+- [ ] Перенесён `SectionCfg` и связанные классы из `lg/config/model.py` → `lg/section/model.py`
+- [ ] Перенесены функции обхода файлов из `lg/config/paths.py` → `lg/section/paths.py`
+- [ ] Перенесены функции сбора секций из `lg/config/load.py` → `lg/section/index.py`
+- [ ] Перенесены `list_sections()`, `list_sections_peek()` → `lg/section/service.py`
+- [ ] Очищен `lg/config/model.py` — удалено секционное содержимое
+- [ ] Очищен `lg/config/load.py` — удалены функции сбора секций
+- [ ] Очищен `lg/config/paths.py` — удалены секционные функции
+
+**Обновление импортов:**
+- [ ] Обновлён `lg/config/__init__.py` — реэкспорт из `lg/section`
+- [ ] Обновлён `lg/cli.py` — импорт `list_sections` из `lg/section`
+- [ ] Обновлён `lg/diag/diagnostics.py` — импорт `list_sections_peek` из `lg/section`
+- [ ] Обновлены все импорты `SectionCfg` на `from lg.section import SectionCfg`
 - [ ] Очищены неиспользуемые импорты
+
+**Проверки:**
 - [ ] Обновлены/удалены соответствующие тесты
 - [ ] Проверено отсутствие ссылок на удалённый код (grep по кодовой базе)
 - [ ] Запущен Qodana для поиска мёртвого кода
+- [ ] Все тесты проходят после рефакторинга
