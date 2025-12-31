@@ -14,19 +14,18 @@ src:
           - "/run_context.py"
           - "/engine.py"
           - "/section_processor.py"
-          - "/config/"
+          - "/section/"
           - "/adapters/"
           - "/template/"
-          - "/section/"
         when:
           - condition: "TAGSET:template-features:conditions"
             allow: ["/conditions/"]
+          - condition: "TAGSET:template-features:addressing"
+            allow: ["/addressing/"]
         children:
-          config:
+          section:
             mode: allow
-            allow:
-              - "/load.py"
-              - "/model.py"
+            allow: ["/service.py"]
           adapters:
             mode: allow
             allow:
@@ -40,8 +39,6 @@ src:
             allow:
               - "/*.py"
             when:
-              - condition: "TAGSET:template-features:addressing"
-                allow: ["/addressing/"]
               - condition: "TAGSET:template-features:common-placeholders"
                 allow: ["/common_placeholders/"]
               - condition: "TAGSET:template-features:adaptive"
@@ -71,8 +68,6 @@ tests:
           template:
             mode: allow
             when:
-              - condition: "TAGSET:template-features:addressing"
-                allow: ["/addressing/"]
               - condition: "TAGSET:template-features:common-placeholders"
                 allow: ["/common_placeholders/"]
               - condition: "TAGSET:template-features:adaptive"

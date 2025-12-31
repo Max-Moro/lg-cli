@@ -15,7 +15,7 @@ src:
           - "/run_context.py"
           - "/template/context.py"
           - "/section_processor.py"
-          - "/config/"
+          - "/section/"
         when:
           - condition: "TAGSET:basic-functions:diag"
             allow: ["/diag/"]
@@ -26,11 +26,9 @@ src:
               - "/scaffold.py"
               - "/_skeletons/"
         children:
-          config:
+          section:
             mode: allow
-            allow:
-              - "/load.py"
-              - "/model.py"
+            allow: ["/service.py"]
 
 tests:
   extensions: [".py"]

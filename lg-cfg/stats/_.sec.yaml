@@ -15,15 +15,13 @@ src:
           - "/run_context.py"
           - "/template/context.py"
           - "/section_processor.py"
-          - "/config/"
+          - "/section/"
           - "/adapters/"
           - "/stats/"
         children:
-          config:
+          section:
             mode: allow
-            allow:
-              - "/load.py"
-              - "/model.py"
+            allow: ["/service.py"]
           adapters:
             mode: allow
             allow:

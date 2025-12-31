@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import json
 import time
-from dataclasses import asdict
 from pathlib import Path
 from typing import Dict, List, Optional
 
@@ -11,7 +10,6 @@ from ruamel.yaml import YAML
 from .index import SectionLocation, ScopeIndex, build_index, iter_all_config_files
 from .model import SectionCfg
 from ..cache.fs_cache import Cache
-from ..config.paths import cfg_root
 from ..migrate import ensure_cfg_actual
 
 _yaml = YAML(typ="safe")
