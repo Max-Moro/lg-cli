@@ -45,9 +45,129 @@
 4. **Единый сервис**: Один `SectionService` как единственный источник истины
 5. **Без canonical_id**: Используем кортеж `(file_path, local_name)` как уникальный ключ
 
+### Ключевое решение: отказ от canonical_id
+
+В старой архитектуре `canonical_id` был необходим, потому что:
+```python
+# Старый подход
+all_sections: Dict[str, SectionCfg] = {}  # Нужны уникальные строковые ключи
+```
+
+Это приводило к:
+- Сложным правилам формирования (`sections.yaml` → без префикса, одна секция в `*.sec.yaml` → короткий id)
+- Магическим преобразованиям ("tail дублирование", "a/a" → "a")
+- Непредсказуемости для пользователя
+
+**В новой архитектуре:**
+```python
+# Индекс хранит ВСЕ варианты имён
+index.sections = {
+    "src": SectionLocation(...),           # из lg-cfg/sections.yaml
+    "adapters/src": SectionLocation(...),  # из lg-cfg/adapters/sections.yaml
+}
+
+# Уникальный ключ для кэша секций
+cache_key = (file_path, local_name)  # ("lg-cfg/sections.yaml", "src")
+```
+
+**Преимущества:**
+- Простые правила именования (без магии)
+- Полные имена в индексе служат для поиска, но не для кэширования
+- Физическое расположение `(file_path, local_name)` — истинный уникальный идентификатор
+- Коллизии разрешаются явно при построении индекса (приоритеты), а не скрыто в правилах формирования ID
+
 ---
 
 ## Модель данных
+
+### Унификация резолверов через общий интерфейс
+
+Вместо отдельных механизмов для файлов (`PathResolver`) и секций (`ConfigBasedResolver`),
+вводится единый интерфейс для всех типов ресурсов.
+
+#### ResourceResolver (Protocol)
+
+```python
+from typing import Protocol
+
+class ResourceResolver(Protocol):
+    """Общий интерфейс для разрешения любых ресурсов."""
+
+    def resolve(
+        self,
+        name: str,
+        context: AddressingContext
+    ) -> ResolvedResource:
+        """
+        Разрешить имя ресурса в конкретное расположение.
+
+        Args:
+            name: Имя ресурса из шаблона
+            context: Контекст адресации (current_dir, scope)
+
+        Returns:
+            Разрешённый ресурс
+        """
+        ...
+```
+
+#### Базовые типы результатов
+
+```python
+@dataclass
+class ResolvedResource:
+    """Базовый результат разрешения любого ресурса."""
+    scope_dir: Path      # Абсолютный путь к scope
+    scope_rel: str       # Относительный путь scope от repo root
+
+@dataclass
+class ResolvedFile(ResolvedResource):
+    """Результат разрешения файлового ресурса (tpl, ctx, md)."""
+    resource_path: Path  # Полный путь к файлу
+    resource_rel: str    # Путь относительно lg-cfg/
+
+@dataclass
+class ResolvedSection(ResolvedResource):
+    """Результат разрешения секции."""
+    location: SectionLocation     # Где физически лежит секция
+    section_config: SectionCfg    # Уже загруженная конфигурация
+```
+
+#### Конкретные реализации
+
+```python
+class FileResolver(ResourceResolver):
+    """Резолвер для файловых ресурсов (templates, contexts, markdown)."""
+
+    def __init__(self, repo_root: Path):
+        self._parser = PathParser()
+        self._resolver = PathResolver(repo_root)
+
+    def resolve(self, name: str, context: AddressingContext) -> ResolvedFile:
+        # Использует существующую логику PathParser + PathResolver
+        ...
+
+class SectionResolver(ResourceResolver):
+    """Резолвер для секций из YAML конфигурации."""
+
+    def __init__(self, section_service: SectionService):
+        self._service = section_service
+
+    def resolve(self, name: str, context: AddressingContext) -> ResolvedSection:
+        # Делегирует в SectionService
+        scope_dir = context.cfg_root.parent
+        current_dir = context.current_directory
+
+        location = self._service.find_section(name, current_dir, scope_dir)
+        section_config = self._service.load_section(location)
+
+        return ResolvedSection(
+            scope_dir=scope_dir,
+            scope_rel=...,
+            location=location,
+            section_config=section_config
+        )
+```
 
 ### SectionLocation
 
@@ -254,27 +374,168 @@ def find_section(
 
 ## Инвалидация кэша
 
-### Кэш индекса
+### Кэш индекса в .lg-cache
 
-Индекс кэшируется в `.lg-cache` с автоматической инвалидацией по mtime файлов.
+Индекс кэшируется на диске в `.lg-cache/sections/{scope_hash}.index` для быстрого старта
+при повторных запусках.
+
+#### Структура кэша на диске
+
+```
+.lg-cache/
+└── sections/
+    ├── root.index          # Индекс для корневого scope
+    ├── apps_web.index      # Индекс для apps/web scope
+    └── libs_core.index     # Индекс для libs/core scope
+```
+
+#### Формат кэша
 
 ```python
-def is_index_valid(cached_index: ScopeIndex, cfg_root: Path) -> bool:
-    # Проверяем, изменился ли какой-либо известный файл
-    for file_path, cached_mtime in cached_index.file_mtimes.items():
-        if not file_path.exists():
-            return False  # Файл удалён
-        if file_path.stat().st_mtime != cached_mtime:
-            return False  # Файл изменён
-
-    # Проверяем, появились ли новые файлы
-    current_files = set(iter_all_config_files(cfg_root))
-    cached_files = set(cached_index.file_mtimes.keys())
-    if current_files != cached_files:
-        return False  # Файлы добавлены или удалены
-
-    return True
+# Сериализация в JSON для читаемости и простоты
+{
+    "version": "1.0",               # Версия формата кэша
+    "scope_dir": "/path/to/scope",  # Абсолютный путь к scope
+    "built_at": 1234567890.123,     # Timestamp построения
+    "sections": {
+        "src": {
+            "file_path": "lg-cfg/sections.yaml",
+            "local_name": "src"
+        },
+        "adapters/src": {
+            "file_path": "lg-cfg/adapters/sections.yaml",
+            "local_name": "src"
+        }
+    },
+    "file_mtimes": {
+        "lg-cfg/sections.yaml": 1234567890.123,
+        "lg-cfg/adapters/sections.yaml": 1234567891.456
+    }
+}
 ```
+
+#### Логика работы с кэшем
+
+```python
+class SectionService:
+    def get_index(self, scope_dir: Path) -> ScopeIndex:
+        # 1. Проверяем memory cache
+        if scope_dir in self._indexes:
+            return self._indexes[scope_dir]
+
+        # 2. Пробуем загрузить из .lg-cache
+        cached = self._load_index_from_cache(scope_dir)
+        if cached and self._is_index_valid(cached, scope_dir):
+            self._indexes[scope_dir] = cached
+            return cached
+
+        # 3. Строим новый индекс
+        index = self._build_index(scope_dir)
+        self._save_index_to_cache(scope_dir, index)
+        self._indexes[scope_dir] = index
+        return index
+
+    def _is_index_valid(self, cached_index: ScopeIndex, cfg_root: Path) -> bool:
+        """Проверка актуальности кэша по mtime файлов."""
+        # Проверяем, изменился ли какой-либо известный файл
+        for file_path, cached_mtime in cached_index.file_mtimes.items():
+            if not file_path.exists():
+                return False  # Файл удалён
+            current_mtime = file_path.stat().st_mtime
+            if abs(current_mtime - cached_mtime) > 0.001:  # Учёт точности float
+                return False  # Файл изменён
+
+        # Проверяем, появились ли новые файлы
+        current_files = set(iter_all_config_files(cfg_root))
+        cached_files = set(cached_index.file_mtimes.keys())
+        if current_files != cached_files:
+            return False  # Файлы добавлены или удалены
+
+        return True
+
+    def _load_index_from_cache(self, scope_dir: Path) -> Optional[ScopeIndex]:
+        """Загрузка индекса из .lg-cache."""
+        cache_key = self._get_cache_key(scope_dir)
+        cache_file = self._cache.root / "sections" / f"{cache_key}.index"
+
+        if not cache_file.exists():
+            return None
+
+        try:
+            import json
+            data = json.loads(cache_file.read_text(encoding="utf-8"))
+
+            # Проверка версии формата
+            if data.get("version") != "1.0":
+                return None
+
+            # Десериализация
+            sections = {
+                name: SectionLocation(
+                    file_path=Path(loc["file_path"]),
+                    local_name=loc["local_name"]
+                )
+                for name, loc in data["sections"].items()
+            }
+
+            file_mtimes = {
+                Path(fp): mtime
+                for fp, mtime in data["file_mtimes"].items()
+            }
+
+            return ScopeIndex(sections=sections, file_mtimes=file_mtimes)
+        except Exception:
+            # Некорректный кэш — игнорируем
+            return None
+
+    def _save_index_to_cache(self, scope_dir: Path, index: ScopeIndex) -> None:
+        """Сохранение индекса в .lg-cache."""
+        cache_key = self._get_cache_key(scope_dir)
+        cache_file = self._cache.root / "sections" / f"{cache_key}.index"
+        cache_file.parent.mkdir(parents=True, exist_ok=True)
+
+        import json
+        import time
+
+        data = {
+            "version": "1.0",
+            "scope_dir": str(scope_dir),
+            "built_at": time.time(),
+            "sections": {
+                name: {
+                    "file_path": str(loc.file_path),
+                    "local_name": loc.local_name
+                }
+                for name, loc in index.sections.items()
+            },
+            "file_mtimes": {
+                str(fp): mtime
+                for fp, mtime in index.file_mtimes.items()
+            }
+        }
+
+        cache_file.write_text(json.dumps(data, indent=2), encoding="utf-8")
+
+    def _get_cache_key(self, scope_dir: Path) -> str:
+        """Генерация ключа кэша для scope."""
+        # Используем относительный путь от repo root
+        try:
+            rel = scope_dir.relative_to(self._root)
+            if rel == Path("."):
+                return "root"
+            return str(rel).replace("/", "_").replace("\\", "_")
+        except ValueError:
+            # Scope вне репозитория — хеш абсолютного пути
+            import hashlib
+            return hashlib.sha256(str(scope_dir).encode()).hexdigest()[:16]
+```
+
+#### Преимущества кэширования на диске
+
+1. **Быстрый старт**: Не нужно сканировать и парсить YAML при каждом запуске
+2. **Автоматическая инвалидация**: По mtime файлов — пользователь не думает о кэше
+3. **Прозрачность**: JSON формат позволяет просматривать содержимое кэша
+4. **Безопасность**: Некорректный кэш просто игнорируется, всегда можно пересоздать
 
 ### Кэш секций
 
@@ -361,16 +622,139 @@ def _resolve_section_node(self, node: SectionNode) -> SectionNode:
 
 ---
 
+## Интеграция с системой addressing
+
+### Использование резолверов в плагинах
+
+Плагины (например, `CommonPlaceholdersPlugin`) будут использовать резолверы через
+унифицированный интерфейс, не зная о деталях реализации.
+
+```python
+# В CommonPlaceholdersResolver
+class CommonPlaceholdersResolver:
+    def __init__(
+        self,
+        handlers: TemplateProcessorHandlers,
+        registry: TemplateRegistryProtocol,
+        template_ctx: TemplateContext,
+    ):
+        self.template_ctx = template_ctx
+        # Получаем резолверы из контекста
+        self.section_resolver = template_ctx.get_section_resolver()
+        self.file_resolver = template_ctx.get_file_resolver()
+
+    def _resolve_section_node(self, node: SectionNode) -> SectionNode:
+        # Используем SectionResolver через единый интерфейс
+        resolved = self.section_resolver.resolve(
+            node.name,
+            self.template_ctx.addressing
+        )
+
+        section_ref = SectionRef(
+            name=node.name,  # Сохраняем оригинальное имя
+            scope_rel=resolved.scope_rel,
+            scope_dir=resolved.scope_dir
+        )
+
+        return SectionNode(node.name, section_ref)
+
+    def _resolve_include_node(self, node: IncludeNode) -> IncludeNode:
+        # Используем FileResolver для tpl/ctx
+        config = CONTEXT_CONFIG if node.kind == "ctx" else TEMPLATE_CONFIG
+        resolved = self.file_resolver.resolve(
+            node.name,
+            config,
+            self.template_ctx.addressing
+        )
+
+        # Загружаем и парсим шаблон
+        template_text = resolved.resource_path.read_text(encoding="utf-8")
+        ast = self.handlers.parse_template(template_text)
+
+        return IncludeNode(
+            kind=node.kind,
+            name=node.name,
+            origin=resolved.scope_rel or "self",
+            children=ast,
+            resolved_path=resolved.resource_path
+        )
+```
+
+### Обновление TemplateContext
+
+```python
+class TemplateContext:
+    def __init__(self, run_ctx: RunContext):
+        self.run_ctx = run_ctx
+
+        # Удалить: self._config_cache
+        # Удалить: self.config_resolver
+
+        # Создать резолверы
+        self._section_resolver = SectionResolver(run_ctx.section_service)
+        self._file_resolver = FileResolver(run_ctx.root)
+
+    def get_section_resolver(self) -> SectionResolver:
+        """Получить резолвер секций."""
+        return self._section_resolver
+
+    def get_file_resolver(self) -> FileResolver:
+        """Получить резолвер файлов."""
+        return self._file_resolver
+```
+
+---
+
 ## Файлы для изменения
 
-1. **Новый файл**: `lg/section/service.py` — `SectionService`, `ScopeIndex`, `SectionLocation`
-2. **Новый файл**: `lg/section/index.py` — логика построения индекса
-3. **Изменить**: `lg/run_context.py` — добавить поле `section_service`
-4. **Изменить**: `lg/engine.py` — создать экземпляр `SectionService`
-5. **Изменить**: `lg/template/context.py` — удалить `_config_cache`, `config_resolver`
-6. **Изменить**: `lg/section_processor.py` — использовать `section_service`
-7. **Изменить**: `lg/template/common_placeholders/resolver.py` — использовать `section_service`
-8. **Удалить**: `lg/template/addressing/config_based_resolver.py` — больше не нужен
+### Новые файлы
+
+1. **`lg/section/__init__.py`**
+   - Публичное API: `SectionService`, `SectionLocation`, `ScopeIndex`
+
+2. **`lg/section/service.py`**
+   - `SectionService` — основной сервис
+   - Логика кэширования (memory + disk)
+   - Методы `get_index()`, `find_section()`, `load_section()`
+
+3. **`lg/section/index.py`**
+   - Функция `build_index(cfg_root: Path) -> ScopeIndex`
+   - Вспомогательные функции для обхода файлов
+
+4. **`lg/template/addressing/types.py`** (обновить)
+   - Добавить `ResolvedResource`, `ResolvedFile`, `ResolvedSection`
+   - Добавить Protocol `ResourceResolver`
+
+5. **`lg/template/addressing/resolvers.py`** (новый)
+   - `FileResolver` — обёртка над PathParser + PathResolver
+   - `SectionResolver` — использует SectionService
+
+### Файлы для изменения
+
+6. **`lg/run_context.py`**
+   - Добавить поле `section_service: SectionService`
+
+7. **`lg/engine.py`**
+   - Создать экземпляр `SectionService` при инициализации
+   - Передать в `RunContext`
+
+8. **`lg/template/context.py`**
+   - Удалить `_config_cache` и `config_resolver`
+   - Добавить `_section_resolver` и `_file_resolver`
+   - Добавить методы `get_section_resolver()` и `get_file_resolver()`
+
+9. **`lg/section_processor.py`**
+   - Удалить `_config_cache` и `_get_config()`
+   - Использовать `run_ctx.section_service` напрямую
+
+10. **`lg/template/common_placeholders/resolver.py`**
+    - Заменить вызовы `config_resolver` на `section_resolver`
+    - Использовать `file_resolver` для tpl/ctx
+
+### Файлы для удаления
+
+11. **`lg/template/addressing/config_based_resolver.py`**
+    - Полностью удалить, заменён на `SectionResolver`
 
 ---
 
