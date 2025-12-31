@@ -18,7 +18,7 @@ from ..section import SectionCfg, EmptyPolicy
 from ..config.paths import is_cfg_relpath
 from ..rendering import get_language_for_file
 from ..template.context import TemplateContext
-from ..template.addressing.types import ResolvedSection
+from ..addressing.types import ResolvedSection
 from ..types import FileEntry, SectionManifest
 from ..git import VcsProvider, NullVcs
 from ..git.gitignore import GitIgnoreService

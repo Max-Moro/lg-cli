@@ -12,7 +12,7 @@ from .rendering import render_section, build_section_plan
 from .run_context import RunContext
 from .stats.collector import StatsCollector
 from .template.context import TemplateContext
-from .template.addressing.types import ResolvedSection
+from .addressing.types import ResolvedSection
 from .types import RenderedSection, SectionManifest
 
 

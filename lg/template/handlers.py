@@ -11,7 +11,7 @@ from typing import Protocol, runtime_checkable
 
 from .nodes import TemplateNode
 from .types import ProcessingContext
-from .addressing.types import ResolvedSection
+from ..addressing.types import ResolvedSection
 
 
 @runtime_checkable

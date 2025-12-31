@@ -4,7 +4,7 @@ from dataclasses import dataclass, field
 from typing import Dict, List, Literal, Optional, NewType, Mapping, Set
 from pathlib import Path
 
-from .template.addressing.types import ResolvedSection
+from .addressing.types import ResolvedSection
 
 
 # ---- Aliases for clarity ----

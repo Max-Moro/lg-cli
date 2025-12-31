@@ -16,8 +16,8 @@ from ..common import load_template_from, load_context_from
 from ..handlers import TemplateProcessorHandlers
 from ..nodes import TemplateNode, TemplateAST
 from ..protocols import TemplateRegistryProtocol
-from ..addressing import AddressingContext
-from ..addressing.types import ResolvedSection, ResolvedFile
+from ...addressing import AddressingContext
+from ...addressing.types import ResolvedSection, ResolvedFile
 
 
 @dataclass(frozen=True)

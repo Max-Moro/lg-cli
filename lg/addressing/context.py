@@ -12,7 +12,7 @@ from pathlib import Path
 from typing import List, Optional
 
 from .types import DirectoryContext, ResourceConfig, ResolvedResource
-from ...section import SectionService
+from ..section import SectionService
 
 
 class AddressingContext:

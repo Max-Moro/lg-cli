@@ -16,7 +16,7 @@ from .virtual_sections import VirtualSectionFactory
 from .configs import MARKDOWN_CONFIG, MARKDOWN_EXTERNAL_CONFIG
 from ..base import TemplatePlugin
 from ..types import PluginPriority, TokenSpec, ParsingRule, ProcessorRule, ProcessingContext
-from ..addressing.types import ResolvedFile
+from ...addressing.types import ResolvedFile
 from ...template import TemplateContext
 
 

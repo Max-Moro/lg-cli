@@ -6,7 +6,7 @@ from __future__ import annotations
 
 from .heading_context import HeadingContext
 from .nodes import MarkdownFileNode
-from ..addressing.types import ResolvedFile, ResolvedSection
+from ...addressing.types import ResolvedFile, ResolvedSection
 from ...section.model import SectionCfg, AdapterConfig
 from ...section import SectionLocation
 from ...filtering.model import FilterNode

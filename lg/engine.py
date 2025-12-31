@@ -17,8 +17,8 @@ from .section import SectionService
 from .stats import RunResult, build_run_result_from_collector, StatsCollector
 from .stats.tokenizer import TokenService
 from .template import create_template_processor, TemplateContext
-from .template.addressing import AddressingContext
-from .template.addressing.types import ResolvedSection
+from .addressing import AddressingContext
+from .addressing.types import ResolvedSection
 from .template.common_placeholders.configs import SECTION_CONFIG
 from .types import RunOptions, TargetSpec
 from .git import NullVcs, GitVcs

@@ -6,7 +6,7 @@ Defines configs for markdown files inside and outside lg-cfg/.
 
 from __future__ import annotations
 
-from ..addressing import ResourceConfig
+from ...addressing import ResourceConfig
 
 # Markdown inside lg-cfg/ (with @origin:path): strip MD syntax, resolved inside lg-cfg/
 MARKDOWN_CONFIG = ResourceConfig(

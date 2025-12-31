@@ -13,7 +13,7 @@ from .context import AddressingContext
 from .parser import PathParser
 from .resolver import PathResolver
 from .types import ResourceConfig, ResolvedFile, ResolvedSection
-from ...section import SectionService
+from ..section import SectionService
 
 
 class FileResolver:

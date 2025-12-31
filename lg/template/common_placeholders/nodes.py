@@ -9,7 +9,7 @@ from pathlib import Path
 from typing import Optional, List
 
 from ..nodes import TemplateNode
-from ..addressing.types import ResolvedSection
+from ...addressing.types import ResolvedSection
 
 
 @dataclass(frozen=True)

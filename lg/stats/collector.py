@@ -10,7 +10,7 @@ from __future__ import annotations
 from typing import Dict, List, Optional, Tuple
 
 from .tokenizer import TokenService
-from ..template.addressing.types import ResolvedSection
+from ..addressing.types import ResolvedSection
 from ..types import FileRow, Totals, ContextBlock, ProcessedFile, RenderedSection, FileStats, SectionStats
 
 

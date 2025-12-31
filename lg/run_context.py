@@ -11,7 +11,7 @@ from .types import RunOptions
 from .git import VcsProvider
 from .git.gitignore import GitIgnoreService
 from .stats import TokenService
-from .template.addressing import AddressingContext
+from .addressing import AddressingContext
 
 
 @dataclass

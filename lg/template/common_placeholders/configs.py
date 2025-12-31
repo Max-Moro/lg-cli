@@ -6,7 +6,7 @@ Defines configs for sections, templates, and contexts.
 
 from __future__ import annotations
 
-from ..addressing import ResourceConfig
+from ...addressing import ResourceConfig
 
 # Template reference: .tpl.md extension, resolved inside lg-cfg/
 TEMPLATE_CONFIG = ResourceConfig(

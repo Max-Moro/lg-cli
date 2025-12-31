@@ -21,7 +21,7 @@ from .nodes import TemplateNode, TemplateAST, TextNode
 from .parser import ModularParser
 from .registry import TemplateRegistry
 from .types import ProcessingContext
-from .addressing.types import ResolvedSection
+from ..addressing.types import ResolvedSection
 from ..run_context import RunContext
 
 logger = logging.getLogger(__name__)
