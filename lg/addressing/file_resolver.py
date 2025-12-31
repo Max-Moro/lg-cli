@@ -1,8 +1,7 @@
 """
-Path resolver for the addressing system.
+File resolver for the addressing system.
 
-Resolves ParsedPath objects into fully resolved ResolvedPath objects
-using the AddressingContext for relative path resolution.
+Resolves file paths (templates, contexts, markdown) to physical locations.
 """
 
 from __future__ import annotations
@@ -12,40 +11,56 @@ from typing import Tuple
 
 from .context import AddressingContext
 from .errors import PathResolutionError, ScopeNotFoundError
-from .types import ParsedPath, ResolvedPath, ResourceConfig
+from .parser import PathParser
+from .types import ParsedPath, ResourceConfig, ResolvedFile, ResourceResolver
 
 
-class PathResolver:
+class FileResolver(ResourceResolver):
     """
-    Path resolver — transforms ParsedPath into ResolvedPath.
+    Resolver for file resources (templates, contexts, markdown).
 
-    Uses AddressingContext for resolving relative paths
-    and determining current scope.
+    Parses path strings and resolves them to physical file locations
+    using the addressing context for relative path resolution.
     """
 
     def __init__(self, repo_root: Path):
         """
-        Initialize resolver.
+        Initialize file resolver.
 
         Args:
             repo_root: Repository root (absolute path)
         """
-        self.repo_root = repo_root.resolve()
+        self._repo_root = repo_root.resolve()
+        self._parser = PathParser()
 
-    def resolve(self, parsed: ParsedPath, context: AddressingContext) -> ResolvedPath:
+    def resolve(
+        self,
+        name: str,
+        config: ResourceConfig,
+        context: AddressingContext
+    ) -> ResolvedFile:
         """
-        Resolve path in context.
+        Resolve file path to physical location.
 
         Args:
-            parsed: Parsed path
-            context: Addressing context (directory stack)
+            name: File path from template (may include @origin:)
+            config: Resource configuration (extension, etc.)
+            context: Addressing context
 
         Returns:
-            Fully resolved path
+            Resolved file location
 
         Raises:
             PathResolutionError: If path cannot be resolved
         """
+        # Parse the path string
+        parsed = self._parser.parse(name, config)
+
+        # Resolve to physical location
+        return self._resolve_parsed(parsed, context)
+
+    def _resolve_parsed(self, parsed: ParsedPath, context: AddressingContext) -> ResolvedFile:
+        """Resolve parsed path to ResolvedFile."""
         # External resources are handled separately
         if parsed.config.resolve_outside_cfg:
             return self._resolve_external(parsed, context)
@@ -68,8 +83,7 @@ class PathResolver:
         # Validate path doesn't escape lg-cfg
         self._validate_path_bounds(resource_path, cfg_root, parsed)
 
-        return ResolvedPath(
-            config=parsed.config,
+        return ResolvedFile(
             scope_dir=scope_dir,
             scope_rel=scope_rel,
             cfg_root=cfg_root,
@@ -95,7 +109,7 @@ class PathResolver:
             cfg_root = context.cfg_root  # Use current scope's cfg_root
             scope_dir = cfg_root.parent
             try:
-                scope_rel = scope_dir.relative_to(self.repo_root).as_posix()
+                scope_rel = scope_dir.relative_to(self._repo_root).as_posix()
                 if scope_rel == ".":
                     scope_rel = ""
             except ValueError:
@@ -104,13 +118,13 @@ class PathResolver:
 
         # "/" prefix means root scope explicitly
         if origin == "/":
-            cfg_root = self.repo_root / "lg-cfg"
+            cfg_root = self._repo_root / "lg-cfg"
             if not cfg_root.is_dir():
                 raise ScopeNotFoundError(
                     message="Root lg-cfg/ not found",
                     scope_path=""
                 )
-            return self.repo_root, "", cfg_root
+            return self._repo_root, "", cfg_root
 
         # Other origin — path relative to current scope
         current_scope_dir = context.cfg_root.parent  # parent of current lg-cfg/
@@ -125,7 +139,7 @@ class PathResolver:
 
         # Calculate scope_rel as path from repo root
         try:
-            scope_rel = scope_dir.relative_to(self.repo_root).as_posix()
+            scope_rel = scope_dir.relative_to(self._repo_root).as_posix()
         except ValueError:
             scope_rel = origin
 
@@ -234,7 +248,7 @@ class PathResolver:
                 hint="Cannot use '../' to escape lg-cfg/ directory"
             )
 
-    def _resolve_external(self, parsed: ParsedPath, context: AddressingContext) -> ResolvedPath:
+    def _resolve_external(self, parsed: ParsedPath, context: AddressingContext) -> ResolvedFile:
         """
         Resolve external resource (without @) relative to current scope.
 
@@ -259,14 +273,13 @@ class PathResolver:
 
         # Calculate scope_rel from repo root
         try:
-            scope_rel = scope_dir.relative_to(self.repo_root).as_posix()
+            scope_rel = scope_dir.relative_to(self._repo_root).as_posix()
             if scope_rel == ".":
                 scope_rel = ""
         except ValueError:
             scope_rel = ""
 
-        return ResolvedPath(
-            config=parsed.config,
+        return ResolvedFile(
             scope_dir=scope_dir,
             scope_rel=scope_rel,
             cfg_root=context.cfg_root,
@@ -275,4 +288,4 @@ class PathResolver:
         )
 
 
-__all__ = ["PathResolver"]
+__all__ = ["FileResolver"]

@@ -8,7 +8,6 @@ from template placeholders.
 from .types import (
     ResourceConfig,
     ParsedPath,
-    ResolvedPath,
     DirectoryContext,
     ResolvedResource,
     ResolvedFile,
@@ -18,11 +17,11 @@ from .types import (
 
 from .parser import PathParser
 
-from .resolver import PathResolver
-
 from .context import AddressingContext
 
-from .resolvers import FileResolver, SectionResolver
+from .file_resolver import FileResolver
+
+from .section_resolver import SectionResolver
 
 from .errors import (
     AddressingError,
@@ -36,7 +35,6 @@ __all__ = [
     # Types
     "ResourceConfig",
     "ParsedPath",
-    "ResolvedPath",
     "DirectoryContext",
     "ResolvedResource",
     "ResolvedFile",
@@ -45,7 +43,6 @@ __all__ = [
 
     # Main classes
     "PathParser",
-    "PathResolver",
     "AddressingContext",
     "FileResolver",
     "SectionResolver",

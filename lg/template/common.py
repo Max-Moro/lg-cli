@@ -3,7 +3,7 @@ Helper functions for loading templates and contexts.
 
 This module provides utilities for loading template and context files
 from lg-cfg/ directories. Path parsing and resolution logic has been
-moved to the lg/template/addressing/ package.
+moved to the lg/addressing/ package.
 """
 
 from __future__ import annotations

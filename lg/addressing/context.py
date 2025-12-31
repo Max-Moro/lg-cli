@@ -57,14 +57,14 @@ class AddressingContext:
     def _get_file_resolver(self):
         """Lazy initialization of file resolver."""
         if self._file_resolver is None:
-            from .resolvers import FileResolver
+            from .file_resolver import FileResolver
             self._file_resolver = FileResolver(self.repo_root)
         return self._file_resolver
 
     def _get_section_resolver(self):
         """Lazy initialization of section resolver."""
         if self._section_resolver is None:
-            from .resolvers import SectionResolver
+            from .section_resolver import SectionResolver
             self._section_resolver = SectionResolver(self._section_service, self.repo_root)
         return self._section_resolver
 
@@ -79,10 +79,8 @@ class AddressingContext:
         Returns:
             Resolved resource (ResolvedFile or ResolvedSection)
         """
-        if config.is_section:
-            return self._get_section_resolver().resolve(name, self)
-        else:
-            return self._get_file_resolver().resolve(name, config, self)
+        resolver = self._get_section_resolver() if config.is_section else self._get_file_resolver()
+        return resolver.resolve(name, config, self)
 
     @property
     def current(self) -> DirectoryContext:

@@ -1,8 +1,7 @@
 """
-Unified resolvers for addressing system.
+Section resolver for the addressing system.
 
-Provides concrete implementations of ResourceResolver protocol
-for different resource types.
+Resolves section references to loaded section configurations.
 """
 
 from __future__ import annotations
@@ -10,60 +9,11 @@ from __future__ import annotations
 from pathlib import Path
 
 from .context import AddressingContext
-from .parser import PathParser
-from .resolver import PathResolver
-from .types import ResourceConfig, ResolvedFile, ResolvedSection
+from .types import ResolvedSection, ResourceResolver, ResourceConfig
 from ..section import SectionService
 
 
-class FileResolver:
-    """
-    Resolver for file resources (templates, contexts, markdown).
-
-    Wraps PathParser + PathResolver for unified interface.
-    """
-
-    def __init__(self, repo_root: Path):
-        """
-        Initialize file resolver.
-
-        Args:
-            repo_root: Repository root path
-        """
-        self._parser = PathParser()
-        self._resolver = PathResolver(repo_root)
-        self._repo_root = repo_root.resolve()
-
-    def resolve(
-        self,
-        name: str,
-        config: ResourceConfig,
-        context: AddressingContext
-    ) -> ResolvedFile:
-        """
-        Resolve file path.
-
-        Args:
-            name: File path from template (may include @origin:)
-            config: Resource configuration (extension, etc.)
-            context: Addressing context
-
-        Returns:
-            Resolved file path
-        """
-        parsed = self._parser.parse(name, config)
-        resolved = self._resolver.resolve(parsed, context)
-
-        return ResolvedFile(
-            scope_dir=resolved.scope_dir,
-            scope_rel=resolved.scope_rel,
-            cfg_root=resolved.cfg_root,
-            resource_path=resolved.resource_path,
-            resource_rel=resolved.resource_rel,
-        )
-
-
-class SectionResolver:
+class SectionResolver(ResourceResolver):
     """
     Resolver for sections from YAML configuration.
 
@@ -84,6 +34,7 @@ class SectionResolver:
     def resolve(
         self,
         name: str,
+        _config: ResourceConfig,
         context: AddressingContext
     ) -> ResolvedSection:
         """
@@ -93,6 +44,7 @@ class SectionResolver:
 
         Args:
             name: Section reference from template
+            _config: Resource configuration (unused for sections, but required by protocol)
             context: Addressing context
 
         Returns:
@@ -223,4 +175,4 @@ class SectionResolver:
         return scope_dir, origin
 
 
-__all__ = ["FileResolver", "SectionResolver"]
+__all__ = ["SectionResolver"]

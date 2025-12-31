@@ -57,25 +57,6 @@ class ParsedPath:
     is_absolute: bool           # True if starts with /
 
 
-@dataclass(frozen=True)
-class ResolvedPath:
-    """
-    Fully resolved path to a resource.
-
-    Result of resolution — ready for use in loading.
-    """
-    config: ResourceConfig  # Resource configuration
-
-    # Resolved scope
-    scope_dir: Path             # Absolute path to scope directory (parent of lg-cfg)
-    scope_rel: str              # Relative path of scope from repo root
-
-    # Resolved path inside lg-cfg
-    cfg_root: Path              # Absolute path to lg-cfg/
-    resource_path: Path         # Full path to file/resource
-    resource_rel: str           # Relative path inside lg-cfg/ (also serves as canonical ID for sections)
-
-
 @dataclass
 class DirectoryContext:
     """
@@ -126,6 +107,7 @@ class ResourceResolver(Protocol):
     def resolve(
         self,
         name: str,
+        config: ResourceConfig,
         context: AddressingContext
     ) -> ResolvedResource:
         """
@@ -133,6 +115,7 @@ class ResourceResolver(Protocol):
 
         Args:
             name: Resource name from template
+            config: Resource configuration determining resolution behavior
             context: Addressing context (current_dir, scope)
 
         Returns:
@@ -144,7 +127,6 @@ class ResourceResolver(Protocol):
 __all__ = [
     "ResourceConfig",
     "ParsedPath",
-    "ResolvedPath",
     "DirectoryContext",
     "ResolvedResource",
     "ResolvedFile",
