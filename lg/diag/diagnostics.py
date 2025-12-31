@@ -9,7 +9,7 @@ from pathlib import Path
 from zipfile import ZipFile, ZIP_DEFLATED
 
 from lg.cache.fs_cache import Cache
-from lg.config import list_sections_peek
+from lg.section import list_sections_peek
 from lg.config.paths import cfg_root
 from lg.template import list_contexts
 from .diag_report_schema import (

@@ -20,5 +20,11 @@ CONTEXT_CONFIG = ResourceConfig(
     extension=".ctx.md",
 )
 
+# Section reference: resolved via SectionService
+SECTION_CONFIG = ResourceConfig(
+    name="section",
+    is_section=True,
+)
 
-__all__ = ["TEMPLATE_CONFIG", "CONTEXT_CONFIG"]
+
+__all__ = ["TEMPLATE_CONFIG", "CONTEXT_CONFIG", "SECTION_CONFIG"]

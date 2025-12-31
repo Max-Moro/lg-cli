@@ -14,7 +14,9 @@ import pytest
 from lg.config import load_config
 from lg.filtering.manifest import build_section_manifest
 from lg.template.context import TemplateContext
-from lg.types import SectionRef, SectionManifest
+from lg.template.addressing.types import ResolvedSection
+from lg.section import SectionLocation
+from lg.types import SectionManifest
 from tests.infrastructure import make_run_context
 from tests.infrastructure import write
 
@@ -119,24 +121,26 @@ def _build_manifest_for_section(
     else:
         scope_dir = root
 
-    section_ref = SectionRef(
-        name=section_name,
-        scope_rel=scope_rel,
-        scope_dir=scope_dir
-    )
-
     config = load_config(scope_dir)
-    section_cfg = config.sections.get(section_ref.name)
+    section_cfg = config.sections.get(section_name)
 
     if not section_cfg:
         available = list(config.sections.keys())
         raise RuntimeError(
-            f"Section '{section_ref.name}' not found in {scope_dir}. "
+            f"Section '{section_name}' not found in {scope_dir}. "
             f"Available: {', '.join(available) if available else '(none)'}"
         )
 
+    resolved = ResolvedSection(
+        scope_dir=scope_dir,
+        scope_rel=scope_rel,
+        location=SectionLocation(file_path=Path("test"), local_name=section_name),
+        section_config=section_cfg,
+        name=section_name
+    )
+
     return build_section_manifest(
-        section_ref=section_ref,
+        resolved=resolved,
         section_config=section_cfg,
         template_ctx=template_ctx,
         root=root,

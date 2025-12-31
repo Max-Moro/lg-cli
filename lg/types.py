@@ -1,8 +1,11 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Dict, List, Literal, Optional, NewType, Mapping, Any, Set
+from typing import Dict, List, Literal, Optional, NewType, Mapping, Any, Set, TYPE_CHECKING
 from pathlib import Path
+
+if TYPE_CHECKING:
+    from .template.addressing.types import ResolvedSection
 
 
 # ---- Aliases for clarity ----
@@ -48,25 +51,7 @@ class TargetSpec:
 
 
 # ---- Sections and references ----
-
-@dataclass(frozen=True)
-class SectionRef:
-    """
-    Reference to section with resolution information.
-    """
-    name: str  # Section name used in template
-    scope_rel: str  # Path to scope directory (relative to repository root)
-    scope_dir: Path  # Absolute path of scope directory (cfg_root.parent)
-
-    def canon_key(self) -> str:
-        """
-        Return canonical key for this section.
-        Used for caching and deduplication.
-        """
-        if self.scope_rel:
-            return f"sec@{self.scope_rel}:{self.name}"
-        else:
-            return f"sec:{self.name}"
+# SectionRef has been replaced with ResolvedSection from addressing.types
 
 
 # ---- Files ----
@@ -100,7 +85,7 @@ class SectionManifest:
     Contains result of file filtering for specific section
     considering active tags and modes.
     """
-    ref: SectionRef
+    resolved: "ResolvedSection"
     files: List[FileEntry]
     path_labels: PathLabelMode
     is_doc_only: bool  # True if section contains only markdown/plain text
@@ -161,7 +146,7 @@ class RenderedSection:
     Contains final section text and list of processed files.
     Statistics are collected separately through StatsCollector.
     """
-    ref: SectionRef
+    resolved: "ResolvedSection"
     text: str
     files: List[ProcessedFile]
     blocks: List[RenderBlock] = field(default_factory=list)
@@ -188,7 +173,7 @@ class SectionStats:
     """
     Rendered section statistics for StatsCollector.
     """
-    ref: SectionRef
+    resolved: "ResolvedSection"
     text: str
     tokens_rendered: int
     total_size_bytes: int

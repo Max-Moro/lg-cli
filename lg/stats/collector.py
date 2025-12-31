@@ -10,7 +10,8 @@ from __future__ import annotations
 from typing import Dict, List, Optional, Tuple
 
 from .tokenizer import TokenService
-from ..types import FileRow, Totals, ContextBlock, ProcessedFile, RenderedSection, SectionRef, FileStats, SectionStats
+from ..template.addressing.types import ResolvedSection
+from ..types import FileRow, Totals, ContextBlock, ProcessedFile, RenderedSection, FileStats, SectionStats
 
 
 class StatsCollector:
@@ -56,17 +57,21 @@ class StatsCollector:
     def register_processed_file(
         self,
         file: ProcessedFile,
-        section_ref: SectionRef
+        resolved: ResolvedSection
     ) -> None:
         """
         Register statistics for a processed file.
 
         Args:
             file: Processed file
-            section_ref: Reference to the section where the file is used
+            resolved: Resolved section where the file is used
         """
         rel_path = file.rel_path
-        canon_key = section_ref.canon_key()
+        # Build canon_key from resolved section
+        if resolved.scope_rel:
+            canon_key = f"sec@{resolved.scope_rel}:{resolved.name}"
+        else:
+            canon_key = f"sec:{resolved.name}"
 
         # Count tokens using cache
         t_proc = self.tokenizer.count_text_cached(file.processed_text)
@@ -103,7 +108,11 @@ class StatsCollector:
         Args:
             section: Rendered section
         """
-        canon_key = section.ref.canon_key()
+        # Build canon_key from resolved section
+        if section.resolved.scope_rel:
+            canon_key = f"sec@{section.resolved.scope_rel}:{section.resolved.name}"
+        else:
+            canon_key = f"sec:{section.resolved.name}"
 
         self.sections_usage[canon_key] = self.sections_usage.get(canon_key, 0) + 1
 
@@ -124,7 +133,7 @@ class StatsCollector:
 
         # Create section statistics
         self.sections_stats[canon_key] = SectionStats(
-            ref=section.ref,
+            resolved=section.resolved,
             text=section.text,
             tokens_rendered=tokens_rendered,
             total_size_bytes=total_size_bytes,

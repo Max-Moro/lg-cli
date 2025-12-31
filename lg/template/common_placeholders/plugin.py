@@ -93,8 +93,8 @@ class CommonPlaceholdersPlugin(TemplatePlugin):
             if not isinstance(node, SectionNode):
                 raise RuntimeError(f"Expected SectionNode, got {type(node)}")
 
-            # Use typed section handler (resolved_ref is always present after resolution)
-            return self.handlers.process_section_ref(node.resolved_ref)
+            # Use typed section handler (resolved_section is always present after resolution)
+            return self.handlers.process_section(node.resolved_section)
 
         def process_include_node(processing_context: ProcessingContext) -> str:
             """Processes include node through typed handlers."""

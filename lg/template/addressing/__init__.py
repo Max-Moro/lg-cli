@@ -10,6 +10,10 @@ from .types import (
     ParsedPath,
     ResolvedPath,
     DirectoryContext,
+    ResolvedResource,
+    ResolvedFile,
+    ResolvedSection,
+    ResourceResolver,
 )
 
 from .parser import PathParser
@@ -18,7 +22,7 @@ from .resolver import PathResolver
 
 from .context import AddressingContext
 
-from .config_based_resolver import ConfigBasedResolver, ConfigProvider
+from .resolvers import FileResolver, SectionResolver
 
 from .errors import (
     AddressingError,
@@ -34,13 +38,17 @@ __all__ = [
     "ParsedPath",
     "ResolvedPath",
     "DirectoryContext",
+    "ResolvedResource",
+    "ResolvedFile",
+    "ResolvedSection",
+    "ResourceResolver",
 
     # Main classes
     "PathParser",
     "PathResolver",
     "AddressingContext",
-    "ConfigBasedResolver",
-    "ConfigProvider",
+    "FileResolver",
+    "SectionResolver",
 
     # Exceptions
     "AddressingError",

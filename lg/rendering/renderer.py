@@ -24,7 +24,7 @@ def render_section(plan: SectionPlan, processed_files: List[ProcessedFile]) -> R
     blocks: List[RenderBlock] = []
 
     if not plan.files:
-        return RenderedSection(plan.manifest.ref, "", [], [])
+        return RenderedSection(plan.manifest.resolved, "", [], [])
 
     if plan.use_fence:
         # Each file in its own fence block
@@ -70,7 +70,7 @@ def render_section(plan: SectionPlan, processed_files: List[ProcessedFile]) -> R
 
     # Create RenderedSection
     rendered_section = RenderedSection(
-        ref=plan.manifest.ref,
+        resolved=plan.manifest.resolved,
         text=text,
         files=processed_files,
         blocks=blocks

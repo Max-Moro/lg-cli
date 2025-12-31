@@ -6,10 +6,12 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Optional, List
+from typing import Optional, List, TYPE_CHECKING
 
 from ..nodes import TemplateNode
-from ...types import SectionRef
+
+if TYPE_CHECKING:
+    from ..addressing.types import ResolvedSection
 
 
 @dataclass(frozen=True)
@@ -18,8 +20,8 @@ class SectionNode(TemplateNode):
     Section placeholder ${section}.
     """
     name: str
-    # Resolved section reference (filled by resolver)
-    resolved_ref: Optional[SectionRef] = None
+    # Resolved section (filled by resolver)
+    resolved_section: Optional["ResolvedSection"] = None
 
 
 @dataclass(frozen=True)

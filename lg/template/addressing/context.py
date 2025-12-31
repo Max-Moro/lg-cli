@@ -8,28 +8,40 @@ during template processing.
 from __future__ import annotations
 
 from pathlib import Path
-from typing import List, Optional
+from typing import List, Optional, TYPE_CHECKING
 
-from .types import DirectoryContext
+from .types import DirectoryContext, ResourceConfig, ResolvedResource
+
+if TYPE_CHECKING:
+    from ...section import SectionService
 
 
 class AddressingContext:
     """
-    Addressing context — manages the directory stack.
+    Addressing context — manages the directory stack and provides unified resolution.
 
     Tracks the current scope (origin) and current directory inside lg-cfg
     when processing nested template inclusions.
+
+    Provides a single `resolve()` method for all resource types.
     """
 
-    def __init__(self, repo_root: Path, initial_cfg_root: Path):
+    def __init__(
+        self,
+        repo_root: Path,
+        initial_cfg_root: Path,
+        section_service: Optional["SectionService"] = None
+    ):
         """
         Initialize addressing context.
 
         Args:
             repo_root: Repository root
             initial_cfg_root: Initial lg-cfg/ directory
+            section_service: Section service for resolving sections (optional for backward compat)
         """
         self.repo_root = repo_root.resolve()
+        self._section_service = section_service
         self._stack: List[DirectoryContext] = []
 
         # Initialize root context
@@ -38,6 +50,42 @@ class AddressingContext:
             current_dir="",
             cfg_root=initial_cfg_root.resolve()
         ))
+
+        # Lazy-initialized resolvers
+        self._file_resolver = None
+        self._section_resolver = None
+
+    def _get_file_resolver(self):
+        """Lazy initialization of file resolver."""
+        if self._file_resolver is None:
+            from .resolvers import FileResolver
+            self._file_resolver = FileResolver(self.repo_root)
+        return self._file_resolver
+
+    def _get_section_resolver(self):
+        """Lazy initialization of section resolver."""
+        if self._section_resolver is None:
+            if self._section_service is None:
+                raise RuntimeError("SectionService not provided to AddressingContext")
+            from .resolvers import SectionResolver
+            self._section_resolver = SectionResolver(self._section_service, self.repo_root)
+        return self._section_resolver
+
+    def resolve(self, name: str, config: ResourceConfig) -> ResolvedResource:
+        """
+        Unified resolution method for all resource types.
+
+        Args:
+            name: Resource name/path from template
+            config: Resource configuration determining resolution behavior
+
+        Returns:
+            Resolved resource (ResolvedFile or ResolvedSection)
+        """
+        if config.is_section:
+            return self._get_section_resolver().resolve(name, self)
+        else:
+            return self._get_file_resolver().resolve(name, config, self)
 
     @property
     def current(self) -> DirectoryContext:

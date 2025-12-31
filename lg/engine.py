@@ -5,7 +5,7 @@ Main processing pipeline.
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Optional
+from typing import Optional, cast
 
 from .cache.fs_cache import Cache
 from .config import process_adaptive_options
@@ -13,10 +13,13 @@ from .config.paths import cfg_root
 from .migrate import ensure_cfg_actual
 from .run_context import RunContext
 from .section_processor import SectionProcessor
+from .section import SectionService
 from .stats import RunResult, build_run_result_from_collector, StatsCollector
 from .stats.tokenizer import TokenService
 from .template import create_template_processor, TemplateContext
-from .types import RunOptions, TargetSpec, SectionRef
+from .template.addressing.types import ResolvedSection
+from .template.common_placeholders.configs import SECTION_CONFIG
+from .types import RunOptions, TargetSpec
 from .git import NullVcs, GitVcs
 from .git import GitIgnoreService
 from .version import tool_version
@@ -69,6 +72,10 @@ class Engine:
             encoder=self.options.encoder,
             cache=self.cache
         )
+
+        # Section service
+        self.section_service = SectionService(self.root, self.cache)
+
         active_tags, mode_options, adaptive_loader = process_adaptive_options(
             self.root,
             self.options.modes,
@@ -85,6 +92,7 @@ class Engine:
             adaptive_loader=adaptive_loader,
             mode_options=mode_options,
             active_tags=active_tags,
+            section_service=self.section_service,
         )
 
     def _init_processors(self) -> None:
@@ -104,8 +112,8 @@ class Engine:
     def _setup_component_integration(self) -> None:
         """Setup component integration."""
         # Link template processor with section handler
-        def section_handler(section_ref: SectionRef, template_ctx: TemplateContext) -> str:
-            rendered_section = self.section_processor.process_section(section_ref, template_ctx)
+        def section_handler(resolved: ResolvedSection, template_ctx: TemplateContext) -> str:
+            rendered_section = self.section_processor.process_section(resolved, template_ctx)
             return rendered_section.text
 
         self.template_processor.set_section_handler(section_handler)
@@ -156,48 +164,14 @@ class Engine:
 
         template_ctx = TemplateContext(self.run_ctx)
 
-        # Parse addressable reference if necessary
-        section_ref = self._create_section_ref(section_name)
-        rendered_section = self.section_processor.process_section(section_ref, template_ctx)
+        # Resolve section reference using unified addressing API
+        resolved_section = cast(ResolvedSection, template_ctx.addressing.resolve(section_name, SECTION_CONFIG))
+        rendered_section = self.section_processor.process_section(resolved_section, template_ctx)
 
         # Set final texts in collector (for section they are the same)
         self.stats_collector.set_final_texts(rendered_section.text)
 
         return rendered_section.text
-
-    def _create_section_ref(self, section_name: str) -> SectionRef:
-        """
-        Create SectionRef from section name, supporting addressable references.
-
-        Args:
-            section_name: Section name (may be addressable reference like @origin:name)
-
-        Returns:
-            SectionRef with correct scope_rel and scope_dir
-        """
-        if section_name.startswith("@["):
-            # @[origin]:name
-            close = section_name.find("]:")
-            if close < 0:
-                raise ValueError(f"Invalid section reference (missing ']:' ): {section_name}")
-            origin = section_name[2:close]
-            name = section_name[close + 2:]
-        elif section_name.startswith("@"):
-            # @origin:name
-            colon = section_name.find(":")
-            if colon < 0:
-                raise ValueError(f"Invalid section reference (missing ':'): {section_name}")
-            origin = section_name[1:colon]
-            name = section_name[colon + 1:]
-        else:
-            # Simple reference without addressing
-            return SectionRef(section_name, "", self.root)
-
-        # For addressable references, calculate scope_dir
-        scope_dir = (self.root / origin).resolve()
-        scope_rel = origin
-
-        return SectionRef(name, scope_rel, scope_dir)
 
     def render_text(self, target_spec: TargetSpec) -> str:
         """

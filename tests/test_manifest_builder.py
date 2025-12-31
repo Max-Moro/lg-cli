@@ -5,13 +5,14 @@ from pathlib import Path
 import pytest
 
 from lg.config import load_config
-from lg.config.model import SectionCfg
+from lg.section.model import SectionCfg
+from lg.section import SectionLocation
 from lg.filtering.manifest import build_section_manifest
 from lg.filtering.model import FilterNode
 from lg.section_processor import SectionProcessor
 from lg.stats import StatsCollector
 from lg.template.context import TemplateContext
-from lg.types import SectionRef
+from lg.template.addressing.types import ResolvedSection
 from tests.infrastructure import write, make_run_context, make_run_options
 
 
@@ -40,19 +41,21 @@ py-files:
     # Create template context
     template_ctx = TemplateContext(run_ctx)
 
-    # Create section reference
-    section_ref = SectionRef(
-        name="py-files",
+    # Load configuration
+    config = load_config(tmp_path)
+    section_cfg = config.sections.get("py-files")
+
+    # Create resolved section
+    resolved = ResolvedSection(
+        scope_dir=tmp_path,
         scope_rel="",
-        scope_dir=tmp_path
+        location=SectionLocation(file_path=Path("test"), local_name="py-files"),
+        section_config=section_cfg,
+        name="py-files"
     )
 
-    # Load configuration and build manifest
-    config = load_config(tmp_path)
-    section_cfg = config.sections.get(section_ref.name)
-
     manifest = build_section_manifest(
-        section_ref=section_ref,
+        resolved=resolved,
         section_config=section_cfg,
         template_ctx=template_ctx,
         root=tmp_path,
@@ -62,7 +65,7 @@ py-files:
     )
 
     # Check result
-    assert manifest.ref == section_ref
+    assert manifest.ref.name == "py-files"
     assert len(manifest.files) == 3
 
     # Check that all files are properly included
@@ -102,13 +105,19 @@ all-files:
     run_ctx = make_run_context(tmp_path)
     template_ctx = TemplateContext(run_ctx)
 
-    section_ref = SectionRef(name="all-files", scope_rel="", scope_dir=tmp_path)
-
     config = load_config(tmp_path)
-    section_cfg = config.sections.get(section_ref.name)
+    section_cfg = config.sections.get("all-files")
+
+    resolved = ResolvedSection(
+        scope_dir=tmp_path,
+        scope_rel="",
+        location=SectionLocation(file_path=Path("test"), local_name="all-files"),
+        section_config=section_cfg,
+        name="all-files"
+    )
 
     manifest = build_section_manifest(
-        section_ref=section_ref,
+        resolved=resolved,
         section_config=section_cfg,
         template_ctx=template_ctx,
         root=tmp_path,
@@ -128,10 +137,18 @@ all-files:
     template_ctx = TemplateContext(run_ctx)
 
     config = load_config(tmp_path)
-    section_cfg = config.sections.get(section_ref.name)
+    section_cfg = config.sections.get("all-files")
+
+    resolved = ResolvedSection(
+        scope_dir=tmp_path,
+        scope_rel="",
+        location=SectionLocation(file_path=Path("test"), local_name="all-files"),
+        section_config=section_cfg,
+        name="all-files"
+    )
 
     manifest = build_section_manifest(
-        section_ref=section_ref,
+        resolved=resolved,
         section_config=section_cfg,
         template_ctx=template_ctx,
         root=tmp_path,
@@ -191,10 +208,17 @@ wildcard-pattern:
     cfg = load_config(tmp_path)
 
     # Test 1: Multi-file section with multiple allow patterns
-    section_ref = SectionRef("multi-file", "", tmp_path)
+    section_cfg1 = cfg.sections["multi-file"]
+    resolved1 = ResolvedSection(
+        scope_dir=tmp_path,
+        scope_rel="",
+        location=SectionLocation(file_path=Path("test"), local_name="multi-file"),
+        section_config=section_cfg1,
+        name="multi-file"
+    )
     manifest = build_section_manifest(
-        section_ref=section_ref,
-        section_config=cfg.sections["multi-file"],
+        resolved=resolved1,
+        section_config=section_cfg1,
         template_ctx=template_ctx,
         root=tmp_path,
         vcs=run_ctx.vcs,
@@ -209,10 +233,17 @@ wildcard-pattern:
     assert "src/backup.bak" not in file_paths, ".bak files should be gitignored"
 
     # Test 2: Section with multiple specific patterns
-    section_ref2 = SectionRef("multi-pattern", "", tmp_path)
+    section_cfg2 = cfg.sections["multi-pattern"]
+    resolved2 = ResolvedSection(
+        scope_dir=tmp_path,
+        scope_rel="",
+        location=SectionLocation(file_path=Path("test"), local_name="multi-pattern"),
+        section_config=section_cfg2,
+        name="multi-pattern"
+    )
     manifest2 = build_section_manifest(
-        section_ref=section_ref2,
-        section_config=cfg.sections["multi-pattern"],
+        resolved=resolved2,
+        section_config=section_cfg2,
         template_ctx=template_ctx,
         root=tmp_path,
         vcs=run_ctx.vcs,
@@ -226,10 +257,17 @@ wildcard-pattern:
     assert "temp/debug.py" not in file_paths2, "temp/ directory should be gitignored"
 
     # Test 3: Section with wildcard pattern
-    section_ref3 = SectionRef("wildcard-pattern", "", tmp_path)
+    section_cfg3 = cfg.sections["wildcard-pattern"]
+    resolved3 = ResolvedSection(
+        scope_dir=tmp_path,
+        scope_rel="",
+        location=SectionLocation(file_path=Path("test"), local_name="wildcard-pattern"),
+        section_config=section_cfg3,
+        name="wildcard-pattern"
+    )
     manifest3 = build_section_manifest(
-        section_ref=section_ref3,
-        section_config=cfg.sections["wildcard-pattern"],
+        resolved=resolved3,
+        section_config=section_cfg3,
         template_ctx=template_ctx,
         root=tmp_path,
         vcs=run_ctx.vcs,
@@ -319,9 +357,17 @@ normal-wildcard:
     cfg = load_config(tmp_path)
 
     # Test 1: Single gitignored file - should have is_local_files=True
+    section_cfg = cfg.sections["gitignored-single"]
+    resolved = ResolvedSection(
+        scope_dir=tmp_path,
+        scope_rel="",
+        location=SectionLocation(file_path=Path("test"), local_name="gitignored-single"),
+        section_config=section_cfg,
+        name="gitignored-single"
+    )
     manifest = build_section_manifest(
-        section_ref=SectionRef("gitignored-single", "", tmp_path),
-        section_config=cfg.sections["gitignored-single"],
+        resolved=resolved,
+        section_config=section_cfg,
         template_ctx=template_ctx,
         root=tmp_path,
         vcs=run_ctx.vcs,
@@ -332,9 +378,17 @@ normal-wildcard:
     assert manifest.is_local_files is True, "Gitignored single-file section should have is_local_files=True"
 
     # Test 2: Gitignored pattern - should have is_local_files=True
+    section_cfg = cfg.sections["gitignored-pattern"]
+    resolved = ResolvedSection(
+        scope_dir=tmp_path,
+        scope_rel="",
+        location=SectionLocation(file_path=Path("test"), local_name="gitignored-pattern"),
+        section_config=section_cfg,
+        name="gitignored-pattern"
+    )
     manifest = build_section_manifest(
-        section_ref=SectionRef("gitignored-pattern", "", tmp_path),
-        section_config=cfg.sections["gitignored-pattern"],
+        resolved=resolved,
+        section_config=section_cfg,
         template_ctx=template_ctx,
         root=tmp_path,
         vcs=run_ctx.vcs,
@@ -345,9 +399,17 @@ normal-wildcard:
     assert manifest.is_local_files is True, "Gitignored pattern section should have is_local_files=True"
 
     # Test 3: Gitignored directory - should have is_local_files=True
+    section_cfg = cfg.sections["gitignored-dir"]
+    resolved = ResolvedSection(
+        scope_dir=tmp_path,
+        scope_rel="",
+        location=SectionLocation(file_path=Path("test"), local_name="gitignored-dir"),
+        section_config=section_cfg,
+        name="gitignored-dir"
+    )
     manifest = build_section_manifest(
-        section_ref=SectionRef("gitignored-dir", "", tmp_path),
-        section_config=cfg.sections["gitignored-dir"],
+        resolved=resolved,
+        section_config=section_cfg,
         template_ctx=template_ctx,
         root=tmp_path,
         vcs=run_ctx.vcs,
@@ -358,9 +420,17 @@ normal-wildcard:
     assert manifest.is_local_files is True, "Gitignored directory section should have is_local_files=True"
 
     # Test 4: Normal single-file section - should have is_local_files=False
+    section_cfg = cfg.sections["normal-section"]
+    resolved = ResolvedSection(
+        scope_dir=tmp_path,
+        scope_rel="",
+        location=SectionLocation(file_path=Path("test"), local_name="normal-section"),
+        section_config=section_cfg,
+        name="normal-section"
+    )
     manifest = build_section_manifest(
-        section_ref=SectionRef("normal-section", "", tmp_path),
-        section_config=cfg.sections["normal-section"],
+        resolved=resolved,
+        section_config=section_cfg,
         template_ctx=template_ctx,
         root=tmp_path,
         vcs=run_ctx.vcs,
@@ -371,9 +441,17 @@ normal-wildcard:
     assert manifest.is_local_files is False, "Non-gitignored single-file section should have is_local_files=False"
 
     # Test 5: Normal multi-file section - should have is_local_files=False
+    section_cfg = cfg.sections["normal-multi"]
+    resolved = ResolvedSection(
+        scope_dir=tmp_path,
+        scope_rel="",
+        location=SectionLocation(file_path=Path("test"), local_name="normal-multi"),
+        section_config=section_cfg,
+        name="normal-multi"
+    )
     manifest = build_section_manifest(
-        section_ref=SectionRef("normal-multi", "", tmp_path),
-        section_config=cfg.sections["normal-multi"],
+        resolved=resolved,
+        section_config=section_cfg,
         template_ctx=template_ctx,
         root=tmp_path,
         vcs=run_ctx.vcs,
@@ -384,9 +462,17 @@ normal-wildcard:
     assert manifest.is_local_files is False, "Non-gitignored multi-file section should have is_local_files=False"
 
     # Test 6: Normal wildcard section - should have is_local_files=False
+    section_cfg = cfg.sections["normal-wildcard"]
+    resolved = ResolvedSection(
+        scope_dir=tmp_path,
+        scope_rel="",
+        location=SectionLocation(file_path=Path("test"), local_name="normal-wildcard"),
+        section_config=section_cfg,
+        name="normal-wildcard"
+    )
     manifest = build_section_manifest(
-        section_ref=SectionRef("normal-wildcard", "", tmp_path),
-        section_config=cfg.sections["normal-wildcard"],
+        resolved=resolved,
+        section_config=section_cfg,
         template_ctx=template_ctx,
         root=tmp_path,
         vcs=run_ctx.vcs,
@@ -428,30 +514,33 @@ my-local-config.yaml
     # Create template context with virtual section for local file
     template_ctx = TemplateContext(run_ctx)
 
-    # Set up virtual section that describes a single local file (that doesn't exist)
-    virtual_section = SectionCfg(
+    # Create virtual section that describes a single local file (that doesn't exist)
+    virtual_section_cfg = SectionCfg(
         extensions=[".yaml"],
         filters=FilterNode(
             mode="allow",
             allow=["/my-local-config.yaml"]
         )
     )
-    template_ctx.set_virtual_section(virtual_section)
 
     # Process section - should NOT raise error for missing local file
-    section_ref = SectionRef("virtual", "", tmp_path)
+    virtual_resolved = ResolvedSection(
+        scope_dir=tmp_path,
+        scope_rel="",
+        location=SectionLocation(file_path=Path("test"), local_name="virtual"),
+        section_config=virtual_section_cfg,
+        name="virtual"
+    )
 
     # This should not raise RuntimeError about missing files
-    rendered = processor.process_section(section_ref, template_ctx)
+    rendered = processor.process_section(virtual_resolved, template_ctx)
 
     # Verify the section was processed (even though no files exist)
-    assert rendered.ref == section_ref
+    assert rendered.ref.name == "virtual"
     assert rendered.files == []  # No files, but no error
     assert rendered.text == ""  # Empty content is OK for local files
 
     # Now test with non-local virtual section (should still error)
-    template_ctx.clear_virtual_section()
-
     # Virtual section (not local files)
     non_local_virtual = SectionCfg(
         extensions=[".md"],
@@ -460,10 +549,18 @@ my-local-config.yaml
             allow=["/example-config.yaml"]
         )
     )
-    template_ctx.set_virtual_section(non_local_virtual)
+
+    # Create another resolved section for the non-local test
+    non_local_resolved = ResolvedSection(
+        scope_dir=tmp_path,
+        scope_rel="",
+        location=SectionLocation(file_path=Path("test"), local_name="md:example-config.yaml"),
+        section_config=non_local_virtual,
+        name="md:example-config.yaml"
+    )
 
     # This SHOULD raise RuntimeError about missing files
     with pytest.raises(RuntimeError) as exc_info:
-        processor.process_section(section_ref, template_ctx)
+        processor.process_section(non_local_resolved, template_ctx)
 
     assert "No markdown files found" in str(exc_info.value)

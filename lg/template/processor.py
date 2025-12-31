@@ -21,8 +21,8 @@ from .nodes import TemplateNode, TemplateAST, TextNode
 from .parser import ModularParser
 from .registry import TemplateRegistry
 from .types import ProcessingContext
+from .addressing.types import ResolvedSection
 from ..run_context import RunContext
-from ..types import SectionRef
 
 logger = logging.getLogger(__name__)
 
@@ -63,7 +63,7 @@ class TemplateProcessor:
         self._template_cache: Dict[str, TemplateAST] = {}
 
         # Section handler (set externally)
-        self.section_handler: Optional[Callable[[SectionRef, TemplateContext], str]] = None
+        self.section_handler: Optional[Callable[[ResolvedSection, TemplateContext], str]] = None
 
         # Create handlers class inline here
         class ProcessorHandlers(TemplateProcessorHandlers):
@@ -71,10 +71,11 @@ class TemplateProcessor:
                 """Delegates node processing with context."""
                 return processor_self._evaluate_node(context.get_node(), context.ast, context.node_index)
 
-            def process_section_ref(self, section_ref: SectionRef) -> str:
+            def process_section(self, resolved: ResolvedSection) -> str:
+                """Process resolved section."""
                 if processor_self.section_handler is None:
-                    raise RuntimeError(f"No section handler set for processing section '{section_ref.name}'")
-                return processor_self.section_handler(section_ref, processor_self.template_ctx)
+                    raise RuntimeError(f"No section handler set for processing section '{resolved.name}'")
+                return processor_self.section_handler(resolved, processor_self.template_ctx)
 
             def parse_next_node(self, context) -> Optional[TemplateNode]:
                 """Delegates parsing to main parser."""
@@ -89,12 +90,12 @@ class TemplateProcessor:
         processor_self = self
         self.handlers = ProcessorHandlers()
 
-    def set_section_handler(self, handler: Callable[[SectionRef, TemplateContext], str]) -> None:
+    def set_section_handler(self, handler: Callable[[ResolvedSection, TemplateContext], str]) -> None:
         """
         Sets section handler.
 
         Args:
-            handler: Function for processing section placeholders
+            handler: Function for processing resolved sections
         """
         self.section_handler = handler
 

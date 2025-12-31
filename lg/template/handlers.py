@@ -11,7 +11,7 @@ from typing import Protocol, runtime_checkable
 
 from .nodes import TemplateNode
 from .types import ProcessingContext
-from ..types import SectionRef
+from .addressing.types import ResolvedSection
 
 
 @runtime_checkable
@@ -35,12 +35,12 @@ class TemplateProcessorHandlers(Protocol):
         """
         ...
 
-    def process_section_ref(self, section_ref: SectionRef) -> str:
+    def process_section(self, resolved: ResolvedSection) -> str:
         """
-        Processes section reference.
+        Processes resolved section.
 
         Args:
-            section_ref: Section reference to process
+            resolved: Resolved section with loaded configuration
 
         Returns:
             Rendered section content

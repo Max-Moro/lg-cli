@@ -231,7 +231,7 @@ def main(argv: list[str] | None = None) -> int:
                 from .template import list_contexts
                 data = {"contexts": list_contexts(root)}
             elif ns.what == "sections":
-                from .config import list_sections
+                from .section import list_sections
                 data = {"sections": list_sections(root)}
             elif ns.what == "tokenizer-libs":
                 from .stats import list_tokenizer_libs

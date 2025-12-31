@@ -10,14 +10,14 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Dict, List, cast
 
-from .configs import TEMPLATE_CONFIG, CONTEXT_CONFIG
+from .configs import TEMPLATE_CONFIG, CONTEXT_CONFIG, SECTION_CONFIG
 from .nodes import SectionNode, IncludeNode
 from ..common import load_template_from, load_context_from
 from ..context import TemplateContext
 from ..handlers import TemplateProcessorHandlers
 from ..nodes import TemplateNode, TemplateAST
 from ..protocols import TemplateRegistryProtocol
-from ...types import SectionRef
+from ..addressing.types import ResolvedSection, ResolvedFile
 
 
 @dataclass(frozen=True)
@@ -38,7 +38,7 @@ class CommonPlaceholdersResolver:
     Handles addressed references, loads included templates,
     and fills node metadata for subsequent processing.
 
-    Uses AddressingContext from TemplateContext for path resolution.
+    Uses unified AddressingContext.resolve() for all resource types.
     """
 
     def __init__(
@@ -76,29 +76,17 @@ class CommonPlaceholdersResolver:
         else:
             return node
 
-    def _resolve_section_node(self, node: SectionNode, _context: str = "") -> SectionNode:
+    def _resolve_section_node(self, node: SectionNode) -> SectionNode:
         """
-        Resolves section node using config-based resolver from addressing system.
-
-        Delegates to template_ctx.config_resolver which handles:
-        - Context-dependent search (with current directory prefix)
-        - Addressed references (@origin:name)
-        - Config loading and caching
+        Resolves section node using unified addressing API.
         """
-        # Delegate to config-based resolver
-        canonical_id, scope_dir, scope_rel = self.template_ctx.config_resolver.resolve(
-            node.name,
-            self.template_ctx.addressing
-        )
+        # Use unified resolve() with SECTION_CONFIG
+        resolved = self.template_ctx.addressing.resolve(node.name, SECTION_CONFIG)
 
-        # Create resolved SectionRef
-        section_ref = SectionRef(
-            name=canonical_id,
-            scope_rel=scope_rel,
-            scope_dir=scope_dir
-        )
+        # Type narrowing - we know it's ResolvedSection because is_section=True
+        resolved_section = cast(ResolvedSection, resolved)
 
-        return SectionNode(node.name, section_ref)
+        return SectionNode(node.name, resolved_section=resolved_section)
 
     def _resolve_include_node(self, node: IncludeNode, context: str = "") -> IncludeNode:
         """
@@ -140,7 +128,7 @@ class CommonPlaceholdersResolver:
 
     def _load_and_parse_include(self, node: IncludeNode, context: str) -> ResolvedInclude:
         """
-        Loads and parses the included template using new addressing API.
+        Loads and parses the included template using unified addressing API.
         """
         # Determine resource config
         config = CONTEXT_CONFIG if node.kind == "ctx" else TEMPLATE_CONFIG
@@ -151,13 +139,17 @@ class CommonPlaceholdersResolver:
         else:
             raw_path = node.name
 
-        resolved = self.template_ctx.resolve_path(raw_path, config)
+        # Use unified resolve()
+        resolved = self.template_ctx.addressing.resolve(raw_path, config)
+
+        # Type narrowing
+        resolved_file = cast(ResolvedFile, resolved)
 
         # Load content from resolved path
         if node.kind == "ctx":
-            _, template_text = load_context_from(resolved.cfg_root, resolved.resource_rel.replace('.ctx.md', ''))
+            _, template_text = load_context_from(resolved_file.cfg_root, resolved_file.resource_rel.replace('.ctx.md', ''))
         else:
-            _, template_text = load_template_from(resolved.cfg_root, resolved.resource_rel.replace('.tpl.md', ''))
+            _, template_text = load_template_from(resolved_file.cfg_root, resolved_file.resource_rel.replace('.tpl.md', ''))
 
         # Parse template
         from ..parser import parse_template
@@ -165,19 +157,19 @@ class CommonPlaceholdersResolver:
         include_ast = parse_template(template_text, registry=cast(TemplateRegistry, self.registry))
 
         # Apply resolvers with file scope context
-        with self.template_ctx.file_scope(resolved.resource_path, resolved.scope_rel):
+        with self.template_ctx.file_scope(resolved_file.resource_path, resolved_file.scope_rel):
             # Core will apply resolvers from all plugins
             ast: TemplateAST = self.handlers.resolve_ast(include_ast, context)
 
         # Determine effective origin
-        effective_origin = resolved.scope_rel if resolved.scope_rel else "self"
+        effective_origin = resolved_file.scope_rel if resolved_file.scope_rel else "self"
 
         return ResolvedInclude(
             kind=node.kind,
             name=node.name,
             origin=effective_origin,
-            cfg_root=resolved.cfg_root,
-            resource_path=resolved.resource_path,
+            cfg_root=resolved_file.cfg_root,
+            resource_path=resolved_file.resource_path,
             ast=ast
         )
 

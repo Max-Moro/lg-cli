@@ -14,17 +14,18 @@ from .filters import FilterEngine
 from .fs import iter_files
 from .model import FilterNode
 from ..adapters.registry import get_adapter_for_path
-from ..config import SectionCfg, EmptyPolicy
+from ..section import SectionCfg, EmptyPolicy
 from ..config.paths import is_cfg_relpath
 from ..rendering import get_language_for_file
 from ..template.context import TemplateContext
-from ..types import FileEntry, SectionManifest, SectionRef
+from ..template.addressing.types import ResolvedSection
+from ..types import FileEntry, SectionManifest
 from ..git import VcsProvider, NullVcs
 from ..git.gitignore import GitIgnoreService
 
 
 def build_section_manifest(
-    section_ref: SectionRef,
+    resolved: ResolvedSection,
     section_config: SectionCfg,
     template_ctx: TemplateContext,
     root: Path,
@@ -37,7 +38,7 @@ def build_section_manifest(
     Builds a section manifest based on a ready configuration (for virtual sections).
 
     Args:
-        section_ref: Section reference
+        resolved: Resolved section
         section_config: Ready section configuration
         template_ctx: Template context with active modes/tags
         root: Repository root
@@ -58,12 +59,12 @@ def build_section_manifest(
     adapters_cfg = _compute_final_adapter_configs(section_config, template_ctx)
 
     # Determine if section describes local files
-    is_local_files = _is_gitignored_section(section_config, gitignore_service, section_ref.scope_rel)
+    is_local_files = _is_gitignored_section(section_config, gitignore_service, resolved.scope_rel)
 
     # Preliminary check: determine if section is documentation-only
     # Collect files with vcs_mode: all to check section type
     preview_files = _collect_section_files(
-        section_ref=section_ref,
+        resolved=resolved,
         section_cfg=section_config,
         filter_engine=filter_engine,
         changed_files=set(),  # empty set = all files when vcs_mode == "all"
@@ -94,7 +95,7 @@ def build_section_manifest(
     else:
         # Rebuild with VCS filtering applied
         files = _collect_section_files(
-            section_ref=section_ref,
+            resolved=resolved,
             section_cfg=section_config,
             filter_engine=filter_engine,
             changed_files=changed,
@@ -107,7 +108,7 @@ def build_section_manifest(
 
     # Create manifest
     return SectionManifest(
-        ref=section_ref,
+        resolved=resolved,
         files=files,
         path_labels=section_config.path_labels,
         adapters_cfg=adapters_cfg,
@@ -274,7 +275,7 @@ def _is_gitignored_section(
     return True
 
 def _collect_section_files(
-    section_ref: SectionRef,
+    resolved: ResolvedSection,
     section_cfg: SectionCfg,
     filter_engine: FilterEngine,
     changed_files: Set[str],
@@ -287,7 +288,7 @@ def _collect_section_files(
     """
     Collects files for a section with all filters applied.
     """
-    scope_rel = section_ref.scope_rel
+    scope_rel = resolved.scope_rel
 
     # Function to check if a file belongs to the section's scope
     def in_scope(path_posix: str) -> bool:

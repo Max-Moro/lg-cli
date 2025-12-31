@@ -6,11 +6,11 @@ from __future__ import annotations
 
 from .heading_context import HeadingContext
 from .nodes import MarkdownFileNode
-from ..addressing import ResolvedPath
-from ...config.model import SectionCfg, AdapterConfig
+from ..addressing.types import ResolvedFile, ResolvedSection
+from ...section.model import SectionCfg, AdapterConfig
+from ...section import SectionLocation
 from ...filtering.model import FilterNode
 from ...markdown import MarkdownCfg
-from ...types import SectionRef
 
 
 class VirtualSectionFactory:
@@ -28,9 +28,9 @@ class VirtualSectionFactory:
     def create_for_markdown_file(
         self,
         node: MarkdownFileNode,
-        resolved: ResolvedPath,
+        resolved: ResolvedFile,
         heading_context: HeadingContext,
-    ) -> tuple[SectionCfg, SectionRef]:
+    ) -> ResolvedSection:
         """
         Creates virtual section for Markdown file or set of files.
 
@@ -40,7 +40,7 @@ class VirtualSectionFactory:
             heading_context: Heading context
 
         Returns:
-            Tuple (section_config, section_ref)
+            resolved_section
         """
         # Use resolved path for md@origin:, otherwise normalize from node for md: (external)
         path = resolved.resource_rel if node.origin is not None else node.path
@@ -60,14 +60,25 @@ class VirtualSectionFactory:
             adapters={"markdown": AdapterConfig(base_options=markdown_config_raw)}
         )
 
-        # Create SectionRef with scope info from resolved path
-        section_ref = SectionRef(
-            name=self._generate_name(),
-            scope_rel=resolved.scope_rel,
-            scope_dir=resolved.scope_dir
+        # Generate unique name for virtual section
+        name = self._generate_name()
+
+        # Create synthetic location for virtual section
+        synthetic_location = SectionLocation(
+            file_path=resolved.resource_path,
+            local_name=name
         )
 
-        return section_config, section_ref
+        # Create ResolvedSection with scope info from resolved path
+        resolved_section = ResolvedSection(
+            scope_dir=resolved.scope_dir,
+            scope_rel=resolved.scope_rel,
+            location=synthetic_location,
+            section_config=section_config,
+            name=name
+        )
+
+        return resolved_section
 
     def _generate_name(self) -> str:
         """

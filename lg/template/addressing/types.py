@@ -8,7 +8,11 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Optional
+from typing import Optional, Protocol, runtime_checkable, TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from ...section import SectionLocation, SectionCfg
+    from .context import AddressingContext
 
 
 @dataclass(frozen=True)
@@ -30,6 +34,9 @@ class ResourceConfig:
 
     # Resolution behavior: True = resolve relative to scope root (outside lg-cfg/)
     resolve_outside_cfg: bool = False
+
+    # NEW: True = this is a section reference (uses SectionService)
+    is_section: bool = False
 
 
 @dataclass(frozen=True)
@@ -85,9 +92,63 @@ class DirectoryContext:
         return f"DirectoryContext(origin={self.origin!r}, current_dir={self.current_dir!r})"
 
 
+@dataclass(frozen=True)
+class ResolvedResource:
+    """Base result of resolving any resource."""
+    scope_dir: Path      # Absolute path to scope directory (parent of lg-cfg)
+    scope_rel: str       # Relative path of scope from repo root
+
+
+@dataclass(frozen=True)
+class ResolvedFile(ResolvedResource):
+    """Result of resolving a file resource (tpl, ctx, md)."""
+    cfg_root: Path       # Absolute path to lg-cfg/
+    resource_path: Path  # Full path to file
+    resource_rel: str    # Relative path inside lg-cfg/
+
+
+@dataclass(frozen=True)
+class ResolvedSection(ResolvedResource):
+    """
+    Result of resolving a section.
+
+    Contains all necessary information for processing section
+    without repeated calls to SectionService.
+    """
+    location: "SectionLocation"     # Physical location of section
+    section_config: "SectionCfg"    # Already loaded configuration
+    name: str                       # Original name from template (for diagnostics)
+
+
+@runtime_checkable
+class ResourceResolver(Protocol):
+    """Common interface for resolving any resources."""
+
+    def resolve(
+        self,
+        name: str,
+        context: "AddressingContext"
+    ) -> ResolvedResource:
+        """
+        Resolve resource name to concrete location.
+
+        Args:
+            name: Resource name from template
+            context: Addressing context (current_dir, scope)
+
+        Returns:
+            Resolved resource
+        """
+        ...
+
+
 __all__ = [
     "ResourceConfig",
     "ParsedPath",
     "ResolvedPath",
     "DirectoryContext",
+    "ResolvedResource",
+    "ResolvedFile",
+    "ResolvedSection",
+    "ResourceResolver",
 ]

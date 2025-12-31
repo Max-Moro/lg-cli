@@ -12,11 +12,9 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Dict, Set, List, Optional
 
-from .addressing import AddressingContext, PathParser, PathResolver, ResourceConfig, ResolvedPath, ConfigBasedResolver
+from .addressing import AddressingContext
 from .evaluator import TemplateConditionEvaluator
-from ..config import load_config, Config
 from ..config.adaptive_model import ModeOptions
-from ..config.model import SectionCfg
 from ..run_context import RunContext, ConditionContext
 
 
@@ -31,16 +29,13 @@ class TemplateState:
     mode_options: ModeOptions
     active_tags: Set[str]
     active_modes: Dict[str, str]  # modeset -> mode_name
-    # Virtual section (for processing ${md:...} placeholders)
-    current_virtual_section: Optional[SectionCfg] = None
 
     def copy(self) -> TemplateState:
         """Creates a deep copy of the state."""
         return TemplateState(
             mode_options=self.mode_options,
             active_tags=set(self.active_tags),
-            active_modes=dict(self.active_modes),
-            current_virtual_section=self.current_virtual_section
+            active_modes=dict(self.active_modes)
         )
 
 
@@ -67,8 +62,7 @@ class TemplateContext:
         self.current_state = TemplateState(
             mode_options=run_ctx.mode_options,
             active_tags=set(run_ctx.active_tags),
-            active_modes=dict(run_ctx.options.modes),
-            current_virtual_section=None
+            active_modes=dict(run_ctx.options.modes)
         )
 
         # State stack for nested mode blocks
@@ -80,22 +74,11 @@ class TemplateContext:
         # Condition evaluator (created lazily)
         self._condition_evaluator: Optional[TemplateConditionEvaluator] = None
 
-        # Addressing system components
+        # Unified addressing system - single entry point for all resource resolution
         self.addressing = AddressingContext(
             repo_root=run_ctx.root,
-            initial_cfg_root=run_ctx.root / "lg-cfg"
-        )
-        self._path_parser = PathParser()
-        self._path_resolver = PathResolver(run_ctx.root)
-
-        # Config cache for section resolution (by scope_dir)
-        self._config_cache: Dict[Path, 'Config'] = {}
-
-        # Config-based resolver for sections (used by common_placeholders plugin)
-        self.config_resolver = ConfigBasedResolver(
-            repo_root=run_ctx.root,
-            config_provider=lambda scope_dir: self.get_config(scope_dir).sections,
-            item_name="Section"
+            initial_cfg_root=run_ctx.root / "lg-cfg",
+            section_service=run_ctx.section_service
         )
 
     def get_condition_evaluator(self) -> TemplateConditionEvaluator:
@@ -178,30 +161,6 @@ class TemplateContext:
         # Reset condition evaluator cache
         self._condition_evaluator = None
 
-    def set_virtual_section(self, section_config: SectionCfg) -> None:
-        """
-        Sets current virtual section for processing ${md:...} placeholder.
-
-        Args:
-            section_config: Virtual section configuration
-        """
-        self.current_state.current_virtual_section = section_config
-
-    def get_virtual_section(self) -> Optional[SectionCfg]:
-        """
-        Returns current virtual section if set.
-
-        Returns:
-            Tuple (section_ref, section_config) or None
-        """
-        return self.current_state.current_virtual_section
-
-    def clear_virtual_section(self) -> None:
-        """
-        Clears current virtual section after processing.
-        """
-        self.current_state.current_virtual_section = None
-
     @contextmanager
     def file_scope(self, file_path: Path, new_origin: Optional[str] = None):
         """
@@ -218,43 +177,6 @@ class TemplateContext:
             yield
         finally:
             self.addressing.pop()
-
-    def resolve_path(self, raw: str, config: ResourceConfig) -> ResolvedPath:
-        """
-        High-level API for resolving paths.
-
-        Combines parsing and resolution using current addressing context.
-
-        Args:
-            raw: Raw path string from placeholder
-            config: Resource configuration
-
-        Returns:
-            Fully resolved path
-
-        Raises:
-            PathParseError: If path syntax is invalid
-            PathResolutionError: If path cannot be resolved
-        """
-        parsed = self._path_parser.parse(raw, config)
-        return self._path_resolver.resolve(parsed, self.addressing)
-
-    def get_config(self, scope_dir: Path) -> Config:
-        """
-        Get Config for specified scope with caching.
-
-        Universal method for plugins to access configuration.
-        Used by CommonPlaceholdersResolver for section resolution.
-
-        Args:
-            scope_dir: Scope directory (repository root or subdomain)
-
-        Returns:
-            Loaded configuration
-        """
-        if scope_dir not in self._config_cache:
-            self._config_cache[scope_dir] = load_config(scope_dir)
-        return self._config_cache[scope_dir]
 
     def get_origin(self) -> str:
         """

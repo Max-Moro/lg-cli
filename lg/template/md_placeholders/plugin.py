@@ -7,7 +7,7 @@ for supporting ${md:path}, ${md@origin:path}, globs, anchors and parameters.
 
 from __future__ import annotations
 
-from typing import List
+from typing import List, cast
 
 from .nodes import MarkdownFileNode
 from .parser_rules import get_md_parser_rules
@@ -16,6 +16,7 @@ from .virtual_sections import VirtualSectionFactory
 from .configs import MARKDOWN_CONFIG, MARKDOWN_EXTERNAL_CONFIG
 from ..base import TemplatePlugin
 from ..types import PluginPriority, TokenSpec, ParsingRule, ProcessorRule, ProcessingContext
+from ..addressing.types import ResolvedFile
 from ...template import TemplateContext
 
 
@@ -105,27 +106,21 @@ class MdPlaceholdersPlugin(TemplatePlugin):
                 config = MARKDOWN_EXTERNAL_CONFIG
                 raw_path = node.path
 
-            # Resolve path using new addressing API
+            # Resolve path using unified addressing API
             try:
-                resolved = self.template_ctx.resolve_path(raw_path, config)
+                resolved = cast(ResolvedFile, self.template_ctx.addressing.resolve(raw_path, config))
             except Exception as e:
                 raise RuntimeError(f"Failed to resolve markdown path '{raw_path}': {e}")
 
             # Create virtual section with resolved path info
-            section_config, section_ref = self.virtual_factory.create_for_markdown_file(
+            resolved_section = self.virtual_factory.create_for_markdown_file(
                 node=node,
                 resolved=resolved,
                 heading_context=heading_context,
             )
 
-            # Set virtual section in context
-            self.template_ctx.set_virtual_section(section_config)
-
-            try:
-                result = self.handlers.process_section_ref(section_ref)
-                return result
-            finally:
-                self.template_ctx.clear_virtual_section()
+            # Process section directly - no need to set/clear virtual section
+            return self.handlers.process_section(resolved_section)
 
         return [
             ProcessorRule(

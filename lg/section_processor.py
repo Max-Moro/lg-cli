@@ -6,17 +6,14 @@ Implements processing of individual sections requested by template engine.
 
 from __future__ import annotations
 
-from pathlib import Path
-from typing import Dict
-
 from .adapters.processor import process_files
-from .config import Config, load_config
 from .filtering.manifest import build_section_manifest
 from .rendering import render_section, build_section_plan
 from .run_context import RunContext
 from .stats.collector import StatsCollector
 from .template.context import TemplateContext
-from .types import RenderedSection, SectionRef, SectionManifest
+from .template.addressing.types import ResolvedSection
+from .types import RenderedSection, SectionManifest
 
 
 class SectionProcessor:
@@ -34,55 +31,22 @@ class SectionProcessor:
         """
         self.run_ctx = run_ctx
         self.stats_collector = stats_collector
-        # Cache configurations for each scope_dir
-        self._config_cache: Dict[Path, Config] = {}
 
-    def _get_config(self, scope_dir: Path) -> Config:
+    def _build_manifest(self, resolved: ResolvedSection, template_ctx: TemplateContext) -> SectionManifest:
         """
-        Get configuration for specified scope_dir with caching.
+        Build section manifest using resolved section.
 
         Args:
-            scope_dir: Directory with configuration
-
-        Returns:
-            Loaded configuration
-        """
-        if scope_dir not in self._config_cache:
-            self._config_cache[scope_dir] = load_config(scope_dir)
-        return self._config_cache[scope_dir]
-
-    def _build_manifest(self, section_ref: SectionRef, template_ctx: TemplateContext) -> SectionManifest:
-        """
-        Build section manifest using cached configuration.
-
-        Args:
-            section_ref: Section reference
+            resolved: Resolved section with loaded configuration
             template_ctx: Template context
 
         Returns:
             Section manifest
         """
-        # Check if there's a virtual section in the context
-        virtual_section_config = template_ctx.get_virtual_section()
-
-        if virtual_section_config is not None:
-            # Use virtual section
-            section_config = virtual_section_config
-        else:
-            # Get configuration with caching
-            config = self._get_config(section_ref.scope_dir)
-            section_config = config.sections.get(section_ref.name)
-
-            if not section_config:
-                available = list(config.sections.keys())
-                raise RuntimeError(
-                    f"Section '{section_ref.name}' not found in {section_ref.scope_dir}. "
-                    f"Available: {', '.join(available) if available else '(none)'}"
-                )
-
+        # Simply use section_config from resolved - no virtual section check needed
         manifest = build_section_manifest(
-            section_ref=section_ref,
-            section_config=section_config,
+            resolved=resolved,
+            section_config=resolved.section_config,
             template_ctx=template_ctx,
             root=self.run_ctx.root,
             vcs=self.run_ctx.vcs,
@@ -92,38 +56,25 @@ class SectionProcessor:
         )
 
         # For virtual sections (md-placeholders), check file existence
-        if virtual_section_config is not None and not manifest.files and not manifest.is_local_files:
-            # This is our virtual section for md-placeholder
-            # Try to recover placeholder information from filters
-            if manifest.ref.scope_rel:
-                # Addressable placeholder
-                raise RuntimeError(f"No markdown files found for `md@{manifest.ref.scope_rel}:` placeholder")
-            else:
-                # Regular placeholder, try to get path from section configuration
-                virtual_cfg = template_ctx.get_virtual_section()
-                if virtual_cfg and virtual_cfg.filters.allow:
-                    file_path = virtual_cfg.filters.allow[0].lstrip('/')
-                    if file_path.startswith('lg-cfg/'):
-                        raise RuntimeError(f"No markdown files found for `md@self:{file_path[7:]}` placeholder")
-                    else:
-                        raise RuntimeError(f"No markdown files found for `md:{file_path}` placeholder")
-                else:
-                    raise RuntimeError("No markdown files found for `md:` placeholder")
+        if not manifest.files and not manifest.is_local_files:
+            # Check if this looks like a virtual md section
+            if resolved.name.startswith("md:") or resolved.name.startswith("md@"):
+                raise RuntimeError(f"No markdown files found for `{resolved.name}` placeholder")
 
         return manifest
 
-    def process_section(self, section_ref: SectionRef, template_ctx: TemplateContext) -> RenderedSection:
+    def process_section(self, resolved: ResolvedSection, template_ctx: TemplateContext) -> RenderedSection:
         """
-        Process a single section and return its rendered content.
+        Process a resolved section and return its rendered content.
 
         Args:
-            section_ref: Section reference
+            resolved: Fully resolved section (from resolver)
             template_ctx: Current template context (contains active modes, tags)
 
         Returns:
             Rendered section
         """
-        manifest = self._build_manifest(section_ref, template_ctx)
+        manifest = self._build_manifest(resolved, template_ctx)
 
         plan = build_section_plan(manifest, template_ctx)
 
@@ -133,7 +84,7 @@ class SectionProcessor:
         for pf in processed_files:
             self.stats_collector.register_processed_file(
                 file=pf,
-                section_ref=section_ref
+                resolved=resolved
             )
 
         rendered = render_section(plan, processed_files)

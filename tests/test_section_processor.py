@@ -10,7 +10,9 @@ from lg.section_processor import SectionProcessor
 from lg.stats import TokenService
 from lg.stats.collector import StatsCollector
 from lg.template.context import TemplateContext
-from lg.types import RunOptions, SectionRef
+from lg.types import RunOptions
+from lg.template.addressing.types import ResolvedSection
+from lg.section import SectionLocation, SectionCfg
 from lg.git import NullVcs
 
 
@@ -60,19 +62,21 @@ py-files:
         stats_collector=stats_collector
     )
 
-    # Create template context and section reference
+    # Create template context and resolved section
     template_ctx = TemplateContext(run_ctx)
-    section_ref = SectionRef(
-        name="py-files",
+    resolved = ResolvedSection(
+        scope_dir=tmp_path,
         scope_rel="",
-        scope_dir=tmp_path
+        location=SectionLocation(file_path=Path("test"), local_name="py-files"),
+        section_config=SectionCfg(),
+        name="py-files"
     )
 
     # Process section
-    rendered_section = section_processor.process_section(section_ref, template_ctx)
+    rendered_section = section_processor.process_section(resolved, template_ctx)
 
     # Check result
-    assert rendered_section.ref == section_ref
+    assert rendered_section.ref.name == "py-files"
     assert len(rendered_section.files) == 2
     assert rendered_section.text  # Must not be empty text
 
@@ -115,9 +119,15 @@ all-files:
     section_processor = SectionProcessor(run_ctx=run_ctx, stats_collector=stats_collector)
 
     template_ctx = TemplateContext(run_ctx)
-    section_ref = SectionRef(name="all-files", scope_rel="", scope_dir=tmp_path)
+    resolved = ResolvedSection(
+        scope_dir=tmp_path,
+        scope_rel="",
+        location=SectionLocation(file_path=Path("test"), local_name="all-files"),
+        section_config=SectionCfg(),
+        name="all-files"
+    )
 
-    rendered_section = section_processor.process_section(section_ref, template_ctx)
+    rendered_section = section_processor.process_section(resolved, template_ctx)
 
     file_paths = {f.rel_path for f in rendered_section.files}
     assert len(file_paths) == 3
@@ -132,7 +142,7 @@ all-files:
 
     template_ctx = TemplateContext(run_ctx)
 
-    rendered_section = section_processor.process_section(section_ref, template_ctx)
+    rendered_section = section_processor.process_section(resolved, template_ctx)
 
     file_paths = {f.rel_path for f in rendered_section.files}
     assert len(file_paths) == 1

@@ -8,7 +8,8 @@ from lg.config import load_config
 from lg.rendering.planner import build_section_plan
 from lg.rendering.renderer import render_section
 from lg.template.context import TemplateContext
-from lg.types import SectionRef
+from lg.template.addressing.types import ResolvedSection
+from lg.section import SectionLocation
 from .conftest import mk_run_ctx
 
 
@@ -36,18 +37,20 @@ def _process_section(
     else:
         scope_dir = root
 
-    section_ref = SectionRef(
-        name=section_name,
-        scope_rel=scope_rel,
-        scope_dir=scope_dir
-    )
-
     # 1. Build manifest
     config = load_config(scope_dir)
-    section_cfg = config.sections.get(section_ref.name)
+    section_cfg = config.sections.get(section_name)
+
+    resolved = ResolvedSection(
+        scope_dir=scope_dir,
+        scope_rel=scope_rel,
+        location=SectionLocation(file_path=Path("test"), local_name=section_name),
+        section_config=section_cfg,
+        name=section_name
+    )
 
     manifest = build_section_manifest(
-        section_ref=section_ref,
+        resolved=resolved,
         section_config=section_cfg,
         template_ctx=template_ctx,
         root=root,
@@ -105,3 +108,7 @@ def test_planner_and_render_for_addressed_sections(monorepo: Path):
     assert manifest_a.ref.name == "a"
     assert manifest_web.ref.scope_rel == "apps/web"
     assert manifest_web.ref.name == "web-api"
+    assert rendered_a.ref.scope_rel == "packages/svc-a"
+    assert rendered_a.ref.name == "a"
+    assert rendered_web.ref.scope_rel == "apps/web"
+    assert rendered_web.ref.name == "web-api"

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Dict, Optional, Set
+from typing import Dict, Optional, Set, TYPE_CHECKING
 
 from .cache.fs_cache import Cache
 from .config.adaptive_loader import AdaptiveConfigLoader
@@ -11,6 +11,9 @@ from .types import RunOptions
 from .git import VcsProvider
 from .git.gitignore import GitIgnoreService
 from .stats import TokenService
+
+if TYPE_CHECKING:
+    from .section import SectionService
 
 
 @dataclass
@@ -98,6 +101,7 @@ class RunContext:
     adaptive_loader: AdaptiveConfigLoader
     mode_options: ModeOptions = field(default_factory=ModeOptions)  # merged options from modes
     active_tags: Set[str] = field(default_factory=set)  # all active tags
+    section_service: Optional["SectionService"] = None  # Section service for lazy loading
 
     def get_effective_task_text(self) -> Optional[str]:
         """
