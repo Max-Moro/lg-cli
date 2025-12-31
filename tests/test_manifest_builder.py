@@ -64,7 +64,7 @@ py-files:
     )
 
     # Check result
-    assert manifest.ref.name == "py-files"
+    assert manifest.resolved.name == "py-files"
     assert len(manifest.files) == 3
 
     # Check that all files are properly included
@@ -535,7 +535,7 @@ my-local-config.yaml
     rendered = processor.process_section(virtual_resolved, template_ctx)
 
     # Verify the section was processed (even though no files exist)
-    assert rendered.ref.name == "virtual"
+    assert rendered.resolved.name == "virtual"
     assert rendered.files == []  # No files, but no error
     assert rendered.text == ""  # Empty content is OK for local files
 

@@ -104,11 +104,11 @@ def test_planner_and_render_for_addressed_sections(monorepo: Path):
     assert "# web docs" in txt_web  # content from apps/web/docs/index.md
 
     # Additional checks for CDM
-    assert manifest_a.ref.scope_rel == "packages/svc-a"
-    assert manifest_a.ref.name == "a"
-    assert manifest_web.ref.scope_rel == "apps/web"
-    assert manifest_web.ref.name == "web-api"
-    assert rendered_a.ref.scope_rel == "packages/svc-a"
-    assert rendered_a.ref.name == "a"
-    assert rendered_web.ref.scope_rel == "apps/web"
-    assert rendered_web.ref.name == "web-api"
+    assert manifest_a.resolved.scope_rel == "packages/svc-a"
+    assert manifest_a.resolved.name == "a"
+    assert manifest_web.resolved.scope_rel == "apps/web"
+    assert manifest_web.resolved.name == "web-api"
+    assert rendered_a.resolved.scope_rel == "packages/svc-a"
+    assert rendered_a.resolved.name == "a"
+    assert rendered_web.resolved.scope_rel == "apps/web"
+    assert rendered_web.resolved.name == "web-api"

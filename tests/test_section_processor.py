@@ -3,10 +3,9 @@ from __future__ import annotations
 from pathlib import Path
 
 from lg.section_processor import SectionProcessor
-from lg.section import SectionLocation, SectionCfg
 from lg.stats.collector import StatsCollector
 from lg.template.context import TemplateContext
-from lg.addressing.types import ResolvedSection
+from lg.template.common_placeholders.configs import SECTION_CONFIG
 
 from tests.infrastructure import make_run_context
 
@@ -57,21 +56,15 @@ py-files:
         stats_collector=stats_collector
     )
 
-    # Create template context and resolved section
+    # Create template context and resolve section through addressing
     template_ctx = TemplateContext(run_ctx)
-    resolved = ResolvedSection(
-        scope_dir=tmp_path,
-        scope_rel="",
-        location=SectionLocation(file_path=Path("test"), local_name="py-files"),
-        section_config=SectionCfg(),
-        name="py-files"
-    )
+    resolved = run_ctx.addressing.resolve("py-files", SECTION_CONFIG)
 
     # Process section
     rendered_section = section_processor.process_section(resolved, template_ctx)
 
     # Check result
-    assert rendered_section.ref.name == "py-files"
+    assert rendered_section.resolved.name == "py-files"
     assert len(rendered_section.files) == 2
     assert rendered_section.text  # Must not be empty text
 
@@ -114,13 +107,7 @@ all-files:
     section_processor = SectionProcessor(run_ctx=run_ctx, stats_collector=stats_collector)
 
     template_ctx = TemplateContext(run_ctx)
-    resolved = ResolvedSection(
-        scope_dir=tmp_path,
-        scope_rel="",
-        location=SectionLocation(file_path=Path("test"), local_name="all-files"),
-        section_config=SectionCfg(),
-        name="all-files"
-    )
+    resolved = run_ctx.addressing.resolve("all-files", SECTION_CONFIG)
 
     rendered_section = section_processor.process_section(resolved, template_ctx)
 

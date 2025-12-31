@@ -101,8 +101,8 @@ def test_scope_and_filters_limit_to_scope(monorepo: Path):
     assert all(not p.startswith("apps/web/") for p in rels)
 
     # Verify that the section correctly determined its scope
-    assert manifest.ref.scope_rel == "packages/svc-a"
-    assert manifest.ref.name == "a"
+    assert manifest.resolved.scope_rel == "packages/svc-a"
+    assert manifest.resolved.name == "a"
 
 
 def test_targets_match_are_relative_to_scope(monorepo: Path):
