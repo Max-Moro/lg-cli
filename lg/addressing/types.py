@@ -11,7 +11,6 @@ from pathlib import Path
 from typing import Optional, Protocol, runtime_checkable
 
 from ..section import SectionLocation, SectionCfg
-from .context import AddressingContext
 
 
 @dataclass(frozen=True)

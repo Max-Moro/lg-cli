@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Dict, Iterable, List, Tuple
 
-from ..types import PathLabelMode
+from ..section.model import PathLabelMode
 
 
 def _split(rel_posix: str) -> List[str]:

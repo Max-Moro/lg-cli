@@ -23,9 +23,9 @@ src:
           - condition: "TAGSET:template-features:addressing"
             allow: ["/addressing/"]
         children:
-          section:
-            mode: allow
-            allow: ["/service.py"]
+#          section:
+#            mode: allow
+#            allow: ["/service.py"]
           adapters:
             mode: allow
             allow:

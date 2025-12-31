@@ -4,7 +4,9 @@ from dataclasses import dataclass, field
 from typing import Dict, List, Literal
 
 from ..filtering.model import FilterNode
-from ..types import PathLabelMode
+
+# Path label mode — how file paths are displayed in rendered sections
+PathLabelMode = Literal["scope_relative", "relative", "basename"]
 
 
 @dataclass

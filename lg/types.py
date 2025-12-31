@@ -8,7 +8,6 @@ from .addressing.types import ResolvedSection
 
 
 # ---- Aliases for clarity ----
-PathLabelMode = Literal["scope_relative", "relative", "basename"]
 LangName = NewType("LangName", str)  # "python" | "markdown" | "" ...
 LANG_NONE: LangName = LangName("")
 ModelName = NewType("ModelName", str)  # "o3", "gpt-4o", ...
