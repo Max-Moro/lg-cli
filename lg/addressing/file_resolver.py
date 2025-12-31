@@ -23,21 +23,21 @@ class FileResolver(ResourceResolver):
     using the addressing context for relative path resolution.
     """
 
-    def __init__(self, repo_root: Path):
+    def __init__(self, context: AddressingContext):
         """
         Initialize file resolver.
 
         Args:
-            repo_root: Repository root (absolute path)
+            context: Addressing context
         """
-        self._repo_root = repo_root.resolve()
+        self._context = context
+        self._repo_root = context.repo_root
         self._parser = PathParser()
 
     def resolve(
         self,
         name: str,
         config: ResourceConfig,
-        context: AddressingContext
     ) -> ResolvedFile:
         """
         Resolve file path to physical location.
@@ -45,7 +45,6 @@ class FileResolver(ResourceResolver):
         Args:
             name: File path from template (may include @origin:)
             config: Resource configuration (extension, etc.)
-            context: Addressing context
 
         Returns:
             Resolved file location
@@ -57,19 +56,19 @@ class FileResolver(ResourceResolver):
         parsed = self._parser.parse(name, config)
 
         # Resolve to physical location
-        return self._resolve_parsed(parsed, context)
+        return self._resolve_parsed(parsed)
 
-    def _resolve_parsed(self, parsed: ParsedPath, context: AddressingContext) -> ResolvedFile:
+    def _resolve_parsed(self, parsed: ParsedPath) -> ResolvedFile:
         """Resolve parsed path to ResolvedFile."""
         # External resources are handled separately
         if parsed.config.resolve_outside_cfg:
-            return self._resolve_external(parsed, context)
+            return self._resolve_external(parsed)
 
         # Determine scope
-        scope_dir, scope_rel, cfg_root = self._resolve_scope(parsed, context)
+        scope_dir, scope_rel, cfg_root = self._resolve_scope(parsed)
 
         # Determine base directory inside lg-cfg
-        base_dir = self._resolve_base_directory(parsed, context)
+        base_dir = self._resolve_base_directory(parsed)
 
         # Resolve relative path with support for ../
         resource_rel = self._resolve_relative_path(parsed.path, base_dir, parsed.is_absolute)
@@ -94,7 +93,6 @@ class FileResolver(ResourceResolver):
     def _resolve_scope(
         self,
         parsed: ParsedPath,
-        context: AddressingContext
     ) -> Tuple[Path, str, Path]:
         """
         Resolve scope (origin) to absolute paths.
@@ -106,7 +104,7 @@ class FileResolver(ResourceResolver):
 
         # If no explicit origin OR "self"/"", use current scope directly
         if origin is None or origin == "self" or origin == "":
-            cfg_root = context.cfg_root  # Use current scope's cfg_root
+            cfg_root = self._context.cfg_root  # Use current scope's cfg_root
             scope_dir = cfg_root.parent
             try:
                 scope_rel = scope_dir.relative_to(self._repo_root).as_posix()
@@ -127,7 +125,7 @@ class FileResolver(ResourceResolver):
             return self._repo_root, "", cfg_root
 
         # Other origin — path relative to current scope
-        current_scope_dir = context.cfg_root.parent  # parent of current lg-cfg/
+        current_scope_dir = self._context.cfg_root.parent  # parent of current lg-cfg/
         scope_dir = (current_scope_dir / origin).resolve()
         cfg_root = scope_dir / "lg-cfg"
 
@@ -148,7 +146,6 @@ class FileResolver(ResourceResolver):
     def _resolve_base_directory(
         self,
         parsed: ParsedPath,
-        context: AddressingContext
     ) -> str:
         """
         Determine base directory for resolving relative path.
@@ -158,7 +155,7 @@ class FileResolver(ResourceResolver):
         """
         if parsed.is_absolute:
             return ""
-        return context.current_directory
+        return self._context.current_directory
 
     def _resolve_relative_path(self, path: str, base_dir: str, is_absolute: bool) -> str:
         """
@@ -248,7 +245,7 @@ class FileResolver(ResourceResolver):
                 hint="Cannot use '../' to escape lg-cfg/ directory"
             )
 
-    def _resolve_external(self, parsed: ParsedPath, context: AddressingContext) -> ResolvedFile:
+    def _resolve_external(self, parsed: ParsedPath) -> ResolvedFile:
         """
         Resolve external resource (without @) relative to current scope.
 
@@ -258,7 +255,7 @@ class FileResolver(ResourceResolver):
         resource_rel = self._add_extension(parsed.path, parsed.config)
 
         # Build full path relative to current scope (parent of lg-cfg/)
-        scope_dir = context.cfg_root.parent
+        scope_dir = self._context.cfg_root.parent
         resource_path = (scope_dir / resource_rel).resolve()
 
         # Validate path doesn't escape scope
@@ -282,7 +279,7 @@ class FileResolver(ResourceResolver):
         return ResolvedFile(
             scope_dir=scope_dir,
             scope_rel=scope_rel,
-            cfg_root=context.cfg_root,
+            cfg_root=self._context.cfg_root,
             resource_path=resource_path,
             resource_rel=resource_rel,
         )

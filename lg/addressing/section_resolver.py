@@ -20,22 +20,22 @@ class SectionResolver(ResourceResolver):
     Uses SectionService for lookup and loading.
     """
 
-    def __init__(self, section_service: SectionService, repo_root: Path):
+    def __init__(self, section_service: SectionService, context: AddressingContext):
         """
         Initialize section resolver.
 
         Args:
             section_service: Section service for lookup and loading
-            repo_root: Repository root path
+            context: Addressing context
         """
         self._service = section_service
-        self._repo_root = repo_root.resolve()
+        self._context = context
+        self._repo_root = context.repo_root
 
     def resolve(
         self,
         name: str,
         _config: ResourceConfig,
-        context: AddressingContext
     ) -> ResolvedSection:
         """
         Resolve section reference.
@@ -45,22 +45,20 @@ class SectionResolver(ResourceResolver):
         Args:
             name: Section reference from template
             _config: Resource configuration (unused for sections, but required by protocol)
-            context: Addressing context
 
         Returns:
             Resolved section with loaded configuration
         """
         # Check for addressed reference
         if name.startswith('@'):
-            return self._resolve_addressed(name, context)
+            return self._resolve_addressed(name)
 
         # Simple reference - context-dependent search
-        return self._resolve_simple(name, context)
+        return self._resolve_simple(name)
 
     def _resolve_addressed(
         self,
         name: str,
-        context: AddressingContext
     ) -> ResolvedSection:
         """
         Resolve addressed reference (@origin:name or @[origin]:name).
@@ -69,7 +67,7 @@ class SectionResolver(ResourceResolver):
         origin, local_name = self._parse_addressed_ref(name)
 
         # Determine scope directory
-        scope_dir, scope_rel = self._resolve_origin(origin, context)
+        scope_dir, scope_rel = self._resolve_origin(origin)
 
         # Find section in target scope
         location = self._service.find_section(
@@ -92,13 +90,12 @@ class SectionResolver(ResourceResolver):
     def _resolve_simple(
         self,
         name: str,
-        context: AddressingContext
     ) -> ResolvedSection:
         """
         Resolve simple reference with context-dependent search.
         """
         # Get current scope
-        scope_dir = context.cfg_root.parent
+        scope_dir = self._context.cfg_root.parent
 
         # Compute scope_rel
         try:
@@ -109,7 +106,7 @@ class SectionResolver(ResourceResolver):
             scope_rel = ""
 
         # Get current directory
-        current_dir = context.current_directory
+        current_dir = self._context.current_directory
 
         # Find section using service
         location = self._service.find_section(name, current_dir, scope_dir)
@@ -153,14 +150,12 @@ class SectionResolver(ResourceResolver):
     def _resolve_origin(
         self,
         origin: str,
-        context: AddressingContext
     ) -> tuple[Path, str]:
         """
         Resolve origin to (scope_dir, scope_rel).
 
         Args:
             origin: Origin string from addressed reference
-            context: Addressing context
 
         Returns:
             Tuple of (scope_dir, scope_rel)
@@ -170,7 +165,7 @@ class SectionResolver(ResourceResolver):
             return self._repo_root, ""
 
         # Relative to current scope
-        current_scope = context.cfg_root.parent
+        current_scope = self._context.cfg_root.parent
         scope_dir = (current_scope / origin).resolve()
         return scope_dir, origin
 

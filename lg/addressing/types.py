@@ -108,7 +108,6 @@ class ResourceResolver(Protocol):
         self,
         name: str,
         config: ResourceConfig,
-        context: AddressingContext
     ) -> ResolvedResource:
         """
         Resolve resource name to concrete location.
@@ -116,7 +115,6 @@ class ResourceResolver(Protocol):
         Args:
             name: Resource name from template
             config: Resource configuration determining resolution behavior
-            context: Addressing context (current_dir, scope)
 
         Returns:
             Resolved resource
