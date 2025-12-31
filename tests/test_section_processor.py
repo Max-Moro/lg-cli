@@ -2,18 +2,13 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from lg.cache.fs_cache import Cache
-from lg.config.adaptive_loader import AdaptiveConfigLoader
-from lg.config.adaptive_model import ModeOptions
-from lg.run_context import RunContext
 from lg.section_processor import SectionProcessor
-from lg.stats import TokenService
+from lg.section import SectionLocation, SectionCfg
 from lg.stats.collector import StatsCollector
 from lg.template.context import TemplateContext
-from lg.types import RunOptions
 from lg.addressing.types import ResolvedSection
-from lg.section import SectionLocation, SectionCfg
-from lg.git import NullVcs
+
+from tests.infrastructure import make_run_context
 
 
 def _write(tmp: Path, rel: str, text: str = "x") -> Path:
@@ -49,7 +44,7 @@ py-files:
 """)
 
     # Create execution context
-    run_ctx = _create_run_context(tmp_path)
+    run_ctx = make_run_context(tmp_path)
 
     # Create statistics collector
     stats_collector = StatsCollector(
@@ -114,7 +109,7 @@ all-files:
 """)
 
     # Test 1: without minimal tag - all files included
-    run_ctx = _create_run_context(tmp_path, active_tags=set())
+    run_ctx = make_run_context(tmp_path, active_tags=set())
     stats_collector = StatsCollector(128000, run_ctx.tokenizer)
     section_processor = SectionProcessor(run_ctx=run_ctx, stats_collector=stats_collector)
 
@@ -136,7 +131,7 @@ all-files:
     assert "docs/readme.md" in file_paths
 
     # Test 2: with minimal tag - test files and documentation excluded
-    run_ctx = _create_run_context(tmp_path, active_tags={"minimal"})
+    run_ctx = make_run_context(tmp_path, active_tags={"minimal"})
     stats_collector = StatsCollector(128000, tokenizer=run_ctx.tokenizer)
     section_processor = SectionProcessor(run_ctx=run_ctx, stats_collector=stats_collector)
 
@@ -149,27 +144,3 @@ all-files:
     assert "src/main.py" in file_paths
     assert "src/test_main.py" not in file_paths  # Blocked
     assert "docs/readme.md" not in file_paths    # Blocked
-
-
-def _create_run_context(root: Path, active_tags: set | None = None) -> RunContext:
-    """Helper function to create RunContext."""
-    if active_tags is None:
-        active_tags = set()
-    
-    tool_ver = "0.3.0"
-    cache = Cache(root, enabled=None, fresh=False, tool_version=tool_ver)
-    vcs = NullVcs()
-    tokenizer = TokenService(root, "tiktoken", "cl100k_base", cache=cache)
-    adaptive_loader = AdaptiveConfigLoader(root)
-    
-    return RunContext(
-        root=root,
-        options=RunOptions(),
-        cache=cache,
-        vcs=vcs,
-        gitignore=None,
-        tokenizer=tokenizer,
-        adaptive_loader=adaptive_loader,
-        mode_options=ModeOptions(),
-        active_tags=active_tags
-    )

@@ -13,18 +13,11 @@ from typing import Dict, List, Optional
 
 import pytest
 
-from lg.cache.fs_cache import Cache
-from lg.config.adaptive_loader import AdaptiveConfigLoader, process_adaptive_options
-from lg.run_context import RunContext
-from lg.stats.tokenizer import default_tokenizer
-from lg.types import RunOptions
-from lg.git import NullVcs
-
 # Import from unified infrastructure
 from tests.infrastructure import (
     write, create_modes_yaml, create_tags_yaml, create_basic_sections_yaml,
     ModeConfig, ModeSetConfig, TagConfig, TagSetConfig,
-    make_run_options, make_engine, render_template
+    make_run_options, make_run_context, make_engine, render_template
 )
 
 
@@ -102,45 +95,6 @@ def get_default_tags_config() -> tuple[Dict[str, TagSetConfig], Dict[str, TagCon
     }
 
     return tag_sets, global_tags
-
-
-# ====================== RunOptions helpers ======================
-
-
-def make_run_context(root: Path, options: Optional[RunOptions] = None) -> RunContext:
-    """
-    Creates RunContext for testing.
-
-    Args:
-        root: Project root
-        options: Run options
-
-    Returns:
-        Configured RunContext
-    """
-    if options is None:
-        options = make_run_options()
-
-    cache = Cache(root, enabled=None, fresh=False, tool_version="test")
-    adaptive_loader = AdaptiveConfigLoader(root)
-
-    # Use process_adaptive_options for proper active_tags initialization
-    active_tags, mode_options, _ = process_adaptive_options(
-        root,
-        options.modes,
-        options.extra_tags
-    )
-
-    return RunContext(
-        root=root,
-        options=options,
-        cache=cache,
-        vcs=NullVcs(),
-        tokenizer=default_tokenizer(),
-        adaptive_loader=adaptive_loader,
-        mode_options=mode_options,
-        active_tags=active_tags
-    )
 
 
 # ====================== Main fixtures ======================
