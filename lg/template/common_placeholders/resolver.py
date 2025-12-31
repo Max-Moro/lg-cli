@@ -10,8 +10,8 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Dict, List, cast
 
+from .configs import TEMPLATE_CONFIG, CONTEXT_CONFIG
 from .nodes import SectionNode, IncludeNode
-from .configs import SECTION_CONFIG, TEMPLATE_CONFIG, CONTEXT_CONFIG
 from ..common import load_template_from, load_context_from
 from ..context import TemplateContext
 from ..handlers import TemplateProcessorHandlers
@@ -78,27 +78,27 @@ class CommonPlaceholdersResolver:
 
     def _resolve_section_node(self, node: SectionNode, _context: str = "") -> SectionNode:
         """
-        Resolves section node using new addressing API.
+        Resolves section node using config-based resolver from addressing system.
+
+        Delegates to template_ctx.config_resolver which handles:
+        - Context-dependent search (with current directory prefix)
+        - Addressed references (@origin:name)
+        - Config loading and caching
         """
-        # Get original section name from temporary ref
-        section_name = node.resolved_ref.name
+        # Delegate to config-based resolver
+        canonical_id, scope_dir, scope_rel = self.template_ctx.config_resolver.resolve(
+            node.name,
+            self.template_ctx.addressing
+        )
 
-        try:
-            # Use new addressing API
-            resolved = self.template_ctx.resolve_path(section_name, SECTION_CONFIG)
+        # Create resolved SectionRef
+        section_ref = SectionRef(
+            name=canonical_id,
+            scope_rel=scope_rel,
+            scope_dir=scope_dir
+        )
 
-            # Create fully resolved SectionRef
-            # For sections, resource_rel is the canonical ID
-            section_ref = SectionRef(
-                name=resolved.resource_rel,
-                scope_rel=resolved.scope_rel,
-                scope_dir=resolved.scope_dir
-            )
-
-            return SectionNode(resolved_ref=section_ref)
-
-        except Exception as e:
-            raise RuntimeError(f"Failed to resolve section '{section_name}': {e}")
+        return SectionNode(node.name, section_ref)
 
     def _resolve_include_node(self, node: IncludeNode, context: str = "") -> IncludeNode:
         """

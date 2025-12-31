@@ -8,12 +8,6 @@ from __future__ import annotations
 
 from ..addressing import ResourceConfig
 
-# Section reference: no file extension, resolved inside lg-cfg/
-SECTION_CONFIG = ResourceConfig(
-    name="section",
-    extension=None,
-)
-
 # Template reference: .tpl.md extension, resolved inside lg-cfg/
 TEMPLATE_CONFIG = ResourceConfig(
     name="template",
@@ -27,4 +21,4 @@ CONTEXT_CONFIG = ResourceConfig(
 )
 
 
-__all__ = ["SECTION_CONFIG", "TEMPLATE_CONFIG", "CONTEXT_CONFIG"]
+__all__ = ["TEMPLATE_CONFIG", "CONTEXT_CONFIG"]

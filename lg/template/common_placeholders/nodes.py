@@ -16,12 +16,10 @@ from ...types import SectionRef
 class SectionNode(TemplateNode):
     """
     Section placeholder ${section}.
-
-    Represents a reference to a section that should be resolved
-    and replaced with rendered section content.
     """
-    # Resolved section reference (always present)
-    resolved_ref: SectionRef
+    name: str
+    # Resolved section reference (filled by resolver)
+    resolved_ref: Optional[SectionRef] = None
 
 
 @dataclass(frozen=True)

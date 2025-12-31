@@ -78,16 +78,20 @@ Minimum set:
 
 ```
 lg-cfg/
-├─ sections.yaml           # required root file (base sections)
+├─ sections.yaml           # sections file (can be in any subdirectory)
 ├─ **/*.sec.yaml           # arbitrary number of section fragments (can be in subfolders)
 ├─ **/*.tpl.md             # templates (fragments)
 └─ **/*.ctx.md             # contexts (top-level documents)
 ```
 
 > **Canonical Section IDs**:
-> • if a `*.sec.yaml` fragment has **exactly one** section — its canonical ID = section name;
-> • otherwise — `prefix/section` (where `prefix` = fragment path without the `.sec.yaml` suffix).
-> This allows avoiding conflicts and keeping IDs short.
+> • For `sections.yaml` files:
+>   - `lg-cfg/sections.yaml` → sections have NO prefix (e.g., `docs`, `src`)
+>   - `lg-cfg/adapters/sections.yaml` → sections have `adapters/` prefix (e.g., `adapters/src`, `adapters/test`)
+> • For `*.sec.yaml` fragments:
+>   - if fragment has **exactly one** section → canonical ID = directory prefix + section name
+>   - otherwise → `prefix/section` (where `prefix` = fragment path without `.sec.yaml` suffix)
+> This allows short references: from `lg-cfg/adapters/overview.ctx.md` you can write `${src}` instead of `${adapters/src}`.
 
 ---
 

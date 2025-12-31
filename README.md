@@ -82,18 +82,21 @@ Example structure:
 
 ```
 lg-cfg/
-├─ sections.yaml           # main YAML with sections (required)
+├─ sections.yaml           # sections file (can be in any directory)
 ├─ additional.sec.yaml     # additional section set (can have many)
 ├─ intro.tpl.md            # template (can have many, in any subfolders)
 ├─ onboarding.ctx.md       # context (can have many, in any subfolders)
 └─ sub-fold/
+   ├─ sections.yaml        # another sections.yaml (sections get sub-fold/ prefix)
    └─ extra.sec.yaml
 ```
 
 ### Sections
 
-* `sections.yaml` — file with base sections.
-* `*.sec.yaml` — additional section sets (fragments). Version is optional in them.
+* `sections.yaml` — sections file. Can be in `lg-cfg/` root and in any subdirectories.
+  - In root: sections without prefix (e.g., `docs`, `src`)
+  - In subdirectories: sections with directory prefix (e.g., `adapters/src` from `lg-cfg/adapters/sections.yaml`)
+* `*.sec.yaml` — additional section sets (fragments).
 
 A section describes:
 
@@ -176,9 +179,12 @@ ${sub-fold/extra/bar}
 ${task}
 ```
 
-Sections from `sections.yaml` are accessible directly (`${docs}`),
-and from fragments — by hierarchical path:
-file `sub-fold/extra.sec.yaml` → section `bar` → `${sub-fold/extra/bar}`.
+Sections from root `lg-cfg/sections.yaml` are accessible directly (`${docs}`).
+Sections from subdirectory `sections.yaml` files have directory prefix (e.g., `${adapters/src}` from `lg-cfg/adapters/sections.yaml`).
+Fragments use hierarchical paths: file `sub-fold/extra.sec.yaml` → section `bar` → `${sub-fold/extra/bar}`.
+
+**Context-dependent references**: From templates in subdirectories, you can use short names.
+Example: from `lg-cfg/adapters/overview.ctx.md` you can write `${src}` and it will resolve to `adapters/src`.
 
 Special placeholder `${task}` inserts text from `--task` argument:
 * `${task}` — simple insertion (empty string if not specified)

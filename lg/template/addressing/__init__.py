@@ -18,6 +18,8 @@ from .resolver import PathResolver
 
 from .context import AddressingContext
 
+from .config_based_resolver import ConfigBasedResolver, ConfigProvider
+
 from .errors import (
     AddressingError,
     PathParseError,
@@ -37,6 +39,8 @@ __all__ = [
     "PathParser",
     "PathResolver",
     "AddressingContext",
+    "ConfigBasedResolver",
+    "ConfigProvider",
 
     # Exceptions
     "AddressingError",

@@ -12,8 +12,9 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Dict, Set, List, Optional
 
-from .addressing import AddressingContext, PathParser, PathResolver, ResourceConfig, ResolvedPath
+from .addressing import AddressingContext, PathParser, PathResolver, ResourceConfig, ResolvedPath, ConfigBasedResolver
 from .evaluator import TemplateConditionEvaluator
+from ..config import load_config, Config
 from ..config.adaptive_model import ModeOptions
 from ..config.model import SectionCfg
 from ..run_context import RunContext, ConditionContext
@@ -86,6 +87,16 @@ class TemplateContext:
         )
         self._path_parser = PathParser()
         self._path_resolver = PathResolver(run_ctx.root)
+
+        # Config cache for section resolution (by scope_dir)
+        self._config_cache: Dict[Path, 'Config'] = {}
+
+        # Config-based resolver for sections (used by common_placeholders plugin)
+        self.config_resolver = ConfigBasedResolver(
+            repo_root=run_ctx.root,
+            config_provider=lambda scope_dir: self.get_config(scope_dir).sections,
+            item_name="Section"
+        )
 
     def get_condition_evaluator(self) -> TemplateConditionEvaluator:
         """
@@ -227,6 +238,23 @@ class TemplateContext:
         """
         parsed = self._path_parser.parse(raw, config)
         return self._path_resolver.resolve(parsed, self.addressing)
+
+    def get_config(self, scope_dir: Path) -> Config:
+        """
+        Get Config for specified scope with caching.
+
+        Universal method for plugins to access configuration.
+        Used by CommonPlaceholdersResolver for section resolution.
+
+        Args:
+            scope_dir: Scope directory (repository root or subdomain)
+
+        Returns:
+            Loaded configuration
+        """
+        if scope_dir not in self._config_cache:
+            self._config_cache[scope_dir] = load_config(scope_dir)
+        return self._config_cache[scope_dir]
 
     def get_origin(self) -> str:
         """

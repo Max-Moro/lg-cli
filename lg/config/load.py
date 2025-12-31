@@ -11,7 +11,9 @@ from .paths import (
     cfg_root,
     sections_path,
     iter_section_fragments,
+    iter_sections_yaml_files,
     canonical_fragment_prefix,
+    sections_yaml_prefix,
 )
 
 _yaml = YAML(typ="safe")
@@ -26,17 +28,34 @@ def _read_yaml_map(path: Path) -> dict:
 
 def _collect_sections_from_sections_yaml(root: Path) -> Dict[str, SectionCfg]:
     """
-    Read lg-cfg/sections.yaml. All keys are treated as sections with SHORT ids (without path prefix)
+    Read all sections.yaml files from lg-cfg/ and its subdirectories.
+
+    For each sections.yaml:
+    - lg-cfg/sections.yaml: sections have NO prefix (e.g., 'docs', 'src')
+    - lg-cfg/adapters/sections.yaml: sections have 'adapters/' prefix (e.g., 'adapters/src', 'adapters/test')
+
+    This allows placing sections.yaml in any subdirectory to avoid repeating
+    the directory prefix in placeholders within that directory's templates.
     """
-    p = sections_path(root)
-    if not p.is_file():
-        return {}
-    raw = _read_yaml_map(p)
     sections: Dict[str, SectionCfg] = {}
-    for name, node in raw.items():
-        if not isinstance(node, dict):
-            raise RuntimeError(f"Section '{name}' in {p} must be a mapping")
-        sections[name] = SectionCfg.from_dict(name, node)
+
+    for sections_file in iter_sections_yaml_files(root):
+        raw = _read_yaml_map(sections_file)
+        dir_prefix = sections_yaml_prefix(root, sections_file)
+
+        for local_name, node in raw.items():
+            if not isinstance(node, dict):
+                raise RuntimeError(f"Section '{local_name}' in {sections_file} must be a mapping")
+
+            # Compute canonical ID with directory prefix
+            if dir_prefix:
+                canon_id = f"{dir_prefix}/{local_name}"
+            else:
+                # Root level sections.yaml - no prefix
+                canon_id = local_name
+
+            sections[canon_id] = SectionCfg.from_dict(canon_id, node)
+
     return sections
 
 def _collect_sections_from_fragments(root: Path) -> Dict[str, SectionCfg]:
