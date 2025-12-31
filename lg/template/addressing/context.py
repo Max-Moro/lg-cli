@@ -8,12 +8,10 @@ during template processing.
 from __future__ import annotations
 
 from pathlib import Path
-from typing import List, Optional, TYPE_CHECKING
+from typing import List, Optional
 
 from .types import DirectoryContext, ResourceConfig, ResolvedResource
-
-if TYPE_CHECKING:
-    from ...section import SectionService
+from ...section import SectionService
 
 
 class AddressingContext:
@@ -30,7 +28,7 @@ class AddressingContext:
         self,
         repo_root: Path,
         initial_cfg_root: Path,
-        section_service: Optional["SectionService"] = None
+        section_service: Optional[SectionService] = None
     ):
         """
         Initialize addressing context.

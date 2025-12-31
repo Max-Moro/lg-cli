@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Dict, List, Literal, Any
+from typing import Dict, List, Literal
 
 from ..filtering.model import FilterNode
 from ..types import PathLabelMode
@@ -15,10 +15,10 @@ class ConditionalAdapterOptions:
     If condition is true, specified adapter options are applied.
     """
     condition: str  # Condition as string (e.g., "tag:include-inits")
-    options: Dict[str, Any] = field(default_factory=dict)  # Adapter options to apply
+    options: Dict[str, object] = field(default_factory=dict)  # Adapter options to apply
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> ConditionalAdapterOptions:
+    def from_dict(cls, data: Dict[str, object]) -> ConditionalAdapterOptions:
         """Create from YAML dictionary."""
         if not isinstance(data, dict):
             raise ValueError("ConditionalAdapterOptions data must be a dictionary")
@@ -38,11 +38,11 @@ class AdapterConfig:
     """
     Adapter configuration with conditional options support.
     """
-    base_options: Dict[str, Any] = field(default_factory=dict)  # base adapter options
+    base_options: Dict[str, object] = field(default_factory=dict)  # base adapter options
     conditional_options: List[ConditionalAdapterOptions] = field(default_factory=list)  # conditional options
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> AdapterConfig:
+    def from_dict(cls, data: Dict[str, object]) -> AdapterConfig:
         """Create from YAML dictionary."""
         if not isinstance(data, dict):
             return cls(base_options=dict(data) if data else {})
@@ -73,7 +73,7 @@ class TargetRule:
     """
     match: List[str] = field(default_factory=list)
     # adapter_name -> raw dict-config (as in section)
-    adapter_cfgs: Dict[str, Dict] = field(default_factory=dict)
+    adapter_cfgs: Dict[str, dict] = field(default_factory=dict)
 
 @dataclass
 class SectionCfg:
@@ -105,7 +105,7 @@ class SectionCfg:
             if not isinstance(v, dict):
                 raise RuntimeError(f"Adapter config for '{k}' in section '{name}' must be a mapping")
             try:
-                adapters_cfg[str(k)] = AdapterConfig.from_dict(dict(v))
+                adapters_cfg[str(k)] = AdapterConfig.from_dict(dict(v))  # type: ignore
             except Exception as e:
                 raise RuntimeError(f"Failed to parse adapter config for '{k}' in section '{name}': {e}")
 
@@ -132,7 +132,7 @@ class SectionCfg:
                     continue
                 if not isinstance(av, dict):
                     raise RuntimeError(f"Section '{name}': targets[{idx}].{ak} must be a mapping (adapter cfg)")
-                adapter_cfgs[str(ak)] = dict(av)
+                adapter_cfgs[str(ak)] = dict(av)  # type: ignore
             targets.append(TargetRule(match=match_list, adapter_cfgs=adapter_cfgs))
 
         # path_labels

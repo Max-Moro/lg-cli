@@ -8,15 +8,12 @@ for different resource types.
 from __future__ import annotations
 
 from pathlib import Path
-from typing import TYPE_CHECKING
 
 from .context import AddressingContext
 from .parser import PathParser
 from .resolver import PathResolver
 from .types import ResourceConfig, ResolvedFile, ResolvedSection
-
-if TYPE_CHECKING:
-    from ...section import SectionService
+from ...section import SectionService
 
 
 class FileResolver:
@@ -73,7 +70,7 @@ class SectionResolver:
     Uses SectionService for lookup and loading.
     """
 
-    def __init__(self, section_service: "SectionService", repo_root: Path):
+    def __init__(self, section_service: SectionService, repo_root: Path):
         """
         Initialize section resolver.
 

@@ -1,11 +1,10 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Dict, List, Literal, Optional, NewType, Mapping, Any, Set, TYPE_CHECKING
+from typing import Dict, List, Literal, Optional, NewType, Mapping, Set
 from pathlib import Path
 
-if TYPE_CHECKING:
-    from .template.addressing.types import ResolvedSection
+from .template.addressing.types import ResolvedSection
 
 
 # ---- Aliases for clarity ----
@@ -15,7 +14,7 @@ LANG_NONE: LangName = LangName("")
 ModelName = NewType("ModelName", str)  # "o3", "gpt-4o", ...
 RepoRelPath = NewType("RepoRelPath", str) # repo-root relative POSIX path
 AdapterName = NewType("AdapterName", str)
-AdapterRawCfg = Mapping[str, Any]
+AdapterRawCfg = Mapping[str, object]
 
 # -----------------------------
 @dataclass(frozen=True)
@@ -85,12 +84,12 @@ class SectionManifest:
     Contains result of file filtering for specific section
     considering active tags and modes.
     """
-    resolved: "ResolvedSection"
+    resolved: ResolvedSection
     files: List[FileEntry]
     path_labels: PathLabelMode
     is_doc_only: bool  # True if section contains only markdown/plain text
     is_local_files: bool = False
-    adapters_cfg: Dict[str, Dict] = field(default_factory=dict)
+    adapters_cfg: Dict[str, dict] = field(default_factory=dict)
 
 
 @dataclass
@@ -120,7 +119,7 @@ class ProcessedFile:
     abs_path: Path
     rel_path: str
     processed_text: str
-    meta: Dict[str, int | float | str | bool]
+    meta: Dict[str, int | float | str | bool]  # type: ignore
     raw_text: str
     cache_key: str
 
@@ -146,7 +145,7 @@ class RenderedSection:
     Contains final section text and list of processed files.
     Statistics are collected separately through StatsCollector.
     """
-    resolved: "ResolvedSection"
+    resolved: ResolvedSection
     text: str
     files: List[ProcessedFile]
     blocks: List[RenderBlock] = field(default_factory=list)
@@ -164,7 +163,7 @@ class FileStats:
     tokens_processed: int
     saved_tokens: int
     saved_pct: float
-    meta: Dict[str, int | float | str | bool]
+    meta: Dict[str, int | float | str | bool]  # type: ignore
     sections: List[str] = field(default_factory=list)  # list of sections where file is used
 
 
@@ -173,7 +172,7 @@ class SectionStats:
     """
     Rendered section statistics for StatsCollector.
     """
-    resolved: "ResolvedSection"
+    resolved: ResolvedSection
     text: str
     tokens_rendered: int
     total_size_bytes: int
@@ -190,7 +189,7 @@ class FileRow:
     savedPct: float
     promptShare: float
     ctxShare: float
-    meta: Dict[str, int | float | str | bool]
+    meta: Dict[str, int | float | str | bool]  # type: ignore
 
 @dataclass(frozen=True)
 class Totals:
@@ -202,7 +201,7 @@ class Totals:
     ctxShare: float
     renderedTokens: Optional[int] = None
     renderedOverheadTokens: Optional[int] = None
-    metaSummary: Dict[str, int] = field(default_factory=dict)
+    metaSummary: Dict[str, int] = field(default_factory=dict)  # type: ignore
 
 @dataclass(frozen=True)
 class ContextBlock:

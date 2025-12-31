@@ -8,11 +8,10 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Optional, Protocol, runtime_checkable, TYPE_CHECKING
+from typing import Optional, Protocol, runtime_checkable
 
-if TYPE_CHECKING:
-    from ...section import SectionLocation, SectionCfg
-    from .context import AddressingContext
+from ...section import SectionLocation, SectionCfg
+from .context import AddressingContext
 
 
 @dataclass(frozen=True)
@@ -115,8 +114,8 @@ class ResolvedSection(ResolvedResource):
     Contains all necessary information for processing section
     without repeated calls to SectionService.
     """
-    location: "SectionLocation"     # Physical location of section
-    section_config: "SectionCfg"    # Already loaded configuration
+    location: SectionLocation       # Physical location of section
+    section_config: SectionCfg      # Already loaded configuration
     name: str                       # Original name from template (for diagnostics)
 
 
@@ -127,7 +126,7 @@ class ResourceResolver(Protocol):
     def resolve(
         self,
         name: str,
-        context: "AddressingContext"
+        context: AddressingContext
     ) -> ResolvedResource:
         """
         Resolve resource name to concrete location.

@@ -6,12 +6,10 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Optional, List, TYPE_CHECKING
+from typing import Optional, List
 
 from ..nodes import TemplateNode
-
-if TYPE_CHECKING:
-    from ..addressing.types import ResolvedSection
+from ..addressing.types import ResolvedSection
 
 
 @dataclass(frozen=True)
@@ -21,7 +19,7 @@ class SectionNode(TemplateNode):
     """
     name: str
     # Resolved section (filled by resolver)
-    resolved_section: Optional["ResolvedSection"] = None
+    resolved_section: Optional[ResolvedSection] = None
 
 
 @dataclass(frozen=True)
