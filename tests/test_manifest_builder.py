@@ -11,7 +11,7 @@ from lg.filtering.model import FilterNode
 from lg.section_processor import SectionProcessor
 from lg.stats import StatsCollector
 from lg.template.context import TemplateContext
-from lg.template.addressing.types import ResolvedSection
+from lg.addressing.types import ResolvedSection
 from tests.infrastructure import write, make_run_context, make_run_options, load_sections
 
 

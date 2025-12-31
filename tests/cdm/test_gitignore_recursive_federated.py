@@ -13,7 +13,7 @@ import pytest
 
 from lg.filtering.manifest import build_section_manifest
 from lg.template.context import TemplateContext
-from lg.template.addressing.types import ResolvedSection
+from lg.addressing.types import ResolvedSection
 from lg.section import SectionLocation
 from lg.types import SectionManifest
 from tests.infrastructure import make_run_context

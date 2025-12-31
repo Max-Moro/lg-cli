@@ -7,7 +7,7 @@ from lg.filtering.manifest import build_section_manifest
 from lg.rendering.planner import build_section_plan
 from lg.rendering.renderer import render_section
 from lg.template.context import TemplateContext
-from lg.template.addressing.types import ResolvedSection
+from lg.addressing.types import ResolvedSection
 from lg.section import SectionLocation
 from tests.infrastructure import load_sections
 from .conftest import mk_run_ctx

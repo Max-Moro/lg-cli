@@ -70,7 +70,7 @@ class CommonPlaceholdersResolver:
         Public method for use by processor.
         """
         if isinstance(node, SectionNode):
-            return self._resolve_section_node(node, context)
+            return self._resolve_section_node(node)
         elif isinstance(node, IncludeNode):
             return self._resolve_include_node(node, context)
         else:

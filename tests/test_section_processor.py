@@ -11,7 +11,7 @@ from lg.stats import TokenService
 from lg.stats.collector import StatsCollector
 from lg.template.context import TemplateContext
 from lg.types import RunOptions
-from lg.template.addressing.types import ResolvedSection
+from lg.addressing.types import ResolvedSection
 from lg.section import SectionLocation, SectionCfg
 from lg.git import NullVcs
 
