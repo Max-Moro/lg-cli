@@ -7,12 +7,9 @@ modes, and their overrides via {% mode %} blocks.
 
 from __future__ import annotations
 
-from contextlib import contextmanager
 from dataclasses import dataclass
-from pathlib import Path
 from typing import Dict, Set, List, Optional
 
-from .addressing import AddressingContext
 from .evaluator import TemplateConditionEvaluator
 from ..config.adaptive_model import ModeOptions
 from ..run_context import RunContext, ConditionContext
@@ -73,13 +70,6 @@ class TemplateContext:
 
         # Condition evaluator (created lazily)
         self._condition_evaluator: Optional[TemplateConditionEvaluator] = None
-
-        # Unified addressing system - single entry point for all resource resolution
-        self.addressing = AddressingContext(
-            repo_root=run_ctx.root,
-            initial_cfg_root=run_ctx.root / "lg-cfg",
-            section_service=run_ctx.section_service
-        )
 
     def get_condition_evaluator(self) -> TemplateConditionEvaluator:
         """
@@ -161,23 +151,6 @@ class TemplateContext:
         # Reset condition evaluator cache
         self._condition_evaluator = None
 
-    @contextmanager
-    def file_scope(self, file_path: Path, new_origin: Optional[str] = None):
-        """
-        Context manager for file processing context.
-
-        Updates current directory and optionally origin.
-
-        Args:
-            file_path: Path to the file being processed
-            new_origin: New origin scope (if different from current)
-        """
-        self.addressing.push(file_path, new_origin)
-        try:
-            yield
-        finally:
-            self.addressing.pop()
-
     def get_origin(self) -> str:
         """
         Returns current origin from addressing context.
@@ -185,7 +158,7 @@ class TemplateContext:
         Returns:
             Current origin ("self" for root scope or path to subdomain)
         """
-        return self.addressing.origin
+        return self.run_ctx.addressing.origin
 
     def evaluate_condition(self, condition_ast) -> bool:
         """
@@ -225,7 +198,7 @@ class TemplateContext:
         return ConditionContext(
             active_tags=self.current_state.active_tags,
             tagsets=tagsets,
-            origin=self.addressing.origin,
+            origin=self.run_ctx.addressing.origin,
             task_text=self.run_ctx.get_effective_task_text(),
         )
 

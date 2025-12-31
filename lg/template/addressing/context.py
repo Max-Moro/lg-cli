@@ -7,6 +7,7 @@ during template processing.
 
 from __future__ import annotations
 
+from contextlib import contextmanager
 from pathlib import Path
 from typing import List, Optional
 
@@ -28,7 +29,7 @@ class AddressingContext:
         self,
         repo_root: Path,
         initial_cfg_root: Path,
-        section_service: Optional[SectionService] = None
+        section_service: SectionService
     ):
         """
         Initialize addressing context.
@@ -36,7 +37,7 @@ class AddressingContext:
         Args:
             repo_root: Repository root
             initial_cfg_root: Initial lg-cfg/ directory
-            section_service: Section service for resolving sections (optional for backward compat)
+            section_service: Section service for resolving sections
         """
         self.repo_root = repo_root.resolve()
         self._section_service = section_service
@@ -63,8 +64,6 @@ class AddressingContext:
     def _get_section_resolver(self):
         """Lazy initialization of section resolver."""
         if self._section_resolver is None:
-            if self._section_service is None:
-                raise RuntimeError("SectionService not provided to AddressingContext")
             from .resolvers import SectionResolver
             self._section_resolver = SectionResolver(self._section_service, self.repo_root)
         return self._section_resolver
@@ -170,6 +169,24 @@ class AddressingContext:
             current_dir = ""
 
         self._push_raw(origin, current_dir, cfg_root)
+
+    @contextmanager
+    def file_scope(self, file_path: Path, new_origin: Optional[str] = None):
+        """
+        Context manager for file processing scope.
+
+        Pushes directory context when entering, pops when exiting.
+        Used during template/include processing to track current directory.
+
+        Args:
+            file_path: Path to the file being processed
+            new_origin: New origin scope (if different from current)
+        """
+        self.push(file_path, new_origin)
+        try:
+            yield
+        finally:
+            self.pop()
 
     def _resolve_cfg_root_for_origin(self, origin: str) -> Path:
         """Compute lg-cfg/ path for specified origin."""

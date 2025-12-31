@@ -11,7 +11,7 @@ from .types import RunOptions
 from .git import VcsProvider
 from .git.gitignore import GitIgnoreService
 from .stats import TokenService
-from .section import SectionService
+from .template.addressing import AddressingContext
 
 
 @dataclass
@@ -97,9 +97,9 @@ class RunContext:
     gitignore: Optional[GitIgnoreService]  # None if no .git directory
     tokenizer: TokenService
     adaptive_loader: AdaptiveConfigLoader
+    addressing: AddressingContext
     mode_options: ModeOptions = field(default_factory=ModeOptions)  # merged options from modes
     active_tags: Set[str] = field(default_factory=set)  # all active tags
-    section_service: Optional[SectionService] = None  # Section service for lazy loading
 
     def get_effective_task_text(self) -> Optional[str]:
         """

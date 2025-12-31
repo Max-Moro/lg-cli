@@ -108,7 +108,7 @@ class MdPlaceholdersPlugin(TemplatePlugin):
 
             # Resolve path using unified addressing API
             try:
-                resolved = cast(ResolvedFile, self.template_ctx.addressing.resolve(raw_path, config))
+                resolved = cast(ResolvedFile, self.template_ctx.run_ctx.addressing.resolve(raw_path, config))
             except Exception as e:
                 raise RuntimeError(f"Failed to resolve markdown path '{raw_path}': {e}")
 

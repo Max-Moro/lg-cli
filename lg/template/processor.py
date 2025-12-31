@@ -117,7 +117,7 @@ class TemplateProcessor:
 
             # Initialize AddressingContext with current template's directory
             # This enables relative path resolution from the template's location
-            with self.template_ctx.file_scope(template_path):
+            with self.run_ctx.addressing.file_scope(template_path):
                 rendered = self.process_template_text(template_text, template_name)
 
             return rendered

@@ -17,6 +17,7 @@ from .section import SectionService
 from .stats import RunResult, build_run_result_from_collector, StatsCollector
 from .stats.tokenizer import TokenService
 from .template import create_template_processor, TemplateContext
+from .template.addressing import AddressingContext
 from .template.addressing.types import ResolvedSection
 from .template.common_placeholders.configs import SECTION_CONFIG
 from .types import RunOptions, TargetSpec
@@ -76,6 +77,13 @@ class Engine:
         # Section service
         self.section_service = SectionService(self.root, self.cache)
 
+        # Create addressing context
+        self.addressing = AddressingContext(
+            repo_root=self.root,
+            initial_cfg_root=self.root / "lg-cfg",
+            section_service=self.section_service
+        )
+
         active_tags, mode_options, adaptive_loader = process_adaptive_options(
             self.root,
             self.options.modes,
@@ -90,9 +98,9 @@ class Engine:
             gitignore=self.gitignore,
             tokenizer=self.tokenizer,
             adaptive_loader=adaptive_loader,
+            addressing=self.addressing,
             mode_options=mode_options,
             active_tags=active_tags,
-            section_service=self.section_service,
         )
 
     def _init_processors(self) -> None:
@@ -165,7 +173,7 @@ class Engine:
         template_ctx = TemplateContext(self.run_ctx)
 
         # Resolve section reference using unified addressing API
-        resolved_section = cast(ResolvedSection, template_ctx.addressing.resolve(section_name, SECTION_CONFIG))
+        resolved_section = cast(ResolvedSection, self.addressing.resolve(section_name, SECTION_CONFIG))
         rendered_section = self.section_processor.process_section(resolved_section, template_ctx)
 
         # Set final texts in collector (for section they are the same)

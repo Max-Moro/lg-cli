@@ -13,10 +13,10 @@ from typing import Dict, List, cast
 from .configs import TEMPLATE_CONFIG, CONTEXT_CONFIG, SECTION_CONFIG
 from .nodes import SectionNode, IncludeNode
 from ..common import load_template_from, load_context_from
-from ..context import TemplateContext
 from ..handlers import TemplateProcessorHandlers
 from ..nodes import TemplateNode, TemplateAST
 from ..protocols import TemplateRegistryProtocol
+from ..addressing import AddressingContext
 from ..addressing.types import ResolvedSection, ResolvedFile
 
 
@@ -45,7 +45,7 @@ class CommonPlaceholdersResolver:
             self,
             handlers: TemplateProcessorHandlers,
             registry: TemplateRegistryProtocol,
-            template_ctx: TemplateContext,
+            addressing: AddressingContext,
     ):
         """
         Initializes resolver.
@@ -53,11 +53,11 @@ class CommonPlaceholdersResolver:
         Args:
             handlers: Typed handlers for template parsing
             registry: Registry of components for parsing
-            template_ctx: Template context for path resolution
+            addressing: Addressing context for path resolution
         """
         self.handlers: TemplateProcessorHandlers = handlers
         self.registry: TemplateRegistryProtocol = registry
-        self.template_ctx: TemplateContext = template_ctx
+        self.addressing: AddressingContext = addressing
 
         # Cache of resolved inclusions
         self._resolved_includes: Dict[str, ResolvedInclude] = {}
@@ -81,7 +81,7 @@ class CommonPlaceholdersResolver:
         Resolves section node using unified addressing API.
         """
         # Use unified resolve() with SECTION_CONFIG
-        resolved = self.template_ctx.addressing.resolve(node.name, SECTION_CONFIG)
+        resolved = self.addressing.resolve(node.name, SECTION_CONFIG)
 
         # Type narrowing - we know it's ResolvedSection because is_section=True
         resolved_section = cast(ResolvedSection, resolved)
@@ -140,10 +140,7 @@ class CommonPlaceholdersResolver:
             raw_path = node.name
 
         # Use unified resolve()
-        resolved = self.template_ctx.addressing.resolve(raw_path, config)
-
-        # Type narrowing
-        resolved_file = cast(ResolvedFile, resolved)
+        resolved_file = cast(ResolvedFile, self.addressing.resolve(raw_path, config))
 
         # Load content from resolved path
         if node.kind == "ctx":
@@ -157,7 +154,7 @@ class CommonPlaceholdersResolver:
         include_ast = parse_template(template_text, registry=cast(TemplateRegistry, self.registry))
 
         # Apply resolvers with file scope context
-        with self.template_ctx.file_scope(resolved_file.resource_path, resolved_file.scope_rel):
+        with self.addressing.file_scope(resolved_file.resource_path, resolved_file.scope_rel):
             # Core will apply resolvers from all plugins
             ast: TemplateAST = self.handlers.resolve_ast(include_ast, context)
 

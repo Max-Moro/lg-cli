@@ -58,7 +58,7 @@ class CommonPlaceholdersPlugin(TemplatePlugin):
         self._resolver = CommonPlaceholdersResolver(
             self.handlers,
             self.registry,
-            self.template_ctx
+            self.template_ctx.run_ctx.addressing
         )
     
     def register_tokens(self) -> List[TokenSpec]:
@@ -110,7 +110,7 @@ class CommonPlaceholdersPlugin(TemplatePlugin):
             # This ensures that relative paths in nested templates resolve correctly
             result_parts = []
             scope_rel = None if node.origin == "self" else node.origin
-            with self.template_ctx.file_scope(node.resolved_path, scope_rel):
+            with self.template_ctx.run_ctx.addressing.file_scope(node.resolved_path, scope_rel):
                 for child_index, child_node in enumerate(node.children):
                     # Create context for nested AST
                     child_context = ProcessingContext(ast=node.children, node_index=child_index)
