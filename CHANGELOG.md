@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.10.0] - 2026-01-01
+
 ### Added
 - Language adapters for C++, C, Java, JavaScript, Scala, Go, and Rust
 - `max_tokens` parameter for function body trimming (preserve function structure while reducing size)
