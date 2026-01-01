@@ -41,6 +41,7 @@ class PythonTrivialAnalyzer(TrivialFileAnalyzer):
     REEXPORT_TYPES = {
         "import_from_statement",
         "import_statement",
+        "future_import_statement",  # from __future__ import annotations
     }
 
     def is_trivial(self, ctx: LightweightContext, adapter) -> bool:

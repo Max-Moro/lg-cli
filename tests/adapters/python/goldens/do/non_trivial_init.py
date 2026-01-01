@@ -5,6 +5,8 @@ This package provides validators for common data types
 used throughout the application.
 """
 
+from __future__ import annotations
+
 from .email import EmailValidator
 from .phone import PhoneValidator
 from .address import AddressValidator
