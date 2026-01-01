@@ -7,11 +7,6 @@ from typing import List
 from ..config.paths import cfg_root, SECTIONS_FILE
 
 
-def sections_path(root: Path) -> Path:
-    """Path to the main sections file lg-cfg/sections.yaml."""
-    return cfg_root(root) / SECTIONS_FILE
-
-
 def iter_section_fragments(root: Path) -> List[Path]:
     """
     All section fragment files: lg-cfg/**.sec.yaml (excluding the root sections.yaml).

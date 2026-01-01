@@ -5,7 +5,6 @@ from pathlib import Path
 # Single source of truth for configuration directory structure.
 CFG_DIR = "lg-cfg"
 SECTIONS_FILE = "sections.yaml"
-MODELS_FILE = "models.yaml"
 MODES_FILE = "modes.yaml"
 TAGS_FILE = "tags.yaml"
 
@@ -13,11 +12,6 @@ TAGS_FILE = "tags.yaml"
 def cfg_root(root: Path) -> Path:
     """Absolute path to the lg-cfg/ directory."""
     return (root / CFG_DIR).resolve()
-
-
-def models_path(root: Path) -> Path:
-    """Path to the models configuration file lg-cfg/models.yaml."""
-    return cfg_root(root) / MODELS_FILE
 
 
 def modes_path(root: Path) -> Path:
