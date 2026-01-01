@@ -1,9 +1,7 @@
 """
 Helper functions for loading templates and contexts.
 
-This module provides utilities for loading template and context files
-from lg-cfg/ directories. Path parsing and resolution logic has been
-moved to the lg/addressing/ package.
+Provides utilities for loading template and context files from lg-cfg/ directories.
 """
 
 from __future__ import annotations
@@ -11,14 +9,14 @@ from __future__ import annotations
 from pathlib import Path
 from typing import List, Tuple
 
-# Unified document suffixes
+# Document suffixes
 TPL_SUFFIX = ".tpl.md"
 CTX_SUFFIX = ".ctx.md"
 
 
 def load_from_cfg(cfg_root: Path, resource: str, *, suffix: str) -> Tuple[Path, str]:
     """
-    Unified loading of file from lg-cfg/: <cfg_root>/<resource><suffix>.
+    Load file from lg-cfg/: <cfg_root>/<resource><suffix>.
     """
     from ..migrate import ensure_cfg_actual
     ensure_cfg_actual(cfg_root)

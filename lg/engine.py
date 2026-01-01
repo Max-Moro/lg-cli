@@ -172,7 +172,7 @@ class Engine:
 
         template_ctx = TemplateContext(self.run_ctx)
 
-        # Resolve section reference using unified addressing API
+        # Resolve section reference
         resolved_section = cast(ResolvedSection, self.run_ctx.addressing.resolve(section_name, SECTION_CONFIG))
         rendered_section = self.section_processor.process_section(resolved_section, template_ctx)
 

@@ -5,7 +5,7 @@ from typing import Dict, List, Literal, Optional, NewType, Mapping, Set
 from pathlib import Path
 
 from .addressing.types import ResolvedSection
-
+from .section import PathLabelMode
 
 # ---- Aliases for clarity ----
 LangName = NewType("LangName", str)  # "python" | "markdown" | "" ...
@@ -46,10 +46,6 @@ class TargetSpec:
 
     # For contexts - path to template file
     template_path: Path
-
-
-# ---- Sections and references ----
-# SectionRef has been replaced with ResolvedSection from addressing.types
 
 
 # ---- Files ----

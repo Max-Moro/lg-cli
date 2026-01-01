@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from .model import (
+    PathLabelMode,
     SectionCfg,
     AdapterConfig,
     ConditionalAdapterOptions,
@@ -11,6 +12,7 @@ from .service import SectionService, SectionLocation, ScopeIndex, list_sections,
 
 __all__ = [
     # Model
+    "PathLabelMode",
     "SectionCfg",
     "AdapterConfig",
     "ConditionalAdapterOptions",

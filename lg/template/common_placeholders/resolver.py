@@ -38,7 +38,7 @@ class CommonPlaceholdersResolver:
     Handles addressed references, loads included templates,
     and fills node metadata for subsequent processing.
 
-    Uses unified AddressingContext.resolve() for all resource types.
+    Uses AddressingContext.resolve() for all resource types.
     """
 
     def __init__(
@@ -78,9 +78,9 @@ class CommonPlaceholdersResolver:
 
     def _resolve_section_node(self, node: SectionNode) -> SectionNode:
         """
-        Resolves section node using unified addressing API.
+        Resolves section node using addressing API.
         """
-        # Use unified resolve() with SECTION_CONFIG
+        # Use resolve() with SECTION_CONFIG
         resolved = self.addressing.resolve(node.name, SECTION_CONFIG)
 
         # Type narrowing - we know it's ResolvedSection because is_section=True
@@ -128,7 +128,7 @@ class CommonPlaceholdersResolver:
 
     def _load_and_parse_include(self, node: IncludeNode, context: str) -> ResolvedInclude:
         """
-        Loads and parses the included template using unified addressing API.
+        Loads and parses the included template using addressing API.
         """
         # Determine resource config
         config = CONTEXT_CONFIG if node.kind == "ctx" else TEMPLATE_CONFIG
@@ -139,7 +139,6 @@ class CommonPlaceholdersResolver:
         else:
             raw_path = node.name
 
-        # Use unified resolve()
         resolved_file = cast(ResolvedFile, self.addressing.resolve(raw_path, config))
 
         # Load content from resolved path

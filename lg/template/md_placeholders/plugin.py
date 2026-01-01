@@ -106,7 +106,6 @@ class MdPlaceholdersPlugin(TemplatePlugin):
                 config = ResourceConfig(kind="md", extension=".md", strip_md_syntax=True, resolve_outside_cfg=True)
                 raw_path = node.path
 
-            # Resolve path using unified addressing API
             try:
                 resolved = cast(ResolvedFile, self.template_ctx.run_ctx.addressing.resolve(raw_path, config))
             except Exception as e:

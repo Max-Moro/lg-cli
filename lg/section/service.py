@@ -29,7 +29,7 @@ class SectionNotFoundError(RuntimeError):
 
 class SectionService:
     """
-    Unified service for finding and loading sections.
+    Service for finding and loading sections.
 
     Provides single point of access to sections with:
     - Lazy loading of section configs
@@ -316,7 +316,7 @@ class SectionService:
             pass
 
 
-# ---- Convenience functions for backward compatibility ----
+# ---- Public API functions ----
 
 def list_sections(root: Path) -> List[str]:
     """

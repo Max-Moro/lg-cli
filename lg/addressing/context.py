@@ -17,7 +17,7 @@ from ..section import SectionService
 
 class AddressingContext:
     """
-    Addressing context — manages the directory stack and provides unified resolution.
+    Addressing context — manages the directory stack and resource resolution.
 
     Tracks the current scope (origin) and current directory inside lg-cfg
     when processing nested template inclusions.
@@ -70,7 +70,7 @@ class AddressingContext:
 
     def resolve(self, name: str, config: ResourceConfig) -> ResolvedResource:
         """
-        Unified resolution method for all resource types.
+        Resolve resource by name and configuration.
 
         Args:
             name: Resource name/path from template
