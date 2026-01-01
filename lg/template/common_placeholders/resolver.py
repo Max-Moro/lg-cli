@@ -12,7 +12,7 @@ from typing import Dict, List, cast
 
 from .configs import TEMPLATE_CONFIG, CONTEXT_CONFIG, SECTION_CONFIG
 from .nodes import SectionNode, IncludeNode
-from ..common import load_template_from, load_context_from
+from ..common import load_template_from, load_context_from, CTX_SUFFIX, TPL_SUFFIX
 from ..handlers import TemplateProcessorHandlers
 from ..nodes import TemplateNode, TemplateAST
 from ..protocols import TemplateRegistryProtocol
@@ -143,10 +143,13 @@ class CommonPlaceholdersResolver:
         resolved_file = cast(ResolvedFile, self.addressing.resolve(raw_path, config))
 
         # Load content from resolved path
+        resource_name = resolved_file.resource_rel.removesuffix(
+            CTX_SUFFIX if node.kind == "ctx" else TPL_SUFFIX
+        )
         if node.kind == "ctx":
-            _, template_text = load_context_from(resolved_file.cfg_root, resolved_file.resource_rel.replace('.ctx.md', ''))
+            _, template_text = load_context_from(resolved_file.cfg_root, resource_name)
         else:
-            _, template_text = load_template_from(resolved_file.cfg_root, resolved_file.resource_rel.replace('.tpl.md', ''))
+            _, template_text = load_template_from(resolved_file.cfg_root, resource_name)
 
         # Parse template
         from ..parser import parse_template

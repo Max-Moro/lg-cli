@@ -79,14 +79,14 @@ class PathParser:
         bracket_match = self._BRACKET_ORIGIN_PATTERN.match(raw)
         if bracket_match:
             is_bracket_form = True
-            origin = bracket_match.group(1)
+            origin = bracket_match.group(1).strip()
             path_part = bracket_match.group(2)
         else:
             # Simple form: origin:path
             simple_match = self._SIMPLE_ORIGIN_PATTERN.match(raw)
             if not simple_match:
                 raise PathParseError("Invalid origin format, expected 'origin:path'", f"@{raw}")
-            origin = simple_match.group(1)
+            origin = simple_match.group(1).strip()
             path_part = simple_match.group(2)
 
         if not origin:

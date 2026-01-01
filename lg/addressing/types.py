@@ -78,14 +78,14 @@ class ResolvedResource:
     scope_rel: str       # Relative path of scope from repo root
 
     def canon_key(self) -> str:
-        """
-        Returns canonical key for statistics and deduplication.
-
-        Format: {type}[@{scope}]:{resource_id}
-
-        Must be implemented by subclasses.
-        """
+        """Returns canonical key for statistics and deduplication."""
         raise NotImplementedError("Subclasses must implement canon_key()")
+
+    def _format_key(self, kind: str, resource_id: str) -> str:
+        """Format key as 'kind:id' or 'kind@scope:id'."""
+        if self.scope_rel:
+            return f"{kind}@{self.scope_rel}:{resource_id}"
+        return f"{kind}:{resource_id}"
 
 
 @dataclass(frozen=True)
@@ -97,28 +97,13 @@ class ResolvedFile(ResolvedResource):
     kind: str            # Resource type: "tpl", "ctx", "md"
 
     def canon_key(self) -> str:
-        """
-        Returns canonical key for caching and deduplication.
-
-        Format: {kind}[@{scope}]:{resource_id}
-
-        Examples:
-            - tpl:common/intro             (template in root scope)
-            - tpl@apps/web:docs/guide      (template in child scope)
-            - ctx:main                     (context in root scope)
-            - md:README.md                 (markdown relative to scope root)
-        """
         # Remove extension from resource_rel for cleaner keys
         resource_id = self.resource_rel
         if self.kind == "tpl" and resource_id.endswith(".tpl.md"):
-            resource_id = resource_id[:-7]  # Remove .tpl.md
+            resource_id = resource_id[:-7]
         elif self.kind == "ctx" and resource_id.endswith(".ctx.md"):
-            resource_id = resource_id[:-7]  # Remove .ctx.md
-
-        if self.scope_rel:
-            return f"{self.kind}@{self.scope_rel}:{resource_id}"
-        else:
-            return f"{self.kind}:{resource_id}"
+            resource_id = resource_id[:-7]
+        return self._format_key(self.kind, resource_id)
 
 
 @dataclass(frozen=True)
@@ -134,26 +119,10 @@ class ResolvedSection(ResolvedResource):
     name: str                       # Original name from template (for diagnostics)
 
     def canon_key(self) -> str:
-        """
-        Returns canonical key for statistics and deduplication.
-
-        Format: sec[@{scope}]:{section_id}
-
-        Examples:
-            - sec:src                      (section in root scope)
-            - sec@apps/web:api             (section in child scope)
-            - sec@apps/web:subdir/api      (section with subdirectory)
-        """
         if self.name.startswith('@'):
-            # Addressed reference: name = "@packages/svc-a:subdir/api"
-            # Result: "sec@packages/svc-a:subdir/api"
+            # Addressed reference preserved as-is: @origin:name -> sec@origin:name
             return f"sec{self.name}"
-        else:
-            # Simple reference: name = "subdir/api" or "api"
-            if self.scope_rel:
-                return f"sec@{self.scope_rel}:{self.name}"
-            else:
-                return f"sec:{self.name}"
+        return self._format_key("sec", self.name)
 
 
 @runtime_checkable
