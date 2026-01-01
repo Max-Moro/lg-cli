@@ -213,9 +213,12 @@ feature-impl:
 - `NOT tag:<name>` - the specified tag is not active
 - `tag:<name1> AND tag:<name2>` - both tags are active
 - `tag:<name1> OR tag:<name2>` - at least one of the tags is active
-- `TAGSET:<set-name>:<tag-name>` - special operator for slices:
+- `TAGSET:<set-name>:<tag-name>` - special operator for slices (permissive by default):
   - True if no tag from the set is active
   - True if the specified tag is active
+  - False in all other cases
+- `TAGONLY:<set-name>:<tag-name>` - exclusive operator for slices (restrictive by default):
+  - True only if the specified tag is active AND it's the only active tag from the set
   - False in all other cases
 
 For working with federated scopes, additional operators are added that can be combined with other conditional operators.

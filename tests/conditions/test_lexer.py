@@ -27,7 +27,7 @@ class TestConditionLexer:
     def test_keywords(self):
         """Test recognition of keywords"""
         test_cases = [
-            "tag", "TAGSET", "scope", "AND", "OR", "NOT"
+            "tag", "TAGSET", "TAGONLY", "scope", "AND", "OR", "NOT"
         ]
         
         for keyword in test_cases:

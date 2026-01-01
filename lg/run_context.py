@@ -58,6 +58,27 @@ class ConditionContext:
         # There are active tags from the set - condition is true only if specified tag is active
         return tag_name in active_in_set
 
+    def is_tagonly_condition_met(self, set_name: str, tag_name: str) -> bool:
+        """
+        Check TAGONLY:set_name:tag_name condition.
+
+        Rules:
+        - True only if specified tag is active AND it's the only active tag from the set
+        - False if tag is not active
+        - False if other tags from the set are also active
+        - False if no tags from the set are active
+        """
+        tagset_tags = self.tagsets.get(set_name, set())
+        if not tagset_tags:
+            # Set doesn't exist or is empty - condition is false
+            return False
+
+        # Check which tags from the set are active
+        active_in_set = tagset_tags.intersection(self.active_tags)
+
+        # True only if exactly one tag is active and it's the specified one
+        return active_in_set == {tag_name}
+
     def is_scope_condition_met(self, scope_type: str) -> bool:
         """
         Check scope:local/parent condition.

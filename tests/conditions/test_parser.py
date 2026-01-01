@@ -8,6 +8,7 @@ from lg.conditions.model import (
     ConditionType,
     TagCondition,
     TagSetCondition,
+    TagOnlyCondition,
     ScopeCondition,
     GroupCondition,
     NotCondition,
@@ -39,11 +40,19 @@ class TestConditionParser:
     def test_tagset_condition(self):
         """Test tagset condition"""
         result = self.parser.parse("TAGSET:language:python")
-        
+
         assert isinstance(result, TagSetCondition)
         assert result.set_name == "language"
         assert result.tag_name == "python"
-    
+
+    def test_tagonly_condition(self):
+        """Test exclusive tag condition"""
+        result = self.parser.parse("TAGONLY:language:python")
+
+        assert isinstance(result, TagOnlyCondition)
+        assert result.set_name == "language"
+        assert result.tag_name == "python"
+
     def test_scope_condition_local(self):
         """Test local scope condition"""
         result = self.parser.parse("scope:local")

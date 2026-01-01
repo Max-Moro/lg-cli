@@ -16,6 +16,7 @@ class ConditionType(Enum):
     """Types of conditions in the system."""
     TAG = "tag"
     TAGSET = "tagset"
+    TAGONLY = "tagonly"
     SCOPE = "scope"
     TASK = "task"
     AND = "and"
@@ -71,12 +72,33 @@ class TagSetCondition(Condition):
     """
     set_name: str
     tag_name: str
-    
+
     def get_type(self) -> ConditionType:
         return ConditionType.TAGSET
-    
+
     def _to_string(self) -> str:
         return f"TAGSET:{self.set_name}:{self.tag_name}"
+
+
+@dataclass
+class TagOnlyCondition(Condition):
+    """
+    Exclusive tag condition: TAGONLY:set_name:tag_name
+
+    Evaluation rules:
+    - True only if specified tag is active AND it's the only active tag from the set
+    - False if tag is not active
+    - False if other tags from the set are also active
+    - False if no tags from the set are active
+    """
+    set_name: str
+    tag_name: str
+
+    def get_type(self) -> ConditionType:
+        return ConditionType.TAGONLY
+
+    def _to_string(self) -> str:
+        return f"TAGONLY:{self.set_name}:{self.tag_name}"
 
 
 @dataclass
@@ -169,6 +191,7 @@ class BinaryCondition(Condition):
 AnyCondition = Union[
     TagCondition,
     TagSetCondition,
+    TagOnlyCondition,
     ScopeCondition,
     TaskCondition,
     GroupCondition,
@@ -181,6 +204,7 @@ __all__ = [
     "ConditionType",
     "TagCondition",
     "TagSetCondition",
+    "TagOnlyCondition",
     "ScopeCondition",
     "TaskCondition",
     "GroupCondition",

@@ -14,6 +14,7 @@ from .model import (
     ConditionType,
     TagCondition,
     TagSetCondition,
+    TagOnlyCondition,
     ScopeCondition,
     TaskCondition,
     GroupCondition,
@@ -64,6 +65,8 @@ class ConditionEvaluator:
             return self._evaluate_tag(cast(TagCondition, condition))
         elif condition_type == ConditionType.TAGSET:
             return self._evaluate_tagset(cast(TagSetCondition, condition))
+        elif condition_type == ConditionType.TAGONLY:
+            return self._evaluate_tagonly(cast(TagOnlyCondition, condition))
         elif condition_type == ConditionType.SCOPE:
             return self._evaluate_scope(cast(ScopeCondition, condition))
         elif condition_type == ConditionType.TASK:
@@ -97,6 +100,14 @@ class ConditionEvaluator:
         - False in all other cases
         """
         return self.context.is_tagset_condition_met(condition.set_name, condition.tag_name)
+
+    def _evaluate_tagonly(self, condition: TagOnlyCondition) -> bool:
+        """
+        Evaluate exclusive tag condition: TAGONLY:set_name:tag_name
+
+        True only if specified tag is active AND it's the only active tag from the set.
+        """
+        return self.context.is_tagonly_condition_met(condition.set_name, condition.tag_name)
 
     def _evaluate_scope(self, condition: ScopeCondition) -> bool:
         """

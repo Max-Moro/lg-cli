@@ -42,6 +42,11 @@ class TestConditionsIntegration:
             ("TAGSET:language:javascript", False), # other tag in set is active
             ("TAGSET:stage:dev", True),           # no tags from set are active
 
+            # TAGONLY conditions
+            ("TAGONLY:language:python", True),      # specified tag is only active tag from set
+            ("TAGONLY:language:javascript", False), # tag not active
+            ("TAGONLY:stage:dev", False),           # no tags from set are active
+
             # Scopes
             ("scope:local", True),
             ("scope:parent", False),
@@ -124,6 +129,22 @@ class TestConditionsIntegration:
         # Non-existent set
         assert context.is_tagset_condition_met("nonexistent", "tag") is True  # non-existent = empty = True
 
+        # Test is_tagonly_condition_met
+        # Only python from language set is active
+        assert context.is_tagonly_condition_met("language", "python") is True
+
+        # javascript is not active
+        assert context.is_tagonly_condition_met("language", "javascript") is False
+
+        # In component set, api tag is active alone
+        assert context.is_tagonly_condition_met("component", "api") is True
+
+        # Empty set - always False
+        assert context.is_tagonly_condition_met("empty", "anything") is False
+
+        # Non-existent set - always False
+        assert context.is_tagonly_condition_met("nonexistent", "tag") is False
+
         # Test is_scope_condition_met
         assert context.is_scope_condition_met("local") is True
         assert context.is_scope_condition_met("parent") is False
@@ -139,11 +160,17 @@ class TestConditionsIntegration:
         assert empty_context.is_tagset_condition_met("set", "tag") is True  # non-existent set = empty = True
         assert empty_context.is_scope_condition_met("local") is True  # empty string means local scope
 
+        # TAGONLY with empty context - always False
+        assert empty_context.is_tagonly_condition_met("set", "tag") is False
+
         # Context with only active tags
         tags_only_context = ConditionContext(active_tags={"python", "api"})
 
         assert tags_only_context.is_tag_active("python") is True
         assert tags_only_context.is_tagset_condition_met("nonexistent", "python") is True  # non-existent set
+
+        # TAGONLY with tags_only_context (no tagsets defined)
+        assert tags_only_context.is_tagonly_condition_met("nonexistent", "python") is False
 
         # Context with only tagsets
         tagsets_only_context = ConditionContext(
@@ -234,6 +261,12 @@ class TestConditionsIntegration:
                 "(tag:python OR tag:javascript) AND "
                 "(TAGSET:component:backend OR TAGSET:component:api) AND "
                 "NOT tag:deprecated",
+                True
+            ),
+
+            # TAGONLY - show only when exactly one specific feature is active
+            (
+                "TAGONLY:language:python AND tag:backend",
                 True
             ),
         ]

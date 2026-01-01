@@ -66,7 +66,71 @@ class TestConditionEvaluator:
         # Empty tag set
         condition = self.parser.parse("TAGSET:empty_set:anything")
         assert self.evaluator.evaluate(condition) is True
-    
+
+    def test_tagonly_conditions(self):
+        """Test exclusive tag conditions - tag must be the ONLY active tag from set"""
+
+        # Specified tag is active AND is the only active tag from the set
+        # Context has python active, and only python is in active_tags intersection with language set
+        condition = self.parser.parse("TAGONLY:language:python")
+        assert self.evaluator.evaluate(condition) is True
+
+        # Specified tag is not active (javascript not in active_tags)
+        condition = self.parser.parse("TAGONLY:language:javascript")
+        assert self.evaluator.evaluate(condition) is False
+
+        # No tags from the set are active (feature set has no active tags)
+        condition = self.parser.parse("TAGONLY:feature:auth")
+        assert self.evaluator.evaluate(condition) is False
+
+        # Empty/non-existent set - always False
+        condition = self.parser.parse("TAGONLY:empty_set:anything")
+        assert self.evaluator.evaluate(condition) is False
+
+        # Non-existent set - always False
+        condition = self.parser.parse("TAGONLY:nonexistent:tag")
+        assert self.evaluator.evaluate(condition) is False
+
+    def test_tagonly_with_multiple_active_tags(self):
+        """Test TAGONLY when multiple tags from set are active"""
+
+        # Create context where multiple tags from set are active
+        context_multi = ConditionContext(
+            active_tags={"python", "javascript", "tests"},
+            tagsets={
+                "language": {"python", "javascript", "typescript", "go"},
+            },
+            origin="",
+        )
+        evaluator_multi = ConditionEvaluator(context_multi)
+
+        # python is active but javascript is also active from same set
+        condition = self.parser.parse("TAGONLY:language:python")
+        assert evaluator_multi.evaluate(condition) is False
+
+        # javascript is active but python is also active from same set
+        condition = self.parser.parse("TAGONLY:language:javascript")
+        assert evaluator_multi.evaluate(condition) is False
+
+    def test_tagonly_in_complex_expressions(self):
+        """Test TAGONLY in complex expressions with other operators"""
+
+        # TAGONLY with NOT
+        condition = self.parser.parse("NOT TAGONLY:language:javascript")
+        assert self.evaluator.evaluate(condition) is True
+
+        # TAGONLY with AND
+        condition = self.parser.parse("TAGONLY:language:python AND tag:tests")
+        assert self.evaluator.evaluate(condition) is True
+
+        # TAGONLY with OR
+        condition = self.parser.parse("TAGONLY:language:javascript OR tag:python")
+        assert self.evaluator.evaluate(condition) is True
+
+        # Complex expression
+        condition = self.parser.parse("(TAGONLY:language:python OR tag:minimal) AND NOT tag:deprecated")
+        assert self.evaluator.evaluate(condition) is True
+
     def test_scope_conditions(self):
         """Test scope conditions"""
 

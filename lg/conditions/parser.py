@@ -26,6 +26,7 @@ from .model import (
     ConditionType,
     TagCondition,
     TagSetCondition,
+    TagOnlyCondition,
     ScopeCondition,
     TaskCondition,
     GroupCondition,
@@ -134,6 +135,10 @@ class ConditionParser:
         if self._match_keyword("TAGSET"):
             return self._parse_tagset_condition()
 
+        # TAGONLY:set:tag
+        if self._match_keyword("TAGONLY"):
+            return self._parse_tagonly_condition()
+
         # scope:type
         if self._match_keyword("scope"):
             return self._parse_scope_condition()
@@ -170,6 +175,20 @@ class ConditionParser:
         tag_name_token = self._consume_identifier("Expected tag name after set name")
 
         return TagSetCondition(set_name=set_name_token.value, tag_name=tag_name_token.value)
+
+    def _parse_tagonly_condition(self) -> TagOnlyCondition:
+        """Parse exclusive tag condition: TAGONLY:set:tag"""
+        if not self._match_symbol(":"):
+            raise ParseError("Expected ':' after 'TAGONLY'", self._current_position())
+
+        set_name_token = self._consume_identifier("Expected set name after 'TAGONLY:'")
+
+        if not self._match_symbol(":"):
+            raise ParseError("Expected ':' after set name", self._current_position())
+
+        tag_name_token = self._consume_identifier("Expected tag name after set name")
+
+        return TagOnlyCondition(set_name=set_name_token.value, tag_name=tag_name_token.value)
 
     def _parse_scope_condition(self) -> ScopeCondition:
         """Parse a scope condition: scope:type"""
@@ -227,9 +246,13 @@ class ConditionParser:
         return False
 
     def _consume_identifier(self, error_message: str) -> Token:
-        """Consume an identifier or raise an error."""
+        """Consume an identifier or raise an error.
+
+        Note: Keywords are also accepted as identifiers since reserved words
+        can be valid tag/set names (e.g., TAGONLY:set:tag).
+        """
         current = self._current_token()
-        if current.type == 'IDENTIFIER':
+        if current.type in ('IDENTIFIER', 'KEYWORD'):
             return self._advance()
 
         raise ParseError(error_message, current.position)
