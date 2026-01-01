@@ -12,7 +12,6 @@ from .paths import (
     sections_yaml_prefix,
     canonical_fragment_prefix,
 )
-from ..config.paths import cfg_root
 
 _yaml = YAML(typ="safe")
 
@@ -84,8 +83,6 @@ def build_index(cfg_root_path: Path) -> ScopeIndex:
             continue
 
         dir_prefix = canonical_fragment_prefix(root, sec_file)
-        file_stem = sec_file.stem.removesuffix(".sec")
-
         local_names = _read_yaml_top_level_keys(sec_file)
 
         for local_name in local_names:

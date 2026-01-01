@@ -4,7 +4,7 @@ from pathlib import Path
 from typing import List
 
 # Import shared constants from config.paths
-from ..config.paths import cfg_root, CFG_DIR, SECTIONS_FILE
+from ..config.paths import cfg_root, SECTIONS_FILE
 
 
 def sections_path(root: Path) -> Path:
