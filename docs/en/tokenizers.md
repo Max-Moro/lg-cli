@@ -81,7 +81,7 @@ LG integrates three open-source tokenization libraries:
 When calling `render` or `report` commands, specify three required parameters:
 
 ```bash
-lg render ctx:all \
+listing-generator render ctx:all \
   --lib <tiktoken|tokenizers|sentencepiece> \
   --encoder <encoder_name> \
   --ctx-limit <window_size_in_tokens>
@@ -93,13 +93,13 @@ lg render ctx:all \
 
 ```bash
 # GPT-4, GPT-3.5 Turbo
-lg report ctx:all \
+listing-generator report ctx:all \
   --lib tiktoken \
   --encoder cl100k_base \
   --ctx-limit 128000
 
 # GPT-4o, o1, o3
-lg report ctx:all \
+listing-generator report ctx:all \
   --lib tiktoken \
   --encoder o200k_base \
   --ctx-limit 200000
@@ -109,25 +109,25 @@ lg report ctx:all \
 
 ```bash
 # GPT-2 BPE (universal, first run will download the model)
-lg report ctx:all \
+listing-generator report ctx:all \
   --lib tokenizers \
   --encoder gpt2 \
   --ctx-limit 50000
 
 # Mistral (modern open-source model)
-lg report ctx:all \
+listing-generator report ctx:all \
   --lib tokenizers \
   --encoder mistralai/Mistral-7B-v0.1 \
   --ctx-limit 128000
 
 # Local tokenizer.json file
-lg report ctx:all \
+listing-generator report ctx:all \
   --lib tokenizers \
   --encoder /path/to/tokenizer.json \
   --ctx-limit 128000
 
 # Local directory with tokenizer.json inside
-lg report ctx:all \
+listing-generator report ctx:all \
   --lib tokenizers \
   --encoder /path/to/model/ \
   --ctx-limit 128000
@@ -137,19 +137,19 @@ lg report ctx:all \
 
 ```bash
 # T5 (universal, suitable for Gemini/Claude approximation)
-lg report ctx:all \
+listing-generator report ctx:all \
   --lib sentencepiece \
   --encoder t5-base \
   --ctx-limit 128000
 
 # FLAN-T5 (instruction-tuned, better for prompts)
-lg report ctx:all \
+listing-generator report ctx:all \
   --lib sentencepiece \
   --encoder google/flan-t5-base \
   --ctx-limit 1000000
 
 # Local model file
-lg report ctx:all \
+listing-generator report ctx:all \
   --lib sentencepiece \
   --encoder /path/to/custom.model \
   --ctx-limit 128000
@@ -162,7 +162,7 @@ lg report ctx:all \
 ### List Available Libraries
 
 ```bash
-lg list tokenizer-libs
+listing-generator list tokenizer-libs
 ```
 
 **Output**:
@@ -176,13 +176,13 @@ lg list tokenizer-libs
 
 ```bash
 # tiktoken (built-in encoders)
-lg list encoders --lib tiktoken
+listing-generator list encoders --lib tiktoken
 
 # tokenizers (recommended + downloaded)
-lg list encoders --lib tokenizers
+listing-generator list encoders --lib tokenizers
 
 # sentencepiece (recommended + downloaded)
-lg list encoders --lib sentencepiece
+listing-generator list encoders --lib sentencepiece
 ```
 
 **Example output for tiktoken**:
@@ -241,20 +241,20 @@ huggingface-cli login
 huggingface-cli download meta-llama/Llama-3.1-8B --include "tokenizer.json" --local-dir ./llama-tokenizer
 
 # 2. First use - imports into LG cache
-lg report ctx:all \
+listing-generator report ctx:all \
   --lib tokenizers \
   --encoder ./llama-tokenizer/tokenizer.json \
   --ctx-limit 128000
 # > Tokenizer imported as 'llama-tokenizer' and available for future use
 
 # 3. Subsequent uses - by short name
-lg report ctx:all \
+listing-generator report ctx:all \
   --lib tokenizers \
   --encoder llama-tokenizer \
   --ctx-limit 128000
 
 # Or specify a directory (LG will find tokenizer.json inside)
-lg report ctx:all \
+listing-generator report ctx:all \
   --lib tokenizers \
   --encoder ./llama-tokenizer/ \
   --ctx-limit 128000
@@ -264,20 +264,20 @@ lg report ctx:all \
 
 ```bash
 # First use - imports into cache
-lg report ctx:all \
+listing-generator report ctx:all \
   --lib tokenizers \
   --encoder /path/to/company/models/custom-tokenizer.json \
   --ctx-limit 200000
 # > Tokenizer imported as 'custom-tokenizer' and available for future use
 
 # Now you can use the short name
-lg report ctx:all \
+listing-generator report ctx:all \
   --lib tokenizers \
   --encoder custom-tokenizer \
   --ctx-limit 200000
 
 # Check the list of installed models
-lg list encoders --lib tokenizers
+listing-generator list encoders --lib tokenizers
 # 'custom-tokenizer' will appear in the list
 ```
 
@@ -341,17 +341,17 @@ The context window size depends on **three factors**:
 ```bash
 # ChatGPT Plus (web) with GPT-4
 # Physical limit: 128k, web client limit: 32k
-lg report ctx:all --lib tiktoken --encoder cl100k_base --ctx-limit 32000
+listing-generator report ctx:all --lib tiktoken --encoder cl100k_base --ctx-limit 32000
 
 # GPT-4o via API (no plan restrictions)
 # Physical limit: 200k, API limit: 200k
-lg report ctx:all --lib tiktoken --encoder o200k_base --ctx-limit 200000
+listing-generator report ctx:all --lib tiktoken --encoder o200k_base --ctx-limit 200000
 
 # Claude Pro in web client
 # Physical limit: 200k, Pro plan limit: 200k
-lg report ctx:all --lib sentencepiece --encoder google/gemma-2-2b --ctx-limit 200000
+listing-generator report ctx:all --lib sentencepiece --encoder google/gemma-2-2b --ctx-limit 200000
 
 # Cursor IDE with Claude Sonnet 4
 # Physical limit: 500k, Cursor limit: ~200k
-lg report ctx:all --lib sentencepiece --encoder google/gemma-2-2b --ctx-limit 200000
+listing-generator report ctx:all --lib sentencepiece --encoder google/gemma-2-2b --ctx-limit 200000
 ```

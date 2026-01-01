@@ -124,24 +124,24 @@ If the current repository's starting `lg-cfg` doesn't have its own `modes.yaml` 
 ```bash
 # List of mode sets with nested modes
 # Sufficient data for UI generation (comboboxes)
-lg list mode-sets
+listing-generator list mode-sets
 
 # List of tag sets with nested tags
 # Sufficient data for UI generation (checkbox sets)
-lg list tag-sets
+listing-generator list tag-sets
 
 # Rendering with specified modes
-lg render ctx:my-context --mode ai:agent --mode stage:development
+listing-generator render ctx:my-context --mode ai:agent --mode stage:development
 
 # Rendering with additional tags specified
 # In UA, tags are selected through checkbox sets within TAGSET and then form a flat list
-lg render ctx:my-context --tags python,minimal
+listing-generator render ctx:my-context --tags python,minimal
 
 # Combined usage
-lg render ctx:my-context --mode ai:agent --mode stage:review --tags python
+listing-generator render ctx:my-context --mode ai:agent --mode stage:review --tags python
 
 # Rendering with target branch specified for branch-changes mode
-lg render ctx:my-context --mode stage:review --target-branch main
+listing-generator render ctx:my-context --mode stage:review --target-branch main
 ```
 
 ## System Mode Options

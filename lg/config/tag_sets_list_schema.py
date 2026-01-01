@@ -43,7 +43,7 @@ class TagSet(BaseModel):
 
 class TagSetsList(BaseModel):
     """
-    Response schema for 'lg list tag-sets' command
+    Response schema for 'list tag-sets' command
     """
 
     model_config = ConfigDict(

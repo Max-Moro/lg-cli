@@ -62,7 +62,7 @@ pip install -e .
 python -m lg.cli --version
 
 # Или через установленную команду
-lg --version
+listing-generator --version
 ```
 
 Проверка окружения и кэша:
@@ -274,10 +274,10 @@ LG поддерживает несколько опенсорсных библи
 Общий формат:
 
 ```bash
-lg <command> <target> [--mode MODESET:MODE] [--tags TAG1,TAG2] [<additional_flags>]
+listing-generator <command> <target> [--mode MODESET:MODE] [--tags TAG1,TAG2] [<additional_flags>]
 
 # Для render/report обязательны параметры токенизации:
-lg render|report <target> \
+listing-generator render|report <target> \
   --lib <tiktoken|tokenizers|sentencepiece> \
   --encoder <encoder_name> \
   --ctx-limit <tokens>
@@ -306,60 +306,60 @@ lg render|report <target> \
 
 ```bash
 # Рендерим контекст из шаблона с токенизацией для GPT-4
-lg render ctx:onboarding \
+listing-generator render ctx:onboarding \
   --lib tiktoken \
   --encoder cl100k_base \
   --ctx-limit 128000 > prompt.md
 
 # Рендерим «только секцию» (без шаблона)
-lg render sec:core-model-src \
+listing-generator render sec:core-model-src \
   --lib tiktoken \
   --encoder cl100k_base \
   --ctx-limit 128000 > prompt.md
 
 # То же, но только изменённые файлы рабочего дерева
-lg render ctx:onboarding \
+listing-generator render ctx:onboarding \
   --lib tiktoken \
   --encoder cl100k_base \
   --ctx-limit 128000 \
   --mode vcs:branch-changes > prompt.md
 
 # JSON-отчёт со статистикой токенов для GPT-4o
-lg report ctx:onboarding \
+listing-generator report ctx:onboarding \
   --lib tiktoken \
   --encoder o200k_base \
   --ctx-limit 200000 > report.json
 
 # Отчет для Gemini с использованием sentencepiece
-lg report ctx:onboarding \
+listing-generator report ctx:onboarding \
   --lib sentencepiece \
   --encoder google/gemma-2-2b \
   --ctx-limit 1000000 > report.json
 
 # Рендерим контекст с описанием текущей задачи
-lg render ctx:dev \
+listing-generator render ctx:dev \
   --lib tiktoken --encoder cl100k_base --ctx-limit 128000 \
   --task "Реализовать кеширование результатов"
 
 # Многострочная задача через stdin
 echo -e "Задачи:\n- Исправить баг #123\n- Добавить тесты" | \
-  lg render ctx:dev --lib tiktoken --encoder cl100k_base --ctx-limit 128000 --task -
+  listing-generator render ctx:dev --lib tiktoken --encoder cl100k_base --ctx-limit 128000 --task -
 
 # Задача из файла
-lg render ctx:dev \
+listing-generator render ctx:dev \
   --lib tiktoken --encoder cl100k_base --ctx-limit 128000 \
   --task @.current-task.txt
 
 # Диагностика
-lg diag
-lg diag --rebuild-cache
+listing-generator diag
+listing-generator diag --rebuild-cache
 
 # Списки
-lg list contexts
-lg list sections
-lg list tokenizer-libs
-lg list encoders --lib tiktoken
-lg list encoders --lib tokenizers
+listing-generator list contexts
+listing-generator list sections
+listing-generator list tokenizer-libs
+listing-generator list encoders --lib tiktoken
+listing-generator list encoders --lib tokenizers
 ```
 
 ---
@@ -386,7 +386,7 @@ LG использует файловый кэш `.lg-cache`:
 * **Rendered tokens** — подсчёт финального документа («с клеем») и «sections-only».
 
 Ключи кэша учитывают версию инструмента, fingerprint файла, конфиг адаптера, состав групп и т. п.
-Управление: `lg diag`, `lg diag --rebuild-cache`. Можно отключить кэш через `LG_CACHE=0`.
+Управление: `listing-generator diag`, `listing-generator diag --rebuild-cache`. Можно отключить кэш через `LG_CACHE=0`.
 
 ---
 

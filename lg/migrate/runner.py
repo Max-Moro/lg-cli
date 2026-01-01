@@ -138,7 +138,7 @@ def _user_msg(migration_id: int, title: str, phase: str, exc: Exception | str) -
     if phase == "run":
         action = "execute the migration"
         tips = (
-            "  • Run `lg diag --bundle` and attach the resulting archive.\n"
+            "  • Run `diag --bundle` and attach the resulting archive.\n"
             "  • Temporarily revert local changes in `lg-cfg/` (e.g., `git restore -- lg-cfg/`) and try again."
         )
     elif phase == "preflight":
@@ -150,7 +150,7 @@ def _user_msg(migration_id: int, title: str, phase: str, exc: Exception | str) -
         )
     else:
         action = phase
-        tips = "  • Run `lg diag --bundle` and attach the resulting archive."
+        tips = "  • Run `diag --bundle` and attach the resulting archive."
 
     return (
         f"Migration #{migration_id} \"{title}\" could not {action}: {exc}\n\n"

@@ -202,7 +202,7 @@ ${task}
 
 **Пример команды:**
 ```bash
-lg render ctx:dev --task "Реализовать кеширование результатов"
+listing-generator render ctx:dev --task "Реализовать кеширование результатов"
 ```
 
 **Результат:**
@@ -270,17 +270,17 @@ _Конкретная задача не указана. Общий обзор к
 
 **Прямая строка:**
 ```bash
-lg render ctx:dev --task "Реализовать кеширование"
+listing-generator render ctx:dev --task "Реализовать кеширование"
 ```
 
 **Многострочный текст через stdin:**
 ```bash
-echo -e "Задачи:\n- Исправить баг #123\n- Добавить тесты" | lg render ctx:dev --task -
+echo -e "Задачи:\n- Исправить баг #123\n- Добавить тесты" | listing-generator render ctx:dev --task -
 ```
 
 **Из файла:**
 ```bash
-lg render ctx:dev --task @.current-task.txt
+listing-generator render ctx:dev --task @.current-task.txt
 ```
 
 ### Типичные паттерны использования

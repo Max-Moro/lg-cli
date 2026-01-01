@@ -124,24 +124,24 @@ include:
 ```bash
 # Список наборов режимов со вложенными режимами
 # Данных достаточно для формирования UI (комбобоксы)
-lg list mode-sets
+listing-generator list mode-sets
 
 # Список наборов тегов со вложенными тегами
 # Данных достаточно для формирования UI (наборы чекбоксов)
-lg list tag-sets
+listing-generator list tag-sets
 
 # Рендеринг с указанием режимов
-lg render ctx:my-context --mode ai:agent --mode stage:development
+listing-generator render ctx:my-context --mode ai:agent --mode stage:development
 
 # Рендеринг с указанием дополнительных тегов
 # В UA теги выбираются через наборы чекбоксов в рамках TAGSET и затем формируют плоский список
-lg render ctx:my-context --tags python,minimal
+listing-generator render ctx:my-context --tags python,minimal
 
 # Комбинированное использование
-lg render ctx:my-context --mode ai:agent --mode stage:review --tags python
+listing-generator render ctx:my-context --mode ai:agent --mode stage:review --tags python
 
 # Рендеринг с указанием целевой ветки для режима branch-changes
-lg render ctx:my-context --mode stage:review --target-branch main
+listing-generator render ctx:my-context --mode stage:review --target-branch main
 ```
 
 ## Системные опции режимов

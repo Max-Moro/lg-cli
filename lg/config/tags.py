@@ -127,7 +127,7 @@ def load_tags(root: Path) -> TagsConfig:
 
 def list_tag_sets(root: Path) -> TagSetsList:
     """
-    Returns a typed object with a list of tag sets for CLI command 'lg list tag-sets'.
+    Returns a typed object with a list of tag sets for CLI command 'list tag-sets'.
 
     Returns:
         TagSetsList: Typed object with an array of tag sets

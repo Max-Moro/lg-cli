@@ -302,7 +302,7 @@ docs:
 Команда:
 
 ```bash
-lg report ctx:my-context --model gpt-4o > report.json
+listing-generator report ctx:my-context --model gpt-4o > report.json
 ```
 
 В `files[].meta` для Markdown-файлов появятся поля:

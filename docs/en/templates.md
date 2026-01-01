@@ -202,7 +202,7 @@ ${task}
 
 **Example command:**
 ```bash
-lg render ctx:dev --task "Implement result caching"
+listing-generator render ctx:dev --task "Implement result caching"
 ```
 
 **Result:**
@@ -270,17 +270,17 @@ _No specific task specified. General codebase overview._
 
 **Direct string:**
 ```bash
-lg render ctx:dev --task "Implement caching"
+listing-generator render ctx:dev --task "Implement caching"
 ```
 
 **Multiline text via stdin:**
 ```bash
-echo -e "Tasks:\n- Fix bug #123\n- Add tests" | lg render ctx:dev --task -
+echo -e "Tasks:\n- Fix bug #123\n- Add tests" | listing-generator render ctx:dev --task -
 ```
 
 **From file:**
 ```bash
-lg render ctx:dev --task @.current-task.txt
+listing-generator render ctx:dev --task @.current-task.txt
 ```
 
 ### Typical Usage Patterns

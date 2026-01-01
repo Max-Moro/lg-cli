@@ -143,7 +143,7 @@ def add_cli(subparsers) -> None:
 
 
 def _run_cli(ns) -> int:
-    """Handler for `lg init` subcommand."""
+    """Handler for `init` subcommand."""
     from .jsonic import dumps as jdumps
     if bool(getattr(ns, "list_presets", False)):
         print(jdumps({"presets": list_presets()}))

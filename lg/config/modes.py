@@ -118,7 +118,7 @@ def load_modes(root: Path) -> ModesConfig:
 
 def list_mode_sets(root: Path) -> ModeSetsList:
     """
-    Returns a typed object with a list of mode sets for CLI command 'lg list mode-sets'.
+    Returns a typed object with a list of mode sets for CLI command 'list mode-sets'.
 
     Returns:
         ModeSetsList: Typed object with an array of mode sets

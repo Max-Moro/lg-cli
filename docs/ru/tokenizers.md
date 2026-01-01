@@ -81,7 +81,7 @@ LG интегрирует три опенсорсные библиотеки т�
 При вызове команд `render` или `report` укажите три обязательных параметра:
 
 ```bash
-lg render ctx:all \
+listing-generator render ctx:all \
   --lib <tiktoken|tokenizers|sentencepiece> \
   --encoder <имя_энкодера> \
   --ctx-limit <размер_окна_в_токенах>
@@ -93,13 +93,13 @@ lg render ctx:all \
 
 ```bash
 # GPT-4, GPT-3.5 Turbo
-lg report ctx:all \
+listing-generator report ctx:all \
   --lib tiktoken \
   --encoder cl100k_base \
   --ctx-limit 128000
 
 # GPT-4o, o1, o3
-lg report ctx:all \
+listing-generator report ctx:all \
   --lib tiktoken \
   --encoder o200k_base \
   --ctx-limit 200000
@@ -109,25 +109,25 @@ lg report ctx:all \
 
 ```bash
 # GPT-2 BPE (универсальный, первый запуск скачает модель)
-lg report ctx:all \
+listing-generator report ctx:all \
   --lib tokenizers \
   --encoder gpt2 \
   --ctx-limit 50000
 
 # Mistral (современная open-source модель)
-lg report ctx:all \
+listing-generator report ctx:all \
   --lib tokenizers \
   --encoder mistralai/Mistral-7B-v0.1 \
   --ctx-limit 128000
 
 # Локальный файл tokenizer.json
-lg report ctx:all \
+listing-generator report ctx:all \
   --lib tokenizers \
   --encoder /path/to/tokenizer.json \
   --ctx-limit 128000
 
 # Локальная директория с tokenizer.json внутри
-lg report ctx:all \
+listing-generator report ctx:all \
   --lib tokenizers \
   --encoder /path/to/model/ \
   --ctx-limit 128000
@@ -137,19 +137,19 @@ lg report ctx:all \
 
 ```bash
 # T5 (универсальный, подходит для Gemini/Claude приближения)
-lg report ctx:all \
+listing-generator report ctx:all \
   --lib sentencepiece \
   --encoder t5-base \
   --ctx-limit 128000
 
 # FLAN-T5 (instruction-tuned, лучше для промптов)
-lg report ctx:all \
+listing-generator report ctx:all \
   --lib sentencepiece \
   --encoder google/flan-t5-base \
   --ctx-limit 1000000
 
 # Локальный файл модели
-lg report ctx:all \
+listing-generator report ctx:all \
   --lib sentencepiece \
   --encoder /path/to/custom.model \
   --ctx-limit 128000
@@ -162,7 +162,7 @@ lg report ctx:all \
 ### Список доступных библиотек
 
 ```bash
-lg list tokenizer-libs
+listing-generator list tokenizer-libs
 ```
 
 **Вывод**:
@@ -176,13 +176,13 @@ lg list tokenizer-libs
 
 ```bash
 # tiktoken (встроенные энкодеры)
-lg list encoders --lib tiktoken
+listing-generator list encoders --lib tiktoken
 
 # tokenizers (рекомендуемые + скачанные)
-lg list encoders --lib tokenizers
+listing-generator list encoders --lib tokenizers
 
 # sentencepiece (рекомендуемые + скачанные)
-lg list encoders --lib sentencepiece
+listing-generator list encoders --lib sentencepiece
 ```
 
 **Пример вывода для tiktoken**:
@@ -241,20 +241,20 @@ huggingface-cli login
 huggingface-cli download meta-llama/Llama-3.1-8B --include "tokenizer.json" --local-dir ./llama-tokenizer
 
 # 2. Первое использование - импортирует в кэш LG
-lg report ctx:all \
+listing-generator report ctx:all \
   --lib tokenizers \
   --encoder ./llama-tokenizer/tokenizer.json \
   --ctx-limit 128000
 # > Tokenizer imported as 'llama-tokenizer' and available for future use
 
 # 3. Последующие использования - по короткому имени
-lg report ctx:all \
+listing-generator report ctx:all \
   --lib tokenizers \
   --encoder llama-tokenizer \
   --ctx-limit 128000
 
 # Или укажите директорию (LG найдет tokenizer.json внутри)
-lg report ctx:all \
+listing-generator report ctx:all \
   --lib tokenizers \
   --encoder ./llama-tokenizer/ \
   --ctx-limit 128000
@@ -264,20 +264,20 @@ lg report ctx:all \
 
 ```bash
 # Первое использование - импортирует в кэш
-lg report ctx:all \
+listing-generator report ctx:all \
   --lib tokenizers \
   --encoder /path/to/company/models/custom-tokenizer.json \
   --ctx-limit 200000
 # > Tokenizer imported as 'custom-tokenizer' and available for future use
 
 # Теперь можно использовать короткое имя
-lg report ctx:all \
+listing-generator report ctx:all \
   --lib tokenizers \
   --encoder custom-tokenizer \
   --ctx-limit 200000
 
 # Проверить список установленных моделей
-lg list encoders --lib tokenizers
+listing-generator list encoders --lib tokenizers
 # В списке появится 'custom-tokenizer'
 ```
 
@@ -341,17 +341,17 @@ lg list encoders --lib tokenizers
 ```bash
 # ChatGPT Plus (веб) с GPT-4
 # Физический лимит: 128k, лимит веб-клиента: 32k
-lg report ctx:all --lib tiktoken --encoder cl100k_base --ctx-limit 32000
+listing-generator report ctx:all --lib tiktoken --encoder cl100k_base --ctx-limit 32000
 
 # GPT-4o через API (без ограничений плана)
 # Физический лимит: 200k, лимит API: 200k
-lg report ctx:all --lib tiktoken --encoder o200k_base --ctx-limit 200000
+listing-generator report ctx:all --lib tiktoken --encoder o200k_base --ctx-limit 200000
 
 # Claude Pro в веб-клиенте
 # Физический лимит: 200k, лимит Pro плана: 200k
-lg report ctx:all --lib sentencepiece --encoder google/gemma-2-2b --ctx-limit 200000
+listing-generator report ctx:all --lib sentencepiece --encoder google/gemma-2-2b --ctx-limit 200000
 
 # Cursor IDE с Claude Sonnet 4
 # Физический лимит: 500k, лимит Cursor: ~200k
-lg report ctx:all --lib sentencepiece --encoder google/gemma-2-2b --ctx-limit 200000
+listing-generator report ctx:all --lib sentencepiece --encoder google/gemma-2-2b --ctx-limit 200000
 ```

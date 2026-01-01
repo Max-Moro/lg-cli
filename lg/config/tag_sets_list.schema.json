@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft-07/schema#",
   "$id": "https://example.org/lg/tag_sets_list.schema.json",
   "title": "TagSetsList",
-  "description": "Response schema for 'lg list tag-sets' command",
+  "description": "Response schema for 'list tag-sets' command",
   "type": "object",
   "required": ["tag-sets"],
   "additionalProperties": false,

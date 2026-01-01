@@ -51,7 +51,7 @@ class ModeSet(BaseModel):
 
 class ModeSetsList(BaseModel):
     """
-    Response schema for 'lg list mode-sets' command
+    Response schema for 'list mode-sets' command
     """
 
     model_config = ConfigDict(

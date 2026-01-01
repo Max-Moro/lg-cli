@@ -326,7 +326,7 @@ my-section:
 **Current list:**
 The complete list of supported adapters can be obtained with:
 ```bash
-lg diag
+listing-generator diag
 ```
 
 **Uniform configuration:**
@@ -341,4 +341,4 @@ All languages are configured through a common settings model. Internal processin
 - For code with many dependencies enable `imports.policy: "strip_external"`
 - Use `targets` for more precise tuning depending on code type
 - For automatic optimization use `budget` with reasonable token limit
-- Check effect with `lg report …` command and watch token savings fields
+- Check effect with `listing-generator report …` command and watch token savings fields

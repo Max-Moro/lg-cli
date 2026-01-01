@@ -15,7 +15,7 @@ from .version import tool_version
 
 def _build_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(
-        prog="lg",
+        prog="listing-generator",
         description="Listing Generator (context-first pipeline)",
         add_help=True,
     )

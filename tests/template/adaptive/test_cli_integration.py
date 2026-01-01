@@ -12,7 +12,7 @@ from .conftest import adaptive_project, federated_project
 
 
 def test_list_mode_sets_cli(adaptive_project, monkeypatch):
-    """Test lg list mode-sets command."""
+    """Test list mode-sets command."""
     root = adaptive_project
     monkeypatch.chdir(root)
 
@@ -48,7 +48,7 @@ def test_list_mode_sets_cli(adaptive_project, monkeypatch):
 
 
 def test_list_tag_sets_cli(adaptive_project, monkeypatch):
-    """Test lg list tag-sets command."""
+    """Test list tag-sets command."""
     root = adaptive_project
     monkeypatch.chdir(root)
 

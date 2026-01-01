@@ -62,7 +62,7 @@ Verification:
 python -m lg.cli --version
 
 # Or via installed command
-lg --version
+listing-generator --version
 ```
 
 Environment and cache check:
@@ -272,10 +272,10 @@ All methods for creating universal templates and section configurations are desc
 General format:
 
 ```bash
-lg <command> <target> [--mode MODESET:MODE] [--tags TAG1,TAG2] [<additional_flags>]
+listing-generator <command> <target> [--mode MODESET:MODE] [--tags TAG1,TAG2] [<additional_flags>]
 
 # For render/report, tokenization parameters are required:
-lg render|report <target> \
+listing-generator render|report <target> \
   --lib <tiktoken|tokenizers|sentencepiece> \
   --encoder <encoder_name> \
   --ctx-limit <tokens>
@@ -304,60 +304,60 @@ Examples:
 
 ```bash
 # Render context from template with tokenization for GPT-4
-lg render ctx:onboarding \
+listing-generator render ctx:onboarding \
   --lib tiktoken \
   --encoder cl100k_base \
   --ctx-limit 128000 > prompt.md
 
 # Render "section only" (no template)
-lg render sec:core-model-src \
+listing-generator render sec:core-model-src \
   --lib tiktoken \
   --encoder cl100k_base \
   --ctx-limit 128000 > prompt.md
 
 # Same but only changed files in working tree
-lg render ctx:onboarding \
+listing-generator render ctx:onboarding \
   --lib tiktoken \
   --encoder cl100k_base \
   --ctx-limit 128000 \
   --mode vcs:branch-changes > prompt.md
 
 # JSON report with token stats for GPT-4o
-lg report ctx:onboarding \
+listing-generator report ctx:onboarding \
   --lib tiktoken \
   --encoder o200k_base \
   --ctx-limit 200000 > report.json
 
 # Report for Gemini using sentencepiece
-lg report ctx:onboarding \
+listing-generator report ctx:onboarding \
   --lib sentencepiece \
   --encoder google/gemma-2-2b \
   --ctx-limit 1000000 > report.json
 
 # Render context with current task description
-lg render ctx:dev \
+listing-generator render ctx:dev \
   --lib tiktoken --encoder cl100k_base --ctx-limit 128000 \
   --task "Implement result caching"
 
 # Multi-line task via stdin
 echo -e "Tasks:\n- Fix bug #123\n- Add tests" | \
-  lg render ctx:dev --lib tiktoken --encoder cl100k_base --ctx-limit 128000 --task -
+  listing-generator render ctx:dev --lib tiktoken --encoder cl100k_base --ctx-limit 128000 --task -
 
 # Task from file
-lg render ctx:dev \
+listing-generator render ctx:dev \
   --lib tiktoken --encoder cl100k_base --ctx-limit 128000 \
   --task @.current-task.txt
 
 # Diagnostics
-lg diag
-lg diag --rebuild-cache
+listing-generator diag
+listing-generator diag --rebuild-cache
 
 # Lists
-lg list contexts
-lg list sections
-lg list tokenizer-libs
-lg list encoders --lib tiktoken
-lg list encoders --lib tokenizers
+listing-generator list contexts
+listing-generator list sections
+listing-generator list tokenizer-libs
+listing-generator list encoders --lib tiktoken
+listing-generator list encoders --lib tokenizers
 ```
 
 ---
@@ -384,7 +384,7 @@ LG uses file cache `.lg-cache`:
 * **Rendered tokens** — count of final document ("with glue") and "sections-only".
 
 Cache keys consider tool version, file fingerprint, adapter config, group composition, etc.
-Management: `lg diag`, `lg diag --rebuild-cache`. Can disable cache via `LG_CACHE=0`.
+Management: `listing-generator diag`, `listing-generator diag --rebuild-cache`. Can disable cache via `LG_CACHE=0`.
 
 ---
 
