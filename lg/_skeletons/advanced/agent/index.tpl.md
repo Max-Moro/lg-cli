@@ -2,12 +2,12 @@
 
 > This section contains general instructions for the AI agent when working on this project. It is analogous to traditional memory files `AGENTS.md` or `CLAUDE.md` and should be perceived similarly.
 
-${md@self:agent/listing-generator}
+${md@self:listing-generator}
 
-${md@self:agent/pipeline}
+${md@self:pipeline}
 
-${md@self:agent/software-design}
+${md@self:software-design}
 
-${md@self:agent/stack-(your-development-stack)}
+${md@self:stack-(your-development-stack)}
 
-${md@self:agent/workspace-and-personal}
+${md@self:workspace-and-personal}
