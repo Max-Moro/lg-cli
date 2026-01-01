@@ -13,7 +13,7 @@ from .nodes import MarkdownFileNode
 from .parser_rules import get_md_parser_rules
 from .tokens import get_md_token_specs
 from .virtual_sections import VirtualSectionFactory
-from .configs import MARKDOWN_CONFIG, MARKDOWN_EXTERNAL_CONFIG
+from ...addressing import ResourceConfig
 from ..base import TemplatePlugin
 from ..types import PluginPriority, TokenSpec, ParsingRule, ProcessorRule, ProcessingContext
 from ...addressing.types import ResolvedFile
@@ -98,12 +98,12 @@ class MdPlaceholdersPlugin(TemplatePlugin):
             # Determine resource config and build raw path for resolution
             if node.origin is not None:
                 # md@origin:path - file inside lg-cfg/ of specified scope
-                config = MARKDOWN_CONFIG
+                config = ResourceConfig(kind="md", extension=".md", strip_md_syntax=True)
                 # Reconstruct @origin:path format for PathParser to recognize explicit origin
                 raw_path = f"@{node.origin}:{node.path}"
             else:
                 # md:path - file relative to current scope root (outside lg-cfg/)
-                config = MARKDOWN_EXTERNAL_CONFIG
+                config = ResourceConfig(kind="md", extension=".md", strip_md_syntax=True, resolve_outside_cfg=True)
                 raw_path = node.path
 
             # Resolve path using unified addressing API

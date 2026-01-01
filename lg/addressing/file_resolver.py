@@ -88,6 +88,7 @@ class FileResolver(ResourceResolver):
             cfg_root=cfg_root,
             resource_path=resource_path,
             resource_rel=resource_rel,
+            kind=parsed.config.kind,
         )
 
     def _resolve_scope(
@@ -265,7 +266,7 @@ class FileResolver(ResourceResolver):
             raise PathResolutionError(
                 message=f"Path escapes scope boundary: {parsed.path}",
                 parsed=parsed,
-                hint=f"External {parsed.config.name} paths must be within current scope"
+                hint=f"External {parsed.config.kind} paths must be within current scope"
             )
 
         # Calculate scope_rel from repo root
@@ -282,6 +283,7 @@ class FileResolver(ResourceResolver):
             cfg_root=self._context.cfg_root,
             resource_path=resource_path,
             resource_rel=resource_rel,
+            kind=parsed.config.kind,
         )
 
 

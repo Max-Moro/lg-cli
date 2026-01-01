@@ -10,19 +10,19 @@ from ...addressing import ResourceConfig
 
 # Template reference: .tpl.md extension, resolved inside lg-cfg/
 TEMPLATE_CONFIG = ResourceConfig(
-    name="template",
+    kind="tpl",
     extension=".tpl.md",
 )
 
 # Context reference: .ctx.md extension, resolved inside lg-cfg/
 CONTEXT_CONFIG = ResourceConfig(
-    name="context",
+    kind="ctx",
     extension=".ctx.md",
 )
 
 # Section reference: resolved via SectionService
 SECTION_CONFIG = ResourceConfig(
-    name="section",
+    kind="sec",
     is_section=True,
 )
 

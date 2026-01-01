@@ -67,11 +67,7 @@ class StatsCollector:
             resolved: Resolved section where the file is used
         """
         rel_path = file.rel_path
-        # Build canon_key from resolved section
-        if resolved.scope_rel:
-            canon_key = f"sec@{resolved.scope_rel}:{resolved.name}"
-        else:
-            canon_key = f"sec:{resolved.name}"
+        canon_key = resolved.canon_key()
 
         # Count tokens using cache
         t_proc = self.tokenizer.count_text_cached(file.processed_text)
@@ -108,12 +104,7 @@ class StatsCollector:
         Args:
             section: Rendered section
         """
-        # Build canon_key from resolved section
-        if section.resolved.scope_rel:
-            canon_key = f"sec@{section.resolved.scope_rel}:{section.resolved.name}"
-        else:
-            canon_key = f"sec:{section.resolved.name}"
-
+        canon_key = section.resolved.canon_key()
         self.sections_usage[canon_key] = self.sections_usage.get(canon_key, 0) + 1
 
         # Count rendered section tokens using cache
