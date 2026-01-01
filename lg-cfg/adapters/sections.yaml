@@ -257,10 +257,10 @@ tests:
               - condition: "tag:tests-infra"
                 allow:
                   - "/golden_utils.py"
-#              - condition: "TAGSET:adapters-optimizations:core"
-#                allow:
-#                  - "/test_placeholders.py"
-#                  - "/test_tree_sitter_document.py"
+              - condition: "TAGSET:adapters-optimizations:core"
+                allow:
+                  - "/test_placeholders.py"
+                  - "/test_tree_sitter_document.py"
               - condition: "TAGSET:language:python"
                 allow: ["/python/"]
               - condition: "TAGSET:language:typescript"
