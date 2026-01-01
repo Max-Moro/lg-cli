@@ -61,7 +61,8 @@ class VirtualSectionFactory:
         )
 
         # Generate unique name for virtual section
-        name = self._generate_name()
+        # Name format: "md:path.md" or "md@origin:path.md" for proper identification
+        name = self._generate_name(node)
 
         # Create synthetic location for virtual section
         synthetic_location = SectionLocation(
@@ -80,15 +81,28 @@ class VirtualSectionFactory:
 
         return resolved_section
 
-    def _generate_name(self) -> str:
+    def _generate_name(self, node: MarkdownFileNode) -> str:
         """
         Generates unique name for virtual section.
 
+        Format preserves placeholder syntax for proper identification:
+        - "md:path.md" for local files
+        - "md@origin:path.md" for addressed files
+
+        Args:
+            node: MarkdownFileNode with path and origin info
+
         Returns:
-            String like "_virtual_<counter>"
+            String like "md:file.md" or "md@origin:file.md"
         """
-        self._counter += 1
-        return f"_virtual_{self._counter}"
+        # Build path with .md extension if not present
+        path = node.path
+        if not path.endswith('.md') and not path.endswith('.markdown'):
+            path = f"{path}.md"
+
+        if node.origin is not None:
+            return f"md@{node.origin}:{path}"
+        return f"md:{path}"
 
     def _normalize_path_for_filter(self, path: str, is_glob: bool, prefix: str = "") -> str:
         """

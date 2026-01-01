@@ -9,6 +9,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from .context import AddressingContext
+from .errors import ScopeNotFoundError
 from .types import ResolvedSection, ResourceResolver, ResourceConfig
 from ..section import SectionService
 
@@ -70,11 +71,20 @@ class SectionResolver(ResourceResolver):
         scope_dir, scope_rel = self._resolve_origin(origin)
 
         # Find section in target scope
-        location = self._service.find_section(
-            local_name,
-            "",  # No current_dir for addressed refs
-            scope_dir
-        )
+        try:
+            location = self._service.find_section(
+                local_name,
+                "",  # No current_dir for addressed refs
+                scope_dir
+            )
+        except RuntimeError as e:
+            # Convert low-level "No lg-cfg/ directory found" to ScopeNotFoundError
+            if "No lg-cfg/ directory found" in str(e):
+                raise ScopeNotFoundError(
+                    message=f"Scope not found: {origin}",
+                    scope_path=origin
+                )
+            raise
 
         # Load section configuration
         section_config = self._service.load_section(location)
