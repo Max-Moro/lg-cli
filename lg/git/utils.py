@@ -94,13 +94,30 @@ def is_git_repo(path: Path) -> bool:
     """
     Check if path is inside a git repository.
 
+    Handles both regular repositories (.git is a directory)
+    and worktrees/submodules (.git is a file containing gitdir reference).
+
     Args:
         path: Path to check
 
     Returns:
         True if path is in a git repository
     """
-    return (path / ".git").is_dir()
+    git_path = path / ".git"
+
+    # Regular repository: .git is a directory
+    if git_path.is_dir():
+        return True
+
+    # Worktree or submodule: .git is a file with "gitdir: <path>" content
+    if git_path.is_file():
+        try:
+            content = git_path.read_text(encoding="utf-8").strip()
+            return content.startswith("gitdir:")
+        except Exception:
+            return False
+
+    return False
 
 
 __all__ = [

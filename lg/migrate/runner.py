@@ -10,6 +10,7 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 from lg.cache.fs_cache import Cache
+from lg.git import is_git_repo
 from .errors import MigrationFatalError, PreflightRequired
 from .fs import CfgFs
 from . import migrations  # noqa: F401  # important: registration side-effect
@@ -121,7 +122,7 @@ def _record_failure(
 # ----------------------------- Misc helpers ----------------------------- #
 
 def _git_present(repo_root: Path) -> bool:
-    return (repo_root / ".git").is_dir()
+    return is_git_repo(repo_root)
 
 
 def _allow_no_git() -> bool:

@@ -9,6 +9,7 @@ from pathlib import Path
 from zipfile import ZipFile, ZIP_DEFLATED
 
 from lg.cache.fs_cache import Cache
+from lg.git import is_git_repo
 from lg.section import list_sections_peek
 from lg.config.paths import cfg_root
 from lg.template import list_contexts
@@ -94,7 +95,7 @@ def run_diag(*, rebuild_cache: bool = False) -> DiagReport:
     _mk("cache.size", Severity.ok, f"{cache_block.sizeBytes} bytes, {cache_block.entries} entries")
 
     # Git
-    git_ok = (root / ".git").is_dir()
+    git_ok = is_git_repo(root)
 
     cfg_fingerprint: str | None = None
     cfg_actual: int | None = None

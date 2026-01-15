@@ -11,10 +11,12 @@ Provides:
 from .base import VcsProvider, NullVcs
 from .provider import GitVcs
 from .gitignore import GitIgnoreService
+from .utils import is_git_repo
 
 __all__ = [
     "VcsProvider",
     "NullVcs",
     "GitVcs",
     "GitIgnoreService",
+    "is_git_repo",
 ]

@@ -21,7 +21,7 @@ from .addressing import AddressingContext
 from .addressing.types import ResolvedSection
 from .template.common_placeholders.configs import SECTION_CONFIG
 from .types import RunOptions, TargetSpec
-from .git import NullVcs, GitVcs
+from .git import NullVcs, GitVcs, is_git_repo
 from .git import GitIgnoreService
 from .version import tool_version
 
@@ -61,11 +61,14 @@ class Engine:
         tool_ver = tool_version()
         cache = Cache(self.root, enabled=None, fresh=False, tool_version=tool_ver)
 
-        # VCS
-        vcs = GitVcs() if (self.root / ".git").is_dir() else NullVcs()
+        # Check if we're in a git repository (handles worktrees and submodules)
+        has_git = is_git_repo(self.root)
 
-        # GitIgnore service (None if no .git directory)
-        gitignore = GitIgnoreService(self.root) if (self.root / ".git").is_dir() else None
+        # VCS
+        vcs = GitVcs() if has_git else NullVcs()
+
+        # GitIgnore service (None if not a git repository)
+        gitignore = GitIgnoreService(self.root) if has_git else None
 
         tokenizer = TokenService(
             root=self.root,
