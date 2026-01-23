@@ -1,0 +1,33 @@
+src:
+  extensions: [".py", ".toml", ".json"]
+  filters:
+    mode: allow
+    allow:
+      - "/pyproject.toml"
+      - "/lg/"
+    children:
+      lg:
+        mode: allow
+        allow:
+          - "/cli.py"
+          - "/types.py"
+          - "/run_context.py"
+          - "/engine.py"
+          - "/section_processor.py"
+          - "/config/"
+          - "/adapters/"
+          - "/template/"
+        children:
+          adapters:
+            mode: allow
+            allow:
+              - "/__init__.py"
+              - "/registry.py"
+              - "/base.py"
+              - "/processor.py"
+          template:
+            mode: allow
+            allow:
+              - "/*.py"
+              - "/common_placeholders/"
+              - "/adaptive/"
