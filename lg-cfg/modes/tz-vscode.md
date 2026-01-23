@@ -98,6 +98,56 @@ interface ControlPanelState {
 - оба плагина могут обновлять один и тот же `ai-interaction.sec.yaml`;
 - если провайдер незнаком плагину, его данные сохраняются как есть.
 
+### Пример содержимого `lg-cfg/ai-interaction.sec.yaml`
+Ниже пример **каноничной мета‑секции**, агрегирующей провайдеров из VS Code и IntelliJ.
+`runs` — строковые значения, интерпретация которых остаётся на стороне плагина.
+
+```yaml
+# lg-cfg/ai-interaction.sec.yaml
+ai-interaction:
+  title: "AI Interaction"
+  mode-sets:
+    ai-interaction:
+      title: "AI Interaction"
+      modes:
+        ask:
+          title: "Ask"
+          description: "Question-answer mode"
+          runs:
+            com.github.copilot.ext: "workbench.action.chat.openask"
+            com.cursor.composer.ext: "cursor.composer.ask"            # пример, зависит от Cursor API
+            com.anthropic.claude.cli: "--permission-mode default"
+            com.openai.codex.cli: "--sandbox read-only --ask-for-approval on-request"
+            com.jetbrains.ai.ext: ""                                  # поддерживается, просто полагаться на дефолты
+            org.jetbrains.junie.ext: "ExplicitTaskContext(type=CHAT)" # пример
+            com.openai.api: ""                                        # все API-провайдеры по свое природе поддерживают только Ask режим
+
+        agent:
+          title: "Agent"
+          description: "Agent mode with tools"
+          tags: [agent]
+          runs:
+            com.github.copilot.ext: "workbench.action.chat.openagent"
+            com.cursor.composer.ext: "cursor.composer.agent"          # пример
+            com.anthropic.claude.cli: "--permission-mode acceptEdits"
+            com.openai.codex.cli: "--sandbox workspace-write --ask-for-approval on-request"
+            com.jetbrains.ai.ext: "currentChatMode.setChatMode(\"CodeGeneration\")" # пример, зависит от IntelliJ API
+            org.jetbrains.junie.ext: "ExplicitTaskContext(type=ISSUE)"
+
+        plan:
+          title: "Plan"
+          description: "Planning / specification mode"
+          tags: [agent]
+          runs:
+            com.github.copilot.ext: "workbench.action.chat.openplan"
+            com.anthropic.claude.cli: "--permission-mode plan"
+            # com.openai.codex.cli — пока не поддерживается (пример намеренно отсутствует)
+```
+
+Примечания:
+- Значения `runs` **примерные**. Плагин обязан подставлять те значения, которые он реально поддерживает.
+- Если провайдер не поддерживает режим — ключ `runs[provider]` **не добавляется**.
+
 ---
 
 ## 5. Интеграция с CLI
