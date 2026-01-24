@@ -40,7 +40,7 @@ def list_contexts(root: Path) -> List[str]:
     """
     List available contexts (ONLY *.ctx.md) relative to lg-cfg/.
     """
-    from ..config.paths import cfg_root
+    from ..paths import cfg_root
     base = cfg_root(root)
     if not base.is_dir():
         return []

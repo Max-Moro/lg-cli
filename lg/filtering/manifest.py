@@ -15,7 +15,7 @@ from .fs import iter_files
 from .model import FilterNode
 from ..adapters.registry import get_adapter_for_path
 from ..section import SectionCfg, AdapterConfig, EmptyPolicy
-from ..config.paths import is_cfg_relpath
+from ..paths import is_cfg_relpath
 from ..rendering import get_language_for_file
 from ..template.context import TemplateContext
 from ..addressing.types import ResolvedSection

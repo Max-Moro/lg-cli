@@ -259,7 +259,7 @@ def main(argv: list[str] | None = None) -> int:
                 if not ns.provider:
                     sys.stderr.write("Error: --provider is required for 'mode-sets'\n")
                     return 2
-                from .config.modes import list_mode_sets
+                from .adaptive.listing import list_mode_sets
                 try:
                     mode_sets_result = list_mode_sets(root, context=ns.context, provider=ns.provider)
                     data = mode_sets_result.model_dump(by_alias=True)
@@ -270,7 +270,7 @@ def main(argv: list[str] | None = None) -> int:
                 if not ns.context:
                     sys.stderr.write("Error: --context is required for 'tag-sets'\n")
                     return 2
-                from .config.tags import list_tag_sets
+                from .adaptive.listing import list_tag_sets
                 try:
                     tag_sets_result = list_tag_sets(root, context=ns.context)
                     data = tag_sets_result.model_dump(by_alias=True)

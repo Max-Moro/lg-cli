@@ -11,9 +11,8 @@ from dataclasses import dataclass
 from typing import Dict, Set, List, Optional, Tuple
 
 from .evaluator import TemplateConditionEvaluator
-from ..config.adaptive_model import ModeOptions
+from ..adaptive.model import ModeOptions, AdaptiveModel
 from ..run_context import RunContext, ConditionContext
-from ..adaptive.model import AdaptiveModel
 from ..adaptive.errors import InvalidModeReferenceError
 
 

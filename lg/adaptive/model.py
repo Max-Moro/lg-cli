@@ -341,6 +341,23 @@ class AdaptiveModel:
         return not self.mode_sets and not self.tag_sets
 
 
+@dataclass
+class ModeOptions:
+    """
+    Typed container for mode options.
+
+    Contains all possible options that can be defined in modes,
+    with reasonable default values.
+    """
+    # VCS options
+    vcs_mode: Literal["all", "changes", "branch-changes"] = "all"
+
+    # Tool capabilities
+    allow_tools: bool = False  # permission to use tools in agent mode
+
+    # Additional options can be added as needed
+
+
 __all__ = [
     "RunsMap",
     "VcsMode",
@@ -349,4 +366,5 @@ __all__ = [
     "Tag",
     "TagSet",
     "AdaptiveModel",
+    "ModeOptions",
 ]

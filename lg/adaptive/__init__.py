@@ -1,22 +1,30 @@
 """
-Adaptive modes and tags system.
+Adaptive capabilities system for Listing Generator.
 
-Provides data models and utilities for the new adaptive system
-with context-dependent mode-sets and tag-sets.
+Provides mode-sets, tag-sets, and context-dependent configuration resolution.
 """
 
 from __future__ import annotations
 
 from .model import (
-    RunsMap,
-    VcsMode,
     Mode,
     ModeSet,
     Tag,
     TagSet,
     AdaptiveModel,
+    ModeOptions,
+    RunsMap,
+    VcsMode,
 )
-
+from .context_resolver import ContextResolver, ContextAdaptiveData
+from .extends_resolver import ExtendsResolver, ResolvedSectionData
+from .section_extractor import extract_adaptive_model
+from .validation import (
+    AdaptiveValidator,
+    validate_model,
+    validate_mode_reference,
+    validate_provider_support,
+)
 from .errors import (
     AdaptiveError,
     ExtendsCycleError,
@@ -27,29 +35,30 @@ from .errors import (
     InvalidModeReferenceError,
     SectionNotFoundInExtendsError,
 )
-
-from .section_extractor import extract_adaptive_model
-
-from .validation import (
-    AdaptiveValidator,
-    validate_model,
-    validate_mode_reference,
-    validate_provider_support,
-)
-
-from .extends_resolver import ExtendsResolver, ResolvedSectionData
-
-from .context_resolver import ContextResolver, ContextAdaptiveData
+from .listing import list_mode_sets, list_tag_sets
 
 __all__ = [
     # Model
-    "RunsMap",
-    "VcsMode",
     "Mode",
     "ModeSet",
     "Tag",
     "TagSet",
     "AdaptiveModel",
+    "ModeOptions",
+    "RunsMap",
+    "VcsMode",
+    # Resolvers
+    "ContextResolver",
+    "ContextAdaptiveData",
+    "ExtendsResolver",
+    "ResolvedSectionData",
+    # Utilities
+    "extract_adaptive_model",
+    # Validation
+    "AdaptiveValidator",
+    "validate_model",
+    "validate_mode_reference",
+    "validate_provider_support",
     # Errors
     "AdaptiveError",
     "ExtendsCycleError",
@@ -59,17 +68,7 @@ __all__ = [
     "ProviderNotSupportedError",
     "InvalidModeReferenceError",
     "SectionNotFoundInExtendsError",
-    # Section extractor
-    "extract_adaptive_model",
-    # Validation
-    "AdaptiveValidator",
-    "validate_model",
-    "validate_mode_reference",
-    "validate_provider_support",
-    # Extends resolver
-    "ExtendsResolver",
-    "ResolvedSectionData",
-    # Context resolver
-    "ContextResolver",
-    "ContextAdaptiveData",
+    # Listing
+    "list_mode_sets",
+    "list_tag_sets",
 ]

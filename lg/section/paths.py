@@ -3,8 +3,10 @@ from __future__ import annotations
 from pathlib import Path
 from typing import List
 
-# Import shared constants from config.paths
-from ..config.paths import cfg_root, SECTIONS_FILE
+# Import path utilities
+from ..paths import cfg_root, CFG_DIR
+
+SECTIONS_FILE = "sections.yaml"  # Local constant for backwards compatibility
 
 
 def iter_section_fragments(root: Path) -> List[Path]:

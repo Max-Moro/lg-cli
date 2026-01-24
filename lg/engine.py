@@ -8,7 +8,7 @@ from pathlib import Path
 from typing import Optional, cast
 
 from .cache.fs_cache import Cache
-from .config.paths import cfg_root
+from .paths import cfg_root
 from .migrate import ensure_cfg_actual
 from .run_context import RunContext
 from .section_processor import SectionProcessor

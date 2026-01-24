@@ -13,8 +13,6 @@ from typing import Optional
 
 from lg.addressing import AddressingContext
 from lg.cache.fs_cache import Cache
-from lg.config.adaptive_loader import AdaptiveConfigLoader, process_adaptive_options
-from lg.config.adaptive_model import ModeOptions
 from lg.engine import Engine
 from lg.run_context import RunContext
 from lg.section import SectionService
@@ -83,9 +81,6 @@ def make_run_options(
 def make_run_context(
     root: Path,
     options: Optional[RunOptions] = None,
-    *,
-    active_tags: Optional[Set[str]] = None,
-    mode_options: Optional[ModeOptions] = None,
 ) -> RunContext:
     """
     Creates RunContext for testing.
@@ -93,8 +88,6 @@ def make_run_context(
     Args:
         root: Project root
         options: Execution options
-        active_tags: Explicit active tags (if not provided, computed from options)
-        mode_options: Explicit mode options (if not provided, computed from options)
 
     Returns:
         Configured RunContext
@@ -103,19 +96,6 @@ def make_run_context(
         options = make_run_options()
 
     cache = Cache(root, enabled=None, fresh=False, tool_version="test")
-    adaptive_loader = AdaptiveConfigLoader(root)
-
-    # Use process_adaptive_options if active_tags or mode_options not explicitly provided
-    if active_tags is None or mode_options is None:
-        computed_active_tags, computed_mode_options, _ = process_adaptive_options(
-            root,
-            options.modes,
-            options.extra_tags
-        )
-        if active_tags is None:
-            active_tags = computed_active_tags
-        if mode_options is None:
-            mode_options = computed_mode_options
 
     # Initialize GitIgnoreService (same pattern as Engine._init_services)
     gitignore = GitIgnoreService(root) if (root / ".git").is_dir() else None
@@ -135,10 +115,7 @@ def make_run_context(
         vcs=NullVcs(),
         gitignore=gitignore,
         tokenizer=default_tokenizer(),
-        adaptive_loader=adaptive_loader,
         addressing=addressing,
-        mode_options=mode_options,
-        active_tags=active_tags
     )
 
 
