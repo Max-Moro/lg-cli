@@ -139,33 +139,79 @@ class SectionCollector:
 
         Only registers tokens and rules needed for AST structure,
         not full processing capabilities.
-        """
-        # Create registry with built-in tokens
-        registry = TemplateRegistry()
 
+        Note: MdPlaceholdersPlugin is NOT registered because:
+        1. ${md:...} nodes don't contribute mode-sets/tag-sets
+        2. They are explicitly skipped in _collect_from_node()
+        3. Without the plugin, ${md:...} becomes TextNode (harmless for collection)
+        """
         # Import plugins locally to avoid circular imports at module level
         from ..common_placeholders.plugin import CommonPlaceholdersPlugin
         from ..adaptive.plugin import AdaptivePlugin
-        from ..md_placeholders.plugin import MdPlaceholdersPlugin
+        from ..parser import ModularParser
+        from ..handlers import TemplateProcessorHandlers
+        from ..types import ProcessingContext
 
-        # Create dummy context for plugin initialization
-        # Plugins need handlers but we won't use them for collection
-        class DummyHandlers:
-            def parse_next_node(self, ctx):
+        # Create registry
+        registry = TemplateRegistry()
+
+        # Create parser (needed for handlers)
+        parser = ModularParser(registry)
+
+        # Create minimal handlers that delegate to parser
+        class MinimalHandlers(TemplateProcessorHandlers):
+            def parse_next_node(self, context) -> Optional[TemplateNode]:
+                return parser._parse_next_node(context)
+
+            def process_ast_node(self, context: ProcessingContext) -> str:
+                return ""  # Not used for collection
+
+            def process_section(self, resolved) -> str:
+                return ""  # Not used for collection
+
+            def resolve_ast(self, ast, context: str = "") -> list:
+                return ast  # Not used for collection
+
+        handlers = MinimalHandlers()
+
+        # Create minimal template context mock
+        # Only what plugins need for initialization
+        class _DummyAddressing:
+            def resolve(self, name, config):
                 return None
-            def process_ast_node(self, ctx):
-                return ""
-            def process_section(self, resolved):
-                return ""
-            def resolve_ast(self, ast, context=""):
-                return ast
 
-        dummy = DummyHandlers()
+        class _DummyRunContext:
+            def __init__(self):
+                self.addressing = _DummyAddressing()
 
-        # Register plugins
-        registry.register_plugin(CommonPlaceholdersPlugin(dummy))
-        registry.register_plugin(AdaptivePlugin(dummy.parse_next_node))
-        registry.register_plugin(MdPlaceholdersPlugin())
+        class _DummyTemplateContext:
+            def __init__(self):
+                self.run_ctx = _DummyRunContext()
+
+            def evaluate_condition(self, condition_ast) -> bool:
+                return False
+
+            def evaluate_condition_text(self, text: str) -> bool:
+                return False
+
+            def enter_mode_block(self, modeset: str, mode: str) -> None:
+                pass
+
+            def exit_mode_block(self) -> None:
+                pass
+
+            def get_effective_task_text(self):
+                return None
+
+        dummy_ctx = _DummyTemplateContext()
+
+        # Register plugins with proper template context
+        # Note: NOT registering MdPlaceholdersPlugin (see docstring)
+        registry.register_plugin(CommonPlaceholdersPlugin(dummy_ctx))
+        registry.register_plugin(AdaptivePlugin(dummy_ctx))
+
+        # Initialize plugins with handlers (critical for {% if %} blocks)
+        registry.initialize_plugins(handlers)
 
         return registry
 
