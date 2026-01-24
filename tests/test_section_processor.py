@@ -7,7 +7,7 @@ from lg.stats.collector import StatsCollector
 from lg.template.context import TemplateContext
 from lg.addressing import SECTION_CONFIG
 
-from tests.infrastructure import make_run_context
+from tests.infrastructure import make_run_context, make_run_options, create_integration_mode_section
 
 
 def _write(tmp: Path, rel: str, text: str = "x") -> Path:
@@ -89,6 +89,7 @@ def test_section_processor_with_conditional_filters(tmp_path: Path):
     # Configuration with conditional filter
     _write_sections_yaml(tmp_path, """
 all-files:
+  extends: ["ai-interaction"]
   extensions: [".py", ".md"]
   filters:
     mode: allow
@@ -101,8 +102,12 @@ all-files:
           - "docs/**"
 """)
 
+    # Create integration mode section
+    create_integration_mode_section(tmp_path)
+
     # Test 1: without minimal tag - all files included
-    run_ctx = make_run_context(tmp_path, active_tags=set())
+    options1 = make_run_options(extra_tags=set())
+    run_ctx = make_run_context(tmp_path, options1)
     stats_collector = StatsCollector(128000, run_ctx.tokenizer)
     section_processor = SectionProcessor(run_ctx=run_ctx, stats_collector=stats_collector)
 
@@ -118,7 +123,8 @@ all-files:
     assert "docs/readme.md" in file_paths
 
     # Test 2: with minimal tag - test files and documentation excluded
-    run_ctx = make_run_context(tmp_path, active_tags={"minimal"})
+    options2 = make_run_options(extra_tags={"minimal"})
+    run_ctx = make_run_context(tmp_path, options2)
     stats_collector = StatsCollector(128000, tokenizer=run_ctx.tokenizer)
     section_processor = SectionProcessor(run_ctx=run_ctx, stats_collector=stats_collector)
 
