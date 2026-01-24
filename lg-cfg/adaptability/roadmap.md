@@ -1,7 +1,4 @@
 # Development Roadmap: New Adaptive System
-<!-- FILE: lg-cfg/adaptability/roadmap.md -->
-
-Date: 2026-01-24
 
 ## Overview
 
@@ -424,42 +421,6 @@ Phase 6: Migration (separate)
   6.1 Migration Logic
   6.2 CLI Command
 ```
-
----
-
-## Estimates
-
-| Phase | Complexity | Notes |
-|-------|------------|-------|
-| Phase 1 | Low | Foundational, isolated changes |
-| Phase 2 | High | Core logic, many edge cases |
-| Phase 3 | Medium | Integration requires careful refactoring |
-| Phase 4 | Low | CLI changes are straightforward |
-| Phase 5 | Low | Cleanup and docs |
-| Phase 6 | Medium | Separate project, user-facing |
-
----
-
-## Risk Mitigation
-
-### Technical Risks
-
-1. **Circular extends detection complexity**
-   - Mitigation: Use simple stack-based detection, fail fast
-
-2. **Template AST traversal for section collection**
-   - Mitigation: Reuse existing template parsing, add visitor pattern
-
-3. **Performance impact of per-context resolution**
-   - Mitigation: Aggressive caching at multiple levels
-
-### Process Risks
-
-1. **Breaking existing functionality**
-   - Mitigation: Keep old code until Phase 5, run full test suite
-
-2. **Incomplete test coverage**
-   - Mitigation: Test-first development, edge case focus
 
 ---
 

@@ -1,7 +1,4 @@
 # New Adaptive System Architecture
-<!-- FILE: lg-cfg/adaptability/architecture.md -->
-
-Date: 2026-01-24
 
 ## 1. Overview
 
