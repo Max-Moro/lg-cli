@@ -635,9 +635,9 @@ def create_integration_mode_section(
                     runs=ask_runs,
                 ),
                 "agent": ModeConfig(
-                    title="Agent",
-                    description="Agent mode with tools",
-                    tags=["agent"],
+                    title="Agent work",
+                    description="Mode with tools",
+                    tags=["agent", "tools"],
                     runs=agent_runs,
                 ),
             }

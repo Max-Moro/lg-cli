@@ -105,7 +105,10 @@ def test_render_with_mode_flags(adaptive_project, monkeypatch):
     monkeypatch.chdir(root)
 
     # Create a simple context for testing
-    write(root / "lg-cfg" / "mode-test.ctx.md", """# Mode Test
+    write(root / "lg-cfg" / "mode-test.ctx.md", """---
+include: ["ai-interaction", "dev-stage", "tags"]
+---
+# Mode Test
 
 {% if tag:agent %}
 ## Agent Mode Active
@@ -149,7 +152,10 @@ def test_render_with_tags_flags(adaptive_project, monkeypatch):
     monkeypatch.chdir(root)
 
     # Create context for testing tags
-    write(root / "lg-cfg" / "tags-test.ctx.md", """# Tags Test
+    write(root / "lg-cfg" / "tags-test.ctx.md", """---
+include: ["ai-interaction", "dev-stage", "tags"]
+---
+# Tags Test
 
 {% if tag:minimal %}
 ## Minimal Version
@@ -194,7 +200,10 @@ def test_combined_modes_and_tags_cli(adaptive_project, monkeypatch):
     root = adaptive_project
     monkeypatch.chdir(root)
 
-    write(root / "lg-cfg" / "combined-test.ctx.md", """# Combined Test
+    write(root / "lg-cfg" / "combined-test.ctx.md", """---
+include: ["ai-interaction", "dev-stage", "tags"]
+---
+# Combined Test
 
 {% if tag:agent %}
 ## Agent from Mode
@@ -314,7 +323,10 @@ def test_federated_rendering_cli(federated_project, monkeypatch):
     monkeypatch.chdir(root)
 
     # Create test context
-    write(root / "lg-cfg" / "fed-test.ctx.md", """# Federated Test
+    write(root / "lg-cfg" / "fed-test.ctx.md", """---
+include: ["ai-interaction", "workflow"]
+---
+# Federated Test
 
 {% if tag:typescript %}
 ## TypeScript Mode
@@ -359,7 +371,10 @@ def test_whitespace_in_tags_parameter(adaptive_project, monkeypatch):
     root = adaptive_project
     monkeypatch.chdir(root)
 
-    write(root / "lg-cfg" / "whitespace-test.ctx.md", """# Whitespace Test
+    write(root / "lg-cfg" / "whitespace-test.ctx.md", """---
+include: ["ai-interaction", "dev-stage", "tags"]
+---
+# Whitespace Test
 
 {% if tag:minimal %}
 ## Minimal Active
@@ -384,7 +399,10 @@ def test_multiple_mode_parameters(adaptive_project, monkeypatch):
     root = adaptive_project
     monkeypatch.chdir(root)
 
-    write(root / "lg-cfg" / "multi-mode-test.ctx.md", """# Multi Mode Test
+    write(root / "lg-cfg" / "multi-mode-test.ctx.md", """---
+include: ["ai-interaction", "dev-stage", "tags"]
+---
+# Multi Mode Test
 
 {% if tag:agent %}
 ## Agent: Active
