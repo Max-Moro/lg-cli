@@ -23,6 +23,10 @@ def tmpproj(tmp_path: Path):
           extensions: [".md", ".py"]
           markdown:
             max_heading_level: 2
+          filters:
+            mode: allow
+            allow:
+              - "/**"
           targets:
             - match: "/pkg/**.py"
               python:
@@ -32,6 +36,10 @@ def tmpproj(tmp_path: Path):
           extensions: [".md"]
           markdown:
             max_heading_level: 3
+          filters:
+            mode: allow
+            allow:
+              - "/docs/**"
           targets:
             - match: ["/docs/**.md"]
         """).strip() + "\n",

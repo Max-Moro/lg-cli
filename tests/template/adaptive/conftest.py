@@ -425,9 +425,9 @@ def create_conditional_template(
     Returns:
         Path to created file
     """
-    # Default: add ai-interaction for context files
+    # Default: add all standard meta-sections for context files
     if include_meta_sections is None and template_type == "ctx":
-        include_meta_sections = ["ai-interaction"]
+        include_meta_sections = ["ai-interaction", "dev-stage", "tags"]
 
     # Create meta-sections and add frontmatter if needed
     final_content = content

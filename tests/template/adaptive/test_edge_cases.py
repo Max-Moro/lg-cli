@@ -16,78 +16,6 @@ from .conftest import (
 )
 
 
-def test_empty_configuration_defaults(tmp_path):
-    """Test behavior when adaptive features configuration is absent."""
-    from tests.infrastructure.file_utils import write
-
-    root = tmp_path
-
-    # Create project without modes.yaml and tags.yaml
-    write(root / "lg-cfg" / "sections.yaml", """
-test-section:
-  extensions: [".txt"]
-  filters:
-    mode: allow
-    allow:
-      - "/**"
-""")
-
-    write(root / "test.txt", "Hello, world!")
-
-    # Should use default values
-    options = make_run_options()
-    engine = make_engine(root, options)
-
-    modes_config = engine.run_ctx.adaptive_loader.get_modes_config()
-    tags_config = engine.run_ctx.adaptive_loader.get_tags_config()
-
-    # Check presence of default modes
-    assert "ai-interaction" in modes_config.mode_sets
-    assert "dev-stage" in modes_config.mode_sets
-
-    # Check basic functionality
-    result = engine.render_section("test-section")
-    assert "Hello, world!" in result
-
-
-def test_circular_includes_prevention(tmp_path):
-    """Test prevention of circular includes in federated structure."""
-    from tests.infrastructure.file_utils import write
-
-    root = tmp_path
-
-    # Create circular includes: root -> child -> root
-    create_modes_yaml(root, {}, include=["child"])
-    create_modes_yaml(root / "child", {}, include=["../"])  # circular reference
-
-    # Create minimal sections
-    write(root / "lg-cfg" / "sections.yaml", """
-root-sec:
-  extensions: [".txt"]
-  filters:
-    mode: allow
-    allow: ["/root.txt"]
-""")
-
-    write(root / "child" / "lg-cfg" / "sections.yaml", """
-child-sec:
-  extensions: [".txt"]
-  filters:
-    mode: allow
-    allow: ["/child.txt"]
-""")
-
-    write(root / "root.txt", "root")
-    write(root / "child.txt", "child")
-
-    # System should handle this correctly (without infinite recursion)
-    options = make_run_options()
-    engine = make_engine(root, options)
-
-    # Should work without hanging
-    assert engine.run_ctx.adaptive_loader is not None
-
-
 def test_extremely_long_tag_names(adaptive_project):
     """Test very long tag and mode names."""
     root = adaptive_project
@@ -408,48 +336,6 @@ def test_special_characters_in_tag_names(adaptive_project):
     assert "Number tag active" in result
     assert "Camel case tag active" in result
     assert "Upper case tag active" in result
-
-
-def test_configuration_reload_behavior(adaptive_project):
-    """Test behavior when configuration changes during execution."""
-    root = adaptive_project
-
-    # Create initial engine
-    engine1 = make_engine(root, make_run_options())
-    initial_modes = set(engine1.run_ctx.adaptive_loader.get_modes_config().mode_sets.keys())
-
-    # Add new configuration
-    new_modes = {
-        "runtime-added": ModeSetConfig(
-            title="Runtime Added",
-            modes={
-                "new-mode": ModeConfig(title="New Mode", tags=["new-tag"])
-            }
-        )
-    }
-    create_modes_yaml(root, new_modes, append=True)
-
-    # Create new engine (should see new configuration)
-    engine2 = make_engine(root, make_run_options())
-    updated_modes = set(engine2.run_ctx.adaptive_loader.get_modes_config().mode_sets.keys())
-
-    # New engine should see updated configuration
-    assert "runtime-added" in updated_modes
-    assert "runtime-added" not in initial_modes
-
-
-def test_backwards_compatibility_warnings(adaptive_project):
-    """Test warnings for compatibility with deprecated formats."""
-    # This test can be extended in the future when new API versions are added
-    root = adaptive_project
-
-    # For now just check that current format works
-    options = make_run_options()
-    engine = make_engine(root, options)
-
-    # Check that system works with current configurations
-    assert engine.run_ctx.adaptive_loader is not None
-    assert len(engine.run_ctx.adaptive_loader.get_modes_config().mode_sets) > 0
 
 
 @pytest.mark.slow

@@ -3,6 +3,7 @@ from pathlib import Path
 
 from lg.engine import run_render
 from lg.types import RunOptions
+from tests.infrastructure import create_integration_mode_section
 
 
 def _write(p: Path, text: str = "") -> Path:
@@ -16,13 +17,19 @@ def test_empty_policy_include_overrides_section_skip(tmp_path: Path, monkeypatch
     empty m.py should be included in render.
     """
     (tmp_path / "lg-cfg").mkdir(parents=True, exist_ok=True)
+    create_integration_mode_section(tmp_path)
     (tmp_path / "lg-cfg" / "sections.yaml").write_text(
         textwrap.dedent("""
         all:
+          extends: ["ai-interaction"]
           extensions: [".py"]
           skip_empty: true
           python:
             empty_policy: include
+          filters:
+            mode: allow
+            allow:
+              - "/**"
         """).strip() + "\n",
         encoding="utf-8",
     )
@@ -39,13 +46,19 @@ def test_empty_policy_exclude_overrides_section_allow(tmp_path: Path, monkeypatc
     Also add .py so document is not md-only (then file marker is visible).
     """
     (tmp_path / "lg-cfg").mkdir(parents=True, exist_ok=True)
+    create_integration_mode_section(tmp_path)
     (tmp_path / "lg-cfg" / "sections.yaml").write_text(
         textwrap.dedent("""
         all:
+          extends: ["ai-interaction"]
           extensions: [".md", ".py"]
           skip_empty: false
           markdown:
             empty_policy: exclude
+          filters:
+            mode: allow
+            allow:
+              - "/**"
         """).strip() + "\n",
         encoding="utf-8",
     )
@@ -65,13 +78,19 @@ def test_empty_policy_inherit_follows_section(tmp_path: Path, monkeypatch):
     Section skip_empty:true -> empty .py is filtered.
     """
     (tmp_path / "lg-cfg").mkdir(parents=True, exist_ok=True)
+    create_integration_mode_section(tmp_path)
     (tmp_path / "lg-cfg" / "sections.yaml").write_text(
         textwrap.dedent("""
         all:
+          extends: ["ai-interaction"]
           extensions: [".py"]
           skip_empty: true
           python:
             empty_policy: inherit
+          filters:
+            mode: allow
+            allow:
+              - "/**"
         """).strip() + "\n",
         encoding="utf-8",
     )

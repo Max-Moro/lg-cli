@@ -11,7 +11,7 @@ def test_cli_list_sections(tmpproj):
     cp = run_cli(tmpproj, "list", "sections")
     assert cp.returncode == 0, cp.stderr
     data = jload(cp.stdout)
-    assert data["sections"] == ["all", "docs"]
+    assert data["sections"] == ["ai-interaction", "all", "docs"]
 
 def test_cli_report_json(tmpproj):
     cp = run_cli(tmpproj, "report", "ctx:a")
