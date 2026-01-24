@@ -18,6 +18,9 @@ class ModeConfig:
     description: str = ""
     tags: List[str] = field(default_factory=list)
     options: Dict[str, Any] = field(default_factory=dict)
+    runs: Dict[str, str] = field(default_factory=dict)  # provider_id -> command/args
+    default_task: str = ""
+    vcs_mode: str = ""  # "all" | "changes" | "branch-changes"
 
 
 @dataclass

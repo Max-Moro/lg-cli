@@ -8,176 +8,24 @@ and cross-scope references.
 from __future__ import annotations
 
 from .conftest import (
-    federated_project, make_run_options, make_engine, render_template,
-    create_conditional_template, create_modes_yaml, create_tags_yaml,
-    ModeConfig, ModeSetConfig, TagConfig, TagSetConfig
+    federated_project, make_run_options, render_template,
+    create_conditional_template
 )
-
-
-def test_federated_modes_loading(federated_project):
-    """Test loading modes from federated structure."""
-    root = federated_project
-    
-    options = make_run_options()
-    engine = make_engine(root, options)
-    
-    modes_config = engine.run_ctx.adaptive_loader.get_modes_config()
-
-    # Check root modes
-    assert "workflow" in modes_config.mode_sets
-
-    # Check modes from child scopes
-    assert "frontend" in modes_config.mode_sets  # from apps/web
-    assert "library" in modes_config.mode_sets   # from libs/core
-
-    # Check specific modes
-    frontend_modes = modes_config.mode_sets["frontend"].modes
-    assert "ui" in frontend_modes
-    assert "api" in frontend_modes
-
-    library_modes = modes_config.mode_sets["library"].modes
-    assert "public-api" in library_modes
-    assert "internals" in library_modes
-
-
-def test_federated_tags_loading(federated_project):
-    """Test loading tags from federated structure."""
-    root = federated_project
-
-    options = make_run_options()
-    engine = make_engine(root, options)
-
-    tags_config = engine.run_ctx.adaptive_loader.get_tags_config()
-
-    # Check tag sets from child scopes
-    assert "frontend-type" in tags_config.tag_sets  # from apps/web
-
-    # Check global tags from all scopes
-    assert "full-context" in tags_config.global_tags  # root
-    assert "typescript" in tags_config.global_tags    # from apps/web
-    assert "python" in tags_config.global_tags        # from libs/core
-
-
-def test_child_mode_activation(federated_project):
-    """Test activation of modes from child scopes."""
-    root = federated_project
-
-    # Activate mode from child scope
-    options = make_run_options(modes={"frontend": "ui"})
-    engine = make_engine(root, options)
-
-    # Check activation of tags from mode
-    assert "typescript" in engine.run_ctx.active_tags
-    assert "ui" in engine.run_ctx.active_tags
-
-
-def test_mode_priority_in_federation(federated_project):
-    """Test priority of modes when combining scopes."""
-    root = federated_project
-
-    # Create mode conflict (same name in parent and child scope)
-    parent_modes = {
-        "test-priority": ModeSetConfig(
-            title="Parent Test",
-            modes={
-                "common": ModeConfig(
-                    title="Parent Common",
-                    tags=["parent-tag"]
-                )
-            }
-        )
-    }
-    create_modes_yaml(root, parent_modes, include=["apps/web"])
-
-    child_modes = {
-        "test-priority": ModeSetConfig(
-            title="Child Test",
-            modes={
-                "common": ModeConfig(
-                    title="Child Common",
-                    tags=["child-tag"]
-                ),
-                "child-only": ModeConfig(
-                    title="Child Only",
-                    tags=["child-only-tag"]
-                )
-            }
-        )
-    }
-    create_modes_yaml(root / "apps" / "web", child_modes)
-
-    # Check parent configuration priority
-    options = make_run_options(modes={"test-priority": "common"})
-    engine = make_engine(root, options)
-
-    # Parent mode should be activated
-    assert "parent-tag" in engine.run_ctx.active_tags
-    assert "child-tag" not in engine.run_ctx.active_tags
-
-    # But child unique modes should be available
-    options2 = make_run_options(modes={"test-priority": "child-only"})
-    engine2 = make_engine(root, options2)
-    assert "child-only-tag" in engine2.run_ctx.active_tags
-
-
-def test_tag_merging_in_federation(federated_project):
-    """Test merging of tags in federated structure."""
-    root = federated_project
-
-    # Add conflicting tags
-    parent_tag_sets = {
-        "common-set": TagSetConfig(
-            title="Parent Common",
-            tags={
-                "shared-tag": TagConfig(title="Parent Version"),
-                "parent-only": TagConfig(title="Parent Only")
-            }
-        )
-    }
-    parent_global = {
-        "global-parent": TagConfig(title="Global Parent")
-    }
-    create_tags_yaml(root, parent_tag_sets, parent_global, include=["apps/web"])
-
-    child_tag_sets = {
-        "common-set": TagSetConfig(
-            title="Child Common",
-            tags={
-                "shared-tag": TagConfig(title="Child Version"),
-                "child-only": TagConfig(title="Child Only")
-            }
-        )
-    }
-    child_global = {
-        "global-child": TagConfig(title="Global Child")
-    }
-    create_tags_yaml(root / "apps" / "web", child_tag_sets, child_global)
-
-    options = make_run_options()
-    engine = make_engine(root, options)
-
-    tags_config = engine.run_ctx.adaptive_loader.get_tags_config()
-
-    # Check merging of sets
-    common_set = tags_config.tag_sets["common-set"]
-    assert "shared-tag" in common_set.tags
-    assert "parent-only" in common_set.tags
-    assert "child-only" in common_set.tags
-
-    # Check parent version priority for conflicting tags
-    assert common_set.tags["shared-tag"].title == "Parent Version"
-
-    # Check global tags
-    assert "global-parent" in tags_config.global_tags
-    assert "global-child" in tags_config.global_tags
 
 
 def test_cross_scope_template_references(federated_project):
     """Test cross-scope references in templates."""
+    from tests.infrastructure import write
+
     root = federated_project
 
-    # Create template with cross-scope references
-    template_content = """# Cross-Scope Test
+    # Create context that includes mode meta-sections
+    context_content = '''---
+include:
+  - "ai-interaction"
+  - "workflow"
+---
+# Cross-Scope Test
 
 ## Root Overview
 ${overview}
@@ -197,9 +45,9 @@ Web components available
 ## Python Specific
 Core library available
 {% endif %}
-"""
+'''
 
-    create_conditional_template(root, "cross-scope-test", template_content)
+    write(root / "lg-cfg" / "cross-scope-test.ctx.md", context_content)
 
     # Test rendering with different modes
     options1 = make_run_options(modes={"frontend": "ui"})
@@ -220,7 +68,26 @@ Core library available
 
 def test_scope_conditions_in_templates(federated_project):
     """Test scope:local and scope:parent conditions in templates."""
+    from tests.infrastructure import write
+
     root = federated_project
+
+    # Create context that includes mode meta-sections
+    context_content = '''---
+include:
+  - "ai-interaction"
+  - "workflow"
+---
+# Root Template
+
+## Root Content
+${overview}
+
+## Including Child Template
+${tpl@apps/web:scope-test}
+'''
+
+    write(root / "lg-cfg" / "root-scope-test.ctx.md", context_content)
 
     # Create template in child scope with scope checks
     child_template_content = """# Child Template
@@ -238,18 +105,6 @@ This should not appear in local scope
 
     create_conditional_template(root / "apps" / "web", "scope-test", child_template_content, "tpl")
 
-    # Create root template that includes child template
-    root_template_content = """# Root Template
-
-## Root Content
-${overview}
-
-## Including Child Template
-${tpl@apps/web:scope-test}
-"""
-
-    create_conditional_template(root, "root-scope-test", root_template_content)
-
     result = render_template(root, "ctx:root-scope-test", make_run_options())
 
     # When included from parent scope, scope:parent should be activated
@@ -257,29 +112,19 @@ ${tpl@apps/web:scope-test}
     # But specific conditions depend on scope logic implementation
 
 
-def test_federated_mode_options_inheritance(federated_project):
-    """Test inheritance of mode options in federated structure."""
-    root = federated_project
-
-    # Activate mode with options from child scope
-    options = make_run_options(modes={"library": "public-api"})
-    engine = make_engine(root, options)
-
-    # Check activation of tags and their impact on processing
-    assert "python" in engine.run_ctx.active_tags
-    assert "api-only" in engine.run_ctx.active_tags
-
-    # Check basic rendering
-    result = engine.render_section("@libs/core:core-lib")
-    assert len(result) > 0
-
-
 def test_complex_federated_scenario(federated_project):
     """Complex test of federated scenario."""
+    from tests.infrastructure import write
+
     root = federated_project
 
-    # Create complex template using capabilities of all scopes
-    template_content = """# Complex Federated Scenario
+    # Create context that includes mode meta-sections
+    context_content = '''---
+include:
+  - "ai-interaction"
+  - "workflow"
+---
+# Complex Federated Scenario
 
 {% mode workflow:full %}
 ## Full Context Mode
@@ -313,9 +158,9 @@ Complete library view
 ### Full Context Available
 Global full context mode is active
 {% endif %}
-"""
+'''
 
-    create_conditional_template(root, "complex-federated", template_content)
+    write(root / "lg-cfg" / "complex-federated.ctx.md", context_content)
 
     # Test with root mode activation
     options = make_run_options(modes={"workflow": "full"})
@@ -335,14 +180,21 @@ Global full context mode is active
 
 def test_federated_error_handling(federated_project):
     """Test error handling in federated structure."""
+    from tests.infrastructure import write
+
     root = federated_project
 
-    # Test nonexistent child scope
-    template_content = """# Error Test
+    # Create context that includes mode meta-sections
+    context_content = '''---
+include:
+  - "ai-interaction"
+  - "workflow"
+---
+# Error Test
 ${@nonexistent/scope:some-section}
-"""
+'''
 
-    create_conditional_template(root, "error-test", template_content)
+    write(root / "lg-cfg" / "error-test.ctx.md", context_content)
 
     # Rendering should raise exception for nonexistent scope
     from lg.template.processor import TemplateProcessingError
@@ -358,19 +210,78 @@ ${@nonexistent/scope:some-section}
 
 def test_federated_modes_list_cli_compatibility(federated_project, monkeypatch):
     """Test compatibility with CLI command list mode-sets."""
-    # TODO: Adapt to new adaptive system API
-    # Old API: list_mode_sets(root) - global modes from modes.yaml
-    # New API: list_mode_sets(root, context, provider) - context-dependent modes
-    # This test was for old federated modes.yaml system which is deprecated
-    import pytest
-    pytest.skip("Federated modes.yaml system deprecated - test needs redesign for new adaptive system")
+    from lg.adaptive.listing import list_mode_sets
+    from tests.infrastructure import write
+
+    root = federated_project
+    monkeypatch.chdir(root)
+
+    # Create a context that includes the mode meta-sections
+    context_content = '''---
+include:
+  - "ai-interaction"
+  - "workflow"
+---
+# Test Context
+
+${overview}
+'''
+    write(root / "lg-cfg" / "test-context.ctx.md", context_content)
+
+    # List mode-sets for the context with a provider
+    mode_sets_result = list_mode_sets(root, context="test-context", provider="com.test.provider")
+
+    # Check that mode-sets are present
+    mode_set_names = {ms.id for ms in mode_sets_result.mode_sets}
+
+    assert "ai-interaction" in mode_set_names  # integration mode-set
+    assert "workflow" in mode_set_names        # content mode-set
+
+    # Check structure of integration mode-set
+    ai_set = next(ms for ms in mode_sets_result.mode_sets if ms.id == "ai-interaction")
+    assert ai_set.integration is True  # has runs
+
+    mode_names = {m.id for m in ai_set.modes}
+    assert "ask" in mode_names
+    assert "agent" in mode_names
 
 
 def test_federated_tags_list_cli_compatibility(federated_project, monkeypatch):
     """Test compatibility with CLI command list tag-sets."""
-    # TODO: Adapt to new adaptive system API
-    # Old API: list_tag_sets(root) - global tags from tags.yaml
-    # New API: list_tag_sets(root, context) - context-dependent tags
-    # This test was for old federated tags.yaml system which is deprecated
-    import pytest
-    pytest.skip("Federated tags.yaml system deprecated - test needs redesign for new adaptive system")
+    from lg.adaptive.listing import list_tag_sets
+    from tests.infrastructure import write, create_tag_meta_section, TagSetConfig, TagConfig
+
+    root = federated_project
+    monkeypatch.chdir(root)
+
+    # Create a tag meta-section in root (so we can reference it without @scope prefix)
+    tag_sets = {
+        "test-tags": TagSetConfig(
+            title="Test Tags",
+            tags={
+                "tag1": TagConfig(title="Tag 1"),
+                "tag2": TagConfig(title="Tag 2")
+            }
+        )
+    }
+    create_tag_meta_section(root, "test-tags", tag_sets)
+
+    # Create a context that includes tag meta-sections
+    context_content = '''---
+include:
+  - "ai-interaction"
+  - "test-tags"
+---
+# Test Context
+
+${overview}
+'''
+    write(root / "lg-cfg" / "test-tags-context.ctx.md", context_content)
+
+    # List tag-sets for the context
+    tag_sets_result = list_tag_sets(root, context="test-tags-context")
+
+    # Check that tag-sets are present
+    tag_set_names = {ts.id for ts in tag_sets_result.tag_sets}
+
+    assert "test-tags" in tag_set_names

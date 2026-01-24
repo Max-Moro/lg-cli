@@ -17,7 +17,10 @@ import pytest
 from tests.infrastructure import (
     write, create_modes_yaml, create_tags_yaml, create_basic_sections_yaml,
     ModeConfig, ModeSetConfig, TagConfig, TagSetConfig,
-    make_run_options, make_run_context, make_engine, render_template
+    make_run_options, make_run_context, make_engine, render_template,
+    # NEW: Meta-section builders for new adaptive system
+    create_mode_meta_section, create_tag_meta_section,
+    create_integration_mode_section, create_adaptive_section,
 )
 
 
@@ -104,20 +107,67 @@ def adaptive_project(tmp_path: Path) -> Path:
     """
     Creates a basic project with adaptive features.
 
+    Uses new adaptive system with meta-sections instead of modes.yaml/tags.yaml.
+
     Includes:
-    - Standard modes and tags
+    - Integration mode-set (ai-interaction) with runs
+    - Content mode-set (dev-stage) without runs
+    - Tag-sets for languages and code types
     - Basic sections
     - Several source files for testing
     """
     root = tmp_path
 
-    # Create mode configuration
-    mode_sets = get_default_modes_config()
-    create_modes_yaml(root, mode_sets)
+    # Create integration mode-set (ai-interaction) - has runs
+    ai_modes = {
+        "ai-interaction": ModeSetConfig(
+            title="AI interaction method",
+            modes={
+                "ask": ModeConfig(
+                    title="Ask",
+                    description="Basic question-answer mode",
+                    runs={"com.test.provider": "--mode ask"}
+                ),
+                "agent": ModeConfig(
+                    title="Agent work",
+                    description="Mode with tools",
+                    tags=["agent", "tools"],
+                    runs={"com.test.provider": "--mode agent"}
+                )
+            }
+        )
+    }
+    create_mode_meta_section(root, "ai-interaction", ai_modes)
 
-    # Create tag configuration
-    tag_sets, global_tags = get_default_tags_config()
-    create_tags_yaml(root, tag_sets, global_tags)
+    # Create content mode-set (dev-stage) - no runs
+    dev_modes = {
+        "dev-stage": ModeSetConfig(
+            title="Development stage",
+            modes={
+                "planning": ModeConfig(
+                    title="Planning",
+                    tags=["architecture", "docs"]
+                ),
+                "development": ModeConfig(
+                    title="Main development"
+                ),
+                "testing": ModeConfig(
+                    title="Test writing",
+                    tags=["tests"]
+                ),
+                "review": ModeConfig(
+                    title="Code review",
+                    tags=["review"],
+                    vcs_mode="changes"
+                )
+            }
+        )
+    }
+    create_mode_meta_section(root, "dev-stage", dev_modes)
+
+    # Create tag-sets meta-section
+    tag_sets, _ = get_default_tags_config()
+    create_tag_meta_section(root, "tags", tag_sets)
 
     # Create basic sections
     create_basic_sections_yaml(root)
@@ -135,30 +185,29 @@ def adaptive_project(tmp_path: Path) -> Path:
 def minimal_adaptive_project(tmp_path: Path) -> Path:
     """
     Creates a minimal project with one mode and tag.
+    Uses new adaptive system with meta-sections.
     Useful for simple tests.
     """
     root = tmp_path
 
-    # Minimal mode configuration
+    # Minimal integration mode-set (must have runs to be integration)
     mode_sets = {
         "simple": ModeSetConfig(
             title="Simple mode",
             modes={
-                "default": ModeConfig(title="Default"),
+                "default": ModeConfig(
+                    title="Default",
+                    runs={"com.test.provider": "--mode default"}
+                ),
                 "minimal": ModeConfig(
                     title="Minimal",
-                    tags=["minimal"]
+                    tags=["minimal"],
+                    runs={"com.test.provider": "--mode minimal"}
                 )
             }
         )
     }
-    create_modes_yaml(root, mode_sets)
-
-    # Minimal tag configuration
-    global_tags = {
-        "minimal": TagConfig(title="Minimal version")
-    }
-    create_tags_yaml(root, global_tags=global_tags)
+    create_mode_meta_section(root, "simple", mode_sets)
 
     # Simple section
     write(root / "lg-cfg" / "sections.yaml", textwrap.dedent("""
@@ -181,16 +230,36 @@ def federated_project(tmp_path: Path) -> Path:
     """
     Creates a project with federated structure (monorepo).
 
+    Uses new adaptive system with meta-sections and extends.
+
     Includes:
-    - Root lg-cfg with basic configuration
-    - Child scope apps/web with its own configuration
-    - Child scope libs/core with its own configuration
-    - Mutual inclusions between scopes
+    - Root lg-cfg with integration mode-set and content mode-sets
+    - Child scope apps/web with its own mode-sets (extends root)
+    - Child scope libs/core with its own mode-sets (extends root)
     """
     root = tmp_path
 
-    # Root mode configuration with inclusions
-    root_modes = {
+    # Root integration mode-set (ai-interaction) - must have runs
+    root_ai_modes = {
+        "ai-interaction": ModeSetConfig(
+            title="AI Interaction",
+            modes={
+                "ask": ModeConfig(
+                    title="Ask",
+                    runs={"com.test.provider": "--mode ask"}
+                ),
+                "agent": ModeConfig(
+                    title="Agent",
+                    tags=["agent"],
+                    runs={"com.test.provider": "--mode agent"}
+                )
+            }
+        )
+    }
+    create_mode_meta_section(root, "ai-interaction", root_ai_modes)
+
+    # Root content mode-set (workflow) - no runs
+    root_workflow_modes = {
         "workflow": ModeSetConfig(
             title="Workflow",
             modes={
@@ -201,13 +270,7 @@ def federated_project(tmp_path: Path) -> Path:
             }
         )
     }
-    create_modes_yaml(root, root_modes, include=["apps/web", "libs/core"])
-
-    # Root tag configuration
-    root_tags = {
-        "full-context": TagConfig(title="Full context")
-    }
-    create_tags_yaml(root, global_tags=root_tags, include=["apps/web", "libs/core"])
+    create_mode_meta_section(root, "workflow", root_workflow_modes)
 
     # Root sections
     write(root / "lg-cfg" / "sections.yaml", textwrap.dedent("""
@@ -221,6 +284,26 @@ def federated_project(tmp_path: Path) -> Path:
     """).strip() + "\n")
 
     # === Child scope: apps/web ===
+    # Web integration mode-set extends root ai-interaction
+    web_ai_modes = {
+        "ai-interaction": ModeSetConfig(
+            title="AI Interaction",
+            modes={
+                "ask": ModeConfig(
+                    title="Ask",
+                    runs={"com.test.provider": "--mode ask"}
+                ),
+                "agent": ModeConfig(
+                    title="Agent",
+                    tags=["agent"],
+                    runs={"com.test.provider": "--mode agent"}
+                )
+            }
+        )
+    }
+    create_mode_meta_section(root / "apps" / "web", "ai-interaction", web_ai_modes)
+
+    # Web content mode-set (frontend)
     web_modes = {
         "frontend": ModeSetConfig(
             title="Frontend work",
@@ -236,8 +319,9 @@ def federated_project(tmp_path: Path) -> Path:
             }
         )
     }
-    create_modes_yaml(root / "apps" / "web", web_modes)
+    create_mode_meta_section(root / "apps" / "web", "frontend", web_modes)
 
+    # Web tag-sets
     web_tag_sets = {
         "frontend-type": TagSetConfig(
             title="Frontend code type",
@@ -247,10 +331,7 @@ def federated_project(tmp_path: Path) -> Path:
             }
         )
     }
-    web_global_tags = {
-        "typescript": TagConfig(title="TypeScript code")
-    }
-    create_tags_yaml(root / "apps" / "web", web_tag_sets, web_global_tags)
+    create_tag_meta_section(root / "apps" / "web", "frontend-tags", web_tag_sets)
 
     write(root / "apps" / "web" / "lg-cfg" / "sections.yaml", textwrap.dedent("""
     web-src:
@@ -262,6 +343,26 @@ def federated_project(tmp_path: Path) -> Path:
     """).strip() + "\n")
 
     # === Child scope: libs/core ===
+    # Core integration mode-set
+    core_ai_modes = {
+        "ai-interaction": ModeSetConfig(
+            title="AI Interaction",
+            modes={
+                "ask": ModeConfig(
+                    title="Ask",
+                    runs={"com.test.provider": "--mode ask"}
+                ),
+                "agent": ModeConfig(
+                    title="Agent",
+                    tags=["agent"],
+                    runs={"com.test.provider": "--mode agent"}
+                )
+            }
+        )
+    }
+    create_mode_meta_section(root / "libs" / "core", "ai-interaction", core_ai_modes)
+
+    # Core content mode-set (library)
     core_modes = {
         "library": ModeSetConfig(
             title="Library development",
@@ -277,14 +378,7 @@ def federated_project(tmp_path: Path) -> Path:
             }
         )
     }
-    create_modes_yaml(root / "libs" / "core", core_modes)
-
-    core_global_tags = {
-        "python": TagConfig(title="Python code"),
-        "api-only": TagConfig(title="Public API only"),
-        "full-impl": TagConfig(title="Full implementation")
-    }
-    create_tags_yaml(root / "libs" / "core", global_tags=core_global_tags)
+    create_mode_meta_section(root / "libs" / "core", "library", core_modes)
 
     write(root / "libs" / "core" / "lg-cfg" / "sections.yaml", textwrap.dedent("""
     core-lib:
@@ -368,8 +462,12 @@ __all__ = [
     # Configuration types
     "ModeConfig", "ModeSetConfig", "TagConfig", "TagSetConfig",
 
-    # Configuration creation helpers
+    # Configuration creation helpers (legacy)
     "create_modes_yaml", "create_tags_yaml", "create_basic_sections_yaml",
+
+    # Configuration creation helpers (new adaptive system)
+    "create_mode_meta_section", "create_tag_meta_section",
+    "create_integration_mode_section", "create_adaptive_section",
 
     # Ready-made configurations
     "get_default_modes_config", "get_default_tags_config",
