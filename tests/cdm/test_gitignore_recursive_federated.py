@@ -17,7 +17,7 @@ from lg.addressing.types import ResolvedSection
 from lg.section import SectionLocation
 from lg.types import SectionManifest
 from tests.infrastructure import make_run_context
-from tests.infrastructure import write, load_sections
+from tests.infrastructure import write, load_sections, write_context, create_integration_mode_section
 
 
 def _create_federated_with_gitignore(root: Path) -> Path:
@@ -44,6 +44,9 @@ def _create_federated_with_gitignore(root: Path) -> Path:
     # Root .git directory
     (root / ".git").mkdir(parents=True)
 
+    # Create integration mode-set for adaptive system
+    create_integration_mode_section(root)
+
     # Root .gitignore - does NOT ignore lg-cfg/
     write(root / ".gitignore", "*.log\n__pycache__/\n")
 
@@ -58,7 +61,7 @@ def _create_federated_with_gitignore(root: Path) -> Path:
     """).strip() + "\n")
 
     # Context that includes local docs from subproject via md@ placeholder
-    write(root / "lg-cfg" / "main.ctx.md", textwrap.dedent("""
+    write_context(root, "main", textwrap.dedent("""
         # Main Context
 
         ## Subproject Documentation

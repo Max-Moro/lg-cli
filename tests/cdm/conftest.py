@@ -6,7 +6,7 @@ from pathlib import Path
 import pytest
 
 # Import from unified infrastructure
-from tests.infrastructure import write
+from tests.infrastructure import write, write_context, create_integration_mode_section
 from tests.infrastructure import make_run_context as mk_run_ctx
 
 def _root_sections_yaml() -> str:
@@ -69,11 +69,14 @@ def monorepo(tmp_path: Path) -> Path:
     """
     root = tmp_path
 
+    # Create integration mode-set for adaptive system
+    create_integration_mode_section(root)
+
     # --- root lg-cfg ---
     write(root / "lg-cfg" / "sections.yaml", _root_sections_yaml())
     write(root / "lg-cfg" / "local-intro.tpl.md", "Intro from ROOT tpl\n\n${@packages/svc-a:a}\n")
-    write(
-        root / "lg-cfg" / "a.ctx.md",
+    write_context(
+        root, "a",
         textwrap.dedent("""
         # Root Context A
 
@@ -98,9 +101,11 @@ def monorepo(tmp_path: Path) -> Path:
     write(root / "apps" / "web" / "lg-cfg" / "web.sec.yaml", _web_sections())
     write(root / "apps" / "web" / "lg-cfg" / "docs" / "guide.tpl.md", "WEB GUIDE (no sections here)\n")
     # Additional context in child to test ctx@...
-    write(root / "apps" / "web" / "lg-cfg" / "external.ctx.md", "# WEBCTX\n\n${web-api}\n")
+    # Child scope also needs integration mode-set
+    create_integration_mode_section(root / "apps" / "web")
+    write_context(root / "apps" / "web", "external", "# WEBCTX\n\n${web-api}\n")
     # And root context that inserts child-context
-    write(root / "lg-cfg" / "x.ctx.md", "# ROOT X\n\n${ctx@apps/web:external}\n")
+    write_context(root, "x", "# ROOT X\n\n${ctx@apps/web:external}\n")
 
     # --- payload files for filters/targets ---
     write(root / "packages" / "svc-a" / "src" / "pkg" / "x.py", "def foo():\n    return 1\n")

@@ -15,7 +15,7 @@ from lg.filtering.manifest import _is_gitignored_section
 from lg.filtering.model import FilterNode
 from lg.git.gitignore import GitIgnoreService
 from lg.section.model import SectionCfg
-from tests.infrastructure import write
+from tests.infrastructure import write, write_context, create_integration_mode_section
 
 
 def _create_repo_with_gitignored_md(root: Path) -> Path:
@@ -36,6 +36,9 @@ def _create_repo_with_gitignored_md(root: Path) -> Path:
     # Root .git directory
     (root / ".git").mkdir(parents=True)
 
+    # Create integration mode-set for adaptive system
+    create_integration_mode_section(root)
+
     # Root .gitignore - ignores local workspace file
     write(root / ".gitignore", textwrap.dedent("""
         # Local workspace settings
@@ -53,7 +56,7 @@ def _create_repo_with_gitignored_md(root: Path) -> Path:
     """).strip() + "\n")
 
     # Context that includes local docs via md@self placeholder
-    write(root / "lg-cfg" / "main.ctx.md", textwrap.dedent("""
+    write_context(root, "main", textwrap.dedent("""
         # Main Context
 
         ${md@self:agent/workspace-and-personal}
@@ -208,7 +211,7 @@ class TestGitignoreLocalMdFile:
         root = repo_with_gitignored_md
 
         # Update main.ctx.md to use a template instead of direct md placeholder
-        write(root / "lg-cfg" / "main.ctx.md", textwrap.dedent("""
+        write_context(root, "main", textwrap.dedent("""
             # Main Context
 
             ${tpl:agent/index}

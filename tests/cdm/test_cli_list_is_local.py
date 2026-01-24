@@ -21,5 +21,5 @@ def test_list_commands_are_local_to_self(monorepo: Path):
     cp = run_cli(monorepo, "list", "sections")
     assert cp.returncode == 0, cp.stderr
     data = jload(cp.stdout)
-    # In root sections.yaml the fixture only has 'root-md'
-    assert data["sections"] == ["root-md"]
+    # In root sections.yaml: 'root-md' + 'ai-interaction' meta-section for adaptive support
+    assert data["sections"] == ["ai-interaction", "root-md"]
