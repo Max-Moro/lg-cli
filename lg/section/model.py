@@ -92,6 +92,21 @@ class SectionCfg:
     # Targeted overrides by paths
     targets: List[TargetRule] = field(default_factory=list)
 
+    # Adaptive system fields
+    extends: List[str] = field(default_factory=list)  # Inheritance chain
+    mode_sets_raw: Dict[str, dict] = field(default_factory=dict)  # Raw mode-sets from YAML
+    tag_sets_raw: Dict[str, dict] = field(default_factory=dict)   # Raw tag-sets from YAML
+    _has_explicit_filters: bool = True  # Set during from_dict
+
+    def is_meta_section(self) -> bool:
+        """
+        Check if this is a meta-section (no filters).
+
+        Meta-sections cannot be rendered directly and are used
+        only for inheritance via `extends`.
+        """
+        return not self._has_explicit_filters
+
     @staticmethod
     def from_dict(name: str, node: dict) -> SectionCfg:
         # extensions
@@ -99,7 +114,7 @@ class SectionCfg:
         # filters (now with-conditions are processed inside FilterNode.from_dict)
         filters = FilterNode.from_dict(node.get("filters", {"mode": "block"}))
         # adapters config (everything except service keys)
-        service_keys = {"extensions", "filters", "skip_empty", "targets", "path_labels"}
+        service_keys = {"extensions", "filters", "skip_empty", "targets", "path_labels", "extends", "mode-sets", "tag-sets"}
         adapters_cfg: Dict[str, AdapterConfig] = {}
         for k, v in node.items():
             if k in service_keys:
@@ -147,6 +162,21 @@ class SectionCfg:
         if path_labels not in ("scope_relative", "relative", "basename"):
             raise RuntimeError(f"Section '{name}': invalid path_labels='{path_labels}' (allowed: scope_relative|relative|basename|off)")
 
+        # Parse extends
+        extends = node.get("extends", [])
+        if isinstance(extends, str):
+            extends = [extends]
+        extends = list(extends)
+
+        # Parse mode-sets (raw dict, will be processed by adaptive system)
+        mode_sets_raw = dict(node.get("mode-sets", {}))
+
+        # Parse tag-sets (raw dict, will be processed by adaptive system)
+        tag_sets_raw = dict(node.get("tag-sets", {}))
+
+        # Track if section has explicit filters
+        _has_explicit_filters = "filters" in node
+
         return SectionCfg(
             extensions=exts,
             filters=filters,
@@ -154,6 +184,10 @@ class SectionCfg:
             path_labels=path_labels,
             adapters=adapters_cfg,
             targets=targets,
+            extends=extends,
+            mode_sets_raw=mode_sets_raw,
+            tag_sets_raw=tag_sets_raw,
+            _has_explicit_filters=_has_explicit_filters,
         )
 
 EmptyPolicy = Literal["inherit", "include", "exclude"]

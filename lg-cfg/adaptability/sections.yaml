@@ -15,6 +15,7 @@ src:
           - "/engine.py"
           - "/section_processor.py"
           - "/config/"
+          - "/adaptive/"
           - "/template/"
           - "/addressing/"
           - "/section/"

@@ -6,74 +6,14 @@ This roadmap outlines the development phases for implementing the new adaptive m
 
 ---
 
-## Phase 1: Foundation — Data Models and Parsing
+## Phase 1: Foundation — Data Models and Parsing ✅ COMPLETE
 
-**Goal**: Establish core data structures and parsing capabilities without changing existing behavior.
-
-### 1.1. New Data Models (`lg/adaptive/model.py`)
-
-**Tasks**:
-- [ ] Create `Mode` dataclass with `runs` support
-- [ ] Create `ModeSet` dataclass with `is_integration` property
-- [ ] Create `Tag` and `TagSet` dataclasses
-- [ ] Create `AdaptiveModel` aggregate class
-- [ ] Implement `filter_by_provider()` method
-- [ ] Add JSON serialization for CLI output
-
-**Dependencies**: None
-
-**Tests**:
-- Model creation and property access
-- `is_integration` detection
-- Provider filtering logic
-- JSON serialization
-
-### 1.2. Section Model Extensions (`lg/section/model.py`)
-
-**Tasks**:
-- [ ] Add `extends: List[str]` field to `SectionCfg`
-- [ ] Add `mode_sets: Dict` and `tag_sets: Dict` fields
-- [ ] Implement `is_meta_section()` method
-- [ ] Update `from_dict()` to parse new fields
-- [ ] Add validation for new fields
-
-**Dependencies**: None
-
-**Tests**:
-- Parsing sections with `extends`
-- Parsing inline `mode-sets` and `tag-sets`
-- Meta-section detection
-
-### 1.3. Frontmatter Parser (`lg/template/frontmatter.py`)
-
-**Tasks**:
-- [ ] Create `ContextFrontmatter` dataclass
-- [ ] Implement `parse_frontmatter()` function
-- [ ] Implement `strip_frontmatter()` function
-- [ ] Handle edge cases (no frontmatter, empty, malformed)
-
-**Dependencies**: None
-
-**Tests**:
-- Parse valid frontmatter
-- Handle missing frontmatter
-- Handle malformed YAML
-- Strip frontmatter correctly
-
-### 1.4. Error Types (`lg/adaptive/errors.py`)
-
-**Tasks**:
-- [ ] Create `AdaptiveError` base class
-- [ ] Create `ExtendsCycleError`
-- [ ] Create `MetaSectionRenderError`
-- [ ] Create `MultipleIntegrationModeSetsError`
-- [ ] Create `NoIntegrationModeSetError`
-- [ ] Create `ProviderNotSupportedError`
-- [ ] Create `InvalidModeReferenceError`
-
-**Dependencies**: None
-
-**Tests**: Error message formatting
+**Implemented**:
+- `lg/adaptive/model.py` — `Mode`, `ModeSet`, `Tag`, `TagSet`, `AdaptiveModel`
+- `lg/adaptive/errors.py` — 8 exception classes
+- `lg/adaptive/__init__.py` — public API
+- `lg/section/model.py` — extended with `extends`, `mode_sets_raw`, `tag_sets_raw`, `is_meta_section()`
+- `lg/template/frontmatter.py` — `ContextFrontmatter`, `parse_frontmatter()`, `strip_frontmatter()`
 
 ---
 
@@ -386,11 +326,7 @@ This roadmap outlines the development phases for implementing the new adaptive m
 ## Dependency Graph
 
 ```
-Phase 1: Foundation
-  1.1 Data Models ────────────────────────────┐
-  1.2 Section Extensions ─────────────────────┤
-  1.3 Frontmatter Parser ─────────────────────┤
-  1.4 Error Types ────────────────────────────┤
+Phase 1: Foundation ✅ COMPLETE
                                               │
 Phase 2: Resolution                           │
   2.1 Extends Resolver ◄──────────────────────┤

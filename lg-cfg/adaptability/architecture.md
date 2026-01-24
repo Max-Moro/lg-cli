@@ -24,57 +24,9 @@ lg/adaptive/
 
 ### 2.2. Module Responsibilities
 
-#### `model.py`
-Core data models for the adaptive system:
-
-```python
-@dataclass
-class Mode:
-    id: str
-    title: str
-    description: str = ""
-    tags: List[str] = field(default_factory=list)
-    default_task: Optional[str] = None
-    vcs_mode: Literal["all", "changes", "branch-changes"] = "all"
-    runs: Dict[str, str] = field(default_factory=dict)  # provider_id -> command
-
-@dataclass
-class ModeSet:
-    id: str
-    title: str
-    modes: Dict[str, Mode] = field(default_factory=dict)
-
-    @property
-    def is_integration(self) -> bool:
-        """True if any mode has `runs` defined."""
-        return any(mode.runs for mode in self.modes.values())
-
-@dataclass
-class Tag:
-    id: str
-    title: str
-    description: str = ""
-
-@dataclass
-class TagSet:
-    id: str
-    title: str
-    tags: Dict[str, Tag] = field(default_factory=dict)
-
-@dataclass
-class AdaptiveModel:
-    """Complete adaptive model for a context."""
-    mode_sets: Dict[str, ModeSet] = field(default_factory=dict)
-    tag_sets: Dict[str, TagSet] = field(default_factory=dict)
-
-    def get_integration_mode_set(self) -> Optional[ModeSet]:
-        """Returns the single integration mode-set or None."""
-        ...
-
-    def filter_by_provider(self, provider_id: str) -> "AdaptiveModel":
-        """Returns filtered model with only supported modes for provider."""
-        ...
-```
+#### `model.py` ✅
+Core data models: `Mode`, `ModeSet`, `Tag`, `TagSet`, `AdaptiveModel`.
+See implementation in `lg/adaptive/model.py`.
 
 #### `section_extractor.py`
 Extracts adaptive data from `SectionCfg`:
@@ -219,51 +171,15 @@ class AdaptiveValidator:
 
 ## 3. Changes to Existing Modules
 
-### 3.1. `lg/section/model.py`
+### 3.1. `lg/section/model.py` ✅
 
-Add new fields to `SectionCfg`:
+Extended with `extends`, `mode_sets_raw`, `tag_sets_raw` fields and `is_meta_section()` method.
+See implementation in `lg/section/model.py`.
 
-```python
-@dataclass
-class SectionCfg:
-    # Existing fields...
-    extensions: List[str] = field(default_factory=lambda: [".py"])
-    filters: FilterNode = field(default_factory=lambda: FilterNode(mode="block"))
-    # ...
+### 3.2. `lg/template/frontmatter.py` ✅
 
-    # NEW: Inheritance
-    extends: List[str] = field(default_factory=list)
-
-    # NEW: Adaptive data (inline in section)
-    mode_sets: Dict[str, dict] = field(default_factory=dict)  # Raw YAML
-    tag_sets: Dict[str, dict] = field(default_factory=dict)   # Raw YAML
-
-    def is_meta_section(self) -> bool:
-        """True if section has no filters (meta-section)."""
-        return self.filters is None or self.filters.is_empty()
-```
-
-### 3.2. `lg/template/frontmatter.py` (NEW)
-
-```python
-@dataclass
-class ContextFrontmatter:
-    include: List[str] = field(default_factory=list)
-    # Future: other frontmatter fields
-
-def parse_frontmatter(text: str) -> Tuple[Optional[ContextFrontmatter], str]:
-    """
-    Parse YAML frontmatter from context file.
-
-    Returns:
-        (frontmatter, remaining_text) - frontmatter object and text without it
-    """
-    ...
-
-def strip_frontmatter(text: str) -> str:
-    """Remove frontmatter from text (for rendering)."""
-    ...
-```
+Implemented `ContextFrontmatter`, `parse_frontmatter()`, `strip_frontmatter()`, `has_frontmatter()`.
+See implementation in `lg/template/frontmatter.py`.
 
 ### 3.3. `lg/template/context.py`
 
@@ -399,54 +315,17 @@ For a context with multiple sections:
 
 ---
 
-## 6. Error Handling
+## 6. Error Handling ✅
 
-### 6.1. New Exception Classes
-
-```python
-# lg/adaptive/errors.py
-
-class AdaptiveError(Exception):
-    """Base class for adaptive system errors."""
-    pass
-
-class ExtendsCycleError(AdaptiveError):
-    """Circular dependency in extends chain."""
-    def __init__(self, cycle: List[str]):
-        self.cycle = cycle
-        super().__init__(f"Circular extends: {' -> '.join(cycle)}")
-
-class MetaSectionRenderError(AdaptiveError):
-    """Attempt to render meta-section (no filters)."""
-    def __init__(self, section_name: str):
-        super().__init__(f"Cannot render meta-section '{section_name}' (no filters)")
-
-class MultipleIntegrationModeSetsError(AdaptiveError):
-    """Multiple integration mode-sets found."""
-    def __init__(self, mode_sets: List[str]):
-        super().__init__(
-            f"Multiple integration mode-sets: {', '.join(mode_sets)}. "
-            f"Only one integration mode-set is allowed per context."
-        )
-
-class NoIntegrationModeSetError(AdaptiveError):
-    """No integration mode-set found."""
-    pass
-
-class ProviderNotSupportedError(AdaptiveError):
-    """Provider not supported by context."""
-    def __init__(self, provider_id: str, context_name: str):
-        super().__init__(
-            f"Provider '{provider_id}' not supported by context '{context_name}'"
-        )
-
-class InvalidModeReferenceError(AdaptiveError):
-    """Invalid {% mode %} reference."""
-    def __init__(self, modeset: str, mode: str):
-        super().__init__(
-            f"Mode '{modeset}:{mode}' not found in context's adaptive model"
-        )
-```
+Exception classes implemented in `lg/adaptive/errors.py`:
+- `AdaptiveError` (base)
+- `ExtendsCycleError`
+- `MetaSectionRenderError`
+- `MultipleIntegrationModeSetsError`
+- `NoIntegrationModeSetError`
+- `ProviderNotSupportedError`
+- `InvalidModeReferenceError`
+- `SectionNotFoundInExtendsError`
 
 ---
 
