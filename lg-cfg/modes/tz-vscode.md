@@ -61,9 +61,14 @@ interface ControlPanelState {
 - выпадающий список `Provider` (в Control Panel), рядом с контекстом/кнопками или в блоке Adaptive Settings.
 - значения берутся из AiIntegrationService (provider.id + provider.name).
 
-### 4.2. Перенос выбора провайдера из Settings
-- `lg.ai.provider` в Settings становится **fallback** (начальное значение).
-- реальный выбор хранится в ControlPanelState и меняется в UI.
+### 4.2. Удаление выбора провайдера из Settings
+Полностью удалить `lg.ai.provider` из Settings и связанный UI.
+
+Начальный выбор провайдера (когда нет сохранённого состояния) определяется по:
+1) детекту `detect()` всех провайдеров;
+2) максимальному `priority` среди доступных.
+
+Реальный выбор хранится в ControlPanelState и меняется в UI.
 
 ### 4.3. Логика обновления списков
 При изменении:

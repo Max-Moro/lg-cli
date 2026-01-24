@@ -55,8 +55,13 @@ var tagsByContext: MutableMap<String, MutableMap<String, MutableSet<String>>>
 
 Источник данных: `AiIntegrationService.detectAvailableProviders()` + provider name.
 
-### 4.2. Перенос выбора провайдера из Settings
-`LgSettingsService.state.aiProvider` остаётся **fallback** (начальное значение).
+### 4.2. Удаление выбора провайдера из Settings
+Полностью удалить `LgSettingsService.state.aiProvider` и связанный UI в Settings.
+
+Начальный выбор провайдера (когда нет сохранённого состояния) определяется по:
+1) детекту `isAvailable()` всех провайдеров;
+2) максимальному `priority` среди доступных.
+
 Реальный выбор хранится в `LgPanelStateService`.
 
 ### 4.3. Обновление списков
