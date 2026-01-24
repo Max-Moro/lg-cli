@@ -12,7 +12,8 @@ import pytest
 from .conftest import (
     adaptive_project, make_run_options, make_engine, render_template,
     create_conditional_template, create_modes_yaml, create_tags_yaml,
-    ModeConfig, ModeSetConfig, TagConfig, TagSetConfig
+    ModeConfig, ModeSetConfig, TagConfig, TagSetConfig,
+    create_mode_meta_section, create_tag_meta_section
 )
 
 
@@ -33,14 +34,15 @@ def test_extremely_long_tag_names(adaptive_project):
             }
         )
     }
-    create_modes_yaml(root, long_modes, append=True)
+    create_mode_meta_section(root, "long-test", long_modes)
 
     # Create template with long names
     long_tags = [f"long-tag-{i}" for i in range(20)]
     conditions = [f"{{% if tag:{tag} %}}{tag} active{{% endif %}}" for tag in long_tags[:5]]
     template_content = f"# Long Names Test\n\n" + "\n".join(conditions)
 
-    create_conditional_template(root, "long-names-test", template_content)
+    create_conditional_template(root, "long-names-test", template_content,
+                                include_meta_sections=["ai-interaction", "dev-stage", "tags", "long-test"])
 
     # Activate mode with long name
     options = make_run_options(modes={"long-test": long_name})
@@ -72,7 +74,7 @@ def test_unicode_in_configurations(adaptive_project):
             }
         )
     }
-    create_modes_yaml(root, unicode_modes, append=True)
+    create_mode_meta_section(root, "international", unicode_modes)
 
     unicode_tags = {
         "languages": TagSetConfig(
@@ -84,7 +86,7 @@ def test_unicode_in_configurations(adaptive_project):
             }
         )
     }
-    create_tags_yaml(root, unicode_tags, append=True)
+    create_tag_meta_section(root, "languages", unicode_tags)
 
     template_content = """# Unicode Test
 
@@ -99,7 +101,8 @@ This is Chinese text
 {% endif %}
 """
 
-    create_conditional_template(root, "unicode-test", template_content)
+    create_conditional_template(root, "unicode-test", template_content,
+                                include_meta_sections=["ai-interaction", "dev-stage", "tags", "international", "languages"])
 
     # Activate Unicode mode
     options = make_run_options(modes={"international": "russian"})

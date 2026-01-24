@@ -44,7 +44,7 @@ ${src}
 
     # Check structure of one set
     ai_set = next(ms for ms in mode_sets if ms["id"] == "ai-interaction")
-    assert ai_set["title"] == "AI interaction method"
+    assert ai_set["title"] == "AI Interaction"
     assert "modes" in ai_set
 
     # Check modes inside the set

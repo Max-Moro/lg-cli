@@ -121,7 +121,7 @@ def adaptive_project(tmp_path: Path) -> Path:
     # Create integration mode-set (ai-interaction) - has runs
     ai_modes = {
         "ai-interaction": ModeSetConfig(
-            title="AI interaction method",
+            title="AI Interaction",
             modes={
                 "ask": ModeConfig(
                     title="Ask",
