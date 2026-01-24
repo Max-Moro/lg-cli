@@ -15,8 +15,10 @@ src:
           - "/engine.py"
           - "/section_processor.py"
           - "/config/"
-          - "/adapters/"
           - "/template/"
+          - "/addressing/"
+          - "/section/"
+          - "/adapters/"
         children:
           adapters:
             mode: allow
