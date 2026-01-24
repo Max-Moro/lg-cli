@@ -202,12 +202,68 @@ python -m pytest tests/package/failed_test.py::test_function --tb=short --disabl
 ```
 
 ### Mode `all`
+
+**CRITICAL: Full test suite takes ~5 minutes. Always use explicit timeout!**
+
 ```bash
 # CAREFUL with output!
-# Phase 1: statistics only
+# Phase 1: statistics only (use 10-minute timeout)
 python -m pytest tests/ -q --tb=no -r fE --disable-warnings
 # Phase 2: details for first 10 failed only
 ```
+
+## Timeouts and Error Handling
+
+### Timeout Configuration
+
+**CRITICAL:** Always specify appropriate timeouts for Bash commands based on test mode:
+
+| Mode | Expected Duration | Bash Timeout |
+|------|-------------------|--------------|
+| `single` | 5-30 seconds | 120000 (2 min) |
+| `module` | 30-120 seconds | 180000 (3 min) |
+| `specific` | 30-180 seconds | 240000 (4 min) |
+| `package` | 1-3 minutes | 300000 (5 min) |
+| `all` | **~5 minutes** | **600000 (10 min)** |
+
+**Example for `all` mode:**
+```
+Bash(command="python -m pytest tests/ -q --tb=no -r fE --disable-warnings", timeout=600000)
+```
+
+### Handling Exit Code 143 (SIGTERM)
+
+Exit code 143 means the process was killed by timeout. **DO NOT panic or try workarounds.**
+
+**WRONG behavior (leads to infinite loops):**
+- Retrying with different flags
+- Adding `timeout` command wrapper
+- Using `grep` to capture partial output
+- Running multiple test variations
+
+**CORRECT behavior:**
+1. If exit code 143 → the timeout was too short
+2. Either increase timeout and retry ONCE, or
+3. Report to orchestrator: "Test execution exceeded timeout. Full suite requires ~5+ minutes. Please specify smaller test scope or confirm extended timeout."
+
+### Never Do This
+
+**FORBIDDEN patterns that cause hour-long delays:**
+```bash
+# DO NOT wrap pytest in shell timeout - use Bash tool timeout parameter instead
+timeout 180 python -m pytest ...  # WRONG
+
+# DO NOT pipe pytest through grep/tail hoping to catch output
+python -m pytest ... 2>&1 | tail -30  # WRONG
+
+# DO NOT retry failed command with minor variations
+python -m pytest ... -v  # after -q failed - WRONG
+```
+
+**If you receive exit code 143:**
+1. STOP trying different approaches
+2. Report the timeout issue to orchestrator
+3. Let orchestrator decide: reduce scope or confirm extended wait
 
 ## Output Report Format
 
