@@ -12,7 +12,9 @@ from lg.section_processor import SectionProcessor
 from lg.stats import StatsCollector
 from lg.template.context import TemplateContext
 from lg.addressing.types import ResolvedSection
-from tests.infrastructure import write, make_run_context, make_run_options, load_sections
+from lg.adaptive.context_resolver import ContextResolver
+from lg.section import SectionService
+from tests.infrastructure import write, make_run_context, make_run_options, load_sections, create_integration_mode_section
 
 
 def test_basic_section_manifest(tmp_path: Path):
@@ -82,9 +84,13 @@ def test_conditional_filters(tmp_path: Path):
     write(tmp_path / "src" / "test_main.py", "def test(): pass")
     write(tmp_path / "docs" / "readme.md", "# README")
 
+    # Create integration mode section first
+    create_integration_mode_section(tmp_path)
+
     # Create configuration with conditional filters
     write(tmp_path / "lg-cfg" / "sections.yaml", """
 all-files:
+  extends: ["ai-interaction"]
   extensions: [".py", ".md"]
   filters:
     mode: allow
@@ -103,6 +109,15 @@ all-files:
     # Test 1: without tests tag - test files should be blocked
     run_ctx = make_run_context(tmp_path)
     template_ctx = TemplateContext(run_ctx)
+
+    # Initialize template context with adaptive model
+    context_resolver = ContextResolver(
+        section_service=SectionService(tmp_path, run_ctx.cache),
+        addressing=run_ctx.addressing,
+        cfg_root=tmp_path / "lg-cfg"
+    )
+    adaptive_model = context_resolver.resolve_for_section("all-files", tmp_path)
+    template_ctx.reset_for_context(adaptive_model)
 
     sections = load_sections(tmp_path)
     section_cfg = sections.get("all-files")
@@ -134,6 +149,15 @@ all-files:
     options = make_run_options(extra_tags={"tests"})
     run_ctx = make_run_context(tmp_path, options=options)
     template_ctx = TemplateContext(run_ctx)
+
+    # Initialize template context with adaptive model
+    context_resolver = ContextResolver(
+        section_service=SectionService(tmp_path, run_ctx.cache),
+        addressing=run_ctx.addressing,
+        cfg_root=tmp_path / "lg-cfg"
+    )
+    adaptive_model = context_resolver.resolve_for_section("all-files", tmp_path)
+    template_ctx.reset_for_context(adaptive_model)
 
     sections = load_sections(tmp_path)
     section_cfg = sections.get("all-files")

@@ -13,7 +13,8 @@ import pytest
 
 from .conftest import (
     make_run_options, render_template, write,
-    create_tags_yaml, TagConfig, TagSetConfig
+    TagConfig, TagSetConfig,
+    create_tag_meta_section, create_integration_mode_section
 )
 
 
@@ -49,7 +50,7 @@ def hierarchical_project(tmp_path: Path) -> Path:
     write(root / "lg" / "template" / "adaptive" / "plugin.py", "# Adaptive plugin\n")
     write(root / "lg" / "template" / "md_placeholders" / "plugin.py", "# MD placeholders\n")
 
-    # Create tag configuration with sets for templating features
+    # Create tag configuration using new meta-section API
     tag_sets = {
         "template-features": TagSetConfig(
             title="Templating features",
@@ -60,10 +61,10 @@ def hierarchical_project(tmp_path: Path) -> Path:
             }
         )
     }
-    global_tags = {
-        "minimal": TagConfig(title="Minimal version")
-    }
-    create_tags_yaml(root, tag_sets, global_tags)
+    create_tag_meta_section(root, "tags", tag_sets)
+
+    # Create integration mode-set (required by new adaptive system)
+    create_integration_mode_section(root)
     
     return root
 
@@ -75,6 +76,7 @@ def test_root_level_conditional_filters(hierarchical_project):
     # Configuration with conditions at root level
     sections_yaml = """
 src:
+  extends: ["ai-interaction", "tags"]
   extensions: [".py"]
   filters:
     mode: allow
@@ -109,6 +111,7 @@ def test_child_level_conditional_filters(hierarchical_project):
     # Configuration with conditions at children level
     sections_yaml = """
 src:
+  extends: ["ai-interaction", "tags"]
   extensions: [".py"]
   filters:
     mode: allow
@@ -148,6 +151,7 @@ def test_deep_nested_conditional_filters(hierarchical_project):
     # Configuration with conditions at deeply nested level
     sections_yaml = """
 src:
+  extends: ["ai-interaction", "tags"]
   extensions: [".py"]
   filters:
     mode: allow
@@ -204,6 +208,7 @@ def test_multiple_conditional_filters_same_level(hierarchical_project):
 
     sections_yaml = """
 src:
+  extends: ["ai-interaction", "tags"]
   extensions: [".py"]
   filters:
     mode: allow
@@ -243,6 +248,7 @@ def test_conditional_filters_with_block_rules(hierarchical_project):
 
     sections_yaml = """
 src:
+  extends: ["ai-interaction", "tags"]
   extensions: [".py"]
   filters:
     mode: allow
@@ -281,6 +287,7 @@ def test_conditional_filters_inheritance(hierarchical_project):
 
     sections_yaml = """
 src:
+  extends: ["ai-interaction", "tags"]
   extensions: [".py"]
   filters:
     mode: allow
@@ -321,6 +328,7 @@ def test_conditional_filters_complex_conditions(hierarchical_project):
 
     sections_yaml = """
 src:
+  extends: ["ai-interaction", "tags"]
   extensions: [".py"]
   filters:
     mode: allow
@@ -368,6 +376,7 @@ def test_conditional_filters_evaluation_error_handling(hierarchical_project):
     # Configuration with invalid condition
     sections_yaml = """
 src:
+  extends: ["ai-interaction", "tags"]
   extensions: [".py"]
   filters:
     mode: allow
@@ -430,6 +439,7 @@ def test_example_from_issue(tmp_path):
     # Configuration from task example
     sections_yaml = """
 src:
+  extends: ["ai-interaction", "tags"]
   extensions: [".py", ".toml"]
   filters:
     mode: allow
@@ -474,7 +484,7 @@ src:
                 allow: ["/md_placeholders/"]
 """
 
-    # Create tags
+    # Create tags using new API
     tag_sets = {
         "template-features": TagSetConfig(
             title="Templating features",
@@ -485,7 +495,8 @@ src:
             }
         )
     }
-    create_tags_yaml(root, tag_sets, {})
+    create_tag_meta_section(root, "tags", tag_sets)
+    create_integration_mode_section(root)
 
     write(root / "lg-cfg" / "sections.yaml", sections_yaml)
 

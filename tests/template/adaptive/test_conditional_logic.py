@@ -13,7 +13,7 @@ from lg.template.processor import TemplateProcessingError
 from .conftest import (
     adaptive_project, make_run_options, render_template,
     create_conditional_template, TagConfig, TagSetConfig,
-    create_tags_yaml
+    create_tag_meta_section
 )
 
 
@@ -412,7 +412,7 @@ def test_custom_tagsets_in_conditions(adaptive_project):
     """Test custom tag sets in conditions."""
     root = adaptive_project
 
-    # Add custom tag set
+    # Add custom tag set using new meta-section API
     custom_tag_sets = {
         "feature-flags": TagSetConfig(
             title="Feature Flags",
@@ -423,7 +423,7 @@ def test_custom_tagsets_in_conditions(adaptive_project):
             }
         )
     }
-    create_tags_yaml(root, custom_tag_sets)
+    create_tag_meta_section(root, "feature-flags", custom_tag_sets)
 
     template_content = """# Custom TagSet Test
 
@@ -443,7 +443,10 @@ Combined new features
 {% endif %}
 """
 
-    create_conditional_template(root, "custom-tagset", template_content)
+    create_conditional_template(
+        root, "custom-tagset", template_content,
+        include_meta_sections=["ai-interaction", "dev-stage", "tags", "feature-flags"]
+    )
 
     # Without active flags - all TAGSET conditions true
     result1 = render_template(root, "ctx:custom-tagset", make_run_options())

@@ -6,6 +6,8 @@ from lg.section_processor import SectionProcessor
 from lg.stats.collector import StatsCollector
 from lg.template.context import TemplateContext
 from lg.addressing import SECTION_CONFIG
+from lg.adaptive.context_resolver import ContextResolver
+from lg.section import SectionService
 
 from tests.infrastructure import make_run_context, make_run_options, create_integration_mode_section
 
@@ -112,6 +114,16 @@ all-files:
     section_processor = SectionProcessor(run_ctx=run_ctx, stats_collector=stats_collector)
 
     template_ctx = TemplateContext(run_ctx)
+
+    # Initialize template context with adaptive model
+    context_resolver = ContextResolver(
+        section_service=SectionService(tmp_path, run_ctx.cache),
+        addressing=run_ctx.addressing,
+        cfg_root=tmp_path / "lg-cfg"
+    )
+    adaptive_model = context_resolver.resolve_for_section("all-files", tmp_path)
+    template_ctx.reset_for_context(adaptive_model)
+
     resolved = run_ctx.addressing.resolve("all-files", SECTION_CONFIG)
 
     rendered_section = section_processor.process_section(resolved, template_ctx)
@@ -129,6 +141,18 @@ all-files:
     section_processor = SectionProcessor(run_ctx=run_ctx, stats_collector=stats_collector)
 
     template_ctx = TemplateContext(run_ctx)
+
+    # Re-initialize template context with adaptive model for new options
+    context_resolver = ContextResolver(
+        section_service=SectionService(tmp_path, run_ctx.cache),
+        addressing=run_ctx.addressing,
+        cfg_root=tmp_path / "lg-cfg"
+    )
+    adaptive_model = context_resolver.resolve_for_section("all-files", tmp_path)
+    template_ctx.reset_for_context(adaptive_model)
+
+    # Need to re-resolve with new context
+    resolved = run_ctx.addressing.resolve("all-files", SECTION_CONFIG)
 
     rendered_section = section_processor.process_section(resolved, template_ctx)
 
