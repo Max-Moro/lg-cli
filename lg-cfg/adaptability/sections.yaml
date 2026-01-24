@@ -18,19 +18,89 @@ src:
           - "/template/"
           - "/addressing/"
           - "/section/"
-          - "/adapters/"
         children:
-          adapters:
-            mode: allow
-            allow:
-              - "/__init__.py"
-              - "/registry.py"
-              - "/base.py"
-              - "/processor.py"
+          # Template engine - only core files for adaptive system
           template:
             mode: allow
             allow:
-              - "/*.py"
-              - "/common_placeholders/"
+              # Core for adaptive
+              - "/context.py"
+              - "/evaluator.py"
+              - "/frontmatter.py"
+              - "/processor.py"
               - "/adaptive/"
               - "/analysis/"
+              # Essential infrastructure (signatures only via targets)
+              - "/common.py"
+              - "/registry.py"
+              - "/base.py"
+              - "/handlers.py"
+              - "/types.py"
+              - "/nodes.py"
+            block:
+              # Exclude implementation details
+              - "/lexer.py"
+              - "/parser.py"
+              - "/tokens.py"
+              - "/protocols.py"
+              # Exclude common placeholders - not related to adaptive modes/tags
+              - "/common_placeholders/"
+              - "/md_placeholders/"
+              - "/task_placeholder/"
+          # Section service - needed for extends
+          section:
+            mode: allow
+            allow:
+              - "/model.py"
+              - "/service.py"
+              - "/index.py"
+            block:
+              - "/paths.py"
+          # Addressing - only types and context
+          addressing:
+            mode: allow
+            allow:
+              - "/types.py"
+              - "/context.py"
+              - "/configs.py"
+              - "/errors.py"
+            block:
+              # Block resolvers implementation details
+              - "/file_resolver.py"
+              - "/section_resolver.py"
+              - "/parser.py"
+
+  # Optimize less important files with strip_function_bodies
+  python:
+    strip_function_bodies: false
+
+  targets:
+    # Infrastructure code - keep only signatures
+    - match:
+        - "/lg/template/registry.py"
+        - "/lg/template/base.py"
+        - "/lg/template/handlers.py"
+        - "/lg/template/types.py"
+        - "/lg/section/service.py"
+        - "/lg/section/index.py"
+        - "/lg/addressing/context.py"
+      python:
+        strip_function_bodies: true
+
+    # Implementation details - keep signatures for understanding
+    - match:
+        - "/lg/template/processor.py"
+        - "/lg/template/adaptive/parser_rules.py"
+        - "/lg/template/analysis/section_collector.py"
+        - "/lg/cli.py"
+        - "/lg/engine.py"
+      python:
+        strip_function_bodies: true
+
+    # Adaptive implementation - less important files
+    - match:
+        - "/lg/adaptive/extends_resolver.py"
+        - "/lg/adaptive/context_resolver.py"
+        - "/lg/adaptive/listing.py"
+      python:
+        strip_function_bodies: true
