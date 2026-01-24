@@ -3,7 +3,7 @@
 
 from __future__ import annotations
 
-from typing import Any, Optional
+from typing import Optional
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -27,10 +27,6 @@ class Mode(BaseModel):
     tags: Optional[list[str]] = None
     """
     Array of tags activated by this mode
-    """
-    options: Optional[dict[str, Any]] = None
-    """
-    Additional options specific to this mode
     """
     runs: Optional[dict[str, str]] = None
     """

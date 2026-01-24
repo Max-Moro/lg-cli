@@ -60,11 +60,6 @@
           },
           "description": "Array of tags activated by this mode"
         },
-        "options": {
-          "type": "object",
-          "additionalProperties": true,
-          "description": "Additional options specific to this mode"
-        },
         "runs": {
           "type": "object",
           "additionalProperties": {

@@ -4,9 +4,7 @@ from pathlib import Path
 from typing import List
 
 # Import path utilities
-from ..paths import cfg_root, CFG_DIR
-
-SECTIONS_FILE = "sections.yaml"  # Local constant for backwards compatibility
+from ..paths import cfg_root, SECTIONS_FILE
 
 
 def iter_section_fragments(root: Path) -> List[Path]:

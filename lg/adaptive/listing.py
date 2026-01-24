@@ -110,7 +110,6 @@ def _adaptive_model_to_mode_sets_list(model) -> ModeSetsList:
                 description=mode.description if mode.description else None,
                 tags=list(mode.tags) if mode.tags else None,
                 runs=runs_dict,
-                options=None  # deprecated
             )
             modes_list.append(mode_schema)
 
