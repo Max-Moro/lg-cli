@@ -1,22 +1,28 @@
 import textwrap
 from pathlib import Path
 
-from tests.infrastructure import write, run_cli, jload
+from tests.infrastructure import write, run_cli, jload, create_integration_mode_section
 
 
 def test_grouping_respects_sections(tmp_path: Path):
     root = tmp_path
+
+    # Create integration mode section (required by new adaptive system)
+    create_integration_mode_section(root)
+
     # Config: two sections docs and code, each limited to its own subtree
     write(
         root / "lg-cfg" / "sections.yaml",
         textwrap.dedent("""
         docs:
+          extends: ["ai-interaction"]
           extensions: [".md"]
           filters:
             mode: allow
             allow:
               - "/docs/**"
         code:
+          extends: ["ai-interaction"]
           extensions: [".md"]
           filters:
             mode: allow
@@ -25,7 +31,7 @@ def test_grouping_respects_sections(tmp_path: Path):
         """).strip() + "\n",
     )
     # Context uses both sections
-    write(root / "lg-cfg" / "mix.ctx.md", "${docs}\n\n${code}\n")
+    write(root / "lg-cfg" / "mix.ctx.md", '---\ninclude: ["ai-interaction"]\n---\n${docs}\n\n${code}\n')
 
     # docs - two .md files
     write(root / "docs" / "a.md", "# A\n\nText\n")

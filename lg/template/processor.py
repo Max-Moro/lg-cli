@@ -15,6 +15,7 @@ from pathlib import Path
 from typing import Callable, Dict, Optional
 
 from .context import TemplateContext
+from .frontmatter import strip_frontmatter
 from .handlers import TemplateProcessorHandlers
 from .lexer import ContextualLexer
 from .nodes import TemplateNode, TemplateAST, TextNode
@@ -114,6 +115,10 @@ class TemplateProcessor:
         """
         def process_file():
             template_path, template_text = self._load_template_with_path(template_name)
+
+            # Strip frontmatter from context files (used internally for include directive)
+            # Frontmatter should never appear in rendered output
+            template_text = strip_frontmatter(template_text)
 
             # Initialize AddressingContext with current template's directory
             # This enables relative path resolution from the template's location
