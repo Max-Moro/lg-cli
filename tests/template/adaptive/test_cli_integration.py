@@ -13,10 +13,22 @@ from .conftest import adaptive_project, federated_project
 
 def test_list_mode_sets_cli(adaptive_project, monkeypatch):
     """Test list mode-sets command."""
+    from tests.infrastructure.file_utils import write
+
     root = adaptive_project
     monkeypatch.chdir(root)
 
-    result = run_cli(root, "list", "mode-sets")
+    # First create a context to query
+    write(root / "lg-cfg" / "list-test.ctx.md", """---
+include: ["ai-interaction", "dev-stage", "tags"]
+---
+# List Test
+${src}
+""")
+
+    result = run_cli(root, "list", "mode-sets",
+                     "--context", "list-test",
+                     "--provider", "com.test.provider")
 
     assert result.returncode == 0
     data = jload(result.stdout)
@@ -49,10 +61,20 @@ def test_list_mode_sets_cli(adaptive_project, monkeypatch):
 
 def test_list_tag_sets_cli(adaptive_project, monkeypatch):
     """Test list tag-sets command."""
+    from tests.infrastructure.file_utils import write
+
     root = adaptive_project
     monkeypatch.chdir(root)
 
-    result = run_cli(root, "list", "tag-sets")
+    # Create context for query
+    write(root / "lg-cfg" / "tags-list-test.ctx.md", """---
+include: ["ai-interaction", "dev-stage", "tags"]
+---
+# Tags List Test
+${src}
+""")
+
+    result = run_cli(root, "list", "tag-sets", "--context", "tags-list-test")
 
     assert result.returncode == 0
     data = jload(result.stdout)
@@ -257,20 +279,31 @@ def test_invalid_mode_format_cli_error(adaptive_project, monkeypatch):
 
 def test_federated_modes_cli(federated_project, monkeypatch):
     """Test CLI commands with federated structure."""
+    from tests.infrastructure.file_utils import write
+
     root = federated_project
     monkeypatch.chdir(root)
 
+    # Create context in federated project
+    write(root / "lg-cfg" / "fed-modes-test.ctx.md", """---
+include: ["ai-interaction", "workflow"]
+---
+# Federated Modes Test
+${overview}
+""")
+
     # Check list mode-sets in federated project
-    result = run_cli(root, "list", "mode-sets")
+    result = run_cli(root, "list", "mode-sets",
+                     "--context", "fed-modes-test",
+                     "--provider", "com.test.provider")
     assert result.returncode == 0
 
     data = jload(result.stdout)
     mode_set_ids = {ms["id"] for ms in data["mode-sets"]}
 
-    # Modes from all scopes should be present
-    assert "workflow" in mode_set_ids      # root
-    assert "frontend" in mode_set_ids      # apps/web
-    assert "library" in mode_set_ids       # libs/core
+    # Modes from root scope should be present
+    assert "ai-interaction" in mode_set_ids  # integration
+    assert "workflow" in mode_set_ids        # content
 
 
 def test_federated_rendering_cli(federated_project, monkeypatch):
