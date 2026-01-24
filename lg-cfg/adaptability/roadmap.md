@@ -17,101 +17,14 @@ This roadmap outlines the development phases for implementing the new adaptive m
 
 ---
 
-## Phase 2: Resolution Logic
+## Phase 2: Resolution Logic ✅ COMPLETE
 
-**Goal**: Implement section inheritance and adaptive model resolution.
-
-### 2.1. Extends Resolver (`lg/adaptive/extends_resolver.py`)
-
-**Tasks**:
-- [ ] Create `ExtendsResolver` class
-- [ ] Implement cycle detection with resolution stack
-- [ ] Implement depth-first, left-to-right traversal
-- [ ] Implement `_merge_sections()` with correct semantics:
-  - Mode-sets/tag-sets: merge by id, child wins
-  - Extensions: union
-  - Adapters: deep merge
-  - Filters/targets: NOT inherited
-- [ ] Handle addressed section references (`@scope:name`)
-- [ ] Cache resolved sections
-
-**Dependencies**: 1.2, 1.4
-
-**Tests**:
-- Simple extends chain
-- Multiple extends
-- Cycle detection
-- Merge semantics for each field type
-- Cross-scope extends
-
-### 2.2. Section Extractor (`lg/adaptive/section_extractor.py`)
-
-**Tasks**:
-- [ ] Create `extract_adaptive_data()` function
-- [ ] Parse raw `mode-sets` dict into `ModeSet` objects
-- [ ] Parse raw `tag-sets` dict into `TagSet` objects
-- [ ] Handle missing/empty adaptive data
-
-**Dependencies**: 1.1, 1.2
-
-**Tests**:
-- Extract from section with full adaptive data
-- Extract from section with partial data
-- Extract from section with no adaptive data
-
-### 2.3. Context Collector (`lg/adaptive/context_collector.py`)
-
-**Tasks**:
-- [ ] Create `ContextCollector` class
-- [ ] Implement template AST traversal
-- [ ] Collect `${section}` placeholders
-- [ ] Collect sections from `${tpl:...}` and `${ctx:...}` (transitive)
-- [ ] Exclude `${md:...}` placeholders
-- [ ] Process frontmatter `include` sections
-- [ ] Ignore conditions (collect all branches)
-
-**Dependencies**: 1.3, Template system understanding
-
-**Tests**:
-- Collect from simple context
-- Collect transitive includes
-- Frontmatter includes
-- Ignore `${md:...}`
-- Collect from both branches of `{% if %}`
-
-### 2.4. Context Resolver (`lg/adaptive/context_resolver.py`)
-
-**Tasks**:
-- [ ] Create `ContextResolver` class
-- [ ] Implement `resolve_for_context()`
-- [ ] Implement `resolve_for_section()`
-- [ ] Implement deterministic merge order
-- [ ] Integrate with validator
-
-**Dependencies**: 2.1, 2.2, 2.3
-
-**Tests**:
-- Full context resolution
-- Section-only resolution
-- Merge order verification
-- Integration with validator
-
-### 2.5. Validation (`lg/adaptive/validation.py`)
-
-**Tasks**:
-- [ ] Create `AdaptiveValidator` class
-- [ ] Implement `validate_model()` — single integration mode-set rule
-- [ ] Implement `validate_mode_reference()` — `{% mode %}` validation
-- [ ] Implement `validate_provider_support()` — provider filtering
-
-**Dependencies**: 1.1, 1.4
-
-**Tests**:
-- Valid model passes
-- Multiple integration mode-sets fails
-- Zero integration mode-sets fails
-- Invalid mode reference fails
-- Unsupported provider fails
+**Implemented**:
+- `lg/adaptive/section_extractor.py` — `extract_adaptive_model()`
+- `lg/adaptive/validation.py` — `AdaptiveValidator`, validation functions
+- `lg/adaptive/extends_resolver.py` — `ExtendsResolver`, `ResolvedSectionData`
+- `lg/adaptive/context_collector.py` — `ContextCollector`, `CollectedSections`
+- `lg/adaptive/context_resolver.py` — `ContextResolver`, `ContextAdaptiveData`
 
 ---
 
@@ -327,13 +240,7 @@ This roadmap outlines the development phases for implementing the new adaptive m
 
 ```
 Phase 1: Foundation ✅ COMPLETE
-                                              │
-Phase 2: Resolution                           │
-  2.1 Extends Resolver ◄──────────────────────┤
-  2.2 Section Extractor ◄─────────────────────┤
-  2.3 Context Collector ◄─────────────────────┤
-  2.4 Context Resolver ◄──── 2.1, 2.2, 2.3    │
-  2.5 Validation ◄────────────────────────────┘
+Phase 2: Resolution ✅ COMPLETE
                     │
 Phase 3: Integration│
   3.1 TemplateContext ◄───────────────────────┤

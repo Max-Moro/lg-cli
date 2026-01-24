@@ -1,0 +1,296 @@
+"""
+Context collector for the adaptive system.
+
+Collects all sections referenced in a context template
+without performing full rendering. Used for building
+the complete adaptive model for a context.
+"""
+
+from __future__ import annotations
+
+from dataclasses import dataclass, field
+from pathlib import Path
+from typing import List, Set, Optional, cast
+
+from ..addressing import AddressingContext
+from ..addressing.types import ResolvedSection
+from ..section import SectionService
+from ..template.common import load_context_from, CTX_SUFFIX
+from ..template.common_placeholders.configs import SECTION_CONFIG
+from ..template.common_placeholders.nodes import SectionNode, IncludeNode
+from ..template.adaptive.nodes import ConditionalBlockNode, ModeBlockNode, ElseBlockNode, ElifBlockNode
+from ..template.frontmatter import parse_frontmatter, ContextFrontmatter
+from ..template.nodes import TemplateNode, TemplateAST
+from ..template.parser import parse_template
+from ..template.registry import TemplateRegistry
+
+
+@dataclass
+class CollectedSections:
+    """
+    Result of collecting sections from a context.
+
+    Contains all sections found in the template and frontmatter,
+    deduplicated by canonical key.
+    """
+    sections: List[ResolvedSection] = field(default_factory=list)
+    frontmatter_includes: List[str] = field(default_factory=list)
+
+    def add_section(self, resolved: ResolvedSection) -> bool:
+        """
+        Add section if not already present.
+
+        Args:
+            resolved: Resolved section to add
+
+        Returns:
+            True if added, False if already present
+        """
+        canon_key = resolved.canon_key()
+        for existing in self.sections:
+            if existing.canon_key() == canon_key:
+                return False
+        self.sections.append(resolved)
+        return True
+
+
+class ContextCollector:
+    """
+    Collector for sections referenced in a context template.
+
+    Traverses the template AST to find all section references,
+    including those in conditional blocks (without evaluating conditions).
+    Also processes frontmatter `include` directives.
+
+    Excludes ${md:...} placeholders as they don't contribute adaptive data.
+    """
+
+    def __init__(
+        self,
+        section_service: SectionService,
+        addressing: AddressingContext,
+        cfg_root: Path,
+    ):
+        """
+        Initialize collector.
+
+        Args:
+            section_service: Service for resolving sections
+            addressing: Addressing context for path resolution
+            cfg_root: Root lg-cfg directory
+        """
+        self._section_service = section_service
+        self._addressing = addressing
+        self._cfg_root = cfg_root
+        self._registry: Optional[TemplateRegistry] = None
+        self._visited_includes: Set[str] = set()
+
+    def collect(self, context_name: str) -> CollectedSections:
+        """
+        Collect all sections from a context.
+
+        Traverses the context template and all includes (tpl, ctx)
+        to find section references. Processes frontmatter for
+        additional include directives.
+
+        Args:
+            context_name: Name of the context (without .ctx.md suffix)
+
+        Returns:
+            CollectedSections with all found sections
+        """
+        result = CollectedSections()
+        self._visited_includes.clear()
+
+        # Load context file
+        template_path, template_text = load_context_from(self._cfg_root, context_name)
+
+        # Parse frontmatter
+        frontmatter, content_text = parse_frontmatter(template_text)
+        if frontmatter and frontmatter.include:
+            result.frontmatter_includes = list(frontmatter.include)
+
+        # Parse template AST
+        ast = self._parse_template(content_text)
+
+        # Set up addressing context for this file
+        with self._addressing.file_scope(template_path):
+            # Collect from AST
+            self._collect_from_ast(ast, result)
+
+            # Process frontmatter includes
+            self._process_frontmatter_includes(frontmatter, result)
+
+        return result
+
+    def _get_registry(self) -> TemplateRegistry:
+        """Get or create template registry for parsing."""
+        if self._registry is None:
+            self._registry = self._create_minimal_registry()
+        return self._registry
+
+    def _create_minimal_registry(self) -> TemplateRegistry:
+        """
+        Create a minimal template registry for parsing.
+
+        Only registers tokens and rules needed for AST structure,
+        not full processing capabilities.
+        """
+        # Create registry with built-in tokens
+        registry = TemplateRegistry()
+
+        # Register plugins for token/parser rules
+        from ..template.common_placeholders.plugin import CommonPlaceholdersPlugin
+        from ..template.adaptive.plugin import AdaptivePlugin
+        from ..template.md_placeholders.plugin import MdPlaceholdersPlugin
+
+        # Create dummy context for plugin initialization
+        # Plugins need handlers but we won't use them for collection
+        class DummyHandlers:
+            def parse_next_node(self, ctx):
+                return None
+            def process_ast_node(self, ctx):
+                return ""
+            def process_section(self, resolved):
+                return ""
+            def resolve_ast(self, ast, context=""):
+                return ast
+
+        dummy = DummyHandlers()
+
+        # Register plugins
+        registry.register_plugin(CommonPlaceholdersPlugin(dummy))
+        registry.register_plugin(AdaptivePlugin(dummy.parse_next_node))
+        registry.register_plugin(MdPlaceholdersPlugin())
+
+        return registry
+
+    def _parse_template(self, text: str) -> TemplateAST:
+        """Parse template text into AST."""
+        return parse_template(text, self._get_registry())
+
+    def _collect_from_ast(self, ast: TemplateAST, result: CollectedSections) -> None:
+        """
+        Recursively collect sections from AST nodes.
+
+        Traverses all branches of conditional blocks without evaluating.
+        """
+        for node in ast:
+            self._collect_from_node(node, result)
+
+    def _collect_from_node(self, node: TemplateNode, result: CollectedSections) -> None:
+        """Process single AST node for section collection."""
+
+        if isinstance(node, SectionNode):
+            # Direct section reference
+            self._collect_section(node.name, result)
+
+        elif isinstance(node, IncludeNode):
+            # Template/context include - traverse recursively
+            self._collect_from_include(node, result)
+
+        elif isinstance(node, ConditionalBlockNode):
+            # Collect from ALL branches (don't evaluate condition)
+            self._collect_from_ast(node.body, result)
+            for elif_block in node.elif_blocks:
+                self._collect_from_ast(elif_block.body, result)
+            if node.else_block:
+                self._collect_from_ast(node.else_block.body, result)
+
+        elif isinstance(node, ModeBlockNode):
+            # Collect from mode block body
+            self._collect_from_ast(node.body, result)
+
+        # Note: ${md:...} nodes are intentionally skipped
+        # They don't contribute mode-sets/tag-sets
+
+    def _collect_section(self, section_name: str, result: CollectedSections) -> None:
+        """
+        Resolve and add section to result.
+
+        Args:
+            section_name: Section name from template
+            result: CollectedSections to add to
+        """
+        try:
+            resolved = cast(
+                ResolvedSection,
+                self._addressing.resolve(section_name, SECTION_CONFIG)
+            )
+            result.add_section(resolved)
+        except Exception:
+            # Section not found - skip silently during collection
+            # Errors will be raised during actual rendering
+            pass
+
+    def _collect_from_include(self, node: IncludeNode, result: CollectedSections) -> None:
+        """
+        Process include node and collect sections from included template.
+
+        Handles circular include detection.
+        """
+        # Build include key for cycle detection
+        include_key = node.canon_key()
+
+        if include_key in self._visited_includes:
+            # Already visited - skip to avoid infinite loop
+            return
+
+        self._visited_includes.add(include_key)
+
+        try:
+            # Load included template
+            from ..template.common import load_template_from, load_context_from as load_ctx
+            from ..template.common import TPL_SUFFIX
+
+            # Determine which loader to use
+            if node.kind == "ctx":
+                loader = load_ctx
+                suffix = CTX_SUFFIX
+            else:
+                loader = load_template_from
+                suffix = TPL_SUFFIX
+
+            # Resolve the include path
+            if node.origin and node.origin != "self":
+                # Addressed include - need to resolve scope
+                scope_dir = (self._addressing.cfg_root.parent / node.origin).resolve()
+                cfg_root = scope_dir / "lg-cfg"
+            else:
+                cfg_root = self._cfg_root
+
+            # Load and parse
+            template_path, template_text = loader(cfg_root, node.name)
+
+            # For contexts, strip frontmatter
+            if node.kind == "ctx":
+                _, template_text = parse_frontmatter(template_text)
+
+            ast = self._parse_template(template_text)
+
+            # Collect with proper file scope
+            with self._addressing.file_scope(template_path, node.origin if node.origin != "self" else None):
+                self._collect_from_ast(ast, result)
+
+        except Exception:
+            # Include not found - skip silently during collection
+            pass
+
+    def _process_frontmatter_includes(
+        self,
+        frontmatter: Optional[ContextFrontmatter],
+        result: CollectedSections
+    ) -> None:
+        """
+        Process sections from frontmatter include directive.
+
+        These are typically meta-sections for adaptive configuration.
+        """
+        if not frontmatter or not frontmatter.include:
+            return
+
+        for section_ref in frontmatter.include:
+            self._collect_section(section_ref, result)
+
+
+__all__ = ["ContextCollector", "CollectedSections"]

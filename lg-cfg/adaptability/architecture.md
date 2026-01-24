@@ -22,150 +22,19 @@ lg/adaptive/
 └── errors.py             # Specialized exceptions
 ```
 
-### 2.2. Module Responsibilities
+### 2.2. Module Responsibilities ✅ IMPLEMENTED
 
-#### `model.py` ✅
-Core data models: `Mode`, `ModeSet`, `Tag`, `TagSet`, `AdaptiveModel`.
-See implementation in `lg/adaptive/model.py`.
+All Phase 1-2 modules are implemented. See source code in `lg/adaptive/` for details.
 
-#### `section_extractor.py`
-Extracts adaptive data from `SectionCfg`:
-
-```python
-def extract_adaptive_data(section_cfg: SectionCfg) -> AdaptiveModel:
-    """
-    Extract mode-sets and tag-sets from section configuration.
-    Returns partial AdaptiveModel (before extends resolution).
-    """
-    ...
-```
-
-#### `extends_resolver.py`
-Resolves `extends` chains with proper merge semantics:
-
-```python
-class ExtendsResolver:
-    def __init__(self, section_service: SectionService):
-        self.section_service = section_service
-        self._resolution_stack: List[str] = []  # For cycle detection
-
-    def resolve_section(self, section_name: str, scope_dir: Path) -> SectionCfg:
-        """
-        Resolve section with all extends applied.
-        Returns merged SectionCfg.
-        """
-        ...
-
-    def _merge_sections(self, parent: SectionCfg, child: SectionCfg) -> SectionCfg:
-        """
-        Merge two sections following rules:
-        - mode-sets/tag-sets: merge by id, child wins on conflict
-        - extensions, adapters, skip_empty, path_labels: merge
-        - filters, targets: NOT inherited (use child's only)
-        """
-        ...
-```
-
-#### `context_collector.py`
-Collects all sections referenced in a context template:
-
-```python
-class ContextCollector:
-    def __init__(self, template_processor: TemplateProcessor):
-        self.template_processor = template_processor
-
-    def collect_sections(self, context_name: str) -> List[ResolvedSection]:
-        """
-        Traverse context template and collect all referenced sections.
-
-        Includes:
-        - Direct ${section} placeholders
-        - Sections from ${tpl:...} and ${ctx:...} includes (transitive)
-        - Sections from frontmatter `include`
-
-        Excludes:
-        - ${md:...} placeholders (no adaptive data)
-
-        Note: Conditions {% if %} are NOT evaluated - all sections are collected.
-        """
-        ...
-```
-
-#### `context_resolver.py`
-Builds final adaptive model for a context:
-
-```python
-class ContextResolver:
-    def __init__(
-        self,
-        section_service: SectionService,
-        extends_resolver: ExtendsResolver,
-        context_collector: ContextCollector
-    ):
-        ...
-
-    def resolve_for_context(self, context_name: str) -> AdaptiveModel:
-        """
-        Build complete AdaptiveModel for context.
-
-        Steps:
-        1. Collect all sections from template + frontmatter
-        2. Resolve extends for each section
-        3. Merge adaptive data in deterministic order
-        4. Validate single integration mode-set rule
-        """
-        ...
-
-    def resolve_for_section(self, section_name: str) -> AdaptiveModel:
-        """
-        Build AdaptiveModel for standalone section render.
-        Only includes this section and its extends chain.
-        """
-        ...
-```
-
-#### `validation.py`
-Validation rules for the adaptive system:
-
-```python
-class AdaptiveValidator:
-    def validate_model(self, model: AdaptiveModel, context_name: str) -> None:
-        """
-        Validate adaptive model.
-
-        Raises:
-        - MultipleIntegrationModeSetsError: if > 1 integration mode-set
-        - NoIntegrationModeSetError: if 0 integration mode-sets
-        """
-        ...
-
-    def validate_mode_reference(
-        self,
-        modeset: str,
-        mode: str,
-        model: AdaptiveModel
-    ) -> None:
-        """
-        Validate {% mode modeset:mode %} reference.
-
-        Raises:
-        - InvalidModeReferenceError: if mode not in model
-        """
-        ...
-
-    def validate_provider_support(
-        self,
-        model: AdaptiveModel,
-        provider_id: str
-    ) -> None:
-        """
-        Validate that provider is supported by integration mode-set.
-
-        Raises:
-        - ProviderNotSupportedError: if no modes have runs for provider
-        """
-        ...
-```
+| Module | Purpose |
+|--------|---------|
+| `model.py` | Core data models: `Mode`, `ModeSet`, `Tag`, `TagSet`, `AdaptiveModel` |
+| `errors.py` | Specialized exceptions for the adaptive system |
+| `section_extractor.py` | Extract `AdaptiveModel` from `SectionCfg` raw dictionaries |
+| `extends_resolver.py` | Resolve `extends` chains with cycle detection and merge |
+| `context_collector.py` | Collect all sections from context template without rendering |
+| `context_resolver.py` | Orchestrate full adaptive model resolution for context |
+| `validation.py` | Validation rules (single integration mode-set, mode references, provider support) |
 
 ---
 
