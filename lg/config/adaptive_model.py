@@ -293,7 +293,7 @@ DEFAULT_TAGS_CONFIG = TagsConfig(
 @dataclass
 class ModeOptions:
     """
-    Typed container for merged options from all active modes.
+    Typed container for mode options.
 
     Contains all possible options that can be defined in modes,
     with reasonable default values.
@@ -305,38 +305,3 @@ class ModeOptions:
     allow_tools: bool = False  # permission to use tools in agent mode
 
     # Additional options can be added as needed
-
-    @classmethod
-    def merge_from_modes(cls, modes_config: ModesConfig, active_modes: Dict[str, str]) -> ModeOptions:
-        """
-        Create MergedModeOptions by merging options from all active modes.
-
-        Args:
-            modes_config: Configuration of all available modes
-            active_modes: Dictionary of active modes {modeset_name: mode_name}
-
-        Returns:
-            MergedModeOptions with combined settings
-        """
-        result = cls()
-
-        # Iterate through all active modes and collect their options
-        for modeset_name, mode_name in active_modes.items():
-            modeset = modes_config.mode_sets.get(modeset_name)
-            if not modeset:
-                continue
-
-            mode = modeset.modes.get(mode_name)
-            if not mode or not mode.options:
-                continue
-
-            # Merge options into typed dataclass
-            for option_key, option_value in mode.options.items():
-                if option_key == "vcs_mode" and isinstance(option_value, str):
-                    if option_value in ("all", "changes", "branch-changes"):
-                        result.vcs_mode = option_value  # type: ignore
-                elif option_key == "allow_tools" and isinstance(option_value, bool):
-                    result.allow_tools = option_value
-                # Additional option handling can be added here
-
-        return result

@@ -8,7 +8,6 @@ from pathlib import Path
 from typing import Optional, cast
 
 from .cache.fs_cache import Cache
-from .config import process_adaptive_options
 from .config.paths import cfg_root
 from .migrate import ensure_cfg_actual
 from .run_context import RunContext
@@ -17,13 +16,13 @@ from .section import SectionService
 from .stats import RunResult, build_run_result_from_collector, StatsCollector
 from .stats.tokenizer import TokenService
 from .template import create_template_processor, TemplateContext
-from .addressing import AddressingContext
+from .addressing import AddressingContext, SECTION_CONFIG
 from .addressing.types import ResolvedSection
-from .template.common_placeholders.configs import SECTION_CONFIG
 from .types import RunOptions, TargetSpec
 from .git import NullVcs, GitVcs, is_git_repo
 from .git import GitIgnoreService
 from .version import tool_version
+from .adaptive.context_resolver import ContextResolver
 
 
 class Engine:
@@ -61,13 +60,13 @@ class Engine:
         tool_ver = tool_version()
         cache = Cache(self.root, enabled=None, fresh=False, tool_version=tool_ver)
 
-        # Check if we're in a git repository (handles worktrees and submodules)
+        # Check if we're in a git repository
         has_git = is_git_repo(self.root)
 
         # VCS
         vcs = GitVcs() if has_git else NullVcs()
 
-        # GitIgnore service (None if not a git repository)
+        # GitIgnore service
         gitignore = GitIgnoreService(self.root) if has_git else None
 
         tokenizer = TokenService(
@@ -87,12 +86,7 @@ class Engine:
             section_service=section_service
         )
 
-        active_tags, mode_options, adaptive_loader = process_adaptive_options(
-            self.root,
-            self.options.modes,
-            self.options.extra_tags
-        )
-
+        # Create RunContext WITHOUT adaptive fields
         self.run_ctx = RunContext(
             root=self.root,
             options=self.options,
@@ -100,16 +94,23 @@ class Engine:
             vcs=vcs,
             gitignore=gitignore,
             tokenizer=tokenizer,
-            adaptive_loader=adaptive_loader,
             addressing=addressing,
-            mode_options=mode_options,
-            active_tags=active_tags,
         )
+
+        # Store section service for later use
+        self._section_service = section_service
 
     def _init_processors(self) -> None:
         """Create main processors."""
         # Statistics collector
         self.stats_collector = StatsCollector(self.run_ctx.options.ctx_limit, self.run_ctx.tokenizer)
+
+        # Context resolver for adaptive model
+        self.context_resolver = ContextResolver(
+            section_service=self._section_service,
+            addressing=self.run_ctx.addressing,
+            cfg_root=self.run_ctx.root / "lg-cfg",
+        )
 
         # Section processor
         self.section_processor = SectionProcessor(
@@ -149,6 +150,12 @@ class Engine:
         # Set target in statistics collector
         self.stats_collector.set_target_name(f"ctx:{context_name}")
 
+        # Resolve adaptive model for this context
+        adaptive_data = self.context_resolver.resolve_for_context(context_name, validate=True)
+
+        # Reset template context with resolved model
+        self.template_processor.template_ctx.reset_for_context(adaptive_data.model)
+
         # Process template
         final_text = self.template_processor.process_template_file(context_name)
 
@@ -173,7 +180,15 @@ class Engine:
         # Set target in statistics collector
         self.stats_collector.set_target_name(f"sec:{section_name}")
 
+        # Resolve adaptive model for this section
+        adaptive_model = self.context_resolver.resolve_for_section(
+            section_name,
+            scope_dir=self.run_ctx.root,
+            validate=True
+        )
+
         template_ctx = TemplateContext(self.run_ctx)
+        template_ctx.reset_for_context(adaptive_model)
 
         # Resolve section reference
         resolved_section = cast(ResolvedSection, self.run_ctx.addressing.resolve(section_name, SECTION_CONFIG))

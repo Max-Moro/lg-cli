@@ -5,7 +5,7 @@ from pathlib import Path
 from lg.section_processor import SectionProcessor
 from lg.stats.collector import StatsCollector
 from lg.template.context import TemplateContext
-from lg.template.common_placeholders.configs import SECTION_CONFIG
+from lg.addressing import SECTION_CONFIG
 
 from tests.infrastructure import make_run_context
 

@@ -10,13 +10,13 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Dict, List, cast
 
-from .configs import TEMPLATE_CONFIG, CONTEXT_CONFIG, SECTION_CONFIG
+from .configs import TEMPLATE_CONFIG, CONTEXT_CONFIG
 from .nodes import SectionNode, IncludeNode
 from ..common import load_template_from, load_context_from, CTX_SUFFIX, TPL_SUFFIX
 from ..handlers import TemplateProcessorHandlers
 from ..nodes import TemplateNode, TemplateAST
 from ..protocols import TemplateRegistryProtocol
-from ...addressing import AddressingContext
+from ...addressing import AddressingContext, SECTION_CONFIG
 from ...addressing.types import ResolvedSection, ResolvedFile
 
 

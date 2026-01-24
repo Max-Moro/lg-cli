@@ -5,8 +5,6 @@ from pathlib import Path
 from typing import Dict, Optional, Set
 
 from .cache.fs_cache import Cache
-from .config.adaptive_loader import AdaptiveConfigLoader
-from .config.adaptive_model import ModeOptions
 from .types import RunOptions
 from .git import VcsProvider
 from .git.gitignore import GitIgnoreService
@@ -117,58 +115,4 @@ class RunContext:
     vcs: VcsProvider
     gitignore: Optional[GitIgnoreService]  # None if no .git directory
     tokenizer: TokenService
-    adaptive_loader: AdaptiveConfigLoader
     addressing: AddressingContext
-    mode_options: ModeOptions = field(default_factory=ModeOptions)  # merged options from modes
-    active_tags: Set[str] = field(default_factory=set)  # all active tags
-
-    def get_effective_task_text(self) -> Optional[str]:
-        """
-        Return effective task text considering priorities.
-
-        Priority:
-        1. Explicitly specified --task (if not empty)
-        2. Tasks from active modes (combined through paragraphs)
-        3. None if neither is specified
-
-        Returns:
-            Effective task text or None
-        """
-        # Priority 1: explicitly specified --task
-        if self.options.task_text and self.options.task_text.strip():
-            return self.options.task_text
-
-        # Priority 2: tasks from active modes
-        mode_tasks = self._collect_mode_tasks()
-        if mode_tasks:
-            # Combine tasks through double newline (paragraphs)
-            return "\n\n".join(mode_tasks)
-
-        # Priority 3: nothing specified
-        return None
-
-    def _collect_mode_tasks(self) -> list[str]:
-        """
-        Collect default_task from all active modes.
-
-        Returns:
-            List of non-empty tasks from modes in modeset name order (for determinism)
-        """
-        modes_config = self.adaptive_loader.get_modes_config()
-        tasks = []
-
-        # Sort by modeset name for determinism
-        for modeset_name in sorted(self.options.modes.keys()):
-            mode_name = self.options.modes[modeset_name]
-
-            modeset = modes_config.mode_sets.get(modeset_name)
-            if not modeset:
-                continue
-
-            mode = modeset.modes.get(mode_name)
-            if not mode or not mode.default_task:
-                continue
-
-            tasks.append(mode.default_task)
-
-        return tasks

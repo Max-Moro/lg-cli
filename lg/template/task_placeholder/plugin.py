@@ -70,7 +70,7 @@ class TaskPlaceholderPlugin(TemplatePlugin):
                 raise RuntimeError(f"Expected TaskNode, got {type(node)}")
 
             # Get effective task text (considering modes)
-            effective_task_text = self.template_ctx.run_ctx.get_effective_task_text()
+            effective_task_text = self.template_ctx.get_effective_task_text()
 
             # If effective task_text exists - return it
             if effective_task_text:

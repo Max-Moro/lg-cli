@@ -30,6 +30,8 @@ from .errors import (
     ScopeNotFoundError,
 )
 
+from .configs import SECTION_CONFIG
+
 
 __all__ = [
     # Types
@@ -46,6 +48,9 @@ __all__ = [
     "AddressingContext",
     "FileResolver",
     "SectionResolver",
+
+    # Configurations
+    "SECTION_CONFIG",
 
     # Exceptions
     "AddressingError",

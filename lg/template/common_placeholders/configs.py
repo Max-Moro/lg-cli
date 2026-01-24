@@ -1,7 +1,8 @@
 """
 Resource configurations for common placeholders.
 
-Defines configs for sections, templates, and contexts.
+Defines configs for templates and contexts.
+Section config moved to lg/addressing/configs.py to avoid circular imports.
 """
 
 from __future__ import annotations
@@ -20,11 +21,5 @@ CONTEXT_CONFIG = ResourceConfig(
     extension=".ctx.md",
 )
 
-# Section reference: resolved via SectionService
-SECTION_CONFIG = ResourceConfig(
-    kind="sec",
-    is_section=True,
-)
 
-
-__all__ = ["TEMPLATE_CONFIG", "CONTEXT_CONFIG", "SECTION_CONFIG"]
+__all__ = ["TEMPLATE_CONFIG", "CONTEXT_CONFIG"]

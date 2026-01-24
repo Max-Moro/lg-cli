@@ -8,11 +8,13 @@ modes, and their overrides via {% mode %} blocks.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Dict, Set, List, Optional
+from typing import Dict, Set, List, Optional, Tuple
 
 from .evaluator import TemplateConditionEvaluator
 from ..config.adaptive_model import ModeOptions
 from ..run_context import RunContext, ConditionContext
+from ..adaptive.model import AdaptiveModel
+from ..adaptive.errors import InvalidModeReferenceError
 
 
 @dataclass
@@ -39,37 +41,186 @@ class TemplateState:
 class TemplateContext:
     """
     Template rendering context with state management.
-
-    Tracks active tags, modes, and their overrides during
-    template processing. Maintains state stack for proper handling
-    of nested {% mode %} blocks.
     """
 
     def __init__(self, run_ctx: RunContext):
         """
-        Initializes the template context.
+        Initialize template context.
 
-        Args:
-            run_ctx: Execution context with base settings
+        Note: Call reset_for_context() with AdaptiveModel before rendering.
         """
         self.run_ctx = run_ctx
-        self.adaptive_loader = run_ctx.adaptive_loader
+        self.adaptive_model: Optional[AdaptiveModel] = None
 
-        # Current state (initialized from run_ctx)
+        # Initialize with empty state (will be set by reset_for_context)
         self.current_state = TemplateState(
-            mode_options=run_ctx.mode_options,
-            active_tags=set(run_ctx.active_tags),
-            active_modes=dict(run_ctx.options.modes)
+            mode_options=ModeOptions(),
+            active_tags=set(),
+            active_modes={}
         )
 
-        # State stack for nested mode blocks
         self.state_stack: List[TemplateState] = []
-
-        # Cache of tag sets for condition evaluation
         self._tagsets_cache: Optional[Dict[str, Set[str]]] = None
-
-        # Condition evaluator (created lazily)
         self._condition_evaluator: Optional[TemplateConditionEvaluator] = None
+
+    def reset_for_context(self, adaptive_model: AdaptiveModel) -> None:
+        """
+        Reset context for processing a specific context/section.
+
+        Must be called before processing each context or section.
+        Validates CLI modes against the model and computes initial state.
+
+        Args:
+            adaptive_model: Resolved adaptive model for the target
+
+        Raises:
+            ValueError: If CLI modes are invalid
+        """
+        self.adaptive_model = adaptive_model
+
+        # Validate CLI modes against model
+        self._validate_cli_modes()
+
+        # Compute state from CLI args and model
+        active_tags, mode_options = self._compute_state_from_cli_and_model()
+
+        self.current_state = TemplateState(
+            mode_options=mode_options,
+            active_tags=active_tags,
+            active_modes=dict(self.run_ctx.options.modes)
+        )
+
+        # Clear caches
+        self.state_stack.clear()
+        self._tagsets_cache = None
+        self._condition_evaluator = None
+
+    def _validate_cli_modes(self) -> None:
+        """
+        Validate CLI modes against the adaptive model.
+
+        Raises:
+            ValueError: If mode set or mode not found
+        """
+        if self.adaptive_model is None:
+            return
+
+        for modeset_id, mode_id in self.run_ctx.options.modes.items():
+            mode_set = self.adaptive_model.get_mode_set(modeset_id)
+            if not mode_set:
+                available = list(self.adaptive_model.mode_sets.keys())
+                raise ValueError(
+                    f"Unknown mode set '{modeset_id}'. "
+                    f"Available: {', '.join(available) if available else 'none'}"
+                )
+
+            if mode_id not in mode_set.modes:
+                available = list(mode_set.modes.keys())
+                raise ValueError(
+                    f"Unknown mode '{mode_id}' in mode set '{modeset_id}'. "
+                    f"Available: {', '.join(available)}"
+                )
+
+    def _compute_state_from_cli_and_model(self) -> Tuple[Set[str], ModeOptions]:
+        """
+        Compute active tags and mode options from CLI args and model.
+
+        Returns:
+            Tuple of (active_tags, mode_options)
+        """
+        # Start with extra tags from CLI
+        active_tags = set(self.run_ctx.options.extra_tags)
+
+        # Add tags from active modes
+        if self.adaptive_model:
+            for modeset_id, mode_id in self.run_ctx.options.modes.items():
+                mode_set = self.adaptive_model.get_mode_set(modeset_id)
+                if mode_set:
+                    mode = mode_set.get_mode(mode_id)
+                    if mode:
+                        active_tags.update(mode.tags)
+
+        # Compute mode options
+        mode_options = self._compute_mode_options()
+
+        return active_tags, mode_options
+
+    def _compute_mode_options(self) -> ModeOptions:
+        """
+        Compute ModeOptions from active modes.
+
+        Returns:
+            ModeOptions with merged settings from all active modes
+        """
+        result = ModeOptions()
+
+        if not self.adaptive_model:
+            return result
+
+        for modeset_id, mode_id in self.run_ctx.options.modes.items():
+            mode_set = self.adaptive_model.get_mode_set(modeset_id)
+            if not mode_set:
+                continue
+            mode = mode_set.get_mode(mode_id)
+            if not mode:
+                continue
+
+            # vcs_mode from modes (last non-default wins)
+            if mode.vcs_mode != "all":
+                result.vcs_mode = mode.vcs_mode
+
+        return result
+
+    def get_effective_task_text(self) -> Optional[str]:
+        """
+        Return effective task text considering priorities.
+
+        Priority:
+        1. Explicitly specified --task (if not empty)
+        2. Tasks from active modes (combined through paragraphs)
+        3. None if neither is specified
+
+        Returns:
+            Effective task text or None
+        """
+        # Priority 1: explicitly specified --task
+        if self.run_ctx.options.task_text and self.run_ctx.options.task_text.strip():
+            return self.run_ctx.options.task_text
+
+        # Priority 2: tasks from active modes
+        mode_tasks = self._collect_mode_tasks()
+        if mode_tasks:
+            return "\n\n".join(mode_tasks)
+
+        return None
+
+    def _collect_mode_tasks(self) -> List[str]:
+        """
+        Collect default_task from all active modes.
+
+        Returns:
+            List of non-empty tasks from modes (sorted by modeset name for determinism)
+        """
+        if not self.adaptive_model:
+            return []
+
+        tasks = []
+
+        # Sort by modeset name for determinism
+        for modeset_id in sorted(self.run_ctx.options.modes.keys()):
+            mode_id = self.run_ctx.options.modes[modeset_id]
+
+            mode_set = self.adaptive_model.get_mode_set(modeset_id)
+            if not mode_set:
+                continue
+
+            mode = mode_set.get_mode(mode_id)
+            if not mode or not mode.default_task:
+                continue
+
+            tasks.append(mode.default_task)
+
+        return tasks
 
     def get_condition_evaluator(self) -> TemplateConditionEvaluator:
         """
@@ -90,32 +241,39 @@ class TemplateContext:
         """
         Enters mode block {% mode modeset:mode %}.
 
-        Saves current state and applies new mode,
-        activating associated tags and options.
+        Validates against the adaptive model, saves current state,
+        and applies new mode with associated tags and options.
 
         Args:
             modeset: Name of mode set
             mode: Name of mode in the set
 
         Raises:
-            ValueError: If mode not found in configuration
+            InvalidModeReferenceError: If mode not found in context's model
         """
         # Save current state to stack
         self.state_stack.append(self.current_state.copy())
 
-        # Get mode information
-        modes_config = self.adaptive_loader.get_modes_config()
-        mode_set = modes_config.mode_sets.get(modeset)
+        # Validate against adaptive model
+        if self.adaptive_model is None:
+            raise RuntimeError("AdaptiveModel not set. Call reset_for_context() first.")
 
+        mode_set = self.adaptive_model.get_mode_set(modeset)
         if not mode_set:
-            raise ValueError(f"Unknown mode set '{modeset}'")
+            available = list(self.adaptive_model.mode_sets.keys())
+            raise InvalidModeReferenceError(
+                modeset=modeset,
+                mode=mode,
+                available_modes=available
+            )
 
-        mode_info = mode_set.modes.get(mode)
+        mode_info = mode_set.get_mode(mode)
         if not mode_info:
             available_modes = list(mode_set.modes.keys())
-            raise ValueError(
-                f"Unknown mode '{mode}' in mode set '{modeset}'. "
-                f"Available modes: {', '.join(available_modes)}"
+            raise InvalidModeReferenceError(
+                modeset=modeset,
+                mode=mode,
+                available_modes=available_modes
             )
 
         # Apply new mode
@@ -125,10 +283,7 @@ class TemplateContext:
         self.current_state.active_tags.update(mode_info.tags)
 
         # Update mode options
-        self.current_state.mode_options = ModeOptions.merge_from_modes(
-            modes_config,
-            self.current_state.active_modes
-        )
+        self.current_state.mode_options = self._compute_mode_options()
 
         # Reset condition evaluator cache
         self._condition_evaluator = None
@@ -199,26 +354,20 @@ class TemplateContext:
             active_tags=self.current_state.active_tags,
             tagsets=tagsets,
             origin=self.run_ctx.addressing.origin,
-            task_text=self.run_ctx.get_effective_task_text(),
+            task_text=self.get_effective_task_text(),
         )
 
     def _get_tagsets(self) -> Dict[str, Set[str]]:
         """
-        Returns map of tag sets.
+        Returns map of tag sets from the adaptive model.
 
-        Caches result to avoid repeated loading.
+        Caches result to avoid repeated computation.
         """
         if self._tagsets_cache is None:
-            tags_config = self.adaptive_loader.get_tags_config()
-
             self._tagsets_cache = {}
 
-            # Add tag sets
-            for set_name, tag_set in tags_config.tag_sets.items():
-                self._tagsets_cache[set_name] = set(tag_set.tags.keys())
-
-            # Add global tags as separate set
-            if tags_config.global_tags:
-                self._tagsets_cache["global"] = set(tags_config.global_tags.keys())
+            if self.adaptive_model:
+                for set_id, tag_set in self.adaptive_model.tag_sets.items():
+                    self._tagsets_cache[set_id] = set(tag_set.tags.keys())
 
         return self._tagsets_cache

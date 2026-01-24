@@ -12,11 +12,10 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import List, Set, Optional, cast
 
-from ..addressing import AddressingContext
+from ..addressing import AddressingContext, SECTION_CONFIG
 from ..addressing.types import ResolvedSection
 from ..section import SectionService
 from ..template.common import load_context_from, CTX_SUFFIX
-from ..template.common_placeholders.configs import SECTION_CONFIG
 from ..template.common_placeholders.nodes import SectionNode, IncludeNode
 from ..template.adaptive.nodes import ConditionalBlockNode, ModeBlockNode, ElseBlockNode, ElifBlockNode
 from ..template.frontmatter import parse_frontmatter, ContextFrontmatter

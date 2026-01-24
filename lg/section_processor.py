@@ -14,6 +14,7 @@ from .stats.collector import StatsCollector
 from .template.context import TemplateContext
 from .addressing.types import ResolvedSection
 from .types import RenderedSection, SectionManifest
+from .adaptive.errors import MetaSectionRenderError
 
 
 class SectionProcessor:
@@ -84,6 +85,10 @@ class SectionProcessor:
         Returns:
             Rendered section
         """
+        # Check if this is a meta-section (no filters)
+        if resolved.section_config.is_meta_section():
+            raise MetaSectionRenderError(section_name=resolved.name)
+
         manifest = self._build_manifest(resolved, template_ctx)
 
         plan = build_section_plan(manifest, template_ctx)
