@@ -355,10 +355,10 @@ def create_template_processor(run_ctx: RunContext) -> TemplateProcessor:
     processor = TemplateProcessor(run_ctx, registry)
 
     # Register available plugins (in priority order)
-    from .common_placeholders import CommonPlaceholdersPlugin
-    from .adaptive import AdaptivePlugin
-    from .md_placeholders import MdPlaceholdersPlugin
-    from .task_placeholder import TaskPlaceholderPlugin
+    from .common_placeholders.plugin import CommonPlaceholdersPlugin
+    from .adaptive.plugin import AdaptivePlugin
+    from .md_placeholders.plugin import MdPlaceholdersPlugin
+    from .task_placeholder.plugin import TaskPlaceholderPlugin
 
     registry.register_plugin(CommonPlaceholdersPlugin(processor.template_ctx))
     registry.register_plugin(AdaptivePlugin(processor.template_ctx))

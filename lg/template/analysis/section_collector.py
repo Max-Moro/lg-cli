@@ -1,9 +1,14 @@
 """
-Context collector for the adaptive system.
+Section collector for template analysis.
 
 Collects all sections referenced in a context template
 without performing full rendering. Used for building
 the complete adaptive model for a context.
+
+This module belongs in the template package because it:
+- Traverses template AST structures
+- Uses template-specific node types
+- Creates template registry for parsing
 """
 
 from __future__ import annotations
@@ -12,16 +17,16 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import List, Set, Optional, cast
 
-from ..addressing import AddressingContext, SECTION_CONFIG
-from ..addressing.types import ResolvedSection
-from ..section import SectionService
-from ..template.common import load_context_from, CTX_SUFFIX
-from ..template.common_placeholders.nodes import SectionNode, IncludeNode
-from ..template.adaptive.nodes import ConditionalBlockNode, ModeBlockNode, ElseBlockNode, ElifBlockNode
-from ..template.frontmatter import parse_frontmatter, ContextFrontmatter
-from ..template.nodes import TemplateNode, TemplateAST
-from ..template.parser import parse_template
-from ..template.registry import TemplateRegistry
+from ...addressing import AddressingContext, SECTION_CONFIG
+from ...addressing.types import ResolvedSection
+from ...section import SectionService
+from ..common import load_context_from, load_template_from, CTX_SUFFIX, TPL_SUFFIX
+from ..common_placeholders.nodes import SectionNode, IncludeNode
+from ..adaptive.nodes import ConditionalBlockNode, ModeBlockNode
+from ..frontmatter import parse_frontmatter, ContextFrontmatter
+from ..nodes import TemplateNode, TemplateAST
+from ..parser import parse_template
+from ..registry import TemplateRegistry
 
 
 @dataclass
@@ -53,7 +58,7 @@ class CollectedSections:
         return True
 
 
-class ContextCollector:
+class SectionCollector:
     """
     Collector for sections referenced in a context template.
 
@@ -138,10 +143,10 @@ class ContextCollector:
         # Create registry with built-in tokens
         registry = TemplateRegistry()
 
-        # Register plugins for token/parser rules
-        from ..template.common_placeholders.plugin import CommonPlaceholdersPlugin
-        from ..template.adaptive.plugin import AdaptivePlugin
-        from ..template.md_placeholders.plugin import MdPlaceholdersPlugin
+        # Import plugins locally to avoid circular imports at module level
+        from ..common_placeholders.plugin import CommonPlaceholdersPlugin
+        from ..adaptive.plugin import AdaptivePlugin
+        from ..md_placeholders.plugin import MdPlaceholdersPlugin
 
         # Create dummy context for plugin initialization
         # Plugins need handlers but we won't use them for collection
@@ -238,13 +243,9 @@ class ContextCollector:
         self._visited_includes.add(include_key)
 
         try:
-            # Load included template
-            from ..template.common import load_template_from, load_context_from as load_ctx
-            from ..template.common import TPL_SUFFIX
-
             # Determine which loader to use
             if node.kind == "ctx":
-                loader = load_ctx
+                loader = load_context_from
                 suffix = CTX_SUFFIX
             else:
                 loader = load_template_from
@@ -292,4 +293,4 @@ class ContextCollector:
             self._collect_section(section_ref, result)
 
 
-__all__ = ["ContextCollector", "CollectedSections"]
+__all__ = ["SectionCollector", "CollectedSections"]

@@ -9,6 +9,5 @@ Handles:
 from __future__ import annotations
 
 from .nodes import TaskNode
-from .plugin import TaskPlaceholderPlugin
 
-__all__ = ["TaskPlaceholderPlugin", "TaskNode"]
+__all__ = ["TaskNode"]

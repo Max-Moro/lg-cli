@@ -11,6 +11,5 @@ Handles:
 from __future__ import annotations
 
 from .nodes import SectionNode, IncludeNode
-from .plugin import CommonPlaceholdersPlugin
 
-__all__ = ["CommonPlaceholdersPlugin", "SectionNode", "IncludeNode"]
+__all__ = ["SectionNode", "IncludeNode"]

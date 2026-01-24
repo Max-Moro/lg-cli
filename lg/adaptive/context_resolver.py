@@ -14,8 +14,8 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Dict, Optional
 
-from .context_collector import ContextCollector, CollectedSections
 from .extends_resolver import ExtendsResolver
+from ..template.analysis import SectionCollector, CollectedSections
 from .model import AdaptiveModel
 from .validation import AdaptiveValidator
 from ..addressing import AddressingContext
@@ -55,7 +55,7 @@ class ContextResolver:
     Resolver for context adaptive models.
 
     Brings together:
-    - ContextCollector: finds all sections in context
+    - SectionCollector: finds all sections in context
     - ExtendsResolver: resolves section inheritance
     - AdaptiveValidator: validates business rules
 
@@ -82,7 +82,7 @@ class ContextResolver:
 
         # Create sub-resolvers
         self._extends_resolver = ExtendsResolver(section_service)
-        self._collector = ContextCollector(section_service, addressing, cfg_root)
+        self._collector = SectionCollector(section_service, addressing, cfg_root)
         self._validator = AdaptiveValidator()
 
         # Cache: context_name -> ContextAdaptiveData

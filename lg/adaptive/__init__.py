@@ -39,8 +39,6 @@ from .validation import (
 
 from .extends_resolver import ExtendsResolver, ResolvedSectionData
 
-from .context_collector import ContextCollector, CollectedSections
-
 from .context_resolver import ContextResolver, ContextAdaptiveData
 
 __all__ = [
@@ -71,9 +69,6 @@ __all__ = [
     # Extends resolver
     "ExtendsResolver",
     "ResolvedSectionData",
-    # Context collector
-    "ContextCollector",
-    "CollectedSections",
     # Context resolver
     "ContextResolver",
     "ContextAdaptiveData",

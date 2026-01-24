@@ -13,6 +13,5 @@ Handles:
 from __future__ import annotations
 
 from .nodes import MarkdownFileNode
-from .plugin import MdPlaceholdersPlugin
 
-__all__ = ["MdPlaceholdersPlugin", "MarkdownFileNode"]
+__all__ = ["MarkdownFileNode"]

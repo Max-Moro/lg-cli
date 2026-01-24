@@ -30,8 +30,8 @@ class TestTaskPlaceholderParsing:
         template_ctx = TemplateContext(run_ctx)
 
         # Register all necessary plugins in the correct order
-        from lg.template.common_placeholders import CommonPlaceholdersPlugin
-        from lg.template.task_placeholder import TaskPlaceholderPlugin
+        from lg.template.common_placeholders.plugin import CommonPlaceholdersPlugin
+        from lg.template.task_placeholder.plugin import TaskPlaceholderPlugin
 
         # First register basic placeholders
         common_plugin = CommonPlaceholdersPlugin(template_ctx)
@@ -180,8 +180,8 @@ class TestTaskPlaceholderEdgeCases:
         template_ctx = TemplateContext(run_ctx)
 
         # Register all necessary plugins in the correct order
-        from lg.template.common_placeholders import CommonPlaceholdersPlugin
-        from lg.template.task_placeholder import TaskPlaceholderPlugin
+        from lg.template.common_placeholders.plugin import CommonPlaceholdersPlugin
+        from lg.template.task_placeholder.plugin import TaskPlaceholderPlugin
 
         # First register basic placeholders
         common_plugin = CommonPlaceholdersPlugin(template_ctx)

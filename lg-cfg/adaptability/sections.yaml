@@ -34,3 +34,4 @@ src:
               - "/*.py"
               - "/common_placeholders/"
               - "/adaptive/"
+              - "/analysis/"
