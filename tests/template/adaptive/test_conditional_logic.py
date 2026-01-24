@@ -10,6 +10,7 @@ from __future__ import annotations
 import pytest
 
 from lg.template.processor import TemplateProcessingError
+from lg.template.tokens import ParserError
 from .conftest import (
     adaptive_project, make_run_options, render_template,
     create_conditional_template, TagConfig, TagSetConfig,
@@ -487,7 +488,7 @@ def test_invalid_condition_syntax_errors(adaptive_project):
         create_conditional_template(root, template_name, invalid_content)
 
         # Check that processing error occurs
-        with pytest.raises((TemplateProcessingError, ValueError)):
+        with pytest.raises((TemplateProcessingError, ValueError, ParserError)):
             render_template(root, f"ctx:{template_name}", make_run_options())
 
 
