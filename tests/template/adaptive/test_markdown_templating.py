@@ -1124,6 +1124,7 @@ Regular content.
 
     write(root / "lg-cfg" / "sections.yaml", textwrap.dedent("""
     condition-test:
+      extends: ["ai-interaction", "tags"]
       extensions: [".md"]
       markdown:
         enable_templating: true

@@ -13,9 +13,10 @@ from __future__ import annotations
 import pytest
 
 from .conftest import (
-    adaptive_md_project, create_template, render_template, 
-    make_run_options, write_markdown
+    adaptive_md_project, create_template, render_template,
+    make_run_options, write_markdown, write
 )
+from tests.infrastructure import create_tag_meta_section, TagSetConfig, TagConfig
 
 
 def test_conditional_md_placeholder_basic_tag(adaptive_md_project):
@@ -219,22 +220,17 @@ def test_conditional_md_placeholder_tagset_conditions(adaptive_md_project):
     """Test TAGSET conditions for md-placeholders."""
     root = adaptive_md_project
 
-    # Add tag-sets to configuration
-    from .conftest import write
-    write(root / "lg-cfg" / "tags.yaml", """
-tag-sets:
-  deployment-type:
-    title: "Deployment types"
-    tags:
-      cloud:
-        title: "Cloud deployment"
-      onprem:
-        title: "On-premises deployment"
-
-tags:
-  basic:
-    title: "Basic documentation"
-""")
+    # Add tag-sets using new meta-section API
+    deployment_tags = {
+        "deployment-type": TagSetConfig(
+            title="Deployment types",
+            tags={
+                "cloud": TagConfig(title="Cloud deployment"),
+                "onprem": TagConfig(title="On-premises deployment")
+            }
+        )
+    }
+    create_tag_meta_section(root, "deployment-tags", deployment_tags)
 
     create_template(root, "conditional-tagset-test", """# TagSet Conditions Test
 
@@ -246,7 +242,7 @@ ${md:deployment/cloud, if:TAGSET:deployment-type:cloud}
 
 ## OnPrem Deployment Type
 ${md:deployment/onprem, if:TAGSET:deployment-type:onprem}
-""")
+""", include_meta_sections=["ai-interaction", "deployment-tags"])
 
     # Without tags: TAGSET conditions are true (no tags from the set are active)
     result1 = render_template(root, "ctx:conditional-tagset-test")
