@@ -279,33 +279,51 @@ def create_template(root: Path, name: str, content: str, template_type: str = "c
     return write(root / "lg-cfg" / f"{name}{suffix}", content)
 
 
-def create_basic_sections_yaml(root: Path) -> Path:
-    """Creates basic sections.yaml for tests (from adaptive tests)."""
-    content = textwrap.dedent("""
-    src:
-      extensions: [".py", ".md"]
-      filters:
-        mode: allow
-        allow:
-          - "/src/**"
-    
-    docs:
-      extensions: [".md"]
-      markdown:
-        max_heading_level: 2
-      filters:
-        mode: allow  
-        allow:
-          - "/docs/**"
-    
-    tests:
-      extensions: [".py"]
-      filters:
-        mode: allow
-        allow:
-          - "/tests/**"
-    """).strip() + "\n"
-    
+def create_basic_sections_yaml(
+    root: Path,
+    extends_from: Optional[List[str]] = None
+) -> Path:
+    """
+    Creates basic sections.yaml for tests (from adaptive tests).
+
+    Args:
+        root: Project root
+        extends_from: List of meta-sections to inherit from (for adaptive features).
+                      Default: ["ai-interaction"] to ensure integration mode-set is available.
+    """
+    if extends_from is None:
+        extends_from = ["ai-interaction"]
+
+    # Build extends line if needed (with proper YAML indentation)
+    extends_line = ""
+    if extends_from:
+        extends_yaml = ", ".join(f'"{s}"' for s in extends_from)
+        extends_line = f"extends: [{extends_yaml}]\n  "
+
+    content = f"""src:
+  {extends_line}extensions: [".py", ".md"]
+  filters:
+    mode: allow
+    allow:
+      - "/src/**"
+
+docs:
+  {extends_line}extensions: [".md"]
+  markdown:
+    max_heading_level: 2
+  filters:
+    mode: allow
+    allow:
+      - "/docs/**"
+
+tests:
+  {extends_line}extensions: [".py"]
+  filters:
+    mode: allow
+    allow:
+      - "/tests/**"
+"""
+
     return write(root / "lg-cfg" / "sections.yaml", content)
 
 
