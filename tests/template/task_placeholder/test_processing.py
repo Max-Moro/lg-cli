@@ -8,7 +8,7 @@ Checks correct processing and substitution of values:
 - Combinations of different cases
 """
 
-from tests.infrastructure import write, render_template, make_run_options
+from tests.infrastructure import write, write_context, render_template, make_run_options
 
 
 class TestTaskPlaceholderProcessing:
@@ -16,7 +16,7 @@ class TestTaskPlaceholderProcessing:
 
     def test_simple_task_with_value(self, task_project, task_text_simple):
         """Test simple ${task} with value set."""
-        write(task_project / "lg-cfg" / "test.ctx.md", "Task: ${task}")
+        write_context(task_project, "test", "Task: ${task}")
         
         options = make_run_options(task_text=task_text_simple)
         
@@ -27,7 +27,7 @@ class TestTaskPlaceholderProcessing:
     
     def test_simple_task_without_value(self, task_project):
         """Test simple ${task} without value set."""
-        write(task_project / "lg-cfg" / "test.ctx.md", "Task: ${task}\nEnd")
+        write_context(task_project, "test", "Task: ${task}\nEnd")
 
         options = make_run_options()
         # task_text not set (None)
@@ -40,7 +40,7 @@ class TestTaskPlaceholderProcessing:
     def test_task_with_default_used(self, task_project):
         """Test ${task:prompt:"..."} when task_text is not set."""
         template = '${task:prompt:"No specific task"}'
-        write(task_project / "lg-cfg" / "test.ctx.md", template)
+        write_context(task_project, "test", template)
 
         options = make_run_options()
         # task_text not set
@@ -52,7 +52,7 @@ class TestTaskPlaceholderProcessing:
     def test_task_with_default_overridden(self, task_project, task_text_simple):
         """Test ${task:prompt:"..."} when task_text is set."""
         template = '${task:prompt:"Default task"}'
-        write(task_project / "lg-cfg" / "test.ctx.md", template)
+        write_context(task_project, "test", template)
 
         options = make_run_options(task_text=task_text_simple)
 
@@ -64,7 +64,7 @@ class TestTaskPlaceholderProcessing:
     
     def test_multiline_task_text(self, task_project, task_text_multiline):
         """Test with multiline task text."""
-        write(task_project / "lg-cfg" / "test.ctx.md", "## Task\n\n${task}\n\n## Notes")
+        write_context(task_project, "test", "## Task\n\n${task}\n\n## Notes")
         
         options = make_run_options(task_text=task_text_multiline)
         
@@ -76,7 +76,7 @@ class TestTaskPlaceholderProcessing:
     
     def test_task_with_special_characters(self, task_project, task_text_with_quotes):
         """Test with special characters in task text."""
-        write(task_project / "lg-cfg" / "test.ctx.md", "${task}")
+        write_context(task_project, "test", "${task}")
         
         options = make_run_options(task_text=task_text_with_quotes)
         
@@ -92,7 +92,7 @@ ${task}
 ## Details
 ${task}
 """
-        write(task_project / "lg-cfg" / "test.ctx.md", template)
+        write_context(task_project, "test", template)
 
         options = make_run_options(task_text=task_text_simple)
 
@@ -104,7 +104,7 @@ ${task}
     def test_task_placeholder_in_template(self, task_project, task_text_simple):
         """Test task placeholder in nested template."""
         write(task_project / "lg-cfg" / "header.tpl.md", "Task: ${task}")
-        write(task_project / "lg-cfg" / "test.ctx.md", "${tpl:header}\n\n${src}")
+        write_context(task_project, "test", "${tpl:header}\n\n${src}")
         
         options = make_run_options(task_text=task_text_simple)
         
@@ -114,7 +114,7 @@ ${task}
     
     def test_empty_task_text(self, task_project):
         """Test with empty string in task_text."""
-        write(task_project / "lg-cfg" / "test.ctx.md", "Task: ${task}\nEnd")
+        write_context(task_project, "test", "Task: ${task}\nEnd")
 
         options = make_run_options(task_text="")
 
@@ -125,7 +125,7 @@ ${task}
     
     def test_whitespace_only_task_text(self, task_project):
         """Test with task_text containing only whitespace."""
-        write(task_project / "lg-cfg" / "test.ctx.md", "Task: ${task}\nEnd")
+        write_context(task_project, "test", "Task: ${task}\nEnd")
 
         options = make_run_options(task_text="   \n\t  ")
 
@@ -148,7 +148,7 @@ ${task}
 ## Source Code
 ${src}
 """
-        write(task_project / "lg-cfg" / "test.ctx.md", template)
+        write_context(task_project, "test", template)
         
         options = make_run_options(task_text=task_text_simple)
         
@@ -167,7 +167,7 @@ ${src}
 ## Current Task
 ${task}
 """
-        write(task_project / "lg-cfg" / "test.ctx.md", template)
+        write_context(task_project, "test", template)
 
         options = make_run_options(task_text=task_text_simple)
 
@@ -191,7 +191,7 @@ ${task}
 
 ${src}
 """
-        write(task_project / "lg-cfg" / "test.ctx.md", template)
+        write_context(task_project, "test", template)
         
         options = make_run_options(task_text=task_text_simple)
         
@@ -214,7 +214,7 @@ class TestTaskPlaceholderEdgeCases:
 
 _Note_: See issue #123
 """
-        write(task_project / "lg-cfg" / "test.ctx.md", "${task}")
+        write_context(task_project, "test", "${task}")
         
         options = make_run_options(task_text=task_text)
         
@@ -227,7 +227,7 @@ _Note_: See issue #123
     def test_default_with_escape_sequences(self, task_project):
         """Test default value with escape sequences."""
         template = r'${task:prompt:"Line 1\nLine 2\tTabbed"}'
-        write(task_project / "lg-cfg" / "test.ctx.md", template)
+        write_context(task_project, "test", template)
 
         options = make_run_options()
         # task_text not set
@@ -243,7 +243,7 @@ _Note_: See issue #123
     def test_task_none_vs_empty_string(self, task_project):
         """Test difference between None and empty string."""
         template = '${task:prompt:"Default"}'
-        write(task_project / "lg-cfg" / "test.ctx.md", template)
+        write_context(task_project, "test", template)
 
         # Case 1: task_text = None (default)
         options1 = make_run_options()

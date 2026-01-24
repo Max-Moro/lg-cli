@@ -246,23 +246,50 @@ def create_tags_yaml(
     return tags_file
 
 
-def create_basic_lg_cfg(root: Path) -> Path:
-    """Creates minimal configuration lg-cfg/sections.yaml."""
-    content = textwrap.dedent("""
-    all:
-      extensions: [".md"]
-      markdown:
-        max_heading_level: 2
-      filters:
-        mode: allow
-        allow:
-          - "/**"
-    """).strip() + "\n"
-    
+def create_basic_lg_cfg(root: Path, with_integration_mode: bool = True) -> Path:
+    """
+    Creates minimal configuration lg-cfg/sections.yaml.
+
+    Args:
+        root: Project root
+        with_integration_mode: If True, also create ai-interaction meta-section
+                               and add extends to sections. Default: True.
+    """
+    if with_integration_mode:
+        create_integration_mode_section(root)
+        content = textwrap.dedent("""
+        all:
+          extends: ["ai-interaction"]
+          extensions: [".md"]
+          markdown:
+            max_heading_level: 2
+          filters:
+            mode: allow
+            allow:
+              - "/**"
+        """).strip() + "\n"
+    else:
+        content = textwrap.dedent("""
+        all:
+          extensions: [".md"]
+          markdown:
+            max_heading_level: 2
+          filters:
+            mode: allow
+            allow:
+              - "/**"
+        """).strip() + "\n"
+
     return write(root / "lg-cfg" / "sections.yaml", content)
 
 
-def create_template(root: Path, name: str, content: str, template_type: str = "ctx") -> Path:
+def create_template(
+    root: Path,
+    name: str,
+    content: str,
+    template_type: str = "ctx",
+    include_meta_sections: Optional[List[str]] = None
+) -> Path:
     """
     Creates a template or context.
 
@@ -271,17 +298,38 @@ def create_template(root: Path, name: str, content: str, template_type: str = "c
         name: File name (without extension)
         content: Template content
         template_type: Type ("ctx" or "tpl")
+        include_meta_sections: List of meta-sections to include via frontmatter.
+                               Only applicable for "ctx" type. If ["ai-interaction"]
+                               is in the list, the meta-section will be auto-created.
+                               Default: ["ai-interaction"] for ctx type.
 
     Returns:
         Path to the created file
     """
+    # Default: add ai-interaction for context files
+    if include_meta_sections is None and template_type == "ctx":
+        include_meta_sections = ["ai-interaction"]
+
+    # Create meta-sections and add frontmatter if needed
+    final_content = content
+    if include_meta_sections and template_type == "ctx":
+        # Create ai-interaction meta-section if needed
+        if "ai-interaction" in include_meta_sections:
+            create_integration_mode_section(root)
+
+        # Add frontmatter
+        include_yaml = ", ".join(f'"{s}"' for s in include_meta_sections)
+        frontmatter = f"---\ninclude: [{include_yaml}]\n---\n"
+        final_content = frontmatter + content
+
     suffix = f".{template_type}.md"
-    return write(root / "lg-cfg" / f"{name}{suffix}", content)
+    return write(root / "lg-cfg" / f"{name}{suffix}", final_content)
 
 
 def create_basic_sections_yaml(
     root: Path,
-    extends_from: Optional[List[str]] = None
+    extends_from: Optional[List[str]] = None,
+    create_meta_sections: bool = True
 ) -> Path:
     """
     Creates basic sections.yaml for tests (from adaptive tests).
@@ -290,9 +338,15 @@ def create_basic_sections_yaml(
         root: Project root
         extends_from: List of meta-sections to inherit from (for adaptive features).
                       Default: ["ai-interaction"] to ensure integration mode-set is available.
+        create_meta_sections: If True, automatically create meta-sections referenced in extends_from.
+                              Default: True.
     """
     if extends_from is None:
         extends_from = ["ai-interaction"]
+
+    # Create referenced meta-sections if requested
+    if create_meta_sections and "ai-interaction" in extends_from:
+        create_integration_mode_section(root)
 
     # Build extends line if needed (with proper YAML indentation)
     extends_line = ""
@@ -328,10 +382,18 @@ tests:
 
 
 # Pre-built section configurations
-def get_basic_sections_config() -> Dict[str, Dict[str, Any]]:
-    """Returns basic sections configuration for tests."""
+def get_basic_sections_config(with_extends: bool = True) -> Dict[str, Dict[str, Any]]:
+    """
+    Returns basic sections configuration for tests.
+
+    Args:
+        with_extends: If True, adds extends: ["ai-interaction"] to all sections.
+    """
+    extends_part = {"extends": ["ai-interaction"]} if with_extends else {}
+
     return {
         "src": {
+            **extends_part,
             "extensions": [".py"],
             "filters": {
                 "mode": "allow",
@@ -339,6 +401,7 @@ def get_basic_sections_config() -> Dict[str, Dict[str, Any]]:
             }
         },
         "docs": {
+            **extends_part,
             "extensions": [".md"],
             "markdown": {
                 "max_heading_level": 2
@@ -349,6 +412,7 @@ def get_basic_sections_config() -> Dict[str, Dict[str, Any]]:
             }
         },
         "all": {
+            **extends_part,
             "extensions": [".py", ".md", ".ts"],
             "filters": {
                 "mode": "allow",
@@ -356,6 +420,7 @@ def get_basic_sections_config() -> Dict[str, Dict[str, Any]]:
             }
         },
         "tests": {
+            **extends_part,
             "extensions": [".py"],
             "filters": {
                 "mode": "allow",

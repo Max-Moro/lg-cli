@@ -3,18 +3,23 @@ from pathlib import Path
 
 import pytest
 
-from tests.infrastructure import write
+from tests.infrastructure import write, write_context, create_integration_mode_section
 
 
 @pytest.fixture
 def tmpproj(tmp_path: Path):
     """Minimal project schema: lg-cfg/sections.yaml + ctx/tpl in lg-cfg/ root."""
     root = tmp_path
-    # sections.yaml with two sections
+
+    # Create integration mode section for adaptive system
+    create_integration_mode_section(root)
+
+    # sections.yaml with two sections (with extends for adaptive support)
     write(
         root / "lg-cfg" / "sections.yaml",
         textwrap.dedent("""
         all:
+          extends: ["ai-interaction"]
           extensions: [".md", ".py"]
           markdown:
             max_heading_level: 2
@@ -23,6 +28,7 @@ def tmpproj(tmp_path: Path):
               python:
                 strip_function_bodies: true
         docs:
+          extends: ["ai-interaction"]
           extensions: [".md"]
           markdown:
             max_heading_level: 3
@@ -32,8 +38,8 @@ def tmpproj(tmp_path: Path):
     )
     # template and two contexts
     write(root / "lg-cfg" / "a.tpl.md", "Intro\n\n${docs}\n")
-    write(root / "lg-cfg" / "a.ctx.md", "Intro (ctx)\n\n${docs}\n")
-    write(root / "lg-cfg" / "b.ctx.md", "X ${tpl:a} Y ${all}\n")
+    write_context(root, "a", "Intro (ctx)\n\n${docs}\n")
+    write_context(root, "b", "X ${tpl:a} Y ${all}\n")
     return root
 
 @pytest.fixture(autouse=True)

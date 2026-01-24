@@ -408,7 +408,8 @@ def create_conditional_template(
     root: Path,
     name: str,
     content: str,
-    template_type: str = "ctx"
+    template_type: str = "ctx",
+    include_meta_sections: list | None = None
 ) -> Path:
     """
     Creates a template with conditional logic.
@@ -418,19 +419,38 @@ def create_conditional_template(
         name: Template name (without extension)
         content: Template content with conditional blocks
         template_type: Template type ("ctx" or "tpl")
+        include_meta_sections: List of meta-sections to include via frontmatter.
+                               Default: ["ai-interaction"] for ctx type.
 
     Returns:
         Path to created file
     """
+    # Default: add ai-interaction for context files
+    if include_meta_sections is None and template_type == "ctx":
+        include_meta_sections = ["ai-interaction"]
+
+    # Create meta-sections and add frontmatter if needed
+    final_content = content
+    if include_meta_sections and template_type == "ctx":
+        # Create ai-interaction meta-section if needed
+        if "ai-interaction" in include_meta_sections:
+            create_integration_mode_section(root)
+
+        # Add frontmatter
+        include_yaml = ", ".join(f'"{s}"' for s in include_meta_sections)
+        frontmatter = f"---\ninclude: [{include_yaml}]\n---\n"
+        final_content = frontmatter + content
+
     suffix = f".{template_type}.md"
-    return write(root / "lg-cfg" / f"{name}{suffix}", content)
+    return write(root / "lg-cfg" / f"{name}{suffix}", final_content)
 
 
 def create_mode_template(
     root: Path,
     name: str,
     sections_by_mode: Dict[str, List[str]],
-    template_type: str = "ctx"
+    template_type: str = "ctx",
+    include_meta_sections: list | None = None
 ) -> Path:
     """
     Creates a template with mode blocks.
@@ -440,6 +460,7 @@ def create_mode_template(
         name: Template name
         sections_by_mode: Dictionary {mode_spec: [section_names]}
         template_type: Template type
+        include_meta_sections: List of meta-sections to include.
 
     Returns:
         Path to created file
@@ -453,7 +474,7 @@ def create_mode_template(
         content_parts.append("{% endmode %}\n")
 
     content = "\n".join(content_parts)
-    return create_conditional_template(root, name, content, template_type)
+    return create_conditional_template(root, name, content, template_type, include_meta_sections)
 
 
 # ====================== Exports ======================

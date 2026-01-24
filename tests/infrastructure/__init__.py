@@ -22,13 +22,13 @@ from .config_builders import (
     create_integration_mode_section, create_adaptive_section,
 )
 # Core utilities that should be available everywhere
-from .file_utils import write, write_source_file, write_markdown
+from .file_utils import write, write_source_file, write_markdown, write_context
 from .rendering_utils import load_sections, render_template, make_run_options, make_run_context, make_engine
 from .testing_utils import lctx_md
 
 __all__ = [
     # File utilities
-    "write", "write_source_file", "write_markdown",
+    "write", "write_source_file", "write_markdown", "write_context",
 
     # Rendering utilities
     "load_sections", "render_template", "make_run_options", "make_run_context", "make_engine",

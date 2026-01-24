@@ -15,7 +15,7 @@ Verify:
 from pathlib import Path
 import pytest
 
-from tests.infrastructure import write, make_run_options, make_engine
+from tests.infrastructure import write, write_context, make_run_options, make_engine, create_integration_mode_section
 from lg.engine import _parse_target
 
 
@@ -23,9 +23,11 @@ from lg.engine import _parse_target
 
 def create_md_only_project(root: Path, *, max_h: int | None = 2, strip_h1: bool = False) -> None:
     """Creates minimal project with section for markdown files."""
+    create_integration_mode_section(root)
     write(
         root / "lg-cfg" / "sections.yaml",
         f"""all:
+  extends: ["ai-interaction"]
   extensions: [".md"]
   markdown:
     max_heading_level: {max_h if max_h is not None else 'null'}
@@ -40,9 +42,11 @@ def create_md_only_project(root: Path, *, max_h: int | None = 2, strip_h1: bool 
 
 def create_py_only_project(root: Path) -> None:
     """Creates minimal project with section for Python files."""
+    create_integration_mode_section(root)
     write(
         root / "lg-cfg" / "sections.yaml",
         """all:
+  extends: ["ai-interaction"]
   extensions: [".py"]
   filters:
     mode: allow
@@ -162,7 +166,7 @@ class TestContextTemplateOverhead:
         """
         create_py_only_project(tmp_path)
         write(tmp_path / "m.py", "x = 1\n")
-        write(tmp_path / "lg-cfg" / "glued.ctx.md", "Intro\n\n${all}\n\nOutro\n")
+        write_context(tmp_path, "glued", "Intro\n\n${all}\n\nOutro\n")
         
         engine = make_engine(tmp_path, make_run_options())
         report = engine.generate_report(_parse_target("ctx:glued", tmp_path))
@@ -188,7 +192,7 @@ class TestContextTemplateOverhead:
         """
         create_py_only_project(tmp_path)
         write(tmp_path / "m.py", "x = 1\n")
-        write(tmp_path / "lg-cfg" / "glued.ctx.md", "Intro text\n\n${all}\n\nOutro text\n")
+        write_context(tmp_path, "glued", "Intro text\n\n${all}\n\nOutro text\n")
         
         engine = make_engine(tmp_path, make_run_options())
         report = engine.generate_report(_parse_target("ctx:glued", tmp_path))

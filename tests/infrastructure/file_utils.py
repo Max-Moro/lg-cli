@@ -88,6 +88,48 @@ def write_markdown(p: Path, title: str = "", content: str = "", h1_prefix: str =
     return write(p, "\n".join(lines) + "\n")
 
 
+def write_context(
+    root: Path,
+    name: str,
+    content: str,
+    include_meta_sections: list[str] | None = None
+) -> Path:
+    """
+    Creates a context file (.ctx.md) with automatic frontmatter.
+
+    Automatically adds ai-interaction meta-section and frontmatter for contexts
+    that need integration mode-set support.
+
+    Args:
+        root: Project root (NOT lg-cfg directory)
+        name: Context name (without .ctx.md suffix)
+        content: Context content (without frontmatter)
+        include_meta_sections: Meta-sections to include. Default: ["ai-interaction"].
+                               Pass empty list [] to disable frontmatter.
+
+    Returns:
+        Path to the created context file
+    """
+    # Default: include ai-interaction
+    if include_meta_sections is None:
+        include_meta_sections = ["ai-interaction"]
+
+    # Build frontmatter if needed
+    final_content = content
+    if include_meta_sections:
+        # Create ai-interaction meta-section if needed
+        if "ai-interaction" in include_meta_sections:
+            from .config_builders import create_integration_mode_section
+            create_integration_mode_section(root)
+
+        # Add frontmatter
+        include_yaml = ", ".join(f'"{s}"' for s in include_meta_sections)
+        frontmatter = f"---\ninclude: [{include_yaml}]\n---\n"
+        final_content = frontmatter + content
+
+    return write(root / "lg-cfg" / f"{name}.ctx.md", final_content)
+
+
 __all__ = [
-    "write", "write_source_file", "write_markdown"
+    "write", "write_source_file", "write_markdown", "write_context"
 ]
