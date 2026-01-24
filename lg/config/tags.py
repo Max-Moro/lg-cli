@@ -125,18 +125,42 @@ def load_tags(root: Path) -> TagsConfig:
     return config
 
 
-def list_tag_sets(root: Path) -> TagSetsList:
+def list_tag_sets(root: Path, context: str) -> TagSetsList:
     """
-    Returns a typed object with a list of tag sets for CLI command 'list tag-sets'.
+    Returns tag sets for CLI command 'list tag-sets'.
+
+    Uses new adaptive system:
+    1. Resolve AdaptiveModel for context via ContextResolver
+    2. Return all tag-sets from the model
+
+    Args:
+        root: Repository root
+        context: Context name (required)
 
     Returns:
-        TagSetsList: Typed object with an array of tag sets
+        TagSetsList with tag sets from adaptive model
+
+    Raises:
+        AdaptiveError: If context invalid
+        FileNotFoundError: If context not found
     """
-    config = load_tags(root)
+    from .adaptive_factory import create_context_resolver
+
+    # Create resolver
+    resolver, _ = create_context_resolver(root)
+
+    # Resolve adaptive model for context
+    adaptive_data = resolver.resolve_for_context(context, validate=True)
+
+    # Convert to schema
+    return _adaptive_model_to_tag_sets_list(adaptive_data.model)
+
+
+def _adaptive_model_to_tag_sets_list(model) -> TagSetsList:
+    """Convert AdaptiveModel to TagSetsList schema."""
     tag_sets_list = []
 
-    # Tag sets
-    for tag_set_id, tag_set in config.tag_sets.items():
+    for set_id, tag_set in model.tag_sets.items():
         tags_list = []
         for tag_id, tag in tag_set.tags.items():
             tag_schema = TagSchema(
@@ -145,31 +169,13 @@ def list_tag_sets(root: Path) -> TagSetsList:
                 description=tag.description if tag.description else None
             )
             tags_list.append(tag_schema)
-        
+
         tag_set_schema = TagSetSchema(
-            id=tag_set_id,
+            id=set_id,
             title=tag_set.title,
             tags=tags_list
         )
         tag_sets_list.append(tag_set_schema)
-
-    # Global tags (if any)
-    if config.global_tags:
-        global_tags_list = []
-        for tag_id, tag in config.global_tags.items():
-            tag_schema = TagSchema(
-                id=tag_id,
-                title=tag.title,
-                description=tag.description if tag.description else None
-            )
-            global_tags_list.append(tag_schema)
-        
-        global_tag_set_schema = TagSetSchema(
-            id="global",
-            title="Global Tags",
-            tags=global_tags_list
-        )
-        tag_sets_list.append(global_tag_set_schema)
 
     # Sort by id for stable order
     tag_sets_list.sort(key=lambda x: x.id)

@@ -116,32 +116,71 @@ def load_modes(root: Path) -> ModesConfig:
     return config
 
 
-def list_mode_sets(root: Path) -> ModeSetsList:
+def list_mode_sets(root: Path, context: str, provider: str) -> ModeSetsList:
     """
-    Returns a typed object with a list of mode sets for CLI command 'list mode-sets'.
+    Returns mode sets for CLI command 'list mode-sets'.
+
+    Uses new adaptive system:
+    1. Resolve AdaptiveModel for context via ContextResolver
+    2. Filter integration mode-set by provider
+    3. Return filtered mode-sets
+
+    Args:
+        root: Repository root
+        context: Context name (required)
+        provider: Provider ID (required)
 
     Returns:
-        ModeSetsList: Typed object with an array of mode sets
+        ModeSetsList with mode sets from adaptive model
+
+    Raises:
+        AdaptiveError: If context invalid or provider not supported
+        FileNotFoundError: If context not found
     """
-    config = load_modes(root)
+    from .adaptive_factory import create_context_resolver
+    from ..adaptive.validation import validate_provider_support
+
+    # Create resolver
+    resolver, _ = create_context_resolver(root)
+
+    # Resolve adaptive model for context
+    adaptive_data = resolver.resolve_for_context(context, validate=True)
+
+    # Validate provider support
+    validate_provider_support(adaptive_data.model, provider, context)
+
+    # Filter by provider
+    filtered_model = adaptive_data.filter_by_provider(provider)
+
+    # Convert to schema
+    return _adaptive_model_to_mode_sets_list(filtered_model)
+
+
+def _adaptive_model_to_mode_sets_list(model) -> ModeSetsList:
+    """Convert AdaptiveModel to ModeSetsList schema."""
     mode_sets_list = []
-    
-    for mode_set_id, mode_set in config.mode_sets.items():
+
+    for set_id, mode_set in model.mode_sets.items():
         modes_list = []
         for mode_id, mode in mode_set.modes.items():
+            # Get runs dict if present
+            runs_dict = dict(mode.runs) if mode.runs else None
+
             mode_schema = ModeSchema(
                 id=mode_id,
                 title=mode.title,
                 description=mode.description if mode.description else None,
                 tags=list(mode.tags) if mode.tags else None,
-                options=dict(mode.options) if mode.options else None
+                runs=runs_dict,
+                options=None  # deprecated
             )
             modes_list.append(mode_schema)
-        
+
         mode_set_schema = ModeSetSchema(
-            id=mode_set_id,
+            id=set_id,
             title=mode_set.title,
-            modes=modes_list
+            modes=modes_list,
+            integration=mode_set.is_integration
         )
         mode_sets_list.append(mode_set_schema)
 

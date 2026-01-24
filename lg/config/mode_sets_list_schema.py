@@ -32,6 +32,10 @@ class Mode(BaseModel):
     """
     Additional options specific to this mode
     """
+    runs: Optional[dict[str, str]] = None
+    """
+    Provider-specific run commands mapping provider_id to command string
+    """
 
 
 class ModeSet(BaseModel):
@@ -47,6 +51,10 @@ class ModeSet(BaseModel):
     Human-readable title of the mode set
     """
     modes: list[Mode]
+    integration: Optional[bool] = None
+    """
+    True if this mode-set is an integration type (has runs)
+    """
 
 
 class ModeSetsList(BaseModel):

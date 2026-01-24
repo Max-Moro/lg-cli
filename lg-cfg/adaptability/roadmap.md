@@ -28,141 +28,19 @@ This roadmap outlines the development phases for implementing the new adaptive m
 
 ---
 
-## Phase 3: Integration with Existing Systems
-
-**Goal**: Connect new adaptive system to template engine and CLI.
-
-### 3.1. Update TemplateContext (`lg/template/context.py`)
-
-**Tasks**:
-- [ ] Accept `AdaptiveModel` in constructor
-- [ ] Update `enter_mode_block()` to validate against model
-- [ ] Update `get_condition_evaluator()` to use model's tag-sets
-- [ ] Update `_get_tagsets()` to use model
-
-**Dependencies**: Phase 2
-
-**Tests**:
-- Mode block with valid mode
-- Mode block with invalid mode
-- Condition evaluation with new tag-sets
-
-### 3.2. Update RunContext (`lg/run_context.py`)
-
-**Tasks**:
-- [ ] Remove `adaptive_loader` field
-- [ ] Remove global `mode_options` and `active_tags`
-- [ ] Add lazy `ContextResolver` access
-- [ ] Update `ConditionContext` creation
-
-**Dependencies**: 2.4
-
-**Tests**:
-- RunContext creation without old fields
-- Access to resolver
-
-### 3.3. Update Engine (`lg/engine.py`)
-
-**Tasks**:
-- [ ] Create `ContextResolver` in `_init_services()`
-- [ ] Build `AdaptiveModel` per target in `render_context()` and `render_section()`
-- [ ] Pass model to `TemplateContext`
-- [ ] Update section render flow
-
-**Dependencies**: 3.1, 3.2
-
-**Tests**:
-- Render context with new adaptive model
-- Render section with new adaptive model
-- End-to-end with `{% mode %}`
-
-### 3.4. Update `{% mode %}` Processing (`lg/template/adaptive/`)
-
-**Tasks**:
-- [ ] Update `ModeBlockNode` processing to use context's model
-- [ ] Add validation call before entering mode block
-- [ ] Ensure proper error messages
-
-**Dependencies**: 3.1
-
-**Tests**:
-- Valid mode block renders
-- Invalid mode block raises error
-
-### 3.5. Meta-Section Render Protection
-
-**Tasks**:
-- [ ] Add check in `SectionProcessor.process_section()`
-- [ ] Raise `MetaSectionRenderError` for sections without filters
-- [ ] Clear error message with section name
-
-**Dependencies**: 1.2, 1.4
-
-**Tests**:
-- Normal section renders
-- Meta-section raises error
+## Phase 3: Integration with Existing Systems ✅ COMPLETE
 
 ---
 
-## Phase 4: CLI Commands
+## Phase 4: CLI Commands ✅ COMPLETE
 
-**Goal**: Update CLI to support new list commands with context/provider filtering.
-
-### 4.1. Update JSON Schemas
-
-**Tasks**:
-- [ ] Update `mode_sets_list.schema.json`:
-  - Add `runs` to Mode
-  - Add `integration` boolean to ModeSet
-- [ ] Regenerate `mode_sets_list_schema.py`
-- [ ] Update `tag_sets_list.schema.json` if needed
-- [ ] Regenerate `tag_sets_list_schema.py`
-
-**Dependencies**: 1.1
-
-**Tests**: Schema validation
-
-### 4.2. Update `list mode-sets` Command
-
-**Tasks**:
-- [ ] Add `--context` required argument
-- [ ] Add `--provider` required argument
-- [ ] Build adaptive model for context
-- [ ] Filter by provider (integration mode-set only)
-- [ ] Return filtered response
-
-**Dependencies**: Phase 2, 4.1
-
-**Tests**:
-- List with context and provider
-- Provider filtering
-- Error on missing arguments
-- Error on unsupported provider
-
-### 4.3. Update `list tag-sets` Command
-
-**Tasks**:
-- [ ] Add `--context` required argument
-- [ ] Build adaptive model for context
-- [ ] Return context-specific tag-sets
-
-**Dependencies**: Phase 2
-
-**Tests**:
-- List with context
-- Error on missing context
-
-### 4.4. CLI Argument Parsing (`lg/cli.py`)
-
-**Tasks**:
-- [ ] Add `--context` to list mode-sets
-- [ ] Add `--provider` to list mode-sets
-- [ ] Add `--context` to list tag-sets
-- [ ] Update help text
-
-**Dependencies**: 4.2, 4.3
-
-**Tests**: Argument parsing
+**Implemented**:
+- `lg/config/mode_sets_list.schema.json` — added `runs` to Mode, `integration` to ModeSet
+- `lg/config/mode_sets_list_schema.py` — regenerated with new fields
+- `lg/config/adaptive_factory.py` — NEW: `create_context_resolver(root)`
+- `lg/config/modes.py` — new `list_mode_sets(root, context, provider)` using ContextResolver
+- `lg/config/tags.py` — new `list_tag_sets(root, context)` using ContextResolver
+- `lg/cli.py` — added `--context` and `--provider` arguments, error handling
 
 ---
 
@@ -249,11 +127,7 @@ Phase 3: Integration│
   3.4 Mode Processing ◄───────────────────────┤
   3.5 Meta-Section Protection ◄───────────────┘
                     │
-Phase 4: CLI        │
-  4.1 JSON Schemas ◄──────────────────────────┤
-  4.2 list mode-sets ◄────────────────────────┤
-  4.3 list tag-sets ◄─────────────────────────┤
-  4.4 CLI Parsing ◄───────────────────────────┘
+Phase 4: CLI ✅ COMPLETE
                     │
 Phase 5: Cleanup    │
   5.1 Deprecation ◄─┴─ All phases
@@ -271,11 +145,11 @@ Phase 6: Migration (separate)
 
 - [ ] All existing tests pass (no regressions)
 - [ ] New tests cover all edge cases in TZ
-- [ ] `list mode-sets --context --provider` works correctly
-- [ ] `list tag-sets --context` works correctly
-- [ ] `{% mode %}` validates against context model
-- [ ] Meta-sections cannot be rendered
-- [ ] Single integration mode-set rule enforced
-- [ ] Provider filtering works
+- [x] `list mode-sets --context --provider` works correctly
+- [x] `list tag-sets --context` works correctly
+- [x] `{% mode %}` validates against context model
+- [x] Meta-sections cannot be rendered
+- [x] Single integration mode-set rule enforced
+- [x] Provider filtering works
 - [ ] Documentation updated
 - [ ] Qodana clean

@@ -96,6 +96,16 @@ def _build_parser() -> argparse.ArgumentParser:
         choices=["tiktoken", "tokenizers", "sentencepiece"],
         help="library for encoder list (required for what=encoders)"
     )
+    sp_list.add_argument(
+        "--context",
+        metavar="CTX",
+        help="context name (required for mode-sets and tag-sets)"
+    )
+    sp_list.add_argument(
+        "--provider",
+        metavar="PROVIDER",
+        help="provider ID (required for mode-sets)"
+    )
 
     sp_diag = sub.add_parser("diag", help="Environment and config diagnostics (JSON) [--bundle] [--rebuild-cache]")
     sp_diag.add_argument(
@@ -243,13 +253,30 @@ def main(argv: list[str] | None = None) -> int:
                 from .stats import list_encoders
                 data = {"lib": ns.lib, "encoders": list_encoders(ns.lib, root)}
             elif ns.what == "mode-sets":
+                if not ns.context:
+                    sys.stderr.write("Error: --context is required for 'mode-sets'\n")
+                    return 2
+                if not ns.provider:
+                    sys.stderr.write("Error: --provider is required for 'mode-sets'\n")
+                    return 2
                 from .config.modes import list_mode_sets
-                mode_sets_result = list_mode_sets(root)
-                data = mode_sets_result.model_dump(by_alias=True)
+                try:
+                    mode_sets_result = list_mode_sets(root, context=ns.context, provider=ns.provider)
+                    data = mode_sets_result.model_dump(by_alias=True)
+                except Exception as e:
+                    sys.stderr.write(f"Error: {e}\n")
+                    return 2
             elif ns.what == "tag-sets":
+                if not ns.context:
+                    sys.stderr.write("Error: --context is required for 'tag-sets'\n")
+                    return 2
                 from .config.tags import list_tag_sets
-                tag_sets_result = list_tag_sets(root)
-                data = tag_sets_result.model_dump(by_alias=True)
+                try:
+                    tag_sets_result = list_tag_sets(root, context=ns.context)
+                    data = tag_sets_result.model_dump(by_alias=True)
+                except Exception as e:
+                    sys.stderr.write(f"Error: {e}\n")
+                    return 2
             else:
                 raise ValueError(f"Unknown list target: {ns.what}")
             sys.stdout.write(jdumps(data))

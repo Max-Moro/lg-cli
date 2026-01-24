@@ -29,6 +29,10 @@
         "modes": {
           "type": "array",
           "items": { "$ref": "#/definitions/Mode" }
+        },
+        "integration": {
+          "type": "boolean",
+          "description": "True if this mode-set is an integration type (has runs)"
         }
       }
     },
@@ -60,6 +64,13 @@
           "type": "object",
           "additionalProperties": true,
           "description": "Additional options specific to this mode"
+        },
+        "runs": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          },
+          "description": "Provider-specific run commands mapping provider_id to command string"
         }
       }
     }
