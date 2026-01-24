@@ -322,7 +322,8 @@ def test_federated_rendering_cli(federated_project, monkeypatch):
     root = federated_project
     monkeypatch.chdir(root)
 
-    # Create test context
+    # Create test context that includes child-scope sections
+    # The child sections (web-src, core-lib) extend their scope's mode meta-sections
     write(root / "lg-cfg" / "fed-test.ctx.md", """---
 include: ["ai-interaction", "workflow"]
 ---
@@ -338,6 +339,12 @@ include: ["ai-interaction", "workflow"]
 
 ## Overview
 ${overview}
+
+## Web Frontend
+${@apps/web:web-src}
+
+## Core Library
+${@libs/core:core-lib}
 """)
 
     # Activate mode from child scope

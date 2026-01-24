@@ -254,12 +254,12 @@ def test_invalid_mode_raises_error(adaptive_project):
     """Test error handling when specifying an invalid mode."""
     root = adaptive_project
 
-    # Invalid mode set
+    # Invalid mode set - validation happens at render time, not engine creation
     with pytest.raises(ValueError, match="Unknown mode set 'invalid-set'"):
         options = make_run_options(modes={"invalid-set": "any-mode"})
-        make_engine(root, options)
+        render_template(root, "sec:src", options)
 
     # Invalid mode in correct set
     with pytest.raises(ValueError, match="Unknown mode 'invalid-mode' in mode set 'ai-interaction'"):
         options = make_run_options(modes={"ai-interaction": "invalid-mode"})
-        make_engine(root, options)
+        render_template(root, "sec:src", options)

@@ -335,6 +335,7 @@ def federated_project(tmp_path: Path) -> Path:
 
     write(root / "apps" / "web" / "lg-cfg" / "sections.yaml", textwrap.dedent("""
     web-src:
+      extends: ["ai-interaction", "frontend", "frontend-tags"]
       extensions: [".ts", ".tsx"]
       filters:
         mode: allow
@@ -382,6 +383,7 @@ def federated_project(tmp_path: Path) -> Path:
 
     write(root / "libs" / "core" / "lg-cfg" / "sections.yaml", textwrap.dedent("""
     core-lib:
+      extends: ["ai-interaction", "library"]
       extensions: [".py"]
       python:
         when:
