@@ -169,8 +169,8 @@ def adaptive_project(tmp_path: Path) -> Path:
     tag_sets, _ = get_default_tags_config()
     create_tag_meta_section(root, "tags", tag_sets)
 
-    # Create basic sections
-    create_basic_sections_yaml(root)
+    # Create basic sections with all adaptive meta-sections
+    create_basic_sections_yaml(root, extends_from=["ai-interaction", "dev-stage", "tags"])
 
     # Create test files
     write(root / "src" / "main.py", "def main():\n    print('Hello, world!')\n")

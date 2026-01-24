@@ -337,12 +337,14 @@ def create_basic_sections_yaml(
     Args:
         root: Project root
         extends_from: List of meta-sections to inherit from (for adaptive features).
-                      Default: ["ai-interaction", "dev-stage", "tags"] to ensure all adaptive features are available.
-        create_meta_sections: If True, automatically create meta-sections referenced in extends_from.
+                      Default: ["ai-interaction"] (only what's auto-created).
+                      For full adaptive features, use adaptive_project fixture or pass
+                      ["ai-interaction", "dev-stage", "tags"] and create those meta-sections.
+        create_meta_sections: If True, automatically create ai-interaction meta-section.
                               Default: True.
     """
     if extends_from is None:
-        extends_from = ["ai-interaction", "dev-stage", "tags"]
+        extends_from = ["ai-interaction"]
 
     # Create referenced meta-sections if requested
     if create_meta_sections and "ai-interaction" in extends_from:
