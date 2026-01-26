@@ -1,5 +1,5 @@
 """
-Data models for the new adaptive modes and tags system.
+Data models for adaptive modes and tags.
 
 Defines core types for modes, mode-sets, tags, tag-sets,
 and the aggregate AdaptiveModel.

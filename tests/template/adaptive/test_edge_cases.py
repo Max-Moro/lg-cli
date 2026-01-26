@@ -11,7 +11,7 @@ import pytest
 
 from .conftest import (
     adaptive_project, make_run_options, make_engine, render_template,
-    create_conditional_template, create_modes_yaml, create_tags_yaml,
+    create_conditional_template,
     ModeConfig, ModeSetConfig, TagConfig, TagSetConfig,
     create_mode_meta_section, create_tag_meta_section
 )
@@ -128,8 +128,6 @@ def test_massive_number_of_tags(adaptive_project):
             tags=tags
         )
 
-    create_tags_yaml(root, massive_tag_sets, append=True)
-
     # Create template with multiple tag conditions (check specific tag activity)
     conditions = []
     for i in range(5):
@@ -239,7 +237,6 @@ def test_tagset_with_empty_sets(adaptive_project):
             tags={}  # empty tag set
         )
     }
-    create_tags_yaml(root, empty_tag_sets, append=True)
 
     template_content = """# Empty TagSet Test
 
@@ -306,7 +303,6 @@ def test_special_characters_in_tag_names(adaptive_project):
         "CamelCaseTag": TagConfig(title="Camel Case Tag"),
         "UPPER_TAG": TagConfig(title="Upper Case Tag")
     }
-    create_tags_yaml(root, global_tags=special_global_tags, append=True)
 
     template_content = """# Special Characters Test
 

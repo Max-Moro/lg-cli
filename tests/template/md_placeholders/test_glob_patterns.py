@@ -164,16 +164,6 @@ def test_glob_with_conditional_inclusion(md_project):
     """Test globs with conditional inclusion."""
     root = md_project
 
-    # Add tags configuration
-    from .conftest import write
-    write(root / "lg-cfg" / "tags.yaml", """
-tags:
-  advanced:
-    title: "Advanced documentation"
-  basic:
-    title: "Basic documentation"
-""")
-
     create_glob_test_files(root)
 
     create_template(root, "glob-conditional-test", """# Conditional Glob Test

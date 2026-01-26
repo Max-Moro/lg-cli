@@ -63,7 +63,7 @@ def hierarchical_project(tmp_path: Path) -> Path:
     }
     create_tag_meta_section(root, "tags", tag_sets)
 
-    # Create integration mode-set (required by new adaptive system)
+    # Create integration mode-set (required for context validation)
     create_integration_mode_section(root)
     
     return root

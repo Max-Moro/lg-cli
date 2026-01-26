@@ -11,7 +11,7 @@ import textwrap
 
 from .conftest import (
     adaptive_project, make_run_options, render_template,
-    create_conditional_template, TagConfig, create_tags_yaml,
+    create_conditional_template, TagConfig,
     write
 )
 
@@ -32,7 +32,6 @@ def test_conditional_python_adapter_options(adaptive_project):
             description="Show even trivial __init__.py in listings"
         )
     }
-    create_tags_yaml(root, global_tags=special_tags, append=True)
 
     # Create package structure with __init__.py files
     write(root / "src" / "__init__.py", "pass")  # trivial
@@ -134,7 +133,6 @@ def test_multiple_conditional_adapter_options(adaptive_project):
         "strip-bodies": TagConfig(title="Strip function bodies"),
         "verbose-mode": TagConfig(title="Verbose mode")
     }
-    create_tags_yaml(root, global_tags=special_tags, append=True)
 
     # Create files with different content
     write(root / "src" / "__init__.py", "pass")
@@ -235,7 +233,6 @@ def test_conditional_options_with_complex_conditions(adaptive_project):
         "api-docs": TagConfig(title="API documentation"),
         "internal-docs": TagConfig(title="Internal documentation")
     }
-    create_tags_yaml(root, global_tags=complex_tags, append=True)
 
     # Create files
     write(root / "src" / "__init__.py", "pass")  # trivial
@@ -342,7 +339,6 @@ def test_conditional_options_inheritance_and_priority(adaptive_project):
         "override-mode": TagConfig(title="Override mode"),
         "final-mode": TagConfig(title="Final mode")
     }
-    create_tags_yaml(root, global_tags=priority_tags, append=True)
 
     write(root / "src" / "__init__.py", "pass")
     write(root / "src" / "example.py", "def func(): pass\n")

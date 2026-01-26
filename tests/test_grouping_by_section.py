@@ -7,7 +7,7 @@ from tests.infrastructure import write, run_cli, jload, create_integration_mode_
 def test_grouping_respects_sections(tmp_path: Path):
     root = tmp_path
 
-    # Create integration mode section (required by new adaptive system)
+    # Create integration mode-set (required for context validation)
     create_integration_mode_section(root)
 
     # Config: two sections docs and code, each limited to its own subtree

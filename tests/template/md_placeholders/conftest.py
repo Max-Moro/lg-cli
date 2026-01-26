@@ -7,7 +7,6 @@ with Markdown files and testing markdown placeholders like ${md:...}.
 
 from __future__ import annotations
 
-import textwrap
 from pathlib import Path
 
 import pytest
@@ -110,17 +109,6 @@ def adaptive_md_project(tmp_path: Path) -> Path:
 
     # Create basic configuration
     create_basic_lg_cfg(root)
-
-    # Configure tags
-    write(root / "lg-cfg" / "tags.yaml", textwrap.dedent("""
-    tags:
-      cloud:
-        title: "Cloud deployment"
-      onprem:
-        title: "On-premises deployment"
-      basic:
-        title: "Basic documentation"
-    """).strip() + "\n")
 
     # Create documents for conditional inclusion
     write_markdown(root / "deployment" / "cloud.md",

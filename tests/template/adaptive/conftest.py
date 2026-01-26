@@ -15,55 +15,12 @@ import pytest
 
 # Import from unified infrastructure
 from tests.infrastructure import (
-    write, create_modes_yaml, create_tags_yaml, create_basic_sections_yaml,
+    write, create_basic_sections_yaml,
     ModeConfig, ModeSetConfig, TagConfig, TagSetConfig,
     make_run_options, make_run_context, make_engine, render_template,
-    # NEW: Meta-section builders for new adaptive system
     create_mode_meta_section, create_tag_meta_section,
     create_integration_mode_section, create_adaptive_section,
 )
-
-
-def get_default_modes_config() -> Dict[str, ModeSetConfig]:
-    """Returns standard mode configuration for tests."""
-    return {
-        "ai-interaction": ModeSetConfig(
-            title="AI interaction method",
-            modes={
-                "ask": ModeConfig(
-                    title="Ask",
-                    description="Basic question-answer mode"
-                ),
-                "agent": ModeConfig(
-                    title="Agent work",
-                    description="Mode with tools",
-                    tags=["agent", "tools"],
-                    options={"allow_tools": True}
-                )
-            }
-        ),
-        "dev-stage": ModeSetConfig(
-            title="Development stage",
-            modes={
-                "planning": ModeConfig(
-                    title="Planning",
-                    tags=["architecture", "docs"]
-                ),
-                "development": ModeConfig(
-                    title="Main development"
-                ),
-                "testing": ModeConfig(
-                    title="Test writing",
-                    tags=["tests"]
-                ),
-                "review": ModeConfig(
-                    title="Code review",
-                    tags=["review"],
-                    options={"vcs_mode": "changes"}
-                )
-            }
-        )
-    }
 
 
 def get_default_tags_config() -> tuple[Dict[str, TagSetConfig], Dict[str, TagConfig]]:
@@ -106,8 +63,6 @@ def get_default_tags_config() -> tuple[Dict[str, TagSetConfig], Dict[str, TagCon
 def adaptive_project(tmp_path: Path) -> Path:
     """
     Creates a basic project with adaptive features.
-
-    Uses new adaptive system with meta-sections instead of modes.yaml/tags.yaml.
 
     Includes:
     - Integration mode-set (ai-interaction) with runs
@@ -185,7 +140,6 @@ def adaptive_project(tmp_path: Path) -> Path:
 def minimal_adaptive_project(tmp_path: Path) -> Path:
     """
     Creates a minimal project with one mode and tag.
-    Uses new adaptive system with meta-sections.
     Useful for simple tests.
     """
     root = tmp_path
@@ -229,8 +183,6 @@ def minimal_adaptive_project(tmp_path: Path) -> Path:
 def federated_project(tmp_path: Path) -> Path:
     """
     Creates a project with federated structure (monorepo).
-
-    Uses new adaptive system with meta-sections and extends.
 
     Includes:
     - Root lg-cfg with integration mode-set and content mode-sets
@@ -485,15 +437,13 @@ __all__ = [
     # Configuration types
     "ModeConfig", "ModeSetConfig", "TagConfig", "TagSetConfig",
 
-    # Configuration creation helpers (legacy)
-    "create_modes_yaml", "create_tags_yaml", "create_basic_sections_yaml",
-
-    # Configuration creation helpers (new adaptive system)
+    # Configuration creation helpers
+    "create_basic_sections_yaml",
     "create_mode_meta_section", "create_tag_meta_section",
     "create_integration_mode_section", "create_adaptive_section",
 
     # Ready-made configurations
-    "get_default_modes_config", "get_default_tags_config",
+    "get_default_tags_config",
 
     # RunOptions and context helpers
     "make_run_options", "make_run_context", "make_engine", "render_template",

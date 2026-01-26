@@ -61,7 +61,7 @@ def list_mode_sets(root: Path, context: str, provider: str) -> ModeSetsList:
     """
     Returns mode sets for CLI command 'list mode-sets'.
 
-    Uses new adaptive system:
+    Steps:
     1. Resolve AdaptiveModel for context via ContextResolver
     2. Filter integration mode-set by provider
     3. Return filtered mode-sets
@@ -131,7 +131,7 @@ def list_tag_sets(root: Path, context: str) -> TagSetsList:
     """
     Returns tag sets for CLI command 'list tag-sets'.
 
-    Uses new adaptive system:
+    Steps:
     1. Resolve AdaptiveModel for context via ContextResolver
     2. Return all tag-sets from the model
 
