@@ -73,8 +73,8 @@ extract_sdk_name() {
         return 1
     fi
 
-    # Extract project-jdk-name attribute
-    local sdk_name=$(grep -oP 'project-jdk-name="\K[^"]+' "$misc_xml" 2>/dev/null || true)
+    # Extract project-jdk-name attribute (sed is portable; grep -oP is not available on MINGW64)
+    local sdk_name=$(sed -n 's/.*project-jdk-name="\([^"]*\)".*/\1/p' "$misc_xml" 2>/dev/null | head -1)
 
     if [ -z "$sdk_name" ]; then
         log_warn "Could not extract SDK name from $misc_xml"
