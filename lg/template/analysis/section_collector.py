@@ -20,7 +20,7 @@ from typing import List, Set, Optional, cast
 from ...addressing import AddressingContext, SECTION_CONFIG
 from ...addressing.types import ResolvedSection
 from ...section import SectionService
-from ..common import load_context_from, load_template_from, CTX_SUFFIX, TPL_SUFFIX
+from ..common import load_context_from, load_template_from
 from ..common_placeholders.nodes import SectionNode, IncludeNode
 from ..adaptive.nodes import ConditionalBlockNode, ModeBlockNode
 from ..frontmatter import parse_frontmatter, ContextFrontmatter
@@ -159,6 +159,7 @@ class SectionCollector:
         parser = ModularParser(registry)
 
         # Create minimal handlers that delegate to parser
+        # noinspection PyProtectedMember
         class MinimalHandlers(TemplateProcessorHandlers):
             def parse_next_node(self, context) -> Optional[TemplateNode]:
                 return parser._parse_next_node(context)
@@ -177,7 +178,7 @@ class SectionCollector:
         # Create minimal template context mock
         # Only what plugins need for initialization
         class _DummyAddressing:
-            def resolve(self, name, config):
+            def resolve(self, _name, _config):
                 return None
 
         class _DummyRunContext:
@@ -188,10 +189,10 @@ class SectionCollector:
             def __init__(self):
                 self.run_ctx = _DummyRunContext()
 
-            def evaluate_condition(self, condition_ast) -> bool:
+            def evaluate_condition(self, _condition_ast) -> bool:
                 return False
 
-            def evaluate_condition_text(self, text: str) -> bool:
+            def evaluate_condition_text(self, _text: str) -> bool:
                 return False
 
             def enter_mode_block(self, modeset: str, mode: str) -> None:
@@ -292,10 +293,8 @@ class SectionCollector:
             # Determine which loader to use
             if node.kind == "ctx":
                 loader = load_context_from
-                suffix = CTX_SUFFIX
             else:
                 loader = load_template_from
-                suffix = TPL_SUFFIX
 
             # Resolve the include path
             if node.origin and node.origin != "self":

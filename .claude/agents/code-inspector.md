@@ -34,6 +34,7 @@ Execute the inspection script immediately:
 ```bash
 bash .claude/skills/qodana-inspect/scripts/run-qodana.sh --linter qodana-python-community
 ```
+> **Note:** Using `source` instead of direct `bash script.sh` due to Claude Code bug on Windows (issues #18856, #19525).
 
 The script outputs problems grouped by file with severity, location, message, and code snippets.
 
