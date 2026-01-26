@@ -145,11 +145,72 @@ class SectionService:
         """
         cache_key = (location.file_path, location.local_name)
 
-        # Check memory cache
-        if cache_key in self._loaded:
-            return self._loaded[cache_key]
+        if cache_key not in self._loaded:
+            node = self._load_raw_section(location)
+            self._loaded[cache_key] = SectionCfg.from_dict(location.local_name, node)
 
-        # Load from YAML
+        return self._loaded[cache_key]
+
+    def list_sections(self, scope_dir: Path) -> List[str]:
+        """
+        List renderable sections in a scope.
+
+        Excludes meta-sections (those without explicit filters)
+        since they cannot be rendered directly and are used
+        only for inheritance via extends.
+
+        Args:
+            scope_dir: Scope directory
+
+        Returns:
+            Sorted list of renderable section names
+        """
+        return self._collect_renderable(self.get_index(scope_dir))
+
+    def list_sections_peek(self, scope_dir: Path) -> List[str]:
+        """
+        List renderable sections without running migrations.
+
+        Safe for diagnostics. Reads directly without ensure_cfg_actual.
+        Excludes meta-sections (those without explicit filters).
+
+        Args:
+            scope_dir: Scope directory
+
+        Returns:
+            Sorted list of renderable section names
+        """
+        cfg_root_path = scope_dir / "lg-cfg"
+        if not cfg_root_path.is_dir():
+            return []
+
+        return self._collect_renderable(build_index(cfg_root_path))
+
+    def _collect_renderable(self, index: ScopeIndex) -> List[str]:
+        """
+        Collect names of renderable (non-meta) sections from index.
+
+        Args:
+            index: Section index to filter
+
+        Returns:
+            Sorted list of renderable section names
+        """
+        return [
+            name for name in sorted(index.sections.keys())
+            if not self.load_section(index.sections[name]).is_meta_section()
+        ]
+
+    def _load_raw_section(self, location: SectionLocation) -> dict:
+        """
+        Load raw section dict from YAML without caching.
+
+        Args:
+            location: Section location from index
+
+        Returns:
+            Raw section dictionary from YAML
+        """
         try:
             raw = _yaml.load(location.file_path.read_text(encoding="utf-8")) or {}
         except Exception as e:
@@ -169,45 +230,7 @@ class SectionService:
                 f"Section '{location.local_name}' in {location.file_path} must be a mapping"
             )
 
-        # Parse section
-        section_cfg = SectionCfg.from_dict(location.local_name, node)
-
-        # Cache
-        self._loaded[cache_key] = section_cfg
-        return section_cfg
-
-    def list_sections(self, scope_dir: Path) -> List[str]:
-        """
-        List all sections in a scope.
-
-        Args:
-            scope_dir: Scope directory
-
-        Returns:
-            Sorted list of section names
-        """
-        index = self.get_index(scope_dir)
-        return sorted(index.sections.keys())
-
-    def list_sections_peek(self, scope_dir: Path) -> List[str]:
-        """
-        List sections without running migrations.
-
-        Safe for diagnostics. Reads directly without ensure_cfg_actual.
-
-        Args:
-            scope_dir: Scope directory
-
-        Returns:
-            Sorted list of section names
-        """
-        cfg_root_path = scope_dir / "lg-cfg"
-        if not cfg_root_path.is_dir():
-            return []
-
-        # Build index directly without migrations
-        index = build_index(cfg_root_path)
-        return sorted(index.sections.keys())
+        return node
 
     # ---- Cache helpers ----
 
