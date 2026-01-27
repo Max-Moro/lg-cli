@@ -71,6 +71,11 @@ def _build_parser() -> argparse.ArgumentParser:
                 "target branch for comparison when using vcs_mode: 'branch-changes'"
             ),
         )
+        sp.add_argument(
+            "--provider",
+            metavar="PROVIDER",
+            help="AI provider ID for provider: conditions in templates",
+        )
 
     sp_report = sub.add_parser("report", help="JSON report: statistics")
     add_common(sp_report)
@@ -141,6 +146,9 @@ def _opts(ns: argparse.Namespace) -> RunOptions:
     # Parse target-branch
     target_branch = getattr(ns, "target_branch", None)
 
+    # Parse provider
+    provider = getattr(ns, "provider", None)
+
     return RunOptions(
         tokenizer_lib=ns.lib,
         encoder=ns.encoder,
@@ -149,6 +157,7 @@ def _opts(ns: argparse.Namespace) -> RunOptions:
         extra_tags=extra_tags,
         task_text=task_text,
         target_branch=target_branch,
+        provider=provider,
     )
 
 

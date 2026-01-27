@@ -12,6 +12,34 @@ from .stats import TokenService
 from .addressing import AddressingContext
 
 
+# ---- Provider normalization ----
+
+_PROVIDER_SUFFIXES = (".cli", ".ext", ".api")
+
+
+def normalize_provider_id(provider_id: str) -> str:
+    """
+    Normalize provider ID by stripping technical suffix.
+
+    Removes the last segment indicating the technical medium:
+    - .cli — CLI tool
+    - .ext — IDE extension
+    - .api — direct API call
+
+    If no known suffix is present (e.g., 'clipboard'), returns as-is.
+
+    Args:
+        provider_id: Full provider ID (e.g., 'com.anthropic.claude.cli')
+
+    Returns:
+        Base provider ID (e.g., 'com.anthropic.claude')
+    """
+    for suffix in _PROVIDER_SUFFIXES:
+        if provider_id.endswith(suffix):
+            return provider_id[:-len(suffix)]
+    return provider_id
+
+
 @dataclass
 class ConditionContext:
     """
@@ -27,6 +55,7 @@ class ConditionContext:
     tagsets: Dict[str, Set[str]] = field(default_factory=dict)
     origin: str = ""
     task_text: Optional[str] = None
+    provider_base_id: Optional[str] = None
 
     def is_tag_active(self, tag_name: str) -> bool:
         """Check if specified tag is active."""
@@ -105,6 +134,23 @@ class ConditionContext:
             True if there is effective task_text (explicit or from modes)
         """
         return bool(self.task_text and self.task_text.strip())
+
+    def is_provider_condition_met(self, base_id: str) -> bool:
+        """
+        Check provider:<base-id> condition.
+
+        True if --provider was specified and its normalized base-id
+        matches the given base_id.
+
+        Args:
+            base_id: Expected provider base ID (e.g., 'com.anthropic.claude')
+
+        Returns:
+            True if provider matches, False otherwise
+        """
+        if not self.provider_base_id:
+            return False
+        return self.provider_base_id == base_id
 
 
 @dataclass(frozen=True)

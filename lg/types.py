@@ -29,6 +29,8 @@ class RunOptions:
     task_text: Optional[str] = None  # current task text from --task
     # VCS context
     target_branch: Optional[str] = None  # target branch for branch-changes mode
+    # Provider identification
+    provider: Optional[str] = None  # raw provider ID from --provider
 
 
 # ---- Target specification ----

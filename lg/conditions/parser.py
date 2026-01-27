@@ -9,11 +9,13 @@ expression     → or_expression
 or_expression  → and_expression ("OR" and_expression)*
 and_expression → not_expression ("AND" not_expression)*
 not_expression → "NOT" not_expression | primary
-primary        → tag_condition | tagset_condition | scope_condition | "(" expression ")"
+primary        → tag_condition | tagset_condition | scope_condition | provider_condition | "(" expression ")"
 
-tag_condition    → "tag" ":" IDENTIFIER
-tagset_condition → "TAGSET" ":" IDENTIFIER ":" IDENTIFIER
-scope_condition  → "scope" ":" IDENTIFIER
+tag_condition      → "tag" ":" IDENTIFIER
+tagset_condition   → "TAGSET" ":" IDENTIFIER ":" IDENTIFIER
+scope_condition    → "scope" ":" IDENTIFIER
+provider_condition → "provider" ":" dotted_identifier
+dotted_identifier  → IDENTIFIER ("." IDENTIFIER)*
 """
 
 from __future__ import annotations
@@ -29,6 +31,7 @@ from .model import (
     TagOnlyCondition,
     ScopeCondition,
     TaskCondition,
+    ProviderCondition,
     GroupCondition,
     NotCondition,
     BinaryCondition,
@@ -147,6 +150,10 @@ class ConditionParser:
         if self._match_keyword("task"):
             return TaskCondition()
 
+        # provider:base-id (dotted identifier)
+        if self._match_keyword("provider"):
+            return self._parse_provider_condition()
+
         # If nothing matched, it's an error
         current = self._current_token()
         if current.type == 'EOF':
@@ -205,6 +212,24 @@ class ConditionParser:
             )
 
         return ScopeCondition(scope_type=type_token.value)
+
+    def _parse_provider_condition(self) -> ProviderCondition:
+        """Parse a provider condition: provider:base.id
+
+        Base-id is a dotted identifier (e.g., com.anthropic.claude).
+        """
+        if not self._match_symbol(":"):
+            raise ParseError("Expected ':' after 'provider'", self._current_position())
+
+        # Collect dotted identifier segments
+        first_token = self._consume_identifier("Expected provider base-id after 'provider:'")
+        parts = [first_token.value]
+
+        while self._match_symbol("."):
+            next_token = self._consume_identifier("Expected identifier after '.'")
+            parts.append(next_token.value)
+
+        return ProviderCondition(base_id=".".join(parts))
 
     # Helper methods for working with tokens
 

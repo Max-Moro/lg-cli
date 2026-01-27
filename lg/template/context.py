@@ -349,11 +349,18 @@ class TemplateContext:
         """Creates condition context from current template state."""
         tagsets = self._get_tagsets()
 
+        # Compute normalized provider base-id
+        provider_base = None
+        if self.run_ctx.options.provider:
+            from ..run_context import normalize_provider_id
+            provider_base = normalize_provider_id(self.run_ctx.options.provider)
+
         return ConditionContext(
             active_tags=self.current_state.active_tags,
             tagsets=tagsets,
             origin=self.run_ctx.addressing.origin,
             task_text=self.get_effective_task_text(),
+            provider_base_id=provider_base,
         )
 
     def _get_tagsets(self) -> Dict[str, Set[str]]:

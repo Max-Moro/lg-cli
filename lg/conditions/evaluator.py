@@ -17,6 +17,7 @@ from .model import (
     TagOnlyCondition,
     ScopeCondition,
     TaskCondition,
+    ProviderCondition,
     GroupCondition,
     NotCondition,
     BinaryCondition,
@@ -71,6 +72,8 @@ class ConditionEvaluator:
             return self._evaluate_scope(cast(ScopeCondition, condition))
         elif condition_type == ConditionType.TASK:
             return self._evaluate_task(cast(TaskCondition, condition))
+        elif condition_type == ConditionType.PROVIDER:
+            return self._evaluate_provider(cast(ProviderCondition, condition))
         elif condition_type == ConditionType.GROUP:
             return self._evaluate_group(cast(GroupCondition, condition))
         elif condition_type == ConditionType.NOT:
@@ -124,6 +127,14 @@ class ConditionEvaluator:
         True if a non-empty task text is provided.
         """
         return self.context.is_task_provided()
+
+    def _evaluate_provider(self, condition: ProviderCondition) -> bool:
+        """
+        Evaluate a provider condition: provider:base-id
+
+        True if --provider was specified and its normalized base-id matches.
+        """
+        return self.context.is_provider_condition_met(condition.base_id)
 
     def _evaluate_group(self, condition: GroupCondition) -> bool:
         """

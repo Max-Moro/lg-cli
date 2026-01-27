@@ -132,7 +132,7 @@ ai-interaction:
         plan:
           title: "Plan"
           description: "Planning / specification mode"
-          tags: [agent]
+          tags: [agent, plan]
           runs:
             com.github.copilot.ext: "workbench.action.chat.openplan"
             com.anthropic.claude.cli: "--permission-mode plan"
@@ -157,8 +157,13 @@ list tag-sets  --context <ctx>
 
 ### 5.2. Генерация render/report
 `LgGenerationService` должен использовать:
-- modes: `modesByContextProvider[currentCtx][currentProvider]`
-- tags: `tagsByContext[currentCtx]`
+- `--provider <currentProvider>`;
+- modes: `modesByContextProvider[currentCtx][currentProvider]`;
+- tags: `tagsByContext[currentCtx]`.
+
+Аргумент `--provider` используется CLI для:
+- оценки условий `provider:<base-id>` в шаблонах (нормализация: отсечение суффикса `.cli`/`.ext`/`.api`);
+- не влияет на фильтрацию файлов.
 
 ---
 

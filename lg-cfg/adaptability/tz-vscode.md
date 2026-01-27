@@ -142,7 +142,7 @@ ai-interaction:
         plan:
           title: "Plan"
           description: "Planning / specification mode"
-          tags: [agent]
+          tags: [agent, plan]
           runs:
             com.github.copilot.ext: "workbench.action.chat.openplan"
             com.anthropic.claude.cli: "--permission-mode plan"
@@ -167,8 +167,13 @@ list tag-sets  --context <ctx>
 
 ### 5.2. CLI args для render/report
 `buildCliArgs()` должен:
+- передавать `--provider <currentProvider>`;
 - брать modes из `modesByContextProvider[currentContext][currentProvider]`;
 - брать tags из `tagsByContext[currentContext]`.
+
+Аргумент `--provider` используется CLI для:
+- оценки условий `provider:<base-id>` в шаблонах (нормализация: отсечение суффикса `.cli`/`.ext`/`.api`);
+- не влияет на фильтрацию файлов.
 
 ---
 

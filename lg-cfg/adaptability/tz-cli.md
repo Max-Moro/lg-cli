@@ -22,7 +22,9 @@
 - новые CLI-команды list mode‑sets/tag‑sets с фильтрацией по контексту/провайдеру;
 - обновление валидации `{% mode %}`;
 - переработка Adaptive‑подсистемы и `RunContext` под новую модель;
-- обновление JSON‑схем для list‑ответов.
+- обновление JSON‑схем для list‑ответов;
+- передача `--provider` в команды `render`/`report` для идентификации AI‑провайдера;
+- новый условный оператор `provider:<base-id>` для проверки активного AI‑провайдера.
 
 ### Не включено
 - миграция старых `modes.yaml`/`tags.yaml` (будет отдельно);
@@ -172,9 +174,49 @@ include: ["ai-interaction"]
 - Несовместимый режим → ошибка.
 
 ### 8.3. Render / Report
-- Для `render/report` используется adaptive‑модель, рассчитанная для target’а:
+- Для `render/report` используется adaptive‑модель, рассчитанная для target'а:
   - `ctx:<name>` → полный расчёт по шаблону и frontmatter;
   - `sec:<name>` → адаптивная модель **только этой секции** (и её `extends`).
+- `--provider` (опциональный) передаётся в `RunOptions` и доступен:
+  - в `ConditionContext` для оценки условий `provider:<base-id>`;
+  - нормализованный base‑id вычисляется при инициализации и кешируется.
+- Если `--provider` не указан, условие `provider:*` всегда False.
+
+### 8.4. Условие `provider:`
+
+Новый условный оператор для шаблонов:
+
+```
+provider:<base-id>
+```
+
+**Семантика**: True, если текущий `--provider` (после нормализации) совпадает с `<base-id>`.
+
+**Нормализация**: от полного provider‑id отсекается последний суффикс, обозначающий техническое средство:
+- `.cli` — CLI‑инструмент
+- `.ext` — IDE‑расширение
+- `.api` — прямой API‑вызов
+
+Если суффикс отсутствует (например, `clipboard`), id используется как есть.
+
+**Примеры**:
+- `--provider com.anthropic.claude.cli` → `provider:com.anthropic.claude` = True
+- `--provider com.github.copilot.ext` → `provider:com.github.copilot` = True
+- `--provider com.openai.api` → `provider:com.openai` = True
+- `--provider clipboard` → `provider:clipboard` = True
+- Если `--provider` не указан → любое условие `provider:*` = False
+
+**Использование в шаблонах**:
+
+```markdown
+{% if provider:com.anthropic.claude %}
+<!-- Инструкции, специфичные для Claude -->
+{% endif %}
+
+{% if provider:clipboard %}
+<!-- Облегчённый контекст для ручного копирования -->
+{% endif %}
+```
 
 ---
 
@@ -196,6 +238,18 @@ listing-generator list tag-sets  --context <ctx-name>
 - Интеграционный набор фильтруется по `provider-id`: режимы без `runs[provider-id]` не возвращаются.
 - Если после фильтрации интеграционный набор пуст — ошибка (провайдер не поддержан этим контекстом).
 
+### 9.2a. `--provider` для render/report
+
+```
+listing-generator render <target> --lib ... --encoder ... --ctx-limit ... [--provider <provider-id>]
+listing-generator report <target> --lib ... --encoder ... --ctx-limit ... [--provider <provider-id>]
+```
+
+Аргумент `--provider` — опциональный. При указании:
+- provider‑id сохраняется в `RunOptions.provider`;
+- нормализованный base‑id доступен для условий `provider:` в шаблонах;
+- не влияет на фильтрацию файлов (это задача тегов и `vcs_mode`).
+
 ### 9.3. JSON‑схемы
 - Обновить `lg/config/mode_sets_list.schema.json`:
   - добавить `runs` в Mode;
@@ -212,7 +266,8 @@ listing-generator list tag-sets  --context <ctx-name>
 - попытка рендера мета‑секции (нет `filters`);
 - 0 или >1 интеграционный mode‑set для контекста;
 - интеграционный mode‑set после фильтрации по provider пуст;
-- `{% mode %}` с несовместимым режимом.
+- `{% mode %}` с несовместимым режимом;
+- условие `provider:` при отсутствии `--provider` — не ошибка (просто False).
 
 ---
 
@@ -231,6 +286,7 @@ listing-generator list tag-sets  --context <ctx-name>
 5) Правило единственного интеграционного набора.
 6) Фильтрация по провайдеру + ошибка при пустом интеграционном наборе.
 7) Валидность `{% mode %}`.
+8) Условие `provider:` — нормализация суффиксов и сравнение base‑id.
 
 ---
 

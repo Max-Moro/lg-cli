@@ -58,13 +58,16 @@ class ConditionLexer:
         # Keywords will be determined after capture
         (r'[\w][\w-]*', 'IDENTIFIER', False),
 
+        # Dot separator (for dotted identifiers like provider base-id)
+        (r'\.', 'SYMBOL', False),
+
         # Unknown symbol (error)
         (r'.', 'UNKNOWN', False),
     ]
 
     # Keywords for post-processing
     KEYWORDS = {
-        'TAGSET', 'TAGONLY', 'scope', 'tag', 'task', 'AND', 'OR', 'NOT'
+        'TAGSET', 'TAGONLY', 'scope', 'tag', 'task', 'provider', 'AND', 'OR', 'NOT'
     }
 
     def __init__(self):

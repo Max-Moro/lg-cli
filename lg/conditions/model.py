@@ -19,6 +19,7 @@ class ConditionType(Enum):
     TAGONLY = "tagonly"
     SCOPE = "scope"
     TASK = "task"
+    PROVIDER = "provider"
     AND = "and"
     OR = "or"
     NOT = "not"
@@ -126,12 +127,30 @@ class TaskCondition(Condition):
 
     True if a non-empty task text is provided via --task.
     """
-    
+
     def get_type(self) -> ConditionType:
         return ConditionType.TASK
-    
+
     def _to_string(self) -> str:
         return "task"
+
+
+@dataclass
+class ProviderCondition(Condition):
+    """
+    Provider condition: provider:base-id
+
+    True if the current --provider (after normalization) matches the specified base-id.
+    Normalization strips technical suffixes (.cli, .ext, .api) from the full provider ID.
+    If --provider is not specified, condition is always False.
+    """
+    base_id: str
+
+    def get_type(self) -> ConditionType:
+        return ConditionType.PROVIDER
+
+    def _to_string(self) -> str:
+        return f"provider:{self.base_id}"
 
 
 @dataclass
@@ -194,6 +213,7 @@ AnyCondition = Union[
     TagOnlyCondition,
     ScopeCondition,
     TaskCondition,
+    ProviderCondition,
     GroupCondition,
     NotCondition,
     BinaryCondition,
@@ -207,6 +227,7 @@ __all__ = [
     "TagOnlyCondition",
     "ScopeCondition",
     "TaskCondition",
+    "ProviderCondition",
     "GroupCondition",
     "NotCondition",
     "BinaryCondition",
