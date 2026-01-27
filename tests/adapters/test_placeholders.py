@@ -15,6 +15,7 @@ from lg.adapters.range_edits import RangeEditor
 from lg.adapters.tree_sitter_support import TreeSitterDocument
 
 
+# noinspection PyMissingConstructor
 class MockDocument(TreeSitterDocument):
     """Mock TreeSitterDocument for testing without real parsing."""
 

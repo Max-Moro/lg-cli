@@ -111,6 +111,7 @@ def test_migration_failure_recorded_in_cache(mock_get_migs, migrate_project: Pat
     assert "Migration error" in state["last_error"]["message"]
 
 
+# noinspection PyUnusedLocal
 def test_double_check_after_wait_prevents_duplicate_work(migrate_project: Path, test_cache: Cache):
     """Waiting process doesn't re-run migrations after another process completes."""
     cfg_root = migrate_project / "lg-cfg"
@@ -124,6 +125,7 @@ def test_double_check_after_wait_prevents_duplicate_work(migrate_project: Path, 
         mock_migration.id = 1
         mock_migration.title = "Test Migration"
 
+        # noinspection PyUnusedLocal
         def record_run(*args, **kwargs):
             migration_run_count[0] += 1
             time.sleep(0.3)  # Simulate work

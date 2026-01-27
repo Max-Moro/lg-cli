@@ -112,7 +112,7 @@ def test_cascading_includes_across_multiple_scopes(federated_project):
     root = federated_project
 
     # Create complex cascading dependency structure
-    paths = create_complex_federated_templates(root)
+    create_complex_federated_templates(root)
 
     result = render_template(root, "ctx:full-stack")
 

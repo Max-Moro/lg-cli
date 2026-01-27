@@ -96,12 +96,9 @@ class DataContainer {
 
     # Find the list declaration lines
     list_start_line = None
-    list_end_line = None
     for i, line in enumerate(lines):
         if "private val largeList = listOf(" in line:
             list_start_line = i
-        if list_start_line is not None and ")" in line and ("literal" in line or i == len(lines) - 2):
-            list_end_line = i
             break
 
     if list_start_line is not None:
@@ -139,9 +136,6 @@ class ConfigManager {
     adapter = make_adapter(cfg)
 
     result, meta = adapter.process(lctx(code))
-
-    # The nested structure should be trimmed but maintain proper indentation
-    lines = result.split('\n')
 
     # Check basic structure is preserved
     assert "fun getConfig()" in result

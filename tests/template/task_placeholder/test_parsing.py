@@ -43,10 +43,18 @@ class TestTaskPlaceholderParsing:
 
         # Create dummy handler for plugin initialization
         class DummyHandlers:
-            def process_ast_node(self, context): return ""
-            def process_section_ref(self, section_ref): return ""
-            def parse_next_node(self, context): return None
-            def resolve_ast(self, ast, context=""): return ast
+            # noinspection PyUnusedLocal
+            def process_ast_node(self, context):
+                return ""
+            # noinspection PyUnusedLocal
+            def process_section_ref(self, section_ref):
+                return ""
+            # noinspection PyUnusedLocal
+            def parse_next_node(self, context):
+                return None
+            # noinspection PyUnusedLocal
+            def resolve_ast(self, ast, context=""):
+                return ast
 
         # Initialize plugins
         registry.initialize_plugins(DummyHandlers())
@@ -193,16 +201,24 @@ class TestTaskPlaceholderEdgeCases:
 
         # Create dummy handler for plugin initialization
         class DummyHandlers:
-            def process_ast_node(self, context): return ""
-            def process_section_ref(self, section_ref): return ""
-            def parse_next_node(self, context): return None
-            def resolve_ast(self, ast, context=""): return ast
+            # noinspection PyUnusedLocal
+            def process_ast_node(self, context):
+                return ""
+            # noinspection PyUnusedLocal
+            def process_section_ref(self, section_ref):
+                return ""
+            # noinspection PyUnusedLocal
+            def parse_next_node(self, context):
+                return None
+            # noinspection PyUnusedLocal
+            def resolve_ast(self, ast, context=""):
+                return ast
 
         # Initialize plugins
         registry.initialize_plugins(DummyHandlers())
 
         return registry
-    
+
     def parse_template(self, text: str, registry: TemplateRegistry):
         """Helper function to parse template."""
         lexer = ContextualLexer(registry)

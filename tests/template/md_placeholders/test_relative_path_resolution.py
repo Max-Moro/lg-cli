@@ -18,7 +18,7 @@ from pathlib import Path
 import pytest
 
 from .conftest import (
-    create_template, render_template, write_markdown, write, create_basic_lg_cfg
+    create_template, render_template, write_markdown, create_basic_lg_cfg
 )
 
 

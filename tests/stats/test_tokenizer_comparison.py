@@ -220,6 +220,7 @@ class TestTokenizerComparison:
 class TestTokenizerCaching:
     """Tests for token caching."""
 
+    # noinspection PyUnusedLocal
     @pytest.mark.no_ci  # Requires pre-downloaded models for mock_hf_hub
     def test_cache_improves_performance(self, tmp_path: Path, mock_hf_hub):
         """

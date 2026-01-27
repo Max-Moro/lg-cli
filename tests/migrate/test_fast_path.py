@@ -9,7 +9,6 @@ from pathlib import Path
 from lg.migrate.runner import ensure_cfg_actual, _fingerprint_cfg, _put_state
 from lg.migrate.version import CFG_CURRENT
 from lg.cache.fs_cache import Cache
-from lg.version import tool_version
 
 
 def test_fast_path_skips_lock_when_config_actual(migrate_project: Path, test_cache: Cache):

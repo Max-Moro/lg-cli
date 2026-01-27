@@ -11,8 +11,7 @@ import textwrap
 
 from .conftest import (
     adaptive_project, make_run_options, render_template,
-    create_conditional_template, TagConfig,
-    write
+    create_conditional_template, write
 )
 
 
@@ -24,14 +23,6 @@ def test_conditional_python_adapter_options(adaptive_project):
     when a special tag is activated.
     """
     root = adaptive_project
-
-    # Add a special tag to manage __init__.py files
-    special_tags = {
-        "include-inits": TagConfig(
-            title="Include __init__.py files",
-            description="Show even trivial __init__.py in listings"
-        )
-    }
 
     # Create package structure with __init__.py files
     write(root / "src" / "__init__.py", "pass")  # trivial
@@ -126,13 +117,6 @@ def test_multiple_conditional_adapter_options(adaptive_project):
     Tests combining several conditional rules in one adapter.
     """
     root = adaptive_project
-    
-    # Add multiple tags to control behavior
-    special_tags = {
-        "include-inits": TagConfig(title="Include __init__.py"),
-        "strip-bodies": TagConfig(title="Strip function bodies"),
-        "verbose-mode": TagConfig(title="Verbose mode")
-    }
 
     # Create files with different content
     write(root / "src" / "__init__.py", "pass")
@@ -225,14 +209,6 @@ def test_conditional_options_with_complex_conditions(adaptive_project):
     Tests AND/OR/NOT operators in adapter conditions.
     """
     root = adaptive_project
-    
-    # Tags for complex conditions
-    complex_tags = {
-        "production": TagConfig(title="Production mode"),
-        "debug": TagConfig(title="Debug mode"),
-        "api-docs": TagConfig(title="API documentation"),
-        "internal-docs": TagConfig(title="Internal documentation")
-    }
 
     # Create files
     write(root / "src" / "__init__.py", "pass")  # trivial
@@ -332,13 +308,6 @@ def test_conditional_options_inheritance_and_priority(adaptive_project):
     Verifies that later when rules override earlier ones.
     """
     root = adaptive_project
-    
-    # Tags for testing priority
-    priority_tags = {
-        "base-mode": TagConfig(title="Base mode"),
-        "override-mode": TagConfig(title="Override mode"),
-        "final-mode": TagConfig(title="Final mode")
-    }
 
     write(root / "src" / "__init__.py", "pass")
     write(root / "src" / "example.py", "def func(): pass\n")

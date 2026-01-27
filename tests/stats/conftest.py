@@ -45,7 +45,8 @@ def models_manifest(resources_dir: Path) -> dict:
         return {"tokenizers": {}, "sentencepiece": {}}
 
     with manifest_file.open("r", encoding="utf-8") as f:
-        return json.load(f)
+        manifest = json.load(f)
+    return manifest
 
 
 # ==================== Mock for HuggingFace Hub ====================
@@ -58,6 +59,7 @@ class MockHFHub:
         self.manifest = manifest
         self.download_count = 0
 
+    # noinspection PyUnusedLocal
     def download(
         self,
         repo_id: str,

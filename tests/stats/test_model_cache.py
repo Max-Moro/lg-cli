@@ -200,7 +200,7 @@ class TestModelCacheIntegration:
         from lg.stats.tokenizers.model_cache import ModelCache
 
         # First "session" - load model
-        adapter1 = HFAdapter("gpt2", tmp_path)
+        HFAdapter("gpt2", tmp_path)
         download_count_after_first = mock_hf_hub.download_count
 
         # Check that model is in cache

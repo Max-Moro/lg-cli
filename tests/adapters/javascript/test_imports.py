@@ -142,13 +142,11 @@ try {
 
         adapter = make_adapter(JavaScriptCfg(imports=import_config))
 
-        result, meta = adapter.process(lctx(code))
-
         # Note: Dynamic require() calls are not currently detected as imports.
         # Only static ESM import statements are processed.
         # require() would need AST analysis of call_expression nodes.
         # TODO: Implement require() detection if CommonJS support is needed
-        pass  # Test documents limitation without failing
+        adapter.process(lctx(code))  # Documents limitation without failing
 
     def test_side_effect_imports(self):
         """Test handling of side-effect imports."""

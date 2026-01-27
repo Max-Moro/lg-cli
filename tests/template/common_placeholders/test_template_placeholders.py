@@ -101,7 +101,7 @@ def test_nested_template_includes(basic_project):
     root = basic_project
 
     # Create nested template structure
-    paths = create_nested_template_structure(root)
+    create_nested_template_structure(root)
 
     result = render_template(root, "ctx:basic-context")
 

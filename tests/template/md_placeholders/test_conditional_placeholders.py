@@ -14,7 +14,7 @@ import pytest
 
 from .conftest import (
     adaptive_md_project, create_template, render_template,
-    make_run_options, write_markdown, write
+    make_run_options, write_markdown
 )
 from tests.infrastructure import create_tag_meta_section, TagSetConfig, TagConfig
 

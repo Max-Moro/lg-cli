@@ -338,6 +338,7 @@ def create_nested_template_structure(root: Path) -> Dict[str, Path]:
     Returns:
         Dictionary with paths to created files
     """
+    # noinspection PyDictCreation
     paths = {}
 
     # Base templates
@@ -398,6 +399,7 @@ def create_complex_federated_templates(root: Path) -> Dict[str, Path]:
     Returns:
         Dictionary with paths to created files
     """
+    # noinspection PyDictCreation
     paths = {}
 
     # Root templates

@@ -10,7 +10,7 @@ from __future__ import annotations
 import pytest
 
 from .conftest import (
-    adaptive_project, make_run_options, make_engine, render_template,
+    adaptive_project, make_run_options, render_template,
     create_conditional_template,
     ModeConfig, ModeSetConfig, TagConfig, TagSetConfig,
     create_mode_meta_section, create_tag_meta_section
@@ -230,14 +230,6 @@ def test_tagset_with_empty_sets(adaptive_project):
     """Test TAGSET conditions with empty tag sets."""
     root = adaptive_project
 
-    # Create tag set with empty content
-    empty_tag_sets = {
-        "empty-set": TagSetConfig(
-            title="Empty Set",
-            tags={}  # empty tag set
-        )
-    }
-
     template_content = """# Empty TagSet Test
 
 {% if TAGSET:empty-set:any %}
@@ -296,14 +288,6 @@ def test_special_characters_in_tag_names(adaptive_project):
     """Test special characters in tag names."""
     root = adaptive_project
 
-    # Create tags with special characters (only allowed in lexer)
-    special_global_tags = {
-        "tag_with_underscore": TagConfig(title="Underscore Tag"),
-        "tag123": TagConfig(title="Number Tag"),
-        "CamelCaseTag": TagConfig(title="Camel Case Tag"),
-        "UPPER_TAG": TagConfig(title="Upper Case Tag")
-    }
-
     template_content = """# Special Characters Test
 
 {% if tag:tag_with_underscore %}
@@ -343,17 +327,6 @@ def test_performance_regression_detection(adaptive_project):
     import time
 
     root = adaptive_project
-
-    # Create load test
-    heavy_template = """# Performance Test
-
-{% for i in range(100) %}
-{% if tag:perf-{{ i }} %}
-## Section {{ i }}
-Content for section {{ i }}
-{% endif %}
-{% endfor %}
-"""
 
     # Note: This is pseudo-code since for loops are not supported in current implementation
     # Replace with manual condition creation
