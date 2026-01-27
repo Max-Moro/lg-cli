@@ -10,9 +10,10 @@ from dataclasses import dataclass, field
 from typing import List, Optional
 
 from .types import ParsedPath
+from ..errors import LGUserError
 
 
-class AddressingError(Exception):
+class AddressingError(LGUserError):
     """Base class for addressing errors."""
     pass
 

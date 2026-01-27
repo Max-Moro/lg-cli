@@ -25,11 +25,12 @@ from .types import ProcessingContext
 from ..addressing.types import ResolvedSection
 from ..run_context import RunContext
 from ..adaptive.model import AdaptiveModel
+from ..errors import LGUserError
 
 logger = logging.getLogger(__name__)
 
 
-class TemplateProcessingError(Exception):
+class TemplateProcessingError(LGUserError):
     """General template processing error."""
 
     def __init__(self, message: str, template_name: str = "", cause: Optional[Exception] = None):

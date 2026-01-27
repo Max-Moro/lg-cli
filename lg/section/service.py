@@ -11,13 +11,14 @@ from .index import SectionLocation, ScopeIndex, build_index, iter_all_config_fil
 from .model import SectionCfg
 from ..cache.fs_cache import Cache
 from ..migrate import ensure_cfg_actual
+from ..errors import LGUserError
 
 _yaml = YAML(typ="safe")
 
 CACHE_VERSION = "1.0"
 
 
-class SectionNotFoundError(RuntimeError):
+class SectionNotFoundError(LGUserError):
     """Raised when a section cannot be found."""
     def __init__(self, name: str, searched: List[str]):
         self.name = name

@@ -10,6 +10,8 @@ from __future__ import annotations
 import enum
 from dataclasses import dataclass
 
+from ..errors import LGUserError
+
 
 class TokenType(enum.Enum):
     """Base token types in template. Plugins register their tokens via TokenRegistry."""
@@ -36,7 +38,7 @@ class Token:
         return f"Token({self.type}, {self.value!r}, {self.line}:{self.column})"
 
 
-class ParserError(Exception):
+class ParserError(LGUserError):
     """Syntax analysis error."""
 
     def __init__(self, message: str, token: Token):

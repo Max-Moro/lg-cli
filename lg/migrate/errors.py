@@ -1,8 +1,10 @@
 
 from __future__ import annotations
 
+from ..errors import LGUserError
 
-class MigrationFatalError(RuntimeError):
+
+class MigrationFatalError(LGUserError):
     """
     Top-level exception for fatal migration failures.
     The message text is intended FOR THE USER (with hints).
@@ -10,7 +12,7 @@ class MigrationFatalError(RuntimeError):
     """
     pass
 
-class PreflightRequired(RuntimeError):
+class PreflightRequired(LGUserError):
     """Raised by a migration if Git is required for application."""
     pass
 

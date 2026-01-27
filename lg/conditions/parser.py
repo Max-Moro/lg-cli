@@ -36,9 +36,10 @@ from .model import (
     NotCondition,
     BinaryCondition,
 )
+from ..errors import LGUserError
 
 
-class ParseError(Exception):
+class ParseError(LGUserError):
     """Error parsing a conditional expression."""
 
     def __init__(self, message: str, position: int):

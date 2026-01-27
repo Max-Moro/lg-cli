@@ -14,9 +14,10 @@ from .nodes import (
     MarkdownAST, MarkdownNode, TextNode, ConditionalBlockNode,
     ElifBlockNode, ElseBlockNode, CommentBlockNode, RawBlockNode
 )
+from ...errors import LGUserError
 
 
-class MarkdownTemplateParserError(Exception):
+class MarkdownTemplateParserError(LGUserError):
     """Error in parsing Markdown with conditional constructs."""
 
     def __init__(self, message: str, token: Optional[CommentToken] = None):

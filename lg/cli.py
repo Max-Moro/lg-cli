@@ -5,11 +5,10 @@ import sys
 from pathlib import Path
 from typing import Any, Dict, Optional
 
-from .adaptive.errors import AdaptiveError
+from .errors import LGUserError
 from .diag import run_diag
 from .engine import run_report, run_render
 from .jsonic import dumps as jdumps
-from .migrate.errors import MigrationFatalError
 from .types import RunOptions
 from .version import tool_version
 
@@ -275,23 +274,15 @@ def main(argv: list[str] | None = None) -> int:
                     sys.stderr.write("Error: --provider is required for 'mode-sets'\n")
                     return 2
                 from .adaptive.listing import list_mode_sets
-                try:
-                    mode_sets_result = list_mode_sets(root, context=ns.context, provider=ns.provider)
-                    data = mode_sets_result.model_dump(by_alias=True)
-                except Exception as e:
-                    sys.stderr.write(f"Error: {e}\n")
-                    return 2
+                mode_sets_result = list_mode_sets(root, context=ns.context, provider=ns.provider)
+                data = mode_sets_result.model_dump(by_alias=True)
             elif ns.what == "tag-sets":
                 if not ns.context:
                     sys.stderr.write("Error: --context is required for 'tag-sets'\n")
                     return 2
                 from .adaptive.listing import list_tag_sets
-                try:
-                    tag_sets_result = list_tag_sets(root, context=ns.context)
-                    data = tag_sets_result.model_dump(by_alias=True)
-                except Exception as e:
-                    sys.stderr.write(f"Error: {e}\n")
-                    return 2
+                tag_sets_result = list_tag_sets(root, context=ns.context)
+                data = tag_sets_result.model_dump(by_alias=True)
             else:
                 raise ValueError(f"Unknown list target: {ns.what}")
             sys.stdout.write(jdumps(data))
@@ -310,11 +301,8 @@ def main(argv: list[str] | None = None) -> int:
             sys.stdout.write(jdumps(report.model_dump(mode="json")))
             return 0
 
-    except MigrationFatalError as e:
-        sys.stderr.write(str(e).rstrip() + "\n")
-        return 2
-    except (ValueError, AdaptiveError) as e:
-        sys.stderr.write(str(e).rstrip() + "\n")
+    except (LGUserError, ValueError, FileNotFoundError) as e:
+        sys.stderr.write(f"Error: {str(e).rstrip()}\n")
         return 2
 
     return 2

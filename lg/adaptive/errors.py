@@ -10,8 +10,10 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import List, Optional
 
+from ..errors import LGUserError
 
-class AdaptiveError(Exception):
+
+class AdaptiveError(LGUserError):
     """Base class for adaptive system errors."""
     pass
 

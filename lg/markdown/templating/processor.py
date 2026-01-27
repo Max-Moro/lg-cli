@@ -14,9 +14,10 @@ from .nodes import (
     CommentBlockNode, RawBlockNode
 )
 from .parser import parse_markdown_template, MarkdownTemplateParserError
+from ...errors import LGUserError
 
 
-class MarkdownTemplateProcessorError(Exception):
+class MarkdownTemplateProcessorError(LGUserError):
     """Error in processing Markdown with conditional constructs."""
 
     def __init__(self, message: str, cause: Optional[Exception] = None):
@@ -57,19 +58,16 @@ class MarkdownTemplateProcessor:
         try:
             # 1. Parse text into AST
             ast = parse_markdown_template(text)
-
-            # 2. Evaluate conditions and generate result
-            processed_text = self._evaluate_ast(ast)
-
-            # 3. Collect metadata
-            meta = self._collect_metadata(ast)
-
-            return processed_text, meta
-
         except MarkdownTemplateParserError as e:
             raise MarkdownTemplateProcessorError(f"Parsing error: {e}", e)
-        except Exception as e:
-            raise MarkdownTemplateProcessorError(f"Unexpected processing error: {e}", e)
+
+        # 2. Evaluate conditions and generate result
+        processed_text = self._evaluate_ast(ast)
+
+        # 3. Collect metadata
+        meta = self._collect_metadata(ast)
+
+        return processed_text, meta
     
     def _evaluate_ast(self, ast: MarkdownAST) -> str:
         """
