@@ -6,7 +6,7 @@ cd "$(dirname "$0")/.."  # navigate to project root cli/
 
 echo "🧹 Cleaning stale build artifacts..."
 # Remove build/ and *.egg-info for clean build
-rm -rf build/ *.egg-info
+rm -rf build/ dist/ *.egg-info
 
 echo "🔨 Building wheel..."
 py -3 -m build --wheel
