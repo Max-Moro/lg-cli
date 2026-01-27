@@ -14,7 +14,7 @@ from .filters import FilterEngine
 from .fs import iter_files
 from .model import FilterNode
 from ..adapters.registry import get_adapter_for_path
-from ..section import SectionCfg, EmptyPolicy
+from ..section import SectionCfg, AdapterConfig, EmptyPolicy
 from ..config.paths import is_cfg_relpath
 from ..rendering import get_language_for_file
 from ..template.context import TemplateContext
@@ -72,7 +72,8 @@ def build_section_manifest(
         root=root,
         adapters_cfg=adapters_cfg,
         is_local_files=is_local_files,
-        gitignore_service=gitignore_service
+        gitignore_service=gitignore_service,
+        template_ctx=template_ctx
     )
 
     # Determine if section is documentation-only
@@ -103,7 +104,8 @@ def build_section_manifest(
             root=root,
             adapters_cfg=adapters_cfg,
             is_local_files=is_local_files,
-            gitignore_service=gitignore_service
+            gitignore_service=gitignore_service,
+            template_ctx=template_ctx
         )
 
     # Create manifest
@@ -128,24 +130,31 @@ def _compute_final_adapter_configs(section_cfg: SectionCfg, template_ctx: Templa
     Returns:
         Dictionary of final adapter options (adapter_name -> options)
     """
-    final_configs = {}
-    for adapter_name, adapter_config in section_cfg.adapters.items():
-        # Start with base options
-        final_options = dict(adapter_config.base_options)
+    return {
+        adapter_name: _resolve_adapter_config(adapter_config, template_ctx)
+        for adapter_name, adapter_config in section_cfg.adapters.items()
+    }
 
-        # Apply conditional options in order of definition
-        # Later rules override earlier ones
-        for conditional_option in adapter_config.conditional_options:
-            # Evaluate condition
-            condition_met = template_ctx.evaluate_condition_text(conditional_option.condition)
 
-            if condition_met:
-                # Apply options from this conditional block
-                final_options.update(conditional_option.options)
+def _resolve_adapter_config(adapter_config: AdapterConfig, template_ctx: TemplateContext) -> Dict[str, object]:
+    """
+    Resolves a single AdapterConfig into a flat options dict.
 
-        final_configs[adapter_name] = final_options
+    Evaluates conditional options (when: blocks) and merges them
+    on top of base options in definition order.
 
-    return final_configs
+    Args:
+        adapter_config: Adapter configuration with optional conditions
+        template_ctx: Template context for condition evaluation
+
+    Returns:
+        Flat dictionary of resolved adapter options
+    """
+    final = dict(adapter_config.base_options)
+    for cond_opt in adapter_config.conditional_options:
+        if template_ctx.evaluate_condition_text(cond_opt.condition):
+            final.update(cond_opt.options)
+    return final
 
 
 def _is_doc_only_section(files: List[FileEntry]) -> bool:
@@ -283,7 +292,8 @@ def _collect_section_files(
     root: Path,
     adapters_cfg: dict[str, dict],
     is_local_files: bool,
-    gitignore_service: Optional[GitIgnoreService]
+    gitignore_service: Optional[GitIgnoreService],
+    template_ctx: TemplateContext
 ) -> List[FileEntry]:
     """
     Collects files for a section with all filters applied.
@@ -376,7 +386,7 @@ def _collect_section_files(
         lang = get_language_for_file(fp)
 
         # Determine targeted adapter overrides
-        overrides = _calculate_adapter_overrides(rel_engine, target_specs)
+        overrides = _calculate_adapter_overrides(rel_engine, target_specs, template_ctx)
 
         # Create FileEntry
         files.append(FileEntry(
@@ -435,9 +445,16 @@ def _should_skip_empty_file(file_path: Path, effective_exclude_empty: bool, adap
     return effective_exclude_empty
 
 
-def _calculate_adapter_overrides(rel_path: str, target_specs: List[tuple]) -> Dict[str, dict]:
+def _calculate_adapter_overrides(
+    rel_path: str,
+    target_specs: List[tuple],
+    template_ctx: TemplateContext
+) -> Dict[str, dict]:
     """
     Calculates targeted adapter configuration overrides.
+
+    Evaluates when: conditions in target adapter configs
+    using the current template context.
     """
     overrides: Dict[str, dict] = {}
 
@@ -454,11 +471,12 @@ def _calculate_adapter_overrides(rel_path: str, target_specs: List[tuple]) -> Di
         if not matched:
             continue
 
-        # Apply shallow-merge by adapter names
-        for adapter_name, patch_cfg in acfgs.items():
+        # Apply shallow-merge by adapter names (resolve conditions first)
+        for adapter_name, adapter_cfg in acfgs.items():
+            resolved = _resolve_adapter_config(adapter_cfg, template_ctx)
             base = overrides.get(adapter_name, {})
             merged = dict(base)
-            merged.update(patch_cfg or {})
+            merged.update(resolved)
             overrides[adapter_name] = merged
 
     return overrides

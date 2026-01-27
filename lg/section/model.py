@@ -74,8 +74,8 @@ class TargetRule:
     All other keys in source YAML inside the rule are treated as adapter names.
     """
     match: List[str] = field(default_factory=list)
-    # adapter_name -> raw dict-config (as in section)
-    adapter_cfgs: Dict[str, dict] = field(default_factory=dict)
+    # adapter_name -> AdapterConfig (supports when: conditions)
+    adapter_cfgs: Dict[str, AdapterConfig] = field(default_factory=dict)
 
 @dataclass
 class SectionCfg:
@@ -128,13 +128,18 @@ class SectionCfg:
                 match_list = list(match_val)
             else:
                 raise RuntimeError(f"Section '{name}': targets[{idx}].match must be string or list of strings")
-            adapter_cfgs: Dict[str, dict] = {}
+            adapter_cfgs: Dict[str, AdapterConfig] = {}
             for ak, av in item.items():
                 if ak == "match":
                     continue
                 if not isinstance(av, dict):
                     raise RuntimeError(f"Section '{name}': targets[{idx}].{ak} must be a mapping (adapter cfg)")
-                adapter_cfgs[str(ak)] = dict(av)  # type: ignore
+                try:
+                    adapter_cfgs[str(ak)] = AdapterConfig.from_dict(dict(av))
+                except Exception as e:
+                    raise RuntimeError(
+                        f"Failed to parse adapter config for '{ak}' in section '{name}' targets[{idx}]: {e}"
+                    )
             targets.append(TargetRule(match=match_list, adapter_cfgs=adapter_cfgs))
 
         # path_labels

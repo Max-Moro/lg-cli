@@ -563,3 +563,278 @@ my-local-config.yaml
         processor.process_section(non_local_resolved, template_ctx)
 
     assert "No markdown files found" in str(exc_info.value)
+
+
+# ---- Tests for when: conditions in targets ---- #
+
+def test_when_in_targets_basic(tmp_path: Path):
+    """Target with when: condition applies overrides only when condition is met."""
+    write(tmp_path / "src" / "engine.py", "def run(): pass")
+    write(tmp_path / "src" / "utils.py", "def helper(): pass")
+
+    write(tmp_path / "lg-cfg" / "sections.yaml", """
+code:
+  extensions: [".py"]
+  filters:
+    mode: allow
+    allow:
+      - "src/**"
+  targets:
+    - match: "/src/engine.py"
+      python:
+        when:
+          - condition: "tag:review"
+            strip_function_bodies: true
+""")
+
+    sections = load_sections(tmp_path)
+    section_cfg = sections["code"]
+    resolved = ResolvedSection(
+        scope_dir=tmp_path, scope_rel="",
+        location=SectionLocation(file_path=Path("test"), local_name="code"),
+        section_config=section_cfg, name="code"
+    )
+
+    # Without review tag: no strip_function_bodies override
+    run_ctx = make_run_context(tmp_path)
+    template_ctx = TemplateContext(run_ctx)
+    manifest = build_section_manifest(
+        resolved=resolved, section_config=section_cfg,
+        template_ctx=template_ctx, root=tmp_path,
+        vcs=run_ctx.vcs, gitignore_service=run_ctx.gitignore,
+        vcs_mode="all"
+    )
+    engine_file = next(f for f in manifest.files if f.rel_path == "src/engine.py")
+    py_overrides = engine_file.adapter_overrides.get("python", {})
+    assert "strip_function_bodies" not in py_overrides
+
+    # With review tag: strip_function_bodies should be set
+    run_ctx2 = make_run_context(tmp_path, options=make_run_options(extra_tags={"review"}))
+    template_ctx2 = TemplateContext(run_ctx2)
+    manifest2 = build_section_manifest(
+        resolved=resolved, section_config=section_cfg,
+        template_ctx=template_ctx2, root=tmp_path,
+        vcs=run_ctx2.vcs, gitignore_service=run_ctx2.gitignore,
+        vcs_mode="all"
+    )
+    engine_file2 = next(f for f in manifest2.files if f.rel_path == "src/engine.py")
+    py_overrides2 = engine_file2.adapter_overrides.get("python", {})
+    assert py_overrides2.get("strip_function_bodies") is True
+
+    # Unmatched file should have no overrides regardless of tag
+    utils_file = next(f for f in manifest2.files if f.rel_path == "src/utils.py")
+    assert not utils_file.adapter_overrides.get("python", {})
+
+
+def test_when_in_targets_backward_compat(tmp_path: Path):
+    """Targets without when: work exactly as before."""
+    write(tmp_path / "src" / "main.py", "def main(): pass")
+
+    write(tmp_path / "lg-cfg" / "sections.yaml", """
+code:
+  extensions: [".py"]
+  filters:
+    mode: allow
+    allow:
+      - "src/**"
+  targets:
+    - match: "/src/main.py"
+      python:
+        strip_function_bodies: true
+        comment_policy: "keep_doc"
+""")
+
+    sections = load_sections(tmp_path)
+    section_cfg = sections["code"]
+    resolved = ResolvedSection(
+        scope_dir=tmp_path, scope_rel="",
+        location=SectionLocation(file_path=Path("test"), local_name="code"),
+        section_config=section_cfg, name="code"
+    )
+
+    run_ctx = make_run_context(tmp_path)
+    template_ctx = TemplateContext(run_ctx)
+    manifest = build_section_manifest(
+        resolved=resolved, section_config=section_cfg,
+        template_ctx=template_ctx, root=tmp_path,
+        vcs=run_ctx.vcs, gitignore_service=run_ctx.gitignore,
+        vcs_mode="all"
+    )
+
+    main_file = next(f for f in manifest.files if f.rel_path == "src/main.py")
+    py_overrides = main_file.adapter_overrides.get("python", {})
+    assert py_overrides["strip_function_bodies"] is True
+    assert py_overrides["comment_policy"] == "keep_doc"
+
+
+def test_when_in_targets_multiple_conditions(tmp_path: Path):
+    """Multiple when: items — later matching conditions override earlier ones."""
+    write(tmp_path / "src" / "core.py", "class Core: pass")
+
+    write(tmp_path / "lg-cfg" / "sections.yaml", """
+code:
+  extensions: [".py"]
+  filters:
+    mode: allow
+    allow:
+      - "src/**"
+  targets:
+    - match: "/src/core.py"
+      python:
+        when:
+          - condition: "tag:optimize"
+            strip_function_bodies: true
+            comment_policy: "keep_doc"
+          - condition: "tag:optimize AND tag:aggressive"
+            comment_policy: "strip_all"
+""")
+
+    sections = load_sections(tmp_path)
+    section_cfg = sections["code"]
+    resolved = ResolvedSection(
+        scope_dir=tmp_path, scope_rel="",
+        location=SectionLocation(file_path=Path("test"), local_name="code"),
+        section_config=section_cfg, name="code"
+    )
+
+    # Only optimize tag: first condition applies
+    run_ctx = make_run_context(tmp_path, options=make_run_options(extra_tags={"optimize"}))
+    template_ctx = TemplateContext(run_ctx)
+    manifest = build_section_manifest(
+        resolved=resolved, section_config=section_cfg,
+        template_ctx=template_ctx, root=tmp_path,
+        vcs=run_ctx.vcs, gitignore_service=run_ctx.gitignore,
+        vcs_mode="all"
+    )
+    core_file = next(f for f in manifest.files if f.rel_path == "src/core.py")
+    py = core_file.adapter_overrides.get("python", {})
+    assert py["strip_function_bodies"] is True
+    assert py["comment_policy"] == "keep_doc"
+
+    # Both tags: second condition overrides comment_policy
+    run_ctx2 = make_run_context(tmp_path, options=make_run_options(extra_tags={"optimize", "aggressive"}))
+    template_ctx2 = TemplateContext(run_ctx2)
+    manifest2 = build_section_manifest(
+        resolved=resolved, section_config=section_cfg,
+        template_ctx=template_ctx2, root=tmp_path,
+        vcs=run_ctx2.vcs, gitignore_service=run_ctx2.gitignore,
+        vcs_mode="all"
+    )
+    core_file2 = next(f for f in manifest2.files if f.rel_path == "src/core.py")
+    py2 = core_file2.adapter_overrides.get("python", {})
+    assert py2["strip_function_bodies"] is True
+    assert py2["comment_policy"] == "strip_all"
+
+
+def test_when_in_targets_mixed_base_and_conditional(tmp_path: Path):
+    """Target has both unconditional base options and conditional when: options."""
+    write(tmp_path / "src" / "api.py", "def endpoint(): pass")
+
+    write(tmp_path / "lg-cfg" / "sections.yaml", """
+code:
+  extensions: [".py"]
+  filters:
+    mode: allow
+    allow:
+      - "src/**"
+  targets:
+    - match: "/src/api.py"
+      python:
+        comment_policy: "keep_doc"
+        when:
+          - condition: "tag:compact"
+            strip_function_bodies: true
+""")
+
+    sections = load_sections(tmp_path)
+    section_cfg = sections["code"]
+    resolved = ResolvedSection(
+        scope_dir=tmp_path, scope_rel="",
+        location=SectionLocation(file_path=Path("test"), local_name="code"),
+        section_config=section_cfg, name="code"
+    )
+
+    # Without compact tag: only base options apply
+    run_ctx = make_run_context(tmp_path)
+    template_ctx = TemplateContext(run_ctx)
+    manifest = build_section_manifest(
+        resolved=resolved, section_config=section_cfg,
+        template_ctx=template_ctx, root=tmp_path,
+        vcs=run_ctx.vcs, gitignore_service=run_ctx.gitignore,
+        vcs_mode="all"
+    )
+    api_file = next(f for f in manifest.files if f.rel_path == "src/api.py")
+    py = api_file.adapter_overrides.get("python", {})
+    assert py["comment_policy"] == "keep_doc"
+    assert "strip_function_bodies" not in py
+
+    # With compact tag: base + conditional options
+    run_ctx2 = make_run_context(tmp_path, options=make_run_options(extra_tags={"compact"}))
+    template_ctx2 = TemplateContext(run_ctx2)
+    manifest2 = build_section_manifest(
+        resolved=resolved, section_config=section_cfg,
+        template_ctx=template_ctx2, root=tmp_path,
+        vcs=run_ctx2.vcs, gitignore_service=run_ctx2.gitignore,
+        vcs_mode="all"
+    )
+    api_file2 = next(f for f in manifest2.files if f.rel_path == "src/api.py")
+    py2 = api_file2.adapter_overrides.get("python", {})
+    assert py2["comment_policy"] == "keep_doc"
+    assert py2["strip_function_bodies"] is True
+
+
+def test_when_in_targets_not_condition(tmp_path: Path):
+    """NOT condition disables optimization when tag is active."""
+    write(tmp_path / "src" / "engine.py", "def run(): pass")
+
+    write(tmp_path / "lg-cfg" / "sections.yaml", """
+code:
+  extensions: [".py"]
+  filters:
+    mode: allow
+    allow:
+      - "src/**"
+  targets:
+    - match: "/src/engine.py"
+      python:
+        when:
+          - condition: "NOT tag:review"
+            strip_function_bodies: true
+            comment_policy: "keep_doc"
+""")
+
+    sections = load_sections(tmp_path)
+    section_cfg = sections["code"]
+    resolved = ResolvedSection(
+        scope_dir=tmp_path, scope_rel="",
+        location=SectionLocation(file_path=Path("test"), local_name="code"),
+        section_config=section_cfg, name="code"
+    )
+
+    # Without review tag: NOT tag:review is true → optimizations active
+    run_ctx = make_run_context(tmp_path)
+    template_ctx = TemplateContext(run_ctx)
+    manifest = build_section_manifest(
+        resolved=resolved, section_config=section_cfg,
+        template_ctx=template_ctx, root=tmp_path,
+        vcs=run_ctx.vcs, gitignore_service=run_ctx.gitignore,
+        vcs_mode="all"
+    )
+    engine_file = next(f for f in manifest.files if f.rel_path == "src/engine.py")
+    py = engine_file.adapter_overrides.get("python", {})
+    assert py["strip_function_bodies"] is True
+    assert py["comment_policy"] == "keep_doc"
+
+    # With review tag: NOT tag:review is false → no overrides
+    run_ctx2 = make_run_context(tmp_path, options=make_run_options(extra_tags={"review"}))
+    template_ctx2 = TemplateContext(run_ctx2)
+    manifest2 = build_section_manifest(
+        resolved=resolved, section_config=section_cfg,
+        template_ctx=template_ctx2, root=tmp_path,
+        vcs=run_ctx2.vcs, gitignore_service=run_ctx2.gitignore,
+        vcs_mode="all"
+    )
+    engine_file2 = next(f for f in manifest2.files if f.rel_path == "src/engine.py")
+    py2 = engine_file2.adapter_overrides.get("python", {})
+    assert "strip_function_bodies" not in py2
+    assert "comment_policy" not in py2
