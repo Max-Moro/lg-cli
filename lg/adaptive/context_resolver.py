@@ -91,7 +91,6 @@ class ContextResolver:
     def resolve_for_context(
         self,
         context_name: str,
-        validate: bool = True
     ) -> ContextAdaptiveData:
         """
         Build complete AdaptiveModel for a context.
@@ -100,11 +99,10 @@ class ContextResolver:
         1. Collect all sections from template + frontmatter
         2. Resolve extends for each section
         3. Merge adaptive data in deterministic order
-        4. Validate single integration mode-set rule (if validate=True)
+        4. Validate the final model
 
         Args:
             context_name: Name of context (without .ctx.md suffix)
-            validate: Whether to validate the model
 
         Returns:
             ContextAdaptiveData with merged model
@@ -116,12 +114,7 @@ class ContextResolver:
         # Check cache
         cache_key = f"ctx:{context_name}"
         if cache_key in self._cache:
-            cached = self._cache[cache_key]
-            # Re-validate if requested but not previously validated
-            if validate and not cached.validated:
-                self._validator.validate_model(cached.model, context_name)
-                cached.validated = True
-            return cached
+            return self._cache[cache_key]
 
         # Collect all sections
         collected = self._collector.collect(context_name)
@@ -129,18 +122,15 @@ class ContextResolver:
         # Merge all sections in order
         merged_model = self._merge_collected_sections(collected)
 
-        # Validate if requested
-        validated = False
-        if validate:
-            self._validator.validate_model(merged_model, context_name)
-            validated = True
+        # Validate: contexts must have exactly one integration mode-set
+        self._validator.validate_model(merged_model, context_name)
 
         # Build result
         result = ContextAdaptiveData(
             model=merged_model,
             context_name=context_name,
             section_count=len(collected.sections),
-            validated=validated,
+            validated=True,
         )
 
         # Cache
@@ -152,18 +142,18 @@ class ContextResolver:
         self,
         section_name: str,
         scope_dir: Optional[Path] = None,
-        validate: bool = True
     ) -> AdaptiveModel:
         """
         Build AdaptiveModel for standalone section render.
 
         Only includes this section and its extends chain.
-        Used when rendering a section directly (not via context).
+        Sections are rendered for preview/debug, not for "Send to AI"
+        which uses contexts. Integration mode-set validation is not
+        performed here.
 
         Args:
             section_name: Section name
             scope_dir: Scope directory (defaults to cfg_root parent)
-            validate: Whether to validate the model
 
         Returns:
             AdaptiveModel for the section
@@ -174,27 +164,17 @@ class ContextResolver:
         # Check cache
         cache_key = f"sec:{scope_dir}:{section_name}"
         if cache_key in self._cache:
-            cached = self._cache[cache_key]
-            if validate and not cached.validated:
-                self._validator.validate_model(cached.model, section_name)
-                cached.validated = True
-            return cached.model
+            return self._cache[cache_key].model
 
         # Resolve section with extends
         resolved = self._extends_resolver.resolve(section_name, scope_dir)
 
-        # Validate if requested
-        validated = False
-        if validate:
-            self._validator.validate_model(resolved.adaptive_model, section_name)
-            validated = True
-
-        # Cache
+        # Cache (no validation for sections)
         result = ContextAdaptiveData(
             model=resolved.adaptive_model,
             context_name=section_name,
             section_count=1,
-            validated=validated,
+            validated=False,
         )
         self._cache[cache_key] = result
 

@@ -83,7 +83,7 @@ def list_mode_sets(root: Path, context: str, provider: str) -> ModeSetsList:
     resolver, _ = _create_context_resolver(root)
 
     # Resolve adaptive model for context
-    adaptive_data = resolver.resolve_for_context(context, validate=True)
+    adaptive_data = resolver.resolve_for_context(context)
 
     # Validate provider support
     validate_provider_support(adaptive_data.model, provider, context)
@@ -151,7 +151,7 @@ def list_tag_sets(root: Path, context: str) -> TagSetsList:
     resolver, _ = _create_context_resolver(root)
 
     # Resolve adaptive model for context
-    adaptive_data = resolver.resolve_for_context(context, validate=True)
+    adaptive_data = resolver.resolve_for_context(context)
 
     # Convert to schema
     return _adaptive_model_to_tag_sets_list(adaptive_data.model)
@@ -213,7 +213,7 @@ def list_contexts_for_provider(root: Path, provider: str) -> list[str]:
 
     for ctx_name in all_contexts:
         try:
-            adaptive_data = resolver.resolve_for_context(ctx_name, validate=False)
+            adaptive_data = resolver.resolve_for_context(ctx_name)
             integration_set = adaptive_data.model.get_integration_mode_set()
             if integration_set is None:
                 continue

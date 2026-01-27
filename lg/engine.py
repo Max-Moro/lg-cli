@@ -115,7 +115,7 @@ class Engine:
         self.stats_collector.set_target_name(f"ctx:{context_name}")
 
         # Resolve adaptive model for this context
-        adaptive_data = self.context_resolver.resolve_for_context(context_name, validate=True)
+        adaptive_data = self.context_resolver.resolve_for_context(context_name)
 
         # Create template processor with resolved model
         template_processor = self._create_template_processor(adaptive_data.model)
@@ -145,13 +145,9 @@ class Engine:
         self.stats_collector.set_target_name(f"sec:{section_name}")
 
         # Resolve adaptive model for this section
-        # Note: validate=False because sections are rendered for preview/debug,
-        # not for "Send to AI" which only uses contexts. Integration mode-set
-        # validation is not needed here.
         adaptive_model = self.context_resolver.resolve_for_section(
             section_name,
             scope_dir=self.run_ctx.root,
-            validate=False
         )
 
         template_ctx = TemplateContext(self.run_ctx, adaptive_model)
