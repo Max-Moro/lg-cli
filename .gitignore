@@ -18,9 +18,16 @@ htmlcov/
 .eggs/
 *.egg-info/
 
-# IDE / Editor
-.idea/
+# IDE / Editor - VS Code
 .vscode/
+
+# IDE / Editor - JetBrains
+# Ignore local/personal settings by default (workspace layout, shelved changes,
+# module files with local SDK paths, terminal config, etc.)
+.idea/*
+# Track shared project configuration
+!.idea/.gitignore
+!.idea/inspectionProfiles/
 
 # Code inspection
 .qodana/

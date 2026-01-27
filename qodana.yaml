@@ -14,9 +14,9 @@ bootstrap: |
   python -m pip install -e .[dev]
   echo "Dependencies installed successfully"
 
-# Inspection profile
+# Inspection profile (custom: includes test code in analysis scope)
 profile:
-  name: qodana.recommended
+  path: .idea/inspectionProfiles/qodana.recommended.with-tests.yaml
 
 # Exclude inspections and paths
 exclude:
@@ -53,3 +53,23 @@ exclude:
 
   # This inspection is not yet operational in Qodana. Adding 'ABC' to the signature does not fix it.
   - name: PyAbstractClassInspection
+
+  # PyProtectedMemberInspection: Tests intentionally access internal APIs for verification
+  - name: PyProtectedMemberInspection
+    paths:
+      - tests
+
+  # Golden test fixtures — reference code samples for all supported languages.
+  # They are not production or test code; they intentionally contain quality issues.
+  - name: All
+    paths:
+      - tests/adapters/c/goldens
+      - tests/adapters/cpp/goldens
+      - tests/adapters/go/goldens
+      - tests/adapters/java/goldens
+      - tests/adapters/javascript/goldens
+      - tests/adapters/kotlin/goldens
+      - tests/adapters/python/goldens
+      - tests/adapters/rust/goldens
+      - tests/adapters/scala/goldens
+      - tests/adapters/typescript/goldens

@@ -1,0 +1,184 @@
+# Standalone inspection profile equivalent to qodana.recommended,
+# but with test code (tests/) included in analysis scope.
+#
+# This is NOT inherited via baseProfile because Qodana merges ignore lists
+# additively, making it impossible to remove test exclusions via inheritance.
+# Instead, this file is a full replica of qodana.recommended + qodana.recommended.all
+# with three test-exclusion patterns removed from the ALL group ignore list:
+#   - "tests/**"
+#   - "scope#test:*..*"
+#   - "**.test.ts"
+#
+# Source: https://github.com/JetBrains/qodana-profiles/tree/master/.idea/inspectionProfiles
+# Qodana CLI version at time of creation: 2025.3.1
+#
+# See: .idea/inspectionProfiles/QODANA-PROFILE-MAINTENANCE.md
+
+name: "qodana.recommended.with-tests"
+baseProfile: "Project Default"
+
+# ---------------------------------------------------------------------------
+# Group definitions (from qodana.recommended.all.yaml)
+# ---------------------------------------------------------------------------
+
+groups:
+  - groupId: JSRelatedInspections
+    inspections:
+      - JsCoverageInspection
+
+  - groupId: JSInspections
+    groups:
+      - "category:JavaScript and TypeScript"
+      - "category:Angular"
+      - "category:Vue"
+      - "category:MongoJS"
+      - "category:Pug_Jade"
+      - "JSRelatedInspections"
+
+  - groupId: AndroidInspections
+    groups:
+      - "category:Android Lint: Accessibility"
+      - "category:Android Lint: Compliance"
+      - "category:Android Lint: Correctness"
+      - "category:Android Lint: Internationalization"
+      - "category:Android Lint: Interoperability"
+      - "category:Android Lint: Performance"
+      - "category:Android Lint: Productivity"
+      - "category:Android Lint: Security"
+      - "category:Android Lint: Testing"
+      - "category:Android Lint: Usability"
+      - "category:Android"
+
+  - groupId: IncludedCategories
+    groups:
+      - "category:Java"
+      - "category:Kotlin"
+      - "category:JVM languages"
+      - "category:Spring"
+      - "category:CDI (Contexts and Dependency Injection)"
+      - "category:Bean Validation"
+      - "category:Reactive Streams"
+      - "category:RegExp"
+      - "category:PHP"
+      - "category:Go"
+      - "category:Python"
+      - "category:General"
+      - "category:TOML"
+      - "JSInspections"
+      - "category:Ruby"
+      - "category:RBS"
+      - "category:Security"
+      - "category:C_C++"
+      - "category:Objective-C"
+      - "category:CMake"
+      - "category:Clangd Inspections"
+
+  - groupId: Excluded
+    groups:
+      - "ALL"
+      - "!IncludedCategories"
+      - "category:Java/Java language level migration aids"
+      - "category:JavaScript and TypeScript/ES2015 migration aids"
+      - "category:C_C++/Compiler Issues"
+      - "category:Ktor/General"
+      - "GLOBAL"
+      - "severity:INFORMATION"
+      - "severity:TEXT ATTRIBUTES"
+      - "ExcludedInspections"
+      - "!category:FlexInspect"
+      - "!AndroidInspections"
+
+  - groupId: ExcludedInspections
+    inspections:
+      - Annotator
+      - KotlinAnnotator
+      - JavaAnnotator
+      - SyntaxError
+      - RedundantSuppression
+      - Since15
+      - JavadocBlankLines
+      - JSUnresolvedLibraryURL
+      - ReassignedToPlainText
+      - DifferentKotlinGradleVersion
+      - JSAnnotator
+      - JSFileReferences
+      - JSUnresolvedReference
+      - NpmUsedModulesInstalled
+      - PackageJsonMismatchedDependency
+      - JSTestFailedLine
+      - JSUnusedGlobalSymbols
+      - JSValidateTypes
+      - JSCheckFunctionSignatures
+      - PhpLanguageLevelInspection
+      - PhpMultipleClassDeclarationsInspection
+      - PyInterpreterInspection
+      - PyUnresolvedReferencesInspection
+      - PyDataclassInspection
+      - PyArgumentListInspection
+      - PyTypeCheckerInspection
+      - HttpUrlsUsage
+
+  - groupId: CoverageInspections
+    inspections:
+      - JvmCoverageInspection
+      - GoCoverageInspection
+      - JsCoverageInspection
+      - PhpCoverageInspection
+      - PyCoverageInspection
+
+  - groupId: MetricsInspections
+    inspections:
+      - JvmLinesOfCodeInspection
+      - CyclomaticComplexityInspection
+
+  - groupId: DependencyAnalysis
+    inspections:
+      - CheckDependencyLicenses
+
+# ---------------------------------------------------------------------------
+# Inspection settings (from qodana.recommended.all.yaml + qodana.recommended.yaml)
+# ---------------------------------------------------------------------------
+
+inspections:
+  - group: Excluded
+    enabled: false
+
+  # MODIFIED: removed "tests/**", "scope#test:*..*", "**.test.ts"
+  - group: ALL
+    ignore:
+      - "vendor/**"
+      - "build/**"
+      - "buildSrc/**"
+      - "builds/**"
+      - "dist/**"
+      - "tools/**"
+      - ".qodana/**"
+      - "**/node_modules/**"
+      - "scope#$gitignore"
+      - "scope#file:buildSrc/*"
+      - "**.md"
+
+  - group: "category:JavaScript and TypeScript"
+    ignore:
+      - "**/resources/**"
+
+  # From qodana.recommended.yaml: disable JS inspections
+  - group: JSInspections
+    enabled: false
+
+  - inspection: JavadocReference
+    severity: WARNING
+  - inspection: KtorOpenAPIUpdate
+    enabled: true
+  - group: CoverageInspections
+    enabled: true
+  - group: MetricsInspections
+    enabled: false
+  - group: DependencyAnalysis
+    enabled: true
+  - inspection: PyPep8Inspection
+    severity: WEAK WARNING
+    enabled: true
+  - inspection: NullableProblems
+    options:
+      IGNORE_EXTERNAL_SUPER_NOTNULL: true
