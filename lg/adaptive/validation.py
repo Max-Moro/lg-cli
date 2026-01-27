@@ -116,15 +116,6 @@ class AdaptiveValidator:
                 available_providers=sorted(supported_providers),
             )
 
-        # Check if filtered mode-set has any modes
-        filtered = integration_set.filter_by_provider(provider_id)
-        if not filtered.modes:
-            raise ProviderNotSupportedError(
-                provider_id=provider_id,
-                context_name=context_name,
-                available_providers=sorted(supported_providers),
-            )
-
 
 # Singleton instance for convenience
 _validator = AdaptiveValidator()

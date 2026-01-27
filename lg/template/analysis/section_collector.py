@@ -17,9 +17,12 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import List, Set, Optional, cast
 
+from ...adaptive.errors import AdaptiveError
 from ...addressing import AddressingContext, SECTION_CONFIG
+from ...addressing.errors import ScopeNotFoundError as AddressScopeNotFoundError
 from ...addressing.types import ResolvedSection
 from ...section import SectionService
+from ...section.service import SectionNotFoundError
 from ..common import load_context_from, load_template_from
 from ..common_placeholders.nodes import SectionNode, IncludeNode
 from ..adaptive.nodes import ConditionalBlockNode, ModeBlockNode
@@ -269,9 +272,9 @@ class SectionCollector:
                 self._addressing.resolve(section_name, SECTION_CONFIG)
             )
             result.add_section(resolved)
-        except Exception:
-            # Section not found - skip silently during collection
-            # Errors will be raised during actual rendering
+        except (SectionNotFoundError, AdaptiveError, AddressScopeNotFoundError):
+            # Section not found or adaptive config error - skip during collection.
+            # Errors will surface during actual rendering.
             pass
 
     def _collect_from_include(self, node: IncludeNode, result: CollectedSections) -> None:
@@ -317,8 +320,8 @@ class SectionCollector:
             with self._addressing.file_scope(template_path, node.origin if node.origin != "self" else None):
                 self._collect_from_ast(ast, result)
 
-        except Exception:
-            # Include not found - skip silently during collection
+        except (RuntimeError, FileNotFoundError, AdaptiveError, AddressScopeNotFoundError):
+            # Include not found or config error - skip during collection
             pass
 
     def _process_frontmatter_includes(

@@ -15,11 +15,13 @@ from pathlib import Path
 from typing import Dict, Optional
 
 from .extends_resolver import ExtendsResolver
+from ..cache.fs_cache import Cache
 from ..template.analysis import SectionCollector, CollectedSections
 from .model import AdaptiveModel
 from .validation import AdaptiveValidator
 from ..addressing import AddressingContext
 from ..section import SectionService
+from ..version import tool_version
 
 
 @dataclass
@@ -216,4 +218,42 @@ class ContextResolver:
         return merged
 
 
-__all__ = ["ContextResolver", "ContextAdaptiveData"]
+def create_context_resolver(
+    root: Path,
+    cache: Optional[Cache] = None,
+) -> tuple[ContextResolver, SectionService, AddressingContext]:
+    """
+    Create ContextResolver with required services.
+
+    Shared factory used by Engine and listing commands to avoid
+    duplicating service initialization logic.
+
+    Args:
+        root: Repository root
+        cache: Optional Cache instance (created with defaults if None)
+
+    Returns:
+        Tuple of (ContextResolver, SectionService, AddressingContext)
+    """
+    root = root.resolve()
+    cfg_root_path = root / "lg-cfg"
+
+    if cache is None:
+        cache = Cache(root, enabled=None, fresh=False, tool_version=tool_version())
+
+    section_service = SectionService(root, cache)
+    addressing = AddressingContext(
+        repo_root=root,
+        initial_cfg_root=cfg_root_path,
+        section_service=section_service,
+    )
+    resolver = ContextResolver(
+        section_service=section_service,
+        addressing=addressing,
+        cfg_root=cfg_root_path,
+    )
+
+    return resolver, section_service, addressing
+
+
+__all__ = ["ContextResolver", "ContextAdaptiveData", "create_context_resolver"]

@@ -362,9 +362,6 @@ class ModeOptions:
     # VCS options
     vcs_mode: Literal["all", "changes", "branch-changes"] = "all"
 
-    # Tool capabilities
-    allow_tools: bool = False  # permission to use tools in agent mode
-
     # Additional options can be added as needed
 
 

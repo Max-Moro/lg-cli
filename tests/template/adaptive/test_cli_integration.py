@@ -272,7 +272,7 @@ def test_invalid_mode_cli_error(adaptive_project, monkeypatch):
     # Invalid mode in correct set
     result2 = run_cli(root, "render", "sec:src", "--mode", "ai-interaction:invalid")
     assert result2.returncode == 2
-    assert "Unknown mode 'invalid' in mode set 'ai-interaction'" in result2.stderr
+    assert "ai-interaction" in result2.stderr and "invalid" in result2.stderr and "not found" in result2.stderr
 
 
 def test_invalid_mode_format_cli_error(adaptive_project, monkeypatch):

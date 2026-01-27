@@ -9,6 +9,7 @@ from __future__ import annotations
 import pytest
 
 from lg.engine import run_report
+from lg.adaptive.errors import UnknownModeSetError, InvalidModeReferenceError
 from .conftest import (
     adaptive_project, make_run_options, make_engine,
     create_conditional_template, render_template
@@ -255,11 +256,11 @@ def test_invalid_mode_raises_error(adaptive_project):
     root = adaptive_project
 
     # Invalid mode set - validation happens at render time, not engine creation
-    with pytest.raises(ValueError, match="Unknown mode set 'invalid-set'"):
+    with pytest.raises(UnknownModeSetError, match="Unknown mode set 'invalid-set'"):
         options = make_run_options(modes={"invalid-set": "any-mode"})
         render_template(root, "sec:src", options)
 
     # Invalid mode in correct set
-    with pytest.raises(ValueError, match="Unknown mode 'invalid-mode' in mode set 'ai-interaction'"):
+    with pytest.raises(InvalidModeReferenceError, match="invalid-mode"):
         options = make_run_options(modes={"ai-interaction": "invalid-mode"})
         render_template(root, "sec:src", options)

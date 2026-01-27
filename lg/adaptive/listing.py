@@ -10,52 +10,13 @@ from pathlib import Path
 
 from .mode_sets_list_schema import ModeSetsList, ModeSet as ModeSetSchema, Mode as ModeSchema
 from .tag_sets_list_schema import TagSetsList, TagSet as TagSetSchema, Tag as TagSchema
-from .context_resolver import ContextResolver
+from .context_resolver import create_context_resolver
 from .validation import validate_provider_support
+from .errors import AdaptiveError
 from .model import CLIPBOARD_PROVIDER
-from ..cache.fs_cache import Cache
-from ..version import tool_version
-from ..section import SectionService
-from ..addressing import AddressingContext
+from ..section.service import SectionNotFoundError
 
 
-def _create_context_resolver(root: Path) -> tuple[ContextResolver, Path]:
-    """
-    Create ContextResolver for list commands.
-
-    Creates minimal services needed for adaptive model resolution
-    without full Engine overhead.
-
-    Args:
-        root: Repository root
-
-    Returns:
-        Tuple of (ContextResolver, cfg_root Path)
-    """
-    root = root.resolve()
-    cfg_root_path = root / "lg-cfg"
-
-    # Create cache
-    cache = Cache(root, enabled=None, fresh=False, tool_version=tool_version())
-
-    # Create section service
-    section_service = SectionService(root, cache)
-
-    # Create addressing context
-    addressing = AddressingContext(
-        repo_root=root,
-        initial_cfg_root=cfg_root_path,
-        section_service=section_service
-    )
-
-    # Create context resolver
-    resolver = ContextResolver(
-        section_service=section_service,
-        addressing=addressing,
-        cfg_root=cfg_root_path,
-    )
-
-    return resolver, cfg_root_path
 
 
 def list_mode_sets(root: Path, context: str, provider: str) -> ModeSetsList:
@@ -80,7 +41,7 @@ def list_mode_sets(root: Path, context: str, provider: str) -> ModeSetsList:
         FileNotFoundError: If context not found
     """
     # Create resolver
-    resolver, _ = _create_context_resolver(root)
+    resolver, _, _ = create_context_resolver(root)
 
     # Resolve adaptive model for context
     adaptive_data = resolver.resolve_for_context(context)
@@ -148,7 +109,7 @@ def list_tag_sets(root: Path, context: str) -> TagSetsList:
         FileNotFoundError: If context not found
     """
     # Create resolver
-    resolver, _ = _create_context_resolver(root)
+    resolver, _, _ = create_context_resolver(root)
 
     # Resolve adaptive model for context
     adaptive_data = resolver.resolve_for_context(context)
@@ -208,7 +169,7 @@ def list_contexts_for_provider(root: Path, provider: str) -> list[str]:
     if provider == CLIPBOARD_PROVIDER:
         return all_contexts
 
-    resolver, _ = _create_context_resolver(root)
+    resolver, _, _ = create_context_resolver(root)
     compatible = []
 
     for ctx_name in all_contexts:
@@ -220,8 +181,8 @@ def list_contexts_for_provider(root: Path, provider: str) -> list[str]:
             # Check if any mode supports this provider
             if provider in integration_set.get_supported_providers():
                 compatible.append(ctx_name)
-        except Exception:
-            # Skip contexts with resolution errors
+        except (AdaptiveError, SectionNotFoundError):
+            # Skip contexts with resolution errors (incompatible config)
             continue
 
     return compatible

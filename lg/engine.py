@@ -12,17 +12,16 @@ from .paths import cfg_root
 from .migrate import ensure_cfg_actual
 from .run_context import RunContext
 from .section_processor import SectionProcessor
-from .section import SectionService
 from .stats import RunResult, build_run_result_from_collector, StatsCollector
 from .stats.tokenizer import TokenService
 from .template import create_template_processor, TemplateContext
-from .addressing import AddressingContext, SECTION_CONFIG
+from .addressing import SECTION_CONFIG
 from .addressing.types import ResolvedSection
 from .types import RunOptions, TargetSpec
 from .git import NullVcs, GitVcs, is_git_repo
 from .git import GitIgnoreService
 from .version import tool_version
-from .adaptive.context_resolver import ContextResolver
+from .adaptive.context_resolver import create_context_resolver
 from .adaptive.model import AdaptiveModel
 
 
@@ -59,12 +58,9 @@ class Engine:
             cache=cache
         )
 
-        # --- Services ---
-        section_service = SectionService(self.root, cache)
-        addressing = AddressingContext(
-            repo_root=self.root,
-            initial_cfg_root=self.root / "lg-cfg",
-            section_service=section_service
+        # --- Services (shared factory) ---
+        self.context_resolver, section_service, addressing = create_context_resolver(
+            self.root, cache
         )
 
         self.run_ctx = RunContext(
@@ -81,12 +77,6 @@ class Engine:
         self.stats_collector = StatsCollector(
             self.run_ctx.options.ctx_limit,
             self.run_ctx.tokenizer
-        )
-
-        self.context_resolver = ContextResolver(
-            section_service=section_service,
-            addressing=self.run_ctx.addressing,
-            cfg_root=self.run_ctx.root / "lg-cfg",
         )
 
         self.section_processor = SectionProcessor(

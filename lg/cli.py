@@ -5,6 +5,7 @@ import sys
 from pathlib import Path
 from typing import Any, Dict, Optional
 
+from .adaptive.errors import AdaptiveError
 from .diag import run_diag
 from .engine import run_report, run_render
 from .jsonic import dumps as jdumps
@@ -312,7 +313,7 @@ def main(argv: list[str] | None = None) -> int:
     except MigrationFatalError as e:
         sys.stderr.write(str(e).rstrip() + "\n")
         return 2
-    except ValueError as e:
+    except (ValueError, AdaptiveError) as e:
         sys.stderr.write(str(e).rstrip() + "\n")
         return 2
 

@@ -13,7 +13,7 @@ from typing import Dict, Set, List, Optional, Tuple
 from .evaluator import TemplateConditionEvaluator
 from ..adaptive.model import ModeOptions, AdaptiveModel
 from ..run_context import RunContext, ConditionContext
-from ..adaptive.errors import InvalidModeReferenceError
+from ..adaptive.errors import InvalidModeReferenceError, UnknownModeSetError
 
 
 @dataclass
@@ -74,22 +74,24 @@ class TemplateContext:
         Validate CLI modes against the adaptive model.
 
         Raises:
-            ValueError: If mode set or mode not found
+            UnknownModeSetError: If mode set not found
+            InvalidModeReferenceError: If mode not found in set
         """
         for modeset_id, mode_id in self.run_ctx.options.modes.items():
             mode_set = self.adaptive_model.get_mode_set(modeset_id)
             if not mode_set:
                 available = list(self.adaptive_model.mode_sets.keys())
-                raise ValueError(
-                    f"Unknown mode set '{modeset_id}'. "
-                    f"Available: {', '.join(available) if available else 'none'}"
+                raise UnknownModeSetError(
+                    modeset_id=modeset_id,
+                    available_sets=available,
                 )
 
             if mode_id not in mode_set.modes:
-                available = list(mode_set.modes.keys())
-                raise ValueError(
-                    f"Unknown mode '{mode_id}' in mode set '{modeset_id}'. "
-                    f"Available: {', '.join(available)}"
+                available_modes = list(mode_set.modes.keys())
+                raise InvalidModeReferenceError(
+                    modeset=modeset_id,
+                    mode=mode_id,
+                    available_modes=available_modes,
                 )
 
     def _compute_state_from_cli_and_model(self) -> Tuple[Set[str], ModeOptions]:

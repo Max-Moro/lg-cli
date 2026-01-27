@@ -89,6 +89,17 @@ class InvalidModeReferenceError(AdaptiveError):
 
 
 @dataclass
+class UnknownModeSetError(AdaptiveError):
+    """Unknown mode-set in --mode argument."""
+    modeset_id: str
+    available_sets: List[str] = field(default_factory=list)
+
+    def __str__(self) -> str:
+        avail = f". Available: {', '.join(self.available_sets)}" if self.available_sets else ""
+        return f"Unknown mode set '{self.modeset_id}'{avail}"
+
+
+@dataclass
 class SectionNotFoundInExtendsError(AdaptiveError):
     """Section referenced in extends not found."""
     section_name: str
@@ -106,5 +117,6 @@ __all__ = [
     "NoIntegrationModeSetError",
     "ProviderNotSupportedError",
     "InvalidModeReferenceError",
+    "UnknownModeSetError",
     "SectionNotFoundInExtendsError",
 ]
