@@ -70,37 +70,61 @@ src:
               - "/section_resolver.py"
               - "/parser.py"
 
-  # Optimize less important files with strip_function_bodies
+  # Graduated optimization following budget escalation order:
+  #   Level 1: imports_external + literals (base for all files)
+  #   Level 2: + comments keep_doc + imports_all
+  #   Level 3: + private_bodies (keep_public)
+  #   Level 4: + public_bodies (strip_all)
+
+  # Level 1 (global base): lightest optimization for all Python files
   python:
-    strip_function_bodies: false
+    imports:
+      policy: "strip_external"
+    literals:
+      max_tokens: 100
 
   targets:
-    # Infrastructure code - keep only signatures
+    # Level 2: context/type definition files — readable logic, stripped noise
     - match:
+        - "/lg/run_context.py"
+        - "/lg/types.py"
+        - "/lg/section/model.py"
+        - "/lg/section_processor.py"
+        - "/lg/template/adaptive/processor_rules.py"
+      python:
+        comment_policy: "keep_doc"
+        imports:
+          policy: "strip_all"
+
+    # Level 3: infrastructure — public API visible, private bodies stripped
+    - match:
+        - "/lg/engine.py"
+        - "/lg/template/processor.py"
         - "/lg/template/registry.py"
         - "/lg/template/base.py"
         - "/lg/template/handlers.py"
         - "/lg/template/types.py"
+        - "/lg/addressing/context.py"
+        - "/lg/addressing/types.py"
         - "/lg/section/service.py"
         - "/lg/section/index.py"
-        - "/lg/addressing/context.py"
       python:
-        strip_function_bodies: true
+        comment_policy: "keep_doc"
+        imports:
+          policy: "strip_all"
+        strip_function_bodies:
+          policy: "keep_public"
 
-    # Implementation details - keep signatures for understanding
+    # Level 4: peripheral — only signatures needed
     - match:
-        - "/lg/template/processor.py"
+        - "/lg/cli.py"
         - "/lg/template/adaptive/parser_rules.py"
         - "/lg/template/analysis/section_collector.py"
-        - "/lg/cli.py"
-        - "/lg/engine.py"
-      python:
-        strip_function_bodies: true
-
-    # Adaptive implementation - less important files
-    - match:
         - "/lg/adaptive/extends_resolver.py"
         - "/lg/adaptive/context_resolver.py"
         - "/lg/adaptive/listing.py"
       python:
+        comment_policy: "keep_doc"
+        imports:
+          policy: "strip_all"
         strip_function_bodies: true
