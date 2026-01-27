@@ -8,6 +8,7 @@ from lg.rendering.planner import build_section_plan
 from lg.rendering.renderer import render_section
 from lg.template.context import TemplateContext
 from lg.addressing.types import ResolvedSection
+from lg.adaptive.model import AdaptiveModel
 from lg.section import SectionLocation
 from tests.infrastructure import load_sections
 from .conftest import mk_run_ctx
@@ -29,7 +30,7 @@ def _process_section(
         Tuple (manifest, plan, rendered_section)
     """
     rc = mk_run_ctx(root)
-    template_ctx = TemplateContext(rc)
+    template_ctx = TemplateContext(rc, AdaptiveModel())
 
     # Determine scope_dir based on scope_rel
     if scope_rel:

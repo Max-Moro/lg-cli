@@ -13,6 +13,7 @@ from lg.stats import StatsCollector
 from lg.template.context import TemplateContext
 from lg.addressing.types import ResolvedSection
 from lg.adaptive.context_resolver import ContextResolver
+from lg.adaptive.model import AdaptiveModel
 from lg.section import SectionService
 from tests.infrastructure import write, make_run_context, make_run_options, load_sections, create_integration_mode_section
 
@@ -40,7 +41,7 @@ py-files:
     run_ctx = make_run_context(tmp_path)
 
     # Create template context
-    template_ctx = TemplateContext(run_ctx)
+    template_ctx = TemplateContext(run_ctx, AdaptiveModel())
 
     # Load sections
     sections = load_sections(tmp_path)
@@ -108,7 +109,6 @@ all-files:
 
     # Test 1: without tests tag - test files should be blocked
     run_ctx = make_run_context(tmp_path)
-    template_ctx = TemplateContext(run_ctx)
 
     # Initialize template context with adaptive model
     context_resolver = ContextResolver(
@@ -117,7 +117,7 @@ all-files:
         cfg_root=tmp_path / "lg-cfg"
     )
     adaptive_model = context_resolver.resolve_for_section("all-files", tmp_path)
-    template_ctx.reset_for_context(adaptive_model)
+    template_ctx = TemplateContext(run_ctx, adaptive_model)
 
     sections = load_sections(tmp_path)
     section_cfg = sections.get("all-files")
@@ -148,7 +148,6 @@ all-files:
     # Test 2: with tests tag - test files should be included
     options = make_run_options(extra_tags={"tests"})
     run_ctx = make_run_context(tmp_path, options=options)
-    template_ctx = TemplateContext(run_ctx)
 
     # Initialize template context with adaptive model
     context_resolver = ContextResolver(
@@ -157,7 +156,7 @@ all-files:
         cfg_root=tmp_path / "lg-cfg"
     )
     adaptive_model = context_resolver.resolve_for_section("all-files", tmp_path)
-    template_ctx.reset_for_context(adaptive_model)
+    template_ctx = TemplateContext(run_ctx, adaptive_model)
 
     sections = load_sections(tmp_path)
     section_cfg = sections.get("all-files")
@@ -227,7 +226,7 @@ wildcard-pattern:
 """)
 
     run_ctx = make_run_context(tmp_path)
-    template_ctx = TemplateContext(run_ctx)
+    template_ctx = TemplateContext(run_ctx, AdaptiveModel())
     sections = load_sections(tmp_path)
 
     # Test 1: Multi-file section with multiple allow patterns
@@ -376,7 +375,7 @@ normal-wildcard:
 """)
 
     run_ctx = make_run_context(tmp_path)
-    template_ctx = TemplateContext(run_ctx)
+    template_ctx = TemplateContext(run_ctx, AdaptiveModel())
     sections = load_sections(tmp_path)
 
     # Test 1: Single gitignored file - should have is_local_files=True
@@ -535,7 +534,7 @@ my-local-config.yaml
     processor = SectionProcessor(run_ctx, stats_collector)
 
     # Create template context with virtual section for local file
-    template_ctx = TemplateContext(run_ctx)
+    template_ctx = TemplateContext(run_ctx, AdaptiveModel())
 
     # Create virtual section that describes a single local file (that doesn't exist)
     virtual_section_cfg = SectionCfg(
@@ -621,7 +620,7 @@ code:
 
     # Without review tag: no strip_function_bodies override
     run_ctx = make_run_context(tmp_path)
-    template_ctx = TemplateContext(run_ctx)
+    template_ctx = TemplateContext(run_ctx, AdaptiveModel())
     manifest = build_section_manifest(
         resolved=resolved, section_config=section_cfg,
         template_ctx=template_ctx, root=tmp_path,
@@ -634,7 +633,7 @@ code:
 
     # With review tag: strip_function_bodies should be set
     run_ctx2 = make_run_context(tmp_path, options=make_run_options(extra_tags={"review"}))
-    template_ctx2 = TemplateContext(run_ctx2)
+    template_ctx2 = TemplateContext(run_ctx2, AdaptiveModel())
     manifest2 = build_section_manifest(
         resolved=resolved, section_config=section_cfg,
         template_ctx=template_ctx2, root=tmp_path,
@@ -677,7 +676,7 @@ code:
     )
 
     run_ctx = make_run_context(tmp_path)
-    template_ctx = TemplateContext(run_ctx)
+    template_ctx = TemplateContext(run_ctx, AdaptiveModel())
     manifest = build_section_manifest(
         resolved=resolved, section_config=section_cfg,
         template_ctx=template_ctx, root=tmp_path,
@@ -723,7 +722,7 @@ code:
 
     # Only optimize tag: first condition applies
     run_ctx = make_run_context(tmp_path, options=make_run_options(extra_tags={"optimize"}))
-    template_ctx = TemplateContext(run_ctx)
+    template_ctx = TemplateContext(run_ctx, AdaptiveModel())
     manifest = build_section_manifest(
         resolved=resolved, section_config=section_cfg,
         template_ctx=template_ctx, root=tmp_path,
@@ -737,7 +736,7 @@ code:
 
     # Both tags: second condition overrides comment_policy
     run_ctx2 = make_run_context(tmp_path, options=make_run_options(extra_tags={"optimize", "aggressive"}))
-    template_ctx2 = TemplateContext(run_ctx2)
+    template_ctx2 = TemplateContext(run_ctx2, AdaptiveModel())
     manifest2 = build_section_manifest(
         resolved=resolved, section_config=section_cfg,
         template_ctx=template_ctx2, root=tmp_path,
@@ -780,7 +779,7 @@ code:
 
     # Without compact tag: only base options apply
     run_ctx = make_run_context(tmp_path)
-    template_ctx = TemplateContext(run_ctx)
+    template_ctx = TemplateContext(run_ctx, AdaptiveModel())
     manifest = build_section_manifest(
         resolved=resolved, section_config=section_cfg,
         template_ctx=template_ctx, root=tmp_path,
@@ -794,7 +793,7 @@ code:
 
     # With compact tag: base + conditional options
     run_ctx2 = make_run_context(tmp_path, options=make_run_options(extra_tags={"compact"}))
-    template_ctx2 = TemplateContext(run_ctx2)
+    template_ctx2 = TemplateContext(run_ctx2, AdaptiveModel())
     manifest2 = build_section_manifest(
         resolved=resolved, section_config=section_cfg,
         template_ctx=template_ctx2, root=tmp_path,
@@ -837,7 +836,7 @@ code:
 
     # Without review tag: NOT tag:review is true → optimizations active
     run_ctx = make_run_context(tmp_path)
-    template_ctx = TemplateContext(run_ctx)
+    template_ctx = TemplateContext(run_ctx, AdaptiveModel())
     manifest = build_section_manifest(
         resolved=resolved, section_config=section_cfg,
         template_ctx=template_ctx, root=tmp_path,
@@ -851,7 +850,7 @@ code:
 
     # With review tag: NOT tag:review is false → no overrides
     run_ctx2 = make_run_context(tmp_path, options=make_run_options(extra_tags={"review"}))
-    template_ctx2 = TemplateContext(run_ctx2)
+    template_ctx2 = TemplateContext(run_ctx2, AdaptiveModel())
     manifest2 = build_section_manifest(
         resolved=resolved, section_config=section_cfg,
         template_ctx=template_ctx2, root=tmp_path,

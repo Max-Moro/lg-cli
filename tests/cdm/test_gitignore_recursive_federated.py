@@ -14,6 +14,7 @@ import pytest
 from lg.filtering.manifest import build_section_manifest
 from lg.template.context import TemplateContext
 from lg.addressing.types import ResolvedSection
+from lg.adaptive.model import AdaptiveModel
 from lg.section import SectionLocation
 from lg.types import SectionManifest
 from tests.infrastructure import make_run_context
@@ -116,7 +117,7 @@ def _build_manifest_for_section(
 ) -> SectionManifest:
     """Helper to build manifest for a section."""
     rc = make_run_context(root)
-    template_ctx = TemplateContext(rc)
+    template_ctx = TemplateContext(rc, AdaptiveModel())
 
     if scope_rel:
         scope_dir = (root / scope_rel).resolve()

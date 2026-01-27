@@ -9,6 +9,7 @@ from ruamel.yaml import YAML
 from lg.filtering.manifest import build_section_manifest
 from lg.template.context import TemplateContext
 from lg.addressing.types import ResolvedSection
+from lg.adaptive.model import AdaptiveModel
 from lg.section import SectionLocation
 from lg.git import VcsProvider
 from tests.infrastructure.file_utils import write
@@ -45,7 +46,7 @@ def _build_section_manifest(
         SectionManifest for the specified section
     """
     rc = mk_run_ctx(root)
-    template_ctx = TemplateContext(rc)
+    template_ctx = TemplateContext(rc, AdaptiveModel())
 
     # Determine scope_dir based on scope_rel
     if scope_rel:

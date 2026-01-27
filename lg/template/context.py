@@ -42,39 +42,15 @@ class TemplateContext:
     Template rendering context with state management.
     """
 
-    def __init__(self, run_ctx: RunContext):
+    def __init__(self, run_ctx: RunContext, adaptive_model: AdaptiveModel):
         """
         Initialize template context.
 
-        Note: Call reset_for_context() with AdaptiveModel before rendering.
+        Args:
+            run_ctx: Runtime context
+            adaptive_model: Resolved adaptive model for the target
         """
         self.run_ctx = run_ctx
-        self.adaptive_model: Optional[AdaptiveModel] = None
-
-        # Initialize with empty state (will be set by reset_for_context)
-        self.current_state = TemplateState(
-            mode_options=ModeOptions(),
-            active_tags=set(),
-            active_modes={}
-        )
-
-        self.state_stack: List[TemplateState] = []
-        self._tagsets_cache: Optional[Dict[str, Set[str]]] = None
-        self._condition_evaluator: Optional[TemplateConditionEvaluator] = None
-
-    def reset_for_context(self, adaptive_model: AdaptiveModel) -> None:
-        """
-        Reset context for processing a specific context/section.
-
-        Must be called before processing each context or section.
-        Validates CLI modes against the model and computes initial state.
-
-        Args:
-            adaptive_model: Resolved adaptive model for the target
-
-        Raises:
-            ValueError: If CLI modes are invalid
-        """
         self.adaptive_model = adaptive_model
 
         # Validate CLI modes against model
@@ -89,10 +65,9 @@ class TemplateContext:
             active_modes=dict(self.run_ctx.options.modes)
         )
 
-        # Clear caches
-        self.state_stack.clear()
-        self._tagsets_cache = None
-        self._condition_evaluator = None
+        self.state_stack: List[TemplateState] = []
+        self._tagsets_cache: Optional[Dict[str, Set[str]]] = None
+        self._condition_evaluator: Optional[TemplateConditionEvaluator] = None
 
     def _validate_cli_modes(self) -> None:
         """
@@ -101,9 +76,6 @@ class TemplateContext:
         Raises:
             ValueError: If mode set or mode not found
         """
-        if self.adaptive_model is None:
-            return
-
         for modeset_id, mode_id in self.run_ctx.options.modes.items():
             mode_set = self.adaptive_model.get_mode_set(modeset_id)
             if not mode_set:
@@ -254,9 +226,6 @@ class TemplateContext:
         self.state_stack.append(self.current_state.copy())
 
         # Validate against adaptive model
-        if self.adaptive_model is None:
-            raise RuntimeError("AdaptiveModel not set. Call reset_for_context() first.")
-
         mode_set = self.adaptive_model.get_mode_set(modeset)
         if not mode_set:
             available = list(self.adaptive_model.mode_sets.keys())

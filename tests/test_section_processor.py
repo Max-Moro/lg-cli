@@ -7,6 +7,7 @@ from lg.stats.collector import StatsCollector
 from lg.template.context import TemplateContext
 from lg.addressing import SECTION_CONFIG
 from lg.adaptive.context_resolver import ContextResolver
+from lg.adaptive.model import AdaptiveModel
 from lg.section import SectionService
 
 from tests.infrastructure import make_run_context, make_run_options, create_integration_mode_section
@@ -59,7 +60,7 @@ py-files:
     )
 
     # Create template context and resolve section through addressing
-    template_ctx = TemplateContext(run_ctx)
+    template_ctx = TemplateContext(run_ctx, AdaptiveModel())
     resolved = run_ctx.addressing.resolve("py-files", SECTION_CONFIG)
 
     # Process section
@@ -113,16 +114,14 @@ all-files:
     stats_collector = StatsCollector(128000, run_ctx.tokenizer)
     section_processor = SectionProcessor(run_ctx=run_ctx, stats_collector=stats_collector)
 
-    template_ctx = TemplateContext(run_ctx)
-
-    # Initialize template context with adaptive model
+    # Resolve adaptive model for section
     context_resolver = ContextResolver(
         section_service=SectionService(tmp_path, run_ctx.cache),
         addressing=run_ctx.addressing,
         cfg_root=tmp_path / "lg-cfg"
     )
     adaptive_model = context_resolver.resolve_for_section("all-files", tmp_path)
-    template_ctx.reset_for_context(adaptive_model)
+    template_ctx = TemplateContext(run_ctx, adaptive_model)
 
     resolved = run_ctx.addressing.resolve("all-files", SECTION_CONFIG)
 
@@ -140,8 +139,6 @@ all-files:
     stats_collector = StatsCollector(128000, tokenizer=run_ctx.tokenizer)
     section_processor = SectionProcessor(run_ctx=run_ctx, stats_collector=stats_collector)
 
-    template_ctx = TemplateContext(run_ctx)
-
     # Re-initialize template context with adaptive model for new options
     context_resolver = ContextResolver(
         section_service=SectionService(tmp_path, run_ctx.cache),
@@ -149,7 +146,7 @@ all-files:
         cfg_root=tmp_path / "lg-cfg"
     )
     adaptive_model = context_resolver.resolve_for_section("all-files", tmp_path)
-    template_ctx.reset_for_context(adaptive_model)
+    template_ctx = TemplateContext(run_ctx, adaptive_model)
 
     # Need to re-resolve with new context
     resolved = run_ctx.addressing.resolve("all-files", SECTION_CONFIG)

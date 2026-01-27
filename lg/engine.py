@@ -23,6 +23,7 @@ from .git import NullVcs, GitVcs, is_git_repo
 from .git import GitIgnoreService
 from .version import tool_version
 from .adaptive.context_resolver import ContextResolver
+from .adaptive.model import AdaptiveModel
 
 
 class Engine:
@@ -30,7 +31,7 @@ class Engine:
     Engine coordinating class.
 
     Manages interaction between components:
-    - TemplateProcessor for template processing
+    - TemplateProcessor for template processing (created per-render)
     - SectionProcessor for section processing
     - StatsCollector for statistics collection
     """
@@ -45,30 +46,12 @@ class Engine:
         self.options = options
         self.root = Path.cwd().resolve()
 
-        # Initialize services
-        self._init_services()
-
-        # Create processors
-        self._init_processors()
-
-        # Setup component integration
-        self._setup_component_integration()
-
-    def _init_services(self) -> None:
-        """Initialize basic services."""
-        # Cache
+        # --- Infrastructure ---
         tool_ver = tool_version()
         cache = Cache(self.root, enabled=None, fresh=False, tool_version=tool_ver)
-
-        # Check if we're in a git repository
         has_git = is_git_repo(self.root)
-
-        # VCS
         vcs = GitVcs() if has_git else NullVcs()
-
-        # GitIgnore service
         gitignore = GitIgnoreService(self.root) if has_git else None
-
         tokenizer = TokenService(
             root=self.root,
             lib=self.options.tokenizer_lib,
@@ -76,17 +59,14 @@ class Engine:
             cache=cache
         )
 
-        # Section service
+        # --- Services ---
         section_service = SectionService(self.root, cache)
-
-        # Create addressing context
         addressing = AddressingContext(
             repo_root=self.root,
             initial_cfg_root=self.root / "lg-cfg",
             section_service=section_service
         )
 
-        # Create RunContext WITHOUT adaptive fields
         self.run_ctx = RunContext(
             root=self.root,
             options=self.options,
@@ -97,39 +77,23 @@ class Engine:
             addressing=addressing,
         )
 
-        # Store section service for later use
-        self._section_service = section_service
+        # --- Processing components ---
+        self.stats_collector = StatsCollector(
+            self.run_ctx.options.ctx_limit,
+            self.run_ctx.tokenizer
+        )
 
-    def _init_processors(self) -> None:
-        """Create main processors."""
-        # Statistics collector
-        self.stats_collector = StatsCollector(self.run_ctx.options.ctx_limit, self.run_ctx.tokenizer)
-
-        # Context resolver for adaptive model
         self.context_resolver = ContextResolver(
-            section_service=self._section_service,
+            section_service=section_service,
             addressing=self.run_ctx.addressing,
             cfg_root=self.run_ctx.root / "lg-cfg",
         )
 
-        # Section processor
         self.section_processor = SectionProcessor(
             run_ctx=self.run_ctx,
             stats_collector=self.stats_collector
         )
 
-        # Template processor
-        self.template_processor = create_template_processor(self.run_ctx)
-
-    def _setup_component_integration(self) -> None:
-        """Setup component integration."""
-        # Link template processor with section handler
-        def section_handler(resolved: ResolvedSection, template_ctx: TemplateContext) -> str:
-            rendered_section = self.section_processor.process_section(resolved, template_ctx)
-            return rendered_section.text
-
-        self.template_processor.set_section_handler(section_handler)
-    
     def render_context(self, context_name: str) -> str:
         """
         Render context from template.
@@ -153,11 +117,11 @@ class Engine:
         # Resolve adaptive model for this context
         adaptive_data = self.context_resolver.resolve_for_context(context_name, validate=True)
 
-        # Reset template context with resolved model
-        self.template_processor.template_ctx.reset_for_context(adaptive_data.model)
+        # Create template processor with resolved model
+        template_processor = self._create_template_processor(adaptive_data.model)
 
         # Process template
-        final_text = self.template_processor.process_template_file(context_name)
+        final_text = template_processor.process_template_file(context_name)
 
         # Set final texts in collector
         self.stats_collector.set_final_texts(final_text)
@@ -190,14 +154,13 @@ class Engine:
             validate=False
         )
 
-        template_ctx = TemplateContext(self.run_ctx)
-        template_ctx.reset_for_context(adaptive_model)
+        template_ctx = TemplateContext(self.run_ctx, adaptive_model)
 
         # Resolve section reference
         resolved_section = cast(ResolvedSection, self.run_ctx.addressing.resolve(section_name, SECTION_CONFIG))
         rendered_section = self.section_processor.process_section(resolved_section, template_ctx)
 
-        # Set final texts in collector (for section they are the same)
+        # Set final texts in collector
         self.stats_collector.set_final_texts(rendered_section.text)
 
         return rendered_section.text
@@ -212,7 +175,6 @@ class Engine:
         Returns:
             Rendered context or section
         """
-        # Render target based on type
         if target_spec.kind == "context":
             return self.render_context(target_spec.name)
         else:
@@ -228,17 +190,37 @@ class Engine:
         Returns:
             RunResult model in API v4 format
         """
-        # Render target based on type
         if target_spec.kind == "context":
             self.render_context(target_spec.name)
         else:
             self.render_section(target_spec.name)
 
-        # Generate report from statistics collector
         return build_run_result_from_collector(
             collector=self.stats_collector,
             target_spec=target_spec,
         )
+
+    def _create_template_processor(self, adaptive_model: AdaptiveModel):
+        """
+        Create template processor initialized with adaptive model.
+
+        Creates TemplateProcessor with plugins and wires the section handler.
+        Called per-render when the adaptive model is available.
+
+        Args:
+            adaptive_model: Resolved AdaptiveModel for the target
+
+        Returns:
+            Fully configured TemplateProcessor
+        """
+        template_processor = create_template_processor(self.run_ctx, adaptive_model)
+
+        def section_handler(resolved: ResolvedSection, template_ctx: TemplateContext) -> str:
+            rendered_section = self.section_processor.process_section(resolved, template_ctx)
+            return rendered_section.text
+
+        template_processor.set_section_handler(section_handler)
+        return template_processor
 
 
 # ----------------------------- Entry Points ----------------------------- #

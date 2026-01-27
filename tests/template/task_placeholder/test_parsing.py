@@ -16,6 +16,7 @@ from lg.template.nodes import TextNode
 from lg.template.parser import ModularParser
 from lg.template.registry import TemplateRegistry
 from lg.template.task_placeholder.nodes import TaskNode
+from lg.adaptive.model import AdaptiveModel
 from tests.infrastructure import make_run_context
 
 
@@ -27,7 +28,7 @@ class TestTaskPlaceholderParsing:
         """Registry with registered task plugin."""
         registry = TemplateRegistry()
         run_ctx = make_run_context(task_project)
-        template_ctx = TemplateContext(run_ctx)
+        template_ctx = TemplateContext(run_ctx, AdaptiveModel())
 
         # Register all necessary plugins in the correct order
         from lg.template.common_placeholders.plugin import CommonPlaceholdersPlugin
@@ -185,7 +186,7 @@ class TestTaskPlaceholderEdgeCases:
         """Registry with registered task plugin."""
         registry = TemplateRegistry()
         run_ctx = make_run_context(task_project)
-        template_ctx = TemplateContext(run_ctx)
+        template_ctx = TemplateContext(run_ctx, AdaptiveModel())
 
         # Register all necessary plugins in the correct order
         from lg.template.common_placeholders.plugin import CommonPlaceholdersPlugin

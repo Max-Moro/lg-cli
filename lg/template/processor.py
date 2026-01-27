@@ -24,6 +24,7 @@ from .registry import TemplateRegistry
 from .types import ProcessingContext
 from ..addressing.types import ResolvedSection
 from ..run_context import RunContext
+from ..adaptive.model import AdaptiveModel
 
 logger = logging.getLogger(__name__)
 
@@ -42,16 +43,17 @@ class TemplateProcessor:
     Main template processor.
     """
 
-    def __init__(self, run_ctx: RunContext, registry: TemplateRegistry):
+    def __init__(self, run_ctx: RunContext, registry: TemplateRegistry, adaptive_model: AdaptiveModel):
         """
         Initializes template processor.
 
         Args:
             run_ctx: Execution context with settings and services
             registry: Component registry (passed externally to avoid global state)
+            adaptive_model: Resolved adaptive model for the target
         """
         self.run_ctx = run_ctx
-        self.template_ctx = TemplateContext(run_ctx)
+        self.template_ctx = TemplateContext(run_ctx, adaptive_model)
 
         # Use passed registry or create new one
         self.registry = registry
@@ -343,12 +345,13 @@ class TemplateProcessor:
             raise TemplateProcessingError(error_message, template_name, e)
 
 
-def create_template_processor(run_ctx: RunContext) -> TemplateProcessor:
+def create_template_processor(run_ctx: RunContext, adaptive_model: AdaptiveModel) -> TemplateProcessor:
     """
     Creates template processor with available plugins already set up.
 
     Args:
         run_ctx: Execution context
+        adaptive_model: Resolved adaptive model for the target
 
     Returns:
         Configured template processor
@@ -357,7 +360,7 @@ def create_template_processor(run_ctx: RunContext) -> TemplateProcessor:
     registry = TemplateRegistry()
 
     # Create processor (handlers auto-configure in constructor)
-    processor = TemplateProcessor(run_ctx, registry)
+    processor = TemplateProcessor(run_ctx, registry, adaptive_model)
 
     # Register available plugins (in priority order)
     from .common_placeholders.plugin import CommonPlaceholdersPlugin
