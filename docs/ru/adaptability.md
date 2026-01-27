@@ -142,6 +142,9 @@ listing-generator render ctx:my-context --mode ai:agent --mode stage:review --ta
 
 # Рендеринг с указанием целевой ветки для режима branch-changes
 listing-generator render ctx:my-context --mode stage:review --target-branch main
+
+# Рендеринг с указанием AI-провайдера (включает условия provider:)
+listing-generator render ctx:my-context --mode ai:agent --provider com.anthropic.claude.cli
 ```
 
 ## Системные опции режимов
@@ -226,6 +229,14 @@ feature-impl:
 - `scope:local` - применяется только если рендерится из локального скоупа
 - `scope:parent` - применяется при рендере из родительского скоупа
 
+Для идентификации активного AI-провайдера доступен специализированный оператор:
+
+- `provider:<base-id>` - проверяет текущий AI-провайдер (указанный через `--provider`):
+  - Полный ID провайдера нормализуется путём отсечения технического суффикса (`.cli`, `.ext`, `.api`)
+  - Например, `--provider com.anthropic.claude.cli` нормализуется до `com.anthropic.claude`
+  - Специальные провайдеры без суффикса (например, `clipboard`) сравниваются как есть
+  - Если `--provider` не указан, условие всегда ложно (False)
+
 ## Задание режимов в шаблонах
 
 Иногда удобно сами режимы принудительно задавать в шаблонах.
@@ -278,6 +289,7 @@ ${src-feature}
 | **ИЛИ** | `условие1 OR условие2` | `tag:python OR tag:javascript` | Истинно, если хотя бы одно условие истинно |
 | **Скобки** | `(условие)` | `(tag:python OR tag:js) AND tag:tests` | Группировка для задания приоритета |
 | **Скоуп** | `scope:тип` | `scope:local`, `scope:parent` | Проверка типа скоупа (локальный/родительский) |
+| **Провайдер** | `provider:base-id` | `provider:com.anthropic.claude`, `provider:clipboard` | Проверка активного AI-провайдера (нормализованный, без суффикса `.cli`/`.ext`/`.api`) |
 
 ### Режимные блоки
 

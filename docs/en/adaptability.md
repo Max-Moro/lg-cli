@@ -142,6 +142,9 @@ listing-generator render ctx:my-context --mode ai:agent --mode stage:review --ta
 
 # Rendering with target branch specified for branch-changes mode
 listing-generator render ctx:my-context --mode stage:review --target-branch main
+
+# Rendering with AI provider specified (enables provider: conditions)
+listing-generator render ctx:my-context --mode ai:agent --provider com.anthropic.claude.cli
 ```
 
 ## System Mode Options
@@ -226,6 +229,14 @@ For working with federated scopes, additional operators are added that can be co
 - `scope:local` - applies only if rendering from the local scope
 - `scope:parent` - applies when rendering from the parent scope
 
+For identifying the active AI provider, a dedicated operator is available:
+
+- `provider:<base-id>` - checks the current AI provider (specified via `--provider`):
+  - The full provider ID is normalized by stripping the technical suffix (`.cli`, `.ext`, `.api`)
+  - For example, `--provider com.anthropic.claude.cli` normalizes to `com.anthropic.claude`
+  - Special providers without a suffix (e.g., `clipboard`) are compared as-is
+  - If `--provider` is not specified, condition is always False
+
 ## Setting Modes in Templates
 
 Sometimes it's convenient to forcibly set modes in templates themselves.
@@ -278,6 +289,7 @@ ${src-feature}
 | **OR** | `condition1 OR condition2` | `tag:python OR tag:javascript` | True if at least one condition is true |
 | **Parentheses** | `(condition)` | `(tag:python OR tag:js) AND tag:tests` | Grouping for priority setting |
 | **Scope** | `scope:type` | `scope:local`, `scope:parent` | Check scope type (local/parent) |
+| **Provider** | `provider:base-id` | `provider:com.anthropic.claude`, `provider:clipboard` | Check active AI provider (normalized, without `.cli`/`.ext`/`.api` suffix) |
 
 ### Mode Blocks
 
