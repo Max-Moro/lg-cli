@@ -137,3 +137,28 @@ src:
             imports:
               policy: "strip_all"
             strip_function_bodies: true
+
+tests:
+  extensions: [".py"]
+  filters:
+    mode: allow
+    allow:
+      - "/tests/"
+    children:
+      tests:
+        mode: allow
+        allow:
+          - "/adaptive/"
+          - "/conditions/"
+          - "/template/"
+          - "/test_manifest_builder.py"
+        when:
+          - condition: "tag:tests-infra"
+            allow:
+              - "/conftest.py"
+              - "/infrastructure/"
+        children:
+          template:
+            mode: allow
+            allow:
+              - "/adaptive/"
