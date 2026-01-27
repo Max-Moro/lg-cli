@@ -8,7 +8,6 @@ Covers ТЗ §11.6 (provider filtering + empty error),
 from __future__ import annotations
 
 import textwrap
-from pathlib import Path
 
 import pytest
 
@@ -135,7 +134,6 @@ class TestClipboardProvider:
 
         write(root / "lg-cfg" / "sections.yaml", textwrap.dedent("""\
         src:
-          extends: ["modes-a"]
           extensions: [".py"]
           filters:
             mode: allow
@@ -198,7 +196,6 @@ class TestProviderNormalization:
 
         write(root / "lg-cfg" / "sections.yaml", textwrap.dedent("""\
         src:
-          extends: ["ai-interaction"]
           extensions: [".py"]
           filters:
             mode: allow
@@ -248,7 +245,6 @@ class TestProviderNormalization:
 
         write(root / "lg-cfg" / "sections.yaml", textwrap.dedent("""\
         src:
-          extends: ["ai-interaction"]
           extensions: [".py"]
           filters:
             mode: allow
@@ -295,7 +291,6 @@ class TestProviderNormalization:
 
         write(root / "lg-cfg" / "sections.yaml", textwrap.dedent("""\
         src:
-          extends: ["ai-interaction"]
           extensions: [".py"]
           filters:
             mode: allow

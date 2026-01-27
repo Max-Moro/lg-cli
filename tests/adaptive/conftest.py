@@ -143,10 +143,9 @@ def multi_provider_project(tmp_path: Path) -> Path:
         )
     })
 
-    # Section with extends
+    # Section without extends (provider filtering uses frontmatter only)
     write(root / "lg-cfg" / "sections.yaml", textwrap.dedent("""\
     src:
-      extends: ["ai-interaction", "dev-stage"]
       extensions: [".py"]
       filters:
         mode: allow

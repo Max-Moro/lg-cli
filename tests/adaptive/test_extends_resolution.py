@@ -7,7 +7,6 @@ Covers ТЗ §11.1: extends merging, child wins on conflicts, cycle detection.
 from __future__ import annotations
 
 import textwrap
-from pathlib import Path
 
 import pytest
 
@@ -28,13 +27,7 @@ class TestExtendsBasicMerge:
 
         root = extends_project
 
-        write(root / "lg-cfg" / "test.ctx.md", textwrap.dedent("""\
-        ---
-        include: ["base-modes", "extra-modes", "tags"]
-        ---
-        # Test
-        ${src}
-        """))
+        write(root / "lg-cfg" / "test.ctx.md", "# Test\n${src}\n")
 
         result = list_mode_sets(root, "test", "com.test.provider")
         mode_set_ids = {ms.id for ms in result.mode_sets}
@@ -48,13 +41,7 @@ class TestExtendsBasicMerge:
 
         root = extends_project
 
-        write(root / "lg-cfg" / "test.ctx.md", textwrap.dedent("""\
-        ---
-        include: ["base-modes", "extra-modes", "tags"]
-        ---
-        # Test
-        ${src}
-        """))
+        write(root / "lg-cfg" / "test.ctx.md", "# Test\n${src}\n")
 
         result = list_tag_sets(root, "test")
         tag_set_ids = {ts.id for ts in result.tag_sets}
@@ -104,13 +91,7 @@ class TestExtendsBasicMerge:
               - "/**"
         """))
 
-        write(root / "lg-cfg" / "test.ctx.md", textwrap.dedent("""\
-        ---
-        include: ["child-modes"]
-        ---
-        # Test
-        ${src}
-        """))
+        write(root / "lg-cfg" / "test.ctx.md", "# Test\n${src}\n")
         write(root / "main.py", "x = 1\n")
 
         from lg.adaptive.listing import list_mode_sets
@@ -166,13 +147,7 @@ class TestExtendsBasicMerge:
               - "/**"
         """))
 
-        write(root / "lg-cfg" / "test.ctx.md", textwrap.dedent("""\
-        ---
-        include: ["child-modes"]
-        ---
-        # Test
-        ${src}
-        """))
+        write(root / "lg-cfg" / "test.ctx.md", "# Test\n${src}\n")
         write(root / "main.py", "x = 1\n")
 
         from lg.adaptive.listing import list_mode_sets
@@ -235,13 +210,7 @@ class TestExtendsBasicMerge:
               - "/**"
         """))
 
-        write(root / "lg-cfg" / "test.ctx.md", textwrap.dedent("""\
-        ---
-        include: ["child"]
-        ---
-        # Test
-        ${src}
-        """))
+        write(root / "lg-cfg" / "test.ctx.md", "# Test\n${src}\n")
         write(root / "main.py", "x = 1\n")
 
         from lg.adaptive.listing import list_mode_sets
@@ -296,13 +265,7 @@ class TestExtendsBasicMerge:
               - "/**"
         """))
 
-        write(root / "lg-cfg" / "test.ctx.md", textwrap.dedent("""\
-        ---
-        include: ["ai-modes", "child-tags"]
-        ---
-        # Test
-        ${src}
-        """))
+        write(root / "lg-cfg" / "test.ctx.md", "# Test\n${src}\n")
         write(root / "main.py", "x = 1\n")
 
         from lg.adaptive.listing import list_tag_sets
@@ -351,13 +314,7 @@ class TestExtendsCycleDetection:
               - "/**"
         """))
 
-        write(root / "lg-cfg" / "test.ctx.md", textwrap.dedent("""\
-        ---
-        include: ["section-a"]
-        ---
-        # Test
-        ${src}
-        """))
+        write(root / "lg-cfg" / "test.ctx.md", "# Test\n${src}\n")
         write(root / "main.py", "x = 1\n")
 
         from lg.adaptive.errors import ExtendsCycleError
@@ -389,13 +346,7 @@ class TestExtendsCycleDetection:
               - "/**"
         """))
 
-        write(root / "lg-cfg" / "test.ctx.md", textwrap.dedent("""\
-        ---
-        include: ["self-ref"]
-        ---
-        # Test
-        ${src}
-        """))
+        write(root / "lg-cfg" / "test.ctx.md", "# Test\n${src}\n")
         write(root / "main.py", "x = 1\n")
 
         from lg.adaptive.errors import ExtendsCycleError

@@ -8,7 +8,6 @@ Covers ТЗ §11.2 (meta-section render error), §11.3 (frontmatter),
 from __future__ import annotations
 
 import textwrap
-from pathlib import Path
 
 import pytest
 
@@ -79,10 +78,9 @@ class TestFrontmatter:
             )
         })
 
-        # Section extends only ai-interaction (not my-tags)
+        # Section without extends (my-tags only in frontmatter)
         write(root / "lg-cfg" / "sections.yaml", textwrap.dedent("""\
         src:
-          extends: ["ai-interaction"]
           extensions: [".py"]
           filters:
             mode: allow
@@ -122,7 +120,6 @@ class TestFrontmatter:
 
         write(root / "lg-cfg" / "sections.yaml", textwrap.dedent("""\
         src:
-          extends: ["ai-interaction"]
           extensions: [".py"]
           filters:
             mode: allow
@@ -193,9 +190,6 @@ class TestSectionCollection:
 
         # Context includes template (transitive) and src section
         write(root / "lg-cfg" / "test.ctx.md", textwrap.dedent("""\
-        ---
-        include: ["ai-interaction"]
-        ---
         # Test
         ${tpl:inner}
         ${src}
@@ -251,9 +245,6 @@ class TestSectionCollection:
 
         # Context with section inside conditional block (condition is never true)
         write(root / "lg-cfg" / "test.ctx.md", textwrap.dedent("""\
-        ---
-        include: ["ai-interaction"]
-        ---
         # Test
         ${src}
         {% if tag:never_active_tag %}
@@ -310,13 +301,7 @@ class TestIntegrationModeSetRule:
               - "/**"
         """))
 
-        write(root / "lg-cfg" / "test.ctx.md", textwrap.dedent("""\
-        ---
-        include: ["ai-interaction", "content-modes"]
-        ---
-        # Test
-        ${src}
-        """))
+        write(root / "lg-cfg" / "test.ctx.md", "# Test\n${src}\n")
         write(root / "main.py", "x = 1\n")
 
         from lg.adaptive.listing import list_mode_sets
@@ -362,13 +347,7 @@ class TestIntegrationModeSetRule:
               - "/**"
         """))
 
-        write(root / "lg-cfg" / "test.ctx.md", textwrap.dedent("""\
-        ---
-        include: ["modes-1", "modes-2"]
-        ---
-        # Test
-        ${src}
-        """))
+        write(root / "lg-cfg" / "test.ctx.md", "# Test\n${src}\n")
         write(root / "main.py", "x = 1\n")
 
         from lg.adaptive.errors import MultipleIntegrationModeSetsError
@@ -401,13 +380,7 @@ class TestIntegrationModeSetRule:
               - "/**"
         """))
 
-        write(root / "lg-cfg" / "test.ctx.md", textwrap.dedent("""\
-        ---
-        include: ["content-only"]
-        ---
-        # Test
-        ${src}
-        """))
+        write(root / "lg-cfg" / "test.ctx.md", "# Test\n${src}\n")
         write(root / "main.py", "x = 1\n")
 
         from lg.adaptive.errors import NoIntegrationModeSetError
