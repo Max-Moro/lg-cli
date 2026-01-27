@@ -75,13 +75,16 @@ src:
   #   Level 2: + comments keep_doc + imports_all
   #   Level 3: + private_bodies (keep_public)
   #   Level 4: + public_bodies (strip_all)
+  # All optimizations disabled in review mode (tag:review) for full code visibility.
 
   # Level 1 (global base): lightest optimization for all Python files
   python:
-    imports:
-      policy: "strip_external"
-    literals:
-      max_tokens: 100
+    when:
+      - condition: "NOT tag:review"
+        imports:
+          policy: "strip_external"
+        literals:
+          max_tokens: 100
 
   targets:
     # Level 2: context/type definition files — readable logic, stripped noise
@@ -92,9 +95,11 @@ src:
         - "/lg/section_processor.py"
         - "/lg/template/adaptive/processor_rules.py"
       python:
-        comment_policy: "keep_doc"
-        imports:
-          policy: "strip_all"
+        when:
+          - condition: "NOT tag:review"
+            comment_policy: "keep_doc"
+            imports:
+              policy: "strip_all"
 
     # Level 3: infrastructure — public API visible, private bodies stripped
     - match:
@@ -109,11 +114,13 @@ src:
         - "/lg/section/service.py"
         - "/lg/section/index.py"
       python:
-        comment_policy: "keep_doc"
-        imports:
-          policy: "strip_all"
-        strip_function_bodies:
-          policy: "keep_public"
+        when:
+          - condition: "NOT tag:review"
+            comment_policy: "keep_doc"
+            imports:
+              policy: "strip_all"
+            strip_function_bodies:
+              policy: "keep_public"
 
     # Level 4: peripheral — only signatures needed
     - match:
@@ -124,7 +131,9 @@ src:
         - "/lg/adaptive/context_resolver.py"
         - "/lg/adaptive/listing.py"
       python:
-        comment_policy: "keep_doc"
-        imports:
-          policy: "strip_all"
-        strip_function_bodies: true
+        when:
+          - condition: "NOT tag:review"
+            comment_policy: "keep_doc"
+            imports:
+              policy: "strip_all"
+            strip_function_bodies: true
