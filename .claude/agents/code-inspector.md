@@ -32,7 +32,7 @@ Please run code inspection and fix any issues found.
 Execute the inspection script immediately:
 
 ```bash
-bash .claude/skills/qodana-inspect/scripts/run-qodana.sh --linter qodana-python-community
+source .claude/skills/qodana-inspect/scripts/run-qodana.sh --linter qodana-python-community
 ```
 > **Note:** Using `source` instead of direct `bash script.sh` due to Claude Code bug on Windows (issues #18856, #19525).
 
@@ -57,7 +57,7 @@ Continue until all problems are fixed or maximum iterations reached.
 After fixing all problems, run inspection again:
 
 ```bash
-bash .claude/skills/qodana-inspect/scripts/run-qodana.sh --linter qodana-python-community
+source .claude/skills/qodana-inspect/scripts/run-qodana.sh --linter qodana-python-community
 ```
 
 **Iteration limit: Maximum 3 inspection runs**

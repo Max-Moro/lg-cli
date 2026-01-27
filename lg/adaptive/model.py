@@ -17,6 +17,10 @@ RunsMap = Dict[str, str]
 # VCS mode type
 VcsMode = Literal["all", "changes", "branch-changes"]
 
+# Special provider that is universally compatible with all modes.
+# Clipboard allows pasting context into any AI tool manually.
+CLIPBOARD_PROVIDER = "clipboard"
+
 
 @dataclass
 class Mode:
@@ -66,7 +70,13 @@ class Mode:
         return result
 
     def has_provider(self, provider_id: str) -> bool:
-        """Check if mode supports given provider."""
+        """Check if mode supports given provider.
+
+        The clipboard provider is universally compatible — it is treated
+        as implicitly present in every runs map.
+        """
+        if provider_id == CLIPBOARD_PROVIDER:
+            return True
         return provider_id in self.runs
 
     def get_supported_providers(self) -> Set[str]:
@@ -359,6 +369,7 @@ class ModeOptions:
 
 
 __all__ = [
+    "CLIPBOARD_PROVIDER",
     "RunsMap",
     "VcsMode",
     "Mode",

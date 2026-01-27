@@ -109,7 +109,7 @@ def _build_parser() -> argparse.ArgumentParser:
     sp_list.add_argument(
         "--provider",
         metavar="PROVIDER",
-        help="provider ID (required for mode-sets)"
+        help="provider ID (required for mode-sets, optional for contexts)"
     )
 
     sp_diag = sub.add_parser("diag", help="Environment and config diagnostics (JSON) [--bundle] [--rebuild-cache]")
@@ -247,8 +247,13 @@ def main(argv: list[str] | None = None) -> int:
             root = Path.cwd()
             data: Dict[str, Any]
             if ns.what == "contexts":
-                from .template import list_contexts
-                data = {"contexts": list_contexts(root)}
+                provider = getattr(ns, "provider", None)
+                if provider:
+                    from .adaptive.listing import list_contexts_for_provider
+                    data = {"contexts": list_contexts_for_provider(root, provider)}
+                else:
+                    from .template import list_contexts
+                    data = {"contexts": list_contexts(root)}
             elif ns.what == "sections":
                 from .section import list_sections
                 data = {"sections": list_sections(root)}

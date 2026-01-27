@@ -12,6 +12,7 @@ from .mode_sets_list_schema import ModeSetsList, ModeSet as ModeSetSchema, Mode 
 from .tag_sets_list_schema import TagSetsList, TagSet as TagSetSchema, Tag as TagSchema
 from .context_resolver import ContextResolver
 from .validation import validate_provider_support
+from .model import CLIPBOARD_PROVIDER
 from ..cache.fs_cache import Cache
 from ..version import tool_version
 from ..section import SectionService
@@ -183,4 +184,47 @@ def _adaptive_model_to_tag_sets_list(model) -> TagSetsList:
     return TagSetsList(**{"tag-sets": tag_sets_list})
 
 
-__all__ = ["list_mode_sets", "list_tag_sets"]
+def list_contexts_for_provider(root: Path, provider: str) -> list[str]:
+    """
+    Return contexts compatible with given provider.
+
+    A context is compatible if its adaptive model has an integration
+    mode-set with at least one mode supporting the provider.
+
+    The clipboard provider is universally compatible — returns all contexts.
+
+    Args:
+        root: Repository root
+        provider: Provider ID
+
+    Returns:
+        Sorted list of compatible context names
+    """
+    from ..template.common import list_contexts
+
+    all_contexts = list_contexts(root)
+
+    # Clipboard is universally compatible
+    if provider == CLIPBOARD_PROVIDER:
+        return all_contexts
+
+    resolver, _ = _create_context_resolver(root)
+    compatible = []
+
+    for ctx_name in all_contexts:
+        try:
+            adaptive_data = resolver.resolve_for_context(ctx_name, validate=False)
+            integration_set = adaptive_data.model.get_integration_mode_set()
+            if integration_set is None:
+                continue
+            # Check if any mode supports this provider
+            if provider in integration_set.get_supported_providers():
+                compatible.append(ctx_name)
+        except Exception:
+            # Skip contexts with resolution errors
+            continue
+
+    return compatible
+
+
+__all__ = ["list_mode_sets", "list_tag_sets", "list_contexts_for_provider"]

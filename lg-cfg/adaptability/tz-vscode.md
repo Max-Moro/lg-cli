@@ -57,6 +57,9 @@ interface ControlPanelState {
 ## 4. Изменения UI (Control Panel)
 
 ### 4.1. Новый селектор провайдера
+Комбобокс провайдера должен быть расположен **до** комбобокса выбора контекста,
+так как список доступных контекстов зависит от выбранного провайдера.
+
 Добавить в `media/control.html` + `control.js` + CSS:
 - выпадающий список `Provider` (в Control Panel), рядом с контекстом/кнопками или в блоке Adaptive Settings.
 - значения берутся из AiIntegrationService (provider.id + provider.name).
@@ -71,11 +74,12 @@ interface ControlPanelState {
 Реальный выбор хранится в ControlPanelState и меняется в UI.
 
 ### 4.3. Логика обновления списков
-При изменении:
-- контекста
-- провайдера
+При изменении провайдера должны перезапрашиваться:
+- contexts (provider)
+- mode‑sets (context + provider)
+- tag‑sets (context)
 
-должны перезапрашиваться:
+При изменении контекста должны перезапрашиваться:
 - mode‑sets (context + provider)
 - tag‑sets (context)
 
@@ -161,6 +165,7 @@ ai-interaction:
 Обновить `cliList` и `CatalogService`:
 
 ```
+list contexts  [--provider <provider>]
 list mode-sets --context <ctx> --provider <provider>
 list tag-sets  --context <ctx>
 ```
@@ -174,6 +179,9 @@ list tag-sets  --context <ctx>
 Аргумент `--provider` используется CLI для:
 - оценки условий `provider:<base-id>` в шаблонах (нормализация: отсечение суффикса `.cli`/`.ext`/`.api`);
 - не влияет на фильтрацию файлов.
+
+Провайдер `clipboard` является универсальным — совместим со всеми контекстами и режимами.
+При выборе `clipboard` фильтрация контекстов и режимов не производится.
 
 ---
 

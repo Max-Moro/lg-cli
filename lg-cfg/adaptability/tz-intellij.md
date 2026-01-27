@@ -51,6 +51,9 @@ var tagsByContext: MutableMap<String, MutableMap<String, MutableSet<String>>>
 ## 4. Изменения UI (Tool Window)
 
 ### 4.1. Новый селектор провайдера
+Комбобокс провайдера должен быть расположен **до** комбобокса выбора контекста,
+так как список доступных контекстов зависит от выбранного провайдера.
+
 Добавить комбобокс выбора provider в Control Panel (рядом с контекстами или в Adaptive Settings).
 
 Источник данных: `AiIntegrationService.detectAvailableProviders()` + provider name.
@@ -65,7 +68,12 @@ var tagsByContext: MutableMap<String, MutableMap<String, MutableSet<String>>>
 Реальный выбор хранится в `LgPanelStateService`.
 
 ### 4.3. Обновление списков
-При изменении контекста или провайдера:
+При изменении провайдера:
+- перезапрашивать contexts (provider)
+- перезапрашивать mode‑sets (context + provider)
+- перезапрашивать tag‑sets (context)
+
+При изменении контекста:
 - перезапрашивать mode‑sets (context + provider)
 - перезапрашивать tag‑sets (context)
 
@@ -151,6 +159,7 @@ ai-interaction:
 Обновить `LgCatalogService` и `CliExecutor` вызовы:
 
 ```
+list contexts  [--provider <provider>]
 list mode-sets --context <ctx> --provider <provider>
 list tag-sets  --context <ctx>
 ```
@@ -164,6 +173,9 @@ list tag-sets  --context <ctx>
 Аргумент `--provider` используется CLI для:
 - оценки условий `provider:<base-id>` в шаблонах (нормализация: отсечение суффикса `.cli`/`.ext`/`.api`);
 - не влияет на фильтрацию файлов.
+
+Провайдер `clipboard` является универсальным — совместим со всеми контекстами и режимами.
+При выборе `clipboard` фильтрация контекстов и режимов не производится.
 
 ---
 

@@ -15,7 +15,7 @@ from .errors import (
     InvalidModeReferenceError,
     ProviderNotSupportedError,
 )
-from .model import AdaptiveModel
+from .model import AdaptiveModel, CLIPBOARD_PROVIDER
 
 
 class AdaptiveValidator:
@@ -86,6 +86,8 @@ class AdaptiveValidator:
         After filtering by provider, the integration mode-set must
         have at least one mode remaining.
 
+        The clipboard provider is universally compatible and always passes.
+
         Args:
             model: AdaptiveModel to validate
             provider_id: Provider ID to check
@@ -95,6 +97,10 @@ class AdaptiveValidator:
             NoIntegrationModeSetError: if no integration mode-set
             ProviderNotSupportedError: if provider not supported
         """
+        # Clipboard is universally compatible with all modes
+        if provider_id == CLIPBOARD_PROVIDER:
+            return
+
         integration_set = model.get_integration_mode_set()
         if integration_set is None:
             # First validate that we have exactly one
