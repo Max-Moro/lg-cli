@@ -146,6 +146,7 @@ These inspections require critical thinking and cannot be fixed mechanically:
 1. **Check if parameter is truly unnecessary:**
    - Is it used in other implementations of the same interface/protocol?
    - Is it part of a callback signature that must match a specific contract?
+   - Is it a **pytest fixture**? Pytest injects fixtures by parameter name — the parameter must exist in the signature even if the test body doesn't reference it (e.g., fixtures that set up database state, create directories, or activate patches). **NEVER remove pytest fixture parameters.**
    - Can the signature be simplified (apply YAGNI principle)?
 
 2. **Decision tree:**
@@ -187,14 +188,39 @@ These inspections require critical thinking and cannot be fixed mechanically:
 When an inspection is a false positive, choose the correct suppression method:
 
 **Local suppression (`# noinspection`)** - Use for specific cases:
-- Place comment immediately before the flagged line/class/method
 - Use when the issue is legitimate in this specific context
 - Examples: intentional protected member access, abstract properties in ABC, false positive on return statements
 
+**Naming convention:** Use the **short inspection ID** (without the `Inspection` suffix).
+Qodana SARIF reports `ruleId` with suffix (e.g., `PyUnusedLocalInspection`), but `# noinspection` uses the short form:
+
+```
+PyUnusedLocalInspection   → # noinspection PyUnusedLocal
+PyProtectedMemberInspection → # noinspection PyProtectedMember
+PyDictCreationInspection  → # noinspection PyDictCreation
+```
+
+**Placement rules:**
+1. Must be on a **separate line** above the target (NOT inline at end of line)
+2. Must be placed **before decorators** if the target has any
+3. One comment per suppressed scope (method, class, or statement)
+
 ```python
+# ✅ CORRECT — separate line, before decorator
 # noinspection PyPropertyDefinition
 @property
 @abstractmethod
+def name(self) -> str:
+    ...
+
+# ❌ WRONG — inline
+@property
+def name(self) -> str:  # noinspection PyPropertyDefinition
+    ...
+
+# ❌ WRONG — between decorator and def
+@property
+# noinspection PyPropertyDefinition
 def name(self) -> str:
     ...
 ```
