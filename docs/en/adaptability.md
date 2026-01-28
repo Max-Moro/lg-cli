@@ -2,161 +2,301 @@
 
 ## Functionality Overview
 
-The adaptive capabilities system for Listing Generator allows you to create and use different context slices based on mode sets and tag sets. This system provides flexible configuration of generated contexts without duplicating configuration.
+Adaptive capabilities allow you to form different context slices based on **mode sets** and **tag sets**. This system provides flexible configuration of generated contexts without duplicating configuration.
+
+When discussing code with AI, you typically need:
+- the same context, but different slices (planning, development, debugging, review);
+- quick switching between AI providers and activating different AI provider operating modes;
+- reuse of configured filters and language optimizations with different variations.
+
+Modes and tags solve these tasks. You use a single context template and get exactly the slice you need right now.
 
 ## Key Concepts
 
 ### Mode Sets and Modes
 
-**Mode Set** - a group of mutually exclusive options representing a specific aspect of work (for example, "AI Interaction Method", "Development Stage").
+**Mode Set** — a group of mutually exclusive options representing a specific aspect of work (e.g., "AI Interaction" or "Development Stage").
 
-**Mode** - a specific option within a mode set that activates certain tags and special settings.
+**Mode** — a specific option within a set. It can:
+- activate tags (`tags`),
+- set system options (`vcs_mode`),
+- optionally contain `runs` (provider launch parameters).
+
+**Rule:** after resolving all modes for a context, **there must be exactly one integration set**. If there are 0 or more than 1 integration sets — it's an error.
 
 ### Tag Sets and Tags
 
-**Tag Set** - a group of related tags representing a specific category (for example, "Programming Languages").
+**Tag Set** — a group of related tags (e.g., "Programming Languages").
 
-**Tag** - an atomic filtering element that can be activated or deactivated.
+**Tag** — an atomic filtering element used in conditions (`tag:...`, `TAGSET:...`).
+
+**Global tags are not declared.** Any active tag not belonging to any tag set is considered global and can be used in `tag:`.
 
 ## Configuration Structure
 
-### Mode Configuration
+Adaptive configuration lives in **sections** (`sections.yaml` and `*.sec.yaml`).
+
+### Example Section with Modes and Tags
 
 ```yaml
-# lg-cfg/modes.yaml
-mode-sets:
-  ai-interaction:
-    title: "AI Interaction Method"
-    modes:
-      ask:
-        title: "Ask"
-        description: "Basic question-answer mode"
-        # No special tags or options
+# lg-cfg/sections.yaml
+core:
+  extensions: [".py", ".md"]
+  filters:
+    mode: allow
+    allow: ["/src/"]
 
-      agent:
-        title: "Agent Mode"
-        description: "Mode with tools"
-        tags: [agent, tools]
-        # Arbitrary additional options are possible
-        allow_tools: true
+  mode-sets:
+    ai-interaction:
+      title: "AI Interaction"
+      modes:
+        ask:
+          title: "Ask"
+          description: "Question-answer mode"
+          runs:
+            com.anthropic.claude.cli: "--permission-mode default"
+            com.github.copilot.ext: "workbench.action.chat.openask"
 
-  dev-stage:
-    title: "Feature Development Stage"
-    modes:
-      planning:
-        title: "Planning"
-        tags: [architecture, docs]
+        agent:
+          title: "Agent"
+          description: "Agent mode with tools"
+          tags: [agent]
+          runs:
+            com.anthropic.claude.cli: "--permission-mode acceptEdits"
+            com.github.copilot.ext: "workbench.action.chat.openagent"
 
-      development:
-        title: "Main Development"
+        plan:
+          title: "Plan"
+          description: "Planning / specification mode"
+          tags: [agent, plan]
+          runs:
+            com.anthropic.claude.cli: "--permission-mode plan"
+            com.github.copilot.ext: "workbench.action.chat.openplan"
 
-      testing:
-        title: "Writing Tests"
-        tags: [tests]
-        default_task: "Write tests for the current functional module."
+    dev-stage:
+      title: "Task Development Stage"
+      modes:
+        common:
+          title: "Main Development"
 
-      review:
-        title: "Code Review"
-        tags: [review]
-        default_task: "Conduct a code review of the changes and provide improvement recommendations."
-        # Arbitrary additional options are possible
-        vcs_mode: "branch-changes"
+        testing:
+          title: "Writing Tests"
+          tags: [tests]
+          default_task: "Write tests for the current functional module."
 
-# Including modes from child scopes
-include:
-  - child1 # Includes child1/lg-cfg/modes.yaml
-  - child2 # Includes child2/lg-cfg/modes.yaml
+        review:
+          title: "Code Review"
+          tags: [review]
+          default_task: "Conduct a code review of the changes and provide improvement recommendations."
+          vcs_mode: "branch-changes"
+
+  tag-sets:
+    language:
+      title: "Programming Languages"
+      tags:
+        python:
+          title: "Python"
+        typescript:
+          title: "TypeScript"
+        javascript:
+          title: "JavaScript"
+
+    code-type:
+      title: "Code Type"
+      tags:
+        product:
+          title: "Production Code"
+        tests:
+          title: "Test Code"
+        generated:
+          title: "Generated Code"
+
+    some-feature-slices:
+      title: "Large Functional Module"
+      tags:
+        subfeature_foo:
+          title: "Feature #1"
+        subfeature_bar:
+          title: "Feature #2"
+        subfeature_baz:
+          title: "Feature #3"
 ```
 
-## Tag Configuration
+### Meta-Sections
+
+**Meta-section** — a section **without `filters`**. It doesn't render, but can:
+- be used as a base via `extends`,
+- be included via context frontmatter.
+
+Most commonly, meta-sections are used as a base for modes and tags.
+
+---
+
+## Frontmatter in `.ctx.md`
+
+Contexts can include additional meta-sections via frontmatter. This affects modes/tags, but **does not render** content.
+
+```markdown
+---
+include:
+  - "ai-interaction"
+  - "tags"
+---
+
+# My Context
+
+${core}
+```
+
+---
+
+## Section Inheritance
+
+Sections can inherit adaptive configuration:
 
 ```yaml
-# lg-cfg/tags.yaml
-tag-sets:
-  language:
-    title: "Programming Languages"
-    tags:
-      python:
-        title: "Python"
-      typescript:
-        title: "TypeScript"
-      javascript:
-        title: "JavaScript"
-
-  code-type:
-    title: "Code Type"
-    tags:
-      product:
-        title: "Production Code"
-      tests:
-        title: "Test Code"
-      generated:
-        title: "Generated Code"
-
-  some-feature-slices:
-    title: "Large Functional Module"
-    tags:
-      subfeature_foo:
-        title: "Feature #1"
-      subfeature_bar:
-        title: "Feature #2"
-      subfeature_baz:
-        title: "Feature #3"
-
-# Global tags (not part of specific sets and usually toggled through modes)
-tags:
-  agent:
-    title: "Agent Capabilities"
-  review:
-    title: "Code Review Guidelines"
-  # ... other tags
-
-# Including tags from child scopes
-include:
-  - child1 # Includes child1/lg-cfg/tags.yaml
-  - child2 # Includes child2/lg-cfg/tags.yaml
+src:
+  extends: ["ai-interaction", "dev-stage", "tags"]
+  extensions: [".py"]
+  filters:
+    mode: allow
+    allow:
+      - "/src/"
 ```
 
-If the current repository's starting `lg-cfg` doesn't have its own `modes.yaml` and `tags.yaml` files at all, a reasonable minimal default configuration will be applied.
+**Where:**
+- `ai-interaction` — integration meta-section for modes in `lg-cfg/ai-interaction.sec.yaml`. In this case, it's the standard integration section (generated by IDE add-ons), but you can develop your own.
+- `dev-stage` — content meta-section for modes in `lg-cfg/dev-stage.sec.yaml`.
+- `tags` — meta-section with tag sets in `lg-cfg/tags.sec.yaml`
+
+**Merged:**
+- `mode-sets`, `tag-sets`, adapter configs, `extensions`, `skip_empty`, `path_labels`.
+
+**Not merged:**
+- `filters`, `targets`.
+
+**Collisions:** child wins (`mode.id`, `tag.id`, `title`, `description`).
+
+**Important:** when calculating available modes and tags for a context, **`{% if %}` conditions are not evaluated** — all sections inside conditional blocks are included. This ensures that users see the complete set of available modes/tags regardless of the current selection.
+
+**Meta-section addressing:**
+
+`extends` declarations and frontmatter `include` use the same addressing rules as section insertion placeholders:
+- path relative to the current lg-cfg;
+- `@origin` for another scope;
+- `@/` for root scope.
+
+Example:
+```markdown
+---
+include:
+  - "modes/ai-interaction"
+  - "@libs/core:modes/ai-interaction"
+  - "@/:modes/ai-interaction"
+---
+```
+
+---
+
+## Provider Identifiers (`runs`)
+
+`runs` is a map of providerId → string describing AI provider launch modes in the logic of **LG VS Code Extension** and **LG IntelliJ Plugin**. This declaration is necessary for the correct response to clicking the "Send to AI" button in the user interface. LG CLI itself does not interpret `runs` values, it only passes them to IDE add-ons.
+
+Canonical providerId format:
+
+```
+<reverse-dns>.<product>.<type>
+```
+
+Examples:
+- `com.github.copilot.ext`
+- `com.anthropic.claude.cli`
+- `com.openai.codex.cli`
+- `com.jetbrains.ai.ext`
+- `org.jetbrains.junie.ext`
+
+Mode sets are divided into two types:
+- **Integration** — contain `runs` and describe AI provider launch modes.
+- **Content** — do not contain `runs` and are used only for adaptive content.
+
+Important: after resolving all mode sets for an active context, **exactly one integration mode set must exist**. All other sets are content sets. If there are 0 or more than 1 integration sets — it's an **error**.
+
+This rule prevents situations where multiple modes with conflicting `runs` are selected and it's unclear which launch parameters to apply when "Send to AI" is pressed.
+
+### Universal Provider `clipboard`
+
+The `clipboard` provider is special — it is **implicitly compatible with all modes**. Through the clipboard, context can be passed to any AI tool manually.
+
+Features:
+- With `--provider clipboard`, **all modes** are considered available (filtering by `runs` is not applied)
+- `list contexts --provider clipboard` returns **all contexts** without exceptions
+- The `provider:clipboard` condition in templates works as usual
+
+This is convenient for cases when you want to copy the context and paste it into an AI web interface or a tool for which there is no direct integration.
+
+### Canonical Base Meta-Section
+
+While manually configuring `runs` is allowed, it's usually not required. And it may not be safe. For this reason, there is a standard meta-section with integration modes `lg-cfg/ai-interaction.sec.yaml`, which is generated/updated by IDE plugins (VS Code / IntelliJ). There is a button in the IDE toolbar that creates or updates this file. It always contains up-to-date `runs` for supported providers. Therefore, it's recommended to inherit the `ai-interaction` meta-section in your work.
+
+Advanced users can add their own special modes and special `runs` values. The IDE only updates modes and `runs` values it knows; the unknown part of the config is preserved untouched. When "Send to AI" is clicked, the IDE will try to reasonably use even unknown `runs` values and launch the target AI provider with those parameters.
+
+---
 
 ## CLI
 
 ```bash
-# List of mode sets with nested modes
+# List of contexts
+# When provider is specified, returns list of contexts compatible with the provider
+listing-generator list contexts [--provider <provider-id>]
+
+# List of mode sets with nested modes + provider launch rules
 # Sufficient data for UI generation (comboboxes)
-listing-generator list mode-sets
+# Integration set is filtered by provider, content sets are returned in full
+listing-generator list mode-sets --context my-context --provider com.anthropic.claude.cli
 
 # List of tag sets with nested tags
 # Sufficient data for UI generation (checkbox sets)
-listing-generator list tag-sets
+listing-generator list tag-sets  --context my-context
 
-# Rendering with specified modes
-listing-generator render ctx:my-context --mode ai:agent --mode stage:development
+# Rendering with specified modes, in this case planning mode
+# When sending the resulting context to the target provider, IDE add-on must launch it with `runs` arguments for the planning mode
+listing-generator render ctx:my-context --mode ai-interaction:plan --mode dev-stage:common
 
 # Rendering with additional tags specified
-# In UA, tags are selected through checkbox sets within TAGSET and then form a flat list
+# In UI, tags are selected through checkbox sets within TAGSET and then form a flat list
 listing-generator render ctx:my-context --tags python,minimal
 
 # Combined usage
-listing-generator render ctx:my-context --mode ai:agent --mode stage:review --tags python
+listing-generator render ctx:my-context --mode ai-interaction:agent --mode dev-stage:review --tags python
 
 # Rendering with target branch specified for branch-changes mode
-listing-generator render ctx:my-context --mode stage:review --target-branch main
+listing-generator render ctx:my-context --mode dev-stage:review --target-branch main
 
 # Rendering with AI provider specified (enables provider: conditions)
-listing-generator render ctx:my-context --mode ai:agent --provider com.anthropic.claude.cli
+listing-generator render ctx:my-context --mode ai-interaction:agent --provider com.anthropic.claude.cli
 ```
 
 ## System Mode Options
 
-There are a number of LG capabilities that are tied not to command line arguments or section configuration, but specifically to additional mode options. That is, they are configured in the `lg-cfg/modes.yaml` file and enabled by specifying the desired mode.
+Some LG capabilities are tied to additional mode options (not to command line arguments or section configuration). They are configured in the mode definition within a section and activated when the corresponding mode is selected.
 
 | Option                          | YAML Syntax             | Variants                              | Default | Description                                                                                                                                                                                                                |
 |--------------------------------|-------------------------|---------------------------------------|---------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| **VCS Modes**                  | `vcs_mode: <variant>`   | `all \| changes \| branch-changes`    | `all`   | Additional file filtering in sections based on version control system status:<br/>- **all** — include all files<br/>- **changes** — include only files changed in the working tree (staged + unstaged + untracked)<br/>- **branch-changes** — include files changed in the current branch relative to the target branch (specified via `--target-branch`) |
-| **Markdown Code Fencing**      | `code_fence: <bool>`    | `true \| false`                       | `true`  | Automatic wrapping of code blocks in `fenced` wrappers with language specification (\`\`\`python, \`\`\`bash, etc.)                                                                                           |
+| **VCS Modes**                  | `vcs_mode: <variant>`   | `all \| changes \| branch-changes`    | `all`   | Additional file filtering in sections based on version control system status:<br/>- **all** — include all files<br/>- **changes** — include only files changed in the working tree (staged + unstaged + untracked)<br/>- **branch-changes** — include files changed in the current branch relative to the target branch (**must** specify `--target-branch`) |
+| **Default Task**               | `default_task: "text"`  | Arbitrary text                        | —       | Task text used for the `${task}` placeholder if `--task` is not explicitly passed (see below) |
 
-<!-- lg:if NOT tag:vcs -->
+### Interaction of `default_task` and `${task}`
+
+The `${task}` placeholder in templates receives task text considering priorities:
+
+1. **Explicit `--task`** — if a non-empty command line argument is passed, it is used.
+2. **`default_task` from modes** — if `--task` is not specified, `default_task` is collected from all active modes and joined with double line breaks.
+3. **Empty string** — if neither is specified.
+
+Example: with `--mode dev-stage:review`, the mode with `default_task: "Conduct a code review..."` is activated, and the `${task}` placeholder will automatically substitute this text.
+
+For more details on the `${task}` placeholder, see the documentation [Templates and Contexts](templates.md#current-task-placeholder-task).
+
 ## Conditional Logic
 
 ### Conditions in Markdown Templates
@@ -210,39 +350,87 @@ feature-impl:
         comment_policy: "keep_doc"
 ```
 
+Conditions can also be applied within `targets` for staged optimization of more or less important code in the context.
+
+```yaml
+…
+  # Graduated optimization following budget escalation order.
+  # All optimizations disabled in review mode (tag:review) for full code visibility.
+
+  # Level 1 (global base): lightest optimization for all Python files
+  python:
+    when:
+      - condition: "NOT tag:review"
+        imports:
+          policy: "strip_external"
+        literals:
+          max_tokens: 100
+
+  targets:
+    # Level 2: context/type definition files — readable logic, stripped noise
+    - match: # …
+      python:
+        when:
+          - condition: "NOT tag:review"
+            comment_policy: "keep_doc"
+            imports:
+              policy: "strip_all"
+
+    # Level 3: infrastructure — public API visible, private bodies stripped
+    - match: # …
+      python:
+        when:
+          - condition: "NOT tag:review"
+            comment_policy: "keep_doc"
+            imports:
+              policy: "strip_all"
+            strip_function_bodies:
+              policy: "keep_public"
+
+    # Level 4: peripheral — only signatures needed
+    - match: # …
+      python:
+        when:
+          - condition: "NOT tag:review"
+            comment_policy: "keep_doc"
+            imports:
+              policy: "strip_all"
+            strip_function_bodies: true
+```
+
 ### Supported Conditional Operators
 
-- `tag:<name>` - the specified tag is active
-- `NOT tag:<name>` - the specified tag is not active
-- `tag:<name1> AND tag:<name2>` - both tags are active
-- `tag:<name1> OR tag:<name2>` - at least one of the tags is active
-- `TAGSET:<set-name>:<tag-name>` - special operator for slices (permissive by default):
+- `tag:<name>` — the specified tag is active
+- `NOT tag:<name>` — the specified tag is not active
+- `tag:<name1> AND tag:<name2>` — both tags are active
+- `tag:<name1> OR tag:<name2>` — at least one of the tags is active
+- `TAGSET:<set-name>:<tag-name>` — special operator for slices (permissive by default):
   - True if no tag from the set is active
   - True if the specified tag is active
   - False in all other cases
-- `TAGONLY:<set-name>:<tag-name>` - exclusive operator for slices (restrictive by default):
+- `TAGONLY:<set-name>:<tag-name>` — exclusive operator for slices (restrictive by default):
   - True only if the specified tag is active AND it's the only active tag from the set
   - False in all other cases
 
 For working with federated scopes, additional operators are added that can be combined with other conditional operators.
 
-- `scope:local` - applies only if rendering from the local scope
-- `scope:parent` - applies when rendering from the parent scope
+- `scope:local` — applies only if rendering from the local scope
+- `scope:parent` — applies when rendering from the parent scope
 
 For identifying the active AI provider, a dedicated operator is available:
 
-- `provider:<base-id>` - checks the current AI provider (specified via `--provider`):
+- `provider:<base-id>` — checks the current AI provider (specified via `--provider`):
   - The full provider ID is normalized by stripping the technical suffix (`.cli`, `.ext`, `.api`)
   - For example, `--provider com.anthropic.claude.cli` normalizes to `com.anthropic.claude`
   - Special providers without a suffix (e.g., `clipboard`) are compared as-is
-  - If `--provider` is not specified, condition is always False
+  - If `--provider` is not specified, the condition is always False
 
 ## Setting Modes in Templates
 
 Sometimes it's convenient to forcibly set modes in templates themselves.
 
 ```markdown
-{% mode dev-stage:development %}
+{% mode dev-stage:common %}
 <!-- This is very important architectural code, so it's better to always insert it completely, without narrowing tags -->
 <!-- We also guarantee that even during code review, this code will be inserted completely -->
 ${src-arch}
@@ -253,7 +441,6 @@ ${src-arch}
 ${src-feature}
 ```
 
-<!-- lg:comment:start -->
 ## Complete Template Engine Reference
 
 ### Placeholders (main insertion elements)
@@ -303,9 +490,9 @@ ${src-feature}
 |-------------|-----------|---------|----------|
 | **Template Comment** | `{# text #}` | `{# This won't be in the result #}` | Removed during processing |
 | **HTML Comment** | `<!-- text -->` | `<!-- Note -->` | Passes through to final result |
-<!-- lg:comment:end -->
 
 ---
+<!-- Disable interpretation below to be able to send this documentation through LG itself unchanged -->
 <!-- lg:raw:start -->
 ## Using Adaptive Capabilities in the Markdown Adapter
 
@@ -408,4 +595,71 @@ This note won't be included in the final result
 <!-- lg:comment:end -->
 ~~~
 <!-- lg:raw:end -->
-<!-- lg:endif -->
+
+---
+
+## Common Errors and Diagnostics
+
+When working with the adaptive system, LG provides clear error messages. Here are the most common situations:
+
+| Error | Cause | Solution |
+|-------|-------|----------|
+| **Circular extends dependency** | Cycle in the `extends` chain (A → B → A) | Check and remove circular references in `extends` |
+| **Cannot render meta-section** | Attempt to render a section without `filters` | Meta-sections are used only for inheritance; add `filters` or use via `extends` |
+| **Multiple integration mode-sets found** | More than one integration mode set found in the context | Keep only one set with `runs`; make the others content sets (without `runs`) |
+| **No integration mode-set found** | No context section contains `runs` | Add an integration set via `extends` or frontmatter `include` |
+| **Provider not supported** | Provider is not supported by any mode in the integration set | Add `runs` for the required provider or choose a different provider |
+| **Mode not found** | `{% mode set:mode %}` references a non-existent mode | Check the correctness of set and mode names; the mode must be defined in the context model |
+| **Section not found in extends** | Section from `extends` does not exist | Check the path and section name; use `@scope:` for sections from other lg-cfg |
+
+---
+
+## How to Build a Real Workflow
+
+### Step 1. Generate Integration Mode Template
+
+In the IDE add-on toolbar (**LG VS Code Extension** or **LG IntelliJ Plugin**), there is a button that creates or updates the file:
+
+```
+lg-cfg/ai-interaction.sec.yaml
+```
+
+This is the canonical base for integration modes. The IDE:
+- queries all its providers;
+- adds and updates only the `runs` it understands;
+- does not touch unknown entries.
+
+Run this button again when installing new AI providers or updating IDE plugins.
+
+### Step 2. Your Own Content Modes and Tags
+
+You can develop your own content mode sets and tag systems that allow you to switch the working style with specific contexts.
+
+Typically, modes are used to change the task development stage. Tags are used to create a more focused slice of the codebase when working with a large functional module.
+
+Declare your personal mode sets and tag sets in sections or meta-sections (`sections.yaml` or `*.sec.yaml`).
+
+### Step 3. Connecting Meta-Sections to Contexts
+
+You need to choose a method convenient for your situation to connect created mode sets and tag sets to contexts (`*.ctx.md`). This can be done in the following ways:
+
+- Direct specification in the required sections that are inserted into your contexts (`${sec_name}`), of `mode-sets` and `tag-sets` sections.
+- Through inheritance in sections. This uses the `extends` declaration in YAML.
+- Through Frontmatter and the `include` declaration in the contexts themselves.
+
+In practice, it's reasonable to use a combination of methods. Usually, integration modes are always global and it's more convenient to connect them through Frontmatter. Content modes and tag sets for slices are more often tied to a specific section.
+
+### Step 4. Developing Rules in Templates and Manifests
+
+Using conditional logic operators in templates, as well as `when` declarations in section YAML, split and adapt all the full content within contexts into separate slices and/or work phases. Think about how instead of using different contexts or sections, you can use fewer of them. To better compose more complex contexts, it's recommended to logically go through all your application's functions and combine them into larger functional modules. Also think about how to use the same contexts in different AI providers with different launch modes.
+
+### Step 5. Working in the IDE Add-on
+
+1. Select the AI provider
+2. Configure additional AI provider launch parameters if available in the UI
+3. Select the context
+4. Select the required mode/modes and configure tags
+5. If this is a new context, optimize it for the required context window fill percentage using the statistics dialog ("Show Context Stats")
+6. Click "Send to AI"
+
+The provider will launch based on `runs` from the integration set. Currently, the IDE simply tries to apply `runs` values in the required integration mode to the target provider. This applies even to custom `runs` values that the IDE did not know about in advance.
