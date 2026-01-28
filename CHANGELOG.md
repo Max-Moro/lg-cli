@@ -7,12 +7,32 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- **Breaking:** Adaptive system architecture reworked — modes and tags now defined inside sections (`mode-sets`, `tag-sets` keys) instead of global `modes.yaml`/`tags.yaml` files
+- Unified error handling with consistent user-facing error messages across all commands
+- `list mode-sets` and `list tag-sets` commands now require `--context` argument (modes/tags are context-dependent)
+- `list mode-sets` command now requires `--provider` argument for filtering integration modes
+
 ### Added
 - Cross-scope addressing with `@..` and `@../sibling` syntax for accessing parent and sibling `lg-cfg/` directories
 - Parent directory traversal in filter patterns (`/../sibling/**`) for including files outside current scope
+- Conditional adapter options in `targets:` entries with `when:` syntax (same as section-level conditions)
+- Meta-sections (sections without `filters`) for reusable mode/tag definitions via `extends`
+- Section inheritance with `extends` key and deterministic merge rules
+- Frontmatter `include` directive in `.ctx.md` for including meta-sections
+- Integration mode sets with `runs` map for AI provider launch parameters
+- Universal `clipboard` provider (implicitly compatible with all modes)
+- `list contexts --provider` filtering by compatible providers
+- `--provider` argument for `render`/`report` commands
+- `provider:<base-id>` conditional operator for provider-specific content
+- `default_task` mode option for automatic `${task}` placeholder population
+- Comprehensive error diagnostics for adaptive system (cycle detection, validation)
 
 ### Fixed
 - Current directory reset when transitioning between scopes (prevents path duplication in cross-scope references)
+
+### Removed
+- Global `modes.yaml` and `tags.yaml` configuration files (no automatic migration provided — manual update required)
 
 ## [0.10.2] - 2026-01-15
 
