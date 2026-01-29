@@ -434,8 +434,9 @@ generate_vscode() {
   # 1) if local CLI JS exists → run via `node <cli.js>`
   # 2) else if local bin exists → call it directly
   # 3) else fallback to npx
+  # NOTE: json-schema-to-typescript v15+ moved CLI to dist/src/cli.js
   declare -a JSON2TS
-  local CLI_JS="${VSCODE_DIR}/node_modules/json-schema-to-typescript/dist/cli.js"
+  local CLI_JS="${VSCODE_DIR}/node_modules/json-schema-to-typescript/dist/src/cli.js"
   if [[ -f "$CLI_JS" ]]; then
     JSON2TS=( node "$CLI_JS" )
   elif JSON2TS_BIN="$(find_json2ts_local)"; then
@@ -526,7 +527,7 @@ generate_jetbrains() {
   #  - --framework kotlinx uses kotlinx.serialization (modern and recommended)
   #  - Package will be lg.intellij.cli.models
   #  - Generates data classes with @Serializable annotations
-  local package_name="lg.intellij.cli.models"
+  local package_name="lg.intellij.models"
   
   local ok=0
   for ((i=0; i<${#plan_schema[@]}; i++)); do
