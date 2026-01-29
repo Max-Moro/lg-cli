@@ -1,3 +1,21 @@
+# CLI interface for external consumers (VS Code / IntelliJ plugins)
+# Provides only the essential interface: CLI commands and JSON schemas
+cli-interface:
+  extensions: [".py", ".json"]
+  filters:
+    mode: allow
+    allow:
+      - "/lg/cli.py"
+      - "/lg/adaptive/mode_sets_list.schema.json"
+      - "/lg/adaptive/tag_sets_list.schema.json"
+  python:
+    comment_policy: "keep_doc"
+    imports:
+      policy: "strip_all"
+    strip_function_bodies:
+      policy: "keep_public"
+
+# Full source code for local development
 src:
   extensions: [".py", ".toml", ".json"]
   filters:
