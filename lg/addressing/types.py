@@ -117,6 +117,7 @@ class ResolvedSection(ResolvedResource):
     location: SectionLocation       # Physical location of section
     section_config: SectionCfg      # Already loaded configuration
     name: str                       # Original name from template (for diagnostics)
+    current_dir: str = ""           # Directory inside lg-cfg at resolution time (for extends)
 
     def canon_key(self) -> str:
         if self.name.startswith('@'):

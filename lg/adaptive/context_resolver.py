@@ -210,6 +210,7 @@ class ContextResolver:
                 resolved_section.section_config,
                 resolved_section.canon_key(),
                 resolved_section.scope_dir,
+                resolved_section.current_dir,
             )
 
             # Merge into result

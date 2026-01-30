@@ -14,8 +14,8 @@ import textwrap
 import pytest
 
 from tests.infrastructure import (
-    write, create_mode_meta_section, create_tag_meta_section,
-    ModeConfig, ModeSetConfig, TagConfig, TagSetConfig,
+    write, create_mode_meta_section,
+    ModeConfig, ModeSetConfig,
 )
 
 

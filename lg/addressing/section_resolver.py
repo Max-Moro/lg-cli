@@ -115,7 +115,7 @@ class SectionResolver(ResourceResolver):
         except ValueError:
             scope_rel = ""
 
-        # Get current directory
+        # Get current directory (captured for extends resolution)
         current_dir = self._context.current_directory
 
         # Find section using service
@@ -130,6 +130,7 @@ class SectionResolver(ResourceResolver):
             location=location,
             section_config=section_config,
             name=name,
+            current_dir=current_dir,
         )
 
     def _parse_addressed_ref(self, name: str) -> tuple[str, str]:

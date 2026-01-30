@@ -112,7 +112,8 @@ class ExtendsResolver:
         self,
         section_cfg: SectionCfg,
         section_name: str,
-        scope_dir: Path
+        scope_dir: Path,
+        current_dir: str = ""
     ) -> ResolvedSectionData:
         """
         Resolve section from already loaded SectionCfg.
@@ -123,6 +124,7 @@ class ExtendsResolver:
             section_cfg: Loaded section configuration
             section_name: Section name for caching/cycle detection
             scope_dir: Current scope directory
+            current_dir: Current directory for relative resolution of extends
 
         Returns:
             ResolvedSectionData with merged configuration
@@ -147,7 +149,7 @@ class ExtendsResolver:
 
             # Process extends in order (depth-first, left-to-right)
             for parent_ref in section_cfg.extends:
-                parent_data = self._resolve_parent(parent_ref, scope_dir)
+                parent_data = self._resolve_parent(parent_ref, scope_dir, current_dir)
                 base = self._merge(base, parent_data)
 
             # Merge current section onto base
@@ -178,18 +180,23 @@ class ExtendsResolver:
         # For local references, include scope path
         return f"{scope_dir}:{section_name}"
 
-    def _resolve_parent(self, parent_ref: str, scope_dir: Path) -> ResolvedSectionData:
+    def _resolve_parent(self, parent_ref: str, scope_dir: Path, current_dir: str = "") -> ResolvedSectionData:
         """
         Resolve parent section from extends reference.
 
         Handles addressed references (@scope:name).
+
+        Args:
+            parent_ref: Reference to parent section (name or @scope:name)
+            scope_dir: Current scope directory
+            current_dir: Current directory for relative resolution
         """
         if parent_ref.startswith('@'):
             # Addressed reference: @scope:name or @[scope]:name
             return self._resolve_addressed(parent_ref, scope_dir)
         else:
-            # Local reference
-            return self.resolve(parent_ref, scope_dir)
+            # Local reference - use current_dir for relative resolution
+            return self.resolve(parent_ref, scope_dir, current_dir)
 
     def _resolve_addressed(self, ref: str, current_scope: Path) -> ResolvedSectionData:
         """
