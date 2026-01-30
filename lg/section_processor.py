@@ -43,12 +43,22 @@ class SectionProcessor:
         Returns:
             Section manifest
         """
-        # Simply use section_config from resolved - no virtual section check needed
+        # Determine root for file iteration
+        # For cross-scope references where scope_dir is outside run_ctx.root
+        # (e.g., @.. parent scope), use scope_dir as iteration root
+        try:
+            resolved.scope_dir.relative_to(self.run_ctx.root)
+            # scope_dir is inside run_ctx.root — use run_ctx.root
+            iteration_root = self.run_ctx.root
+        except ValueError:
+            # scope_dir is outside run_ctx.root (parent/sibling scope)
+            iteration_root = resolved.scope_dir
+
         manifest = build_section_manifest(
             resolved=resolved,
             section_config=resolved.section_config,
             template_ctx=template_ctx,
-            root=self.run_ctx.root,
+            root=iteration_root,
             vcs=self.run_ctx.vcs,
             gitignore_service=self.run_ctx.gitignore,
             vcs_mode=template_ctx.current_state.mode_options.vcs_mode,

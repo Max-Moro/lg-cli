@@ -139,8 +139,12 @@ class FileResolver(ResourceResolver):
         # Calculate scope_rel as path from repo root
         try:
             scope_rel = scope_dir.relative_to(self._repo_root).as_posix()
+            if scope_rel == ".":
+                scope_rel = ""
         except ValueError:
-            scope_rel = origin
+            # scope_dir is outside/above repo_root (e.g., parent scope via @..)
+            # Treat as root of target scope for filtering purposes
+            scope_rel = ""
 
         return scope_dir, scope_rel, cfg_root
 
@@ -151,11 +155,20 @@ class FileResolver(ResourceResolver):
         """
         Determine base directory for resolving relative path.
 
-        For absolute paths (starting with /) returns "".
-        For relative paths — current directory from context.
+        Rules:
+        - Absolute paths (/) → always "" (from lg-cfg root)
+        - Explicit cross-scope origin (@.., @../sibling) → always "" (from target lg-cfg root)
+        - Explicit same-scope origin (@self) → use current_directory
+        - Implicit origin (no @) → use current_directory
         """
         if parsed.is_absolute:
             return ""
+
+        # For explicit origin pointing to DIFFERENT scope, reset current_directory
+        # This prevents path duplication when transitioning between scopes
+        if parsed.origin_explicit and parsed.origin not in (None, "self", ""):
+            return ""
+
         return self._context.current_directory
 
     def _resolve_relative_path(self, path: str, base_dir: str, is_absolute: bool) -> str:

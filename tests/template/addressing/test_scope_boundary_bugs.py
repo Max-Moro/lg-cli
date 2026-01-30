@@ -20,7 +20,17 @@ from lg.addressing.types import ResourceConfig, ResolvedFile
 from lg.addressing.errors import PathResolutionError, ScopeNotFoundError
 
 
-# Resource config for markdown files (like md@origin:path)
+# Resource config for markdown files with origin (md@origin:path)
+# Files are INSIDE lg-cfg/ of target scope, so NO resolve_outside_cfg
+MD_WITH_ORIGIN_CFG = ResourceConfig(
+    kind="md",
+    extension=".md",
+    strip_md_syntax=True,
+    # resolve_outside_cfg=False (default) — files inside lg-cfg/
+)
+
+# Resource config for markdown files without origin (md:path)
+# Files are OUTSIDE lg-cfg/, relative to scope root
 MD_OUTSIDE_CFG = ResourceConfig(
     kind="md",
     extension=".md",
@@ -50,7 +60,9 @@ class TestParentDirectoryInOrigin:
         Scenario:
         - Current scope: vscode/lg-cfg/
         - Reference: @..:adaptability/architecture-adaptive-ide
-        - Expected: resolves to root/adaptability/architecture-adaptive-ide.md
+        - Expected: resolves to root/lg-cfg/adaptability/architecture-adaptive-ide.md
+
+        Note: md@origin:path resolves files INSIDE lg-cfg/ of target scope.
         """
         ctx = addressing_context_in_vscode
 
@@ -58,8 +70,8 @@ class TestParentDirectoryInOrigin:
         ctx.push(vscode_scope_root / "lg-cfg" / "adaptability" / "_.ctx.md")
         assert ctx.current_directory == "adaptability"
 
-        # Resolve with @ prefix - should work now
-        result = ctx.resolve("@..:adaptability/architecture-adaptive-ide", MD_OUTSIDE_CFG)
+        # Resolve with @ prefix - uses MD_WITH_ORIGIN_CFG (inside lg-cfg/)
+        result = ctx.resolve("@..:adaptability/architecture-adaptive-ide", MD_WITH_ORIGIN_CFG)
 
         # Verify result type
         assert isinstance(result, ResolvedFile)
@@ -68,8 +80,8 @@ class TestParentDirectoryInOrigin:
         assert result.scope_dir == multi_scope_project
         assert result.scope_rel == ""
 
-        # Verify resource path points to correct file in parent scope
-        expected_path = multi_scope_project / "adaptability" / "architecture-adaptive-ide.md"
+        # Verify resource path points to correct file INSIDE lg-cfg/ of parent scope
+        expected_path = multi_scope_project / "lg-cfg" / "adaptability" / "architecture-adaptive-ide.md"
         assert result.resource_path == expected_path
 
     def test_sibling_scope_reference_works(
@@ -84,15 +96,17 @@ class TestParentDirectoryInOrigin:
         Scenario:
         - Current scope: vscode/lg-cfg/
         - Reference: @../cli:docs/en/adaptability
-        - Expected: resolves to root/cli/docs/en/adaptability.md
+        - Expected: resolves to root/cli/lg-cfg/docs/en/adaptability.md
+
+        Note: md@origin:path resolves files INSIDE lg-cfg/ of target scope.
         """
         ctx = addressing_context_in_vscode
 
         # Push context as if processing vscode/lg-cfg/adaptability/_.ctx.md
         ctx.push(vscode_scope_root / "lg-cfg" / "adaptability" / "_.ctx.md")
 
-        # Resolve with @ prefix - should work now
-        result = ctx.resolve("@../cli:docs/en/adaptability", MD_OUTSIDE_CFG)
+        # Resolve with @ prefix - uses MD_WITH_ORIGIN_CFG (inside lg-cfg/)
+        result = ctx.resolve("@../cli:docs/en/adaptability", MD_WITH_ORIGIN_CFG)
 
         # Verify result type
         assert isinstance(result, ResolvedFile)
@@ -102,8 +116,8 @@ class TestParentDirectoryInOrigin:
         assert result.scope_dir == expected_scope
         assert result.scope_rel == "cli"
 
-        # Verify resource path points to correct file in sibling scope
-        expected_path = expected_scope / "docs" / "en" / "adaptability.md"
+        # Verify resource path points to correct file INSIDE lg-cfg/ of sibling scope
+        expected_path = expected_scope / "lg-cfg" / "docs" / "en" / "adaptability.md"
         assert result.resource_path == expected_path
 
     def test_path_without_at_is_local(
