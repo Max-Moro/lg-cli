@@ -74,7 +74,7 @@ src:
               - "/index.py"
             block:
               - "/paths.py"
-          # Addressing - only types and context
+          # Addressing - context, types and section resolver
           addressing:
             mode: allow
             allow:
@@ -82,10 +82,10 @@ src:
               - "/context.py"
               - "/configs.py"
               - "/errors.py"
-            block:
-              # Block resolvers implementation details
-              - "/file_resolver.py"
+              # Section resolver is needed for understanding extends resolution
               - "/section_resolver.py"
+            block:
+              - "/file_resolver.py"
               - "/parser.py"
 
   # Graduated optimization following budget escalation order:
@@ -129,6 +129,7 @@ src:
         - "/lg/template/types.py"
         - "/lg/addressing/context.py"
         - "/lg/addressing/types.py"
+        - "/lg/addressing/section_resolver.py"
         - "/lg/section/service.py"
         - "/lg/section/index.py"
       python:

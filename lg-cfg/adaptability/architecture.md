@@ -53,7 +53,14 @@ lg/
 │       └── section_collector.py  # Сбор секций без рендеринга
 │
 ├── section/
-│   └── model.py           # SectionCfg с полями extends, mode-sets, tag-sets
+│   ├── model.py           # SectionCfg с полями extends, mode-sets, tag-sets
+│   ├── service.py         # SectionService для поиска и загрузки секций
+│   └── index.py           # Индексирование секций в скоупе
+│
+├── addressing/
+│   ├── types.py           # ResolvedSection с current_dir для extends
+│   ├── context.py         # AddressingContext — стек директорий
+│   └── section_resolver.py # Резолв секций через AddressingContext
 │
 └── run_context.py         # ConditionContext для оценки условий
 ```
@@ -170,6 +177,40 @@ AdaptiveModel
 - Исключает `${md:...}` — они не содержат mode-sets/tag-sets
 - Обрабатывает транзитивные include (`${tpl:...}`, `${ctx:...}`)
 - Детектирует циклические include
+
+---
+
+## Связь с подсистемой адресации
+
+### Проблема контекста директорий
+
+При обработке шаблонов `AddressingContext` поддерживает стек директорий, который позволяет корректно резолвить относительные ссылки на секции. Например, из шаблона `lg-cfg/sub/_.ctx.md` ссылка `${src}` резолвится в секцию `sub/src`, а не `src`.
+
+Однако при резолве `extends` возникает сложность: к моменту вызова `ExtendsResolver` стек `AddressingContext` уже не отражает контекст конкретной секции — секции уже собраны `SectionCollector` и обрабатываются в цикле.
+
+### Решение: current_dir в ResolvedSection
+
+`ResolvedSection` содержит поле `current_dir`, которое фиксируется в момент резолва секции через `SectionResolver`:
+
+```
+SectionResolver._resolve_simple()
+    ↓ берёт current_dir из AddressingContext.current_directory
+    ↓ сохраняет в ResolvedSection.current_dir
+    ↓
+ContextResolver._merge_collected_sections()
+    ↓ передаёт resolved_section.current_dir в ExtendsResolver
+    ↓
+ExtendsResolver.resolve_from_cfg(current_dir=...)
+    ↓ использует current_dir для резолва локальных extends
+```
+
+Это позволяет сохранить информацию о директории в момент, когда `AddressingContext` актуален, и использовать её позже при резолве extends.
+
+### Ключевые классы
+
+- **AddressingContext** (`lg/addressing/context.py`) — управляет стеком директорий при обработке шаблонов
+- **SectionResolver** (`lg/addressing/section_resolver.py`) — резолвит секции, сохраняя `current_dir`
+- **ResolvedSection** (`lg/addressing/types.py`) — содержит `current_dir` для использования при extends
 
 ---
 
