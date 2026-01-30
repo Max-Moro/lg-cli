@@ -33,12 +33,10 @@ def multi_scope_project(tmp_path: Path) -> Path:
         │       └── adaptability/
         │           └── _.ctx.md    # Context with @.. references
         │
-        └── cli/                    # Sibling scope
-            └── lg-cfg/
-                ├── sections.yaml
-                └── docs/
-                    └── en/
-                        └── adaptability.md
+        └── cli/                    # Sibling directory (no lg-cfg/)
+            └── docs/
+                └── en/
+                    └── adaptability.md
     """
     root = tmp_path / "root"
 
@@ -86,8 +84,8 @@ def multi_scope_project(tmp_path: Path) -> Path:
         "# Adaptability Context\n\n"
         "## Architecture from parent scope\n\n"
         "${md@..:adaptability/architecture-adaptive-ide}\n\n"
-        "## CLI docs from sibling scope\n\n"
-        "${md@../cli:docs/en/adaptability}\n",
+        "## CLI docs from sibling directory\n\n"
+        "${md:../cli/docs/en/adaptability}\n",
         encoding="utf-8"
     )
 
@@ -98,25 +96,12 @@ def multi_scope_project(tmp_path: Path) -> Path:
         encoding="utf-8"
     )
 
-    # === Sibling scope (root/cli/lg-cfg/) ===
-    cli_cfg = root / "cli" / "lg-cfg"
-    cli_cfg.mkdir(parents=True)
-
-    (cli_cfg / "sections.yaml").write_text(
-        "docs:\n"
-        "  extensions: ['.md']\n"
-        "  filters:\n"
-        "    mode: allow\n"
-        "    allow:\n"
-        "      - '/docs/'\n",
-        encoding="utf-8"
-    )
-
-    cli_docs = cli_cfg / "docs" / "en"
+    # === Sibling directory (root/cli/) - NO lg-cfg/ ===
+    cli_docs = root / "cli" / "docs" / "en"
     cli_docs.mkdir(parents=True)
     (cli_docs / "adaptability.md").write_text(
-        "# CLI docs from SIBLING scope\n\n"
-        "This is from the CLI sibling scope.\n",
+        "# CLI docs from SIBLING directory\n\n"
+        "This is from the CLI sibling directory.\n",
         encoding="utf-8"
     )
 

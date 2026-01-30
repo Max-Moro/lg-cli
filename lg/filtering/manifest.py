@@ -300,106 +300,169 @@ def _collect_section_files(
     """
     scope_rel = resolved.scope_rel
 
-    # Function to check if a file belongs to the section's scope
-    def in_scope(path_posix: str) -> bool:
-        if scope_rel == "":
-            return True
-        return path_posix == scope_rel or path_posix.startswith(f"{scope_rel}/")
-
-    def rel_for_engine(path_posix: str) -> str:
-        """Path relative to scope_dir for applying section filters."""
-        if scope_rel == "":
-            return path_posix
-        return path_posix[len(scope_rel):].lstrip("/")
-
     # File extensions
     extensions = {e.lower() for e in section_cfg.extensions}
 
     # GitIgnore service - skip for local files sections
-    # Local files sections (all patterns covered by .gitignore) represent
-    # deliberate inclusion of specific files (e.g., local configs, workspace docs)
-    # that should bypass .gitignore
     effective_gitignore = None if is_local_files else gitignore_service
 
     # Prepare target rules for targeted overrides
     target_specs = _prepare_target_specs(section_cfg)
 
-    # Pruner for early directory pruning
-    def _pruner(rel_dir: str) -> bool:
-        """Decide whether to descend into directory rel_dir (repo-root relative, POSIX)."""
-        if scope_rel == "":
-            # Global scope (repo root): apply filters everywhere
-            sub_rel = rel_dir
-            if is_cfg_relpath(sub_rel):
-                # For virtual sections check if filter can include lg-cfg files
-                # If allow has paths starting with /lg-cfg/, allow descent
-                return filter_engine.may_descend(sub_rel)
-            return filter_engine.may_descend(sub_rel)
-
-        if rel_dir == "":
-            # repo root - always can descend
-            return True
-
-        is_ancestor_of_scope = scope_rel.startswith(rel_dir + "/") or scope_rel == rel_dir
-        is_inside_scope = rel_dir.startswith(scope_rel + "/") or rel_dir == scope_rel
-
-        if not (is_ancestor_of_scope or is_inside_scope):
-            # Branch is definitely not of interest to this section
-            return False
-
-        if is_ancestor_of_scope and not is_inside_scope:
-            # We are above scope_rel: section filters not yet applicable
-            return True
-
-        # We are within scope_rel: apply section filters
-        sub_rel = rel_for_engine(rel_dir)
-        if is_cfg_relpath(sub_rel):
-            # For virtual sections check if filter can include lg-cfg files
-            # If allow has paths starting with /lg-cfg/, allow descent
-            return filter_engine.may_descend(sub_rel)
-        return filter_engine.may_descend(sub_rel)
-
-    # Collect files
+    # Collect files using appropriate method based on patterns
     files: List[FileEntry] = []
+    seen_paths: Set[Path] = set()
 
-    for fp in iter_files(root, extensions=extensions, gitignore_service=effective_gitignore, dir_pruner=_pruner):
-        rel_posix = fp.resolve().relative_to(root.resolve()).as_posix()
+    # Helper to add file entry with all checks
+    def try_add_file(fp: Path, rel_path: str, rel_for_overrides: str) -> None:
+        """
+        Add file entry with checks.
+
+        Args:
+            fp: Absolute file path
+            rel_path: Path for FileEntry.rel_path (relative to root)
+            rel_for_overrides: Path for target matching (relative to scope)
+        """
+        fp_resolved = fp.resolve()
+        if fp_resolved in seen_paths:
+            return
+        seen_paths.add(fp_resolved)
+
+        # Check extension
+        if fp.suffix.lower() not in extensions:
+            if fp.name not in {"README", "Dockerfile", "Makefile", "pyproject.toml"}:
+                return
+
+        # Check gitignore (only for non-external paths)
+        if effective_gitignore and not rel_path.startswith(".."):
+            if effective_gitignore.is_ignored(rel_path):
+                return
 
         # Filter by VCS mode
-        if vcs_mode in ("changes", "branch-changes") and rel_posix not in changed_files:
-            continue
-
-        # Restrict to files within scope_rel
-        if not in_scope(rel_posix):
-            continue
-
-        # Apply section filters
-        rel_engine = rel_for_engine(rel_posix)
-        if not filter_engine.includes(rel_engine):
-            continue
+        if vcs_mode in ("changes", "branch-changes") and rel_path not in changed_files:
+            return
 
         # Handle empty files
         if _should_skip_empty_file(fp, bool(section_cfg.skip_empty), adapters_cfg):
-            continue
+            return
 
         # Determine file language
         lang = get_language_for_file(fp)
 
-        # Determine targeted adapter overrides
-        overrides = _calculate_adapter_overrides(rel_engine, target_specs, template_ctx)
+        # Determine targeted adapter overrides (use scope-relative path)
+        overrides = _calculate_adapter_overrides(rel_for_overrides, target_specs, template_ctx)
 
-        # Create FileEntry
         files.append(FileEntry(
             abs_path=fp,
-            rel_path=rel_posix,
+            rel_path=rel_path,
             language_hint=lang,
             adapter_overrides=overrides
         ))
+
+    # Collect all allow patterns (including from conditional filters)
+    all_allow_patterns = _collect_all_allow_patterns(section_cfg.filters)
+
+    # Separate patterns: external (with ..) vs internal
+    external_patterns = [p for p in all_allow_patterns if ".." in p]
+    # Internal iteration needed if: no patterns (mode:block) OR any pattern without ".."
+    has_internal_patterns = not all_allow_patterns or any(".." not in p for p in all_allow_patterns)
+
+    # Process external patterns via Path.glob() - it natively supports ".."
+    if external_patterns:
+        scope_dir = resolved.scope_dir
+        for pattern in external_patterns:
+            # Normalize pattern for glob
+            glob_pattern = pattern.lstrip("/")
+
+            # Handle concrete files vs glob patterns
+            if "*" in glob_pattern or "?" in glob_pattern:
+                # Glob pattern - use Path.glob()
+                for fp in scope_dir.glob(glob_pattern):
+                    if fp.is_file():
+                        # For external files, use the pattern-relative path
+                        rel_path = glob_pattern.replace("**", "").replace("*", fp.stem).rstrip("/")
+                        if not rel_path.endswith(fp.suffix):
+                            rel_path = fp.name
+                        try_add_file(fp, rel_path, glob_pattern)
+            else:
+                # Concrete file path
+                fp = (scope_dir / glob_pattern).resolve()
+                if fp.is_file():
+                    try_add_file(fp, glob_pattern, glob_pattern)
+
+    # Process internal patterns via iter_files (standard iteration)
+    if has_internal_patterns:
+        # Function to check if a file belongs to the section's scope
+        def in_scope(path_posix: str) -> bool:
+            if scope_rel == "":
+                return True
+            return path_posix == scope_rel or path_posix.startswith(f"{scope_rel}/")
+
+        def rel_for_engine(path_posix: str) -> str:
+            """Path relative to scope_dir for applying section filters."""
+            if scope_rel == "":
+                return path_posix
+            return path_posix[len(scope_rel):].lstrip("/")
+
+        # Pruner for early directory pruning
+        def _pruner(rel_dir: str) -> bool:
+            """Decide whether to descend into directory rel_dir (repo-root relative, POSIX)."""
+            if scope_rel == "":
+                sub_rel = rel_dir
+                if is_cfg_relpath(sub_rel):
+                    return filter_engine.may_descend(sub_rel)
+                return filter_engine.may_descend(sub_rel)
+
+            if rel_dir == "":
+                return True
+
+            is_ancestor_of_scope = scope_rel.startswith(rel_dir + "/") or scope_rel == rel_dir
+            is_inside_scope = rel_dir.startswith(scope_rel + "/") or rel_dir == scope_rel
+
+            if not (is_ancestor_of_scope or is_inside_scope):
+                return False
+
+            if is_ancestor_of_scope and not is_inside_scope:
+                return True
+
+            sub_rel = rel_for_engine(rel_dir)
+            if is_cfg_relpath(sub_rel):
+                return filter_engine.may_descend(sub_rel)
+            return filter_engine.may_descend(sub_rel)
+
+        for fp in iter_files(root, extensions=extensions, gitignore_service=effective_gitignore, dir_pruner=_pruner):
+            rel_posix = fp.resolve().relative_to(root.resolve()).as_posix()
+
+            # Restrict to files within scope_rel
+            if not in_scope(rel_posix):
+                continue
+
+            # Apply section filters
+            rel_engine = rel_for_engine(rel_posix)
+            if not filter_engine.includes(rel_engine):
+                continue
+
+            try_add_file(fp, rel_posix, rel_engine)
 
     # Sort by rel_path for stability
     files.sort(key=lambda f: f.rel_path)
 
     return files
+
+
+def _collect_all_allow_patterns(node: FilterNode) -> List[str]:
+    """Recursively collect all allow patterns from filter tree."""
+    patterns = list(node.allow)
+
+    # Include patterns from conditional filters
+    for cond_filter in node.conditional_filters:
+        patterns.extend(cond_filter.allow)
+
+    # Recurse into children
+    for child in node.children.values():
+        patterns.extend(_collect_all_allow_patterns(child))
+
+    return patterns
 
 
 def _prepare_target_specs(section_cfg: SectionCfg) -> List[tuple]:

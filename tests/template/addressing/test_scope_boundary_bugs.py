@@ -7,7 +7,7 @@ and current_dir reset behavior when transitioning between scopes.
 These tests validate the fix for bugs discovered in real usage:
     vscode/lg-cfg/adaptability/_.ctx.md contains:
     - ${md@..:adaptability/architecture-adaptive-ide}
-    - ${md@../cli:docs/en/adaptability}
+    - ${md:../cli/docs/en/adaptability}
 """
 
 from __future__ import annotations
@@ -17,7 +17,7 @@ from pathlib import Path
 
 from lg.addressing import AddressingContext
 from lg.addressing.types import ResourceConfig, ResolvedFile
-from lg.addressing.errors import PathResolutionError, ScopeNotFoundError
+from lg.addressing.errors import ScopeNotFoundError
 
 
 # Resource config for markdown files with origin (md@origin:path)
@@ -45,7 +45,6 @@ class TestParentDirectoryInOrigin:
 
     Verifies that:
     - @.. resolves to parent scope
-    - @../sibling resolves to sibling scope
     """
 
     def test_parent_scope_reference_works(
@@ -84,62 +83,41 @@ class TestParentDirectoryInOrigin:
         expected_path = multi_scope_project / "lg-cfg" / "adaptability" / "architecture-adaptive-ide.md"
         assert result.resource_path == expected_path
 
-    def test_sibling_scope_reference_works(
+    def test_sibling_directory_reference_works(
         self,
         addressing_context_in_vscode: AddressingContext,
         vscode_scope_root: Path,
         multi_scope_project: Path,
     ):
         """
-        Test that @../sibling in origin correctly resolves to sibling scope.
+        Test that ../sibling/path correctly resolves to sibling directory.
 
         Scenario:
         - Current scope: vscode/lg-cfg/
-        - Reference: @../cli:docs/en/adaptability
-        - Expected: resolves to root/cli/lg-cfg/docs/en/adaptability.md
+        - Reference: ../cli/docs/en/adaptability (using md: without @)
+        - Expected: resolves to root/cli/docs/en/adaptability.md
 
-        Note: md@origin:path resolves files INSIDE lg-cfg/ of target scope.
+        Note: md:path (without @) resolves files OUTSIDE lg-cfg/,
+        relative to current scope root, but can traverse to siblings via ../
         """
         ctx = addressing_context_in_vscode
 
         # Push context as if processing vscode/lg-cfg/adaptability/_.ctx.md
         ctx.push(vscode_scope_root / "lg-cfg" / "adaptability" / "_.ctx.md")
 
-        # Resolve with @ prefix - uses MD_WITH_ORIGIN_CFG (inside lg-cfg/)
-        result = ctx.resolve("@../cli:docs/en/adaptability", MD_WITH_ORIGIN_CFG)
+        # Resolve without @ prefix - uses MD_OUTSIDE_CFG (outside lg-cfg/)
+        result = ctx.resolve("../cli/docs/en/adaptability", MD_OUTSIDE_CFG)
 
         # Verify result type
         assert isinstance(result, ResolvedFile)
 
-        # Verify scope resolved to sibling (cli/)
-        expected_scope = multi_scope_project / "cli"
-        assert result.scope_dir == expected_scope
-        assert result.scope_rel == "cli"
+        # Verify scope_dir is still current scope (vscode)
+        # The file is resolved relative to current scope, even if it's in sibling dir
+        assert result.scope_dir == vscode_scope_root
 
-        # Verify resource path points to correct file INSIDE lg-cfg/ of sibling scope
-        expected_path = expected_scope / "lg-cfg" / "docs" / "en" / "adaptability.md"
+        # Verify resource path points to correct file in sibling directory
+        expected_path = multi_scope_project / "cli" / "docs" / "en" / "adaptability.md"
         assert result.resource_path == expected_path
-
-    def test_path_without_at_is_local(
-        self,
-        addressing_context_in_vscode: AddressingContext,
-        vscode_scope_root: Path,
-    ):
-        """
-        Test that paths without @ are resolved locally within current scope.
-
-        Paths like '../cli:path' (without @) should be treated as local paths
-        and may fail if they try to escape the scope boundary.
-        """
-        ctx = addressing_context_in_vscode
-        ctx.push(vscode_scope_root / "lg-cfg" / "adaptability" / "_.ctx.md")
-
-        # Without @ prefix, the colon is part of the path, not origin separator
-        # This should fail because it tries to escape scope boundary
-        with pytest.raises(PathResolutionError) as exc_info:
-            ctx.resolve("../cli:docs/en/adaptability", MD_OUTSIDE_CFG)
-
-        assert "escape" in str(exc_info.value).lower()
 
 
 class TestCurrentDirResetOnScopeTransition:
@@ -202,7 +180,7 @@ class TestIntegrationWithRealContextFile:
 
         This test renders the context file that contains:
         - ${md@..:adaptability/architecture-adaptive-ide}
-        - ${md@../cli:docs/en/adaptability}
+        - ${md:../cli/docs/en/adaptability}
         """
         import os
 
@@ -228,9 +206,9 @@ class TestIntegrationWithRealContextFile:
             assert "architecture document from parent scope" in result, \
                 f"Expected content from parent scope not found in result:\n{result}"
 
-            # Verify content from sibling scope is included
-            assert "from the CLI sibling scope" in result, \
-                f"Expected content from sibling scope not found in result:\n{result}"
+            # Verify content from sibling directory is included
+            assert "from the CLI sibling directory" in result, \
+                f"Expected content from sibling directory not found in result:\n{result}"
 
         finally:
             os.chdir(original_cwd)

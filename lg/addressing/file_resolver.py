@@ -272,16 +272,6 @@ class FileResolver(ResourceResolver):
         scope_dir = self._context.cfg_root.parent
         resource_path = (scope_dir / resource_rel).resolve()
 
-        # Validate path doesn't escape scope
-        try:
-            resource_path.relative_to(scope_dir)
-        except ValueError:
-            raise PathResolutionError(
-                message=f"Path escapes scope boundary: {parsed.path}",
-                parsed=parsed,
-                hint=f"External {parsed.config.kind} paths must be within current scope"
-            )
-
         # Calculate scope_rel from repo root
         try:
             scope_rel = scope_dir.relative_to(self._repo_root).as_posix()
