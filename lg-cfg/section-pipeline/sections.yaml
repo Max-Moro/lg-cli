@@ -1,4 +1,17 @@
+tags:
+  tag-sets:
+    section-pipeline:
+      title: "Section pipeline"
+      tags:
+        filtering:
+          title: "Filtering"
+        rendering:
+          title: "Rendering"
+        git:
+          title: "Git"
+
 src:
+  extends: ["tags"]
   extensions: [".py", ".toml"]
   filters:
     mode: allow
@@ -30,8 +43,8 @@ src:
             mode: allow
             allow: ["/adaptive_model.py"]
 
-
 tests:
+  extends: ["tags"]
   extensions: [".py"]
   filters:
     mode: allow
@@ -49,3 +62,9 @@ tests:
             allow: ["/test_filters_engine.py"]
           - condition: "TAGSET:section-pipeline:rendering"
             allow: ["/test_file_labels.py"]
+  tag-sets:
+    code-type:
+      title: "Code Type"
+      tags:
+        tests-infra:
+          title: "Test infrastructure"

@@ -1,4 +1,15 @@
+tags:
+  tag-sets:
+    markdown-features:
+      title: "Markdown features"
+      tags:
+        common:
+          title: "Common features"
+        adaptive:
+          title: "Adaptive capabilities (HTML-comments)"
+
 src:
+  extends: ["tags"]
   extensions: [".py", ".toml"]
   filters:
     mode: allow
@@ -39,6 +50,7 @@ src:
                 allow: ["/templating/"]
 
 tests:
+  extends: ["tags"]
   extensions: [".py"]
   filters:
     mode: allow
@@ -56,3 +68,9 @@ tests:
             allow: ["/markdown/"]
           - condition: "TAGSET:markdown-features:adaptive"
             allow: ["/adaptive/test_markdown_templating.py"]
+  tag-sets:
+    code-type:
+      title: "Code Type"
+      tags:
+        tests-infra:
+          title: "Test infrastructure"

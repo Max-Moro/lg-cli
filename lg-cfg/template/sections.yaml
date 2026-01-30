@@ -1,4 +1,25 @@
+tags:
+  tag-sets:
+    template-features:
+      title: "Template engine features"
+      tags:
+        core:
+          title: "Core"
+        addressing:
+          title: "Path resolution and addressing system"
+        common-placeholders:
+          title: "Section and template placeholders"
+        adaptive:
+          title: "Adaptive capabilities"
+        md-placeholders:
+          title: "Markdown placeholder"
+        conditions:
+          title: "Conditional expressions"
+        task-placeholder:
+          title: "Task placeholder"
+
 src:
+  extends: ["tags"]
   extensions: [".py", ".toml"]
   filters:
     mode: allow
@@ -49,6 +70,7 @@ src:
                 allow: ["/task_placeholder/"]
 
 tests:
+  extends: ["tags"]
   extensions: [".py"]
   filters:
     mode: allow
@@ -76,3 +98,9 @@ tests:
                 allow: ["/md_placeholders/"]
               - condition: "TAGSET:template-features:task-placeholder"
                 allow: ["/task_placeholder/"]
+  tag-sets:
+    code-type:
+      title: "Code Type"
+      tags:
+        tests-infra:
+          title: "Test infrastructure"

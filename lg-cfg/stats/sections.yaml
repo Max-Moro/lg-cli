@@ -19,6 +19,11 @@ src:
           - "/adapters/"
           - "/stats/"
         children:
+          stats:
+            mode: block
+            when:
+              - condition: "NOT tag:generated"
+                block: ["/report_schema.py"]
           section:
             mode: allow
             allow: ["/service.py"]
@@ -29,6 +34,12 @@ src:
               - "/registry.py"
               - "/base.py"
               - "/processor.py"
+  tag-sets:
+    code-type:
+      title: "Code Type"
+      tags:
+        generated:
+          title: "Generated Code"
 
 tests:
   extensions: [".py"]
@@ -46,3 +57,9 @@ tests:
             allow:
               - "/conftest.py"
               - "/infrastructure/"
+  tag-sets:
+    code-type:
+      title: "Code Type"
+      tags:
+        tests-infra:
+          title: "Test infrastructure"

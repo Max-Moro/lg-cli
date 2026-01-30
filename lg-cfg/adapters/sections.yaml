@@ -1,4 +1,53 @@
+tags:
+  tag-sets:
+    language:
+      title: "Programming Languages"
+      tags:
+        none:
+          title: "None"
+        python:
+          title: "Python"
+        typescript:
+          title: "TypeScript"
+        kotlin:
+          title: "Kotlin"
+        javascript:
+          title: "JavaScript"
+        java:
+          title: "Java"
+        c:
+          title: "C"
+        cpp:
+          title: "Cpp"
+        go:
+          title: "Go"
+        rust:
+          title: "Rust"
+        scala:
+          title: "Scala"
+
+    adapters-optimizations:
+      title: "Adapters optimizations"
+      tags:
+        core:
+          title: "Core"
+        function-bodies:
+          title: "Function body optimization"
+        comments:
+          title: "Comment optimization"
+        literals:
+          title: "Literal optimization"
+        imports:
+          title: "Import optimization"
+        public-api:
+          title: "Public API optimization"
+        budget:
+          title: "Budget System"
+        trivial:
+          title: "Skipping trivial files"
+
 src:
+  extends: ["tags"]
   extensions: [".py", ".toml"]
   filters:
     mode: allow
@@ -232,6 +281,7 @@ src:
                     allow: ["/trivial.py"]
 
 tests:
+  extends: ["tags"]
   extensions: [".py", ".ts", ".kt", ".js", ".java", ".go", ".rs", ".scala",
                ".c", ".h", ".cpp", ".hpp", ".cc", ".hh", ".hxx", ".cxx",
                ".sh"]
@@ -474,3 +524,10 @@ tests:
                     allow: ["/test_trivial_files.py", "/goldens/do/*trivial*.scala"]
                   - condition: "TAGSET:adapters-optimizations:budget"
                     allow: ["/test_budget.py", "/goldens/do/budget_complex.scala"]
+
+  tag-sets:
+    code-type:
+      title: "Code Type"
+      tags:
+        tests-infra:
+          title: "Test infrastructure"

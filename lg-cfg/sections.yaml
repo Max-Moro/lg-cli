@@ -1,4 +1,19 @@
+tags:
+  tag-sets:
+    basic-functions:
+      title: "Basic functions"
+      tags:
+        cli:
+          title: "CLI"
+        diag:
+          title: "Self-diagnosis"
+        migrate:
+          title: "Configuration migration"
+        scaffold:
+          title: "Configuration presets"
+
 src:
+  extends: ["tags"]
   extensions: [".py", ".toml"]
   filters:
     mode: allow
@@ -31,6 +46,7 @@ src:
             allow: ["/service.py"]
 
 tests:
+  extends: ["tags"]
   extensions: [".py"]
   filters:
     mode: allow
@@ -50,3 +66,9 @@ tests:
               - "test_cli_context.py"
           - condition: "TAGSET:basic-functions:diag"
             allow: ["/test_diag_rebuild_cache.py"]
+  tag-sets:
+    code-type:
+      title: "Code Type"
+      tags:
+        tests-infra:
+          title: "Test infrastructure"

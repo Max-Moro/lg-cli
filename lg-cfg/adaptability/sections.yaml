@@ -37,6 +37,13 @@ src:
           - "/addressing/"
           - "/section/"
         children:
+          adaptive:
+            mode: block
+            when:
+              - condition: "NOT tag:generated"
+                block:
+                  - "/mode_sets_list_schema.py"
+                  - "/tag_sets_list_schema.py"
           # Template engine - only core files for adaptive system
           template:
             mode: allow
@@ -87,6 +94,13 @@ src:
             block:
               - "/file_resolver.py"
               - "/parser.py"
+
+  tag-sets:
+    code-type:
+      title: "Code Type"
+      tags:
+        generated:
+          title: "Generated Code"
 
   # Graduated optimization following budget escalation order:
   #   Level 1: imports_external + literals (base for all files)
@@ -181,3 +195,9 @@ tests:
             mode: allow
             allow:
               - "/adaptive/"
+  tag-sets:
+    code-type:
+      title: "Code Type"
+      tags:
+        tests-infra:
+          title: "Test infrastructure"

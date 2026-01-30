@@ -1,7 +1,7 @@
 # Context Window Contents
 
 The initial contents of your context window were prepared by **Listing Generator** — a software tool for assembling "dense" contexts from sources in the repository. This tool should already be configured to immediately provide you with all necessary data to complete the assigned task. This usually means you don't need to independently explore the codebase through reading and search tools: Read, Edit, Glob, Grep, and so on.
-<!-- lg:if tag:claude-code -->
+<!-- lg:if provider:com.anthropic.claude -->
 If after initial analysis you understand that the context is insufficient for quality task completion:
 
 **Criteria for insufficient context**:
