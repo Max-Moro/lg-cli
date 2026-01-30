@@ -1,289 +1,361 @@
-# New Adaptive System Architecture
+# Архитектура подсистемы адаптивных возможностей
 
-## 1. Overview
+## Обзор
 
-This document describes the planned architecture for the new adaptive modes and tags system in LG CLI. The design follows the principles outlined in `analysis.md` and `tz-cli.md`.
+Подсистема адаптивных возможностей (Adaptive System) обеспечивает контекстно-зависимую конфигурацию генерируемых контекстов через систему **режимов** (modes) и **тегов** (tags). Архитектура построена на принципе **контекстной зависимости**: доступные режимы и теги определяются не глобально, а вычисляются для каждого контекста на основе используемых в нём секций.
+
+## Ключевые архитектурные решения
+
+### Децентрализованное хранение конфигурации
+
+Режимы и теги объявляются **внутри секций** (`sections.yaml`, `*.sec.yaml`), а не в отдельных глобальных файлах. Это решение обеспечивает:
+- высокую связность: конфигурация режимов находится рядом с контентом, на который она влияет;
+- возможность переиспользования через наследование (`extends`);
+- изоляцию между разными контекстами.
+
+### Разделение на интеграционные и контентные наборы режимов
+
+**Интеграционный набор** (integration mode-set) содержит `runs` — параметры запуска AI-провайдеров. **Контентный набор** не содержит `runs` и влияет только на формирование контента.
+
+**Инвариант**: после резолва адаптивной модели для контекста должен существовать **ровно один** интеграционный набор режимов. Это гарантирует однозначность параметров запуска при нажатии "Send to AI" в IDE-плагинах.
+
+### Ленивое вычисление модели
+
+Адаптивная модель вычисляется **только при необходимости** — во время `render`/`report` или `list mode-sets`/`list tag-sets`. Это позволяет избежать парсинга всех секций при каждом запуске CLI.
 
 ---
 
-## 2. Module Structure
-
-### 2.1. New Package: `lg/adaptive/`
+## Структура пакетов
 
 ```
-lg/adaptive/
-├── __init__.py           # Public API exports
-├── model.py              # Data models (ModeSet, Mode, TagSet, Tag, RunsMap)
-├── section_extractor.py  # Extract adaptive data from SectionCfg
-├── extends_resolver.py   # Resolve `extends` chains with cycle detection
-├── context_collector.py  # Collect sections from context templates
-├── context_resolver.py   # Build final adaptive model for context
-├── validation.py         # Validation rules (single integration mode-set, etc.)
-└── errors.py             # Specialized exceptions
+lg/
+├── adaptive/              # Ядро адаптивной системы
+│   ├── model.py           # Модели данных
+│   ├── context_resolver.py # Оркестратор резолва для контекстов
+│   ├── extends_resolver.py # Резолв цепочек наследования
+│   ├── section_extractor.py # Извлечение модели из SectionCfg
+│   ├── validation.py      # Бизнес-правила валидации
+│   ├── listing.py         # CLI-команды list
+│   └── errors.py          # Типизированные ошибки
+│
+├── conditions/            # Система условий ({% if %}, when:)
+│   ├── model.py           # AST условий
+│   ├── parser.py          # Парсер строковых условий
+│   ├── lexer.py           # Лексер
+│   └── evaluator.py       # Вычислитель условий
+│
+├── template/
+│   ├── context.py         # TemplateContext — состояние рендеринга
+│   ├── evaluator.py       # Обёртка над conditions для шаблонов
+│   ├── frontmatter.py     # Парсер YAML frontmatter
+│   ├── adaptive/          # Плагин для {% if %}, {% mode %}
+│   └── analysis/
+│       └── section_collector.py  # Сбор секций без рендеринга
+│
+├── section/
+│   └── model.py           # SectionCfg с полями extends, mode-sets, tag-sets
+│
+└── run_context.py         # ConditionContext для оценки условий
 ```
 
-### 2.2. Module Responsibilities ✅ IMPLEMENTED
+---
 
-All Phase 1-2 modules are implemented. See source code in `lg/adaptive/` for details.
+## Модели данных (`lg/adaptive/model.py`)
 
-| Module | Purpose |
+### Иерархия типов
+
+```
+AdaptiveModel
+├── mode_sets: Dict[str, ModeSet]
+│   └── ModeSet
+│       ├── id, title
+│       ├── modes: Dict[str, Mode]
+│       │   └── Mode
+│       │       ├── id, title, description
+│       │       ├── tags: List[str]
+│       │       ├── default_task: Optional[str]
+│       │       ├── vcs_mode: "all" | "changes" | "branch-changes"
+│       │       └── runs: Dict[str, str]  # provider_id → args
+│       └── is_integration: bool  # computed
+│
+└── tag_sets: Dict[str, TagSet]
+    └── TagSet
+        ├── id, title
+        └── tags: Dict[str, Tag]
+            └── Tag: id, title, description
+```
+
+### Ключевые методы AdaptiveModel
+
+- `merge_with(other)` — детерминированный мердж двух моделей (используется при extends)
+- `filter_by_provider(provider_id)` — фильтрация интеграционного набора по провайдеру
+- `validate_single_integration()` — проверка инварианта единственного интеграционного набора
+- `get_integration_mode_set()` — получение единственного интеграционного набора
+
+### Универсальный провайдер `clipboard`
+
+Константа `CLIPBOARD_PROVIDER = "clipboard"` обозначает особый провайдер, который **неявно совместим со всеми режимами**. Метод `Mode.has_provider("clipboard")` всегда возвращает `True`. Это позволяет копировать контекст для ручной вставки в любой AI-инструмент.
+
+---
+
+## Резолв адаптивной модели
+
+### Потоки данных
+
+```
+┌─────────────────────────────────────────────────────────────────────┐
+│                         ContextResolver                              │
+│                                                                      │
+│  1. SectionCollector                                                 │
+│     ├── Парсит шаблон контекста в AST                               │
+│     ├── Обходит все узлы (включая ветки {% if %})                   │
+│     ├── Собирает ResolvedSection для каждого ${section}             │
+│     └── Добавляет секции из frontmatter include                     │
+│                                                                      │
+│  2. ExtendsResolver (для каждой секции)                             │
+│     ├── Разворачивает extends depth-first, left-to-right            │
+│     ├── Детектирует циклы через стек резолва                        │
+│     └── Мерджит конфигурации (child wins)                           │
+│                                                                      │
+│  3. Merge all sections                                               │
+│     ├── Порядок: секции из шаблона, затем frontmatter               │
+│     └── AdaptiveModel.merge_with()                                   │
+│                                                                      │
+│  4. Validation                                                       │
+│     └── validate_single_integration()                                │
+└─────────────────────────────────────────────────────────────────────┘
+```
+
+### ContextResolver (`lg/adaptive/context_resolver.py`)
+
+Оркестратор, координирующий полный резолв адаптивной модели для контекста.
+
+**Входные данные**:
+- `context_name` — имя контекста (без `.ctx.md`)
+
+**Зависимости**:
+- `SectionService` — поиск и загрузка секций
+- `AddressingContext` — резолв адресных ссылок (`@scope:section`)
+- `SectionCollector` — сбор секций из шаблона
+- `ExtendsResolver` — резолв наследования
+
+**Результат**: `ContextAdaptiveData` с полной моделью и метаданными.
+
+**Кеширование**: результаты кешируются по `context_name` для повторных обращений в рамках одного запуска.
+
+### ExtendsResolver (`lg/adaptive/extends_resolver.py`)
+
+Резолвит цепочки наследования секций с детекцией циклов.
+
+**Алгоритм**:
+1. Если секция в стеке резолва — цикл, бросаем `ExtendsCycleError`
+2. Для каждого parent в `extends` (слева направо):
+   - Рекурсивно резолвим parent
+   - Мерджим результат в аккумулятор
+3. Применяем локальную конфигурацию секции (child wins)
+
+**Что мерджится**:
+- `mode_sets`, `tag_sets` (через `AdaptiveModel.merge_with`)
+- `extensions`, `adapters`, `skip_empty`, `path_labels`
+
+**Что НЕ мерджится**:
+- `filters`, `targets` — они принадлежат только конечной секции
+
+### SectionCollector (`lg/template/analysis/section_collector.py`)
+
+Собирает все секции, используемые в контексте, **без выполнения рендеринга**.
+
+**Особенности**:
+- Обходит ветки `{% if %}` без оценки условий — все секции учитываются
+- Исключает `${md:...}` — они не содержат mode-sets/tag-sets
+- Обрабатывает транзитивные include (`${tpl:...}`, `${ctx:...}`)
+- Детектирует циклические include
+
+---
+
+## Система условий (`lg/conditions/`)
+
+### AST условий
+
+Условия представлены как иммутабельное дерево из dataclass-ов:
+
+```python
+Condition (abstract)
+├── TagCondition         # tag:name
+├── TagSetCondition      # TAGSET:set:tag
+├── TagOnlyCondition     # TAGONLY:set:tag
+├── ScopeCondition       # scope:local | scope:parent
+├── TaskCondition        # task
+├── ProviderCondition    # provider:base-id
+├── GroupCondition       # (condition)
+├── NotCondition         # NOT condition
+└── BinaryCondition      # left AND|OR right
+```
+
+### Разделение ответственности
+
+- `ConditionParser` (`lg/conditions/parser.py`) — парсинг строки в AST
+- `ConditionEvaluator` (`lg/conditions/evaluator.py`) — вычисление AST
+- `ConditionContext` (`lg/run_context.py`) — контекст с активными тегами/режимами
+
+**Паттерн Visitor**: `ConditionEvaluator` реализует обход AST через `switch` по `ConditionType`, делегируя примитивные проверки в `ConditionContext`.
+
+### Семантика операторов
+
+| Оператор | Описание |
+|----------|----------|
+| `tag:name` | True если тег активен |
+| `TAGSET:set:tag` | Permissive: True если set не активен ИЛИ tag активен |
+| `TAGONLY:set:tag` | Restrictive: True только если tag — единственный активный в set |
+| `scope:local` | True в локальном скоупе (origin = "self") |
+| `scope:parent` | True при рендеринге из родительского скоупа |
+| `provider:base-id` | True если `--provider` совпадает после нормализации |
+| `task` | True если есть непустой `--task` или `default_task` |
+
+### Нормализация provider-id
+
+Функция `normalize_provider_id()` в `lg/run_context.py` отсекает технический суффикс:
+- `.cli` — CLI-инструмент
+- `.ext` — IDE-расширение
+- `.api` — прямой API
+
+Пример: `com.anthropic.claude.cli` → `com.anthropic.claude`
+
+---
+
+## Интеграция с шаблонным движком
+
+### TemplateContext (`lg/template/context.py`)
+
+Управляет состоянием во время рендеринга шаблона.
+
+**Состояние** (`TemplateState`):
+- `active_tags: Set[str]` — активные теги (из CLI + из mode.tags)
+- `active_modes: Dict[str, str]` — активные режимы (modeset → mode)
+- `mode_options: ModeOptions` — опции из активных режимов (vcs_mode)
+
+**Стек состояний**: при входе в `{% mode %}` состояние сохраняется в стек, при выходе — восстанавливается.
+
+**Валидация**: `{% mode modeset:mode %}` проверяется на существование в `AdaptiveModel` контекста. Несуществующий режим — ошибка `InvalidModeReferenceError`.
+
+### Эффективный task-text
+
+`TemplateContext.get_effective_task_text()` возвращает текст задачи с приоритетами:
+1. Явный `--task` (если непустой)
+2. `default_task` из активных режимов (объединяются через `\n\n`)
+3. `None`
+
+---
+
+## CLI-интерфейс
+
+### Команды list
+
+```bash
+# Режимы с фильтрацией по провайдеру
+listing-generator list mode-sets --context <ctx> --provider <provider-id>
+
+# Теги
+listing-generator list tag-sets --context <ctx>
+
+# Контексты с фильтрацией по провайдеру
+listing-generator list contexts [--provider <provider-id>]
+```
+
+### Логика фильтрации mode-sets
+
+1. **Контентные наборы** возвращаются полностью (без фильтрации)
+2. **Интеграционный набор** фильтруется: режимы без `runs[provider-id]` исключаются
+3. Исключение: `clipboard` совместим со всеми режимами
+
+### JSON-схемы
+
+- `lg/adaptive/mode_sets_list.schema.json` — схема ответа list mode-sets
+- `lg/adaptive/tag_sets_list.schema.json` — схема ответа list tag-sets
+
+Pydantic-модели генерируются из схем через `datamodel-codegen`.
+
+---
+
+## Мета-секции и Frontmatter
+
+### Мета-секции
+
+Секция **без `filters`** — мета-секция. Она:
+- не может рендериться напрямую (`MetaSectionRenderError`)
+- используется только для наследования через `extends`
+- может включаться через frontmatter `include`
+
+**Типичное применение**: каноничная мета-секция `ai-interaction.sec.yaml` с интеграционными режимами, генерируемая IDE-плагинами.
+
+### Frontmatter в `.ctx.md`
+
+```yaml
+---
+include:
+  - "ai-interaction"
+  - "tags/common"
+---
+```
+
+Секции из `include`:
+- добавляются в расчёт режимов/тегов
+- **не рендерятся** в финальном выводе
+- frontmatter удаляется перед рендерингом (`strip_frontmatter`)
+
+---
+
+## Обработка ошибок
+
+Все ошибки наследуются от `AdaptiveError` (→ `LGUserError`):
+
+| Ошибка | Причина |
 |--------|---------|
-| `model.py` | Core data models: `Mode`, `ModeSet`, `Tag`, `TagSet`, `AdaptiveModel` |
-| `errors.py` | Specialized exceptions for the adaptive system |
-| `section_extractor.py` | Extract `AdaptiveModel` from `SectionCfg` raw dictionaries |
-| `extends_resolver.py` | Resolve `extends` chains with cycle detection and merge |
-| `context_collector.py` | Collect all sections from context template without rendering |
-| `context_resolver.py` | Orchestrate full adaptive model resolution for context |
-| `validation.py` | Validation rules (single integration mode-set, mode references, provider support) |
+| `ExtendsCycleError` | Цикл в цепочке extends |
+| `MetaSectionRenderError` | Попытка рендера секции без filters |
+| `MultipleIntegrationModeSetsError` | >1 интеграционного набора в контексте |
+| `NoIntegrationModeSetError` | 0 интеграционных наборов в контексте |
+| `ProviderNotSupportedError` | Провайдер не поддерживается контекстом |
+| `InvalidModeReferenceError` | {% mode %} ссылается на несуществующий режим |
+| `SectionNotFoundInExtendsError` | extends ссылается на несуществующую секцию |
 
 ---
 
-## 3. Changes to Existing Modules
+## Точки расширения
 
-### 3.1. `lg/section/model.py` ✅
+### Добавление нового условного оператора
 
-Extended with `extends`, `mode_sets_raw`, `tag_sets_raw` fields and `is_meta_section()` method.
-See implementation in `lg/section/model.py`.
+1. Добавить класс в `lg/conditions/model.py`
+2. Добавить тип в `ConditionType`
+3. Расширить `ConditionParser` в `lg/conditions/parser.py`
+4. Добавить метод `_evaluate_*` в `ConditionEvaluator`
+5. Добавить метод проверки в `ConditionContext`
 
-### 3.2. `lg/template/frontmatter.py` ✅
+### Добавление нового поля в Mode
 
-Implemented `ContextFrontmatter`, `parse_frontmatter()`, `strip_frontmatter()`, `has_frontmatter()`.
-See implementation in `lg/template/frontmatter.py`.
+1. Расширить `Mode` в `lg/adaptive/model.py`
+2. Обновить `Mode.from_dict()` и `Mode.to_dict()`
+3. При необходимости — расширить `ModeOptions` и логику мерджа в `TemplateContext`
 
-### 3.3. `lg/template/context.py`
+---
 
-Update `TemplateContext` to use context-specific adaptive model:
-
-```python
-class TemplateContext:
-    def __init__(self, run_ctx: RunContext, adaptive_model: AdaptiveModel):
-        self.run_ctx = run_ctx
-        self.adaptive_model = adaptive_model  # NEW: context-specific model
-        # ...
-
-    def enter_mode_block(self, modeset: str, mode: str) -> None:
-        # Validate against adaptive_model instead of global config
-        ...
-```
-
-### 3.4. `lg/run_context.py`
-
-Remove global adaptive loader, add context-specific model:
-
-```python
-@dataclass(frozen=True)
-class RunContext:
-    root: Path
-    options: RunOptions
-    cache: Cache
-    vcs: VcsProvider
-    # ...
-
-    # REMOVED: adaptive_loader, mode_options, active_tags (now per-context)
-
-    # NEW: Lazy resolver for adaptive models
-    adaptive_resolver: ContextResolver = field(default=None)
-```
-
-### 3.5. `lg/engine.py`
-
-Update to build adaptive model per target:
+## Связь с Engine
 
 ```python
 class Engine:
-    def _init_processors(self) -> None:
-        # Create adaptive resolver
-        self.adaptive_resolver = ContextResolver(
-            section_service=self.run_ctx.section_service,
-            extends_resolver=ExtendsResolver(self.run_ctx.section_service),
-            context_collector=ContextCollector(self.template_processor)
-        )
+    def __init__(self, options: RunOptions):
+        # Создаём общие сервисы
+        self.context_resolver, section_service, addressing = create_context_resolver(root, cache)
 
     def render_context(self, context_name: str) -> str:
-        # Build adaptive model for this context
-        adaptive_model = self.adaptive_resolver.resolve_for_context(context_name)
+        # 1. Резолвим адаптивную модель
+        adaptive_data = self.context_resolver.resolve_for_context(context_name)
 
-        # Create TemplateContext with context-specific model
-        template_ctx = TemplateContext(self.run_ctx, adaptive_model)
-        ...
+        # 2. Создаём TemplateProcessor с моделью
+        template_processor = self._create_template_processor(adaptive_data.model)
+
+        # 3. Рендерим
+        return template_processor.process_template_file(context_name)
 ```
 
----
-
-## 4. CLI Commands
-
-### 4.1. Updated `list mode-sets`
-
-```
-listing-generator list mode-sets --context <ctx-name> --provider <provider-id>
-```
-
-Response format (updated schema):
-
-```json
-{
-  "mode-sets": [
-    {
-      "id": "ai-interaction",
-      "title": "AI Interaction",
-      "integration": true,
-      "modes": [
-        {
-          "id": "ask",
-          "title": "Ask",
-          "description": "Question-answer mode",
-          "tags": [],
-          "runs": {
-            "com.anthropic.claude.cli": "--permission-mode default"
-          }
-        }
-      ]
-    }
-  ]
-}
-```
-
-### 4.2. Updated `list tag-sets`
-
-```
-listing-generator list tag-sets --context <ctx-name>
-```
-
-Response format remains similar, but now context-aware.
-
----
-
-## 5. Merge Semantics
-
-### 5.1. Order of Application
-
-For a single section with `extends: [A, B]`:
-1. Resolve A (recursively with its extends)
-2. Resolve B (recursively with its extends)
-3. Merge: A ← B ← local section
-
-For a context with multiple sections:
-1. Traverse template depth-first, left-to-right
-2. Collect sections in order
-3. Process frontmatter `include` sections (appended)
-4. Merge all in order: first ← second ← ... ← last
-
-### 5.2. Merge Rules by Field
-
-| Field | Merge Rule |
-|-------|------------|
-| `mode-sets` | Merge by id; modes merge by id; child wins |
-| `tag-sets` | Merge by id; tags merge by id; child wins |
-| `extensions` | Union |
-| `adapters` | Deep merge; child wins on conflict |
-| `skip_empty` | Child wins |
-| `path_labels` | Child wins |
-| `filters` | **NOT inherited** - use child's only |
-| `targets` | **NOT inherited** - use child's only |
-| `extends` | **NOT inherited** - already processed |
-
----
-
-## 6. Error Handling ✅
-
-Exception classes implemented in `lg/adaptive/errors.py`:
-- `AdaptiveError` (base)
-- `ExtendsCycleError`
-- `MetaSectionRenderError`
-- `MultipleIntegrationModeSetsError`
-- `NoIntegrationModeSetError`
-- `ProviderNotSupportedError`
-- `InvalidModeReferenceError`
-- `SectionNotFoundInExtendsError`
-
----
-
-## 7. Data Flow Diagram
-
-```
-┌─────────────────────────────────────────────────────────────────┐
-│                         CLI Command                              │
-│   listing-generator render ctx:my-context --mode ai:agent       │
-└─────────────────────────────────────────────────────────────────┘
-                                │
-                                ▼
-┌─────────────────────────────────────────────────────────────────┐
-│                           Engine                                 │
-│  1. Parse target (ctx:my-context)                               │
-│  2. Build AdaptiveModel for context                             │
-│  3. Create TemplateContext with model                           │
-│  4. Process template                                            │
-└─────────────────────────────────────────────────────────────────┘
-                                │
-                    ┌───────────┴───────────┐
-                    ▼                       ▼
-┌───────────────────────────┐  ┌───────────────────────────────────┐
-│    ContextResolver        │  │      TemplateProcessor            │
-│                           │  │                                   │
-│  1. Parse frontmatter     │  │  1. Parse template AST            │
-│  2. Collect sections      │  │  2. Resolve references            │
-│  3. Resolve extends       │  │  3. Evaluate conditions           │
-│  4. Merge adaptive data   │  │  4. Process sections              │
-│  5. Validate model        │  │  5. Render output                 │
-└───────────────────────────┘  └───────────────────────────────────┘
-                                │
-                                ▼
-┌─────────────────────────────────────────────────────────────────┐
-│                    TemplateContext                               │
-│  - AdaptiveModel (context-specific)                             │
-│  - ConditionContext (uses model's tag-sets)                     │
-│  - Mode state stack (validates against model)                   │
-└─────────────────────────────────────────────────────────────────┘
-```
-
----
-
-## 8. Backward Compatibility
-
-### 8.1. Migration Strategy
-
-Migration from old system will be handled separately. Key points:
-- Old `modes.yaml`/`tags.yaml` will be converted to meta-sections
-- Existing contexts will get frontmatter with `include` references
-- Automated migration tool will be provided
-
-### 8.2. Deprecation Path
-
-1. First release: New system active, old files ignored with warning
-2. Next release: Migration tool required before use
-3. Future release: Old format support removed
-
----
-
-## 9. Testing Strategy
-
-### 9.1. Unit Tests
-
-- `test_model.py`: Data model serialization/deserialization
-- `test_extends_resolver.py`: Inheritance chains, cycle detection
-- `test_context_collector.py`: Section collection from templates
-- `test_context_resolver.py`: Full model resolution
-- `test_validation.py`: All validation rules
-
-### 9.2. Integration Tests
-
-- End-to-end `list mode-sets` with context filtering
-- End-to-end `render` with new adaptive model
-- `{% mode %}` validation in templates
-- Provider filtering for integration mode-sets
-
----
-
-## 10. Performance Considerations
-
-### 10.1. Caching
-
-- Cache resolved `SectionCfg` (after extends) by section path
-- Cache `AdaptiveModel` by context name + active modes hash
-- Invalidate on `lg-cfg/` file changes (existing watcher)
-
-### 10.2. Lazy Loading
-
-- Parse frontmatter only when needed (list commands, render)
-- Resolve extends chains lazily (on first access)
-- Don't load full template AST for section collection if possible
+Фабрика `create_context_resolver()` инкапсулирует создание всей инфраструктуры (`SectionService`, `AddressingContext`, `ContextResolver`).
