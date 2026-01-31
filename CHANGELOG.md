@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- Cross-scope addressing with `@..` and `@../sibling` syntax for accessing parent and sibling `lg-cfg/` directories
+- Parent directory traversal in filter patterns (`/../sibling/**`) for including files outside current scope
+
+### Fixed
+- Current directory reset when transitioning between scopes (prevents path duplication in cross-scope references)
+
 ## [0.10.2] - 2026-01-15
 
 ### Fixed
