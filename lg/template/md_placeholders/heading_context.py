@@ -424,6 +424,11 @@ class ChainAnalyzer:
         headings_before = [h for h in headings if h.line_number < placeholder_line]
         headings_after = [h for h in headings if h.line_number > placeholder_line]
 
+        # If there are headings before but none after — this is a single placeholder
+        # under a heading, NOT a chain (strip_h1=True should apply)
+        if headings_before and not headings_after:
+            return False
+
         if headings_before and headings_after:
             last_before = headings_before[-1]
             first_after = headings_after[0]

@@ -683,6 +683,94 @@ This is some concluding text.""")
 
 # ===== Special cases =====
 
+def test_single_placeholder_at_end_after_h1(md_project):
+    """
+    Test single placeholder at the end of template after H1.
+
+    # Main Title
+
+    ${md:docs/api}
+
+    This is a single placeholder at the end of the template (no headings after it).
+    It should NOT be considered a chain (is_chain=False).
+
+    Expected behavior:
+    - strip_h1=true (single placeholder, not a chain)
+    - heading_level=2 (H1 + 1)
+    - H1 from file should be removed
+    - H2 from file should remain H2
+    """
+    root = md_project
+
+    create_template(root, "single-at-end", """# Main Title
+
+${md:docs/api}
+""")
+
+    result = render_template(root, "ctx:single-at-end")
+
+    # Single placeholder under H1, strip_h1=true, max_heading_level=2
+    # H1 from file should be removed
+    assert_heading_not_present(result, "API Reference")
+
+    # H2 from file should stay as H2 (not become H3!)
+    assert_heading_level(result, "Authentication", 2)
+    assert_heading_level(result, "Endpoints", 2)
+
+    # Parent H1 should remain
+    assert_heading_level(result, "Main Title", 1)
+
+
+def test_two_placeholders_separated_by_hr_second_under_h1(md_project):
+    """
+    Test two placeholders separated by horizontal rule, second one under H1.
+
+    # First Section
+    ${md:docs/api}
+    ---
+    # Second Section
+    ${md:docs/guide}
+
+    Each placeholder is in its own segment (separated by HR).
+    The second placeholder is under H1 with no headings after it.
+
+    Expected behavior for second placeholder:
+    - strip_h1=true (isolated in its segment)
+    - heading_level=2 (H1 + 1)
+    - H1 from guide.md should be removed
+    - H2 from guide.md should remain H2
+    """
+    root = md_project
+
+    create_template(root, "two-with-hr", """# First Section
+
+${md:docs/api}
+
+---
+
+# Second Section
+
+${md:docs/guide}
+""")
+
+    result = render_template(root, "ctx:two-with-hr")
+
+    # First placeholder: under H1, strip_h1=true, heading_level=2
+    assert_heading_not_present(result, "API Reference")
+    assert_heading_level(result, "Authentication", 2)
+
+    # Second placeholder: under H1, strip_h1=true, heading_level=2
+    assert_heading_not_present(result, "User Guide")
+
+    # H2 from guide.md should stay as H2 (not become H3!)
+    assert_heading_level(result, "Installation", 2)
+    assert_heading_level(result, "Usage", 2)
+
+    # Parent H1 headings should remain
+    assert_heading_level(result, "First Section", 1)
+    assert_heading_level(result, "Second Section", 1)
+
+
 def test_setext_headings_in_contextual_analysis(md_project):
     """
     Test contextual analysis with Setext headings (underlines).

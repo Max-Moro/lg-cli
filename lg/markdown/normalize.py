@@ -93,7 +93,7 @@ def normalize_markdown(
     max_lvl = int(max_heading_level)
 
     in_fence = False
-    fence_pat = re.compile(r"^```")
+    fence_pat = re.compile(r"^(```|~~~)")  # Both ``` and ~~~ are valid fenced block delimiters
     head_pat = re.compile(r"^(#+)\s")
 
     if placeholder_inside_heading and removed_h1:
