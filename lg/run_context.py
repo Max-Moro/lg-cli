@@ -14,7 +14,7 @@ from .addressing import AddressingContext
 
 # ---- Provider normalization ----
 
-_PROVIDER_SUFFIXES = (".cli", ".ext", ".api")
+_PROVIDER_SUFFIXES = (".cli", ".vscode", ".idea", ".api")
 
 
 def normalize_provider_id(provider_id: str) -> str:
@@ -23,7 +23,8 @@ def normalize_provider_id(provider_id: str) -> str:
 
     Removes the last segment indicating the technical medium:
     - .cli — CLI tool
-    - .ext — IDE extension
+    - .vscode — VS Code extension
+    - .idea — IntelliJ Platform plugin
     - .api — direct API call
 
     If no known suffix is present (e.g., 'clipboard'), returns as-is.

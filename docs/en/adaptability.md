@@ -55,7 +55,7 @@ core:
           description: "Question-answer mode"
           runs:
             com.anthropic.claude.cli: "--permission-mode default"
-            com.github.copilot.ext: "workbench.action.chat.openask"
+            com.github.copilot.vscode: "workbench.action.chat.openask"
 
         agent:
           title: "Agent"
@@ -63,7 +63,7 @@ core:
           tags: [agent]
           runs:
             com.anthropic.claude.cli: "--permission-mode acceptEdits"
-            com.github.copilot.ext: "workbench.action.chat.openagent"
+            com.github.copilot.vscode: "workbench.action.chat.openagent"
 
         plan:
           title: "Plan"
@@ -71,7 +71,7 @@ core:
           tags: [agent, plan]
           runs:
             com.anthropic.claude.cli: "--permission-mode plan"
-            com.github.copilot.ext: "workbench.action.chat.openplan"
+            com.github.copilot.vscode: "workbench.action.chat.openplan"
 
     dev-stage:
       title: "Task Development Stage"
@@ -209,11 +209,13 @@ Canonical providerId format:
 ```
 
 Examples:
-- `com.github.copilot.ext`
-- `com.anthropic.claude.cli`
-- `com.openai.codex.cli`
-- `com.jetbrains.ai.ext`
-- `org.jetbrains.junie.ext`
+- `com.github.copilot.vscode` — GitHub Copilot extension for VS Code
+- `com.cursor.composer.vscode` — Cursor Composer extension for VS Code
+- `com.anthropic.claude.cli` — Claude Code CLI tool
+- `com.openai.codex.cli` — OpenAI Codex CLI tool
+- `com.jetbrains.ai.idea` — JetBrains AI plugin for IntelliJ Platform
+- `org.jetbrains.junie.idea` — Junie plugin for IntelliJ Platform
+- `com.openai.api` — direct OpenAI API call
 
 Mode sets are divided into two types:
 - **Integration** — contain `runs` and describe AI provider launch modes.
@@ -425,7 +427,7 @@ For working with federated scopes, additional operators are added that can be co
 For identifying the active AI provider, a dedicated operator is available:
 
 - `provider:<base-id>` — checks the current AI provider (specified via `--provider`):
-  - The full provider ID is normalized by stripping the technical suffix (`.cli`, `.ext`, `.api`)
+  - The full provider ID is normalized by stripping the technical suffix (`.cli`, `.vscode`, `.idea`, `.api`)
   - For example, `--provider com.anthropic.claude.cli` normalizes to `com.anthropic.claude`
   - Special providers without a suffix (e.g., `clipboard`) are compared as-is
   - If `--provider` is not specified, the condition is always False
@@ -481,7 +483,7 @@ ${src-feature}
 | **OR** | `condition1 OR condition2` | `tag:python OR tag:javascript` | True if at least one condition is true |
 | **Parentheses** | `(condition)` | `(tag:python OR tag:js) AND tag:tests` | Grouping for priority setting |
 | **Scope** | `scope:type` | `scope:local`, `scope:parent` | Check scope type (local/parent) |
-| **Provider** | `provider:base-id` | `provider:com.anthropic.claude`, `provider:clipboard` | Check active AI provider (normalized, without `.cli`/`.ext`/`.api` suffix) |
+| **Provider** | `provider:base-id` | `provider:com.anthropic.claude`, `provider:clipboard` | Check active AI provider (normalized, without `.cli`/`.vscode`/`.idea`/`.api` suffix) |
 
 ### Mode Blocks
 

@@ -55,7 +55,7 @@ core:
           description: "Question-answer mode"
           runs:
             com.anthropic.claude.cli: "--permission-mode default"
-            com.github.copilot.ext: "workbench.action.chat.openask"
+            com.github.copilot.vscode: "workbench.action.chat.openask"
 
         agent:
           title: "Agent"
@@ -63,7 +63,7 @@ core:
           tags: [agent]
           runs:
             com.anthropic.claude.cli: "--permission-mode acceptEdits"
-            com.github.copilot.ext: "workbench.action.chat.openagent"
+            com.github.copilot.vscode: "workbench.action.chat.openagent"
 
         plan:
           title: "Plan"
@@ -71,7 +71,7 @@ core:
           tags: [agent, plan]
           runs:
             com.anthropic.claude.cli: "--permission-mode plan"
-            com.github.copilot.ext: "workbench.action.chat.openplan"
+            com.github.copilot.vscode: "workbench.action.chat.openplan"
 
     dev-stage:
       title: "Стадия работы над задачей"
@@ -209,11 +209,13 @@ include:
 ```
 
 Примеры:
-- `com.github.copilot.ext`
-- `com.anthropic.claude.cli`
-- `com.openai.codex.cli`
-- `com.jetbrains.ai.ext`
-- `org.jetbrains.junie.ext`
+- `com.github.copilot.vscode` — расширение GitHub Copilot для VS Code
+- `com.cursor.composer.vscode` — расширение Cursor Composer для VS Code
+- `com.anthropic.claude.cli` — CLI-инструмент Claude Code
+- `com.openai.codex.cli` — CLI-инструмент OpenAI Codex
+- `com.jetbrains.ai.idea` — плагин JetBrains AI для IntelliJ Platform
+- `org.jetbrains.junie.idea` — плагин Junie для IntelliJ Platform
+- `com.openai.api` — прямой вызов OpenAI API
 
 Наборы режимов делятся на два типа:
 - **Интеграционные** — содержат `runs` и описывают режимы запуска AI‑провайдера.
@@ -425,7 +427,7 @@ feature-impl:
 Для идентификации активного AI-провайдера доступен специализированный оператор:
 
 - `provider:<base-id>` - проверяет текущий AI-провайдер (указанный через `--provider`):
-  - Полный ID провайдера нормализуется путём отсечения технического суффикса (`.cli`, `.ext`, `.api`)
+  - Полный ID провайдера нормализуется путём отсечения технического суффикса (`.cli`, `.vscode`, `.idea`, `.api`)
   - Например, `--provider com.anthropic.claude.cli` нормализуется до `com.anthropic.claude`
   - Специальные провайдеры без суффикса (например, `clipboard`) сравниваются как есть
   - Если `--provider` не указан, условие всегда ложно (False)
@@ -481,7 +483,7 @@ ${src-feature}
 | **ИЛИ** | `условие1 OR условие2` | `tag:python OR tag:javascript` | Истинно, если хотя бы одно условие истинно |
 | **Скобки** | `(условие)` | `(tag:python OR tag:js) AND tag:tests` | Группировка для задания приоритета |
 | **Скоуп** | `scope:тип` | `scope:local`, `scope:parent` | Проверка типа скоупа (локальный/родительский) |
-| **Провайдер** | `provider:base-id` | `provider:com.anthropic.claude`, `provider:clipboard` | Проверка активного AI-провайдера (нормализованный, без суффикса `.cli`/`.ext`/`.api`) |
+| **Провайдер** | `provider:base-id` | `provider:com.anthropic.claude`, `provider:clipboard` | Проверка активного AI-провайдера (нормализованный, без суффикса `.cli`/`.vscode`/`.idea`/`.api`) |
 
 ### Режимные блоки
 

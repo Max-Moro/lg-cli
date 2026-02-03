@@ -167,10 +167,11 @@ class TestProviderNormalization:
 
     @pytest.mark.parametrize("full_id,expected_base", [
         ("com.anthropic.claude.cli", "com.anthropic.claude"),
-        ("com.github.copilot.ext", "com.github.copilot"),
+        ("com.github.copilot.vscode", "com.github.copilot"),
+        ("com.jetbrains.ai.idea", "com.jetbrains.ai"),
         ("com.openai.codex.api", "com.openai.codex"),
         ("clipboard", "clipboard"),
-        ("com.jetbrains.ai", "com.jetbrains.ai"),
+        ("com.custom.provider", "com.custom.provider"),
     ])
     def test_normalize_provider_id(self, full_id, expected_base):
         """Provider IDs should be normalized by stripping technical suffixes."""
