@@ -188,4 +188,56 @@ def list_contexts_for_provider(root: Path, provider: str) -> list[str]:
     return compatible
 
 
-__all__ = ["list_mode_sets", "list_tag_sets", "list_contexts_for_provider"]
+def list_sections_for_context(root: Path, context: str) -> list[str]:
+    """
+    Return sections used in given context.
+
+    Collects all sections referenced in the context template,
+    including those in conditional blocks and nested includes.
+    Excludes meta-sections from frontmatter includes.
+
+    Args:
+        root: Repository root
+        context: Context name (without .ctx.md suffix)
+
+    Returns:
+        Sorted list of section names (deduplicated)
+
+    Raises:
+        FileNotFoundError: If context not found
+    """
+    from ..template.analysis import SectionCollector
+
+    resolver, section_service, addressing = create_context_resolver(root)
+    cfg_root = root / "lg-cfg"
+
+    collector = SectionCollector(section_service, addressing, cfg_root)
+    collected = collector.collect(context)
+
+    # Extract section names, excluding frontmatter includes (meta-sections)
+    # which are used only for adaptive config, not for rendering
+    section_names = set()
+    frontmatter_keys = {s for s in collected.frontmatter_includes}
+
+    for resolved in collected.sections:
+        # Use the original name from template for user-friendly output
+        name = resolved.name
+
+        # Skip meta-sections from frontmatter (they don't render)
+        if name in frontmatter_keys:
+            continue
+
+        # Skip addressed sections that are meta-sections
+        # (sections starting with @ that are in frontmatter)
+        if name.startswith('@'):
+            # Check canon_key against frontmatter
+            canon = resolved.canon_key()
+            if any(canon.endswith(f":{fm}") or canon == f"sec:{fm}" for fm in frontmatter_keys):
+                continue
+
+        section_names.add(name)
+
+    return sorted(section_names)
+
+
+__all__ = ["list_mode_sets", "list_tag_sets", "list_contexts_for_provider", "list_sections_for_context"]

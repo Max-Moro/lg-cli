@@ -258,6 +258,11 @@ listing-generator list mode-sets --context my-context --provider com.anthropic.c
 # Sufficient data for UI generation (checkbox sets)
 listing-generator list tag-sets  --context my-context
 
+# List of sections
+# Without --context: returns all sections in the repository
+# With --context: returns only sections used in the specified context
+listing-generator list sections [--context my-context]
+
 # Rendering with specified modes, in this case planning mode
 # When sending the resulting context to the target provider, IDE add-on must launch it with `runs` arguments for the planning mode
 listing-generator render ctx:my-context --mode ai-interaction:plan --mode dev-stage:common

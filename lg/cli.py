@@ -104,7 +104,7 @@ def _build_parser() -> argparse.ArgumentParser:
     sp_list.add_argument(
         "--context",
         metavar="CTX",
-        help="context name (required for mode-sets and tag-sets)"
+        help="context name (required for mode-sets and tag-sets; optional for sections to filter by context)"
     )
     sp_list.add_argument(
         "--provider",
@@ -255,8 +255,13 @@ def main(argv: list[str] | None = None) -> int:
                     from .template import list_contexts
                     data = {"contexts": list_contexts(root)}
             elif ns.what == "sections":
-                from .section import list_sections
-                data = {"sections": list_sections(root)}
+                context = getattr(ns, "context", None)
+                if context:
+                    from .adaptive.listing import list_sections_for_context
+                    data = {"sections": list_sections_for_context(root, context)}
+                else:
+                    from .section import list_sections
+                    data = {"sections": list_sections(root)}
             elif ns.what == "tokenizer-libs":
                 from .stats import list_tokenizer_libs
                 data = {"tokenizer_libs": list_tokenizer_libs()}

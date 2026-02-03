@@ -258,6 +258,11 @@ listing-generator list mode-sets --context my-context --provider com.anthropic.c
 # Данных достаточно для формирования UI (наборы чекбоксов)
 listing-generator list tag-sets  --context my-context
 
+# Список секций
+# Без --context: возвращает все секции в репозитории
+# С --context: возвращает только секции, используемые в указанном контексте
+listing-generator list sections [--context my-context]
+
 # Рендеринг с указанием режимов, в данной ситуации режим планирования
 # При отправке полученного контекта в целевой провайдер, IDE-аддон обязан запустить его с `runs`-аргументами для режима планирования
 listing-generator render ctx:my-context --mode ai-interaction:plan --mode dev-stage:common
