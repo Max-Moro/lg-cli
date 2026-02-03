@@ -8,7 +8,7 @@ from .model import (
     TargetRule,
     EmptyPolicy,
 )
-from .service import SectionService, SectionLocation, ScopeIndex, list_sections, list_sections_peek
+from .service import SectionService, SectionLocation, ScopeIndex, list_sections, SectionsList, SectionInfo
 
 __all__ = [
     # Model
@@ -23,5 +23,6 @@ __all__ = [
     "SectionLocation",
     "ScopeIndex",
     "list_sections",
-    "list_sections_peek",
+    "SectionsList",
+    "SectionInfo",
 ]

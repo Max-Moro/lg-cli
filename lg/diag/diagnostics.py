@@ -10,7 +10,7 @@ from zipfile import ZipFile, ZIP_DEFLATED
 
 from lg.cache.fs_cache import Cache
 from lg.git import is_git_repo
-from lg.section import list_sections_peek
+from lg.section import list_sections
 from lg.paths import cfg_root
 from lg.template import list_contexts
 from .diag_report_schema import (
@@ -50,7 +50,8 @@ def run_diag(*, rebuild_cache: bool = False) -> DiagReport:
     sections: list[str] = []
     if cfg_block.exists:
         try:
-            sections = list_sections_peek(root)
+            result = list_sections(root, peek=True)
+            sections = [s.name for s in result.sections]
             cfg_block.sections = sections
         except Exception as e:
             cfg_block.error = str(e)

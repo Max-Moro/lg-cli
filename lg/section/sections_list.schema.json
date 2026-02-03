@@ -1,0 +1,132 @@
+{
+  "$schema": "https://json-schema.org/draft-07/schema#",
+  "$id": "https://example.org/lg/sections_list.schema.json",
+  "title": "SectionsList",
+  "description": "Response schema for 'list sections' command",
+  "type": "object",
+  "required": ["sections"],
+  "additionalProperties": false,
+  "properties": {
+    "sections": {
+      "type": "array",
+      "items": { "$ref": "#/definitions/SectionInfo" }
+    }
+  },
+  "definitions": {
+    "SectionInfo": {
+      "type": "object",
+      "required": ["name", "mode-sets", "tag-sets"],
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Section canonical name"
+        },
+        "mode-sets": {
+          "type": "array",
+          "items": { "$ref": "#/definitions/ModeSet" },
+          "description": "Mode sets after extends resolution (may be empty)"
+        },
+        "tag-sets": {
+          "type": "array",
+          "items": { "$ref": "#/definitions/TagSet" },
+          "description": "Tag sets after extends resolution (may be empty)"
+        }
+      }
+    },
+    "ModeSet": {
+      "type": "object",
+      "required": ["id", "title", "modes"],
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier of the mode set"
+        },
+        "title": {
+          "type": "string",
+          "description": "Human-readable title of the mode set"
+        },
+        "modes": {
+          "type": "array",
+          "items": { "$ref": "#/definitions/Mode" }
+        },
+        "integration": {
+          "type": "boolean",
+          "description": "True if this mode-set is an integration type (has runs)"
+        }
+      }
+    },
+    "Mode": {
+      "type": "object",
+      "required": ["id", "title"],
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier of the mode within the mode set"
+        },
+        "title": {
+          "type": "string",
+          "description": "Human-readable title of the mode"
+        },
+        "description": {
+          "type": "string",
+          "description": "Optional detailed description of the mode"
+        },
+        "tags": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Array of tags activated by this mode"
+        },
+        "runs": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          },
+          "description": "Provider-specific run commands mapping provider_id to command string"
+        }
+      }
+    },
+    "TagSet": {
+      "type": "object",
+      "required": ["id", "title", "tags"],
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier of the tag set"
+        },
+        "title": {
+          "type": "string",
+          "description": "Human-readable title of the tag set"
+        },
+        "tags": {
+          "type": "array",
+          "items": { "$ref": "#/definitions/Tag" }
+        }
+      }
+    },
+    "Tag": {
+      "type": "object",
+      "required": ["id", "title"],
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier of the tag within the tag set"
+        },
+        "title": {
+          "type": "string",
+          "description": "Human-readable title of the tag"
+        },
+        "description": {
+          "type": "string",
+          "description": "Optional detailed description of the tag"
+        }
+      }
+    }
+  }
+}

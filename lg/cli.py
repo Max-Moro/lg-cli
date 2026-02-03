@@ -256,12 +256,9 @@ def main(argv: list[str] | None = None) -> int:
                     data = {"contexts": list_contexts(root)}
             elif ns.what == "sections":
                 context = getattr(ns, "context", None)
-                if context:
-                    from .adaptive.listing import list_sections_for_context
-                    data = {"sections": list_sections_for_context(root, context)}
-                else:
-                    from .section import list_sections
-                    data = {"sections": list_sections(root)}
+                from .section import list_sections
+                result = list_sections(root, context=context)
+                data = result.model_dump(by_alias=True)
             elif ns.what == "tokenizer-libs":
                 from .stats import list_tokenizer_libs
                 data = {"tokenizer_libs": list_tokenizer_libs()}

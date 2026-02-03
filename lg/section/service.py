@@ -9,6 +9,14 @@ from ruamel.yaml import YAML
 
 from .index import SectionLocation, ScopeIndex, build_index, iter_all_config_files
 from .model import SectionCfg
+from .sections_list_schema import (
+    SectionsList,
+    SectionInfo,
+    ModeSet as ModeSetSchema,
+    Mode as ModeSchema,
+    TagSet as TagSetSchema,
+    Tag as TagSchema,
+)
 from ..cache.fs_cache import Cache
 from ..migrate import ensure_cfg_actual
 from ..errors import LGUserError
@@ -342,40 +350,160 @@ class SectionService:
 
 # ---- Public API functions ----
 
-def list_sections(root: Path) -> List[str]:
+def list_sections(
+    root: Path,
+    *,
+    context: Optional[str] = None,
+    peek: bool = False,
+) -> SectionsList:
     """
-    List all sections (with migrations).
+    List sections with their adaptive configuration.
 
     Args:
         root: Repository root
+        context: If specified, only return sections used in this context
+        peek: If True, skip migrations (safe for diagnostics)
 
     Returns:
-        Sorted list of section names
+        SectionsList with sections and their mode-sets/tag-sets
     """
     from ..cache.fs_cache import Cache
     from ..version import tool_version
 
     cache = Cache(root, enabled=None, fresh=False, tool_version=tool_version())
     service = SectionService(root, cache)
-    return service.list_sections(root)
+
+    # Get section names
+    if context is not None:
+        section_names = _get_sections_for_context(root, context, cache)
+    elif peek:
+        section_names = service.list_sections_peek(root)
+    else:
+        section_names = service.list_sections(root)
+
+    # Build SectionInfo for each section
+    sections_info = []
+    for name in section_names:
+        adaptive_model = _resolve_section_adaptive(name, root, cache)
+        section_info = _build_section_info(name, adaptive_model)
+        sections_info.append(section_info)
+
+    return SectionsList(sections=sections_info)
 
 
-def list_sections_peek(root: Path) -> List[str]:
+def _get_sections_for_context(root: Path, context: str, cache: Cache) -> List[str]:
     """
-    List sections without running migrations.
+    Get section names used in a context.
 
-    Args:
-        root: Repository root
+    Uses SectionCollector from adaptive module to find all sections
+    referenced in the context template.
+    """
+    # Lazy import to avoid circular dependencies
+    from ..adaptive.context_resolver import create_context_resolver
+    from ..template.analysis import SectionCollector
+
+    _, section_service, addressing = create_context_resolver(root, cache)
+    cfg_root = root / "lg-cfg"
+
+    collector = SectionCollector(section_service, addressing, cfg_root)
+    collected = collector.collect(context)
+
+    # Extract section names, excluding frontmatter includes (meta-sections)
+    section_names = set()
+    frontmatter_keys = set(collected.frontmatter_includes)
+
+    for resolved in collected.sections:
+        name = resolved.name
+
+        # Skip meta-sections from frontmatter (they don't render)
+        if name in frontmatter_keys:
+            continue
+
+        # Skip addressed sections that are meta-sections
+        if name.startswith('@'):
+            canon = resolved.canon_key()
+            if any(canon.endswith(f":{fm}") or canon == f"sec:{fm}" for fm in frontmatter_keys):
+                continue
+
+        section_names.add(name)
+
+    return sorted(section_names)
+
+
+def _resolve_section_adaptive(name: str, root: Path, cache: Cache):
+    """
+    Resolve adaptive model (mode-sets, tag-sets) for a section.
+
+    Uses ExtendsResolver to resolve inheritance chain and extract
+    the complete adaptive configuration.
 
     Returns:
-        Sorted list of section names
+        AdaptiveModel for the section
     """
-    from ..cache.fs_cache import Cache
-    from ..version import tool_version
+    # Lazy import to avoid circular dependencies
+    from ..adaptive.context_resolver import create_context_resolver
 
-    cache = Cache(root, enabled=None, fresh=False, tool_version=tool_version())
-    service = SectionService(root, cache)
-    return service.list_sections_peek(root)
+    resolver, section_service, addressing = create_context_resolver(root, cache)
+
+    # Use resolve_for_section which handles extends chain
+    return resolver.resolve_for_section(name, scope_dir=root)
+
+
+def _build_section_info(name: str, adaptive_model) -> SectionInfo:
+    """
+    Build SectionInfo schema object from section name and adaptive model.
+    """
+    # Convert mode-sets
+    mode_sets_list = []
+    for set_id, mode_set in adaptive_model.mode_sets.items():
+        modes_list = []
+        for mode_id, mode in mode_set.modes.items():
+            mode_schema = ModeSchema(
+                id=mode_id,
+                title=mode.title,
+                description=mode.description if mode.description else None,
+                tags=list(mode.tags) if mode.tags else None,
+                runs=dict(mode.runs) if mode.runs else None,
+            )
+            modes_list.append(mode_schema)
+
+        mode_set_schema = ModeSetSchema(
+            id=set_id,
+            title=mode_set.title,
+            modes=modes_list,
+            integration=mode_set.is_integration if mode_set.is_integration else None,
+        )
+        mode_sets_list.append(mode_set_schema)
+
+    # Sort mode-sets by id for stable output
+    mode_sets_list.sort(key=lambda x: x.id)
+
+    # Convert tag-sets
+    tag_sets_list = []
+    for set_id, tag_set in adaptive_model.tag_sets.items():
+        tags_list = []
+        for tag_id, tag in tag_set.tags.items():
+            tag_schema = TagSchema(
+                id=tag_id,
+                title=tag.title,
+                description=tag.description if tag.description else None,
+            )
+            tags_list.append(tag_schema)
+
+        tag_set_schema = TagSetSchema(
+            id=set_id,
+            title=tag_set.title,
+            tags=tags_list,
+        )
+        tag_sets_list.append(tag_set_schema)
+
+    # Sort tag-sets by id for stable output
+    tag_sets_list.sort(key=lambda x: x.id)
+
+    return SectionInfo(
+        name=name,
+        **{"mode-sets": mode_sets_list, "tag-sets": tag_sets_list}
+    )
 
 
 __all__ = [
@@ -384,5 +512,6 @@ __all__ = [
     "ScopeIndex",
     "SectionNotFoundError",
     "list_sections",
-    "list_sections_peek",
+    "SectionsList",
+    "SectionInfo",
 ]
