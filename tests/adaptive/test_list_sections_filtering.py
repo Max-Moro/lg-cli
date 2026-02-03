@@ -19,14 +19,15 @@ from tests.infrastructure import run_cli, jload, write
 @pytest.fixture
 def section_modes_project(tmp_path):
     """
-    Project where section supports fewer mode-sets than context.
+    Project where section has its own mode-set, context adds others via frontmatter.
 
-    Structure:
-    - integration-modes.sec.yaml: integration mode-set (ai-interaction)
-    - content-modes-a.sec.yaml: content mode-set that section DOES extend
-    - content-modes-b.sec.yaml: content mode-set that section does NOT extend
-    - sections.yaml: section extending only integration + content-a
-    - test.ctx.md: context including ALL three via frontmatter
+    Realistic scenario:
+    - integration-modes.sec.yaml: integration mode-set (ai-interaction) with runs
+    - dev-stage.sec.yaml: content mode-set for development workflow
+    - feature-slices.sec.yaml: business mode-set for feature toggles (section-specific)
+    - Section 'src' extends ONLY 'feature-slices'
+    - Context includes 'integration-modes' + 'dev-stage' via frontmatter
+    - Context gets 'feature-slices' through ${src} placeholder
     """
     root = tmp_path
 
@@ -48,38 +49,45 @@ def section_modes_project(tmp_path):
                 com.test.provider: "--mode agent"
     """))
 
-    # Content mode-set A (section WILL extend this)
-    write(root / "lg-cfg" / "content-modes-a.sec.yaml", textwrap.dedent("""\
-    content-modes-a:
+    # Dev stage mode-set (content, no runs)
+    write(root / "lg-cfg" / "dev-stage.sec.yaml", textwrap.dedent("""\
+    dev-stage:
       mode-sets:
         dev-stage:
-          title: "Dev Stage"
+          title: "Development Stage"
           modes:
             development:
               title: "Development"
             testing:
               title: "Testing"
               tags: ["tests"]
-    """))
-
-    # Content mode-set B (section will NOT extend this)
-    write(root / "lg-cfg" / "content-modes-b.sec.yaml", textwrap.dedent("""\
-    content-modes-b:
-      mode-sets:
-        review-workflow:
-          title: "Review Workflow"
-          modes:
-            self-review:
-              title: "Self Review"
-            peer-review:
-              title: "Peer Review"
+            review:
+              title: "Code Review"
               tags: ["review"]
+              vcs_mode: "branch-changes"
     """))
 
-    # Section extending only integration + content-a (NOT content-b)
+    # Feature slices mode-set (business-specific, section owns this)
+    write(root / "lg-cfg" / "feature-slices.sec.yaml", textwrap.dedent("""\
+    feature-slices:
+      mode-sets:
+        payment-module:
+          title: "Payment Module Slices"
+          modes:
+            all-features:
+              title: "All Features"
+            billing-only:
+              title: "Billing Only"
+              tags: ["billing"]
+            checkout-only:
+              title: "Checkout Only"
+              tags: ["checkout"]
+    """))
+
+    # Section extending ONLY feature-slices (its own business mode-set)
     write(root / "lg-cfg" / "sections.yaml", textwrap.dedent("""\
     src:
-      extends: ["integration-modes", "content-modes-a"]
+      extends: ["feature-slices"]
       extensions: [".py"]
       filters:
         mode: allow
@@ -87,10 +95,11 @@ def section_modes_project(tmp_path):
           - "/src/**"
     """))
 
-    # Context includes ALL mode-sets via frontmatter
+    # Context includes integration + dev-stage via frontmatter
+    # Gets feature-slices (payment-module) through ${src} placeholder
     write(root / "lg-cfg" / "test.ctx.md", textwrap.dedent("""\
     ---
-    include: ["integration-modes", "content-modes-a", "content-modes-b"]
+    include: ["integration-modes", "dev-stage"]
     ---
     # Test Context
     ${src}
@@ -119,10 +128,10 @@ class TestListSectionsFiltering:
 
         ctx_mode_set_ids = {ms["id"] for ms in ctx_data["mode-sets"]}
 
-        # Context should have ALL three mode-sets
+        # Context should have three mode-sets: ai-interaction, dev-stage, payment-module
         assert "ai-interaction" in ctx_mode_set_ids
         assert "dev-stage" in ctx_mode_set_ids
-        assert "review-workflow" in ctx_mode_set_ids
+        assert "payment-module" in ctx_mode_set_ids
 
         # Get sections for context
         sec_result = run_cli(root, "list", "sections", "--context", "test")
@@ -133,32 +142,32 @@ class TestListSectionsFiltering:
         src_section = next(s for s in sec_data["sections"] if s["name"] == "src")
         src_mode_set_ids = {ms["id"] for ms in src_section["mode-sets"]}
 
-        # Section should have only TWO mode-sets (not review-workflow)
-        assert "ai-interaction" in src_mode_set_ids
-        assert "dev-stage" in src_mode_set_ids
-        assert "review-workflow" not in src_mode_set_ids
+        # Section should have only ONE mode-set (payment-module)
+        # It does NOT have ai-interaction or dev-stage from the context
+        assert "payment-module" in src_mode_set_ids
+        assert "ai-interaction" not in src_mode_set_ids
+        assert "dev-stage" not in src_mode_set_ids
 
     def test_report_section_with_unsupported_mode_fails(self, section_modes_project, monkeypatch):
         """Using mode-set from context that section doesn't support should fail."""
         root = section_modes_project
         monkeypatch.chdir(root)
 
-        # Try to use review-workflow mode (section doesn't extend content-modes-b)
+        # Try to use dev-stage mode (from frontmatter, section doesn't extend it)
         result = run_cli(root, "report", "sec:src",
-                         "--mode", "review-workflow:self-review")
+                         "--mode", "dev-stage:testing")
 
         assert result.returncode == 2
-        assert "Unknown mode set 'review-workflow'" in result.stderr
+        assert "Unknown mode set 'dev-stage'" in result.stderr
 
     def test_report_section_with_supported_mode_succeeds(self, section_modes_project, monkeypatch):
         """Using mode-set that section supports should succeed."""
         root = section_modes_project
         monkeypatch.chdir(root)
 
-        # Use dev-stage mode (section extends content-modes-a)
+        # Use payment-module mode (section's own mode-set)
         result = run_cli(root, "report", "sec:src",
-                         "--mode", "ai-interaction:agent",
-                         "--mode", "dev-stage:testing")
+                         "--mode", "payment-module:billing-only")
 
         assert result.returncode == 0
         data = jload(result.stdout)
@@ -171,6 +180,11 @@ class TestListSectionsFiltering:
 
         This is the key test case: IDE gets modes from context, then filters
         by what section actually supports before calling report.
+
+        Realistic scenario:
+        - Context has: ai-interaction, dev-stage, payment-module
+        - Section only supports: payment-module
+        - IDE must filter context modes to intersection (payment-module only)
         """
         root = section_modes_project
         monkeypatch.chdir(root)

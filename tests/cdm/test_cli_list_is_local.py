@@ -22,4 +22,6 @@ def test_list_commands_are_local_to_self(monorepo: Path):
     assert cp.returncode == 0, cp.stderr
     data = jload(cp.stdout)
     # In root sections.yaml: 'root-md' (ai-interaction meta-section is excluded from listing)
-    assert data["sections"] == ["root-md"]
+    # New format returns section objects with name, mode-sets, tag-sets
+    section_names = [s["name"] for s in data["sections"]]
+    assert section_names == ["root-md"]
