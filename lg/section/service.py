@@ -101,7 +101,7 @@ class SectionService:
         name: str,
         current_dir: str,
         scope_dir: Path
-    ) -> SectionLocation:
+    ) -> tuple[str, SectionLocation]:
         """
         Find section by name considering context.
 
@@ -112,7 +112,8 @@ class SectionService:
             scope_dir: Scope directory
 
         Returns:
-            SectionLocation for found section
+            Tuple of (canonical_name, SectionLocation).
+            The canonical_name is the index key used to find the section.
 
         Raises:
             SectionNotFoundError: If section not found
@@ -123,7 +124,7 @@ class SectionService:
         if name.startswith('/'):
             key = name.lstrip('/')
             if key in index.sections:
-                return index.sections[key]
+                return key, index.sections[key]
             raise SectionNotFoundError(name, searched=[key])
 
         # Relative path: try with current_dir prefix first
@@ -133,12 +134,12 @@ class SectionService:
             prefixed = f"{current_dir}/{name}"
             searched.append(prefixed)
             if prefixed in index.sections:
-                return index.sections[prefixed]
+                return prefixed, index.sections[prefixed]
 
         # Then try without prefix (global search)
         searched.append(name)
         if name in index.sections:
-            return index.sections[name]
+            return name, index.sections[name]
 
         raise SectionNotFoundError(name, searched=searched)
 
@@ -373,30 +374,37 @@ def list_sections(
     cache = Cache(root, enabled=None, fresh=False, tool_version=tool_version())
     service = SectionService(root, cache)
 
-    # Get section names
-    if context is not None:
-        section_names = _get_sections_for_context(root, context, cache)
-    elif peek:
-        section_names = service.list_sections_peek(root)
-    else:
-        section_names = service.list_sections(root)
-
-    # Build SectionInfo for each section
     sections_info = []
-    for name in section_names:
-        adaptive_model = _resolve_section_adaptive(name, root, cache)
-        section_info = _build_section_info(name, adaptive_model)
-        sections_info.append(section_info)
+
+    if context is not None:
+        # Use resolved sections to preserve directory context
+        resolved_sections = _get_resolved_sections_for_context(root, context, cache)
+        for resolved in resolved_sections:
+            adaptive_model = _resolve_adaptive_from_resolved(resolved, root, cache)
+            # Use canonical_name for display
+            section_info = _build_section_info(resolved.canonical_name, adaptive_model)
+            sections_info.append(section_info)
+    else:
+        # Get section names from index
+        if peek:
+            section_names = service.list_sections_peek(root)
+        else:
+            section_names = service.list_sections(root)
+
+        for name in section_names:
+            adaptive_model = _resolve_section_adaptive(name, root, cache)
+            section_info = _build_section_info(name, adaptive_model)
+            sections_info.append(section_info)
 
     return SectionsList(sections=sections_info)
 
 
-def _get_sections_for_context(root: Path, context: str, cache: Cache) -> List[str]:
+def _get_resolved_sections_for_context(root: Path, context: str, cache: Cache) -> List:
     """
-    Get section names used in a context.
+    Get resolved sections used in a context.
 
-    Uses SectionCollector from adaptive module to find all sections
-    referenced in the context template.
+    Returns only template sections (renderable), not frontmatter includes (meta).
+    ResolvedSection objects preserve directory context for proper extends resolution.
     """
     # Lazy import to avoid circular dependencies
     from ..adaptive.context_resolver import create_context_resolver
@@ -408,34 +416,42 @@ def _get_sections_for_context(root: Path, context: str, cache: Cache) -> List[st
     collector = SectionCollector(section_service, addressing, cfg_root)
     collected = collector.collect(context)
 
-    # Extract section names, excluding frontmatter includes (meta-sections)
-    section_names = set()
-    frontmatter_keys = set(collected.frontmatter_includes)
+    # template_sections are already deduplicated and exclude frontmatter
+    result = list(collected.template_sections)
 
-    for resolved in collected.sections:
-        name = resolved.name
+    # Sort by canonical name for stable output
+    result.sort(key=lambda r: r.canonical_name)
+    return result
 
-        # Skip meta-sections from frontmatter (they don't render)
-        if name in frontmatter_keys:
-            continue
 
-        # Skip addressed sections that are meta-sections
-        if name.startswith('@'):
-            canon = resolved.canon_key()
-            if any(canon.endswith(f":{fm}") or canon == f"sec:{fm}" for fm in frontmatter_keys):
-                continue
+def _resolve_adaptive_from_resolved(resolved, root: Path, cache: Cache):
+    """
+    Resolve adaptive model from already resolved section.
 
-        section_names.add(name)
+    Uses ExtendsResolver.resolve_from_cfg with proper current_dir
+    to correctly resolve relative extends references.
+    """
+    from ..adaptive.extends_resolver import ExtendsResolver
 
-    return sorted(section_names)
+    service = SectionService(root, cache)
+    extends_resolver = ExtendsResolver(service)
+
+    # Use resolve_from_cfg with the preserved current_dir
+    resolved_data = extends_resolver.resolve_from_cfg(
+        section_cfg=resolved.section_config,
+        section_name=resolved.canonical_name,
+        scope_dir=root,
+        current_dir=resolved.current_dir,
+    )
+
+    return resolved_data.adaptive_model
 
 
 def _resolve_section_adaptive(name: str, root: Path, cache: Cache):
     """
-    Resolve adaptive model (mode-sets, tag-sets) for a section.
+    Resolve adaptive model (mode-sets, tag-sets) for a section by name.
 
-    Uses ExtendsResolver to resolve inheritance chain and extract
-    the complete adaptive configuration.
+    Used when listing all sections (no context filtering).
 
     Returns:
         AdaptiveModel for the section

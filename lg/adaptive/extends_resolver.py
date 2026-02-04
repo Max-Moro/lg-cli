@@ -95,7 +95,7 @@ class ExtendsResolver:
 
         # Load section
         try:
-            location = self._section_service.find_section(section_name, current_dir, scope_dir)
+            _, location = self._section_service.find_section(section_name, current_dir, scope_dir)
             section_cfg = self._section_service.load_section(location)
         except SectionNotFoundError as e:
             raise SectionNotFoundInExtendsError(

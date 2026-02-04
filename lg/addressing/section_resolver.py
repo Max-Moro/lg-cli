@@ -72,7 +72,7 @@ class SectionResolver(ResourceResolver):
 
         # Find section in target scope
         try:
-            location = self._service.find_section(
+            canonical_name, location = self._service.find_section(
                 local_name,
                 "",  # No current_dir for addressed refs
                 scope_dir
@@ -95,6 +95,7 @@ class SectionResolver(ResourceResolver):
             location=location,
             section_config=section_config,
             name=name,
+            canonical_name=canonical_name,
         )
 
     def _resolve_simple(
@@ -119,7 +120,7 @@ class SectionResolver(ResourceResolver):
         current_dir = self._context.current_directory
 
         # Find section using service
-        location = self._service.find_section(name, current_dir, scope_dir)
+        canonical_name, location = self._service.find_section(name, current_dir, scope_dir)
 
         # Load section configuration
         section_config = self._service.load_section(location)
@@ -130,6 +131,7 @@ class SectionResolver(ResourceResolver):
             location=location,
             section_config=section_config,
             name=name,
+            canonical_name=canonical_name,
             current_dir=current_dir,
         )
 

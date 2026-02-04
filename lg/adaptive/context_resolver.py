@@ -131,7 +131,7 @@ class ContextResolver:
         result = ContextAdaptiveData(
             model=merged_model,
             context_name=context_name,
-            section_count=len(collected.sections),
+            section_count=len(collected.all_sections()),
             validated=True,
         )
 
@@ -203,8 +203,8 @@ class ContextResolver:
         """
         merged = AdaptiveModel()
 
-        # Process sections in collection order (which is traversal order)
-        for resolved_section in collected.sections:
+        # Process all sections (template + frontmatter) in order
+        for resolved_section in collected.all_sections():
             # Resolve extends for section
             section_data = self._extends_resolver.resolve_from_cfg(
                 resolved_section.section_config,

@@ -37,15 +37,16 @@ class CollectedSections:
     """
     Result of collecting sections from a context.
 
-    Contains all sections found in the template and frontmatter,
-    deduplicated by canonical key.
+    Separates template sections (renderable) from frontmatter sections (meta).
+    Both are deduplicated by canonical key.
     """
-    sections: List[ResolvedSection] = field(default_factory=list)
-    frontmatter_includes: List[str] = field(default_factory=list)
+    template_sections: List[ResolvedSection] = field(default_factory=list)
+    frontmatter_sections: List[ResolvedSection] = field(default_factory=list)
+    _seen_keys: Set[str] = field(default_factory=set)
 
-    def add_section(self, resolved: ResolvedSection) -> bool:
+    def add_template_section(self, resolved: ResolvedSection) -> bool:
         """
-        Add section if not already present.
+        Add section from template if not already present.
 
         Args:
             resolved: Resolved section to add
@@ -54,11 +55,36 @@ class CollectedSections:
             True if added, False if already present
         """
         canon_key = resolved.canon_key()
-        for existing in self.sections:
-            if existing.canon_key() == canon_key:
-                return False
-        self.sections.append(resolved)
+        if canon_key in self._seen_keys:
+            return False
+        self._seen_keys.add(canon_key)
+        self.template_sections.append(resolved)
         return True
+
+    def add_frontmatter_section(self, resolved: ResolvedSection) -> bool:
+        """
+        Add section from frontmatter include if not already present.
+
+        Args:
+            resolved: Resolved section to add
+
+        Returns:
+            True if added, False if already present
+        """
+        canon_key = resolved.canon_key()
+        if canon_key in self._seen_keys:
+            return False
+        self._seen_keys.add(canon_key)
+        self.frontmatter_sections.append(resolved)
+        return True
+
+    def all_sections(self) -> List[ResolvedSection]:
+        """
+        Get all sections (template + frontmatter) in order.
+
+        Used for building adaptive model where all sections contribute.
+        """
+        return self.template_sections + self.frontmatter_sections
 
 
 class SectionCollector:
@@ -114,8 +140,6 @@ class SectionCollector:
 
         # Parse frontmatter
         frontmatter, content_text = parse_frontmatter(template_text)
-        if frontmatter and frontmatter.include:
-            result.frontmatter_includes = list(frontmatter.include)
 
         # Parse template AST
         ast = self._parse_template(content_text)
@@ -260,7 +284,7 @@ class SectionCollector:
 
     def _collect_section(self, section_name: str, result: CollectedSections) -> None:
         """
-        Resolve and add section to result.
+        Resolve and add template section to result.
 
         Args:
             section_name: Section name from template
@@ -271,7 +295,7 @@ class SectionCollector:
                 ResolvedSection,
                 self._addressing.resolve(section_name, SECTION_CONFIG)
             )
-            result.add_section(resolved)
+            result.add_template_section(resolved)
         except (SectionNotFoundError, AdaptiveError, AddressScopeNotFoundError):
             # Section not found or adaptive config error - skip during collection.
             # Errors will surface during actual rendering.
@@ -333,12 +357,21 @@ class SectionCollector:
         Process sections from frontmatter include directive.
 
         These are typically meta-sections for adaptive configuration.
+        They are stored separately and don't appear in renderable sections list.
         """
         if not frontmatter or not frontmatter.include:
             return
 
         for section_ref in frontmatter.include:
-            self._collect_section(section_ref, result)
+            try:
+                resolved = cast(
+                    ResolvedSection,
+                    self._addressing.resolve(section_ref, SECTION_CONFIG)
+                )
+                result.add_frontmatter_section(resolved)
+            except (SectionNotFoundError, AdaptiveError, AddressScopeNotFoundError):
+                # Section not found - skip during collection
+                pass
 
 
 __all__ = ["SectionCollector", "CollectedSections"]

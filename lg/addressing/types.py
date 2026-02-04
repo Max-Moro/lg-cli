@@ -116,14 +116,13 @@ class ResolvedSection(ResolvedResource):
     """
     location: SectionLocation       # Physical location of section
     section_config: SectionCfg      # Already loaded configuration
-    name: str                       # Original name from template (for diagnostics)
+    name: str                       # Original reference from template (for error messages)
+    canonical_name: str = ""        # Full name in scope index (e.g., "adapters/src")
     current_dir: str = ""           # Directory inside lg-cfg at resolution time (for extends)
 
     def canon_key(self) -> str:
-        if self.name.startswith('@'):
-            # Addressed reference preserved as-is: @origin:name -> sec@origin:name
-            return f"sec{self.name}"
-        return self._format_key("sec", self.name)
+        # _format_key uses scope_rel for cross-scope references automatically
+        return self._format_key("sec", self.canonical_name)
 
 
 @runtime_checkable

@@ -47,7 +47,7 @@ def load_sections(root: Path) -> Dict[str, SectionCfg]:
 
     sections: Dict[str, SectionCfg] = {}
     for name in service.list_sections(root):
-        location = service.find_section(name, "", root)
+        _, location = service.find_section(name, "", root)
         sections[name] = service.load_section(location)
 
     return sections
