@@ -501,12 +501,19 @@ class ChainAnalyzer:
         return segments
 
     def _get_node_line_number(self, ast: TemplateAST, node_index: int) -> int:
-        """Gets the line number of a node in the AST."""
-        line_number = 1
+        """
+        Gets the line number of a node in the AST.
+
+        IMPORTANT: Must use the same line counting logic as _parse_all_headings()
+        to avoid off-by-one errors when matching headings with placeholders.
+        """
+        line_number = 0
         for i in range(node_index):
             node = ast[i]
             if isinstance(node, TextNode):
-                line_number += node.text.count('\n')
+                # Must match _parse_all_headings(): count lines, not newlines
+                # For text "line1\nline2\nline3": split gives 3 lines, count gives 2 newlines
+                line_number += len(node.text.split('\n'))
             else:
                 line_number += 1
         return line_number

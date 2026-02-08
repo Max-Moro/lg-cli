@@ -9,7 +9,7 @@ Implements logic according to requirements:
 
 from __future__ import annotations
 
-from .conftest import md_project, create_template, render_template
+from .conftest import md_project, create_template, render_template, write_markdown
 
 
 def extract_heading_level(text: str, heading_text: str) -> int | None:
@@ -837,3 +837,108 @@ More content.
 
     assert_heading_not_present(result, "API Reference")
     assert_heading_level(result, "Authentication", 4)
+
+
+def test_multiple_hr_separated_placeholders_line_counting_bug(md_project):
+    """
+    Test that reproduces the line counting bug with multiple HR-separated placeholders.
+
+    The REAL bug: _get_node_line_number() uses count('\n') while _parse_all_headings() uses split('\n').
+    For a TextNode with N lines, count gives N-1 but split gives N, creating off-by-one error.
+
+    This accumulates across multiple TextNodes, causing headings and HRs to be detected
+    at wrong line numbers, making the system incorrectly group placeholders.
+
+    Template structure (with multi-line TextNodes to trigger the bug):
+    # Intro
+
+    Some text here.
+    More text.
+    Even more.
+
+    ${md:file1}
+
+    ---
+
+    # Section One
+
+    Some description.
+    Multiple lines.
+    To create offset.
+
+    ${md:file2}
+
+    ---
+
+    # Section Two
+
+    ${md:file3}
+
+    Expected behavior:
+    - file2 placeholder should be isolated by HRs (segment has only 1 placeholder)
+    - Its H1 should be REMOVED (strip_h1=True when not in chain)
+    """
+    root = md_project
+
+    # Create test files with H1 and H2 headings
+    write_markdown(root / "docs" / "file1.md",
+                   title="First Document",
+                   content="Content 1.\n\n## Details\n\nSome details.")
+
+    write_markdown(root / "docs" / "file2.md",
+                   title="Second Document",
+                   content="Content 2.\n\n## Info\n\nSome info.")
+
+    write_markdown(root / "docs" / "file3.md",
+                   title="Third Document",
+                   content="Content 3.\n\n## Notes\n\nSome notes.")
+
+    # Template mimicking the real bug scenario:
+    # Multi-line TextNodes accumulate off-by-one errors,
+    # causing the heading between file2 and file3 to be invisible
+    create_template(root, "multi-hr", """# Section A
+
+Some text.
+More text.
+Extra line.
+
+${md:docs/file1}
+
+---
+
+# Section B
+
+Description.
+Multiple lines.
+Create offset.
+More offset.
+
+${md:docs/file2}
+
+# Section C
+
+${md:docs/file3}
+""")
+
+    result = render_template(root, "ctx:multi-hr")
+
+    # file1 is under "Section A", isolated by HR - H1 should be REMOVED
+    assert_heading_not_present(result, "First Document")
+
+    # file2 is under "Section B" - with buggy counting, heading "Section C" between file2 and file3
+    # is invisible, making them a chain. With correct counting, heading is visible, breaking the chain.
+    # Expected with fix: file2 is NOT in chain → H1 should be REMOVED
+    assert_heading_not_present(result, "Second Document")
+
+    # file3 is under "Section C" (heading visible after fix) - H1 should be REMOVED
+    assert_heading_not_present(result, "Third Document")
+
+    # Template H1 headings should remain
+    assert_heading_level(result, "Section A", 1)
+    assert_heading_level(result, "Section B", 1)
+    assert_heading_level(result, "Section C", 1)
+
+    # H2 headings from files should remain at H2
+    assert_heading_level(result, "Details", 2)
+    assert_heading_level(result, "Info", 2)
+    assert_heading_level(result, "Notes", 2)
