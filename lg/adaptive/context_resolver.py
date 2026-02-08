@@ -12,7 +12,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Dict, Optional
+from typing import Dict, Optional, cast
 
 from .extends_resolver import ExtendsResolver
 from ..cache.fs_cache import Cache
@@ -20,6 +20,8 @@ from ..template.analysis import SectionCollector, CollectedSections
 from .model import AdaptiveModel
 from .validation import AdaptiveValidator
 from ..addressing import AddressingContext
+from ..addressing.configs import SECTION_CONFIG
+from ..addressing.types import ResolvedSection
 from ..section import SectionService
 from ..version import tool_version
 
@@ -168,8 +170,16 @@ class ContextResolver:
         if cache_key in self._cache:
             return self._cache[cache_key].model
 
-        # Resolve section with extends
-        resolved = self._extends_resolver.resolve(section_name, scope_dir)
+        # Handle addressed references (@origin:name)
+        if section_name.startswith('@'):
+            resolved_section = cast(
+                ResolvedSection,
+                self._addressing.resolve(section_name, SECTION_CONFIG),
+            )
+            resolved = self._extends_resolver.resolve_from_resolved(resolved_section)
+        else:
+            # Resolve section with extends
+            resolved = self._extends_resolver.resolve(section_name, scope_dir)
 
         # Cache (no validation for sections)
         result = ContextAdaptiveData(

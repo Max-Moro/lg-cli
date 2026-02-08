@@ -349,10 +349,11 @@ class TestExtendsCrossScope:
         result = list_sections(root, context="main")
 
         # Assert: child section present with inherited tag-set
+        # Cross-scope sections include @scope_rel: prefix for disambiguation
         section_names = [s.name for s in result.sections]
-        assert "src" in section_names
+        assert "@child:src" in section_names
 
-        src_info = next(s for s in result.sections if s.name == "src")
+        src_info = next(s for s in result.sections if s.name == "@child:src")
         tag_set_ids = {ts.id for ts in getattr(src_info, "tag_sets", [])}
         assert "language" in tag_set_ids
 

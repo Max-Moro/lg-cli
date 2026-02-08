@@ -56,8 +56,8 @@ def list_sections(
         resolved_sections = _get_resolved_sections_for_context(root, context, cache)
         for resolved in resolved_sections:
             adaptive_model = _resolve_adaptive_from_resolved(resolved, root, cache)
-            # Use canonical_name for display
-            section_info = _build_section_info(resolved.canonical_name, adaptive_model)
+            display_name = _section_display_name(resolved)
+            section_info = _build_section_info(display_name, adaptive_model)
             sections_info.append(section_info)
     else:
         # Get section names from index
@@ -72,6 +72,19 @@ def list_sections(
             sections_info.append(section_info)
 
     return SectionsList(sections=sections_info)
+
+
+def _section_display_name(resolved: ResolvedSection) -> str:
+    """
+    Build display name for a section in list output.
+
+    For sections from the root scope, returns canonical_name as-is.
+    For sections from other scopes, returns @scope_rel:canonical_name
+    to avoid ambiguity with identically-named sections from different scopes.
+    """
+    if resolved.scope_rel:
+        return f"@{resolved.scope_rel}:{resolved.canonical_name}"
+    return resolved.canonical_name
 
 
 def _get_resolved_sections_for_context(
@@ -92,8 +105,8 @@ def _get_resolved_sections_for_context(
     # template_sections are already deduplicated and exclude frontmatter
     result = list(collected.template_sections)
 
-    # Sort by canonical name for stable output
-    result.sort(key=lambda r: r.canonical_name)
+    # Sort by scope then canonical name for stable output
+    result.sort(key=lambda r: (r.scope_rel, r.canonical_name))
     return result
 
 

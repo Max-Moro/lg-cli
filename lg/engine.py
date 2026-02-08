@@ -237,6 +237,9 @@ def _parse_target(target: str, root: Optional[Path] = None) -> TargetSpec:
         kind, name = "context", name[4:]
     elif name.startswith("sec:"):
         kind, name = "section", name[4:]
+    elif name.startswith("sec@"):
+        # Addressed section: sec@origin:name → @origin:name
+        kind, name = "section", name[3:]
 
     # For auto mode, check if context exists
     if kind in ("auto", "context"):
