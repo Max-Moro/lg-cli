@@ -262,6 +262,78 @@ class TestSectionCollection:
         # Tag-set from extras should still be collected (conditions not evaluated)
         assert "conditional" in tag_set_ids
 
+    def test_frontmatter_includes_from_nested_contexts_collected(self, tmp_path):
+        """
+        Frontmatter includes from nested contexts (${ctx@scope:name})
+        should be collected and contribute to adaptive model.
+
+        Regression test for bug where frontmatter includes from nested contexts
+        were parsed but not processed, causing tag-sets/mode-sets to be missing.
+        """
+        root = tmp_path
+
+        # Root integration mode-set
+        create_mode_meta_section(root, "ai-interaction", {
+            "ai-interaction": ModeSetConfig(
+                title="AI Interaction",
+                modes={
+                    "ask": ModeConfig(title="Ask", runs={"com.test.provider": "--ask"}),
+                }
+            )
+        })
+
+        # Tag-set meta-section in nested scope
+        write(root / "nested" / "lg-cfg" / "nested-tags.sec.yaml", textwrap.dedent("""\
+        nested-tags:
+          tag-sets:
+            nested-category:
+              title: "Nested Category"
+              tags:
+                nested-tag:
+                  title: "Nested Tag"
+        """))
+
+        # Regular section in root
+        write(root / "lg-cfg" / "sections.yaml", textwrap.dedent("""\
+        src:
+          extends: ["ai-interaction"]
+          extensions: [".py"]
+          filters:
+            mode: allow
+            allow:
+              - "/**"
+        """))
+
+        # Nested context that includes nested-tags via frontmatter
+        # Tests both frontmatter processing AND leading slash normalization
+        write(root / "nested" / "lg-cfg" / "sub.ctx.md", textwrap.dedent("""\
+        ---
+        include: ["/nested-tags"]
+        ---
+        # Nested Context
+        Some nested content
+        """))
+
+        # Root context that includes the nested context
+        write(root / "lg-cfg" / "test.ctx.md", textwrap.dedent("""\
+        ---
+        include: ["ai-interaction"]
+        ---
+        # Root Context
+
+        ${ctx@nested:sub}
+        """))
+
+        write(root / "main.py", "x = 1\n")
+
+        # Verify that tag-sets from nested context's frontmatter are collected
+        from lg.adaptive.listing import list_tag_sets
+        result = list_tag_sets(root, "test")
+        tag_set_ids = {ts.id for ts in result.tag_sets}
+
+        # nested-category from nested context's frontmatter should be collected
+        assert "nested-category" in tag_set_ids
+
 
 class TestIntegrationModeSetRule:
     """Tests for the single integration mode-set rule."""

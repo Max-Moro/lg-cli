@@ -20,7 +20,11 @@ def load_from_cfg(cfg_root: Path, resource: str, *, suffix: str) -> Tuple[Path, 
     """
     from ..migrate import ensure_cfg_actual
     ensure_cfg_actual(cfg_root)
-    p = (cfg_root / f"{resource}{suffix}").resolve()
+
+    # Normalize resource path: strip leading slash to prevent absolute path
+    resource_normalized = resource.lstrip("/")
+
+    p = (cfg_root / f"{resource_normalized}{suffix}").resolve()
     if not p.is_file():
         raise RuntimeError(f"Resource not found: {p}")
     return p, p.read_text(encoding="utf-8", errors="ignore")

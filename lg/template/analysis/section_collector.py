@@ -334,15 +334,20 @@ class SectionCollector:
             # Load and parse
             template_path, template_text = loader(cfg_root, node.name)
 
-            # For contexts, strip frontmatter
+            # For contexts, parse and process frontmatter
+            frontmatter = None
             if node.kind == "ctx":
-                _, template_text = parse_frontmatter(template_text)
+                frontmatter, template_text = parse_frontmatter(template_text)
 
             ast = self._parse_template(template_text)
 
             # Collect with proper file scope
             with self._addressing.file_scope(template_path, node.origin if node.origin != "self" else None):
                 self._collect_from_ast(ast, result)
+
+                # Process frontmatter includes for nested contexts
+                if frontmatter:
+                    self._process_frontmatter_includes(frontmatter, result)
 
         except (RuntimeError, FileNotFoundError, AdaptiveError, AddressScopeNotFoundError):
             # Include not found or config error - skip during collection
