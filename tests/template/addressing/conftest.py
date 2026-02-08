@@ -14,6 +14,8 @@ from lg.section import SectionService
 from lg.addressing import AddressingContext
 from lg.version import tool_version
 
+from tests.infrastructure import write_context
+
 
 @pytest.fixture
 def multi_scope_project(tmp_path: Path) -> Path:
@@ -76,24 +78,21 @@ def multi_scope_project(tmp_path: Path) -> Path:
         encoding="utf-8"
     )
 
-    vscode_adaptability = vscode_cfg / "adaptability"
-    vscode_adaptability.mkdir()
-
     # Context that uses parent scope references
-    (vscode_adaptability / "_.ctx.md").write_text(
+    # write_context auto-creates ai-interaction.sec.yaml and adds frontmatter
+    vscode_root = root / "vscode"
+    write_context(vscode_root, "adaptability/_",
         "# Adaptability Context\n\n"
         "## Architecture from parent scope\n\n"
         "${md@..:adaptability/architecture-adaptive-ide}\n\n"
         "## CLI docs from sibling directory\n\n"
-        "${md:../cli/docs/en/adaptability}\n",
-        encoding="utf-8"
+        "${md:../cli/docs/en/adaptability}\n"
     )
 
     # Also create a simpler test context for current_dir reset bug
-    (vscode_adaptability / "simple.ctx.md").write_text(
+    write_context(vscode_root, "adaptability/simple",
         "# Simple test\n\n"
-        "${md@..:adaptability/architecture-adaptive-ide}\n",
-        encoding="utf-8"
+        "${md@..:adaptability/architecture-adaptive-ide}\n"
     )
 
     # === Sibling directory (root/cli/) - NO lg-cfg/ ===

@@ -19,6 +19,8 @@ from lg.addressing import AddressingContext
 from lg.addressing.types import ResourceConfig, ResolvedFile
 from lg.addressing.errors import ScopeNotFoundError
 
+from tests.infrastructure import write_context
+
 
 # Resource config for markdown files with origin (md@origin:path)
 # Files are INSIDE lg-cfg/ of target scope, so NO resolve_outside_cfg
@@ -224,10 +226,8 @@ class TestIntegrationWithRealContextFile:
         import os
 
         # Create a context that references non-existent scope
-        bad_ctx = vscode_scope_root / "lg-cfg" / "bad.ctx.md"
-        bad_ctx.write_text(
-            "# Bad reference\n${md@../nonexistent:some/file}\n",
-            encoding="utf-8"
+        write_context(vscode_scope_root, "bad",
+            "# Bad reference\n${md@../nonexistent:some/file}\n"
         )
 
         original_cwd = os.getcwd()
