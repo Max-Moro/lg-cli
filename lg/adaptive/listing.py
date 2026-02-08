@@ -13,8 +13,9 @@ from .tag_sets_list_schema import TagSetsList, TagSet as TagSetSchema, Tag as Ta
 from .context_resolver import create_context_resolver
 from .validation import validate_provider_support
 from .errors import AdaptiveError
-from .model import CLIPBOARD_PROVIDER
-from ..section.service import SectionNotFoundError
+from .model import AdaptiveModel, CLIPBOARD_PROVIDER
+from ..section.errors import SectionNotFoundError
+from ..template.common import list_contexts
 
 
 
@@ -56,7 +57,7 @@ def list_mode_sets(root: Path, context: str, provider: str) -> ModeSetsList:
     return _adaptive_model_to_mode_sets_list(filtered_model)
 
 
-def _adaptive_model_to_mode_sets_list(model) -> ModeSetsList:
+def _adaptive_model_to_mode_sets_list(model: AdaptiveModel) -> ModeSetsList:
     """Convert AdaptiveModel to ModeSetsList schema."""
     mode_sets_list = []
 
@@ -118,7 +119,7 @@ def list_tag_sets(root: Path, context: str) -> TagSetsList:
     return _adaptive_model_to_tag_sets_list(adaptive_data.model)
 
 
-def _adaptive_model_to_tag_sets_list(model) -> TagSetsList:
+def _adaptive_model_to_tag_sets_list(model: AdaptiveModel) -> TagSetsList:
     """Convert AdaptiveModel to TagSetsList schema."""
     tag_sets_list = []
 
@@ -161,8 +162,6 @@ def list_contexts_for_provider(root: Path, provider: str) -> list[str]:
     Returns:
         Sorted list of compatible context names
     """
-    from ..template.common import list_contexts
-
     all_contexts = list_contexts(root)
 
     # Clipboard is universally compatible

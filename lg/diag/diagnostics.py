@@ -10,7 +10,7 @@ from zipfile import ZipFile, ZIP_DEFLATED
 
 from lg.cache.fs_cache import Cache
 from lg.git import is_git_repo
-from lg.section import list_sections
+from lg.listing import list_sections
 from lg.paths import cfg_root
 from lg.template import list_contexts
 from .diag_report_schema import (

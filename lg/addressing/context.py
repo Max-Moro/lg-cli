@@ -12,6 +12,8 @@ from pathlib import Path
 from typing import List, Optional
 
 from .types import DirectoryContext, ResourceConfig, ResolvedResource
+from .file_resolver import FileResolver
+from .section_resolver import SectionResolver
 from ..section import SectionService
 
 
@@ -50,21 +52,19 @@ class AddressingContext:
             cfg_root=initial_cfg_root.resolve()
         ))
 
-        # Lazy-initialized resolvers
-        self._file_resolver = None
-        self._section_resolver = None
+        # Lazy-initialized resolvers (deferred construction, not cycle avoidance)
+        self._file_resolver: Optional[FileResolver] = None
+        self._section_resolver: Optional[SectionResolver] = None
 
-    def _get_file_resolver(self):
+    def _get_file_resolver(self) -> FileResolver:
         """Lazy initialization of file resolver."""
         if self._file_resolver is None:
-            from .file_resolver import FileResolver
             self._file_resolver = FileResolver(self)
         return self._file_resolver
 
-    def _get_section_resolver(self):
+    def _get_section_resolver(self) -> SectionResolver:
         """Lazy initialization of section resolver."""
         if self._section_resolver is None:
-            from .section_resolver import SectionResolver
             self._section_resolver = SectionResolver(self._section_service, self)
         return self._section_resolver
 

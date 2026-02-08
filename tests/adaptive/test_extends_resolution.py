@@ -291,7 +291,7 @@ class TestExtendsCrossScope:
         - Child scope has meta-section 'tags' and section 'src' that extends 'tags'
         - list_sections must resolve extends in the child scope, not root
         """
-        from lg.section.service import list_sections
+        from lg.listing import list_sections
 
         root = tmp_path
         child_dir = root / "child"

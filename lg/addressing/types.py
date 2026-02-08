@@ -126,6 +126,20 @@ class ResolvedSection(ResolvedResource):
 
 
 @runtime_checkable
+class ContextView(Protocol):
+    """Read-only view of addressing context for resolvers."""
+
+    @property
+    def repo_root(self) -> Path: ...
+
+    @property
+    def cfg_root(self) -> Path: ...
+
+    @property
+    def current_directory(self) -> str: ...
+
+
+@runtime_checkable
 class ResourceResolver(Protocol):
     """Common interface for resolving any resources."""
 
@@ -154,5 +168,6 @@ __all__ = [
     "ResolvedResource",
     "ResolvedFile",
     "ResolvedSection",
+    "ContextView",
     "ResourceResolver",
 ]

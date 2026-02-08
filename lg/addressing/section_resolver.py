@@ -8,9 +8,8 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from .context import AddressingContext
 from .errors import ScopeNotFoundError
-from .types import ResolvedSection, ResourceResolver, ResourceConfig
+from .types import ResolvedSection, ResourceResolver, ResourceConfig, ContextView
 from ..section import SectionService
 
 
@@ -21,7 +20,7 @@ class SectionResolver(ResourceResolver):
     Uses SectionService for lookup and loading.
     """
 
-    def __init__(self, section_service: SectionService, context: AddressingContext):
+    def __init__(self, section_service: SectionService, context: ContextView):
         """
         Initialize section resolver.
 

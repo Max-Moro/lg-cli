@@ -256,7 +256,7 @@ def main(argv: list[str] | None = None) -> int:
                     data = {"contexts": list_contexts(root)}
             elif ns.what == "sections":
                 context = getattr(ns, "context", None)
-                from .section import list_sections
+                from .listing import list_sections
                 result = list_sections(root, context=context)
                 data = result.model_dump(by_alias=True)
             elif ns.what == "tokenizer-libs":

@@ -9,10 +9,9 @@ from __future__ import annotations
 from pathlib import Path, PurePosixPath
 from typing import Tuple
 
-from .context import AddressingContext
 from .errors import PathResolutionError, ScopeNotFoundError
 from .parser import PathParser
-from .types import ParsedPath, ResourceConfig, ResolvedFile, ResourceResolver
+from .types import ParsedPath, ResourceConfig, ResolvedFile, ResourceResolver, ContextView
 
 
 class FileResolver(ResourceResolver):
@@ -23,7 +22,7 @@ class FileResolver(ResourceResolver):
     using the addressing context for relative path resolution.
     """
 
-    def __init__(self, context: AddressingContext):
+    def __init__(self, context: ContextView):
         """
         Initialize file resolver.
 

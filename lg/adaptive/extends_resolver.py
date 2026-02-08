@@ -17,7 +17,8 @@ from .errors import ExtendsCycleError, SectionNotFoundInExtendsError
 from .model import AdaptiveModel
 from .section_extractor import extract_adaptive_model
 from ..section.model import SectionCfg, AdapterConfig
-from ..section.service import SectionService, SectionNotFoundError
+from ..section.service import SectionService
+from ..section.errors import SectionNotFoundError
 from ..addressing.types import ResolvedSection
 
 

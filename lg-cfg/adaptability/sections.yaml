@@ -28,6 +28,7 @@ src:
         mode: allow
         allow:
           - "/cli.py"
+          - "/listing.py"
           - "/types.py"
           - "/run_context.py"
           - "/engine.py"
@@ -79,6 +80,7 @@ src:
               - "/model.py"
               - "/service.py"
               - "/index.py"
+              - "/errors.py"
             block:
               - "/paths.py"
           # Addressing - context, types and section resolver
@@ -121,9 +123,11 @@ src:
   targets:
     # Level 2: context/type definition files — readable logic, stripped noise
     - match:
+        - "/lg/listing.py"
         - "/lg/run_context.py"
         - "/lg/types.py"
         - "/lg/section/model.py"
+        - "/lg/section/errors.py"
         - "/lg/section_processor.py"
         - "/lg/template/adaptive/processor_rules.py"
       python:

@@ -8,7 +8,8 @@ from .model import (
     TargetRule,
     EmptyPolicy,
 )
-from .service import SectionService, SectionLocation, ScopeIndex, list_sections, SectionsList, SectionInfo
+from .service import SectionService, SectionLocation, ScopeIndex
+from .errors import SectionNotFoundError
 
 __all__ = [
     # Model
@@ -22,7 +23,6 @@ __all__ = [
     "SectionService",
     "SectionLocation",
     "ScopeIndex",
-    "list_sections",
-    "SectionsList",
-    "SectionInfo",
+    # Errors
+    "SectionNotFoundError",
 ]
