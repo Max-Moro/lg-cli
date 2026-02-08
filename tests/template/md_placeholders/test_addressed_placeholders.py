@@ -185,9 +185,9 @@ ${md@self:docs/internal-guide}
 
 
 @pytest.mark.parametrize("origin,filename,expected_content", [
-    ("apps/web", "web-readme", "Web Application"),
-    ("libs/utils", "utils-readme", "Utility Library"),
-    ("apps/web", "deployment", "Web Deployment Guide")  # from lg-cfg/
+    ("apps/web", "web-readme", "Frontend web application"),  # H1 stripped; check body content
+    ("libs/utils", "utils-readme", "Shared utility functions"),  # H1 stripped; check body content
+    ("apps/web", "deployment", "How to deploy the web app")  # H1 stripped; check body content
 ])
 def test_md_placeholder_federated_parametrized(federated_md_project, origin, filename, expected_content):
     """Parametrized test for federated markdown placeholders."""

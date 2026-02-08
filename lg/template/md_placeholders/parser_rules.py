@@ -415,9 +415,9 @@ def _path_contains_globs(path: str) -> bool:
         path: Path to check
 
     Returns:
-        True if path contains * or **
+        True if path contains glob metacharacters (*, ?, [)
     """
-    return '*' in path
+    return '*' in path or '?' in path or '[' in path
 
 
 def get_md_parser_rules() -> List[ParsingRule]:

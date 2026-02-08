@@ -32,10 +32,10 @@ End of template.
 
     result = render_template(root, "ctx:simple-test")
 
-    # Check that README.md content is inserted
-    assert "Main Project" in result
+    # H1 heading is stripped for single placeholder under heading
+    assert "Main Project" not in result
     assert "This is the main project documentation." in result
-    assert "## Features" in result
+    assert "### Features" in result  # H2 shifted to H3 (heading_level=3)
     assert "- Feature A" in result
     assert "End of template." in result
     
@@ -193,21 +193,21 @@ ${md:docs/api}
 
     result = render_template(root, "ctx:structure-test")
 
-    # Check that headings of different levels are preserved
+    # Check heading structure after strip_h1 (single placeholder under H1)
     lines = result.split('\n')
 
-    # Should be H2 from file
+    # H1 "API Reference" is stripped for single placeholder under heading
+    heading_lines = [line for line in lines if line.startswith('#')]
+    assert not any("API Reference" in line for line in heading_lines)
+
+    # H2 headings preserved at H2 level (heading_level=2)
     h2_lines = [line for line in lines if line.startswith('## ')]
-    assert any("API Reference" in line for line in h2_lines)
+    assert any("Authentication" in line for line in h2_lines)
+    assert any("Endpoints" in line for line in h2_lines)
 
-    # Should be H3 headings
+    # H3 headings preserved at H3 level
     h3_lines = [line for line in lines if line.startswith('### ')]
-    assert any("Authentication" in line for line in h3_lines)
-    assert any("Endpoints" in line for line in h3_lines)
-
-    # Should be H4 headings
-    h4_lines = [line for line in lines if line.startswith('#### ')]
-    assert any("GET /users" in line for line in h4_lines)
+    assert any("GET /users" in line for line in h3_lines)
 
 
 def test_md_placeholder_whitespace_handling(md_project):
@@ -238,9 +238,9 @@ End.
 
 
 @pytest.mark.parametrize("filename,expected_content", [
-    ("README", "Main Project"),
-    ("docs/guide", "User Guide"),
-    ("docs/api", "API Reference"),
+    ("README", "main project documentation"),  # H1 stripped; check body content
+    ("docs/guide", "comprehensive user guide"),  # H1 stripped; check body content
+    ("docs/api", "API documentation"),  # H1 stripped; check body content
     ("docs/changelog", "v1.0.0")
 ])
 def test_md_placeholder_parametrized(md_project, filename, expected_content):
