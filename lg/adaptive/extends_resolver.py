@@ -18,6 +18,7 @@ from .model import AdaptiveModel
 from .section_extractor import extract_adaptive_model
 from ..section.model import SectionCfg, AdapterConfig
 from ..section.service import SectionService, SectionNotFoundError
+from ..addressing.types import ResolvedSection
 
 
 @dataclass
@@ -167,6 +168,26 @@ class ExtendsResolver:
         finally:
             # Pop from stack
             self._resolution_stack.pop()
+
+    def resolve_from_resolved(self, resolved: ResolvedSection) -> ResolvedSectionData:
+        """
+        Resolve section from already resolved ResolvedSection.
+
+        Type-safe public API that extracts all necessary fields
+        from the resolved section, preventing scope mismatch bugs.
+
+        Args:
+            resolved: Fully resolved section with scope and config
+
+        Returns:
+            ResolvedSectionData with merged configuration
+        """
+        return self.resolve_from_cfg(
+            section_cfg=resolved.section_config,
+            section_name=resolved.canon_key(),
+            scope_dir=resolved.scope_dir,
+            current_dir=resolved.current_dir,
+        )
 
     def clear_cache(self) -> None:
         """Clear the resolution cache."""

@@ -20,6 +20,7 @@ from .sections_list_schema import (
 from ..cache.fs_cache import Cache
 from ..migrate import ensure_cfg_actual
 from ..errors import LGUserError
+from ..version import tool_version
 
 _yaml = YAML(typ="safe")
 
@@ -368,9 +369,6 @@ def list_sections(
     Returns:
         SectionsList with sections and their mode-sets/tag-sets
     """
-    from ..cache.fs_cache import Cache
-    from ..version import tool_version
-
     cache = Cache(root, enabled=None, fresh=False, tool_version=tool_version())
     service = SectionService(root, cache)
 
@@ -436,15 +434,7 @@ def _resolve_adaptive_from_resolved(resolved, root: Path, cache: Cache):
     service = SectionService(root, cache)
     extends_resolver = ExtendsResolver(service)
 
-    # Use resolve_from_cfg with the preserved current_dir
-    resolved_data = extends_resolver.resolve_from_cfg(
-        section_cfg=resolved.section_config,
-        section_name=resolved.canonical_name,
-        scope_dir=root,
-        current_dir=resolved.current_dir,
-    )
-
-    return resolved_data.adaptive_model
+    return extends_resolver.resolve_from_resolved(resolved).adaptive_model
 
 
 def _resolve_section_adaptive(name: str, root: Path, cache: Cache):

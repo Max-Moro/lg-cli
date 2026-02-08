@@ -277,6 +277,86 @@ class TestExtendsBasicMerge:
         assert python_tag.title == "Python 3"
 
 
+class TestExtendsCrossScope:
+    """Tests for extends resolution across scopes (federated repository)."""
+
+    def test_list_sections_resolves_extends_in_child_scope(self, tmp_path):
+        """
+        Bug: _resolve_adaptive_from_resolved() passed scope_dir=root instead of
+        resolved.scope_dir, causing extends lookup for parent sections
+        to search the wrong scope.
+
+        Setup:
+        - Root scope has context including cross-scope context ${ctx@child:common}
+        - Child scope has meta-section 'tags' and section 'src' that extends 'tags'
+        - list_sections must resolve extends in the child scope, not root
+        """
+        from lg.section.service import list_sections
+
+        root = tmp_path
+        child_dir = root / "child"
+
+        # -- Root scope --
+        # Integration mode-set (required for context validation)
+        create_mode_meta_section(root, "ai-modes", {
+            "ai-interaction": ModeSetConfig(
+                title="AI Interaction",
+                modes={
+                    "ask": ModeConfig(
+                        title="Ask",
+                        runs={"com.test.provider": "--ask"},
+                    ),
+                }
+            )
+        })
+
+        # Root context referencing cross-scope context
+        write(root / "lg-cfg" / "main.ctx.md", textwrap.dedent("""\
+        ---
+        include: ["ai-modes"]
+        ---
+        # Main
+        ${ctx@child:common}
+        """))
+
+        # -- Child scope --
+        # Meta-section with tag-sets (extends target)
+        create_tag_meta_section(child_dir, "tags", {
+            "language": TagSetConfig(
+                title="Languages",
+                tags={"python": TagConfig(title="Python")}
+            )
+        })
+
+        # Section extending meta-section in same child scope
+        write(child_dir / "lg-cfg" / "sections.yaml", textwrap.dedent("""\
+        src:
+          extends: ["tags"]
+          extensions: [".py"]
+          filters:
+            mode: allow
+            allow:
+              - "/**"
+        """))
+
+        # Child context referencing child section
+        write(child_dir / "lg-cfg" / "common.ctx.md", "# Common\n${src}\n")
+
+        # Source file so section is non-empty
+        write(child_dir / "app.py", "x = 1\n")
+
+        # Act: should not raise SectionNotFoundInExtendsError
+        result = list_sections(root, context="main")
+
+        # Assert: child section present with inherited tag-set
+        section_names = [s.name for s in result.sections]
+        assert "src" in section_names
+
+        src_info = next(s for s in result.sections if s.name == "src")
+        tag_set_ids = {ts.id for ts in getattr(src_info, "tag_sets", [])}
+        assert "language" in tag_set_ids
+
+
 class TestExtendsCycleDetection:
     """Tests for cycle detection in extends chains."""
 

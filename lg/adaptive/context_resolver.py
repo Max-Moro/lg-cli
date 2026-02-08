@@ -206,12 +206,7 @@ class ContextResolver:
         # Process all sections (template + frontmatter) in order
         for resolved_section in collected.all_sections():
             # Resolve extends for section
-            section_data = self._extends_resolver.resolve_from_cfg(
-                resolved_section.section_config,
-                resolved_section.canon_key(),
-                resolved_section.scope_dir,
-                resolved_section.current_dir,
-            )
+            section_data = self._extends_resolver.resolve_from_resolved(resolved_section)
 
             # Merge into result
             merged = merged.merge_with(section_data.adaptive_model)
