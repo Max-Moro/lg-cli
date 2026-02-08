@@ -50,6 +50,7 @@ All agents are called strictly sequentially. Never run agents in parallel. The o
 - Mass test fixes
 - Refactoring with API changes
 
+<!-- lg:if tag:code-inspector -->
 ### @code-inspector
 **Role**: Code quality checking through Qodana
 - Runs static analysis
@@ -60,6 +61,7 @@ All agents are called strictly sequentially. Never run agents in parallel. The o
 - After each code integration
 - After fixing tests
 - Before final report to user
+<!-- lg:endif -->
 
 ### @test-runner
 **Role**: Running tests and interpreting results
@@ -99,6 +101,7 @@ These are just recommended examples. Don't take them as rigid rules. You can dec
 
 ### Scenario 1: Developing New Feature
 
+<!-- lg:if tag:code-inspector -->
 ```
 1. Plan architecture and design
 2. Prepare instructions for @code-integrator
@@ -112,9 +115,23 @@ These are just recommended examples. Don't take them as rigid rules. You can dec
 10. [If many fixes] → @test-runner again
 11. Report to user
 ```
+<!-- lg:else -->
+```
+1. Plan architecture and design
+2. Prepare instructions for @code-integrator
+3. @code-integrator → code integration
+4. @test-advisor (advice_type: find_location) → where to create tests
+5. Prepare tests in instructions
+6. @code-integrator → add tests
+7. @test-runner (mode: specific/module) → check new tests
+8. [If tests failed] → analyze and fix through @code-integrator
+9. Report to user
+```
+<!-- lg:endif -->
 
 ### Scenario 2: Bug Fixes
 
+<!-- lg:if tag:code-inspector -->
 ```
 1. Analyze problem. Initial @test-runner run if needed.
 2. [If need to understand tests] → @test-advisor (advice_type: explain_infra)
@@ -125,6 +142,17 @@ These are just recommended examples. Don't take them as rigid rules. You can dec
 7. [Optional] @test-runner (mode: all) → final check before commit
 8. Report to user
 ```
+<!-- lg:else -->
+```
+1. Analyze problem. Initial @test-runner run if needed.
+2. [If need to understand tests] → @test-advisor (advice_type: explain_infra)
+3. Prepare fixes
+4. Apply fix (through @code-integrator or Edit, depending on scope)
+5. @test-runner (mode: specific/package for affected subsystems) → check fix
+6. [Optional] @test-runner (mode: all) → final check before commit
+7. Report to user
+```
+<!-- lg:endif -->
 
 **Important for step 5**:
 - Use results from first @test-runner run to determine scope
@@ -133,6 +161,7 @@ These are just recommended examples. Don't take them as rigid rules. You can dec
 
 ### Scenario 3: Mass Test Errors (>10)
 
+<!-- lg:if tag:code-inspector -->
 ```
 1. @test-runner → get full error list
 2. Analyze and group errors
@@ -144,9 +173,22 @@ These are just recommended examples. Don't take them as rigid rules. You can dec
 8. @code-inspector → final check
 9. Report with results
 ```
+<!-- lg:else -->
+```
+1. @test-runner → get full error list
+2. Analyze and group errors
+3. Prioritize: critical → mass → specific
+4. Prepare instructions with grouped fixes
+5. @code-integrator → mass fixes
+6. @test-runner → check fixes
+7. [Repeat 4-6 for next group]
+8. Report with results
+```
+<!-- lg:endif -->
 
 ### Scenario 4: Refactoring
 
+<!-- lg:if tag:code-inspector -->
 ```
 1. Plan changes
 2. @test-advisor (advice_type: recommend_scope) → which tests are affected
@@ -156,6 +198,16 @@ These are just recommended examples. Don't take them as rigid rules. You can dec
 6. @code-inspector → quality check
 7. Report to user
 ```
+<!-- lg:else -->
+```
+1. Plan changes
+2. @test-advisor (advice_type: recommend_scope) → which tests are affected
+3. @code-integrator → code refactoring
+4. @test-runner → check nothing broke
+5. [If need to update tests] → @code-integrator
+6. Report to user
+```
+<!-- lg:endif -->
 
 ## Decision-Making Rules
 
@@ -232,9 +284,11 @@ Failed 15 tests from: tests/template/, tests/common_placeholders/, tests/md_plac
 - >10 errors → group and fix in batches
 - Unclear errors → escalate to user
 
+<!-- lg:if tag:code-inspector -->
 **@code-inspector**:
 - Fixed >20 issues → run tests again
 - Unfixed issues remain → assess criticality, possibly escalate
+<!-- lg:endif -->
 
 **@test-advisor**:
 - Got recommendations → use in instructions for @code-integrator
@@ -289,11 +343,13 @@ Failed 15 tests from: tests/template/, tests/common_placeholders/, tests/md_plac
 3. **changed_files** (optional) - list of modified files
 4. **test_requirement** (optional) - what needs to be tested
 
+<!-- lg:if tag:code-inspector -->
 ### For @code-inspector
 
 - **Task**: Brief task description (1 sentence, what work is currently being done)
 - **Recent changes**: List of modified files (from @code-integrator report)
 - **Request**: Request to run inspection
+<!-- lg:endif -->
 
 ## TodoWrite and Reporting
 
@@ -321,7 +377,9 @@ Don't use for:
 Before completing task work, check:
 - [ ] Code integrated through @code-integrator
 - [ ] Tests run and pass
+<!-- lg:if tag:code-inspector -->
 - [ ] Qodana check performed
+<!-- lg:endif -->
 - [ ] TodoWrite updated
 - [ ] Report sent to user in dialogue
 

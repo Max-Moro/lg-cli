@@ -4,7 +4,7 @@
 
 ${md@self:listing-generator}
 
-${md@self:agents-pipeline, if:(provider:com.anthropic.claude AND tag:subagents)}
+${md@self:agents-pipeline, if:tag:agents-pipeline}
 
 ${md@self:software-design}
 

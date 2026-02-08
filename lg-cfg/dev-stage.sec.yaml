@@ -16,3 +16,20 @@ dev-stage:
           tags: [review]
           default_task: "Conduct a code review of the changes and provide improvement recommendations."
           vcs_mode: "branch-changes"
+
+    pipeline-instructions:
+      title: "Pipeline instructions"
+      modes:
+        none:
+          title: "None"
+          description: "No special pipeline is used"
+
+        integrator-&-compiler:
+          title: "Integrator & Compiler"
+          tags: [agents-pipeline]
+          description: "Using agents in the pipeline: foo and bar: @code-integrator, @compiler"
+
+        all:
+          title: "Full subagents pipeline"
+          tags: [agents-pipeline, code-inspector]
+          description: "A complete set of instructions for working with subagents"
