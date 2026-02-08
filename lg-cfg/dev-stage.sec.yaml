@@ -24,12 +24,12 @@ dev-stage:
           title: "None"
           description: "No special pipeline is used"
 
-        integrator-&-compiler:
-          title: "Integrator & Compiler"
+        common:
+          title: "Common workflow"
           tags: [agents-pipeline]
-          description: "Using agents in the pipeline: foo and bar: @code-integrator, @compiler"
+          description: "Common workflow"
 
-        all:
-          title: "Full subagents pipeline"
+        with-inspections:
+          title: "With inspections"
           tags: [agents-pipeline, code-inspector]
-          description: "A complete set of instructions for working with subagents"
+          description: "Common workflow + running code inspections"
