@@ -11,13 +11,13 @@ from contextlib import contextmanager
 from pathlib import Path
 from typing import List, Optional
 
-from .types import DirectoryContext, ResourceConfig, ResolvedResource
+from .types import ContextView, DirectoryContext, ResourceConfig, ResolvedResource
 from .file_resolver import FileResolver
 from .section_resolver import SectionResolver
 from ..section import SectionService
 
 
-class AddressingContext:
+class AddressingContext(ContextView):
     """
     Addressing context — manages the directory stack and resource resolution.
 
@@ -41,7 +41,7 @@ class AddressingContext:
             initial_cfg_root: Initial lg-cfg/ directory
             section_service: Section service for resolving sections
         """
-        self.repo_root = repo_root.resolve()
+        self._repo_root = repo_root.resolve()
         self._section_service = section_service
         self._stack: List[DirectoryContext] = []
 
@@ -81,6 +81,11 @@ class AddressingContext:
         """
         resolver = self._get_section_resolver() if config.is_section else self._get_file_resolver()
         return resolver.resolve(name, config)
+
+    @property
+    def repo_root(self) -> Path:
+        """Repository root (absolute path)."""
+        return self._repo_root
 
     @property
     def current(self) -> DirectoryContext:

@@ -12,7 +12,6 @@ from .model import SectionCfg
 from .errors import SectionNotFoundError
 from ..cache.fs_cache import Cache
 from ..migrate import ensure_cfg_actual
-from ..version import tool_version
 
 _yaml = YAML(typ="safe")
 

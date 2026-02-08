@@ -17,7 +17,6 @@ from pathlib import Path
 
 from lg.addressing import AddressingContext
 from lg.addressing.types import ResourceConfig, ResolvedFile
-from lg.addressing.errors import ScopeNotFoundError
 
 from tests.infrastructure import write_context
 
@@ -172,9 +171,9 @@ class TestIntegrationWithRealContextFile:
     Integration tests that render actual context files with cross-scope references.
     """
 
+    @pytest.mark.usefixtures("multi_scope_project")
     def test_render_context_with_parent_references(
         self,
-        multi_scope_project: Path,
         vscode_scope_root: Path,
     ):
         """
@@ -215,9 +214,9 @@ class TestIntegrationWithRealContextFile:
         finally:
             os.chdir(original_cwd)
 
+    @pytest.mark.usefixtures("multi_scope_project")
     def test_render_fails_gracefully_for_missing_scope(
         self,
-        multi_scope_project: Path,
         vscode_scope_root: Path,
     ):
         """
