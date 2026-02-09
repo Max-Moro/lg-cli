@@ -1,0 +1,16 @@
+common:
+  mode-sets:
+    cli-context:
+      title: "CLI context"
+      modes:
+        only-intro:
+          title: "Introductory only"
+        src:
+          title: "Source code"
+          tags: [ src-cli ]
+        docs:
+          title: "Extended documentation"
+          tags: [ docs ]
+        full:
+          title: "Code + documentation"
+          tags: [ src-cli, docs ]

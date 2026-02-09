@@ -1,5 +1,5 @@
 ---
-include: ["ai-interaction", "dev-stage"]
+include: ["ai-interaction", "dev-stage", "common"]
 ---
 {% if scope:local AND tag:agent %}
 ${tpl:agent/index}
@@ -7,7 +7,7 @@ ${tpl:agent/index}
 ---
 {% endif %}
 ${docs/intro}
-{% if scope:local OR tag:src-cli %}
+{% if tag:src-cli %}
 ---
 {% if tag:review %}
 # Changed source code in current branch
