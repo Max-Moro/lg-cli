@@ -13,6 +13,7 @@ from typing import Dict, List, cast
 from .configs import TEMPLATE_CONFIG, CONTEXT_CONFIG
 from .nodes import SectionNode, IncludeNode
 from ..common import load_template_from, load_context_from, CTX_SUFFIX, TPL_SUFFIX
+from ..frontmatter import strip_frontmatter
 from ..handlers import TemplateProcessorHandlers
 from ..nodes import TemplateNode, TemplateAST
 from ..protocols import TemplateRegistryProtocol
@@ -149,6 +150,9 @@ class CommonPlaceholdersResolver:
             _, template_text = load_context_from(resolved_file.cfg_root, resource_name)
         else:
             _, template_text = load_template_from(resolved_file.cfg_root, resource_name)
+
+        # Strip frontmatter from included content
+        template_text = strip_frontmatter(template_text)
 
         # Parse template
         from ..parser import parse_template
