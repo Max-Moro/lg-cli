@@ -12,3 +12,8 @@ tests:
     mode: allow
     allow:
       - "/tests/"
+
+review:
+  extensions: [".py", ".toml"]
+  filters:
+    mode: block

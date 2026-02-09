@@ -1,3 +1,6 @@
+---
+include: ["ai-interaction"]
+---
 ${md:README}
 
 ---

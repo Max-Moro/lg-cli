@@ -11,13 +11,15 @@ ${docs/intro}
 ---
 {% if tag:review %}
 # Changed source code in current branch
+
+${review}
+
 {% else %}
 # Source code
-{% endif %}
-{% if tag:tests %}## Main code{% endif %}
 
 ${src}
-{% if tag:tests %}
+
+{% endif %}{% if tag:tests AND NOT tag:review %}
 ## Test code
 
 ${tests}

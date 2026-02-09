@@ -72,3 +72,8 @@ tests:
       tags:
         tests-infra:
           title: "Test infrastructure"
+
+review:
+  extensions: [".py", ".toml"]
+  filters:
+    mode: block

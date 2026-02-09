@@ -1,0 +1,18 @@
+dev-stage:
+  mode-sets:
+    dev-stage:
+      title: "Task Development Stage"
+      modes:
+        common:
+          title: "Main Development"
+
+        testing:
+          title: "Writing Tests"
+          tags: [tests]
+          default_task: "Write tests for the current functional module."
+
+        review:
+          title: "Code Review"
+          tags: [review]
+          default_task: "Conduct a code review of the changes and provide improvement recommendations."
+          vcs_mode: "branch-changes"
